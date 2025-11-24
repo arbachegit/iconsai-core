@@ -108,13 +108,23 @@ const AdminLogin = () => {
             </Button>
           </form>
 
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/")}
-            className="text-sm"
-          >
-            Voltar ao site
-          </Button>
+          <div className="flex flex-col gap-2 w-full">
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/admin/signup")}
+              className="text-sm"
+            >
+              Criar primeira conta admin
+            </Button>
+            
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/")}
+              className="text-sm"
+            >
+              Voltar ao site
+            </Button>
+          </div>
         </div>
       </Card>
     </div>
