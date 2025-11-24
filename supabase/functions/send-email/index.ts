@@ -21,6 +21,26 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { to, subject, body }: EmailRequest = await req.json();
 
+    // Input validation
+    if (!to || !subject || !body) {
+      throw new Error("Campos obrigatórios: to, subject, body");
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(to)) {
+      throw new Error("Email inválido");
+    }
+
+    // Length validation
+    if (subject.length > 200) {
+      throw new Error("Assunto muito longo (máximo 200 caracteres)");
+    }
+
+    if (body.length > 10000) {
+      throw new Error("Corpo muito longo (máximo 10000 caracteres)");
+    }
+
     console.log("Sending email to:", to);
     console.log("Subject:", subject);
 

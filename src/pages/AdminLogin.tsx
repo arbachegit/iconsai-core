@@ -5,34 +5,54 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Lock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminLogin = () => {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simple password check - in production, use proper authentication
-    if (password === "admin123") {
-      localStorage.setItem("admin_authenticated", "true");
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // Check if user has admin role
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (!roleData) {
+        await supabase.auth.signOut();
+        throw new Error("Acesso negado. Você não tem permissões de administrador.");
+      }
+
       toast({
         title: "Login realizado",
         description: "Bem-vindo ao painel administrativo.",
       });
       navigate("/admin");
-    } else {
+    } catch (error: any) {
       toast({
-        title: "Senha incorreta",
-        description: "Tente novamente.",
+        title: "Erro ao fazer login",
+        description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
@@ -53,13 +73,27 @@ const AdminLogin = () => {
           <form onSubmit={handleLogin} className="w-full space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">
+                Email
+              </label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu-email@exemplo.com"
+                className="bg-background/50"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">
                 Senha
               </label>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Digite a senha de administrador"
+                placeholder="Digite sua senha"
                 className="bg-background/50"
                 required
               />

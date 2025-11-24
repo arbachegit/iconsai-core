@@ -4,7 +4,7 @@ project_id = "gmflpmcepempcygdrayv"
 verify_jwt = false
 
 [functions.text-to-speech]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-email]
-verify_jwt = false
+verify_jwt = true

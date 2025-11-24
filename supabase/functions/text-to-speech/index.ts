@@ -17,6 +17,15 @@ serve(async (req) => {
       throw new Error("Texto é obrigatório");
     }
 
+    // Input validation: limit text length to prevent abuse
+    const MAX_TEXT_LENGTH = 5000;
+    if (text.length > MAX_TEXT_LENGTH) {
+      throw new Error(`Texto muito longo. Máximo ${MAX_TEXT_LENGTH} caracteres.`);
+    }
+
+    // Sanitize input: remove potentially harmful characters
+    const sanitizedText = text.trim().replace(/[<>]/g, "");
+
     const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
     const VOICE_ID = Deno.env.get("ELEVENLABS_VOICE_ID_FERNANDO");
 
@@ -24,7 +33,7 @@ serve(async (req) => {
       throw new Error("Credenciais ElevenLabs não configuradas");
     }
 
-    console.log("Gerando áudio para texto:", text.substring(0, 100));
+    console.log("Gerando áudio para texto:", sanitizedText.substring(0, 100));
 
     // Gerar áudio com ElevenLabs usando modelo Turbo v2.5 para baixa latência
     const response = await fetch(
@@ -36,7 +45,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text: text,
+          text: sanitizedText,
           model_id: "eleven_turbo_v2_5",
           voice_settings: {
             stability: 0.5,
