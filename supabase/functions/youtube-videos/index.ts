@@ -19,7 +19,6 @@ serve(async (req) => {
     const channelUsername = 'KnowRISKio';
     const url = new URL(req.url);
     const category = url.searchParams.get('category');
-    const fetchPopular = url.searchParams.get('popular') === 'true';
     
     // First, get the channel ID from the username
     const channelResponse = await fetch(
@@ -50,12 +49,10 @@ serve(async (req) => {
       
       const channelId = searchData.items[0].snippet.channelId;
       
-      // Get videos from the channel
+      // Get latest videos from the channel
       const searchQuery = category ? `&q=${encodeURIComponent(category)}` : '';
-      const orderBy = fetchPopular ? 'viewCount' : 'date';
-      const maxResults = fetchPopular ? 3 : 12;
       const videosResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=${orderBy}&type=video&maxResults=${maxResults}${searchQuery}&key=${YOUTUBE_API_KEY}`
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=12${searchQuery}&key=${YOUTUBE_API_KEY}`
       );
       
       if (!videosResponse.ok) {
@@ -71,12 +68,10 @@ serve(async (req) => {
     
     const channelId = channelData.items[0].id;
     
-    // Get videos from the channel
+    // Get latest videos from the channel
     const searchQuery = category ? `&q=${encodeURIComponent(category)}` : '';
-    const orderBy = fetchPopular ? 'viewCount' : 'date';
-    const maxResults = fetchPopular ? 3 : 12;
     const videosResponse = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=${orderBy}&type=video&maxResults=${maxResults}${searchQuery}&key=${YOUTUBE_API_KEY}`
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=12${searchQuery}&key=${YOUTUBE_API_KEY}`
     );
     
     if (!videosResponse.ok) {
