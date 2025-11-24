@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import knowriskLogo from "@/assets/knowrisk-logo.png";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -41,10 +42,12 @@ const Header = () => {
     >
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center glow-effect">
-              <span className="text-xl font-bold text-primary-foreground">K</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <img 
+              src={knowriskLogo} 
+              alt="KnowRisk" 
+              className="h-10 w-auto"
+            />
             <span className="text-xl font-bold text-gradient">KnowYOU</span>
           </div>
 
