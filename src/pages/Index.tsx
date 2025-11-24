@@ -159,18 +159,22 @@ const Index = () => {
       {/* Section 8: Bom Prompt */}
       <Section
         id="bom-prompt"
-        title="A Arte do Bom Prompt"
+        title={
+          <div className="flex items-center justify-center gap-4">
+            <span>A Arte do Bom Prompt</span>
+            <Link 
+              to="/admin"
+              className="text-primary hover:text-primary/80 transition-colors hover:scale-110 transform duration-200"
+              aria-label="Painel Administrativo"
+            >
+              <Brain className="w-8 h-8" />
+            </Link>
+          </div>
+        }
         subtitle="Comunicação Efetiva com IA"
         reverse
       >
         <div className="relative">
-          <Link 
-            to="/admin/login"
-            className="absolute -top-16 right-0 text-muted-foreground/20 hover:text-muted-foreground/40 transition-opacity"
-            aria-label="Admin Login"
-          >
-            <Brain className="w-5 h-5" />
-          </Link>
           
           <p className="text-lg leading-relaxed">
             Saber fazer as perguntas certas é fundamental na era da IA. Um bom prompt

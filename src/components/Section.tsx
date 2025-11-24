@@ -4,7 +4,7 @@ import { TooltipIcon } from "@/components/TooltipIcon";
 
 interface SectionProps {
   id: string;
-  title: string;
+  title: string | ReactNode;
   subtitle: string;
   children: ReactNode;
   reverse?: boolean;
