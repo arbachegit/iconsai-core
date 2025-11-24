@@ -46,7 +46,7 @@ const Header = () => {
             <img 
               src={knowriskLogo} 
               alt="KnowRisk" 
-              className="h-12 w-auto"
+              className="h-8 w-auto"
             />
           </div>
 

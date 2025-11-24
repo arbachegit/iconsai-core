@@ -148,36 +148,46 @@ const Index = () => {
         subtitle="Comunicação Efetiva com IA"
         reverse
       >
-        <p className="text-lg leading-relaxed">
-          Saber fazer as perguntas certas é fundamental na era da IA. Um bom prompt
-          é claro, específico, contextualizado e direcionado ao objetivo desejado.
-        </p>
-        <p className="text-lg leading-relaxed mt-4">
-          O KnowYOU não apenas responde suas perguntas, mas ensina você a se comunicar
-          melhor com IA, desenvolvendo uma habilidade essencial para o futuro do
-          trabalho em saúde.
-        </p>
-        <div className="mt-6 space-y-3">
-          <div className="p-4 bg-card rounded-lg border border-primary/10">
-            <p className="text-sm font-medium text-primary">Seja Específico</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Em vez de "fale sobre diabetes", pergunte "quais são os principais
-              indicadores para diagnóstico de diabetes tipo 2 em adultos?"
-            </p>
-          </div>
-          <div className="p-4 bg-card rounded-lg border border-primary/10">
-            <p className="text-sm font-medium text-secondary">Forneça Contexto</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Explique sua situação, seu papel e o que você precisa alcançar com
-              a resposta.
-            </p>
-          </div>
-          <div className="p-4 bg-card rounded-lg border border-primary/10">
-            <p className="text-sm font-medium text-accent">Itere e Refine</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Não tenha medo de fazer perguntas de acompanhamento para obter
-              exatamente a informação que precisa.
-            </p>
+        <div className="relative">
+          <Link 
+            to="/admin/login"
+            className="absolute -top-16 right-0 text-muted-foreground/20 hover:text-muted-foreground/40 transition-opacity"
+            aria-label="Admin Login"
+          >
+            <Brain className="w-5 h-5" />
+          </Link>
+          
+          <p className="text-lg leading-relaxed">
+            Saber fazer as perguntas certas é fundamental na era da IA. Um bom prompt
+            é claro, específico, contextualizado e direcionado ao objetivo desejado.
+          </p>
+          <p className="text-lg leading-relaxed mt-4">
+            O KnowYOU não apenas responde suas perguntas, mas ensina você a se comunicar
+            melhor com IA, desenvolvendo uma habilidade essencial para o futuro do
+            trabalho em saúde.
+          </p>
+          <div className="mt-6 space-y-3">
+            <div className="p-4 bg-card rounded-lg border border-primary/10">
+              <p className="text-sm font-medium text-primary">Seja Específico</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Em vez de "fale sobre diabetes", pergunte "quais são os principais
+                indicadores para diagnóstico de diabetes tipo 2 em adultos?"
+              </p>
+            </div>
+            <div className="p-4 bg-card rounded-lg border border-primary/10">
+              <p className="text-sm font-medium text-secondary">Forneça Contexto</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Explique sua situação, seu papel e o que você precisa alcançar com
+                a resposta.
+              </p>
+            </div>
+            <div className="p-4 bg-card rounded-lg border border-primary/10">
+              <p className="text-sm font-medium text-accent">Itere e Refine</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Não tenha medo de fazer perguntas de acompanhamento para obter
+                exatamente a informação que precisa.
+              </p>
+            </div>
           </div>
         </div>
       </Section>
