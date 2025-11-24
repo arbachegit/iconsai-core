@@ -159,18 +159,7 @@ const Index = () => {
       {/* Section 8: Bom Prompt */}
       <Section
         id="bom-prompt"
-        title={
-          <div className="flex items-center justify-center gap-4">
-            <span>A Arte do Bom Prompt</span>
-            <Link 
-              to="/admin"
-              className="text-primary hover:text-primary/80 transition-colors hover:scale-110 transform duration-200"
-              aria-label="Painel Administrativo"
-            >
-              <Brain className="w-8 h-8" />
-            </Link>
-          </div>
-        }
+        title="A Arte do Bom Prompt"
         subtitle="Comunicação Efetiva com IA"
         reverse
       >
