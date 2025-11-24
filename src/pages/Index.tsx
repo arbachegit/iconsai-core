@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import Section from "@/components/Section";
+import ChatKnowYOU from "@/components/ChatKnowYOU";
 
 const Index = () => {
   return (
@@ -132,10 +133,8 @@ const Index = () => {
           de saúde, tornando a comunicação com IA natural e produtiva para todos os
           profissionais, independente de seu conhecimento técnico.
         </p>
-        <div className="mt-8 p-6 bg-muted rounded-lg border border-primary/20">
-          <p className="text-sm text-center text-muted-foreground">
-            Chat interativo KnowYOU será implementado aqui
-          </p>
+        <div className="mt-8">
+          <ChatKnowYOU />
         </div>
       </Section>
 
