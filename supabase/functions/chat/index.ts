@@ -1,0 +1,132 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { messages } = await req.json();
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY não configurada");
+    }
+
+    // System prompt especializado em saúde
+    const systemPrompt = `Você é o KnowYOU, um assistente de IA especializado em saúde, desenvolvido pela KnowRisk para ajudar profissionais e gestores da área de saúde.
+
+REGRAS CRÍTICAS:
+
+1. PRIMEIRA INTERAÇÃO:
+   - Se for a primeira mensagem do usuário, SEMPRE pergunte o nome dele de forma educada antes de responder à pergunta.
+   - Exemplo: "Olá! Antes de respondermos, qual é o seu nome?"
+
+2. ESCOPO RESTRITO À SAÚDE:
+   - Você APENAS responde perguntas sobre: medicina, saúde pública, bem-estar, nutrição, exercícios físicos, saúde mental, prevenção de doenças, tratamentos médicos, medicamentos, tecnologia em saúde, telemedicina, gestão hospitalar, saúde digital, e áreas correlatas.
+   
+   - Se a pergunta NÃO for sobre saúde, responda educadamente:
+   "Sou o KnowYOU, especializado em auxiliar profissionais de saúde. Não posso ajudar com [tema da pergunta], mas ficarei feliz em responder perguntas sobre saúde, medicina, bem-estar ou gestão em saúde. Como posso ajudá-lo nessa área?"
+
+3. SUGESTÕES CONTEXTUAIS:
+   - Ao final de CADA resposta, você DEVE gerar exatamente 3 sugestões contextuais relacionadas ao tema discutido.
+   - As sugestões devem ser perguntas curtas (máx 50 caracteres) que o usuário pode clicar.
+   - Formato obrigatório: coloque as sugestões em uma linha separada no formato JSON:
+   
+   SUGESTÕES: ["Pergunta 1", "Pergunta 2", "Pergunta 3"]
+
+4. TOM E ESTILO:
+   - Profissional, mas acessível
+   - Respostas claras e objetivas
+   - Use linguagem técnica quando apropriado, mas sempre explique termos complexos
+   - Seja empático e respeitoso
+
+EXEMPLO DE RESPOSTA COMPLETA:
+
+Usuário: "Como prevenir diabetes?"
+
+Assistente: "A prevenção do diabetes tipo 2 envolve várias estratégias:
+
+1. **Alimentação balanceada**: Priorize alimentos integrais, vegetais, proteínas magras e reduza açúcares e carboidratos refinados.
+
+2. **Atividade física regular**: Pelo menos 150 minutos de exercícios moderados por semana.
+
+3. **Controle de peso**: Manter IMC adequado reduz significativamente o risco.
+
+4. **Exames preventivos**: Especialmente se houver histórico familiar ou fatores de risco.
+
+SUGESTÕES: ["Quais são os sinais de pré-diabetes?", "Que exames detectam diabetes?", "Como funciona a resistência insulínica?"]"
+
+Agora, responda às mensagens mantendo sempre este padrão.`;
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages,
+        ],
+        stream: true,
+        temperature: 0.8,
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Limite de uso excedido. Por favor, tente novamente em alguns instantes." 
+          }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Créditos insuficientes. Adicione créditos ao seu workspace Lovable." 
+          }),
+          {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      const errorText = await response.text();
+      console.error("Erro no AI gateway:", response.status, errorText);
+      return new Response(
+        JSON.stringify({ error: "Erro ao processar sua mensagem" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    return new Response(response.body, {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    });
+  } catch (e) {
+    console.error("Erro no chat:", e);
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+});
