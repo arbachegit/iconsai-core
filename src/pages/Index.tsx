@@ -2,6 +2,9 @@ import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import Section from "@/components/Section";
 import ChatKnowYOU from "@/components/ChatKnowYOU";
+import { Link } from "react-router-dom";
+import { Brain } from "lucide-react";
+import knowriskLogo from "@/assets/knowrisk-logo.png";
 
 const Index = () => {
   return (
@@ -182,19 +185,32 @@ const Index = () => {
       {/* Footer */}
       <footer className="py-12 border-t border-border/50">
         <div className="container mx-auto px-4">
-          <div className="text-center space-y-4">
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-primary flex items-center justify-center">
-                <span className="text-lg font-bold text-primary-foreground">K</span>
+          <div className="relative">
+            <div className="text-center space-y-4">
+              <div className="flex items-center justify-center gap-3">
+                <img 
+                  src={knowriskLogo} 
+                  alt="KnowRisk" 
+                  className="h-8 w-auto"
+                />
+                <span className="text-lg font-bold text-gradient">KnowYOU</span>
               </div>
-              <span className="text-lg font-bold text-gradient">KnowYOU</span>
+              <p className="text-sm text-muted-foreground">
+                Revolucionando o Reskilling na Era da IA
+              </p>
+              <p className="text-xs text-muted-foreground">
+                © 2024 KnowYOU by KnowRisk. Todos os direitos reservados.
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Revolucionando o Reskilling na Era da IA
-            </p>
-            <p className="text-xs text-muted-foreground">
-              © 2024 KnowYOU by KnowRisk. Todos os direitos reservados.
-            </p>
+            
+            {/* Discreet Admin Link */}
+            <Link 
+              to="/admin/login"
+              className="absolute right-0 top-0 text-muted-foreground/20 hover:text-muted-foreground/40 transition-opacity"
+              aria-label="Admin Login"
+            >
+              <Brain className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </footer>
