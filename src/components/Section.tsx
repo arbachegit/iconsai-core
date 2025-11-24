@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
+import { TooltipIcon } from "@/components/TooltipIcon";
 
 interface SectionProps {
   id: string;
@@ -12,6 +13,7 @@ interface SectionProps {
 const Section = ({ id, title, subtitle, children, reverse = false }: SectionProps) => {
   return (
     <section id={id} className="py-24 relative">
+      <TooltipIcon sectionId={id} />
       <div className="container mx-auto px-4">
         <div
           className={`grid lg:grid-cols-2 gap-12 items-center ${

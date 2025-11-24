@@ -1,0 +1,54 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+interface AdminSettings {
+  id: string;
+  chat_audio_enabled: boolean;
+  auto_play_audio: boolean;
+  gmail_api_configured: boolean;
+  gmail_notification_email: string | null;
+}
+
+export const useAdminSettings = () => {
+  const queryClient = useQueryClient();
+
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ["admin-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("admin_settings")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as AdminSettings | null;
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes cache
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (updates: Partial<AdminSettings>) => {
+      if (!settings?.id) throw new Error("No settings found");
+
+      const { data, error } = await supabase
+        .from("admin_settings")
+        .update(updates)
+        .eq("id", settings.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-settings"] });
+    },
+  });
+
+  return {
+    settings,
+    isLoading,
+    updateSettings: updateMutation.mutateAsync,
+  };
+};

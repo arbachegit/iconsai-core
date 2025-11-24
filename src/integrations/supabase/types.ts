@@ -14,7 +14,102 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_settings: {
+        Row: {
+          auto_play_audio: boolean | null
+          chat_audio_enabled: boolean | null
+          created_at: string | null
+          gmail_api_configured: boolean | null
+          gmail_notification_email: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_play_audio?: boolean | null
+          chat_audio_enabled?: boolean | null
+          created_at?: string | null
+          gmail_api_configured?: boolean | null
+          gmail_notification_email?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_play_audio?: boolean | null
+          chat_audio_enabled?: boolean | null
+          created_at?: string | null
+          gmail_api_configured?: boolean | null
+          gmail_notification_email?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      chat_analytics: {
+        Row: {
+          audio_plays: number | null
+          id: string
+          last_interaction: string | null
+          message_count: number | null
+          session_id: string
+          started_at: string | null
+          topics: string[] | null
+          user_name: string | null
+        }
+        Insert: {
+          audio_plays?: number | null
+          id?: string
+          last_interaction?: string | null
+          message_count?: number | null
+          session_id: string
+          started_at?: string | null
+          topics?: string[] | null
+          user_name?: string | null
+        }
+        Update: {
+          audio_plays?: number | null
+          id?: string
+          last_interaction?: string | null
+          message_count?: number | null
+          session_id?: string
+          started_at?: string | null
+          topics?: string[] | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
+      tooltip_contents: {
+        Row: {
+          audio_url: string | null
+          content: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          section_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          audio_url?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          section_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          audio_url?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          section_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
