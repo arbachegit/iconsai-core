@@ -42,13 +42,12 @@ const Header = () => {
     >
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center">
             <img 
               src={knowriskLogo} 
               alt="KnowRisk" 
-              className="h-10 w-auto"
+              className="h-12 w-auto"
             />
-            <span className="text-xl font-bold text-gradient">KnowYOU</span>
           </div>
 
           {/* Desktop Navigation */}
