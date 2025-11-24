@@ -2,6 +2,7 @@ import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import Section from "@/components/Section";
 import ChatKnowYOU from "@/components/ChatKnowYOU";
+import { MediaCarousel } from "@/components/MediaCarousel";
 import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
@@ -138,6 +139,20 @@ const Index = () => {
         </p>
         <div className="mt-8">
           <ChatKnowYOU />
+        </div>
+        
+        {/* Media Carousel - Spotify & YouTube */}
+        <div className="mt-12">
+          <MediaCarousel />
+        </div>
+        
+        {/* Logo abaixo do carrossel */}
+        <div className="mt-8 flex justify-center">
+          <img 
+            src={knowriskLogo} 
+            alt="KnowRisk" 
+            className="h-12 w-auto opacity-50"
+          />
         </div>
       </Section>
 
