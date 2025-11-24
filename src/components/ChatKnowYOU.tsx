@@ -3,21 +3,26 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Send, Trash2, Loader2, Volume2, VolumeX } from "lucide-react";
+import { Send, Trash2, Loader2, Volume2, VolumeX, ImagePlus } from "lucide-react";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 export default function ChatKnowYOU() {
   const { 
     messages, 
     isLoading, 
     isGeneratingAudio,
+    isGeneratingImage,
     currentlyPlayingIndex,
     suggestions, 
     sendMessage, 
     clearHistory,
     playAudio,
     stopAudio,
+    generateImage,
   } = useChatKnowYOU();
   const [input, setInput] = useState("");
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,6 +41,14 @@ export default function ChatKnowYOU() {
 
   const handleSuggestionClick = (suggestion: string) => {
     sendMessage(suggestion);
+  };
+
+  const handleGenerateImage = () => {
+    if (imagePrompt.trim()) {
+      generateImage(imagePrompt);
+      setImagePrompt("");
+      setIsImageDialogOpen(false);
+    }
   };
 
   return (
@@ -87,6 +100,24 @@ export default function ChatKnowYOU() {
                       : "bg-muted text-foreground"
                   }`}
                 >
+                  {msg.imageUrl && (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <img
+                          src={msg.imageUrl}
+                          alt="Imagem gerada"
+                          className="max-w-full rounded-lg mb-2 cursor-pointer hover:opacity-90 transition-opacity"
+                        />
+                      </DialogTrigger>
+                      <DialogContent className="max-w-4xl">
+                        <img
+                          src={msg.imageUrl}
+                          alt="Imagem gerada"
+                          className="w-full h-auto rounded-lg"
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  )}
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-xs opacity-70">
@@ -113,12 +144,12 @@ export default function ChatKnowYOU() {
                 </div>
               </div>
             ))}
-            {(isLoading || isGeneratingAudio) && (
+            {(isLoading || isGeneratingAudio || isGeneratingImage) && (
               <div className="flex justify-start">
                 <div className="bg-muted rounded-2xl px-4 py-3 flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span className="text-sm">
-                    {isGeneratingAudio ? "Gerando áudio..." : "Pensando..."}
+                    {isGeneratingImage ? "Gerando imagem..." : isGeneratingAudio ? "Gerando áudio..." : "Pensando..."}
                   </span>
                 </div>
               </div>
@@ -150,24 +181,73 @@ export default function ChatKnowYOU() {
       {/* Input Area */}
       <form onSubmit={handleSubmit} className="p-6 border-t border-border/50">
         <div className="flex gap-3">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-            placeholder="Digite sua mensagem sobre saúde..."
-            className="min-h-[60px] resize-none"
-            disabled={isLoading}
-          />
+          <div className="flex-1 space-y-3">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+              placeholder="Digite sua mensagem sobre saúde..."
+              className="min-h-[60px] resize-none"
+              disabled={isLoading}
+            />
+            <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isGeneratingImage}
+                  className="w-full"
+                >
+                  <ImagePlus className="w-4 h-4 mr-2" />
+                  Gerar Imagem Educativa
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Gerar Imagem sobre Saúde</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Descreva o tema de saúde que você gostaria de visualizar em uma imagem educativa.
+                    </p>
+                  </div>
+                  <Textarea
+                    value={imagePrompt}
+                    onChange={(e) => setImagePrompt(e.target.value)}
+                    placeholder="Ex: Anatomia do coração humano, processo de cicatrização, etc."
+                    className="min-h-[100px]"
+                  />
+                  <Button
+                    onClick={handleGenerateImage}
+                    disabled={!imagePrompt.trim() || isGeneratingImage}
+                    className="w-full"
+                  >
+                    {isGeneratingImage ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Gerando...
+                      </>
+                    ) : (
+                      <>
+                        <ImagePlus className="w-4 h-4 mr-2" />
+                        Gerar Imagem
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
           <Button
             type="submit"
             size="icon"
             disabled={!input.trim() || isLoading}
-            className="h-[60px] w-[60px] rounded-xl"
+            className="h-[60px] w-[60px] rounded-xl flex-shrink-0"
           >
             <Send className="w-5 h-5" />
           </Button>

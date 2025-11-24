@@ -10,6 +10,7 @@ interface Message {
   content: string;
   timestamp: Date;
   audioUrl?: string;
+  imageUrl?: string;
 }
 
 const STORAGE_KEY = "knowyou_chat_history";
@@ -18,6 +19,7 @@ export function useChatKnowYOU() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [currentlyPlayingIndex, setCurrentlyPlayingIndex] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([
     "O que é telemedicina?",
@@ -238,15 +240,66 @@ export function useChatKnowYOU() {
     setCurrentlyPlayingIndex(null);
   }, []);
 
+  const generateImage = useCallback(
+    async (prompt: string) => {
+      if (!prompt.trim() || isGeneratingImage) return;
+
+      setIsGeneratingImage(true);
+
+      try {
+        const { data, error } = await import("@/integrations/supabase/client").then(
+          (m) => m.supabase.functions.invoke("generate-image", {
+            body: { prompt },
+          })
+        );
+
+        if (error) throw error;
+
+        if (!data?.imageUrl) {
+          throw new Error("Nenhuma imagem foi gerada");
+        }
+
+        // Adicionar mensagem do assistente com a imagem
+        const imageMessage: Message = {
+          role: "assistant",
+          content: `Aqui está a imagem sobre: ${prompt}`,
+          timestamp: new Date(),
+          imageUrl: data.imageUrl,
+        };
+
+        const updatedMessages = [...messages, imageMessage];
+        setMessages(updatedMessages);
+        saveHistory(updatedMessages);
+
+        toast({
+          title: "Imagem gerada",
+          description: "A imagem foi criada com sucesso!",
+        });
+      } catch (error: any) {
+        console.error("Erro ao gerar imagem:", error);
+        toast({
+          title: "Erro ao gerar imagem",
+          description: error.message || "Não foi possível gerar a imagem. Tente novamente.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsGeneratingImage(false);
+      }
+    },
+    [messages, isGeneratingImage, toast, saveHistory]
+  );
+
   return {
     messages,
     isLoading,
     isGeneratingAudio,
+    isGeneratingImage,
     currentlyPlayingIndex,
     suggestions,
     sendMessage,
     clearHistory,
     playAudio,
     stopAudio,
+    generateImage,
   };
 }
