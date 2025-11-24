@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Music, Youtube, ExternalLink, Filter } from "lucide-react";
+import { Music, Youtube, ExternalLink, Filter, Play, Pause } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -8,10 +8,13 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  type CarouselApi,
 } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import Autoplay from "embla-carousel-autoplay";
 
 interface YouTubeVideo {
   id: {
@@ -40,11 +43,52 @@ export const MediaCarousel = () => {
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+  const [count, setCount] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
   const { toast } = useToast();
+
+  const autoplayPlugin = Autoplay({
+    delay: 4000,
+    stopOnInteraction: false,
+  });
 
   useEffect(() => {
     fetchYouTubeVideos();
   }, [selectedCategory]);
+
+  useEffect(() => {
+    if (!api) return;
+
+    setCount(api.scrollSnapList().length);
+    setCurrent(api.selectedScrollSnap());
+
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap());
+    });
+
+    api.on("autoplay:play", () => {
+      setIsPlaying(true);
+    });
+
+    api.on("autoplay:stop", () => {
+      setIsPlaying(false);
+    });
+  }, [api]);
+
+  const toggleAutoplay = () => {
+    const autoplay = api?.plugins()?.autoplay;
+    if (!autoplay) return;
+
+    if (isPlaying) {
+      autoplay.stop();
+      setIsPlaying(false);
+    } else {
+      autoplay.play();
+      setIsPlaying(true);
+    }
+  };
 
   const fetchYouTubeVideos = async () => {
     setLoading(true);
@@ -145,14 +189,45 @@ export const MediaCarousel = () => {
             ))}
           </div>
         ) : (
-          <Carousel
-            opts={{
-              align: "start",
-              loop: true,
-            }}
-            className="w-full"
-          >
-            <CarouselContent>
+          <div className="space-y-4">
+            <div className="flex items-center justify-center gap-4">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleAutoplay}
+                className="rounded-full hover:scale-110 transition-transform"
+              >
+                {isPlaying ? (
+                  <Pause className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+              </Button>
+              <div className="flex gap-2">
+                {Array.from({ length: count }).map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => api?.scrollTo(index)}
+                    className={`h-2 rounded-full transition-all ${
+                      index === current
+                        ? "w-8 bg-primary"
+                        : "w-2 bg-primary/30 hover:bg-primary/50"
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+            <Carousel
+              setApi={setApi}
+              opts={{
+                align: "start",
+                loop: true,
+              }}
+              plugins={[autoplayPlugin]}
+              className="w-full"
+            >
+              <CarouselContent>
               {videos.map((video, index) => (
                 <CarouselItem 
                   key={video.id.videoId} 
@@ -194,9 +269,10 @@ export const MediaCarousel = () => {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious className="hidden md:flex" />
-            <CarouselNext className="hidden md:flex" />
-          </Carousel>
+              <CarouselPrevious className="hidden md:flex" />
+              <CarouselNext className="hidden md:flex" />
+            </Carousel>
+          </div>
         )}
       </div>
     </div>
