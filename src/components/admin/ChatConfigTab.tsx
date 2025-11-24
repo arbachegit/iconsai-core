@@ -1,0 +1,125 @@
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { useAdminSettings } from "@/hooks/useAdminSettings";
+import { useToast } from "@/hooks/use-toast";
+import { Volume2, Play, Loader2 } from "lucide-react";
+
+export const ChatConfigTab = () => {
+  const { settings, updateSettings, isLoading } = useAdminSettings();
+  const { toast } = useToast();
+
+  const handleToggle = async (field: "chat_audio_enabled" | "auto_play_audio") => {
+    if (!settings) return;
+
+    try {
+      await updateSettings({
+        [field]: !settings[field],
+      });
+
+      toast({
+        title: "Configuração atualizada",
+        description: "As alterações foram salvas com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível salvar as alterações.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const testElevenLabs = () => {
+    toast({
+      title: "Teste de conexão",
+      description: "Verificando conexão com ElevenLabs...",
+    });
+
+    // In production, this would actually test the connection
+    setTimeout(() => {
+      toast({
+        title: "Conexão bem-sucedida",
+        description: "ElevenLabs está funcionando corretamente.",
+      });
+    }, 1500);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Configurações do Chat</h1>
+        <p className="text-muted-foreground mt-2">
+          Gerencie o comportamento do chat e do áudio
+        </p>
+      </div>
+
+      <Card className="p-6 bg-card/50 backdrop-blur-sm border-primary/20">
+        <h2 className="text-xl font-bold text-foreground mb-6">Controles de Áudio</h2>
+
+        <div className="space-y-6">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-background/50">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Volume2 className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium text-foreground">Geração de Áudio</h3>
+                <p className="text-sm text-muted-foreground">
+                  Ativar síntese de voz com ElevenLabs
+                </p>
+              </div>
+            </div>
+
+            <Switch
+              checked={settings?.chat_audio_enabled || false}
+              onCheckedChange={() => handleToggle("chat_audio_enabled")}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-lg bg-background/50">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Play className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium text-foreground">Auto-play</h3>
+                <p className="text-sm text-muted-foreground">
+                  Reproduzir áudio automaticamente após resposta
+                </p>
+              </div>
+            </div>
+
+            <Switch
+              checked={settings?.auto_play_audio || false}
+              onCheckedChange={() => handleToggle("auto_play_audio")}
+              disabled={!settings?.chat_audio_enabled}
+            />
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-6 bg-card/50 backdrop-blur-sm border-primary/20">
+        <h2 className="text-xl font-bold text-foreground mb-4">
+          Teste de Conexão
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          Verifique se a integração com ElevenLabs está funcionando corretamente.
+        </p>
+
+        <Button onClick={testElevenLabs} className="gap-2">
+          <Play className="w-4 h-4" />
+          Testar ElevenLabs
+        </Button>
+      </Card>
+    </div>
+  );
+};

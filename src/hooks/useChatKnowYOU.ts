@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { streamChat, extractSuggestions, removeSuggestionsFromText } from "@/lib/chat-stream";
 import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminSettings } from "./useAdminSettings";
+import { useChatAnalytics } from "./useChatAnalytics";
 
 interface Message {
   role: "user" | "assistant";
@@ -22,8 +24,12 @@ export function useChatKnowYOU() {
     "Como prevenir doenças crônicas?",
     "Tendências em saúde digital",
   ]);
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random()}`);
+  
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
   const { toast } = useToast();
+  const { settings } = useAdminSettings();
+  const { createSession, updateSession } = useChatAnalytics();
 
   // Carregar histórico do localStorage
   useEffect(() => {
@@ -41,7 +47,10 @@ export function useChatKnowYOU() {
     } catch (error) {
       console.error("Erro ao carregar histórico:", error);
     }
-  }, []);
+
+    // Create analytics session
+    createSession({ session_id: sessionId, user_name: null }).catch(console.error);
+  }, [sessionId, createSession]);
 
   // Salvar histórico no localStorage
   const saveHistory = useCallback((msgs: Message[]) => {
@@ -106,28 +115,51 @@ export function useChatKnowYOU() {
 
             const cleanedResponse = removeSuggestionsFromText(fullResponse);
 
-            // Gerar áudio da resposta
-            setIsGeneratingAudio(true);
-            try {
-              const audioUrl = await generateAudioUrl(cleanedResponse);
-              
-              setMessages((prev) => {
-                const updated = prev.map((m, i) =>
-                  i === prev.length - 1
-                    ? { ...m, content: cleanedResponse, audioUrl }
-                    : m
-                );
-                saveHistory(updated);
-                return updated;
-              });
+            // Gerar áudio da resposta (somente se habilitado)
+            if (settings?.chat_audio_enabled) {
+              setIsGeneratingAudio(true);
+              try {
+                const audioUrl = await generateAudioUrl(cleanedResponse);
+                
+                setMessages((prev) => {
+                  const updated = prev.map((m, i) =>
+                    i === prev.length - 1
+                      ? { ...m, content: cleanedResponse, audioUrl }
+                      : m
+                  );
+                  saveHistory(updated);
+                  return updated;
+                });
 
-              // Auto-play do áudio
-              const messageIndex = messages.length;
-              setCurrentlyPlayingIndex(messageIndex);
-              await audioPlayerRef.current.playAudioFromUrl(audioUrl);
-              setCurrentlyPlayingIndex(null);
-            } catch (error) {
-              console.error("Erro ao gerar áudio:", error);
+                // Auto-play do áudio se habilitado
+                if (settings?.auto_play_audio) {
+                  const messageIndex = messages.length;
+                  setCurrentlyPlayingIndex(messageIndex);
+                  await audioPlayerRef.current.playAudioFromUrl(audioUrl);
+                  setCurrentlyPlayingIndex(null);
+                }
+
+                // Update analytics with audio play
+                updateSession({
+                  session_id: sessionId,
+                  updates: { audio_plays: messages.filter(m => m.audioUrl).length + 1 },
+                }).catch(console.error);
+              } catch (error) {
+                console.error("Erro ao gerar áudio:", error);
+                setMessages((prev) => {
+                  const updated = prev.map((m, i) =>
+                    i === prev.length - 1
+                      ? { ...m, content: cleanedResponse }
+                      : m
+                  );
+                  saveHistory(updated);
+                  return updated;
+                });
+              } finally {
+                setIsGeneratingAudio(false);
+              }
+            } else {
+              // No audio - just save the message
               setMessages((prev) => {
                 const updated = prev.map((m, i) =>
                   i === prev.length - 1
@@ -137,9 +169,13 @@ export function useChatKnowYOU() {
                 saveHistory(updated);
                 return updated;
               });
-            } finally {
-              setIsGeneratingAudio(false);
             }
+
+            // Update analytics with message count
+            updateSession({
+              session_id: sessionId,
+              updates: { message_count: messages.length + 2 },
+            }).catch(console.error);
 
             setIsLoading(false);
           },

@@ -15,70 +15,147 @@ const HeroSection = () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
+    // Background grid points
+    const gridSpacing = 80;
+    const gridPoints: Array<{ x: number; y: number }> = [];
+    
+    for (let x = 0; x < canvas.width; x += gridSpacing) {
+      for (let y = 0; y < canvas.height; y += gridSpacing) {
+        gridPoints.push({ x, y });
+      }
+    }
+
+    // Enhanced particles
     const particles: Array<{
       x: number;
       y: number;
       vx: number;
       vy: number;
       radius: number;
+      opacity: number;
+      pulsePhase: number;
+      hue: number;
     }> = [];
 
-    // Create particles
-    for (let i = 0; i < 50; i++) {
+    // Create more particles with varied properties
+    for (let i = 0; i < 100; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
         vx: (Math.random() - 0.5) * 0.5,
         vy: (Math.random() - 0.5) * 0.5,
-        radius: Math.random() * 2 + 1,
+        radius: Math.random() * 3 + 1,
+        opacity: Math.random() * 0.5 + 0.3,
+        pulsePhase: Math.random() * Math.PI * 2,
+        hue: 180 + Math.random() * 60, // Blue to purple range
       });
     }
 
-    const animate = () => {
-      ctx.fillStyle = "rgba(10, 14, 39, 0.05)";
+    let animationFrame: number;
+    let lastTime = 0;
+
+    const animate = (currentTime: number) => {
+      const deltaTime = currentTime - lastTime;
+      lastTime = currentTime;
+
+      // Fade effect instead of full clear
+      ctx.fillStyle = "rgba(10, 14, 39, 0.1)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      particles.forEach((particle) => {
+      // Draw static grid in background
+      ctx.strokeStyle = "rgba(0, 217, 255, 0.03)";
+      ctx.lineWidth = 1;
+      
+      gridPoints.forEach((point, i) => {
+        gridPoints.forEach((otherPoint, j) => {
+          if (i >= j) return;
+          const dx = point.x - otherPoint.x;
+          const dy = point.y - otherPoint.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          if (distance < gridSpacing * 1.5) {
+            ctx.beginPath();
+            ctx.moveTo(point.x, point.y);
+            ctx.lineTo(otherPoint.x, otherPoint.y);
+            ctx.stroke();
+          }
+        });
+      });
+
+      // Draw and update particles
+      particles.forEach((particle, index) => {
         particle.x += particle.vx;
         particle.y += particle.vy;
+        particle.pulsePhase += 0.02;
 
+        // Bounce off edges
         if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
         if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
 
+        // Pulse effect
+        const pulseScale = 1 + Math.sin(particle.pulsePhase) * 0.3;
+        const currentRadius = particle.radius * pulseScale;
+        const currentOpacity = particle.opacity * (0.7 + Math.sin(particle.pulsePhase) * 0.3);
+
+        // Draw particle with glow
+        const gradient = ctx.createRadialGradient(
+          particle.x, particle.y, 0,
+          particle.x, particle.y, currentRadius * 3
+        );
+        gradient.addColorStop(0, `hsla(${particle.hue}, 100%, 50%, ${currentOpacity})`);
+        gradient.addColorStop(0.5, `hsla(${particle.hue}, 100%, 50%, ${currentOpacity * 0.3})`);
+        gradient.addColorStop(1, `hsla(${particle.hue}, 100%, 50%, 0)`);
+
+        ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(0, 217, 255, 0.3)";
+        ctx.arc(particle.x, particle.y, currentRadius * 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw connections
-        particles.forEach((otherParticle) => {
+        // Draw connections between nearby particles
+        particles.forEach((otherParticle, otherIndex) => {
+          if (index >= otherIndex) return;
+          
           const dx = particle.x - otherParticle.x;
           const dy = particle.y - otherParticle.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
           if (distance < 150) {
+            const connectionOpacity = (1 - distance / 150) * 0.2;
             ctx.beginPath();
             ctx.moveTo(particle.x, particle.y);
             ctx.lineTo(otherParticle.x, otherParticle.y);
-            ctx.strokeStyle = `rgba(0, 217, 255, ${0.15 * (1 - distance / 150)})`;
+            
+            const avgHue = (particle.hue + otherParticle.hue) / 2;
+            ctx.strokeStyle = `hsla(${avgHue}, 100%, 50%, ${connectionOpacity})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
         });
       });
 
-      requestAnimationFrame(animate);
+      animationFrame = requestAnimationFrame(animate);
     };
 
-    animate();
+    animationFrame = requestAnimationFrame(animate);
 
     const handleResize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      
+      // Recalculate grid
+      gridPoints.length = 0;
+      for (let x = 0; x < canvas.width; x += gridSpacing) {
+        for (let y = 0; y < canvas.height; y += gridSpacing) {
+          gridPoints.push({ x, y });
+        }
+      }
     };
 
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      cancelAnimationFrame(animationFrame);
+    };
   }, []);
 
   return (
