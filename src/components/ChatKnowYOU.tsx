@@ -3,10 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Send, Trash2, Loader2 } from "lucide-react";
+import { Send, Trash2, Loader2, Volume2, VolumeX } from "lucide-react";
 
 export default function ChatKnowYOU() {
-  const { messages, isLoading, suggestions, sendMessage, clearHistory } = useChatKnowYOU();
+  const { 
+    messages, 
+    isLoading, 
+    isGeneratingAudio,
+    currentlyPlayingIndex,
+    suggestions, 
+    sendMessage, 
+    clearHistory,
+    playAudio,
+    stopAudio,
+  } = useChatKnowYOU();
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -78,20 +88,38 @@ export default function ChatKnowYOU() {
                   }`}
                 >
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                  <span className="text-xs opacity-70 mt-2 block">
-                    {msg.timestamp.toLocaleTimeString("pt-BR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-xs opacity-70">
+                      {msg.timestamp.toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    {msg.role === "assistant" && msg.audioUrl && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => currentlyPlayingIndex === idx ? stopAudio() : playAudio(idx)}
+                      >
+                        {currentlyPlayingIndex === idx ? (
+                          <VolumeX className="w-4 h-4" />
+                        ) : (
+                          <Volume2 className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
-            {isLoading && (
+            {(isLoading || isGeneratingAudio) && (
               <div className="flex justify-start">
                 <div className="bg-muted rounded-2xl px-4 py-3 flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Pensando...</span>
+                  <span className="text-sm">
+                    {isGeneratingAudio ? "Gerando áudio..." : "Pensando..."}
+                  </span>
                 </div>
               </div>
             )}

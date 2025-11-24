@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { streamChat, extractSuggestions, removeSuggestionsFromText } from "@/lib/chat-stream";
+import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  audioUrl?: string;
 }
 
 const STORAGE_KEY = "knowyou_chat_history";
@@ -13,11 +15,14 @@ const STORAGE_KEY = "knowyou_chat_history";
 export function useChatKnowYOU() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [currentlyPlayingIndex, setCurrentlyPlayingIndex] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([
     "O que é telemedicina?",
     "Como prevenir doenças crônicas?",
     "Tendências em saúde digital",
   ]);
+  const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
   const { toast } = useToast();
 
   // Carregar histórico do localStorage
@@ -93,21 +98,48 @@ export function useChatKnowYOU() {
         await streamChat({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
           onDelta: (chunk) => updateAssistantMessage(chunk),
-          onDone: () => {
+          onDone: async () => {
             const extractedSuggestions = extractSuggestions(fullResponse);
             if (extractedSuggestions.length > 0) {
               setSuggestions(extractedSuggestions);
             }
 
-            setMessages((prev) => {
-              const updated = prev.map((m, i) =>
-                i === prev.length - 1
-                  ? { ...m, content: removeSuggestionsFromText(fullResponse) }
-                  : m
-              );
-              saveHistory(updated);
-              return updated;
-            });
+            const cleanedResponse = removeSuggestionsFromText(fullResponse);
+
+            // Gerar áudio da resposta
+            setIsGeneratingAudio(true);
+            try {
+              const audioUrl = await generateAudioUrl(cleanedResponse);
+              
+              setMessages((prev) => {
+                const updated = prev.map((m, i) =>
+                  i === prev.length - 1
+                    ? { ...m, content: cleanedResponse, audioUrl }
+                    : m
+                );
+                saveHistory(updated);
+                return updated;
+              });
+
+              // Auto-play do áudio
+              const messageIndex = messages.length;
+              setCurrentlyPlayingIndex(messageIndex);
+              await audioPlayerRef.current.playAudioFromUrl(audioUrl);
+              setCurrentlyPlayingIndex(null);
+            } catch (error) {
+              console.error("Erro ao gerar áudio:", error);
+              setMessages((prev) => {
+                const updated = prev.map((m, i) =>
+                  i === prev.length - 1
+                    ? { ...m, content: cleanedResponse }
+                    : m
+                );
+                saveHistory(updated);
+                return updated;
+              });
+            } finally {
+              setIsGeneratingAudio(false);
+            }
 
             setIsLoading(false);
           },
@@ -134,7 +166,9 @@ export function useChatKnowYOU() {
   );
 
   const clearHistory = useCallback(() => {
+    audioPlayerRef.current.stop();
     setMessages([]);
+    setCurrentlyPlayingIndex(null);
     setSuggestions([
       "O que é telemedicina?",
       "Como prevenir doenças crônicas?",
@@ -143,11 +177,40 @@ export function useChatKnowYOU() {
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
+  const playAudio = useCallback(async (messageIndex: number) => {
+    const message = messages[messageIndex];
+    if (!message?.audioUrl) return;
+
+    try {
+      audioPlayerRef.current.stop();
+      setCurrentlyPlayingIndex(messageIndex);
+      await audioPlayerRef.current.playAudioFromUrl(message.audioUrl);
+      setCurrentlyPlayingIndex(null);
+    } catch (error) {
+      console.error("Erro ao reproduzir áudio:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível reproduzir o áudio",
+        variant: "destructive",
+      });
+      setCurrentlyPlayingIndex(null);
+    }
+  }, [messages, toast]);
+
+  const stopAudio = useCallback(() => {
+    audioPlayerRef.current.stop();
+    setCurrentlyPlayingIndex(null);
+  }, []);
+
   return {
     messages,
     isLoading,
+    isGeneratingAudio,
+    currentlyPlayingIndex,
     suggestions,
     sendMessage,
     clearHistory,
+    playAudio,
+    stopAudio,
   };
 }
