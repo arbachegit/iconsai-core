@@ -17,6 +17,8 @@ serve(async (req) => {
     }
 
     const channelUsername = 'KnowRISKio';
+    const url = new URL(req.url);
+    const category = url.searchParams.get('category');
     
     // First, get the channel ID from the username
     const channelResponse = await fetch(
@@ -48,8 +50,9 @@ serve(async (req) => {
       const channelId = searchData.items[0].snippet.channelId;
       
       // Get latest videos from the channel
+      const searchQuery = category ? `&q=${encodeURIComponent(category)}` : '';
       const videosResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=6&key=${YOUTUBE_API_KEY}`
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=12${searchQuery}&key=${YOUTUBE_API_KEY}`
       );
       
       if (!videosResponse.ok) {
@@ -66,8 +69,9 @@ serve(async (req) => {
     const channelId = channelData.items[0].id;
     
     // Get latest videos from the channel
+    const searchQuery = category ? `&q=${encodeURIComponent(category)}` : '';
     const videosResponse = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=6&key=${YOUTUBE_API_KEY}`
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=12${searchQuery}&key=${YOUTUBE_API_KEY}`
     );
     
     if (!videosResponse.ok) {
