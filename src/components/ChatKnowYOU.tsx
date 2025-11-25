@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Send, Loader2, Play, Pause, Square, Download, Mic, MicOff, X, Check } from "lucide-react";
+import { Send, Loader2, Play, Pause, Square, Download, Mic, X, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import HospitalMap from "@/components/HospitalMap";
@@ -97,13 +97,23 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
     }
   }, [messages, variant]);
 
-  // Update input with voice transcript - only when listening stops
+  // Update input with voice transcript - show interim transcript while listening
   useEffect(() => {
-    if (transcript && !isListening) {
-      setInput(prev => prev ? `${prev} ${transcript}`.trim() : transcript.trim());
+    if (isListening && interimTranscript) {
+      // Show interim transcript in real-time while listening
+      setInput(prev => {
+        const baseText = prev.replace(interimTranscript, '').trim();
+        return baseText ? `${baseText} ${interimTranscript}` : interimTranscript;
+      });
+    } else if (transcript && !isListening) {
+      // Finalize with full transcript when listening stops
+      setInput(prev => {
+        const cleaned = prev.replace(interimTranscript, '').trim();
+        return cleaned ? `${cleaned} ${transcript}`.trim() : transcript.trim();
+      });
       resetTranscript();
     }
-  }, [transcript, isListening, resetTranscript]);
+  }, [transcript, isListening, interimTranscript, resetTranscript]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -428,7 +438,7 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
                       handleSubmit(e);
                     }
                   }}
-                  placeholder={isListening ? "Ouvindo..." : variant === "modal" ? "Pergunte algo do conteúdo do APP ou a respeito do knowyou..." : "Digite sua mensagem sobre saúde..."}
+                  placeholder={isListening ? "Ouvindo..." : variant === "modal" ? "Digite ou fale algo do conteúdo do APP ou a respeito do knowyou..." : "Digite ou fale sua mensagem sobre saúde..."}
                   className={cn(
                     "min-h-[60px] resize-none pr-24",
                     isListening && "border-primary ring-2 ring-primary/20"
@@ -444,16 +454,12 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
                       size="icon"
                       onClick={handleVoiceToggle}
                       className={cn(
-                        "h-8 w-8",
-                        isListening && "text-primary animate-pulse"
+                        "h-8 w-8 transition-colors",
+                        isListening && "text-green-500 animate-pulse"
                       )}
                       disabled={isLoading}
                     >
-                      {isListening ? (
-                        <MicOff className="w-4 h-4" />
-                      ) : (
-                        <Mic className="w-4 h-4" />
-                      )}
+                      <Mic className="w-4 h-4" />
                     </Button>
                   )}
                 </div>
