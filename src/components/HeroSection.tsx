@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, Play, Square, Download } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
@@ -7,10 +7,120 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
+import { useToast } from "@/hooks/use-toast";
+
+const AI_HISTORY_TEXT = `A História da Inteligência Artificial.
+
+Era 1: O Nascimento e a Era Simbólica, de 1950 a 1970.
+Tudo começou com a pergunta de Alan Turing em 1950: "Máquinas podem pensar?". Em 1956, na histórica Conferência de Dartmouth, o termo "Inteligência Artificial" foi cunhado oficialmente. Nesta fase, a IA era baseada em lógica simbólica: programadores escreviam regras manuais para tudo. O otimismo era exagerado; acreditava-se que uma máquina tão inteligente quanto um humano surgiria em uma geração. O Foco: Resolver problemas lógicos como damas ou teoremas matemáticos. A Limitação: As máquinas não aprendiam; elas apenas seguiam regras pré-definidas.
+
+Era 2: Os Invernos da IA e os Sistemas Especialistas, de 1970 a 1990.
+Como as promessas iniciais não foram cumpridas, o financiamento secou, levando aos chamados "Invernos da IA". A recuperação veio nos anos 80 com os Sistemas Especialistas. Em vez de tentar imitar um cérebro humano inteiro, criaram-se IAs focadas em domínios ultra-específicos como diagnosticar doenças do sangue ou aprovar empréstimos, baseadas em árvores de decisão. O Foco: Conhecimento profundo em áreas restritas. A Limitação: Eram frágeis. Se algo saísse um pouco do script, o sistema falhava.
+
+Era 3: A Era do Machine Learning e Big Data, de 1990 a 2015.
+A grande mudança de paradigma: em vez de programar as regras, começamos a programar as máquinas para aprenderem as regras sozinhas analisando dados. Com o boom da internet, mais dados disponíveis, e processadores mais potentes, as Redes Neurais que imitam neurônios biológicos voltaram com força. Marcos importantes: Em 1997, Deep Blue da IBM vence Garry Kasparov no xadrez por força bruta. Em 2011, Watson da IBM vence no Jeopardy com processamento de linguagem natural inicial. Em 2016, AlphaGo do Google DeepMind vence o campeão mundial de Go com aprendizado profundo e intuição.
+
+Era 4: A Era Generativa e a Comunicação, de 2017 até hoje.
+O ponto de virada atual ocorreu em 2017, com a publicação do artigo "Attention Is All You Need", que introduziu a arquitetura Transformer. Isso permitiu que as IAs não apenas classificassem dados, como dizer se uma foto é de um gato ou cachorro, mas gerassem novos conteúdos e compreendessem o contexto da linguagem humana de forma profunda. O Foco: Comunicação, criatividade e compreensão semântica com ChatGPT, Gemini e Claude. A Revolução: A IA deixou de ser uma ferramenta de bastidores para análise de dados e se tornou uma interface de conversação direta com o usuário final.`;
 
 const HeroSection = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const { toast } = useToast();
+
+  // Audio states
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioPlayerRef = useRef<AudioStreamPlayer | null>(null);
+
+  // Initialize audio player
+  useEffect(() => {
+    const player = new AudioStreamPlayer();
+    player.setProgressCallback((progress, duration) => {
+      setAudioProgress((progress / duration) * 100);
+      setAudioDuration(duration);
+      setCurrentTime(progress);
+    });
+    audioPlayerRef.current = player;
+
+    return () => {
+      player.stop();
+    };
+  }, []);
+
+  // Audio handlers
+  const handlePlayAudio = async () => {
+    if (!audioPlayerRef.current) return;
+
+    if (audioUrl && isPlaying) {
+      await audioPlayerRef.current.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    if (audioUrl && !isPlaying) {
+      await audioPlayerRef.current.resume();
+      setIsPlaying(true);
+      return;
+    }
+
+    try {
+      setIsGeneratingAudio(true);
+      const url = await generateAudioUrl(AI_HISTORY_TEXT);
+      setAudioUrl(url);
+      await audioPlayerRef.current.playAudioFromUrl(url);
+      setIsPlaying(true);
+      toast({
+        title: "Áudio iniciado",
+        description: "A narração da história da IA está sendo reproduzida.",
+      });
+    } catch (error) {
+      console.error("Error generating audio:", error);
+      toast({
+        title: "Erro ao gerar áudio",
+        description: "Não foi possível gerar o áudio. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingAudio(false);
+    }
+  };
+
+  const handleStopAudio = () => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.stop();
+      setIsPlaying(false);
+      setAudioProgress(0);
+      setCurrentTime(0);
+    }
+  };
+
+  const handleDownloadAudio = () => {
+    if (audioUrl) {
+      const link = document.createElement("a");
+      link.href = audioUrl;
+      link.download = "historia-da-ia.mp3";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast({
+        title: "Download iniciado",
+        description: "O áudio está sendo baixado.",
+      });
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -226,6 +336,49 @@ const HeroSection = () => {
               A História da Inteligência Artificial
             </DialogTitle>
           </DialogHeader>
+
+          {/* Audio Controls */}
+          <div className="border-b border-primary/20 pb-4 mb-6">
+            <div className="flex items-center gap-3 mb-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePlayAudio}
+                disabled={isGeneratingAudio}
+              >
+                <Play className="w-4 h-4 mr-2" />
+                {isGeneratingAudio ? "Gerando..." : isPlaying ? "Pausar" : "Play"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleStopAudio}
+                disabled={!audioUrl}
+              >
+                <Square className="w-4 h-4 mr-2" />
+                Stop
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadAudio}
+                disabled={!audioUrl}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download
+              </Button>
+            </div>
+
+            {audioUrl && (
+              <div className="space-y-1">
+                <Progress value={audioProgress} className="h-2" />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(audioDuration)}</span>
+                </div>
+              </div>
+            )}
+          </div>
           
           <div className="space-y-8 mt-6">
             {/* Era 1 */}
