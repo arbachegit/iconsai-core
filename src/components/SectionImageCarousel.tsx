@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useInView } from "react-intersection-observer";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Carousel,
@@ -67,8 +68,14 @@ const sectionPrompts: Record<string, string[]> = {
 export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) => {
   const [images, setImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    threshold: 0.1,
+  });
   
   useEffect(() => {
+    if (!inView) return;
+    
     const generateImages = async () => {
       const cacheKey = `section-carousel-${sectionId}`;
       const cached = localStorage.getItem(cacheKey);
@@ -80,26 +87,29 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
       }
       
       const prompts = sectionPrompts[sectionId] || [];
-      const generatedImages: string[] = [];
       
-      for (const prompt of prompts) {
-        try {
-          const { data, error } = await supabase.functions.invoke('generate-image', {
-            body: { prompt }
-          });
-          
-          if (error) {
+      // Geração paralela de imagens usando Promise.all
+      const results = await Promise.all(
+        prompts.map(async (prompt) => {
+          try {
+            const { data, error } = await supabase.functions.invoke('generate-image', {
+              body: { prompt }
+            });
+            
+            if (error) {
+              console.error("Erro ao gerar imagem:", error);
+              return null;
+            }
+            
+            return data?.imageUrl || null;
+          } catch (error) {
             console.error("Erro ao gerar imagem:", error);
-            continue;
+            return null;
           }
-          
-          if (data?.imageUrl) {
-            generatedImages.push(data.imageUrl);
-          }
-        } catch (error) {
-          console.error("Erro ao gerar imagem:", error);
-        }
-      }
+        })
+      );
+      
+      const generatedImages = results.filter((url): url is string => url !== null);
       
       if (generatedImages.length > 0) {
         setImages(generatedImages);
@@ -110,12 +120,17 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
     };
     
     generateImages();
-  }, [sectionId]);
+  }, [sectionId, inView]);
   
-  if (isLoading) {
+  if (isLoading || !inView) {
     return (
-      <div className="w-full h-full bg-muted/10 rounded-lg animate-pulse flex items-center justify-center">
-        <span className="text-muted-foreground text-sm">Gerando imagens...</span>
+      <div 
+        ref={ref}
+        className="w-full h-full rounded-lg bg-gradient-to-br from-primary/20 via-accent/20 to-primary/20 animate-pulse-slow flex items-center justify-center"
+      >
+        {inView && (
+          <span className="text-muted-foreground text-sm">Gerando imagens...</span>
+        )}
       </div>
     );
   }
