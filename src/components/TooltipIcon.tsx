@@ -28,8 +28,8 @@ export const TooltipIcon = ({ sectionId }: TooltipIconProps) => {
       >
         <HelpCircle className="w-6 h-6 text-primary relative z-10" />
         
-        {/* Bolinha verde pulsante - posicionada do lado de fora */}
-        <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
+        {/* Bolinha verde pulsante - externa ao círculo */}
+        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-90"></span>
           <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500 shadow-xl shadow-green-500/70"></span>
         </span>
