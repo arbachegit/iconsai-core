@@ -11,9 +11,10 @@ import {
   Coins,
   ArrowLeft,
   LogOut,
+  Bug,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "email" | "analytics" | "images" | "cache" | "credits";
+type TabType = "dashboard" | "chat" | "tooltips" | "email" | "analytics" | "images" | "cache" | "credits" | "debug";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -37,6 +38,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
     { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
     { id: "images" as TabType, label: "Imagens", icon: Image },
     { id: "cache" as TabType, label: "Cache", icon: Database },
+    { id: "debug" as TabType, label: "Debug & Flags", icon: Bug },
   ];
 
   return (
