@@ -36,6 +36,15 @@ serve(async (req) => {
         statusText: videosResponse.statusText,
         body: errorText
       });
+      
+      // Return empty array instead of throwing on quota exceeded
+      if (videosResponse.status === 403 && errorText.includes('quotaExceeded')) {
+        console.log('YouTube quota exceeded, returning empty result');
+        return new Response(JSON.stringify({ videos: [] }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
       throw new Error(`Failed to fetch videos: ${videosResponse.status} - ${errorText}`);
     }
     
