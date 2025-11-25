@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Send, Trash2, Loader2, Volume2, VolumeX, ImagePlus } from "lucide-react";
+import { Send, Trash2, Loader2, Play, Pause, Square, Download, ImagePlus } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 export default function ChatKnowYOU() {
@@ -13,11 +13,15 @@ export default function ChatKnowYOU() {
     isGeneratingAudio,
     isGeneratingImage,
     currentlyPlayingIndex,
+    isAudioPaused,
     suggestions, 
     sendMessage, 
     clearHistory,
     playAudio,
+    pauseAudio,
+    resumeAudio,
     stopAudio,
+    downloadAudio,
     generateImage,
   } = useChatKnowYOU();
   const [input, setInput] = useState("");
@@ -127,18 +131,47 @@ export default function ChatKnowYOU() {
                       })}
                     </span>
                     {msg.role === "assistant" && msg.audioUrl && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => currentlyPlayingIndex === idx ? stopAudio() : playAudio(idx)}
-                      >
-                        {currentlyPlayingIndex === idx ? (
-                          <VolumeX className="w-4 h-4" />
-                        ) : (
-                          <Volume2 className="w-4 h-4" />
-                        )}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            if (currentlyPlayingIndex === idx) {
+                              if (isAudioPaused) {
+                                resumeAudio();
+                              } else {
+                                pauseAudio();
+                              }
+                            } else {
+                              playAudio(idx);
+                            }
+                          }}
+                        >
+                          {currentlyPlayingIndex === idx && !isAudioPaused ? (
+                            <Pause className="w-4 h-4" />
+                          ) : (
+                            <Play className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={stopAudio}
+                          disabled={currentlyPlayingIndex !== idx}
+                        >
+                          <Square className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => downloadAudio(idx)}
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>

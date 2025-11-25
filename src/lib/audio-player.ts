@@ -2,6 +2,7 @@ export class AudioStreamPlayer {
   private audioContext: AudioContext | null = null;
   private audioQueue: ArrayBuffer[] = [];
   private isPlaying = false;
+  private isPaused = false;
   private currentSource: AudioBufferSourceNode | null = null;
   private onProgressCallback?: (progress: number, duration: number) => void;
   private progressInterval?: number;
@@ -96,6 +97,20 @@ export class AudioStreamPlayer {
     }
   }
 
+  async pause(): Promise<void> {
+    if (this.audioContext && this.isPlaying && !this.isPaused) {
+      await this.audioContext.suspend();
+      this.isPaused = true;
+    }
+  }
+
+  async resume(): Promise<void> {
+    if (this.audioContext && this.isPaused) {
+      await this.audioContext.resume();
+      this.isPaused = false;
+    }
+  }
+
   stop(): void {
     if (this.currentSource) {
       this.currentSource.stop();
@@ -106,11 +121,16 @@ export class AudioStreamPlayer {
     }
     this.audioQueue = [];
     this.isPlaying = false;
+    this.isPaused = false;
     this.onProgressCallback?.(0, 0);
   }
 
   isCurrentlyPlaying(): boolean {
     return this.isPlaying;
+  }
+
+  isPausedState(): boolean {
+    return this.isPaused;
   }
 }
 
