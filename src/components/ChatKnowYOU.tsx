@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Send, Loader2, Play, Pause, Square, Download, ImagePlus, Mic, MicOff, X, Check } from "lucide-react";
+import { Send, Loader2, Play, Pause, Square, Download, Mic, MicOff, X, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import HospitalMap from "@/components/HospitalMap";
@@ -25,7 +25,6 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
     messages, 
     isLoading, 
     isGeneratingAudio,
-    isGeneratingImage,
     currentlyPlayingIndex,
     isAudioPaused,
     audioProgress,
@@ -41,11 +40,8 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
     stopAudio,
     downloadAudio,
     changePlaybackRate,
-    generateImage,
   } = chatHook;
   const [input, setInput] = useState("");
-  const [imagePrompt, setImagePrompt] = useState("");
-  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -97,14 +93,6 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
 
   const handleSuggestionClick = (suggestion: string) => {
     sendMessage(suggestion);
-  };
-
-  const handleGenerateImage = () => {
-    if (imagePrompt.trim()) {
-      generateImage(imagePrompt);
-      setImagePrompt("");
-      setIsImageDialogOpen(false);
-    }
   };
 
   const handleVoiceToggle = () => {
@@ -308,12 +296,12 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
               </div>
             ))}
             <div ref={messagesEndRef} />
-            {(isLoading || isGeneratingAudio || isGeneratingImage) && (
+            {(isLoading || isGeneratingAudio) && (
               <div className="flex justify-start">
                 <div className="bg-muted rounded-2xl px-4 py-3 flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span className="text-sm">
-                    {isGeneratingImage ? "Gerando imagem..." : isGeneratingAudio ? "Gerando áudio..." : "Pensando..."}
+                    {isGeneratingAudio ? "Gerando áudio..." : "Pensando..."}
                   </span>
                 </div>
               </div>
@@ -450,53 +438,6 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
                   )}
                 </div>
               </div>
-              <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isGeneratingImage}
-                    className="w-full"
-                  >
-                    <ImagePlus className="w-4 h-4 mr-2" />
-                    Gerar Imagem Educativa
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">Gerar Imagem sobre Saúde</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Descreva o tema de saúde que você gostaria de visualizar em uma imagem educativa.
-                      </p>
-                    </div>
-                    <Textarea
-                      value={imagePrompt}
-                      onChange={(e) => setImagePrompt(e.target.value)}
-                      placeholder="Ex: Anatomia do coração humano, processo de cicatrização, etc."
-                      className="min-h-[100px]"
-                    />
-                    <Button
-                      onClick={handleGenerateImage}
-                      disabled={!imagePrompt.trim() || isGeneratingImage}
-                      className="w-full"
-                    >
-                      {isGeneratingImage ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Gerando...
-                        </>
-                      ) : (
-                        <>
-                          <ImagePlus className="w-4 h-4 mr-2" />
-                          Gerar Imagem
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
             </div>
             <Button
               type="submit"

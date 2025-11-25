@@ -34,7 +34,7 @@ export const ChatModal = ({ open, onOpenChange }: ChatModalProps) => {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent 
         side="right" 
-        className="w-full sm:w-[900px] p-0 flex flex-col bg-background/95 backdrop-blur-xl border-l border-border/50"
+        className="w-full sm:w-[900px] h-[90vh] p-0 flex flex-col bg-background/95 backdrop-blur-xl border-l border-border/50"
       >
         <SheetHeader className="px-6 py-4 border-b border-border/50 bg-gradient-to-r from-primary/5 via-secondary/5 to-accent/5">
           <div className="flex items-center justify-between">
