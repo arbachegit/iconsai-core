@@ -180,6 +180,15 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
               creditsError = true;
               setUsesFallback(true);
               
+              // Registrar uso de crédito com falha
+              await supabase.rpc('log_credit_usage', {
+                p_operation_type: 'image_generation',
+                p_success: false,
+                p_error_code: '402',
+                p_section_id: sectionId,
+                p_metadata: { prompt_key: promptKey }
+              });
+              
               await supabase.from('image_analytics').insert({
                 section_id: sectionId,
                 prompt_key: promptKey,
@@ -209,6 +218,15 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
             }
             
             const imageUrl = data.imageUrl;
+            
+            // Registrar sucesso de uso de crédito
+            await supabase.rpc('log_credit_usage', {
+              p_operation_type: 'image_generation',
+              p_success: true,
+              p_error_code: null,
+              p_section_id: sectionId,
+              p_metadata: { prompt_key: promptKey, generation_time_ms: generationTime }
+            });
             
             // Salvar no banco
             await supabase.from('generated_images').insert({

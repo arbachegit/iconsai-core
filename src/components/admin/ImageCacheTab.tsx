@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, RefreshCw, Sparkles, Database } from "lucide-react";
+import { Trash2, RefreshCw, Sparkles, Database, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -106,33 +106,17 @@ export const ImageCacheTab = () => {
     setIsPreloading(true);
     
     try {
-      // Seções críticas que aparecem primeiro na página
-      const criticalSections = ["software", "internet", "ia-nova-era", "knowyou"];
-      
-      toast.info("Iniciando pré-carregamento de imagens críticas...");
+      toast.info("Verificando créditos e iniciando pré-carregamento...");
 
       // Limpar flag de créditos para permitir novas tentativas
       clearCreditsFlag();
 
-      for (const sectionId of criticalSections) {
-        // Verificar se seção já tem imagens
-        const { data: existing } = await supabase
-          .from('generated_images')
-          .select('id')
-          .eq('section_id', sectionId);
+      // Chamar edge function para verificar e preload
+      const { data, error } = await supabase.functions.invoke('check-credits-preload');
 
-        if (existing && existing.length > 0) {
-          console.log(`Seção ${sectionId} já possui imagens em cache`);
-          continue;
-        }
+      if (error) throw error;
 
-        toast.info(`Pré-carregando imagens para ${sectionId}...`);
-        
-        // Disparar evento para forçar recarga da página
-        // (as imagens serão carregadas automaticamente pelos componentes)
-      }
-
-      toast.success("Pré-carregamento iniciado! Recarregue a página principal para ver as imagens sendo geradas.");
+      toast.success(data?.message || "Pré-carregamento iniciado!");
       
     } catch (error) {
       console.error("Erro no pré-carregamento:", error);
@@ -151,7 +135,7 @@ export const ImageCacheTab = () => {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -191,6 +175,24 @@ export const ImageCacheTab = () => {
             >
               {isPreloading ? "Iniciando..." : "Pré-carregar Críticas"}
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Auto-Preload
+            </CardTitle>
+            <CardDescription>
+              Sistema verifica automaticamente a cada 15 minutos
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm text-muted-foreground">
+              O sistema está configurado para verificar créditos e pré-carregar imagens automaticamente.
+              Veja detalhes na aba <strong>Créditos</strong>.
+            </div>
           </CardContent>
         </Card>
       </div>
