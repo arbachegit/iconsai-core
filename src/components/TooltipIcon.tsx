@@ -27,6 +27,12 @@ export const TooltipIcon = ({ sectionId }: TooltipIconProps) => {
         aria-label="Abrir informações"
       >
         <HelpCircle className="w-6 h-6 text-primary relative z-10" />
+        
+        {/* Bolinha verde pulsante com efeito de ondas */}
+        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500 shadow-lg shadow-green-500/50"></span>
+        </span>
       </button>
 
       {isOpen && (

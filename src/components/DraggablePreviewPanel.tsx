@@ -94,10 +94,16 @@ export const DraggablePreviewPanel = ({
     if (!audioPlayerRef.current) return;
 
     try {
-      if (isPlaying) {
+      // If currently playing, pause
+      if (isPlaying && !audioPlayerRef.current.isPausedState()) {
         await audioPlayerRef.current.pause();
-        setIsPlaying(false);
-      } else {
+      } 
+      // If paused, resume
+      else if (isPlaying && audioPlayerRef.current.isPausedState()) {
+        await audioPlayerRef.current.resume();
+      } 
+      // If not playing at all, start playback
+      else {
         // Check if audio URL exists, if not generate it
         let audioUrl = content?.audio_url;
         
@@ -226,10 +232,15 @@ export const DraggablePreviewPanel = ({
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Gerando...
                   </>
-                ) : isPlaying ? (
+                ) : isPlaying && !audioPlayerRef.current?.isPausedState() ? (
                   <>
                     <Square className="w-4 h-4" />
                     Pausar
+                  </>
+                ) : isPlaying && audioPlayerRef.current?.isPausedState() ? (
+                  <>
+                    <Play className="w-4 h-4" />
+                    Retomar
                   </>
                 ) : (
                   <>
