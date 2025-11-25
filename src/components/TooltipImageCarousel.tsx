@@ -9,6 +9,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 
 interface TooltipImageCarouselProps {
   sectionId: string;
@@ -128,15 +129,15 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
           setImages(cachedImages);
           setIsLoading(false);
           
-          // Registrar analytics de cache hit (sem await)
-          prompts.forEach((_, idx) => {
-            supabase.from('image_analytics').insert({
+          // Batch analytics para cache hit
+          supabase.from('image_analytics').insert(
+            prompts.map((_, idx) => ({
               section_id: `tooltip-${sectionId}`,
               prompt_key: `tooltip-${sectionId}-${idx}`,
               success: true,
               cached: true,
-            });
-          });
+            }))
+          );
           return;
         }
       }
@@ -308,10 +309,10 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
           {images.map((img, index) => (
             <CarouselItem key={index}>
               <div className="aspect-video rounded-lg overflow-hidden bg-muted/10">
-                <img 
-                  src={img} 
+                <OptimizedImage
+                  src={img}
                   alt={`Ilustração ${index + 1}`}
-                  className="w-full h-full object-cover"
+                  aspectRatio="video"
                 />
               </div>
             </CarouselItem>

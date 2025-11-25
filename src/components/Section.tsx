@@ -11,9 +11,10 @@ interface SectionProps {
   reverse?: boolean;
   imageUrl?: string;
   imageAlt?: string;
+  priority?: boolean;
 }
 
-const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, imageAlt }: SectionProps) => {
+const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, imageAlt, priority = false }: SectionProps) => {
   return (
     <section id={id} className="py-24 relative">
       <div className="container mx-auto px-4">
@@ -38,7 +39,7 @@ const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, ima
           <div className={reverse ? "lg:order-1" : ""}>
             <Card className="p-8 bg-card/50 backdrop-blur-sm border-primary/10 glow-effect-secondary">
               <div className="aspect-square rounded-lg bg-gradient-subtle flex items-center justify-center overflow-hidden">
-                <SectionImageCarousel sectionId={id} />
+                <SectionImageCarousel sectionId={id} priority={priority} />
               </div>
             </Card>
           </div>
