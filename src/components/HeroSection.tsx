@@ -323,6 +323,13 @@ const HeroSection = () => {
               Explorar a história da IA
             </Button>
           </div>
+
+          <div className="mt-12 max-w-3xl mx-auto">
+            <blockquote className="text-xl md:text-2xl italic text-muted-foreground">
+              "O momento exato em que deixamos de apenas operar máquinas e começamos, de fato, a pensar com elas."
+            </blockquote>
+            <p className="text-xs text-muted-foreground/60 mt-2">by Fernando Arbache</p>
+          </div>
         </div>
       </div>
 

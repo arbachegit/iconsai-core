@@ -12,9 +12,10 @@ interface SectionProps {
   imageUrl?: string;
   imageAlt?: string;
   priority?: boolean;
+  quote?: string;
 }
 
-const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, imageAlt, priority = false }: SectionProps) => {
+const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, imageAlt, priority = false, quote }: SectionProps) => {
   return (
     <section id={id} className="py-12 relative">
       <div className="container mx-auto px-4">
@@ -34,6 +35,14 @@ const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, ima
             <div className="prose prose-invert max-w-none text-muted-foreground">
               {children}
             </div>
+            {quote && (
+              <div className="mt-8 pt-6 border-t border-border/30">
+                <blockquote className="text-lg md:text-xl italic text-muted-foreground">
+                  "{quote}"
+                </blockquote>
+                <p className="text-xs text-muted-foreground/60 mt-2">by Fernando Arbache</p>
+              </div>
+            )}
           </div>
 
           <div className={reverse ? "lg:order-1" : ""}>
