@@ -42,6 +42,9 @@ export const ChatModal = ({ open, onOpenChange }: ChatModalProps) => {
               <SheetTitle className="text-lg font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
                 Converse com o KnowYOU
               </SheetTitle>
+              <SheetDescription className="text-sm text-muted-foreground mt-1">
+                Saiba mais o que iremos aprender e a respeito do KnowYOU
+              </SheetDescription>
             </div>
             <div className="flex items-center gap-2">
               <Button

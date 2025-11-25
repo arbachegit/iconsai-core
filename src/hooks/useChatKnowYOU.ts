@@ -18,14 +18,13 @@ export interface Message {
   voiceMessageDuration?: number;
 }
 
-const STORAGE_KEY = "knowyou_chat_history";
-
 interface UseChatKnowYOUProps {
   chatType?: "health" | "company"; // Define o tipo de chat
 }
 
 export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
   const chatType = props?.chatType || "health"; // Default: chat de saúde
+  const STORAGE_KEY = `knowyou_chat_history_${chatType}`; // Separar históricos por tipo
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
@@ -65,26 +64,20 @@ export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
     });
   }, []);
 
-  // Carregar histórico do localStorage
+  // Limpar histórico do localStorage na inicialização
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setMessages(
-          parsed.map((m: any) => ({
-            ...m,
-            timestamp: new Date(m.timestamp),
-          }))
-        );
-      }
+      // Limpar histórico antigo
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem("knowyou_chat_history"); // Limpar chave antiga também
+      setMessages([]); // Começar com mensagens vazias
     } catch (error) {
-      console.error("Erro ao carregar histórico:", error);
+      console.error("Erro ao limpar histórico:", error);
     }
 
     // Create analytics session
     createSession({ session_id: sessionId, user_name: null }).catch(console.error);
-  }, [sessionId, createSession]);
+  }, [sessionId, createSession, STORAGE_KEY]);
 
   // Salvar histórico no localStorage
   const saveHistory = useCallback((msgs: Message[]) => {
