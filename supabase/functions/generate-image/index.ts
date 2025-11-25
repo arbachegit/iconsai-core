@@ -104,7 +104,7 @@ serve(async (req) => {
 
     let imageUrl = message?.images?.[0]?.image_url?.url;
 
-    // Fallback: algumas respostas podem usar images[].url diretamente
+    // Fallback: images[].url diretamente
     if (!imageUrl) {
       imageUrl = message?.images?.[0]?.url;
     }
@@ -123,7 +123,19 @@ serve(async (req) => {
 
     // Fallback: algumas implementações colocam images no nível do choice
     if (!imageUrl && Array.isArray(choice?.images)) {
-      imageUrl = choice.images[0]?.image_url?.url || choice.images[0]?.url;
+      const first = choice.images[0];
+      imageUrl = first?.image_url?.url || first?.url;
+    }
+
+    // Fallback: imagens no nível raiz (ex.: { images: [...] } ou { data: [...] })
+    if (!imageUrl && Array.isArray(data.images)) {
+      const first = data.images[0];
+      imageUrl = first?.image_url?.url || first?.url || first?.b64_json;
+    }
+
+    if (!imageUrl && Array.isArray(data.data)) {
+      const first = data.data[0];
+      imageUrl = first?.url || first?.b64_json;
     }
 
     if (!imageUrl) {
