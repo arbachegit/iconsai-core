@@ -80,6 +80,7 @@ const Index = () => {
           title="A Primeira Revolução"
           subtitle="Anos 1940-1980"
           priority
+          quote="O momento exato em que deixamos de apenas operar máquinas e começamos, de fato, a pensar com elas."
         >
           <p className="text-lg leading-relaxed">
             O software representou a primeira grande comunicação entre humanos e máquinas.

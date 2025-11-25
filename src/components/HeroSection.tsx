@@ -374,7 +374,7 @@ const HeroSection = () => {
 
           <div 
             ref={quoteRef}
-            className={`mt-12 max-w-3xl mx-auto transition-opacity duration-1000 ${
+            className={`mt-16 max-w-3xl mx-auto transition-opacity duration-1000 ${
               isQuoteVisible ? 'opacity-100' : 'opacity-0'
             }`}
             style={{
