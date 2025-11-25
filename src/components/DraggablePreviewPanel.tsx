@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Play, Pause, Edit2, Save } from "lucide-react";
+import { X, Play, Square, Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { useTooltipContent } from "@/hooks/useTooltipContent";
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,26 +14,16 @@ export const DraggablePreviewPanel = ({
   sectionId,
   onClose,
 }: DraggablePreviewPanelProps) => {
-  const { content, isLoading, updateContent } = useTooltipContent(sectionId);
+  const { content, isLoading } = useTooltipContent(sectionId);
   const { toast } = useToast();
   
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [isEditMode, setIsEditMode] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [editedTitle, setEditedTitle] = useState("");
-  const [editedContent, setEditedContent] = useState("");
   
   const panelRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    if (content) {
-      setEditedTitle(content.title);
-      setEditedContent(content.content);
-    }
-  }, [content]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest(".no-drag")) return;
@@ -94,26 +82,30 @@ export const DraggablePreviewPanel = ({
     }
   };
 
-  const handleSave = async () => {
-    try {
-      await updateContent({
-        title: editedTitle,
-        content: editedContent,
-      });
-      
+  const handleStopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+    }
+  };
+
+  const handleDownloadAudio = () => {
+    if (!content?.audio_url) {
       toast({
-        title: "Salvo com sucesso",
-        description: "O conteúdo do tooltip foi atualizado.",
-      });
-      
-      setIsEditMode(false);
-    } catch (error) {
-      toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível atualizar o tooltip.",
+        title: "Áudio não disponível",
+        description: "Este tooltip ainda não possui áudio para download.",
         variant: "destructive",
       });
+      return;
     }
+
+    const link = document.createElement('a');
+    link.href = content.audio_url;
+    link.download = `${content.title.replace(/\s+/g, '-')}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (isLoading) {
@@ -143,7 +135,7 @@ export const DraggablePreviewPanel = ({
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <h3 className="font-semibold text-foreground">
-              {isEditMode ? "Editar Tooltip" : "Informações"}
+              Informações
             </h3>
           </div>
           
@@ -158,85 +150,47 @@ export const DraggablePreviewPanel = ({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4 no-drag">
-          {isEditMode ? (
-            <>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  Título
-                </label>
-                <Input
-                  value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
-                  className="bg-background/50"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  Conteúdo
-                </label>
-                <Textarea
-                  value={editedContent}
-                  onChange={(e) => setEditedContent(e.target.value)}
-                  rows={10}
-                  className="bg-background/50 resize-none"
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <h2 className="text-2xl font-bold text-gradient">
-                {content?.title}
-              </h2>
-              <p className="text-muted-foreground leading-relaxed">
-                {content?.content}
-              </p>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between p-4 border-t border-primary/20 no-drag gap-2">
+          <h2 className="text-2xl font-bold text-gradient">
+            {content?.title}
+          </h2>
+          
           {content?.audio_url && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePlayAudio}
-              className="gap-2"
-            >
-              {isPlaying ? (
-                <>
-                  <Pause className="w-4 h-4" />
-                  Pausar
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4" />
-                  Ouvir
-                </>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePlayAudio}
+                className="gap-2"
+              >
+                <Play className="w-4 h-4" />
+                {isPlaying ? "Pausar" : "Play"}
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleStopAudio}
+                className="gap-2"
+              >
+                <Square className="w-4 h-4" />
+                Stop
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadAudio}
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Download
+              </Button>
+            </div>
           )}
           
-          {isEditMode ? (
-            <Button
-              size="sm"
-              onClick={handleSave}
-              className="gap-2 ml-auto"
-            >
-              <Save className="w-4 h-4" />
-              Salvar
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsEditMode(true)}
-              className="gap-2 ml-auto"
-            >
-              <Edit2 className="w-4 h-4" />
-              Editar
-            </Button>
-          )}
+          <p className="text-muted-foreground leading-relaxed">
+            {content?.content}
+          </p>
         </div>
       </Card>
     </>
