@@ -12,7 +12,11 @@ import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { VoiceMessagePlayer } from "@/components/VoiceMessagePlayer";
 import { cn } from "@/lib/utils";
 
-export default function ChatKnowYOU() {
+interface ChatKnowYOUProps {
+  variant?: "embedded" | "modal";
+}
+
+export function ChatKnowYOU({ variant = "embedded" }: ChatKnowYOUProps) {
   const { 
     messages, 
     isLoading, 
@@ -137,31 +141,41 @@ export default function ChatKnowYOU() {
     cancelRecording();
   };
 
+  const containerClass = variant === "modal" 
+    ? "h-full flex flex-col bg-transparent" 
+    : "w-full max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl border border-primary/20 shadow-xl overflow-hidden";
+
+  const showHeader = variant === "embedded";
+
   return (
-    <div className="w-full max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl border border-primary/20 shadow-xl overflow-hidden">
-      {/* Header */}
-      <div className="bg-gradient-primary p-6">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-background/20 flex items-center justify-center backdrop-blur-sm">
-            <span className="text-2xl font-bold text-primary-foreground">K</span>
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-primary-foreground">KnowYOU</h3>
-            <p className="text-sm text-primary-foreground/80">Assistente de IA em Saúde</p>
+    <div className={containerClass}>
+      {showHeader && (
+        <div className="bg-gradient-primary p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-background/20 flex items-center justify-center backdrop-blur-sm">
+              <span className="text-2xl font-bold text-primary-foreground">K</span>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-primary-foreground">KnowYOU</h3>
+              <p className="text-sm text-primary-foreground/80">Assistente de IA em Saúde</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Messages Area */}
-      <ScrollArea className="h-[500px] p-6" ref={scrollRef}>
+      <ScrollArea className={`${variant === "modal" ? "h-full" : "h-[500px]"} p-6`} ref={scrollRef}>
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
+          <div className="flex flex-col items-center justify-center h-full text-center py-12">
             <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
               <span className="text-4xl font-bold text-primary-foreground">K</span>
             </div>
             <h4 className="text-xl font-semibold mb-2">Olá! Sou o KnowYOU</h4>
             <p className="text-muted-foreground max-w-md">
-              Seu assistente especializado em saúde. Como posso ajudá-lo hoje?
+              {variant === "modal" 
+                ? "Estou aqui para conversar sobre a KnowRISK, Arquitetura Cognitiva, IA aplicada à saúde e o conteúdo desta landing page. Como posso ajudá-lo?"
+                : "Seu assistente especializado em saúde. Como posso ajudá-lo hoje?"
+              }
             </p>
           </div>
         ) : (
