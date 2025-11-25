@@ -16,66 +16,27 @@ serve(async (req) => {
       throw new Error('YOUTUBE_API_KEY not configured');
     }
 
-    const channelUsername = 'KnowRISKio';
-    const url = new URL(req.url);
-    const category = url.searchParams.get('category');
+    const { category } = await req.json();
     
-    // First, get the channel ID from the username
-    const channelResponse = await fetch(
-      `https://www.googleapis.com/youtube/v3/channels?part=id&forUsername=${channelUsername}&key=${YOUTUBE_API_KEY}`
-    );
+    // Usar o ID do canal diretamente
+    const channelId = 'UCyaSDXX80pRWKrR3tnwyCNA';
     
-    if (!channelResponse.ok) {
-      console.error('YouTube API error:', await channelResponse.text());
-      throw new Error('Failed to fetch channel data');
-    }
+    console.log('Fetching videos for channel:', channelId, 'with category:', category);
     
-    const channelData = await channelResponse.json();
-    
-    if (!channelData.items || channelData.items.length === 0) {
-      // Try searching by custom URL handle
-      const searchResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=@${channelUsername}&key=${YOUTUBE_API_KEY}`
-      );
-      
-      if (!searchResponse.ok) {
-        throw new Error('Failed to search for channel');
-      }
-      
-      const searchData = await searchResponse.json();
-      if (!searchData.items || searchData.items.length === 0) {
-        throw new Error('Channel not found');
-      }
-      
-      const channelId = searchData.items[0].snippet.channelId;
-      
-      // Get latest videos from the channel
-      const searchQuery = category ? `&q=${encodeURIComponent(category)}` : '';
-      const videosResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=12${searchQuery}&key=${YOUTUBE_API_KEY}`
-      );
-      
-      if (!videosResponse.ok) {
-        throw new Error('Failed to fetch videos');
-      }
-      
-      const videosData = await videosResponse.json();
-      
-      return new Response(JSON.stringify({ videos: videosData.items }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    const channelId = channelData.items[0].id;
-    
-    // Get latest videos from the channel
+    // Buscar vídeos do canal
     const searchQuery = category ? `&q=${encodeURIComponent(category)}` : '';
     const videosResponse = await fetch(
       `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=12${searchQuery}&key=${YOUTUBE_API_KEY}`
     );
     
     if (!videosResponse.ok) {
-      throw new Error('Failed to fetch videos');
+      const errorText = await videosResponse.text();
+      console.error('YouTube API error response:', {
+        status: videosResponse.status,
+        statusText: videosResponse.statusText,
+        body: errorText
+      });
+      throw new Error(`Failed to fetch videos: ${videosResponse.status} - ${errorText}`);
     }
     
     const videosData = await videosResponse.json();
