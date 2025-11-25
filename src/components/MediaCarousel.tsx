@@ -158,7 +158,7 @@ export const MediaCarousel = () => {
               </Card>
             ))}
           </div>
-        ) : (
+        ) : videos.length > 0 ? (
           <div className="space-y-4">
             <div className="flex items-center justify-center gap-4">
               <Button
@@ -242,6 +242,10 @@ export const MediaCarousel = () => {
               <CarouselPrevious className="hidden md:flex" />
               <CarouselNext className="hidden md:flex" />
             </Carousel>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Nenhum vídeo disponível no momento.</p>
           </div>
         )}
       </div>
