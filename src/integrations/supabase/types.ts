@@ -104,6 +104,33 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_history: {
+        Row: {
+          created_at: string
+          id: string
+          messages: Json
+          session_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          session_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          session_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       credits_usage: {
         Row: {
           created_at: string | null

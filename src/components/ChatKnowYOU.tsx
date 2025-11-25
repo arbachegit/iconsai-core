@@ -14,9 +14,13 @@ import { cn } from "@/lib/utils";
 
 interface ChatKnowYOUProps {
   variant?: "embedded" | "modal";
+  chatHook?: ReturnType<typeof useChatKnowYOU>;
 }
 
-export function ChatKnowYOU({ variant = "embedded" }: ChatKnowYOUProps) {
+export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: ChatKnowYOUProps) {
+  const internalHook = useChatKnowYOU();
+  const chatHook = externalHook || internalHook;
+  
   const { 
     messages, 
     isLoading, 
@@ -38,7 +42,7 @@ export function ChatKnowYOU({ variant = "embedded" }: ChatKnowYOUProps) {
     downloadAudio,
     changePlaybackRate,
     generateImage,
-  } = useChatKnowYOU();
+  } = chatHook;
   const [input, setInput] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
