@@ -11,8 +11,8 @@ import { useGeneratedImage } from "@/hooks/useGeneratedImage";
 const Index = () => {
   // Gerar imagem para a seção "A Primeira Revolução"
   const { imageUrl: softwareImage } = useGeneratedImage(
-    "A primeira revolução tecnológica: comunicação entre humanos e máquinas através de software e linguagens de programação. Imagem futurista e minimalista mostrando código binário, linhas de código em tela escura, símbolos de programação flutuando, conexão entre cérebro humano e circuitos digitais. Paleta de cores: roxo, azul elétrico, gradientes tecnológicos, fundo escuro. Estilo: tech-forward, moderno, limpo, representando transformação digital e bases da era computacional.",
-    "software-revolution"
+    "A primeira grande comunicação entre humanos e máquinas através de linguagens de programação. Imagem futurista mostrando uma pessoa programador interagindo com computador, linhas de código flutuando no ar, símbolos de linguagens de programação (colchetes, parênteses, operadores) conectando cérebro humano a circuitos digitais, comunicação técnica e rígida representada por conexões geométricas. Paleta de cores: roxo, azul elétrico, gradientes tecnológicos, fundo escuro. Estilo: tech-forward, moderno, limpo, minimalista. SEM TEXTO, SEM LETRAS, SEM PALAVRAS na imagem.",
+    "software-revolution-v2"
   );
 
   // Gerar imagem para a seção "A Era da Conectividade"
