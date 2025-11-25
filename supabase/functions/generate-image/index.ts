@@ -42,9 +42,6 @@ serve(async (req) => {
 
     console.log("Gerando imagem com prompt:", prompt);
 
-    // Criar prompt contextualizado para saúde
-    const enhancedPrompt = `Crie uma imagem educativa, profissional e cientificamente precisa sobre saúde para o seguinte tema: ${prompt}. A imagem deve ser clara, didática e apropriada para profissionais de saúde.`;
-
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -56,10 +53,10 @@ serve(async (req) => {
         messages: [
           {
             role: "user",
-            content: enhancedPrompt,
+            content: prompt,
           }
         ],
-        modalities: ["image", "text"],
+        modalities: ["image"],
       }),
     });
 
