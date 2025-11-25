@@ -8,11 +8,12 @@ import {
   BarChart3,
   Image,
   Database,
+  Coins,
   ArrowLeft,
   LogOut,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "email" | "analytics" | "images" | "cache";
+type TabType = "dashboard" | "chat" | "tooltips" | "email" | "analytics" | "images" | "cache" | "credits";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -29,6 +30,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
 
   const menuItems = [
     { id: "dashboard" as TabType, label: "Dashboard", icon: LayoutDashboard },
+    { id: "credits" as TabType, label: "Créditos", icon: Coins },
     { id: "chat" as TabType, label: "Chat Config", icon: MessageSquare },
     { id: "tooltips" as TabType, label: "Tooltips", icon: FileText },
     { id: "email" as TabType, label: "Email", icon: Mail },

@@ -44,6 +44,33 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_preload_config: {
+        Row: {
+          check_interval_minutes: number | null
+          enabled: boolean | null
+          id: string
+          last_check: string | null
+          last_preload: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          check_interval_minutes?: number | null
+          enabled?: boolean | null
+          id?: string
+          last_check?: string | null
+          last_preload?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          check_interval_minutes?: number | null
+          enabled?: boolean | null
+          id?: string
+          last_check?: string | null
+          last_preload?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       chat_analytics: {
         Row: {
           audio_plays: number | null
@@ -74,6 +101,39 @@ export type Database = {
           started_at?: string | null
           topics?: string[] | null
           user_name?: string | null
+        }
+        Relationships: []
+      }
+      credits_usage: {
+        Row: {
+          created_at: string | null
+          credits_consumed: number | null
+          error_code: string | null
+          id: string
+          metadata: Json | null
+          operation_type: string
+          section_id: string | null
+          success: boolean
+        }
+        Insert: {
+          created_at?: string | null
+          credits_consumed?: number | null
+          error_code?: string | null
+          id?: string
+          metadata?: Json | null
+          operation_type: string
+          section_id?: string | null
+          success: boolean
+        }
+        Update: {
+          created_at?: string | null
+          credits_consumed?: number | null
+          error_code?: string | null
+          id?: string
+          metadata?: Json | null
+          operation_type?: string
+          section_id?: string | null
+          success?: boolean
         }
         Relationships: []
       }
@@ -202,6 +262,16 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_credit_usage: {
+        Args: {
+          p_error_code?: string
+          p_metadata?: Json
+          p_operation_type: string
+          p_section_id?: string
+          p_success: boolean
+        }
+        Returns: string
       }
     }
     Enums: {
