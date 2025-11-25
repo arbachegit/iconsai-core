@@ -50,7 +50,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email using Resend
     const emailResponse = await resend.emails.send({
-      from: "KnowYOU <onboarding@resend.dev>", // Change this to your verified domain in production
+      from: "Suporte KnowYOU <suporte@knowrisk.io>",
       to: [to],
       subject: subject,
       html: html || `<p>${body}</p>`,
