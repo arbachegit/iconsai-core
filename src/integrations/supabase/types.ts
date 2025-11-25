@@ -164,6 +164,81 @@ export type Database = {
         }
         Relationships: []
       }
+      debug_logs: {
+        Row: {
+          component: string | null
+          created_at: string
+          data: Json | null
+          environment: string | null
+          id: string
+          log_type: string
+          message: string
+          scroll_x: number | null
+          scroll_y: number | null
+          user_agent: string | null
+          viewport_height: number | null
+          viewport_width: number | null
+        }
+        Insert: {
+          component?: string | null
+          created_at?: string
+          data?: Json | null
+          environment?: string | null
+          id?: string
+          log_type: string
+          message: string
+          scroll_x?: number | null
+          scroll_y?: number | null
+          user_agent?: string | null
+          viewport_height?: number | null
+          viewport_width?: number | null
+        }
+        Update: {
+          component?: string | null
+          created_at?: string
+          data?: Json | null
+          environment?: string | null
+          id?: string
+          log_type?: string
+          message?: string
+          scroll_x?: number | null
+          scroll_y?: number | null
+          user_agent?: string | null
+          viewport_height?: number | null
+          viewport_width?: number | null
+        }
+        Relationships: []
+      }
+      feature_flags: {
+        Row: {
+          created_at: string
+          description: string | null
+          enabled: boolean
+          environment: string | null
+          flag_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          environment?: string | null
+          flag_name: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          environment?: string | null
+          flag_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       generated_images: {
         Row: {
           created_at: string | null
