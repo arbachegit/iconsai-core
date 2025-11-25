@@ -81,10 +81,10 @@ const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, ima
   };
 
   return (
-    <section id={id} className="py-12 relative">
+    <section id={id} className="py-8 relative">
       <div className="container mx-auto px-4">
         <div
-          className={`grid lg:grid-cols-2 gap-12 items-center ${
+          className={`grid lg:grid-cols-2 gap-8 items-center ${
             reverse ? "lg:flex-row-reverse" : ""
           }`}
         >
@@ -102,7 +102,7 @@ const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, ima
             {quote && (
               <div 
                 ref={quoteRef}
-                className={`mt-8 pt-6 border-t border-border/30 transition-opacity duration-1000 ${
+                className={`mt-6 pt-4 border-t border-border/30 transition-opacity duration-1000 ${
                   isQuoteVisible ? 'opacity-100' : 'opacity-0'
                 }`}
                 style={{
