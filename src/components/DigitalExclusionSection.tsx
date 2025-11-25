@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, ImageOff, RefreshCw, Play, Square, Download } f
 import { useGeneratedImage } from "@/hooks/useGeneratedImage";
 import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const SECTION_TEXT = `Se a internet já exclui hoje bilhões de pessoas, a "internet conversacional" baseada em prompts corre o risco de ampliar ainda mais essa distância. Estimando uma população mundial em torno de 8 bilhões de pessoas e considerando que o uso avançado de IA exige competências cognitivas e linguísticas que a maioria não domina, é razoável supor que algo em torno de 5,74 bilhões de pessoas – mais de 70% da humanidade – não conseguirá utilizar plenamente essa nova camada da internet, mesmo estando conectada.
 
@@ -45,6 +46,32 @@ const DigitalExclusionSection = () => {
     };
   }, []);
 
+  // Load cached audio from database on mount
+  useEffect(() => {
+    const loadCachedAudio = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('section_audio')
+          .select('audio_url')
+          .eq('section_id', 'digital-exclusion')
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error loading cached audio:', error);
+          return;
+        }
+
+        if (data?.audio_url) {
+          setAudioUrl(data.audio_url);
+        }
+      } catch (error) {
+        console.error('Error loading cached audio:', error);
+      }
+    };
+
+    loadCachedAudio();
+  }, []);
+
   const handlePlayAudio = async () => {
     try {
       if (!audioPlayerRef.current) return;
@@ -66,6 +93,25 @@ const DigitalExclusionSection = () => {
         const url = await generateAudioUrl(SECTION_TEXT);
         setAudioUrl(url);
         setIsGeneratingAudio(false);
+        
+        // Save to database cache
+        try {
+          const { error } = await supabase
+            .from('section_audio')
+            .upsert({
+              section_id: 'digital-exclusion',
+              audio_url: url,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'section_id'
+            });
+
+          if (error) {
+            console.error('Error caching audio:', error);
+          }
+        } catch (error) {
+          console.error('Error saving audio to cache:', error);
+        }
         
         await audioPlayerRef.current.playAudioFromUrl(url);
         setIsPlaying(true);

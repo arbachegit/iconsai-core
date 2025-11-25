@@ -197,6 +197,30 @@ export type Database = {
         }
         Relationships: []
       }
+      section_audio: {
+        Row: {
+          audio_url: string
+          created_at: string | null
+          id: string
+          section_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string | null
+          id?: string
+          section_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string | null
+          id?: string
+          section_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       tooltip_contents: {
         Row: {
           audio_url: string | null
