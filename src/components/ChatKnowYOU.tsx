@@ -496,20 +496,6 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
             </Button>
           </div>
         )}
-        <div className="flex items-center justify-between mt-2">
-          <p className="text-xs text-muted-foreground">
-            Pressione Enter para enviar • Shift+Enter para nova linha
-          </p>
-          {isSpeechSupported && !isRecording && (
-            <p className="text-xs text-muted-foreground">
-              {isListening ? (
-                <span className="text-primary font-medium">🎤 Ouvindo...</span>
-              ) : (
-                <span>Clique no 🎤 para falar</span>
-              )}
-            </p>
-          )}
-        </div>
       </form>
 
       {/* Medical Image Dialog - only for embedded */}
