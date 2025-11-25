@@ -382,10 +382,6 @@ const HeroSection = () => {
             className={`mt-12 max-w-3xl mx-auto transition-opacity duration-1000 ${
               isQuoteVisible ? 'opacity-100' : 'opacity-0'
             }`}
-            style={{
-              transform: `translateY(${-quoteParallaxOffset}px)`,
-              transition: 'transform 0.1s ease-out',
-            }}
           >
             <blockquote className="text-xl md:text-2xl italic bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent font-medium leading-relaxed">
               "O momento exato em que deixamos de apenas operar máquinas e começamos, de fato, a pensar com elas."
