@@ -44,6 +44,7 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prevMessagesLength = useRef(messages.length);
   
   const {
     isListening,
@@ -72,7 +73,10 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
   };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > 0 && messages.length !== prevMessagesLength.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      prevMessagesLength.current = messages.length;
+    }
   }, [messages]);
 
   // Update input with voice transcript - only when listening stops
