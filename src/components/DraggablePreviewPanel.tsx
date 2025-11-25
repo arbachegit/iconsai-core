@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { X, Play, Square, Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { useTooltipContent } from "@/hooks/useTooltipContent";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,6 +22,8 @@ export const DraggablePreviewPanel = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isPlaying, setIsPlaying] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
   
   const panelRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -75,7 +78,23 @@ export const DraggablePreviewPanel = ({
     } else {
       if (!audioRef.current) {
         audioRef.current = new Audio(content.audio_url);
-        audioRef.current.onended = () => setIsPlaying(false);
+        
+        // Setup audio event listeners
+        audioRef.current.onended = () => {
+          setIsPlaying(false);
+          setAudioProgress(0);
+        };
+        
+        audioRef.current.onloadedmetadata = () => {
+          setAudioDuration(audioRef.current?.duration || 0);
+        };
+        
+        audioRef.current.ontimeupdate = () => {
+          if (audioRef.current) {
+            const progress = (audioRef.current.currentTime / audioRef.current.duration) * 100;
+            setAudioProgress(progress);
+          }
+        };
       }
       audioRef.current.play();
       setIsPlaying(true);
@@ -87,6 +106,7 @@ export const DraggablePreviewPanel = ({
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       setIsPlaying(false);
+      setAudioProgress(0);
     }
   };
 
@@ -155,36 +175,53 @@ export const DraggablePreviewPanel = ({
           </h2>
           
           {content?.audio_url && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePlayAudio}
-                className="gap-2"
-              >
-                <Play className="w-4 h-4" />
-                {isPlaying ? "Pausar" : "Play"}
-              </Button>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePlayAudio}
+                  className="gap-2"
+                >
+                  <Play className="w-4 h-4" />
+                  {isPlaying ? "Pausar" : "Play"}
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleStopAudio}
+                  className="gap-2"
+                >
+                  <Square className="w-4 h-4" />
+                  Stop
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadAudio}
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </Button>
+              </div>
               
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleStopAudio}
-                className="gap-2"
-              >
-                <Square className="w-4 h-4" />
-                Stop
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadAudio}
-                className="gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Download
-              </Button>
+              {/* Progress bar */}
+              <div className="space-y-1">
+                <Progress value={audioProgress} className="h-2" />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>
+                    {Math.floor((audioProgress / 100) * audioDuration / 60)}:
+                    {String(Math.floor((audioProgress / 100) * audioDuration % 60)).padStart(2, '0')}
+                  </span>
+                  <span>
+                    {Math.floor(audioDuration / 60)}:
+                    {String(Math.floor(audioDuration % 60)).padStart(2, '0')}
+                  </span>
+                </div>
+              </div>
             </div>
           )}
           
