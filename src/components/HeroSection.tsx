@@ -39,6 +39,10 @@ const HeroSection = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const audioPlayerRef = useRef<AudioStreamPlayer | null>(null);
 
+  // Quote animation states
+  const [isQuoteVisible, setIsQuoteVisible] = useState(false);
+  const quoteRef = useRef<HTMLDivElement>(null);
+
   // Initialize audio player
   useEffect(() => {
     const player = new AudioStreamPlayer();
@@ -121,6 +125,24 @@ const HeroSection = () => {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
+
+  useEffect(() => {
+    // Quote animation observer
+    if (quoteRef.current) {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setIsQuoteVisible(true);
+          }
+        },
+        { threshold: 0.2 }
+      );
+
+      observer.observe(quoteRef.current);
+
+      return () => observer.disconnect();
+    }
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -324,8 +346,15 @@ const HeroSection = () => {
             </Button>
           </div>
 
-          <div className="mt-12 max-w-3xl mx-auto">
-            <blockquote className="text-xl md:text-2xl italic text-muted-foreground">
+          <div 
+            ref={quoteRef}
+            className={`mt-12 max-w-3xl mx-auto transition-all duration-1000 ${
+              isQuoteVisible 
+                ? 'opacity-100 translate-y-0' 
+                : 'opacity-0 translate-y-8'
+            }`}
+          >
+            <blockquote className="text-xl md:text-2xl italic bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent font-medium leading-relaxed">
               "O momento exato em que deixamos de apenas operar máquinas e começamos, de fato, a pensar com elas."
             </blockquote>
             <p className="text-xs text-muted-foreground/60 mt-2">by Fernando Arbache</p>

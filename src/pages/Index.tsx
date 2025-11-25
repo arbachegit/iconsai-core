@@ -12,6 +12,7 @@ import knowriskLogo from "@/assets/knowrisk-logo.png";
 import { FloatingChatButton } from "@/components/FloatingChatButton";
 import { ChatModal } from "@/components/ChatModal";
 import { debugLog, getEnvironmentInfo } from "@/lib/environment";
+import TuringLegacy from "@/components/TuringLegacy";
 
 const Index = () => {
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
@@ -278,17 +279,7 @@ const Index = () => {
       </ParallaxSection>
 
       {/* Legado de Turing */}
-      <section className="py-16 border-t border-border/50">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center space-y-6">
-            <h2 className="text-3xl md:text-4xl font-bold text-gradient">O Legado de Turing</h2>
-            <blockquote className="text-xl md:text-2xl italic text-muted-foreground leading-relaxed">
-              "Muito antes de falarmos com computadores, ele ousou perguntar se eles poderiam pensar. Decifrar o Enigma venceu a guerra, mas o 'Jogo da Imitação' venceu o tempo."
-            </blockquote>
-            <p className="text-xs text-muted-foreground/60">by Fernando Arbache</p>
-          </div>
-        </div>
-      </section>
+      <TuringLegacy />
 
       {/* Footer */}
       <footer className="py-16 border-t border-border/50">
