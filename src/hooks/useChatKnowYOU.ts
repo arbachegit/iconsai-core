@@ -5,12 +5,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "./useAdminSettings";
 import { useChatAnalytics } from "./useChatAnalytics";
 
-interface Message {
+export interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
   audioUrl?: string;
   imageUrl?: string;
+  showMap?: boolean;
+  coordinates?: { lat: number; lng: number };
+  hospitalName?: string;
 }
 
 const STORAGE_KEY = "knowyou_chat_history";
@@ -129,6 +132,10 @@ export function useChatKnowYOU() {
 
             const cleanedResponse = removeSuggestionsFromText(fullResponse);
 
+            // Detect Hospital Moinhos de Vento mentions
+            const hospitalRegex = /hospital\s+moinhos\s+de\s+vento/i;
+            const mentionsHospital = hospitalRegex.test(cleanedResponse) || hospitalRegex.test(input);
+
             // Gerar áudio da resposta (somente se habilitado)
             if (settings?.chat_audio_enabled) {
               setIsGeneratingAudio(true);
@@ -138,7 +145,14 @@ export function useChatKnowYOU() {
                 setMessages((prev) => {
                   const updated = prev.map((m, i) =>
                     i === prev.length - 1
-                      ? { ...m, content: cleanedResponse, audioUrl }
+                      ? { 
+                          ...m, 
+                          content: cleanedResponse, 
+                          audioUrl,
+                          showMap: mentionsHospital,
+                          coordinates: mentionsHospital ? { lat: -30.025806, lng: -51.195306 } : undefined,
+                          hospitalName: mentionsHospital ? "Hospital Moinhos de Vento" : undefined,
+                        }
                       : m
                   );
                   saveHistory(updated);
@@ -163,7 +177,13 @@ export function useChatKnowYOU() {
                 setMessages((prev) => {
                   const updated = prev.map((m, i) =>
                     i === prev.length - 1
-                      ? { ...m, content: cleanedResponse }
+                      ? { 
+                          ...m, 
+                          content: cleanedResponse,
+                          showMap: mentionsHospital,
+                          coordinates: mentionsHospital ? { lat: -30.025806, lng: -51.195306 } : undefined,
+                          hospitalName: mentionsHospital ? "Hospital Moinhos de Vento" : undefined,
+                        }
                       : m
                   );
                   saveHistory(updated);
@@ -177,7 +197,13 @@ export function useChatKnowYOU() {
               setMessages((prev) => {
                 const updated = prev.map((m, i) =>
                   i === prev.length - 1
-                    ? { ...m, content: cleanedResponse }
+                    ? { 
+                        ...m, 
+                        content: cleanedResponse,
+                        showMap: mentionsHospital,
+                        coordinates: mentionsHospital ? { lat: -30.025806, lng: -51.195306 } : undefined,
+                        hospitalName: mentionsHospital ? "Hospital Moinhos de Vento" : undefined,
+                      }
                     : m
                 );
                 saveHistory(updated);

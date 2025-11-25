@@ -6,6 +6,7 @@ import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
 import { Send, Loader2, Play, Pause, Square, Download, ImagePlus } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import HospitalMap from "@/components/HospitalMap";
 
 export default function ChatKnowYOU() {
   const { 
@@ -33,6 +34,7 @@ export default function ChatKnowYOU() {
   const [imagePrompt, setImagePrompt] = useState("");
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -41,9 +43,7 @@ export default function ChatKnowYOU() {
   };
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -209,9 +209,20 @@ export default function ChatKnowYOU() {
                       )}
                     </div>
                   )}
+
+                  {msg.role === "assistant" && msg.showMap && msg.coordinates && msg.hospitalName && (
+                    <div className="mt-3">
+                      <HospitalMap
+                        latitude={msg.coordinates.lat}
+                        longitude={msg.coordinates.lng}
+                        hospitalName={msg.hospitalName}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
+            <div ref={messagesEndRef} />
             {(isLoading || isGeneratingAudio || isGeneratingImage) && (
               <div className="flex justify-start">
                 <div className="bg-muted rounded-2xl px-4 py-3 flex items-center gap-2">
