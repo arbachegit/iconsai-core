@@ -206,17 +206,8 @@ const Index = () => {
         </div>
 
         {/* Nova Seção: Exclusão Digital */}
-        <div className="mt-16">
+        <div className="mt-16 mb-8">
           <DigitalExclusionSection />
-        </div>
-        
-        {/* Logo abaixo do carrossel */}
-        <div className="mt-8 flex justify-center">
-          <img 
-            src={knowriskLogo} 
-            alt="KnowRisk" 
-            className="h-12 w-auto opacity-50"
-          />
         </div>
       </Section>
 
