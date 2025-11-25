@@ -98,12 +98,32 @@ serve(async (req) => {
     const data = await response.json();
     console.log("Resposta completa da API:", JSON.stringify(data, null, 2));
 
-    // Extrair a imagem base64 da resposta
-    let imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    
-    // Fallback para formato alternativo
+    // Extrair a imagem base64 da resposta em diferentes formatos possíveis
+    const choice = data.choices?.[0];
+    const message = choice?.message;
+
+    let imageUrl = message?.images?.[0]?.image_url?.url;
+
+    // Fallback: algumas respostas podem usar images[].url diretamente
     if (!imageUrl) {
-      imageUrl = data.choices?.[0]?.message?.images?.[0]?.url;
+      imageUrl = message?.images?.[0]?.url;
+    }
+
+    // Fallback: imagens embutidas em message.content como partes estruturadas
+    if (!imageUrl && Array.isArray(message?.content)) {
+      try {
+        const imagePart = message.content.find((part: any) =>
+          part?.type === "image_url" || part?.type === "output_image"
+        );
+        imageUrl = imagePart?.image_url?.url || imagePart?.url;
+      } catch (err) {
+        console.error("Erro ao tentar extrair imagem de message.content:", err);
+      }
+    }
+
+    // Fallback: algumas implementações colocam images no nível do choice
+    if (!imageUrl && Array.isArray(choice?.images)) {
+      imageUrl = choice.images[0]?.image_url?.url || choice.images[0]?.url;
     }
 
     if (!imageUrl) {
