@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { TooltipIcon } from "@/components/TooltipIcon";
+import { SectionImageCarousel } from "@/components/SectionImageCarousel";
 
 interface SectionProps {
   id: string;
@@ -37,20 +38,7 @@ const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, ima
           <div className={reverse ? "lg:order-1" : ""}>
             <Card className="p-8 bg-card/50 backdrop-blur-sm border-primary/10 glow-effect-secondary">
               <div className="aspect-square rounded-lg bg-gradient-subtle flex items-center justify-center overflow-hidden">
-                {imageUrl ? (
-                  <img 
-                    src={imageUrl} 
-                    alt={imageAlt || title}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                ) : (
-                  <div className="text-6xl text-primary/20">
-                    {/* Placeholder for visual content */}
-                    <div className="w-full h-full flex items-center justify-center">
-                      <div className="w-32 h-32 rounded-full bg-gradient-primary opacity-20 animate-pulse-slow" />
-                    </div>
-                  </div>
-                )}
+                <SectionImageCarousel sectionId={id} />
               </div>
             </Card>
           </div>

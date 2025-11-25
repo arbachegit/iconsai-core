@@ -6,20 +6,8 @@ import { MediaCarousel } from "@/components/MediaCarousel";
 import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
-import { useGeneratedImage } from "@/hooks/useGeneratedImage";
 
 const Index = () => {
-  // Gerar imagem para a seção "A Primeira Revolução"
-  const { imageUrl: softwareImage } = useGeneratedImage(
-    "A primeira grande comunicação entre humanos e máquinas através de linguagens de programação. Imagem futurista mostrando uma pessoa programador interagindo com computador, linhas de código flutuando no ar, símbolos de linguagens de programação (colchetes, parênteses, operadores) conectando cérebro humano a circuitos digitais, comunicação técnica e rígida representada por conexões geométricas. Paleta de cores: roxo, azul elétrico, gradientes tecnológicos, fundo escuro. Estilo: tech-forward, moderno, limpo, minimalista. SEM TEXTO, SEM LETRAS, SEM PALAVRAS na imagem.",
-    "software-revolution-v2"
-  );
-
-  // Gerar imagem para a seção "A Era da Conectividade"
-  const { imageUrl: internetImage } = useGeneratedImage(
-    "A revolução da Internet: democratização do acesso à informação e conectividade global. Imagem futurista mostrando rede de conexões globais, pessoas de diferentes culturas conectadas, fluxos de dados luminosos ao redor do planeta Terra, nós de rede interligados, compartilhamento de conhecimento representado por símbolos flutuantes. Paleta de cores: roxo, azul elétrico, ciano, gradientes tecnológicos, fundo escuro espacial. Estilo: tech-forward, moderno, limpo, representando transformação digital e democratização da informação. Atmosfera de conexão global e compartilhamento de ideias.",
-    "internet-connectivity"
-  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,8 +19,6 @@ const Index = () => {
         id="software"
         title="A Primeira Revolução"
         subtitle="Anos 1940-1980"
-        imageUrl={softwareImage || undefined}
-        imageAlt="A primeira revolução: comunicação entre humanos e máquinas"
       >
         <p className="text-lg leading-relaxed">
           O software representou a primeira grande comunicação entre humanos e máquinas.
@@ -51,8 +37,6 @@ const Index = () => {
         id="internet"
         title="A Era da Conectividade"
         subtitle="Anos 1990-2000"
-        imageUrl={internetImage || undefined}
-        imageAlt="A era da conectividade: Internet democratizando o acesso à informação"
         reverse
       >
         <p className="text-lg leading-relaxed">
