@@ -69,10 +69,10 @@ const sectionPrompts: Record<string, string[]> = {
     "Profecia se tornando realidade: HAL 9000 evoluindo para assistentes de IA modernos, ponte temporal 1969-2024, estilo tech-forward, sem texto"
   ],
   "watson": [
-    "IBM Watson nascendo: redes neurais cognitivas, processamento de linguagem natural visualizado, azul dominante, estética corporativa tech, sem texto",
-    "Watson no Jeopardy: competição entre humano e máquina, ondas semânticas de conhecimento, grafos de informação, gradiente roxo/azul, sem texto",
-    "Era cognitiva: máquina compreendendo contexto e nuances, representação abstrata de raciocínio, padrões complexos interconectados, sem texto",
-    "Longa jornada da comunicação: evolução de simples processamento para compreensão profunda, linha do tempo visual, tons purple/cyan, sem texto"
+    "IBM Watson competindo no Jeopardy 2011: palco televisivo icônico, tela digital mostrando Watson respondendo questões, público assistindo, atmosfera de competição histórica humano vs máquina, iluminação de estúdio, tons azuis e roxos tecnológicos, sem texto",
+    "Grafos de conhecimento e processamento semântico: redes neurais interconectadas processando linguagem natural, representação visual de compreensão contextual, padrões cognitivos complexos, estilo futurista, sem texto",
+    "Era da cognição: máquina demonstrando raciocínio e aprendizado, visualização abstrata de inteligência artificial compreendendo nuances humanas, conexões sinápticas brilhantes, gradientes roxo/azul/ciano, sem texto",
+    "Marcos históricos da IA: linha temporal visual de 2004 a 2011, evolução do processamento básico para compreensão profunda, transformação tecnológica, atmosfera celebrativa, tons purple/cyan vibrantes, sem texto"
   ],
   "ia-nova-era": [
     "Nascimento do ChatGPT: barreira técnica sendo quebrada, comunicação natural fluindo entre humano e IA, tons cyan brilhantes, sem texto",
