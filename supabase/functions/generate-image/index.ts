@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,6 +36,9 @@ serve(async (req) => {
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY não configurada");
@@ -65,6 +69,15 @@ serve(async (req) => {
 
     if (!response.ok) {
       if (response.status === 429) {
+        // Registrar uso de crédito com falha (rate limit)
+        await supabase.rpc('log_credit_usage', {
+          p_operation_type: 'image_generation',
+          p_success: false,
+          p_error_code: '429',
+          p_section_id: null,
+          p_metadata: null
+        });
+        
         return new Response(
           JSON.stringify({ 
             error: "Limite de uso excedido. Tente novamente em alguns instantes." 
@@ -76,6 +89,15 @@ serve(async (req) => {
         );
       }
       if (response.status === 402) {
+        // Registrar uso de crédito com falha (sem créditos)
+        await supabase.rpc('log_credit_usage', {
+          p_operation_type: 'image_generation',
+          p_success: false,
+          p_error_code: '402',
+          p_section_id: null,
+          p_metadata: null
+        });
+        
         return new Response(
           JSON.stringify({ 
             error: "Créditos insuficientes. Adicione créditos ao workspace." 
@@ -148,6 +170,16 @@ serve(async (req) => {
         console.error("Message:", data.choices[0].message);
         console.error("Images:", data.choices[0].message?.images);
       }
+      
+      // Registrar falha
+      await supabase.rpc('log_credit_usage', {
+        p_operation_type: 'image_generation',
+        p_success: false,
+        p_error_code: 'no_image_url',
+        p_section_id: null,
+        p_metadata: null
+      });
+      
       return new Response(
         JSON.stringify({ 
           error: "Erro ao processar imagem gerada",
@@ -159,6 +191,15 @@ serve(async (req) => {
         }
       );
     }
+
+    // Registrar sucesso
+    await supabase.rpc('log_credit_usage', {
+      p_operation_type: 'image_generation',
+      p_success: true,
+      p_error_code: null,
+      p_section_id: null,
+      p_metadata: { prompt_length: prompt.length }
+    });
 
     return new Response(
       JSON.stringify({ imageUrl }),
