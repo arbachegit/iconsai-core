@@ -428,7 +428,7 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
                       handleSubmit(e);
                     }
                   }}
-                  placeholder={isListening ? "Ouvindo..." : "Digite sua mensagem sobre saúde..."}
+                  placeholder={isListening ? "Ouvindo..." : variant === "modal" ? "Pergunte algo do conteúdo do APP ou a respeito do knowyou..." : "Digite sua mensagem sobre saúde..."}
                   className={cn(
                     "min-h-[60px] resize-none pr-24",
                     isListening && "border-primary ring-2 ring-primary/20"
