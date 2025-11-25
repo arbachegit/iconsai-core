@@ -16,7 +16,7 @@ interface SectionProps {
 
 const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, imageAlt, priority = false }: SectionProps) => {
   return (
-    <section id={id} className="py-20 relative">
+    <section id={id} className="py-12 relative">
       <div className="container mx-auto px-4">
         <div
           className={`grid lg:grid-cols-2 gap-12 items-center ${
