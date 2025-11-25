@@ -20,6 +20,7 @@ const Index = () => {
         id="software"
         title="A Primeira Revolução"
         subtitle="Anos 1940-1980"
+        priority
       >
         <p className="text-lg leading-relaxed">
           O software representou a primeira grande comunicação entre humanos e máquinas.

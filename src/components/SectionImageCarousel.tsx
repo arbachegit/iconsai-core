@@ -9,9 +9,11 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 
 interface SectionImageCarouselProps {
   sectionId: string;
+  priority?: boolean;
 }
 
 // Fallback SVG quando créditos esgotarem
@@ -92,7 +94,7 @@ const sectionPrompts: Record<string, string[]> = {
   ]
 };
 
-export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) => {
+export const SectionImageCarousel = ({ sectionId, priority = false }: SectionImageCarouselProps) => {
   const [images, setImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [usesFallback, setUsesFallback] = useState(false);
@@ -136,15 +138,15 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
           setImages(cachedImages);
           setIsLoading(false);
           
-          // Registrar analytics de cache hit (sem await para não bloquear)
-          prompts.forEach((_, idx) => {
-            supabase.from('image_analytics').insert({
+          // Batch analytics para cache hit (não bloqueia UI)
+          supabase.from('image_analytics').insert(
+            prompts.map((_, idx) => ({
               section_id: sectionId,
               prompt_key: `${sectionId}-${idx}`,
               success: true,
               cached: true,
-            });
-          });
+            }))
+          );
           return;
         }
       }
@@ -318,10 +320,11 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
           {images.map((img, index) => (
             <CarouselItem key={index} className="h-full">
               <div className="w-full h-full rounded-lg overflow-hidden bg-muted/10">
-                <img 
-                  src={img} 
+                <OptimizedImage
+                  src={img}
                   alt={`${sectionId} - Imagem ${index + 1}`}
-                  className="w-full h-full object-cover"
+                  priority={priority && index === 0}
+                  aspectRatio="square"
                 />
               </div>
             </CarouselItem>
