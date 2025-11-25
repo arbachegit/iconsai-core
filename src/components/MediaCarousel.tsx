@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Music, Youtube, ExternalLink, Filter, Play, Pause } from "lucide-react";
+import { Music, Youtube, ExternalLink, Filter } from "lucide-react";
 import { useYouTubeCache } from "@/hooks/useYouTubeCache";
 import {
   Carousel,
@@ -12,8 +12,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import Autoplay from "embla-carousel-autoplay";
 
 interface YouTubeVideo {
   id: {
@@ -43,15 +41,9 @@ export const MediaCarousel = () => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
   
   const category = categories.find(c => c.id === selectedCategory);
   const { videos, loading } = useYouTubeCache(category?.query || '');
-
-  const autoplayPlugin = Autoplay({
-    delay: 4000,
-    stopOnInteraction: false,
-  });
 
   useEffect(() => {
     if (!api) return;
@@ -62,28 +54,7 @@ export const MediaCarousel = () => {
     api.on("select", () => {
       setCurrent(api.selectedScrollSnap());
     });
-
-    api.on("autoplay:play", () => {
-      setIsPlaying(true);
-    });
-
-    api.on("autoplay:stop", () => {
-      setIsPlaying(false);
-    });
   }, [api]);
-
-  const toggleAutoplay = () => {
-    const autoplay = api?.plugins()?.autoplay;
-    if (!autoplay) return;
-
-    if (isPlaying) {
-      autoplay.stop();
-      setIsPlaying(false);
-    } else {
-      autoplay.play();
-      setIsPlaying(true);
-    }
-  };
 
   return (
     <div className="space-y-8">
@@ -161,18 +132,6 @@ export const MediaCarousel = () => {
         ) : videos.length > 0 ? (
           <div className="space-y-4">
             <div className="flex items-center justify-center gap-4">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={toggleAutoplay}
-                className="rounded-full hover:scale-110 transition-transform"
-              >
-                {isPlaying ? (
-                  <Pause className="h-4 w-4" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-              </Button>
               <div className="flex gap-2">
                 {Array.from({ length: count }).map((_, index) => (
                   <button
@@ -183,7 +142,7 @@ export const MediaCarousel = () => {
                         ? "w-8 bg-primary"
                         : "w-2 bg-primary/30 hover:bg-primary/50"
                     }`}
-                    aria-label={`Go to slide ${index + 1}`}
+                    aria-label={`Ir para vídeo ${index + 1}`}
                   />
                 ))}
               </div>
@@ -194,7 +153,6 @@ export const MediaCarousel = () => {
                 align: "start",
                 loop: true,
               }}
-              plugins={[autoplayPlugin]}
               className="w-full"
             >
               <CarouselContent>
@@ -239,8 +197,8 @@ export const MediaCarousel = () => {
                 </CarouselItem>
               ))}
             </CarouselContent>
-              <CarouselPrevious className="hidden md:flex" />
-              <CarouselNext className="hidden md:flex" />
+              <CarouselPrevious className="hidden md:flex h-12 w-12" />
+              <CarouselNext className="hidden md:flex h-12 w-12" />
             </Carousel>
           </div>
         ) : (

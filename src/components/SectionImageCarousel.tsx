@@ -7,8 +7,8 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  type CarouselApi,
 } from "@/components/ui/carousel";
-import Autoplay from "embla-carousel-autoplay";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 
 interface SectionImageCarouselProps {
@@ -98,10 +98,18 @@ export const SectionImageCarousel = ({ sectionId, priority = false }: SectionIma
   const [images, setImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [usesFallback, setUsesFallback] = useState(false);
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
   const { ref, inView } = useInView({
     triggerOnce: true,
     threshold: 0.1,
   });
+
+  useEffect(() => {
+    if (!api) return;
+    setCurrent(api.selectedScrollSnap());
+    api.on("select", () => setCurrent(api.selectedScrollSnap()));
+  }, [api]);
   
   useEffect(() => {
     if (!inView) return;
@@ -305,15 +313,15 @@ export const SectionImageCarousel = ({ sectionId, priority = false }: SectionIma
   }
   
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full space-y-3">
       {usesFallback && (
         <div className="mb-2 text-xs text-muted-foreground text-center opacity-75">
           <p>Imagens temporárias (créditos esgotados)</p>
         </div>
       )}
       <Carousel
+        setApi={setApi}
         opts={{ loop: true }}
-        plugins={[Autoplay({ delay: 5000 })]}
         className="w-full h-full"
       >
         <CarouselContent className="h-full">
@@ -330,9 +338,23 @@ export const SectionImageCarousel = ({ sectionId, priority = false }: SectionIma
             </CarouselItem>
           ))}
         </CarouselContent>
-        <CarouselPrevious className="left-2" />
-        <CarouselNext className="right-2" />
+        <CarouselPrevious className="left-2 h-12 w-12" />
+        <CarouselNext className="right-2 h-12 w-12" />
       </Carousel>
+      
+      {/* Dots indicadores */}
+      <div className="flex justify-center gap-2">
+        {images.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => api?.scrollTo(index)}
+            className={`h-2 rounded-full transition-all ${
+              index === current ? "w-6 bg-primary" : "w-2 bg-primary/30 hover:bg-primary/50"
+            }`}
+            aria-label={`Ir para imagem ${index + 1}`}
+          />
+        ))}
+      </div>
     </div>
   );
 };
