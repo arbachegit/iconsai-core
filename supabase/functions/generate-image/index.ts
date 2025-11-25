@@ -40,7 +40,10 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY não configurada");
     }
 
-    console.log("Gerando imagem com prompt:", prompt);
+    // Adicionar prefixo explícito para forçar geração de imagem
+    const imagePrompt = `[IMAGE GENERATION REQUEST] Generate a visual image based on this description: ${prompt}. IMPORTANT: Only generate the image, do not respond with text.`;
+    
+    console.log("Gerando imagem com prompt:", imagePrompt);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -53,7 +56,7 @@ serve(async (req) => {
         messages: [
           {
             role: "user",
-            content: prompt,
+            content: imagePrompt,
           }
         ],
         modalities: ["image", "text"],

@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, ImageOff, RefreshCw } from "lucide-react";
 import { useGeneratedImage } from "@/hooks/useGeneratedImage";
 
 const DigitalExclusionSection = () => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const { imageUrl, isLoading } = useGeneratedImage(
+  const { imageUrl, isLoading, error, retry } = useGeneratedImage(
     "Abstract visualization of global digital divide, showing 5.74 billion people disconnected from AI technology, split world with connected bright side and disconnected dark side, language barriers represented as walls, cognitive gaps as bridges broken, purple and blue color palette, futuristic, no text",
     "digital-exclusion-section"
   );
@@ -78,6 +78,22 @@ const DigitalExclusionSection = () => {
                       className="w-full h-auto"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background/50 to-transparent pointer-events-none" />
+                  </div>
+                ) : error ? (
+                  <div className="aspect-video rounded-lg bg-muted/50 border border-muted flex flex-col items-center justify-center gap-4 p-8">
+                    <ImageOff className="w-16 h-16 text-muted-foreground/50" />
+                    <div className="text-center space-y-2">
+                      <p className="text-muted-foreground">Imagem indisponível</p>
+                      <p className="text-sm text-muted-foreground/70">Não foi possível gerar a visualização</p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      onClick={retry}
+                      className="gap-2"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Tentar novamente
+                    </Button>
                   </div>
                 ) : null}
               </div>
