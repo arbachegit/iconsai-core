@@ -419,6 +419,97 @@ export function useChatKnowYOU() {
     [messages, toast, saveHistory, sendMessage]
   );
 
+  const saveConversation = useCallback(async () => {
+    if (messages.length === 0) return;
+
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      
+      // Generate title from first user message
+      const firstUserMessage = messages.find(m => m.role === "user");
+      const title = firstUserMessage 
+        ? firstUserMessage.content.slice(0, 50) + (firstUserMessage.content.length > 50 ? "..." : "")
+        : "Nova conversa";
+
+      // Convert messages to plain JSON
+      const messagesJson = messages.map(m => ({
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp.toISOString(),
+        audioUrl: m.audioUrl,
+        imageUrl: m.imageUrl,
+        showMap: m.showMap,
+        coordinates: m.coordinates,
+        hospitalName: m.hospitalName,
+        voiceMessageUrl: m.voiceMessageUrl,
+        voiceMessageDuration: m.voiceMessageDuration,
+      }));
+
+      // Check if conversation already exists
+      const { data: existing } = await supabase
+        .from("conversation_history")
+        .select("id")
+        .eq("session_id", sessionId)
+        .maybeSingle();
+
+      if (existing) {
+        // Update existing conversation
+        await supabase
+          .from("conversation_history")
+          .update({
+            messages: messagesJson as any,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("session_id", sessionId);
+      } else {
+        // Insert new conversation
+        await supabase
+          .from("conversation_history")
+          .insert({
+            session_id: sessionId,
+            title,
+            messages: messagesJson as any,
+          });
+      }
+
+      toast({
+        title: "Conversa salva",
+        description: "A conversa foi salva com sucesso no histórico.",
+      });
+    } catch (error) {
+      console.error("Erro ao salvar conversa:", error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar a conversa.",
+        variant: "destructive",
+      });
+    }
+  }, [messages, sessionId, toast]);
+
+  const loadConversation = useCallback((newSessionId: string, conversationMessages: any[]) => {
+    audioPlayerRef.current.stop();
+    setCurrentlyPlayingIndex(null);
+    
+    const loadedMessages = conversationMessages.map((m: any) => ({
+      ...m,
+      timestamp: new Date(m.timestamp),
+    }));
+    
+    setMessages(loadedMessages);
+    saveHistory(loadedMessages);
+  }, [saveHistory]);
+
+  // Auto-save conversation periodically
+  useEffect(() => {
+    if (messages.length > 0) {
+      const autoSave = setTimeout(() => {
+        saveConversation();
+      }, 5000); // Auto-save after 5 seconds of inactivity
+
+      return () => clearTimeout(autoSave);
+    }
+  }, [messages, saveConversation]);
+
   return {
     messages,
     isLoading,
@@ -430,6 +521,7 @@ export function useChatKnowYOU() {
     audioDuration,
     playbackRate,
     suggestions,
+    sessionId,
     sendMessage,
     sendVoiceMessage,
     clearHistory,
@@ -440,5 +532,7 @@ export function useChatKnowYOU() {
     downloadAudio,
     changePlaybackRate,
     generateImage,
+    saveConversation,
+    loadConversation,
   };
 }
