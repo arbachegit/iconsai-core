@@ -6,8 +6,15 @@ import { MediaCarousel } from "@/components/MediaCarousel";
 import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
+import { useGeneratedImage } from "@/hooks/useGeneratedImage";
 
 const Index = () => {
+  // Gerar imagem para a seção "A Primeira Revolução"
+  const { imageUrl: softwareImage } = useGeneratedImage(
+    "A primeira revolução tecnológica: comunicação entre humanos e máquinas através de software e linguagens de programação. Imagem futurista e minimalista mostrando código binário, linhas de código em tela escura, símbolos de programação flutuando, conexão entre cérebro humano e circuitos digitais. Paleta de cores: roxo, azul elétrico, gradientes tecnológicos, fundo escuro. Estilo: tech-forward, moderno, limpo, representando transformação digital e bases da era computacional.",
+    "software-revolution"
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -18,6 +25,8 @@ const Index = () => {
         id="software"
         title="A Primeira Revolução"
         subtitle="Anos 1940-1980"
+        imageUrl={softwareImage || undefined}
+        imageAlt="A primeira revolução: comunicação entre humanos e máquinas"
       >
         <p className="text-lg leading-relaxed">
           O software representou a primeira grande comunicação entre humanos e máquinas.
