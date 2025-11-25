@@ -3,6 +3,7 @@ import HeroSection from "@/components/HeroSection";
 import Section from "@/components/Section";
 import ChatKnowYOU from "@/components/ChatKnowYOU";
 import { MediaCarousel } from "@/components/MediaCarousel";
+import DigitalExclusionSection from "@/components/DigitalExclusionSection";
 import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
@@ -145,6 +146,11 @@ const Index = () => {
         {/* Media Carousel - Spotify & YouTube */}
         <div className="mt-12">
           <MediaCarousel />
+        </div>
+
+        {/* Nova Seção: Exclusão Digital */}
+        <div className="mt-16">
+          <DigitalExclusionSection />
         </div>
         
         {/* Logo abaixo do carrossel */}
