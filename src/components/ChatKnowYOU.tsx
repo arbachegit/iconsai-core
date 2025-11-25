@@ -79,28 +79,13 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Update input with voice transcript
+  // Update input with voice transcript - only when listening stops
   useEffect(() => {
-    if (transcript) {
-      setInput(prev => {
-        const newText = prev ? `${prev} ${transcript}` : transcript;
-        return newText;
-      });
+    if (transcript && !isListening) {
+      setInput(prev => prev ? `${prev} ${transcript}`.trim() : transcript.trim());
       resetTranscript();
     }
-  }, [transcript, resetTranscript]);
-
-  // Show interim transcript in placeholder or as overlay
-  useEffect(() => {
-    if (interimTranscript && isListening) {
-      setInput(prev => {
-        if (prev && !prev.endsWith(interimTranscript)) {
-          return `${prev} ${interimTranscript}`;
-        }
-        return prev || interimTranscript;
-      });
-    }
-  }, [interimTranscript, isListening]);
+  }, [transcript, isListening, resetTranscript]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
