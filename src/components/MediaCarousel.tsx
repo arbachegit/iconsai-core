@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Music, Youtube, ExternalLink, Filter, Play, Pause } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useYouTubeCache } from "@/hooks/useYouTubeCache";
 import {
   Carousel,
   CarouselContent,
@@ -40,23 +39,19 @@ const categories = [
 ];
 
 export const MediaCarousel = () => {
-  const [videos, setVideos] = useState<YouTubeVideo[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const { toast } = useToast();
+  
+  const category = categories.find(c => c.id === selectedCategory);
+  const { videos, loading } = useYouTubeCache(category?.query || '');
 
   const autoplayPlugin = Autoplay({
     delay: 4000,
     stopOnInteraction: false,
   });
-
-  useEffect(() => {
-    fetchYouTubeVideos();
-  }, [selectedCategory]);
 
   useEffect(() => {
     if (!api) return;
@@ -87,31 +82,6 @@ export const MediaCarousel = () => {
     } else {
       autoplay.play();
       setIsPlaying(true);
-    }
-  };
-
-  const fetchYouTubeVideos = async () => {
-    setLoading(true);
-    try {
-      const category = categories.find(c => c.id === selectedCategory);
-      const { data, error } = await supabase.functions.invoke('youtube-videos', {
-        body: { category: category?.query || '' }
-      });
-      
-      if (error) throw error;
-      
-      if (data?.videos) {
-        setVideos(data.videos);
-      }
-    } catch (error) {
-      console.error('Error fetching YouTube videos:', error);
-      toast({
-        title: "Erro ao carregar vídeos",
-        description: "Não foi possível carregar os vídeos do YouTube.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
