@@ -48,7 +48,7 @@ const TuringLegacy = () => {
   }, []);
 
   return (
-    <section className="py-16 border-t border-border/50">
+    <section className="py-10 border-t border-border/50">
       <div className="container mx-auto px-4">
         <div 
           ref={sectionRef}

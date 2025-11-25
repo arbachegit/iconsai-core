@@ -222,7 +222,7 @@ const Index = () => {
           </div>
           
           {/* Media Carousel - Spotify & YouTube */}
-          <div className="mt-10">
+          <div className="mt-8">
             <MediaCarousel />
           </div>
 
@@ -283,7 +283,7 @@ const Index = () => {
       <TuringLegacy />
 
       {/* Footer */}
-      <footer className="py-16 border-t border-border/50">
+      <footer className="py-10 border-t border-border/50">
         <div className="container mx-auto px-4">
           <div className="relative">
             <div className="text-center space-y-4">
