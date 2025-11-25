@@ -14,6 +14,33 @@ interface SectionImageCarouselProps {
   sectionId: string;
 }
 
+// Fallback SVG quando créditos esgotarem
+const FALLBACK_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%238B5CF6;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%233B82F6;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1024' height='1024' fill='url(%23grad)'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='48' fill='white' text-anchor='middle' dominant-baseline='middle' opacity='0.7'%3EKnowRisk%3C/text%3E%3C/svg%3E";
+
+// Chave para marcar quando créditos esgotaram (1 hora de cache)
+const CREDITS_EXHAUSTED_KEY = "lovable_credits_exhausted";
+const CREDITS_EXHAUSTED_DURATION = 60 * 60 * 1000;
+
+const checkCreditsExhausted = (): boolean => {
+  const exhaustedData = localStorage.getItem(CREDITS_EXHAUSTED_KEY);
+  if (!exhaustedData) return false;
+  
+  try {
+    const { timestamp } = JSON.parse(exhaustedData);
+    if (Date.now() - timestamp > CREDITS_EXHAUSTED_DURATION) {
+      localStorage.removeItem(CREDITS_EXHAUSTED_KEY);
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const markCreditsExhausted = () => {
+  localStorage.setItem(CREDITS_EXHAUSTED_KEY, JSON.stringify({ timestamp: Date.now() }));
+};
+
 const sectionPrompts: Record<string, string[]> = {
   "software": [
     "Primórdios da computação: cartões perfurados transformando-se em código binário, tons roxos e azuis, estilo futurista minimalista, sem texto",
@@ -68,6 +95,7 @@ const sectionPrompts: Record<string, string[]> = {
 export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) => {
   const [images, setImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [usesFallback, setUsesFallback] = useState(false);
   const { ref, inView } = useInView({
     triggerOnce: true,
     threshold: 0.1,
@@ -78,6 +106,15 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
     
     const generateImages = async () => {
       const prompts = sectionPrompts[sectionId] || [];
+      
+      // Se créditos esgotados recentemente, usar fallback imediatamente
+      if (checkCreditsExhausted()) {
+        console.log(`Créditos esgotados - usando fallback para ${sectionId}`);
+        setImages(prompts.map(() => FALLBACK_IMAGE));
+        setUsesFallback(true);
+        setIsLoading(false);
+        return;
+      }
       
       // Buscar imagens já geradas no banco
       const { data: existingImages } = await supabase
@@ -99,7 +136,7 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
           setImages(cachedImages);
           setIsLoading(false);
           
-          // Registrar analytics de cache hit
+          // Registrar analytics de cache hit (sem await para não bloquear)
           prompts.forEach((_, idx) => {
             supabase.from('image_analytics').insert({
               section_id: sectionId,
@@ -113,6 +150,7 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
       }
       
       // Gerar imagens faltantes
+      let creditsError = false;
       const results = await Promise.all(
         prompts.map(async (prompt, idx) => {
           const promptKey = `${sectionId}-${idx}`;
@@ -122,6 +160,11 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
             return existingMap.get(promptKey)!;
           }
           
+          // Se já detectamos falta de créditos, usar fallback
+          if (creditsError) {
+            return FALLBACK_IMAGE;
+          }
+          
           const startTime = Date.now();
           try {
             const { data, error } = await supabase.functions.invoke('generate-image', {
@@ -129,6 +172,25 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
             });
             
             const generationTime = Date.now() - startTime;
+            
+            // Detectar erro 402 (sem créditos)
+            if (error?.message?.includes("402") || error?.message?.includes("Créditos insuficientes")) {
+              console.log("Créditos esgotados - marcando e usando fallback");
+              markCreditsExhausted();
+              creditsError = true;
+              setUsesFallback(true);
+              
+              await supabase.from('image_analytics').insert({
+                section_id: sectionId,
+                prompt_key: promptKey,
+                success: false,
+                cached: false,
+                generation_time_ms: generationTime,
+                error_message: "Credits exhausted"
+              });
+              
+              return FALLBACK_IMAGE;
+            }
             
             if (error || !data?.imageUrl) {
               console.error("Erro ao gerar imagem:", error);
@@ -143,7 +205,7 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
                 error_message: error?.message || 'No image URL returned'
               });
               
-              return null;
+              return FALLBACK_IMAGE;
             }
             
             const imageUrl = data.imageUrl;
@@ -169,16 +231,24 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
             const generationTime = Date.now() - startTime;
             console.error("Erro ao gerar imagem:", error);
             
+            // Detectar erro 402 em exceptions também
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            if (errorMsg.includes("402") || errorMsg.includes("Créditos insuficientes")) {
+              markCreditsExhausted();
+              creditsError = true;
+              setUsesFallback(true);
+            }
+            
             await supabase.from('image_analytics').insert({
               section_id: sectionId,
               prompt_key: promptKey,
               success: false,
               cached: false,
               generation_time_ms: generationTime,
-              error_message: error instanceof Error ? error.message : 'Unknown error'
+              error_message: errorMsg
             });
             
-            return null;
+            return FALLBACK_IMAGE;
           }
         })
       );
@@ -215,26 +285,33 @@ export const SectionImageCarousel = ({ sectionId }: SectionImageCarouselProps) =
   }
   
   return (
-    <Carousel
-      opts={{ loop: true }}
-      plugins={[Autoplay({ delay: 5000 })]}
-      className="w-full h-full"
-    >
-      <CarouselContent className="h-full">
-        {images.map((img, index) => (
-          <CarouselItem key={index} className="h-full">
-            <div className="w-full h-full rounded-lg overflow-hidden bg-muted/10">
-              <img 
-                src={img} 
-                alt={`${sectionId} - Imagem ${index + 1}`}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-      <CarouselPrevious className="left-2" />
-      <CarouselNext className="right-2" />
-    </Carousel>
+    <div className="w-full h-full">
+      {usesFallback && (
+        <div className="mb-2 text-xs text-muted-foreground text-center opacity-75">
+          <p>Imagens temporárias (créditos esgotados)</p>
+        </div>
+      )}
+      <Carousel
+        opts={{ loop: true }}
+        plugins={[Autoplay({ delay: 5000 })]}
+        className="w-full h-full"
+      >
+        <CarouselContent className="h-full">
+          {images.map((img, index) => (
+            <CarouselItem key={index} className="h-full">
+              <div className="w-full h-full rounded-lg overflow-hidden bg-muted/10">
+                <img 
+                  src={img} 
+                  alt={`${sectionId} - Imagem ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <CarouselPrevious className="left-2" />
+        <CarouselNext className="right-2" />
+      </Carousel>
+    </div>
   );
 };

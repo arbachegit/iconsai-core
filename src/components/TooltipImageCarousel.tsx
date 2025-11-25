@@ -14,6 +14,33 @@ interface TooltipImageCarouselProps {
   sectionId: string;
 }
 
+// Fallback SVG quando créditos esgotarem
+const FALLBACK_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='450'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%238B5CF6;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%233B82F6;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='450' fill='url(%23grad)'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='36' fill='white' text-anchor='middle' dominant-baseline='middle' opacity='0.7'%3EKnowRisk%3C/text%3E%3C/svg%3E";
+
+// Chave para marcar quando créditos esgotaram
+const CREDITS_EXHAUSTED_KEY = "lovable_credits_exhausted";
+const CREDITS_EXHAUSTED_DURATION = 60 * 60 * 1000;
+
+const checkCreditsExhausted = (): boolean => {
+  const exhaustedData = localStorage.getItem(CREDITS_EXHAUSTED_KEY);
+  if (!exhaustedData) return false;
+  
+  try {
+    const { timestamp } = JSON.parse(exhaustedData);
+    if (Date.now() - timestamp > CREDITS_EXHAUSTED_DURATION) {
+      localStorage.removeItem(CREDITS_EXHAUSTED_KEY);
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const markCreditsExhausted = () => {
+  localStorage.setItem(CREDITS_EXHAUSTED_KEY, JSON.stringify({ timestamp: Date.now() }));
+};
+
 const carouselPrompts: Record<string, string[]> = {
   "software": [
     "Abstract visualization of early computer programming, punch cards transforming into digital code, purple and blue gradients, futuristic tech style, no text",
@@ -60,6 +87,7 @@ const carouselPrompts: Record<string, string[]> = {
 export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) => {
   const [images, setImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [usesFallback, setUsesFallback] = useState(false);
   const { ref, inView } = useInView({
     triggerOnce: true,
     threshold: 0.1,
@@ -70,6 +98,15 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
     
     const generateImages = async () => {
       const prompts = carouselPrompts[sectionId] || [];
+      
+      // Se créditos esgotados recentemente, usar fallback imediatamente
+      if (checkCreditsExhausted()) {
+        console.log(`Créditos esgotados - usando fallback para tooltip ${sectionId}`);
+        setImages(prompts.map(() => FALLBACK_IMAGE));
+        setUsesFallback(true);
+        setIsLoading(false);
+        return;
+      }
       
       // Buscar imagens já geradas no banco
       const { data: existingImages } = await supabase
@@ -91,7 +128,7 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
           setImages(cachedImages);
           setIsLoading(false);
           
-          // Registrar analytics de cache hit
+          // Registrar analytics de cache hit (sem await)
           prompts.forEach((_, idx) => {
             supabase.from('image_analytics').insert({
               section_id: `tooltip-${sectionId}`,
@@ -105,6 +142,7 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
       }
       
       // Gerar imagens faltantes
+      let creditsError = false;
       const results = await Promise.all(
         prompts.map(async (prompt, idx) => {
           const promptKey = `tooltip-${sectionId}-${idx}`;
@@ -114,6 +152,11 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
             return existingMap.get(promptKey)!;
           }
           
+          // Se já detectamos falta de créditos, usar fallback
+          if (creditsError) {
+            return FALLBACK_IMAGE;
+          }
+          
           const startTime = Date.now();
           try {
             const { data, error } = await supabase.functions.invoke('generate-image', {
@@ -121,6 +164,25 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
             });
             
             const generationTime = Date.now() - startTime;
+            
+            // Detectar erro 402 (sem créditos)
+            if (error?.message?.includes("402") || error?.message?.includes("Créditos insuficientes")) {
+              console.log("Créditos esgotados - marcando e usando fallback");
+              markCreditsExhausted();
+              creditsError = true;
+              setUsesFallback(true);
+              
+              await supabase.from('image_analytics').insert({
+                section_id: `tooltip-${sectionId}`,
+                prompt_key: promptKey,
+                success: false,
+                cached: false,
+                generation_time_ms: generationTime,
+                error_message: "Credits exhausted"
+              });
+              
+              return FALLBACK_IMAGE;
+            }
             
             if (error || !data?.imageUrl) {
               console.error("Erro ao gerar imagem:", error);
@@ -135,7 +197,7 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
                 error_message: error?.message || 'No image URL returned'
               });
               
-              return null;
+              return FALLBACK_IMAGE;
             }
             
             const imageUrl = data.imageUrl;
@@ -161,16 +223,24 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
             const generationTime = Date.now() - startTime;
             console.error("Erro ao gerar imagem:", error);
             
+            // Detectar erro 402 em exceptions também
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            if (errorMsg.includes("402") || errorMsg.includes("Créditos insuficientes")) {
+              markCreditsExhausted();
+              creditsError = true;
+              setUsesFallback(true);
+            }
+            
             await supabase.from('image_analytics').insert({
               section_id: `tooltip-${sectionId}`,
               prompt_key: promptKey,
               success: false,
               cached: false,
               generation_time_ms: generationTime,
-              error_message: error instanceof Error ? error.message : 'Unknown error'
+              error_message: errorMsg
             });
             
-            return null;
+            return FALLBACK_IMAGE;
           }
         })
       );
@@ -205,26 +275,33 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
   }
   
   return (
-    <Carousel
-      opts={{ loop: true }}
-      plugins={[Autoplay({ delay: 4000 })]}
-      className="w-full"
-    >
-      <CarouselContent>
-        {images.map((img, index) => (
-          <CarouselItem key={index}>
-            <div className="aspect-video rounded-lg overflow-hidden bg-muted/10">
-              <img 
-                src={img} 
-                alt={`Ilustração ${index + 1}`}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-      <CarouselPrevious className="left-2" />
-      <CarouselNext className="right-2" />
-    </Carousel>
+    <div className="w-full">
+      {usesFallback && (
+        <div className="mb-2 text-xs text-muted-foreground text-center opacity-75">
+          <p>Imagens temporárias (créditos esgotados)</p>
+        </div>
+      )}
+      <Carousel
+        opts={{ loop: true }}
+        plugins={[Autoplay({ delay: 4000 })]}
+        className="w-full"
+      >
+        <CarouselContent>
+          {images.map((img, index) => (
+            <CarouselItem key={index}>
+              <div className="aspect-video rounded-lg overflow-hidden bg-muted/10">
+                <img 
+                  src={img} 
+                  alt={`Ilustração ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <CarouselPrevious className="left-2" />
+        <CarouselNext className="right-2" />
+      </Carousel>
+    </div>
   );
 };
