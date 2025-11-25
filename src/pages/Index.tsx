@@ -100,6 +100,7 @@ const Index = () => {
           title="A Era da Conectividade"
           subtitle="Anos 1990-2000"
           reverse
+          quote="A internet não apenas encurtou distâncias geográficas; ela entrelaçou o destino da humanidade em uma única rede pulsante."
         >
           <p className="text-lg leading-relaxed">
             A Internet democratizou o acesso à informação e transformou completamente
@@ -119,6 +120,7 @@ const Index = () => {
           id="tech-sem-proposito"
           title="O Hype Tecnológico"
           subtitle="Anos 2020-2022"
+          quote="Sem um propósito claro, a inovação deixa de ser uma ferramenta de progresso e se torna apenas uma distração sofisticada."
         >
           <p className="text-lg leading-relaxed">
             Nem toda inovação tecnológica encontra seu propósito. O Metaverso e os NFTs
@@ -139,6 +141,7 @@ const Index = () => {
           title="A Profecia de Kubrick"
           subtitle="1969 - 2001: Uma Odisseia no Espaço"
           reverse
+          quote="Agora que a ficção de 2001 se tornou realidade, o mistério não é mais a capacidade da máquina, mas a intenção humana por trás dela."
         >
           <p className="text-lg leading-relaxed">
             Em 1969, Stanley Kubrick nos apresentou HAL 9000, uma IA que não apenas
@@ -158,6 +161,7 @@ const Index = () => {
           id="watson"
           title="Watson: A Era da Cognição"
           subtitle="2004 - IBM Watson"
+          quote="Ao ensinar uma máquina a ler nuances, descobrimos que a verdadeira inteligência não está em dar respostas, mas em compreender as perguntas."
         >
           <p className="text-lg leading-relaxed">
             O IBM Watson marcou o início da era cognitiva, demonstrando que máquinas
@@ -179,6 +183,7 @@ const Index = () => {
           title="A Nova Era da IA"
           subtitle="2022 - Presente"
           reverse
+          quote="Ao democratizar a inteligência, não estamos apenas atualizando o software do mundo, mas reescrevendo o potencial de cada ser humano."
         >
           <p className="text-lg leading-relaxed">
             Com o ChatGPT e modelos similares, entramos em uma nova era onde a
@@ -272,8 +277,21 @@ const Index = () => {
         </Section>
       </ParallaxSection>
 
+      {/* Legado de Turing */}
+      <section className="py-16 border-t border-border/50">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center space-y-6">
+            <h2 className="text-3xl md:text-4xl font-bold text-gradient">O Legado de Turing</h2>
+            <blockquote className="text-xl md:text-2xl italic text-muted-foreground leading-relaxed">
+              "Muito antes de falarmos com computadores, ele ousou perguntar se eles poderiam pensar. Decifrar o Enigma venceu a guerra, mas o 'Jogo da Imitação' venceu o tempo."
+            </blockquote>
+            <p className="text-xs text-muted-foreground/60">by Fernando Arbache</p>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="py-16 border-t border-border/50 mt-8">
+      <footer className="py-16 border-t border-border/50">
         <div className="container mx-auto px-4">
           <div className="relative">
             <div className="text-center space-y-4">
