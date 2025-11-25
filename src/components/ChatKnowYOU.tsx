@@ -496,6 +496,18 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
             </Button>
           </div>
         )}
+        
+        {/* Typing indicator */}
+        {input.trim() && !isLoading && (
+          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground animate-fade-in">
+            <div className="flex gap-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <span>Digitando...</span>
+          </div>
+        )}
       </form>
 
       {/* Medical Image Dialog - only for embedded */}
