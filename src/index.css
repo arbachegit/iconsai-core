@@ -69,9 +69,10 @@ All colors MUST be HSL.
     overscroll-behavior: none;
   }
 
-  html {
+  /* Temporarily disabled to test scroll issues */
+  /* html {
     scroll-behavior: smooth;
-  }
+  } */
 }
 
 @layer utilities {
@@ -141,14 +142,15 @@ All colors MUST be HSL.
   .animate-ping, .animate-pulse, .animate-bounce-subtle {
     contain: layout;
   }
-}
 
-@layer base {
-  * {
-    @apply border-border;
+  /* Conter TODAS as animações Tailwind que podem causar overflow */
+  [class*="animate-"] {
+    contain: layout style;
+    will-change: transform, opacity;
   }
 
-  body {
-    @apply bg-background text-foreground;
+  /* Prevenir que elementos fixos causem overflow */
+  .fixed {
+    contain: layout;
   }
 }
