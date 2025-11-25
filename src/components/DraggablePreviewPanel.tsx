@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Play, Square, Download } from "lucide-react";
+import { X, Play, Square, Download, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useTooltipContent } from "@/hooks/useTooltipContent";
 import { useToast } from "@/hooks/use-toast";
-import { AudioStreamPlayer } from "@/lib/audio-player";
+import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { TooltipImageCarousel } from "./TooltipImageCarousel";
 
 interface DraggablePreviewPanelProps {
@@ -28,13 +28,14 @@ export const DraggablePreviewPanel = ({
   sectionId,
   onClose,
 }: DraggablePreviewPanelProps) => {
-  const { content, isLoading } = useTooltipContent(sectionId);
+  const { content, isLoading, updateContent } = useTooltipContent(sectionId);
   const { toast } = useToast();
   
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   
@@ -90,33 +91,54 @@ export const DraggablePreviewPanel = ({
   }, [isDragging, dragOffset]);
 
   const handlePlayAudio = async () => {
-    if (!content?.audio_url) {
+    if (!audioPlayerRef.current) return;
+
+    try {
+      if (isPlaying) {
+        await audioPlayerRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        // Check if audio URL exists, if not generate it
+        let audioUrl = content?.audio_url;
+        
+        if (!audioUrl && content?.content) {
+          setIsGeneratingAudio(true);
+          try {
+            audioUrl = await generateAudioUrl(content.content);
+            
+            // Save to database cache
+            await updateContent({ audio_url: audioUrl });
+            
+            toast({
+              title: "Áudio gerado",
+              description: "O áudio foi gerado e salvo com sucesso.",
+            });
+          } catch (error) {
+            console.error("Error generating audio:", error);
+            toast({
+              title: "Erro ao gerar áudio",
+              description: "Não foi possível gerar o áudio. Tente novamente.",
+              variant: "destructive",
+            });
+            setIsGeneratingAudio(false);
+            return;
+          } finally {
+            setIsGeneratingAudio(false);
+          }
+        }
+        
+        if (audioUrl) {
+          await audioPlayerRef.current.playAudioFromUrl(audioUrl);
+          setIsPlaying(true);
+        }
+      }
+    } catch (error) {
+      console.error("Error playing audio:", error);
       toast({
-        title: "Áudio não disponível",
-        description: "Este tooltip ainda não possui áudio.",
+        title: "Erro ao reproduzir áudio",
+        description: "Não foi possível reproduzir o áudio. Tente novamente.",
         variant: "destructive",
       });
-      return;
-    }
-
-    if (isPlaying) {
-      audioPlayerRef.current?.stop();
-      setIsPlaying(false);
-      setAudioProgress(0);
-    } else {
-      try {
-        setIsPlaying(true);
-        await audioPlayerRef.current?.playAudioFromUrl(content.audio_url);
-        setIsPlaying(false);
-      } catch (error) {
-        console.error("Erro ao reproduzir:", error);
-        setIsPlaying(false);
-        toast({
-          title: "Erro ao reproduzir",
-          description: "Não foi possível reproduzir o áudio.",
-          variant: "destructive",
-        });
-      }
     }
   };
 
@@ -196,18 +218,32 @@ export const DraggablePreviewPanel = ({
                 variant="outline"
                 size="sm"
                 onClick={handlePlayAudio}
-                disabled={!content?.audio_url}
+                disabled={isGeneratingAudio}
                 className="gap-2"
               >
-                <Play className="w-4 h-4" />
-                {isPlaying ? "Pausar" : "Play"}
+                {isGeneratingAudio ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Gerando...
+                  </>
+                ) : isPlaying ? (
+                  <>
+                    <Square className="w-4 h-4" />
+                    Pausar
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    {content?.audio_url ? 'Play' : 'Gerar e Reproduzir'}
+                  </>
+                )}
               </Button>
               
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleStopAudio}
-                disabled={!content?.audio_url}
+                disabled={!content?.audio_url || isGeneratingAudio}
                 className="gap-2"
               >
                 <Square className="w-4 h-4" />
@@ -218,7 +254,7 @@ export const DraggablePreviewPanel = ({
                 variant="outline"
                 size="sm"
                 onClick={handleDownloadAudio}
-                disabled={!content?.audio_url}
+                disabled={!content?.audio_url || isGeneratingAudio}
                 className="gap-2"
               >
                 <Download className="w-4 h-4" />
