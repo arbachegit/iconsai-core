@@ -14,6 +14,8 @@ export interface Message {
   showMap?: boolean;
   coordinates?: { lat: number; lng: number };
   hospitalName?: string;
+  voiceMessageUrl?: string;
+  voiceMessageDuration?: number;
 }
 
 const STORAGE_KEY = "knowyou_chat_history";
@@ -355,6 +357,68 @@ export function useChatKnowYOU() {
     [messages, isGeneratingImage, toast, saveHistory]
   );
 
+  const sendVoiceMessage = useCallback(
+    async (audioBlob: Blob) => {
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        
+        // Generate unique filename
+        const fileName = `voice-${Date.now()}.webm`;
+        
+        // Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('voice-messages')
+          .upload(fileName, audioBlob, {
+            contentType: 'audio/webm;codecs=opus',
+            cacheControl: '3600',
+          });
+
+        if (uploadError) {
+          console.error('Erro ao fazer upload da mensagem de voz:', uploadError);
+          toast({
+            title: "Erro ao enviar mensagem de voz",
+            description: "Não foi possível fazer upload do áudio.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('voice-messages')
+          .getPublicUrl(fileName);
+
+        // Calculate duration (approximate based on blob size)
+        const estimatedDuration = Math.round(audioBlob.size / 16000); // Rough estimate
+
+        // Create user message with voice
+        const userMessage: Message = {
+          role: "user",
+          content: "[Mensagem de voz]",
+          timestamp: new Date(),
+          voiceMessageUrl: publicUrl,
+          voiceMessageDuration: estimatedDuration,
+        };
+
+        const updatedMessages = [...messages, userMessage];
+        setMessages(updatedMessages);
+        saveHistory(updatedMessages);
+
+        // Send text indication to AI
+        await sendMessage("[Usuário enviou uma mensagem de voz - responda de forma contextual]");
+        
+      } catch (error) {
+        console.error('Erro ao processar mensagem de voz:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível processar a mensagem de voz.",
+          variant: "destructive",
+        });
+      }
+    },
+    [messages, toast, saveHistory, sendMessage]
+  );
+
   return {
     messages,
     isLoading,
@@ -367,6 +431,7 @@ export function useChatKnowYOU() {
     playbackRate,
     suggestions,
     sendMessage,
+    sendVoiceMessage,
     clearHistory,
     playAudio,
     pauseAudio,

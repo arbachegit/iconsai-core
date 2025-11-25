@@ -3,11 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Send, Loader2, Play, Pause, Square, Download, ImagePlus, Mic, MicOff } from "lucide-react";
+import { Send, Loader2, Play, Pause, Square, Download, ImagePlus, Mic, MicOff, X, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import HospitalMap from "@/components/HospitalMap";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { VoiceMessagePlayer } from "@/components/VoiceMessagePlayer";
 import { cn } from "@/lib/utils";
 
 export default function ChatKnowYOU() {
@@ -22,7 +24,8 @@ export default function ChatKnowYOU() {
     audioDuration,
     playbackRate,
     suggestions, 
-    sendMessage, 
+    sendMessage,
+    sendVoiceMessage,
     clearHistory,
     playAudio,
     pauseAudio,
@@ -47,6 +50,16 @@ export default function ChatKnowYOU() {
     stopListening,
     resetTranscript,
   } = useSpeechRecognition();
+
+  const {
+    isRecording,
+    recordingDuration,
+    audioBlob,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+    isSupported: isRecorderSupported,
+  } = useVoiceRecorder();
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -109,6 +122,21 @@ export default function ChatKnowYOU() {
     }
   };
 
+  const handleStartRecording = async () => {
+    await startRecording();
+  };
+
+  const handleSendVoiceMessage = async () => {
+    if (audioBlob) {
+      await sendVoiceMessage(audioBlob);
+      stopRecording();
+    }
+  };
+
+  const handleCancelRecording = () => {
+    cancelRecording();
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl border border-primary/20 shadow-xl overflow-hidden">
       {/* Header */}
@@ -167,14 +195,25 @@ export default function ChatKnowYOU() {
                         />
                       </DialogContent>
                     </Dialog>
-                  )}
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                  <span className="text-xs opacity-70 block mt-2">
-                    {msg.timestamp.toLocaleTimeString("pt-BR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+                   )}
+                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                   
+                   {/* Voice message player for user messages */}
+                   {msg.role === "user" && msg.voiceMessageUrl && (
+                     <div className="mt-2">
+                       <VoiceMessagePlayer
+                         audioUrl={msg.voiceMessageUrl}
+                         duration={msg.voiceMessageDuration}
+                       />
+                     </div>
+                   )}
+                   
+                   <span className="text-xs opacity-70 block mt-2">
+                     {msg.timestamp.toLocaleTimeString("pt-BR", {
+                       hour: "2-digit",
+                       minute: "2-digit",
+                     })}
+                   </span>
                   
                   {msg.role === "assistant" && msg.audioUrl && (
                     <div className="mt-3 pt-3 border-t border-border/30 space-y-2">
@@ -302,112 +341,180 @@ export default function ChatKnowYOU() {
 
       {/* Input Area */}
       <form onSubmit={handleSubmit} className="p-6 border-t border-border/50">
-        <div className="flex gap-3">
-          <div className="flex-1 space-y-3">
-            <div className="relative">
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit(e);
-                  }
-                }}
-                placeholder={isListening ? "Ouvindo..." : "Digite sua mensagem sobre saúde..."}
-                className={cn(
-                  "min-h-[60px] resize-none pr-12",
-                  isListening && "border-primary ring-2 ring-primary/20"
-                )}
-                disabled={isLoading}
-              />
-              {isSpeechSupported && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleVoiceToggle}
+        {/* Voice Recording UI */}
+        {isRecording ? (
+          <div className="space-y-4 bg-muted/50 p-4 rounded-lg border border-primary/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded-full bg-destructive animate-pulse" />
+                <span className="text-sm font-medium">Gravando...</span>
+                <span className="text-sm text-muted-foreground">
+                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+            </div>
+            
+            {/* Animated waveform */}
+            <div className="flex items-center justify-center gap-1 h-16">
+              {[...Array(20)].map((_, i) => (
+                <div
+                  key={i}
+                  className="w-1 bg-primary rounded-full animate-pulse"
+                  style={{
+                    height: `${20 + Math.random() * 60}%`,
+                    animationDelay: `${i * 50}ms`,
+                    animationDuration: `${500 + Math.random() * 500}ms`,
+                  }}
+                />
+              ))}
+            </div>
+            
+            <div className="flex gap-2 justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancelRecording}
+                className="gap-2"
+              >
+                <X className="w-4 h-4" />
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSendVoiceMessage}
+                className="gap-2"
+              >
+                <Check className="w-4 h-4" />
+                Enviar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-3">
+            <div className="flex-1 space-y-3">
+              <div className="relative">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
+                  placeholder={isListening ? "Ouvindo..." : "Digite sua mensagem sobre saúde..."}
                   className={cn(
-                    "absolute right-2 top-2 h-8 w-8",
-                    isListening && "text-primary animate-pulse"
+                    "min-h-[60px] resize-none pr-24",
+                    isListening && "border-primary ring-2 ring-primary/20"
                   )}
                   disabled={isLoading}
-                >
-                  {isListening ? (
-                    <MicOff className="w-4 h-4" />
-                  ) : (
-                    <Mic className="w-4 h-4" />
+                />
+                <div className="absolute right-2 top-2 flex gap-1">
+                  {/* Voice transcription button */}
+                  {isSpeechSupported && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleVoiceToggle}
+                      className={cn(
+                        "h-8 w-8",
+                        isListening && "text-primary animate-pulse"
+                      )}
+                      disabled={isLoading}
+                    >
+                      {isListening ? (
+                        <MicOff className="w-4 h-4" />
+                      ) : (
+                        <Mic className="w-4 h-4" />
+                      )}
+                    </Button>
                   )}
-                </Button>
-              )}
-            </div>
-            <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={isGeneratingImage}
-                  className="w-full"
-                >
-                  <ImagePlus className="w-4 h-4 mr-2" />
-                  Gerar Imagem Educativa
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Gerar Imagem sobre Saúde</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Descreva o tema de saúde que você gostaria de visualizar em uma imagem educativa.
-                    </p>
-                  </div>
-                  <Textarea
-                    value={imagePrompt}
-                    onChange={(e) => setImagePrompt(e.target.value)}
-                    placeholder="Ex: Anatomia do coração humano, processo de cicatrização, etc."
-                    className="min-h-[100px]"
-                  />
+                  
+                  {/* Voice recording button */}
+                  {isRecorderSupported && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleStartRecording}
+                      className="h-8 w-8"
+                      disabled={isLoading}
+                      title="Gravar mensagem de voz"
+                    >
+                      <Mic className="w-4 h-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+                <DialogTrigger asChild>
                   <Button
-                    onClick={handleGenerateImage}
-                    disabled={!imagePrompt.trim() || isGeneratingImage}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isGeneratingImage}
                     className="w-full"
                   >
-                    {isGeneratingImage ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Gerando...
-                      </>
-                    ) : (
-                      <>
-                        <ImagePlus className="w-4 h-4 mr-2" />
-                        Gerar Imagem
-                      </>
-                    )}
+                    <ImagePlus className="w-4 h-4 mr-2" />
+                    Gerar Imagem Educativa
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Gerar Imagem sobre Saúde</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Descreva o tema de saúde que você gostaria de visualizar em uma imagem educativa.
+                      </p>
+                    </div>
+                    <Textarea
+                      value={imagePrompt}
+                      onChange={(e) => setImagePrompt(e.target.value)}
+                      placeholder="Ex: Anatomia do coração humano, processo de cicatrização, etc."
+                      className="min-h-[100px]"
+                    />
+                    <Button
+                      onClick={handleGenerateImage}
+                      disabled={!imagePrompt.trim() || isGeneratingImage}
+                      className="w-full"
+                    >
+                      {isGeneratingImage ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Gerando...
+                        </>
+                      ) : (
+                        <>
+                          <ImagePlus className="w-4 h-4 mr-2" />
+                          Gerar Imagem
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!input.trim() || isLoading}
+              className="h-[60px] w-[60px] rounded-xl flex-shrink-0"
+            >
+              <Send className="w-5 h-5" />
+            </Button>
           </div>
-          <Button
-            type="submit"
-            size="icon"
-            disabled={!input.trim() || isLoading}
-            className="h-[60px] w-[60px] rounded-xl flex-shrink-0"
-          >
-            <Send className="w-5 h-5" />
-          </Button>
-        </div>
+        )}
         <div className="flex items-center justify-between mt-2">
           <p className="text-xs text-muted-foreground">
             Pressione Enter para enviar • Shift+Enter para nova linha
           </p>
-          {isSpeechSupported && (
+          {isSpeechSupported && !isRecording && (
             <p className="text-xs text-muted-foreground">
               {isListening ? (
                 <span className="text-primary font-medium">🎤 Gravando...</span>
               ) : (
-                <span>Clique no 🎤 para falar</span>
+                <span>Clique no 🎤 para falar ou gravar</span>
               )}
             </p>
           )}
