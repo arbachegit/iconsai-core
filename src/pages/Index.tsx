@@ -15,7 +15,7 @@ const Index = () => {
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden relative">
       <Header />
       <HeroSection />
 
