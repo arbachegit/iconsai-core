@@ -22,6 +22,9 @@ export function useChatKnowYOU() {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [currentlyPlayingIndex, setCurrentlyPlayingIndex] = useState<number | null>(null);
   const [isAudioPaused, setIsAudioPaused] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
   const [suggestions, setSuggestions] = useState<string[]>([
     "O que é telemedicina?",
     "Como prevenir doenças crônicas?",
@@ -33,6 +36,14 @@ export function useChatKnowYOU() {
   const { toast } = useToast();
   const { settings } = useAdminSettings();
   const { createSession, updateSession } = useChatAnalytics();
+
+  // Configure progress callback
+  useEffect(() => {
+    audioPlayerRef.current.setProgressCallback((progress, duration) => {
+      setAudioProgress(progress);
+      setAudioDuration(duration);
+    });
+  }, []);
 
   // Carregar histórico do localStorage
   useEffect(() => {
@@ -264,6 +275,11 @@ export function useChatKnowYOU() {
     document.body.removeChild(link);
   }, [messages]);
 
+  const changePlaybackRate = useCallback((rate: number) => {
+    audioPlayerRef.current.setPlaybackRate(rate);
+    setPlaybackRate(rate);
+  }, []);
+
   const generateImage = useCallback(
     async (prompt: string) => {
       if (!prompt.trim() || isGeneratingImage) return;
@@ -320,6 +336,9 @@ export function useChatKnowYOU() {
     isGeneratingImage,
     currentlyPlayingIndex,
     isAudioPaused,
+    audioProgress,
+    audioDuration,
+    playbackRate,
     suggestions,
     sendMessage,
     clearHistory,
@@ -328,6 +347,7 @@ export function useChatKnowYOU() {
     resumeAudio,
     stopAudio,
     downloadAudio,
+    changePlaybackRate,
     generateImage,
   };
 }
