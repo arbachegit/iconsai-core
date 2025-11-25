@@ -102,7 +102,7 @@ export const useYouTubeCache = (category: string) => {
         setVideos(cached.videos);
       }
     } catch (error: any) {
-      console.error('❌ Erro ao buscar vídeos da API:', error);
+      console.log('⚠️ Erro ao buscar vídeos da API (usando fallback):', error?.message || error);
       
       // 3. Se falhou, tentar usar cache mesmo que expirado
       if (cached && cached.videos.length > 0) {
@@ -118,12 +118,9 @@ export const useYouTubeCache = (category: string) => {
           });
         }
       } else {
-        // Sem cache disponível
-        toast({
-          title: "Erro ao carregar vídeos",
-          description: "Não foi possível carregar os vídeos do YouTube.",
-          variant: "destructive",
-        });
+        // Sem cache disponível - não mostrar erro destrutivo, apenas log silencioso
+        console.log('ℹ️ Nenhum cache disponível para fallback');
+        setVideos([]); // Garantir que videos seja array vazio
       }
     } finally {
       setLoading(false);
