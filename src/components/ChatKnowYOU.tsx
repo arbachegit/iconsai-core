@@ -469,19 +469,22 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
               {variant === "embedded" && (
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
+                  variant="default"
+                  size="default"
                   onClick={() => setShowImageDialog(true)}
                   disabled={isLoading || isGeneratingImage}
-                  className="w-full mt-2"
+                  className="w-full mt-3 bg-gradient-to-r from-primary via-secondary to-accent hover:opacity-90 transition-opacity shadow-lg shadow-primary/30 font-semibold text-base py-6"
                 >
                   {isGeneratingImage ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                       Gerando imagem...
                     </>
                   ) : (
-                    "🩺 Desenhar Imagem Médica"
+                    <>
+                      <span className="text-xl mr-2">🩺</span>
+                      Desenhar Imagem Médica
+                    </>
                   )}
                 </Button>
               )}
