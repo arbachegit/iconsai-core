@@ -77,6 +77,66 @@ export type Database = {
         }
         Relationships: []
       }
+      generated_images: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_url: string
+          prompt_key: string
+          section_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_url: string
+          prompt_key: string
+          section_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_url?: string
+          prompt_key?: string
+          section_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      image_analytics: {
+        Row: {
+          cached: boolean
+          created_at: string | null
+          error_message: string | null
+          generation_time_ms: number | null
+          id: string
+          prompt_key: string
+          section_id: string
+          success: boolean
+        }
+        Insert: {
+          cached?: boolean
+          created_at?: string | null
+          error_message?: string | null
+          generation_time_ms?: number | null
+          id?: string
+          prompt_key: string
+          section_id: string
+          success: boolean
+        }
+        Update: {
+          cached?: boolean
+          created_at?: string | null
+          error_message?: string | null
+          generation_time_ms?: number | null
+          id?: string
+          prompt_key?: string
+          section_id?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       tooltip_contents: {
         Row: {
           audio_url: string | null
