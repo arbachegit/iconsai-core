@@ -4,6 +4,7 @@ import Section from "@/components/Section";
 import { ChatKnowYOU } from "@/components/ChatKnowYOU";
 import { MediaCarousel } from "@/components/MediaCarousel";
 import DigitalExclusionSection from "@/components/DigitalExclusionSection";
+import { ParallaxSection } from "@/components/ParallaxSection";
 import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -72,152 +73,167 @@ const Index = () => {
       <HeroSection />
 
       {/* Section 1: Software */}
-      <Section
-        id="software"
-        title="A Primeira Revolução"
-        subtitle="Anos 1940-1980"
-        priority
-      >
-        <p className="text-lg leading-relaxed">
-          O software representou a primeira grande comunicação entre humanos e máquinas.
-          Através de linguagens de programação, conseguimos instruir computadores a
-          executar tarefas complexas. Era uma comunicação rígida, técnica, acessível
-          apenas a especialistas.
-        </p>
-        <p className="text-lg leading-relaxed mt-4">
-          Essa era marcou o início da transformação digital, estabelecendo as bases
-          para todas as revoluções tecnológicas que viriam a seguir.
-        </p>
-      </Section>
+      <ParallaxSection speed={0.12}>
+        <Section
+          id="software"
+          title="A Primeira Revolução"
+          subtitle="Anos 1940-1980"
+          priority
+        >
+          <p className="text-lg leading-relaxed">
+            O software representou a primeira grande comunicação entre humanos e máquinas.
+            Através de linguagens de programação, conseguimos instruir computadores a
+            executar tarefas complexas. Era uma comunicação rígida, técnica, acessível
+            apenas a especialistas.
+          </p>
+          <p className="text-lg leading-relaxed mt-4">
+            Essa era marcou o início da transformação digital, estabelecendo as bases
+            para todas as revoluções tecnológicas que viriam a seguir.
+          </p>
+        </Section>
+      </ParallaxSection>
 
       {/* Section 2: Internet */}
-      <Section
-        id="internet"
-        title="A Era da Conectividade"
-        subtitle="Anos 1990-2000"
-        reverse
-      >
-        <p className="text-lg leading-relaxed">
-          A Internet democratizou o acesso à informação e transformou completamente
-          a forma como nos comunicamos. De repente, o mundo inteiro estava conectado,
-          compartilhando conhecimento em escala global.
-        </p>
-        <p className="text-lg leading-relaxed mt-4">
-          Esta revolução não apenas conectou computadores, mas conectou pessoas,
-          culturas e ideias de maneiras nunca antes imaginadas.
-        </p>
-      </Section>
+      <ParallaxSection speed={0.15}>
+        <Section
+          id="internet"
+          title="A Era da Conectividade"
+          subtitle="Anos 1990-2000"
+          reverse
+        >
+          <p className="text-lg leading-relaxed">
+            A Internet democratizou o acesso à informação e transformou completamente
+            a forma como nos comunicamos. De repente, o mundo inteiro estava conectado,
+            compartilhando conhecimento em escala global.
+          </p>
+          <p className="text-lg leading-relaxed mt-4">
+            Esta revolução não apenas conectou computadores, mas conectou pessoas,
+            culturas e ideias de maneiras nunca antes imaginadas.
+          </p>
+        </Section>
+      </ParallaxSection>
 
       {/* Section 3: Tecnologias Sem Propósito */}
-      <Section
-        id="tech-sem-proposito"
-        title="O Hype Tecnológico"
-        subtitle="Anos 2020-2022"
-      >
-        <p className="text-lg leading-relaxed">
-          Nem toda inovação tecnológica encontra seu propósito. O Metaverso e os NFTs
-          prometeram revolucionar o mundo digital, mas faltou-lhes aplicação prática
-          e valor real para os usuários.
-        </p>
-        <p className="text-lg leading-relaxed mt-4">
-          Esta fase nos ensinou lições valiosas sobre a diferença entre inovação
-          tecnológica e inovação com propósito real para a sociedade.
-        </p>
-      </Section>
+      <ParallaxSection speed={0.18}>
+        <Section
+          id="tech-sem-proposito"
+          title="O Hype Tecnológico"
+          subtitle="Anos 2020-2022"
+        >
+          <p className="text-lg leading-relaxed">
+            Nem toda inovação tecnológica encontra seu propósito. O Metaverso e os NFTs
+            prometeram revolucionar o mundo digital, mas faltou-lhes aplicação prática
+            e valor real para os usuários.
+          </p>
+          <p className="text-lg leading-relaxed mt-4">
+            Esta fase nos ensinou lições valiosas sobre a diferença entre inovação
+            tecnológica e inovação com propósito real para a sociedade.
+          </p>
+        </Section>
+      </ParallaxSection>
 
       {/* Section 4: 1969 Kubrick */}
-      <Section
-        id="kubrick"
-        title="A Profecia de Kubrick"
-        subtitle="1969 - 2001: Uma Odisseia no Espaço"
-        reverse
-      >
-        <p className="text-lg leading-relaxed">
-          Em 1969, Stanley Kubrick nos apresentou HAL 9000, uma IA que não apenas
-          processava comandos, mas conversava, entendia contexto e tinha personalidade.
-          Foi um presságio impressionante do futuro que estamos vivendo hoje.
-        </p>
-        <p className="text-lg leading-relaxed mt-4">
-          O que parecia ficção científica há 50 anos, tornou-se realidade com o
-          advento dos grandes modelos de linguagem e assistentes de IA conversacionais.
-        </p>
-      </Section>
+      <ParallaxSection speed={0.14}>
+        <Section
+          id="kubrick"
+          title="A Profecia de Kubrick"
+          subtitle="1969 - 2001: Uma Odisseia no Espaço"
+          reverse
+        >
+          <p className="text-lg leading-relaxed">
+            Em 1969, Stanley Kubrick nos apresentou HAL 9000, uma IA que não apenas
+            processava comandos, mas conversava, entendia contexto e tinha personalidade.
+            Foi um presságio impressionante do futuro que estamos vivendo hoje.
+          </p>
+          <p className="text-lg leading-relaxed mt-4">
+            O que parecia ficção científica há 50 anos, tornou-se realidade com o
+            advento dos grandes modelos de linguagem e assistentes de IA conversacionais.
+          </p>
+        </Section>
+      </ParallaxSection>
 
       {/* Section 5: Watson */}
-      <Section
-        id="watson"
-        title="Watson: A Era da Cognição"
-        subtitle="2004 - IBM Watson"
-      >
-        <p className="text-lg leading-relaxed">
-          O IBM Watson marcou o início da era cognitiva, demonstrando que máquinas
-          poderiam não apenas processar dados, mas compreender linguagem natural,
-          raciocinar e aprender.
-        </p>
-        <p className="text-lg leading-relaxed mt-4">
-          Sua vitória no Jeopardy! em 2011 foi um marco histórico, provando que a
-          IA poderia competir com humanos em tarefas que requerem conhecimento amplo
-          e compreensão contextual.
-        </p>
-      </Section>
+      <ParallaxSection speed={0.16}>
+        <Section
+          id="watson"
+          title="Watson: A Era da Cognição"
+          subtitle="2004 - IBM Watson"
+        >
+          <p className="text-lg leading-relaxed">
+            O IBM Watson marcou o início da era cognitiva, demonstrando que máquinas
+            poderiam não apenas processar dados, mas compreender linguagem natural,
+            raciocinar e aprender.
+          </p>
+          <p className="text-lg leading-relaxed mt-4">
+            Sua vitória no Jeopardy! em 2011 foi um marco histórico, provando que a
+            IA poderia competir com humanos em tarefas que requerem conhecimento amplo
+            e compreensão contextual.
+          </p>
+        </Section>
+      </ParallaxSection>
 
       {/* Section 6: IA Nova Era */}
-      <Section
-        id="ia-nova-era"
-        title="A Nova Era da IA"
-        subtitle="2022 - Presente"
-        reverse
-      >
-        <p className="text-lg leading-relaxed">
-          Com o ChatGPT e modelos similares, entramos em uma nova era onde a
-          comunicação com máquinas é natural, fluida e acessível a todos. A barreira
-          técnica foi eliminada.
-        </p>
-        <p className="text-lg leading-relaxed mt-4">
-          Agora, qualquer pessoa pode conversar com uma IA como conversaria com um
-          especialista humano, abrindo possibilidades infinitas em educação, saúde,
-          negócios e muito mais.
-        </p>
-      </Section>
+      <ParallaxSection speed={0.13}>
+        <Section
+          id="ia-nova-era"
+          title="A Nova Era da IA"
+          subtitle="2022 - Presente"
+          reverse
+        >
+          <p className="text-lg leading-relaxed">
+            Com o ChatGPT e modelos similares, entramos em uma nova era onde a
+            comunicação com máquinas é natural, fluida e acessível a todos. A barreira
+            técnica foi eliminada.
+          </p>
+          <p className="text-lg leading-relaxed mt-4">
+            Agora, qualquer pessoa pode conversar com uma IA como conversaria com um
+            especialista humano, abrindo possibilidades infinitas em educação, saúde,
+            negócios e muito mais.
+          </p>
+        </Section>
+      </ParallaxSection>
 
       {/* Section 7: KnowYOU - Interactive Chat */}
-      <Section
-        id="knowyou"
-        title="KnowYOU: Reskilling na Era da IA"
-        subtitle="Tecnologia Conversacional na Saúde"
-      >
-        <p className="text-lg leading-relaxed">
-          O problema da Cauda Longa de Gauss revela um desafio crítico: a maioria
-          das pessoas não sabe como comunicar-se efetivamente com IA. É aqui que
-          entra o KnowYOU.
-        </p>
-        <p className="text-lg leading-relaxed mt-4">
-          Nossa tecnologia conversacional foi especialmente desenvolvida para o setor
-          de saúde, tornando a comunicação com IA natural e produtiva para todos os
-          profissionais, independente de seu conhecimento técnico.
-        </p>
-        <div className="mt-8">
-          <ChatKnowYOU />
-        </div>
-        
-        {/* Media Carousel - Spotify & YouTube */}
-        <div className="mt-12">
-          <MediaCarousel />
-        </div>
+      <ParallaxSection speed={0.10}>
+        <Section
+          id="knowyou"
+          title="KnowYOU: Reskilling na Era da IA"
+          subtitle="Tecnologia Conversacional na Saúde"
+        >
+          <p className="text-lg leading-relaxed">
+            O problema da Cauda Longa de Gauss revela um desafio crítico: a maioria
+            das pessoas não sabe como comunicar-se efetivamente com IA. É aqui que
+            entra o KnowYOU.
+          </p>
+          <p className="text-lg leading-relaxed mt-4">
+            Nossa tecnologia conversacional foi especialmente desenvolvida para o setor
+            de saúde, tornando a comunicação com IA natural e produtiva para todos os
+            profissionais, independente de seu conhecimento técnico.
+          </p>
+          <div className="mt-8">
+            <ChatKnowYOU />
+          </div>
+          
+          {/* Media Carousel - Spotify & YouTube */}
+          <div className="mt-10">
+            <MediaCarousel />
+          </div>
 
-        {/* Nova Seção: Exclusão Digital */}
-        <div className="mt-8 mb-4">
-          <DigitalExclusionSection />
-        </div>
-      </Section>
+          {/* Nova Seção: Exclusão Digital */}
+          <div className="mt-8">
+            <DigitalExclusionSection />
+          </div>
+        </Section>
+      </ParallaxSection>
 
       {/* Section 8: Bom Prompt */}
-      <Section
-        id="bom-prompt"
-        title="A Arte do Bom Prompt"
-        subtitle="Comunicação Efetiva com IA"
-        reverse
-      >
+      <ParallaxSection speed={0.17}>
+        <Section
+          id="bom-prompt"
+          title="A Arte do Bom Prompt"
+          subtitle="Comunicação Efetiva com IA"
+          reverse
+        >
         <div className="relative">
           
           <p className="text-lg leading-relaxed">
@@ -253,10 +269,11 @@ const Index = () => {
             </div>
           </div>
         </div>
-      </Section>
+        </Section>
+      </ParallaxSection>
 
       {/* Footer */}
-      <footer className="py-12 border-t border-border/50">
+      <footer className="py-16 border-t border-border/50 mt-8">
         <div className="container mx-auto px-4">
           <div className="relative">
             <div className="text-center space-y-4">
