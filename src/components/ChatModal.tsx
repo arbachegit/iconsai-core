@@ -20,7 +20,7 @@ interface ChatModalProps {
 
 export const ChatModal = ({ open, onOpenChange }: ChatModalProps) => {
   const [chatKey, setChatKey] = useState(0);
-  const chatHook = useChatKnowYOU();
+  const chatHook = useChatKnowYOU({ chatType: "company" }); // Chat modal = dados da empresa
 
   const handleLoadConversation = (sessionId: string, messages: any[]) => {
     chatHook.loadConversation(sessionId, messages);
@@ -43,7 +43,7 @@ export const ChatModal = ({ open, onOpenChange }: ChatModalProps) => {
                 Converse com o KnowYOU
               </SheetTitle>
               <SheetDescription className="text-muted-foreground mt-1">
-                Seu assistente especializado em IA e saúde
+                Especializado em KnowRISK, ACC e conteúdo do site
               </SheetDescription>
             </div>
             <div className="flex items-center gap-2">

@@ -20,7 +20,12 @@ export interface Message {
 
 const STORAGE_KEY = "knowyou_chat_history";
 
-export function useChatKnowYOU() {
+interface UseChatKnowYOUProps {
+  chatType?: "health" | "company"; // Define o tipo de chat
+}
+
+export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
+  const chatType = props?.chatType || "health"; // Default: chat de saúde
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
@@ -125,6 +130,7 @@ export function useChatKnowYOU() {
       try {
         await streamChat({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          chatType, // Passa o tipo de chat para usar a edge function correta
           onDelta: (chunk) => updateAssistantMessage(chunk),
           onDone: async () => {
             const extractedSuggestions = extractSuggestions(fullResponse);

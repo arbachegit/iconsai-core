@@ -5,6 +5,7 @@ interface StreamChatOptions {
   onDelta: (deltaText: string) => void;
   onDone: () => void;
   onError?: (error: Error) => void;
+  chatType?: "health" | "company"; // "health" = chat de saúde embedded, "company" = chat modal KnowRISK
 }
 
 export async function streamChat({
@@ -12,8 +13,11 @@ export async function streamChat({
   onDelta,
   onDone,
   onError,
+  chatType = "health", // Default: chat de saúde
 }: StreamChatOptions) {
-  const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+  // Seleciona a edge function correta baseada no tipo de chat
+  const endpoint = chatType === "company" ? "chat" : "health-chat";
+  const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${endpoint}`;
 
   try {
     const resp = await fetch(CHAT_URL, {
