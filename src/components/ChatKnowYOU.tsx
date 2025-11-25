@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
 import { Send, Trash2, Loader2, Play, Pause, Square, Download, ImagePlus } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 
 export default function ChatKnowYOU() {
   const { 
@@ -14,6 +15,9 @@ export default function ChatKnowYOU() {
     isGeneratingImage,
     currentlyPlayingIndex,
     isAudioPaused,
+    audioProgress,
+    audioDuration,
+    playbackRate,
     suggestions, 
     sendMessage, 
     clearHistory,
@@ -22,12 +26,19 @@ export default function ChatKnowYOU() {
     resumeAudio,
     stopAudio,
     downloadAudio,
+    changePlaybackRate,
     generateImage,
   } = useChatKnowYOU();
   const [input, setInput] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -123,57 +134,89 @@ export default function ChatKnowYOU() {
                     </Dialog>
                   )}
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs opacity-70">
-                      {msg.timestamp.toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                    {msg.role === "assistant" && msg.audioUrl && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => {
-                            if (currentlyPlayingIndex === idx) {
-                              if (isAudioPaused) {
-                                resumeAudio();
+                  <span className="text-xs opacity-70 block mt-2">
+                    {msg.timestamp.toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  
+                  {msg.role === "assistant" && msg.audioUrl && (
+                    <div className="mt-3 pt-3 border-t border-border/30 space-y-2">
+                      {/* Control Buttons */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              if (currentlyPlayingIndex === idx) {
+                                if (isAudioPaused) {
+                                  resumeAudio();
+                                } else {
+                                  pauseAudio();
+                                }
                               } else {
-                                pauseAudio();
+                                playAudio(idx);
                               }
-                            } else {
-                              playAudio(idx);
-                            }
-                          }}
-                        >
-                          {currentlyPlayingIndex === idx && !isAudioPaused ? (
-                            <Pause className="w-4 h-4" />
-                          ) : (
-                            <Play className="w-4 h-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={stopAudio}
-                          disabled={currentlyPlayingIndex !== idx}
-                        >
-                          <Square className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => downloadAudio(idx)}
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
+                            }}
+                          >
+                            {currentlyPlayingIndex === idx && !isAudioPaused ? (
+                              <Pause className="w-4 h-4" />
+                            ) : (
+                              <Play className="w-4 h-4" />
+                            )}
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={stopAudio}
+                            disabled={currentlyPlayingIndex !== idx}
+                          >
+                            <Square className="w-3 h-3" />
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => downloadAudio(idx)}
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+
+                        {/* Playback Speed Controls */}
+                        <div className="flex items-center gap-1">
+                          {[0.5, 1, 1.5, 2].map((rate) => (
+                            <Button
+                              key={rate}
+                              variant={playbackRate === rate ? "default" : "ghost"}
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => changePlaybackRate(rate)}
+                            >
+                              {rate}x
+                            </Button>
+                          ))}
+                        </div>
                       </div>
-                    )}
-                  </div>
+
+                      {/* Progress Bar */}
+                      {currentlyPlayingIndex === idx && (
+                        <div className="space-y-1">
+                          <Progress value={audioProgress} className="h-1.5" />
+                          <div className="flex items-center justify-between text-xs opacity-70">
+                            <span>{formatTime((audioDuration * audioProgress) / 100)}</span>
+                            <span>{formatTime(audioDuration)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

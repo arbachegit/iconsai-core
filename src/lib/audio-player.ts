@@ -6,6 +6,7 @@ export class AudioStreamPlayer {
   private currentSource: AudioBufferSourceNode | null = null;
   private onProgressCallback?: (progress: number, duration: number) => void;
   private progressInterval?: number;
+  private playbackRate: number = 1.0;
 
   constructor() {
     // Initialize on user interaction
@@ -16,6 +17,17 @@ export class AudioStreamPlayer {
 
   setProgressCallback(callback: (progress: number, duration: number) => void) {
     this.onProgressCallback = callback;
+  }
+
+  setPlaybackRate(rate: number): void {
+    this.playbackRate = rate;
+    if (this.currentSource) {
+      this.currentSource.playbackRate.value = rate;
+    }
+  }
+
+  getPlaybackRate(): number {
+    return this.playbackRate;
   }
 
   async playAudioFromUrl(url: string): Promise<void> {
@@ -62,6 +74,7 @@ export class AudioStreamPlayer {
       
       this.currentSource = this.audioContext.createBufferSource();
       this.currentSource.buffer = audioBuffer;
+      this.currentSource.playbackRate.value = this.playbackRate;
       this.currentSource.connect(this.audioContext.destination);
       
       const startTime = this.audioContext.currentTime;
