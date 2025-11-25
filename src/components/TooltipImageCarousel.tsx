@@ -69,33 +69,107 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
     if (!inView) return;
     
     const generateImages = async () => {
-      const cacheKey = `tooltip-carousel-${sectionId}`;
-      const cached = localStorage.getItem(cacheKey);
-      
-      if (cached) {
-        setImages(JSON.parse(cached));
-        setIsLoading(false);
-        return;
-      }
-      
       const prompts = carouselPrompts[sectionId] || [];
       
-      // Geração paralela de imagens usando Promise.all
+      // Buscar imagens já geradas no banco
+      const { data: existingImages } = await supabase
+        .from('generated_images')
+        .select('prompt_key, image_url')
+        .eq('section_id', `tooltip-${sectionId}`);
+      
+      const existingMap = new Map(
+        existingImages?.map(img => [img.prompt_key, img.image_url]) || []
+      );
+      
+      // Se todas as imagens já existem, usar cache
+      if (existingImages && existingImages.length === prompts.length) {
+        const cachedImages = prompts
+          .map((_, idx) => existingMap.get(`tooltip-${sectionId}-${idx}`))
+          .filter((url): url is string => !!url);
+        
+        if (cachedImages.length === prompts.length) {
+          setImages(cachedImages);
+          setIsLoading(false);
+          
+          // Registrar analytics de cache hit
+          prompts.forEach((_, idx) => {
+            supabase.from('image_analytics').insert({
+              section_id: `tooltip-${sectionId}`,
+              prompt_key: `tooltip-${sectionId}-${idx}`,
+              success: true,
+              cached: true,
+            });
+          });
+          return;
+        }
+      }
+      
+      // Gerar imagens faltantes
       const results = await Promise.all(
-        prompts.map(async (prompt) => {
+        prompts.map(async (prompt, idx) => {
+          const promptKey = `tooltip-${sectionId}-${idx}`;
+          
+          // Usar cache se disponível
+          if (existingMap.has(promptKey)) {
+            return existingMap.get(promptKey)!;
+          }
+          
+          const startTime = Date.now();
           try {
             const { data, error } = await supabase.functions.invoke('generate-image', {
               body: { prompt }
             });
             
-            if (error) {
+            const generationTime = Date.now() - startTime;
+            
+            if (error || !data?.imageUrl) {
               console.error("Erro ao gerar imagem:", error);
+              
+              // Registrar erro
+              await supabase.from('image_analytics').insert({
+                section_id: `tooltip-${sectionId}`,
+                prompt_key: promptKey,
+                success: false,
+                cached: false,
+                generation_time_ms: generationTime,
+                error_message: error?.message || 'No image URL returned'
+              });
+              
               return null;
             }
             
-            return data?.imageUrl || null;
+            const imageUrl = data.imageUrl;
+            
+            // Salvar no banco
+            await supabase.from('generated_images').insert({
+              section_id: `tooltip-${sectionId}`,
+              prompt_key: promptKey,
+              image_url: imageUrl,
+            });
+            
+            // Registrar analytics
+            await supabase.from('image_analytics').insert({
+              section_id: `tooltip-${sectionId}`,
+              prompt_key: promptKey,
+              success: true,
+              cached: false,
+              generation_time_ms: generationTime,
+            });
+            
+            return imageUrl;
           } catch (error) {
+            const generationTime = Date.now() - startTime;
             console.error("Erro ao gerar imagem:", error);
+            
+            await supabase.from('image_analytics').insert({
+              section_id: `tooltip-${sectionId}`,
+              prompt_key: promptKey,
+              success: false,
+              cached: false,
+              generation_time_ms: generationTime,
+              error_message: error instanceof Error ? error.message : 'Unknown error'
+            });
+            
             return null;
           }
         })
@@ -105,7 +179,6 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
       
       if (generatedImages.length > 0) {
         setImages(generatedImages);
-        localStorage.setItem(cacheKey, JSON.stringify(generatedImages));
       }
       
       setIsLoading(false);
