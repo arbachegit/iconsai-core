@@ -1,9 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const HeroSection = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -194,24 +201,113 @@ const HeroSection = () => {
                 document.querySelector("#knowyou")?.scrollIntoView({ behavior: "smooth" })
               }
             >
-              Converse com KnowYOU
+              Fale de saúde com o KnowYOU
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </Button>
             <Button
               size="lg"
               variant="outline"
               className="border-primary/50 hover:bg-primary/10"
-              onClick={() =>
-                document.querySelector("#software")?.scrollIntoView({ behavior: "smooth" })
-              }
+              onClick={() => setIsHistoryModalOpen(true)}
             >
-              Explorar a História
+              Explorar a história da IA
             </Button>
           </div>
         </div>
       </div>
 
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background pointer-events-none" />
+
+      {/* Modal de História da IA */}
+      <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-3xl font-bold text-gradient">
+              A História da Inteligência Artificial
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-8 mt-6">
+            {/* Era 1 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <h3 className="text-xl font-semibold text-primary">
+                  1. O Nascimento e a Era Simbólica (1950 – 1970)
+                </h3>
+              </div>
+              <p className="text-muted-foreground leading-relaxed">
+                Tudo começou com a pergunta de Alan Turing em 1950: "Máquinas podem pensar?". Em 1956, na histórica Conferência de Dartmouth, o termo "Inteligência Artificial" foi cunhado oficialmente. Nesta fase, a IA era baseada em lógica simbólica: programadores escreviam regras manuais para tudo. O otimismo era exagerado; acreditava-se que uma máquina tão inteligente quanto um humano surgiria em uma geração.
+              </p>
+              <div className="pl-4 border-l-2 border-primary/30 space-y-2">
+                <p className="text-sm"><strong>O Foco:</strong> Resolver problemas lógicos (como damas ou teoremas matemáticos).</p>
+                <p className="text-sm"><strong>A Limitação:</strong> As máquinas não aprendiam; elas apenas seguiam regras pré-definidas.</p>
+              </div>
+            </div>
+
+            {/* Era 2 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+                <h3 className="text-xl font-semibold text-secondary">
+                  2. Os Invernos da IA e os Sistemas Especialistas (1970 – 1990)
+                </h3>
+              </div>
+              <p className="text-muted-foreground leading-relaxed">
+                Como as promessas iniciais não foram cumpridas, o financiamento secou, levando aos chamados "Invernos da IA". A recuperação veio nos anos 80 com os Sistemas Especialistas. Em vez de tentar imitar um cérebro humano inteiro, criaram-se IAs focadas em domínios ultra-específicos (como diagnosticar doenças do sangue ou aprovar empréstimos) baseadas em árvores de decisão ("Se X acontece, então faça Y").
+              </p>
+              <div className="pl-4 border-l-2 border-secondary/30 space-y-2">
+                <p className="text-sm"><strong>O Foco:</strong> Conhecimento profundo em áreas restritas.</p>
+                <p className="text-sm"><strong>A Limitação:</strong> Eram "frágeis". Se algo saísse um pouco do script, o sistema falhava.</p>
+              </div>
+            </div>
+
+            {/* Era 3 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                <h3 className="text-xl font-semibold text-accent">
+                  3. A Era do Machine Learning e Big Data (1990 – 2015)
+                </h3>
+              </div>
+              <p className="text-muted-foreground leading-relaxed">
+                A grande mudança de paradigma: em vez de programar as regras, começamos a programar as máquinas para aprenderem as regras sozinhas analisando dados. Com o "boom" da internet (mais dados disponíveis) e processadores mais potentes, as Redes Neurais (que imitam neurônios biológicos) voltaram com força. Marcos importantes:
+              </p>
+              <ul className="pl-4 space-y-2 text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <span className="text-accent mt-1">•</span>
+                  <span><strong>1997:</strong> Deep Blue (IBM) vence Garry Kasparov no xadrez (força bruta).</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-accent mt-1">•</span>
+                  <span><strong>2011:</strong> Watson (IBM) vence no Jeopardy! (processamento de linguagem natural inicial).</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-accent mt-1">•</span>
+                  <span><strong>2016:</strong> AlphaGo (Google DeepMind) vence o campeão mundial de Go (aprendizado profundo/intuição).</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Era 4 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <h3 className="text-xl font-semibold text-gradient">
+                  4. A Era Generativa e a Comunicação (2017 – Hoje)
+                </h3>
+              </div>
+              <p className="text-muted-foreground leading-relaxed">
+                O ponto de virada atual ocorreu em 2017, com a publicação do artigo "Attention Is All You Need", que introduziu a arquitetura Transformer. Isso permitiu que as IAs não apenas classificassem dados (dizer se uma foto é de um gato ou cachorro), mas <strong>gerassem</strong> novos conteúdos e compreendessem o contexto da linguagem humana de forma profunda.
+              </p>
+              <div className="pl-4 border-l-2 border-primary/30 space-y-2">
+                <p className="text-sm"><strong>O Foco:</strong> Comunicação, criatividade e compreensão semântica (ChatGPT, Gemini, Claude).</p>
+                <p className="text-sm"><strong>A Revolução:</strong> A IA deixou de ser uma ferramenta de bastidores (análise de dados) para se tornar uma interface de conversação direta com o usuário final.</p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 };
