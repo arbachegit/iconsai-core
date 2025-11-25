@@ -15,7 +15,6 @@ interface SectionProps {
 const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, imageAlt }: SectionProps) => {
   return (
     <section id={id} className="py-24 relative">
-      <TooltipIcon sectionId={id} />
       <div className="container mx-auto px-4">
         <div
           className={`grid lg:grid-cols-2 gap-12 items-center ${
@@ -23,8 +22,11 @@ const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, ima
           }`}
         >
           <div className={`space-y-6 ${reverse ? "lg:order-2" : ""}`}>
-            <div className="inline-block px-4 py-1 bg-primary/10 rounded-full border border-primary/20">
-              <span className="text-sm text-primary font-medium">{subtitle}</span>
+            <div className="inline-flex items-center gap-2">
+              <div className="px-4 py-1 bg-primary/10 rounded-full border border-primary/20">
+                <span className="text-sm text-primary font-medium">{subtitle}</span>
+              </div>
+              <TooltipIcon sectionId={id} />
             </div>
             <h2 className="text-4xl md:text-5xl font-bold">{title}</h2>
             <div className="prose prose-invert max-w-none text-muted-foreground">
