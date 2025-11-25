@@ -207,6 +207,49 @@ const DigitalExclusionSection = () => {
           {/* Conteúdo Expansível */}
           <CollapsibleContent className="animate-accordion-down">
             <div className="space-y-8 text-lg leading-relaxed">
+              {/* Controles de Áudio - MOVIDO PARA O TOPO */}
+              <div className="border-b border-primary/20 pb-6 mb-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handlePlayAudio}
+                    disabled={isGeneratingAudio}
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    {isGeneratingAudio ? "Gerando..." : isPlaying ? "Pausar" : "Play"}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleStopAudio}
+                    disabled={!audioUrl}
+                  >
+                    <Square className="w-4 h-4 mr-2" />
+                    Stop
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleDownloadAudio}
+                    disabled={!audioUrl}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+                
+                {audioUrl && (
+                  <div className="space-y-1">
+                    <Progress value={audioProgress} className="h-2" />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(audioDuration)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Bloco 1: Introdução */}
               <div className="space-y-4">
                 <p>
@@ -266,49 +309,6 @@ const DigitalExclusionSection = () => {
                 <p>
                   O resultado é um duplo bloqueio: de um lado, incapacidade cognitiva de formular prompts estruturados para interagir com sistemas sofisticados; de outro, modelos treinados em poucos idiomas dominantes, que não captam bem as formas reais de falar de grande parte da população. Se nada for feito para reduzir essas barreiras – com interfaces mais naturais, suporte robusto a idiomas locais e estratégias de inclusão cognitiva e educacional – a IA generativa corre o risco de se tornar uma tecnologia usada de forma plena por uma minoria, enquanto bilhões permanecem à margem de uma nova fase da internet que, em teoria, deveria ser para todos.
                 </p>
-              </div>
-
-              {/* Controles de Áudio */}
-              <div className="border-t border-primary/20 pt-6 mt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handlePlayAudio}
-                    disabled={isGeneratingAudio}
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    {isGeneratingAudio ? "Gerando..." : isPlaying ? "Pausar" : "Play"}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleStopAudio}
-                    disabled={!audioUrl}
-                  >
-                    <Square className="w-4 h-4 mr-2" />
-                    Stop
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleDownloadAudio}
-                    disabled={!audioUrl}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download
-                  </Button>
-                </div>
-                
-                {audioUrl && (
-                  <div className="space-y-1">
-                    <Progress value={audioProgress} className="h-2" />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{formatTime(currentTime)}</span>
-                      <span>{formatTime(audioDuration)}</span>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </CollapsibleContent>

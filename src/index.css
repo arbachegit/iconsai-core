@@ -97,6 +97,10 @@ All colors MUST be HSL.
     animation: pulse-slow 4s ease-in-out infinite;
   }
 
+  .animate-bounce-subtle {
+    animation: bounce-subtle 3s ease-in-out infinite;
+  }
+
   @keyframes float {
     0%, 100% {
       transform: translateY(0px);
@@ -114,6 +118,15 @@ All colors MUST be HSL.
     50% {
       transform: scale(1.05);
       opacity: 0.9;
+    }
+  }
+
+  @keyframes bounce-subtle {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
     }
   }
 }
