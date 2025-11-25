@@ -6,11 +6,23 @@ import { Progress } from "@/components/ui/progress";
 import { useTooltipContent } from "@/hooks/useTooltipContent";
 import { useToast } from "@/hooks/use-toast";
 import { AudioStreamPlayer } from "@/lib/audio-player";
+import { TooltipImageCarousel } from "./TooltipImageCarousel";
 
 interface DraggablePreviewPanelProps {
   sectionId: string;
   onClose: () => void;
 }
+
+const sectionSubtitles: Record<string, string> = {
+  "bom-prompt": "Como construir um prompt eficaz",
+  "ia-nova-era": "IA generativa como motor de ideias e acelerador tecnológico",
+  "internet": "A Internet como infraestrutura para a Inteligência Artificial e o conhecimento global",
+  "knowyou": "KnowYOU e ACC: inteligência conversacional centrada no humano",
+  "software": "Como isto impactou a IA",
+  "tech-sem-proposito": "O Contraste com a IA: Propósito Claro e o Poder da Comunicação",
+  "watson": "O Despertar do Propósito e a Longa Jornada da Comunicação",
+  "kubrick": "A Influência de HAL e a Era da Comunicação Semântica"
+};
 
 export const DraggablePreviewPanel = ({
   sectionId,
@@ -145,7 +157,7 @@ export const DraggablePreviewPanel = ({
       
       <Card
         ref={panelRef}
-        className="fixed z-50 w-[500px] max-h-[600px] flex flex-col bg-card/95 backdrop-blur-md border-primary/20 shadow-2xl"
+        className="fixed z-50 w-[750px] max-h-[900px] flex flex-col bg-card/95 backdrop-blur-md border-primary/20 shadow-2xl"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
@@ -238,6 +250,20 @@ export const DraggablePreviewPanel = ({
               </p>
             )}
           </div>
+          
+          {/* Carrossel de imagens */}
+          <div className="py-4">
+            <TooltipImageCarousel sectionId={sectionId} />
+          </div>
+          
+          {/* Subtítulo intermediário */}
+          {sectionSubtitles[sectionId] && (
+            <div className="border-t border-b border-primary/20 py-3 my-4">
+              <h3 className="text-lg font-semibold text-primary/90">
+                📌 {sectionSubtitles[sectionId]}
+              </h3>
+            </div>
+          )}
           
           <p className="text-muted-foreground leading-relaxed">
             {content?.content}
