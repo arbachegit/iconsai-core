@@ -206,7 +206,7 @@ const Index = () => {
         </div>
 
         {/* Nova Seção: Exclusão Digital */}
-        <div className="mt-16 mb-8">
+        <div className="mt-8 mb-4">
           <DigitalExclusionSection />
         </div>
       </Section>
