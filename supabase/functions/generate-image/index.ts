@@ -49,14 +49,14 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
+        model: "google/gemini-2.5-flash-image-preview",
         messages: [
           {
             role: "user",
             content: prompt,
           }
         ],
-        modalities: ["image"],
+        modalities: ["image", "text"],
       }),
     });
 
@@ -96,15 +96,28 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log("Resposta da API:", JSON.stringify(data).substring(0, 200));
+    console.log("Resposta completa da API:", JSON.stringify(data, null, 2));
 
     // Extrair a imagem base64 da resposta
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    let imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    // Fallback para formato alternativo
+    if (!imageUrl) {
+      imageUrl = data.choices?.[0]?.message?.images?.[0]?.url;
+    }
 
     if (!imageUrl) {
-      console.error("Formato de resposta inesperado:", data);
+      console.error("Formato de resposta inesperado. Estrutura completa:", JSON.stringify(data, null, 2));
+      console.error("Choices:", data.choices);
+      if (data.choices?.[0]) {
+        console.error("Message:", data.choices[0].message);
+        console.error("Images:", data.choices[0].message?.images);
+      }
       return new Response(
-        JSON.stringify({ error: "Erro ao processar imagem gerada" }),
+        JSON.stringify({ 
+          error: "Erro ao processar imagem gerada",
+          details: "Formato de resposta inesperado da API"
+        }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
