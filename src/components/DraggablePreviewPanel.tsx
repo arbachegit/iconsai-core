@@ -174,41 +174,44 @@ export const DraggablePreviewPanel = ({
             {content?.title}
           </h2>
           
-          {content?.audio_url && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePlayAudio}
-                  className="gap-2"
-                >
-                  <Play className="w-4 h-4" />
-                  {isPlaying ? "Pausar" : "Play"}
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleStopAudio}
-                  className="gap-2"
-                >
-                  <Square className="w-4 h-4" />
-                  Stop
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadAudio}
-                  className="gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  Download
-                </Button>
-              </div>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePlayAudio}
+                disabled={!content?.audio_url}
+                className="gap-2"
+              >
+                <Play className="w-4 h-4" />
+                {isPlaying ? "Pausar" : "Play"}
+              </Button>
               
-              {/* Progress bar */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleStopAudio}
+                disabled={!content?.audio_url}
+                className="gap-2"
+              >
+                <Square className="w-4 h-4" />
+                Stop
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadAudio}
+                disabled={!content?.audio_url}
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Download
+              </Button>
+            </div>
+            
+            {/* Progress bar - só aparece quando há áudio */}
+            {content?.audio_url && (
               <div className="space-y-1">
                 <Progress value={audioProgress} className="h-2" />
                 <div className="flex justify-between text-xs text-muted-foreground">
@@ -222,8 +225,15 @@ export const DraggablePreviewPanel = ({
                   </span>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+            
+            {/* Mensagem quando não há áudio */}
+            {!content?.audio_url && (
+              <p className="text-xs text-muted-foreground italic">
+                Áudio em breve
+              </p>
+            )}
+          </div>
           
           <p className="text-muted-foreground leading-relaxed">
             {content?.content}
