@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { TooltipIcon } from "@/components/TooltipIcon";
 import { SectionImageCarousel } from "@/components/SectionImageCarousel";
@@ -16,6 +16,44 @@ interface SectionProps {
 }
 
 const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, imageAlt, priority = false, quote }: SectionProps) => {
+  const quoteRef = useRef<HTMLDivElement>(null);
+  const [isQuoteVisible, setIsQuoteVisible] = useState(false);
+
+  useEffect(() => {
+    if (!quote || !quoteRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsQuoteVisible(true);
+        }
+      },
+      { threshold: 0.2 }
+    );
+
+    observer.observe(quoteRef.current);
+
+    return () => observer.disconnect();
+  }, [quote]);
+
+  // Define gradient colors for each section
+  const getQuoteGradient = () => {
+    switch(id) {
+      case "internet":
+        return "from-primary via-secondary to-accent";
+      case "tech-sem-proposito":
+        return "from-secondary via-accent to-primary";
+      case "kubrick":
+        return "from-accent via-primary to-secondary";
+      case "watson":
+        return "from-primary via-accent to-secondary";
+      case "ia-nova-era":
+        return "from-secondary via-primary to-accent";
+      default:
+        return "from-primary via-secondary to-accent";
+    }
+  };
+
   return (
     <section id={id} className="py-12 relative">
       <div className="container mx-auto px-4">
@@ -36,8 +74,15 @@ const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, ima
               {children}
             </div>
             {quote && (
-              <div className="mt-8 pt-6 border-t border-border/30">
-                <blockquote className="text-lg md:text-xl italic text-muted-foreground">
+              <div 
+                ref={quoteRef}
+                className={`mt-8 pt-6 border-t border-border/30 transition-all duration-1000 ${
+                  isQuoteVisible 
+                    ? 'opacity-100 translate-y-0' 
+                    : 'opacity-0 translate-y-8'
+                }`}
+              >
+                <blockquote className={`text-lg md:text-xl italic bg-gradient-to-r ${getQuoteGradient()} bg-clip-text text-transparent font-medium leading-relaxed`}>
                   "{quote}"
                 </blockquote>
                 <p className="text-xs text-muted-foreground/60 mt-2">by Fernando Arbache</p>
