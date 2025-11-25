@@ -1,14 +1,18 @@
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import Section from "@/components/Section";
-import ChatKnowYOU from "@/components/ChatKnowYOU";
+import { ChatKnowYOU } from "@/components/ChatKnowYOU";
 import { MediaCarousel } from "@/components/MediaCarousel";
 import DigitalExclusionSection from "@/components/DigitalExclusionSection";
 import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
+import { useState } from "react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
+import { FloatingChatButton } from "@/components/FloatingChatButton";
+import { ChatModal } from "@/components/ChatModal";
 
 const Index = () => {
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -240,6 +244,12 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      {/* Floating Chat Button */}
+      <FloatingChatButton onClick={() => setIsChatModalOpen(true)} />
+      
+      {/* Chat Modal */}
+      <ChatModal open={isChatModalOpen} onOpenChange={setIsChatModalOpen} />
     </div>
   );
 };
