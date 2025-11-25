@@ -10,6 +10,7 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { OptimizedImage } from "@/components/ui/optimized-image";
+import { ImagePlaceholder } from "@/components/ImagePlaceholder";
 
 interface SectionImageCarouselProps {
   sectionId: string;
@@ -95,7 +96,11 @@ const sectionPrompts: Record<string, string[]> = {
 };
 
 export const SectionImageCarousel = ({ sectionId, priority = false }: SectionImageCarouselProps) => {
-  const [images, setImages] = useState<string[]>([]);
+  const prompts = sectionPrompts[sectionId] || [];
+  const placeholderCount = prompts.length || 4;
+  
+  // Inicializar com placeholders
+  const [images, setImages] = useState<(string | null)[]>(Array(placeholderCount).fill(null));
   const [isLoading, setIsLoading] = useState(true);
   const [usesFallback, setUsesFallback] = useState(false);
   const [api, setApi] = useState<CarouselApi>();
@@ -283,37 +288,16 @@ export const SectionImageCarousel = ({ sectionId, priority = false }: SectionIma
       
       const generatedImages = results.filter((url): url is string => url !== null);
       
-      if (generatedImages.length > 0) {
-        setImages(generatedImages);
-      }
-      
+      setImages(generatedImages);
       setIsLoading(false);
     };
     
     generateImages();
   }, [sectionId, inView]);
   
-  if (isLoading || !inView) {
-    return (
-      <div 
-        ref={ref}
-        className="w-full h-full rounded-lg bg-gradient-to-br from-primary/20 via-accent/20 to-primary/20 animate-pulse-slow flex items-center justify-center"
-      >
-        {inView && (
-          <span className="text-muted-foreground text-sm">Gerando imagens...</span>
-        )}
-      </div>
-    );
-  }
-  
-  if (images.length === 0) {
-    return (
-      <div className="w-full h-full rounded-full bg-gradient-primary opacity-20 animate-pulse-slow" />
-    );
-  }
-  
+  // Sempre renderizar carrossel, mesmo com placeholders
   return (
-    <div className="w-full h-full space-y-3">
+    <div ref={ref} className="w-full h-full space-y-3">
       {usesFallback && (
         <div className="mb-2 text-xs text-muted-foreground text-center opacity-75">
           <p>Imagens temporárias (créditos esgotados)</p>
@@ -328,12 +312,16 @@ export const SectionImageCarousel = ({ sectionId, priority = false }: SectionIma
           {images.map((img, index) => (
             <CarouselItem key={index} className="h-full">
               <div className="w-full h-full rounded-lg overflow-hidden bg-muted/10">
-                <OptimizedImage
-                  src={img}
-                  alt={`${sectionId} - Imagem ${index + 1}`}
-                  priority={priority && index === 0}
-                  aspectRatio="square"
-                />
+                {img ? (
+                  <OptimizedImage
+                    src={img}
+                    alt={`${sectionId} - Imagem ${index + 1}`}
+                    priority={priority && index === 0}
+                    aspectRatio="square"
+                  />
+                ) : (
+                  <ImagePlaceholder className="w-full h-full" />
+                )}
               </div>
             </CarouselItem>
           ))}

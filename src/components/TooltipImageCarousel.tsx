@@ -10,6 +10,7 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { OptimizedImage } from "@/components/ui/optimized-image";
+import { ImagePlaceholder } from "@/components/ImagePlaceholder";
 
 interface TooltipImageCarouselProps {
   sectionId: string;
@@ -86,7 +87,11 @@ const carouselPrompts: Record<string, string[]> = {
 };
 
 export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) => {
-  const [images, setImages] = useState<string[]>([]);
+  const prompts = carouselPrompts[sectionId] || [];
+  const placeholderCount = prompts.length || 3;
+  
+  // Inicializar com placeholders
+  const [images, setImages] = useState<(string | null)[]>(Array(placeholderCount).fill(null));
   const [isLoading, setIsLoading] = useState(true);
   const [usesFallback, setUsesFallback] = useState(false);
   const [api, setApi] = useState<CarouselApi>();
@@ -274,35 +279,16 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
       
       const generatedImages = results.filter((url): url is string => url !== null);
       
-      if (generatedImages.length > 0) {
-        setImages(generatedImages);
-      }
-      
+      setImages(generatedImages);
       setIsLoading(false);
     };
     
     generateImages();
   }, [sectionId, inView]);
   
-  if (isLoading || !inView) {
-    return (
-      <div 
-        ref={ref}
-        className="w-full h-48 bg-gradient-to-br from-primary/20 via-accent/20 to-primary/20 rounded-lg animate-pulse-slow flex items-center justify-center"
-      >
-        {inView && (
-          <span className="text-muted-foreground text-sm">Gerando imagens...</span>
-        )}
-      </div>
-    );
-  }
-  
-  if (images.length === 0) {
-    return null;
-  }
-  
+  // Sempre renderizar carrossel, mesmo com placeholders
   return (
-    <div className="w-full space-y-3">
+    <div ref={ref} className="w-full space-y-3">
       {usesFallback && (
         <div className="mb-2 text-xs text-muted-foreground text-center opacity-75">
           <p>Imagens temporárias (créditos esgotados)</p>
@@ -317,11 +303,15 @@ export const TooltipImageCarousel = ({ sectionId }: TooltipImageCarouselProps) =
           {images.map((img, index) => (
             <CarouselItem key={index}>
               <div className="aspect-video rounded-lg overflow-hidden bg-muted/10">
-                <OptimizedImage
-                  src={img}
-                  alt={`Ilustração ${index + 1}`}
-                  aspectRatio="video"
-                />
+                {img ? (
+                  <OptimizedImage
+                    src={img}
+                    alt={`Ilustração ${index + 1}`}
+                    aspectRatio="video"
+                  />
+                ) : (
+                  <ImagePlaceholder className="w-full h-full" />
+                )}
               </div>
             </CarouselItem>
           ))}
