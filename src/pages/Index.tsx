@@ -15,6 +15,12 @@ const Index = () => {
     "software-revolution"
   );
 
+  // Gerar imagem para a seção "A Era da Conectividade"
+  const { imageUrl: internetImage } = useGeneratedImage(
+    "A revolução da Internet: democratização do acesso à informação e conectividade global. Imagem futurista mostrando rede de conexões globais, pessoas de diferentes culturas conectadas, fluxos de dados luminosos ao redor do planeta Terra, nós de rede interligados, compartilhamento de conhecimento representado por símbolos flutuantes. Paleta de cores: roxo, azul elétrico, ciano, gradientes tecnológicos, fundo escuro espacial. Estilo: tech-forward, moderno, limpo, representando transformação digital e democratização da informação. Atmosfera de conexão global e compartilhamento de ideias.",
+    "internet-connectivity"
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -45,6 +51,8 @@ const Index = () => {
         id="internet"
         title="A Era da Conectividade"
         subtitle="Anos 1990-2000"
+        imageUrl={internetImage || undefined}
+        imageAlt="A era da conectividade: Internet democratizando o acesso à informação"
         reverse
       >
         <p className="text-lg leading-relaxed">
