@@ -372,9 +372,14 @@ const HeroSection = () => {
             </Button>
           </div>
 
+          {/* Divisor visual sutil */}
+          <div className="mt-16 flex items-center justify-center">
+            <div className="h-px w-32 bg-gradient-to-r from-transparent via-border to-transparent opacity-50"></div>
+          </div>
+
           <div 
             ref={quoteRef}
-            className={`mt-16 max-w-3xl mx-auto transition-opacity duration-1000 ${
+            className={`mt-12 max-w-3xl mx-auto transition-opacity duration-1000 ${
               isQuoteVisible ? 'opacity-100' : 'opacity-0'
             }`}
             style={{
