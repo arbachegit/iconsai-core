@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from './use-toast';
+import type { toast as ToastType } from './use-toast';
 
 interface SpeechRecognitionResult {
   transcript: string;
@@ -13,6 +14,12 @@ export const useSpeechRecognition = () => {
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
+  const toastRef = useRef(toast);
+
+  // Update toast ref when toast changes
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
 
   useEffect(() => {
     // Check if browser supports Speech Recognition
@@ -73,7 +80,7 @@ export const useSpeechRecognition = () => {
             break;
         }
 
-        toast({
+        toastRef.current({
           title: 'Erro',
           description: errorMessage,
           variant: 'destructive',
@@ -98,11 +105,11 @@ export const useSpeechRecognition = () => {
         recognitionRef.current.stop();
       }
     };
-  }, [toast]);
+  }, []); // Empty dependency - only setup once
 
   const startListening = useCallback(() => {
     if (!isSupported) {
-      toast({
+      toastRef.current({
         title: 'Não suportado',
         description: 'Seu navegador não suporta reconhecimento de voz.',
         variant: 'destructive',
@@ -118,14 +125,14 @@ export const useSpeechRecognition = () => {
         recognitionRef.current.start();
       } catch (error) {
         console.error('Error starting recognition:', error);
-        toast({
+        toastRef.current({
           title: 'Erro',
           description: 'Não foi possível iniciar o reconhecimento de voz.',
           variant: 'destructive',
         });
       }
     }
-  }, [isSupported, isListening, toast]);
+  }, [isSupported, isListening]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current && isListening) {
