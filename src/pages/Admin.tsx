@@ -4,12 +4,12 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { DashboardTab } from "@/components/admin/DashboardTab";
 import { ChatConfigTab } from "@/components/admin/ChatConfigTab";
 import { TooltipsTab } from "@/components/admin/TooltipsTab";
-import { GmailTab } from "@/components/admin/GmailTab";
+import { EmailTab } from "@/components/admin/EmailTab";
 import { AnalyticsTab } from "@/components/admin/AnalyticsTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics";
+type TabType = "dashboard" | "chat" | "tooltips" | "email" | "analytics";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -75,8 +75,8 @@ const Admin = () => {
         return <ChatConfigTab />;
       case "tooltips":
         return <TooltipsTab />;
-      case "gmail":
-        return <GmailTab />;
+      case "email":
+        return <EmailTab />;
       case "analytics":
         return <AnalyticsTab />;
       default:

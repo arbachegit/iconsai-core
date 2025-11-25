@@ -1,4 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { Resend } from "https://esm.sh/resend@4.0.0";
+
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +13,7 @@ interface EmailRequest {
   to: string;
   subject: string;
   body: string;
+  html?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -19,7 +23,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { to, subject, body }: EmailRequest = await req.json();
+    const { to, subject, body, html }: EmailRequest = await req.json();
 
     // Input validation
     if (!to || !subject || !body) {
@@ -44,12 +48,21 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Sending email to:", to);
     console.log("Subject:", subject);
 
-    // In production, integrate with Resend or Gmail API
-    // For now, just log the email
-    console.log("Email body:", body);
+    // Send email using Resend
+    const emailResponse = await resend.emails.send({
+      from: "KnowYOU <onboarding@resend.dev>", // Change this to your verified domain in production
+      to: [to],
+      subject: subject,
+      html: html || `<p>${body}</p>`,
+    });
+
+    console.log("Email sent successfully:", emailResponse);
 
     return new Response(
-      JSON.stringify({ success: true, message: "Email sent successfully" }),
+      JSON.stringify({ 
+        success: true, 
+        message: "Email enviado com sucesso"
+      }),
       {
         status: 200,
         headers: {
