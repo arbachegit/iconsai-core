@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 const TuringLegacy = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const [parallaxOffset, setParallaxOffset] = useState(0);
   const sectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -21,16 +22,43 @@ const TuringLegacy = () => {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (!sectionRef.current) return;
+
+    const handleScroll = () => {
+      if (!sectionRef.current) return;
+      
+      const rect = sectionRef.current.getBoundingClientRect();
+      const scrollPosition = window.scrollY;
+      const elementTop = rect.top + scrollPosition;
+      const windowHeight = window.innerHeight;
+      
+      // Calculate parallax only when element is in viewport
+      if (rect.top < windowHeight && rect.bottom > 0) {
+        const scrolled = scrollPosition + windowHeight - elementTop;
+        const offset = scrolled * 0.08; // Parallax speed factor
+        setParallaxOffset(offset);
+      }
+    };
+
+    handleScroll(); // Initial calculation
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <section className="py-16 border-t border-border/50">
       <div className="container mx-auto px-4">
         <div 
           ref={sectionRef}
-          className={`max-w-4xl mx-auto text-center space-y-6 transition-all duration-1000 ${
-            isVisible 
-              ? 'opacity-100 translate-y-0' 
-              : 'opacity-0 translate-y-8'
+          className={`max-w-4xl mx-auto text-center space-y-6 transition-opacity duration-1000 ${
+            isVisible ? 'opacity-100' : 'opacity-0'
           }`}
+          style={{
+            transform: `translateY(${-parallaxOffset}px)`,
+            transition: 'transform 0.1s ease-out',
+          }}
         >
           <h2 className="text-3xl md:text-4xl font-bold text-gradient">O Legado de Turing</h2>
           <blockquote className="text-xl md:text-2xl italic bg-gradient-to-r from-accent via-secondary to-primary bg-clip-text text-transparent font-medium leading-relaxed">
