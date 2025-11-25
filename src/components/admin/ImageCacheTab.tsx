@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, RefreshCw, Sparkles, Database, Clock } from "lucide-react";
+import { Trash2, RefreshCw, Sparkles, Database, Clock, Volume2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -31,6 +31,7 @@ export const ImageCacheTab = () => {
   const [isClearing, setIsClearing] = useState(false);
   const [isPreloading, setIsPreloading] = useState(false);
   const [cacheStats, setCacheStats] = useState<{ total: number; bySection: Record<string, number> } | null>(null);
+  const [audioCacheStats, setAudioCacheStats] = useState<{ section: string; title: string; type: 'section' | 'tooltip' }[]>([]);
 
   const loadCacheStats = async () => {
     try {
@@ -55,6 +56,47 @@ export const ImageCacheTab = () => {
       console.error("Erro ao carregar estatísticas:", error);
     }
   };
+
+  const loadAudioCacheStats = async () => {
+    try {
+      // Load section audio
+      const { data: sectionAudio, error: sectionError } = await supabase
+        .from('section_audio')
+        .select('section_id');
+
+      if (sectionError) throw sectionError;
+
+      // Load tooltip audio
+      const { data: tooltipAudio, error: tooltipError } = await supabase
+        .from('tooltip_contents')
+        .select('section_id, title')
+        .not('audio_url', 'is', null);
+
+      if (tooltipError) throw tooltipError;
+
+      const stats = [
+        ...(sectionAudio || []).map(item => ({
+          section: item.section_id,
+          title: `Seção: ${item.section_id}`,
+          type: 'section' as const,
+        })),
+        ...(tooltipAudio || []).map(item => ({
+          section: item.section_id,
+          title: `Tooltip: ${item.title}`,
+          type: 'tooltip' as const,
+        })),
+      ];
+
+      setAudioCacheStats(stats);
+    } catch (error) {
+      console.error("Erro ao carregar estatísticas de áudio:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadCacheStats();
+    loadAudioCacheStats();
+  }, []);
 
   const clearCreditsFlag = () => {
     localStorage.removeItem("lovable_credits_exhausted");
@@ -99,6 +141,40 @@ export const ImageCacheTab = () => {
     } catch (error) {
       console.error("Erro ao limpar cache da seção:", error);
       toast.error("Erro ao limpar cache da seção");
+    }
+  };
+
+  const clearSectionAudio = async (sectionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('section_audio')
+        .delete()
+        .eq('section_id', sectionId);
+
+      if (error) throw error;
+
+      toast.success(`Áudio da seção ${sectionId} limpo!`);
+      await loadAudioCacheStats();
+    } catch (error) {
+      console.error("Erro ao limpar áudio da seção:", error);
+      toast.error("Erro ao limpar áudio da seção");
+    }
+  };
+
+  const clearTooltipAudio = async (sectionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tooltip_contents')
+        .update({ audio_url: null })
+        .eq('section_id', sectionId);
+
+      if (error) throw error;
+
+      toast.success(`Áudio do tooltip limpo!`);
+      await loadAudioCacheStats();
+    } catch (error) {
+      console.error("Erro ao limpar áudio do tooltip:", error);
+      toast.error("Erro ao limpar áudio do tooltip");
     }
   };
 
@@ -247,6 +323,62 @@ export const ImageCacheTab = () => {
                   );
                 })}
               </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Volume2 className="h-5 w-5" />
+            Cache de Áudio
+          </CardTitle>
+          <CardDescription>
+            Gerencie o cache de áudio das seções e tooltips
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              {audioCacheStats.length} áudios em cache
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadAudioCacheStats}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Atualizar
+            </Button>
+          </div>
+
+          {audioCacheStats.length > 0 && (
+            <div className="space-y-2">
+              {audioCacheStats.map((stat, index) => (
+                <div
+                  key={`${stat.section}-${stat.title}-${index}`}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium text-sm">{stat.title}</p>
+                    <p className="text-xs text-muted-foreground">{stat.section}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (stat.type === 'section') {
+                        clearSectionAudio(stat.section);
+                      } else {
+                        clearTooltipAudio(stat.section);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
