@@ -51,16 +51,14 @@ const AdminSignup = () => {
 
       if (data.user) {
         toast({
-          title: "Conta criada!",
-          description: `Usuário criado com sucesso. ID: ${data.user.id}`,
+          title: "Conta criada com sucesso!",
+          description: "Você foi automaticamente configurado como administrador. Redirecionando para o login...",
         });
 
-        // Show instructions for adding admin role
-        toast({
-          title: "Próximo passo",
-          description: "Abra o Backend e execute o SQL para adicionar a role de admin.",
-          duration: 10000,
-        });
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          navigate("/admin/login");
+        }, 2000);
       }
     } catch (error: any) {
       toast({
@@ -141,17 +139,6 @@ const AdminSignup = () => {
               {isLoading ? "Criando conta..." : "Criar Conta"}
             </Button>
           </form>
-
-          <div className="w-full pt-4 border-t border-border/50">
-            <p className="text-sm text-muted-foreground mb-3">
-              Após criar a conta, execute este SQL no Backend:
-            </p>
-            <code className="block p-3 bg-background/50 rounded text-xs text-foreground break-all">
-              INSERT INTO public.user_roles (user_id, role)
-              <br />
-              VALUES ('SEU_USER_ID_AQUI', 'admin');
-            </code>
-          </div>
 
           <Button
             variant="ghost"
