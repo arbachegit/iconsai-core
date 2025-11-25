@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useTooltipContent } from "@/hooks/useTooltipContent";
 import { useToast } from "@/hooks/use-toast";
+import { AudioStreamPlayer } from "@/lib/audio-player";
 
 interface DraggablePreviewPanelProps {
   sectionId: string;
@@ -26,7 +27,21 @@ export const DraggablePreviewPanel = ({
   const [audioDuration, setAudioDuration] = useState(0);
   
   const panelRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioPlayerRef = useRef<AudioStreamPlayer | null>(null);
+
+  // Initialize audio player with progress callback
+  useEffect(() => {
+    const player = new AudioStreamPlayer();
+    player.setProgressCallback((progress, duration) => {
+      setAudioProgress(progress);
+      setAudioDuration(duration);
+    });
+    audioPlayerRef.current = player;
+
+    return () => {
+      player.stop();
+    };
+  }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest(".no-drag")) return;
@@ -62,7 +77,7 @@ export const DraggablePreviewPanel = ({
     }
   }, [isDragging, dragOffset]);
 
-  const handlePlayAudio = () => {
+  const handlePlayAudio = async () => {
     if (!content?.audio_url) {
       toast({
         title: "Áudio não disponível",
@@ -72,42 +87,31 @@ export const DraggablePreviewPanel = ({
       return;
     }
 
-    if (isPlaying && audioRef.current) {
-      audioRef.current.pause();
+    if (isPlaying) {
+      audioPlayerRef.current?.stop();
       setIsPlaying(false);
+      setAudioProgress(0);
     } else {
-      if (!audioRef.current) {
-        audioRef.current = new Audio(content.audio_url);
-        
-        // Setup audio event listeners
-        audioRef.current.onended = () => {
-          setIsPlaying(false);
-          setAudioProgress(0);
-        };
-        
-        audioRef.current.onloadedmetadata = () => {
-          setAudioDuration(audioRef.current?.duration || 0);
-        };
-        
-        audioRef.current.ontimeupdate = () => {
-          if (audioRef.current) {
-            const progress = (audioRef.current.currentTime / audioRef.current.duration) * 100;
-            setAudioProgress(progress);
-          }
-        };
+      try {
+        setIsPlaying(true);
+        await audioPlayerRef.current?.playAudioFromUrl(content.audio_url);
+        setIsPlaying(false);
+      } catch (error) {
+        console.error("Erro ao reproduzir:", error);
+        setIsPlaying(false);
+        toast({
+          title: "Erro ao reproduzir",
+          description: "Não foi possível reproduzir o áudio.",
+          variant: "destructive",
+        });
       }
-      audioRef.current.play();
-      setIsPlaying(true);
     }
   };
 
   const handleStopAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      setIsPlaying(false);
-      setAudioProgress(0);
-    }
+    audioPlayerRef.current?.stop();
+    setIsPlaying(false);
+    setAudioProgress(0);
   };
 
   const handleDownloadAudio = () => {
