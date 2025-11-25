@@ -55,10 +55,6 @@ const TuringLegacy = () => {
           className={`max-w-4xl mx-auto text-center space-y-6 transition-opacity duration-1000 ${
             isVisible ? 'opacity-100' : 'opacity-0'
           }`}
-          style={{
-            transform: `translateY(${-parallaxOffset}px)`,
-            transition: 'transform 0.1s ease-out',
-          }}
         >
           <h2 className="text-3xl md:text-4xl font-bold text-gradient">O Legado de Turing</h2>
           <blockquote className="text-xl md:text-2xl italic bg-gradient-to-r from-accent via-secondary to-primary bg-clip-text text-transparent font-medium leading-relaxed">

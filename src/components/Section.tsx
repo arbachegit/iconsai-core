@@ -105,10 +105,6 @@ const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, ima
                 className={`mt-6 pt-4 border-t border-border/30 transition-opacity duration-1000 ${
                   isQuoteVisible ? 'opacity-100' : 'opacity-0'
                 }`}
-                style={{
-                  transform: `translateY(${-parallaxOffset}px)`,
-                  transition: 'transform 0.1s ease-out',
-                }}
               >
                 <blockquote className={`text-lg md:text-xl italic bg-gradient-to-r ${getQuoteGradient()} bg-clip-text text-transparent font-medium leading-relaxed`}>
                   "{quote}"
