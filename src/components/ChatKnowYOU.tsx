@@ -11,6 +11,7 @@ import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { VoiceMessagePlayer } from "@/components/VoiceMessagePlayer";
 import { cn } from "@/lib/utils";
+import { debugLog } from "@/lib/environment";
 
 interface ChatKnowYOUProps {
   variant?: "embedded" | "modal";
@@ -74,10 +75,24 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
 
   useEffect(() => {
     if (messages.length > 0 && messages.length !== prevMessagesLength.current) {
+      debugLog.effect("ChatKnowYOU", "Messages changed, scrolling into view", {
+        prevLength: prevMessagesLength.current,
+        newLength: messages.length,
+        variant,
+        windowScrollY: window.scrollY
+      });
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       prevMessagesLength.current = messages.length;
+      
+      // Log scroll position after scrollIntoView
+      setTimeout(() => {
+        debugLog.scroll("After scrollIntoView in chat", {
+          windowScrollY: window.scrollY,
+          variant
+        });
+      }, 500);
     }
-  }, [messages]);
+  }, [messages, variant]);
 
   // Update input with voice transcript - only when listening stops
   useEffect(() => {

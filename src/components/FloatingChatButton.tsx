@@ -6,12 +6,21 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
+import { useEffect } from "react";
+import { debugLog } from "@/lib/environment";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 interface FloatingChatButtonProps {
   onClick: () => void;
 }
 
 export const FloatingChatButton = ({ onClick }: FloatingChatButtonProps) => {
+  const flags = useFeatureFlags();
+
+  useEffect(() => {
+    debugLog.mount("FloatingChatButton", { flags });
+  }, []);
+
   return (
     <TooltipProvider>
       <Tooltip>

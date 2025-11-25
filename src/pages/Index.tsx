@@ -6,13 +6,65 @@ import { MediaCarousel } from "@/components/MediaCarousel";
 import DigitalExclusionSection from "@/components/DigitalExclusionSection";
 import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
 import { FloatingChatButton } from "@/components/FloatingChatButton";
 import { ChatModal } from "@/components/ChatModal";
+import { debugLog, getEnvironmentInfo } from "@/lib/environment";
 
 const Index = () => {
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+
+  useEffect(() => {
+    debugLog.mount("Index Page", getEnvironmentInfo());
+    
+    // Log initial scroll position
+    debugLog.scroll("Initial scroll position", {
+      x: window.scrollX,
+      y: window.scrollY,
+      documentHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight
+    });
+
+    // Monitor scroll events
+    const handleScroll = () => {
+      debugLog.scroll("Scroll event", {
+        x: window.scrollX,
+        y: window.scrollY,
+        timestamp: Date.now()
+      });
+    };
+
+    // Monitor resize events
+    const handleResize = () => {
+      debugLog.scroll("Resize event", {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        timestamp: Date.now()
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
+
+    // Log if page scrolls automatically after mount
+    const checkAutoScroll = setTimeout(() => {
+      const scrollY = window.scrollY;
+      if (scrollY > 0) {
+        debugLog.scroll("⚠️ AUTO-SCROLL DETECTED after mount!", {
+          scrollY,
+          timestamp: Date.now(),
+          documentHeight: document.documentElement.scrollHeight
+        });
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(checkAutoScroll);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden relative">
