@@ -19,13 +19,15 @@ interface ChatKnowYOUProps {
 }
 
 export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: ChatKnowYOUProps) {
-  const internalHook = useChatKnowYOU();
+  // Embedded = health chat, Modal = company chat
+  const internalHook = useChatKnowYOU({ chatType: variant === "embedded" ? "health" : "company" });
   const chatHook = externalHook || internalHook;
   
   const { 
     messages, 
     isLoading, 
     isGeneratingAudio,
+    isGeneratingImage,
     currentlyPlayingIndex,
     isAudioPaused,
     audioProgress,
@@ -41,6 +43,7 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
     stopAudio,
     downloadAudio,
     changePlaybackRate,
+    generateImage,
   } = chatHook;
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -137,7 +140,18 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
     cancelRecording();
   };
 
-  const containerClass = variant === "modal" 
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [showImageDialog, setShowImageDialog] = useState(false);
+
+  const handleGenerateImage = async () => {
+    if (imagePrompt.trim()) {
+      await generateImage(imagePrompt);
+      setImagePrompt("");
+      setShowImageDialog(false);
+    }
+  };
+
+  const containerClass = variant === "modal"
     ? "h-full flex flex-col bg-transparent" 
     : "w-full max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl border border-primary/20 shadow-xl overflow-hidden";
 
@@ -166,11 +180,13 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
             <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
               <span className="text-4xl font-bold text-primary-foreground">K</span>
             </div>
-            <h4 className="text-xl font-semibold mb-2">Olá! Sou o KnowYOU</h4>
+            <h4 className="text-xl font-semibold mb-2">
+              {variant === "modal" ? "Olá! Sou o KnowYOU" : "Olá! Sou o KnowYOU Health"}
+            </h4>
             <p className="text-muted-foreground max-w-md">
               {variant === "modal" 
-                ? "Estou aqui para conversar sobre a KnowRISK, Arquitetura Cognitiva, IA aplicada à saúde e o conteúdo desta landing page. Como posso ajudá-lo?"
-                : "Seu assistente especializado em saúde. Como posso ajudá-lo hoje?"
+                ? "Estou aqui para conversar sobre a KnowRISK, Arquitetura Cognitiva e o conteúdo desta landing page. Como posso ajudá-lo?"
+                : "Seu assistente especializado em saúde e Hospital Moinhos de Vento. Como posso ajudá-lo hoje?"
               }
             </p>
           </div>
@@ -329,8 +345,8 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
         )}
       </ScrollArea>
 
-      {/* Suggestions */}
-      {suggestions.length > 0 && !isLoading && (
+      {/* Suggestions - only for embedded health chat */}
+      {variant === "embedded" && suggestions.length > 0 && !isLoading && (
         <div className="px-6 py-4 bg-muted/50 border-t border-border/50">
           <p className="text-xs font-medium text-muted-foreground mb-2">💡 Sugestões:</p>
           <div className="flex flex-wrap gap-2">
@@ -440,23 +456,29 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
                       )}
                     </Button>
                   )}
-                  
-                  {/* Voice recording button */}
-                  {isRecorderSupported && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleStartRecording}
-                      className="h-8 w-8"
-                      disabled={isLoading}
-                      title="Gravar mensagem de voz"
-                    >
-                      <Mic className="w-4 h-4 text-destructive" />
-                    </Button>
-                  )}
                 </div>
               </div>
+              
+              {/* Draw medical image button - only for embedded health chat */}
+              {variant === "embedded" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowImageDialog(true)}
+                  disabled={isLoading || isGeneratingImage}
+                  className="w-full mt-2"
+                >
+                  {isGeneratingImage ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Gerando imagem...
+                    </>
+                  ) : (
+                    "🩺 Desenhar Imagem Médica"
+                  )}
+                </Button>
+              )}
             </div>
             <Button
               type="submit"
@@ -475,14 +497,60 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
           {isSpeechSupported && !isRecording && (
             <p className="text-xs text-muted-foreground">
               {isListening ? (
-                <span className="text-primary font-medium">🎤 Gravando...</span>
+                <span className="text-primary font-medium">🎤 Ouvindo...</span>
               ) : (
-                <span>Clique no 🎤 para falar ou gravar</span>
+                <span>Clique no 🎤 para falar</span>
               )}
             </p>
           )}
         </div>
       </form>
+
+      {/* Medical Image Dialog - only for embedded */}
+      {variant === "embedded" && (
+        <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
+          <DialogContent>
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Desenhar Imagem Médica</h3>
+                <p className="text-sm text-muted-foreground">
+                  Descreva a imagem médica que você deseja gerar (anatomia, procedimento, equipamento, etc.)
+                </p>
+              </div>
+              <Textarea
+                value={imagePrompt}
+                onChange={(e) => setImagePrompt(e.target.value)}
+                placeholder="Ex: anatomia do coração humano, equipamento de ressonância magnética, célula cancerígena..."
+                className="min-h-[100px]"
+              />
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowImageDialog(false);
+                    setImagePrompt("");
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleGenerateImage}
+                  disabled={!imagePrompt.trim() || isGeneratingImage}
+                >
+                  {isGeneratingImage ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Gerando...
+                    </>
+                  ) : (
+                    "Gerar Imagem"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

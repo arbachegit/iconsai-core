@@ -35,11 +35,21 @@ export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
   const [audioProgress, setAudioProgress] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1.0);
-  const [suggestions, setSuggestions] = useState<string[]>([
-    "O que é telemedicina?",
-    "Como prevenir doenças crônicas?",
-    "Tendências em saúde digital",
-  ]);
+  
+  // Sugestões iniciais dependem do tipo de chat
+  const initialSuggestions = chatType === "health" 
+    ? [
+        "O que é telemedicina?",
+        "Como prevenir doenças crônicas?",
+        "Tendências em saúde digital",
+      ]
+    : [
+        "O que é a KnowRISK?",
+        "Como funciona o KnowYOU?",
+        "O que é ACC?",
+      ];
+  
+  const [suggestions, setSuggestions] = useState<string[]>(initialSuggestions);
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random()}`);
   
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
@@ -140,10 +150,6 @@ export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
 
             const cleanedResponse = removeSuggestionsFromText(fullResponse);
 
-            // Detect Hospital Moinhos de Vento mentions
-            const hospitalRegex = /hospital\s+moinhos\s+de\s+vento/i;
-            const mentionsHospital = hospitalRegex.test(cleanedResponse) || hospitalRegex.test(input);
-
             // Gerar áudio da resposta (somente se habilitado)
             if (settings?.chat_audio_enabled) {
               setIsGeneratingAudio(true);
@@ -157,9 +163,6 @@ export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
                           ...m, 
                           content: cleanedResponse, 
                           audioUrl,
-                          showMap: mentionsHospital,
-                          coordinates: mentionsHospital ? { lat: -30.025806, lng: -51.195306 } : undefined,
-                          hospitalName: mentionsHospital ? "Hospital Moinhos de Vento" : undefined,
                         }
                       : m
                   );
@@ -188,9 +191,6 @@ export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
                       ? { 
                           ...m, 
                           content: cleanedResponse,
-                          showMap: mentionsHospital,
-                          coordinates: mentionsHospital ? { lat: -30.025806, lng: -51.195306 } : undefined,
-                          hospitalName: mentionsHospital ? "Hospital Moinhos de Vento" : undefined,
                         }
                       : m
                   );
@@ -208,9 +208,6 @@ export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
                     ? { 
                         ...m, 
                         content: cleanedResponse,
-                        showMap: mentionsHospital,
-                        coordinates: mentionsHospital ? { lat: -30.025806, lng: -51.195306 } : undefined,
-                        hospitalName: mentionsHospital ? "Hospital Moinhos de Vento" : undefined,
                       }
                     : m
                 );
@@ -253,13 +250,9 @@ export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
     audioPlayerRef.current.stop();
     setMessages([]);
     setCurrentlyPlayingIndex(null);
-    setSuggestions([
-      "O que é telemedicina?",
-      "Como prevenir doenças crônicas?",
-      "Tendências em saúde digital",
-    ]);
+    setSuggestions(initialSuggestions);
     localStorage.removeItem(STORAGE_KEY);
-  }, []);
+  }, [initialSuggestions]);
 
   const playAudio = useCallback(async (messageIndex: number) => {
     const message = messages[messageIndex];

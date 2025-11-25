@@ -39,12 +39,9 @@ export const ChatModal = ({ open, onOpenChange }: ChatModalProps) => {
         <SheetHeader className="px-6 py-4 border-b border-border/50 bg-gradient-to-r from-primary/5 via-secondary/5 to-accent/5">
           <div className="flex items-center justify-between">
             <div>
-              <SheetTitle className="text-2xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+              <SheetTitle className="text-lg font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
                 Converse com o KnowYOU
               </SheetTitle>
-              <SheetDescription className="text-muted-foreground mt-1">
-                Especializado em KnowRISK, ACC e conteúdo do site
-              </SheetDescription>
             </div>
             <div className="flex items-center gap-2">
               <Button
