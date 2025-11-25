@@ -18,6 +18,7 @@ interface SectionProps {
 const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, imageAlt, priority = false, quote }: SectionProps) => {
   const quoteRef = useRef<HTMLDivElement>(null);
   const [isQuoteVisible, setIsQuoteVisible] = useState(false);
+  const [parallaxOffset, setParallaxOffset] = useState(0);
 
   useEffect(() => {
     if (!quote || !quoteRef.current) return;
@@ -34,6 +35,31 @@ const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, ima
     observer.observe(quoteRef.current);
 
     return () => observer.disconnect();
+  }, [quote]);
+
+  useEffect(() => {
+    if (!quote || !quoteRef.current) return;
+
+    const handleScroll = () => {
+      if (!quoteRef.current) return;
+      
+      const rect = quoteRef.current.getBoundingClientRect();
+      const scrollPosition = window.scrollY;
+      const elementTop = rect.top + scrollPosition;
+      const windowHeight = window.innerHeight;
+      
+      // Calculate parallax only when element is in viewport
+      if (rect.top < windowHeight && rect.bottom > 0) {
+        const scrolled = scrollPosition + windowHeight - elementTop;
+        const offset = scrolled * 0.08; // Parallax speed factor
+        setParallaxOffset(offset);
+      }
+    };
+
+    handleScroll(); // Initial calculation
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [quote]);
 
   // Define gradient colors for each section
@@ -76,11 +102,13 @@ const Section = ({ id, title, subtitle, children, reverse = false, imageUrl, ima
             {quote && (
               <div 
                 ref={quoteRef}
-                className={`mt-8 pt-6 border-t border-border/30 transition-all duration-1000 ${
-                  isQuoteVisible 
-                    ? 'opacity-100 translate-y-0' 
-                    : 'opacity-0 translate-y-8'
+                className={`mt-8 pt-6 border-t border-border/30 transition-opacity duration-1000 ${
+                  isQuoteVisible ? 'opacity-100' : 'opacity-0'
                 }`}
+                style={{
+                  transform: `translateY(${-parallaxOffset}px)`,
+                  transition: 'transform 0.1s ease-out',
+                }}
               >
                 <blockquote className={`text-lg md:text-xl italic bg-gradient-to-r ${getQuoteGradient()} bg-clip-text text-transparent font-medium leading-relaxed`}>
                   "{quote}"

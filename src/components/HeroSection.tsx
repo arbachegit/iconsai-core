@@ -41,6 +41,7 @@ const HeroSection = () => {
 
   // Quote animation states
   const [isQuoteVisible, setIsQuoteVisible] = useState(false);
+  const [quoteParallaxOffset, setQuoteParallaxOffset] = useState(0);
   const quoteRef = useRef<HTMLDivElement>(null);
 
   // Initialize audio player
@@ -142,6 +143,31 @@ const HeroSection = () => {
 
       return () => observer.disconnect();
     }
+  }, []);
+
+  useEffect(() => {
+    if (!quoteRef.current) return;
+
+    const handleScroll = () => {
+      if (!quoteRef.current) return;
+      
+      const rect = quoteRef.current.getBoundingClientRect();
+      const scrollPosition = window.scrollY;
+      const elementTop = rect.top + scrollPosition;
+      const windowHeight = window.innerHeight;
+      
+      // Calculate parallax only when element is in viewport
+      if (rect.top < windowHeight && rect.bottom > 0) {
+        const scrolled = scrollPosition + windowHeight - elementTop;
+        const offset = scrolled * 0.08; // Parallax speed factor
+        setQuoteParallaxOffset(offset);
+      }
+    };
+
+    handleScroll(); // Initial calculation
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
@@ -348,11 +374,13 @@ const HeroSection = () => {
 
           <div 
             ref={quoteRef}
-            className={`mt-12 max-w-3xl mx-auto transition-all duration-1000 ${
-              isQuoteVisible 
-                ? 'opacity-100 translate-y-0' 
-                : 'opacity-0 translate-y-8'
+            className={`mt-12 max-w-3xl mx-auto transition-opacity duration-1000 ${
+              isQuoteVisible ? 'opacity-100' : 'opacity-0'
             }`}
+            style={{
+              transform: `translateY(${-quoteParallaxOffset}px)`,
+              transition: 'transform 0.1s ease-out',
+            }}
           >
             <blockquote className="text-xl md:text-2xl italic bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent font-medium leading-relaxed">
               "O momento exato em que deixamos de apenas operar máquinas e começamos, de fato, a pensar com elas."
