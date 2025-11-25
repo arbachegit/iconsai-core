@@ -179,13 +179,13 @@ export const DraggablePreviewPanel = ({
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm animate-in fade-in duration-300"
         onClick={onClose}
       />
       
       <Card
         ref={panelRef}
-        className="fixed z-50 w-[750px] max-h-[80vh] flex flex-col bg-card/95 backdrop-blur-md border-primary/20 shadow-2xl"
+        className="fixed z-50 w-[750px] max-h-[80vh] flex flex-col bg-card/95 backdrop-blur-md border-primary/20 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
