@@ -179,7 +179,7 @@ export const DraggablePreviewPanel = ({
       
       <Card
         ref={panelRef}
-        className="fixed z-50 w-[750px] max-h-[900px] flex flex-col bg-card/95 backdrop-blur-md border-primary/20 shadow-2xl"
+        className="fixed z-50 w-[750px] max-h-[80vh] flex flex-col bg-card/95 backdrop-blur-md border-primary/20 shadow-2xl"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
