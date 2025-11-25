@@ -3,10 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Send, Loader2, Play, Pause, Square, Download, ImagePlus } from "lucide-react";
+import { Send, Loader2, Play, Pause, Square, Download, ImagePlus, Mic, MicOff } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import HospitalMap from "@/components/HospitalMap";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { cn } from "@/lib/utils";
 
 export default function ChatKnowYOU() {
   const { 
@@ -35,6 +37,16 @@ export default function ChatKnowYOU() {
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const {
+    isListening,
+    isSupported: isSpeechSupported,
+    transcript,
+    interimTranscript,
+    startListening,
+    stopListening,
+    resetTranscript,
+  } = useSpeechRecognition();
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -45,6 +57,29 @@ export default function ChatKnowYOU() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Update input with voice transcript
+  useEffect(() => {
+    if (transcript) {
+      setInput(prev => {
+        const newText = prev ? `${prev} ${transcript}` : transcript;
+        return newText;
+      });
+      resetTranscript();
+    }
+  }, [transcript, resetTranscript]);
+
+  // Show interim transcript in placeholder or as overlay
+  useEffect(() => {
+    if (interimTranscript && isListening) {
+      setInput(prev => {
+        if (prev && !prev.endsWith(interimTranscript)) {
+          return `${prev} ${interimTranscript}`;
+        }
+        return prev || interimTranscript;
+      });
+    }
+  }, [interimTranscript, isListening]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +98,14 @@ export default function ChatKnowYOU() {
       generateImage(imagePrompt);
       setImagePrompt("");
       setIsImageDialogOpen(false);
+    }
+  };
+
+  const handleVoiceToggle = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
     }
   };
 
@@ -261,19 +304,43 @@ export default function ChatKnowYOU() {
       <form onSubmit={handleSubmit} className="p-6 border-t border-border/50">
         <div className="flex gap-3">
           <div className="flex-1 space-y-3">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }
-              }}
-              placeholder="Digite sua mensagem sobre saúde..."
-              className="min-h-[60px] resize-none"
-              disabled={isLoading}
-            />
+            <div className="relative">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
+                placeholder={isListening ? "Ouvindo..." : "Digite sua mensagem sobre saúde..."}
+                className={cn(
+                  "min-h-[60px] resize-none pr-12",
+                  isListening && "border-primary ring-2 ring-primary/20"
+                )}
+                disabled={isLoading}
+              />
+              {isSpeechSupported && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleVoiceToggle}
+                  className={cn(
+                    "absolute right-2 top-2 h-8 w-8",
+                    isListening && "text-primary animate-pulse"
+                  )}
+                  disabled={isLoading}
+                >
+                  {isListening ? (
+                    <MicOff className="w-4 h-4" />
+                  ) : (
+                    <Mic className="w-4 h-4" />
+                  )}
+                </Button>
+              )}
+            </div>
             <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -331,9 +398,20 @@ export default function ChatKnowYOU() {
             <Send className="w-5 h-5" />
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Pressione Enter para enviar • Shift+Enter para nova linha
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs text-muted-foreground">
+            Pressione Enter para enviar • Shift+Enter para nova linha
+          </p>
+          {isSpeechSupported && (
+            <p className="text-xs text-muted-foreground">
+              {isListening ? (
+                <span className="text-primary font-medium">🎤 Gravando...</span>
+              ) : (
+                <span>Clique no 🎤 para falar</span>
+              )}
+            </p>
+          )}
+        </div>
       </form>
     </div>
   );
