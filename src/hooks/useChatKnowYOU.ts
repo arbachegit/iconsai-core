@@ -21,6 +21,7 @@ export function useChatKnowYOU() {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [currentlyPlayingIndex, setCurrentlyPlayingIndex] = useState<number | null>(null);
+  const [isAudioPaused, setIsAudioPaused] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([
     "O que é telemedicina?",
     "Como prevenir doenças crônicas?",
@@ -235,10 +236,33 @@ export function useChatKnowYOU() {
     }
   }, [messages, toast]);
 
+  const pauseAudio = useCallback(async () => {
+    await audioPlayerRef.current.pause();
+    setIsAudioPaused(true);
+  }, []);
+
+  const resumeAudio = useCallback(async () => {
+    await audioPlayerRef.current.resume();
+    setIsAudioPaused(false);
+  }, []);
+
   const stopAudio = useCallback(() => {
     audioPlayerRef.current.stop();
     setCurrentlyPlayingIndex(null);
+    setIsAudioPaused(false);
   }, []);
+
+  const downloadAudio = useCallback((messageIndex: number) => {
+    const message = messages[messageIndex];
+    if (!message?.audioUrl) return;
+
+    const link = document.createElement('a');
+    link.href = message.audioUrl;
+    link.download = `knowyou-audio-${messageIndex + 1}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [messages]);
 
   const generateImage = useCallback(
     async (prompt: string) => {
@@ -295,11 +319,15 @@ export function useChatKnowYOU() {
     isGeneratingAudio,
     isGeneratingImage,
     currentlyPlayingIndex,
+    isAudioPaused,
     suggestions,
     sendMessage,
     clearHistory,
     playAudio,
+    pauseAudio,
+    resumeAudio,
     stopAudio,
+    downloadAudio,
     generateImage,
   };
 }
