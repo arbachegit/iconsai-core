@@ -35,6 +35,33 @@ serve(async (req) => {
       );
     }
 
+    // Validação: apenas prompts relacionados à área de saúde
+    const healthKeywords = [
+      'saúde', 'médico', 'hospital', 'paciente', 'tratamento', 'diagnóstico',
+      'anatomia', 'coração', 'cérebro', 'medicina', 'cirurgia', 'enfermagem',
+      'farmácia', 'medicamento', 'doença', 'terapia', 'exame', 'consulta',
+      'clínica', 'bem-estar', 'nutrição', 'fisioterapia', 'saúde mental',
+      'vacina', 'sangue', 'órgão', 'sintoma', 'cuidado', 'prevenção',
+      'health', 'medical', 'doctor', 'patient', 'treatment', 'diagnosis',
+      'surgery', 'clinic', 'nurse', 'pharmacy', 'disease', 'therapy'
+    ];
+
+    const isHealthRelated = healthKeywords.some(keyword => 
+      prompt.toLowerCase().includes(keyword)
+    );
+
+    if (!isHealthRelated) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Apenas imagens relacionadas à área da saúde são permitidas. Por favor, refaça seu pedido com um tema de saúde ou medicina." 
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

@@ -73,15 +73,16 @@ export const TooltipSingleImage = ({ sectionId }: TooltipSingleImageProps) => {
       
       const promptKey = `tooltip-${sectionId}-0`;
       
-      // Buscar imagem no cache
+      // Buscar imagem no cache (APENAS BUSCAR - sem geração dinâmica)
       const { data: existingImage } = await supabase
         .from('generated_images')
         .select('image_url')
         .eq('section_id', `tooltip-${sectionId}`)
         .eq('prompt_key', promptKey)
-        .single();
+        .maybeSingle();
       
       if (existingImage?.image_url) {
+        console.log(`Imagem de tooltip encontrada no cache para ${sectionId}`);
         setImage(existingImage.image_url);
         setIsLoading(false);
         
@@ -94,107 +95,11 @@ export const TooltipSingleImage = ({ sectionId }: TooltipSingleImageProps) => {
         return;
       }
       
-      // Gerar nova imagem
-      const startTime = Date.now();
-      try {
-        const { data, error } = await supabase.functions.invoke('generate-image', {
-          body: { prompt }
-        });
-        
-        const generationTime = Date.now() - startTime;
-        
-        if (error?.message?.includes("402") || error?.message?.includes("Créditos insuficientes")) {
-          console.log("Créditos esgotados - marcando e usando fallback");
-          markCreditsExhausted();
-          setUsesFallback(true);
-          setImage(FALLBACK_IMAGE);
-          
-          await supabase.rpc('log_credit_usage', {
-            p_operation_type: 'image_generation',
-            p_success: false,
-            p_error_code: '402',
-            p_section_id: `tooltip-${sectionId}`,
-            p_metadata: { prompt_key: promptKey }
-          });
-          
-          await supabase.from('image_analytics').insert({
-            section_id: `tooltip-${sectionId}`,
-            prompt_key: promptKey,
-            success: false,
-            cached: false,
-            generation_time_ms: generationTime,
-            error_message: "Credits exhausted"
-          });
-          
-          setIsLoading(false);
-          return;
-        }
-        
-        if (error || !data?.imageUrl) {
-          console.error("Erro ao gerar imagem:", error);
-          setImage(FALLBACK_IMAGE);
-          
-          await supabase.from('image_analytics').insert({
-            section_id: `tooltip-${sectionId}`,
-            prompt_key: promptKey,
-            success: false,
-            cached: false,
-            generation_time_ms: generationTime,
-            error_message: error?.message || 'No image URL returned'
-          });
-          
-          setIsLoading(false);
-          return;
-        }
-        
-        const imageUrl = data.imageUrl;
-        
-        await supabase.rpc('log_credit_usage', {
-          p_operation_type: 'image_generation',
-          p_success: true,
-          p_error_code: null,
-          p_section_id: `tooltip-${sectionId}`,
-          p_metadata: { prompt_key: promptKey, generation_time_ms: generationTime }
-        });
-        
-        await supabase.from('generated_images').insert({
-          section_id: `tooltip-${sectionId}`,
-          prompt_key: promptKey,
-          image_url: imageUrl,
-        });
-        
-        await supabase.from('image_analytics').insert({
-          section_id: `tooltip-${sectionId}`,
-          prompt_key: promptKey,
-          success: true,
-          cached: false,
-          generation_time_ms: generationTime,
-        });
-        
-        setImage(imageUrl);
-        setIsLoading(false);
-      } catch (error) {
-        const generationTime = Date.now() - startTime;
-        console.error("Erro ao gerar imagem:", error);
-        
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        if (errorMsg.includes("402") || errorMsg.includes("Créditos insuficientes")) {
-          markCreditsExhausted();
-          setUsesFallback(true);
-        }
-        
-        await supabase.from('image_analytics').insert({
-          section_id: `tooltip-${sectionId}`,
-          prompt_key: promptKey,
-          success: false,
-          cached: false,
-          generation_time_ms: generationTime,
-          error_message: errorMsg
-        });
-        
-        setImage(FALLBACK_IMAGE);
-        setIsLoading(false);
-      }
+      // Imagem não encontrada - usar fallback permanente
+      // Admin deve pré-gerar as imagens através do painel admin
+      console.log(`Imagem de tooltip não encontrada no cache para ${sectionId} - usando fallback`);
+      setImage(FALLBACK_IMAGE);
+      setIsLoading(false);
     };
     
     generateImage();
