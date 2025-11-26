@@ -109,7 +109,7 @@ export const DigitalExclusionSection = () => {
                 <h1 className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
                   5,74 bilhões
                 </h1>
-                <h2 className="text-2xl md:text-3xl font-semibold text-foreground/90 mt-4">
+                <h2 className="text-2xl md:text-3xl font-semibold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mt-4">
                   de pessoas ainda não conseguem acessar a internet
                 </h2>
                 
