@@ -106,8 +106,11 @@ export const DigitalExclusionSection = () => {
           <div className="max-w-4xl mx-auto">
             <div className="bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm border border-primary/20 rounded-lg p-8 shadow-lg">
               <div className="text-center space-y-4">
-                <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-                  5,74 bilhões de pessoas ainda não conseguem acessar a internet
+                <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+                  5,74 bilhões
+                </h1>
+                <h2 className="text-2xl md:text-3xl font-semibold text-foreground/90 mt-4">
+                  de pessoas ainda não conseguem acessar a internet
                 </h2>
                 
                 <CollapsibleTrigger asChild>
