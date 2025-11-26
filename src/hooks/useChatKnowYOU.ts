@@ -4,6 +4,7 @@ import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "./useAdminSettings";
 import { useChatAnalytics } from "./useChatAnalytics";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Message {
   role: "user" | "assistant";
@@ -324,11 +325,9 @@ export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
 
       try {
         console.log("🖼️ [generateImage Hook] Invocando edge function generate-image...");
-        const { data, error } = await import("@/integrations/supabase/client").then(
-          (m) => m.supabase.functions.invoke("generate-image", {
-            body: { prompt },
-          })
-        );
+        const { data, error } = await supabase.functions.invoke("generate-image", {
+          body: { prompt },
+        });
 
         console.log("🖼️ [generateImage Hook] Resposta da edge function:", { data, error });
 
