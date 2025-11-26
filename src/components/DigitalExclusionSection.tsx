@@ -116,7 +116,7 @@ export const DigitalExclusionSection = () => {
                 <CollapsibleTrigger asChild>
                   <Button 
                     variant="outline" 
-                    className="group relative bg-gradient-to-r from-primary/20 via-secondary/20 to-accent/20 border-2 border-primary/50 hover:border-primary hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 hover:scale-105 animate-pulse"
+                    className="group bg-primary/30 border-2 border-primary hover:bg-primary/50 hover:border-primary hover:shadow-lg hover:shadow-primary/40 transition-all duration-300"
                   >
                     <span className="mr-2 font-semibold">Saiba mais sobre esse desafio</span>
                     <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
