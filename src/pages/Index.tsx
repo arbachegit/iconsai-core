@@ -3,6 +3,7 @@ import HeroSection from "@/components/HeroSection";
 import Section from "@/components/Section";
 import ChatKnowYOU from "@/components/ChatKnowYOU";
 import { MediaCarousel } from "@/components/MediaCarousel";
+import { DigitalExclusionSection } from "@/components/DigitalExclusionSection";
 import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
@@ -155,6 +156,9 @@ const Index = () => {
           />
         </div>
       </Section>
+
+      {/* Digital Exclusion Section */}
+      <DigitalExclusionSection />
 
       {/* Section 8: Bom Prompt */}
       <Section

@@ -44,6 +44,33 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_preload_config: {
+        Row: {
+          check_interval_minutes: number | null
+          enabled: boolean | null
+          id: string
+          last_check: string | null
+          last_preload: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          check_interval_minutes?: number | null
+          enabled?: boolean | null
+          id?: string
+          last_check?: string | null
+          last_preload?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          check_interval_minutes?: number | null
+          enabled?: boolean | null
+          id?: string
+          last_check?: string | null
+          last_preload?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       chat_analytics: {
         Row: {
           audio_plays: number | null
@@ -74,6 +101,225 @@ export type Database = {
           started_at?: string | null
           topics?: string[] | null
           user_name?: string | null
+        }
+        Relationships: []
+      }
+      conversation_history: {
+        Row: {
+          created_at: string
+          id: string
+          messages: Json
+          session_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          session_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          session_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      credits_usage: {
+        Row: {
+          created_at: string | null
+          credits_consumed: number | null
+          error_code: string | null
+          id: string
+          metadata: Json | null
+          operation_type: string
+          section_id: string | null
+          success: boolean
+        }
+        Insert: {
+          created_at?: string | null
+          credits_consumed?: number | null
+          error_code?: string | null
+          id?: string
+          metadata?: Json | null
+          operation_type: string
+          section_id?: string | null
+          success: boolean
+        }
+        Update: {
+          created_at?: string | null
+          credits_consumed?: number | null
+          error_code?: string | null
+          id?: string
+          metadata?: Json | null
+          operation_type?: string
+          section_id?: string | null
+          success?: boolean
+        }
+        Relationships: []
+      }
+      debug_logs: {
+        Row: {
+          component: string | null
+          created_at: string
+          data: Json | null
+          environment: string | null
+          id: string
+          log_type: string
+          message: string
+          scroll_x: number | null
+          scroll_y: number | null
+          user_agent: string | null
+          viewport_height: number | null
+          viewport_width: number | null
+        }
+        Insert: {
+          component?: string | null
+          created_at?: string
+          data?: Json | null
+          environment?: string | null
+          id?: string
+          log_type: string
+          message: string
+          scroll_x?: number | null
+          scroll_y?: number | null
+          user_agent?: string | null
+          viewport_height?: number | null
+          viewport_width?: number | null
+        }
+        Update: {
+          component?: string | null
+          created_at?: string
+          data?: Json | null
+          environment?: string | null
+          id?: string
+          log_type?: string
+          message?: string
+          scroll_x?: number | null
+          scroll_y?: number | null
+          user_agent?: string | null
+          viewport_height?: number | null
+          viewport_width?: number | null
+        }
+        Relationships: []
+      }
+      feature_flags: {
+        Row: {
+          created_at: string
+          description: string | null
+          enabled: boolean
+          environment: string | null
+          flag_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          environment?: string | null
+          flag_name: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          environment?: string | null
+          flag_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      generated_images: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_url: string
+          prompt_key: string
+          section_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_url: string
+          prompt_key: string
+          section_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_url?: string
+          prompt_key?: string
+          section_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      image_analytics: {
+        Row: {
+          cached: boolean
+          created_at: string | null
+          error_message: string | null
+          generation_time_ms: number | null
+          id: string
+          prompt_key: string
+          section_id: string
+          success: boolean
+        }
+        Insert: {
+          cached?: boolean
+          created_at?: string | null
+          error_message?: string | null
+          generation_time_ms?: number | null
+          id?: string
+          prompt_key: string
+          section_id: string
+          success: boolean
+        }
+        Update: {
+          cached?: boolean
+          created_at?: string | null
+          error_message?: string | null
+          generation_time_ms?: number | null
+          id?: string
+          prompt_key?: string
+          section_id?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
+      section_audio: {
+        Row: {
+          audio_url: string
+          created_at: string | null
+          id: string
+          section_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string | null
+          id?: string
+          section_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string | null
+          id?: string
+          section_id?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -142,6 +388,16 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_credit_usage: {
+        Args: {
+          p_error_code?: string
+          p_metadata?: Json
+          p_operation_type: string
+          p_section_id?: string
+          p_success: boolean
+        }
+        Returns: string
       }
     }
     Enums: {
