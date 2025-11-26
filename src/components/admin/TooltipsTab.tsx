@@ -5,9 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Edit2, Save, X, Volume2 } from "lucide-react";
+import { Edit2, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { generateAudioUrl } from "@/lib/audio-player";
 
 interface TooltipContent {
   id: string;
@@ -22,7 +21,6 @@ export const TooltipsTab = () => {
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ title: "", content: "" });
-  const [generatingAudio, setGeneratingAudio] = useState<string | null>(null);
 
   const { data: tooltips, refetch } = useQuery({
     queryKey: ["all-tooltips"],
@@ -73,36 +71,6 @@ export const TooltipsTab = () => {
   const handleCancel = () => {
     setEditingId(null);
     setEditForm({ title: "", content: "" });
-  };
-
-  const handleGenerateAudio = async (tooltipId: string, content: string) => {
-    setGeneratingAudio(tooltipId);
-    try {
-      const audioUrl = await generateAudioUrl(content);
-      
-      const { error } = await supabase
-        .from('tooltip_contents')
-        .update({ audio_url: audioUrl })
-        .eq('id', tooltipId);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Áudio gerado com sucesso",
-        description: "O áudio está pronto para reprodução.",
-      });
-      
-      refetch();
-    } catch (error) {
-      console.error("Erro ao gerar áudio:", error);
-      toast({
-        title: "Erro ao gerar áudio",
-        description: error instanceof Error ? error.message : "Não foi possível gerar o áudio.",
-        variant: "destructive",
-      });
-    } finally {
-      setGeneratingAudio(null);
-    }
   };
 
   return (
@@ -189,29 +157,9 @@ export const TooltipsTab = () => {
                   </Button>
                 </div>
 
-                <p className="text-muted-foreground line-clamp-3 mb-4">
+                <p className="text-muted-foreground line-clamp-3">
                   {tooltip.content}
                 </p>
-
-                <div className="flex items-center gap-2">
-                  {tooltip.audio_url ? (
-                    <div className="flex items-center gap-2 text-xs text-green-500">
-                      <Volume2 className="w-3 h-3" />
-                      <span>Áudio disponível</span>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleGenerateAudio(tooltip.id, tooltip.content)}
-                      disabled={generatingAudio === tooltip.id}
-                      className="gap-2"
-                    >
-                      <Volume2 className="w-4 h-4" />
-                      {generatingAudio === tooltip.id ? "Gerando..." : "Gerar Áudio"}
-                    </Button>
-                  )}
-                </div>
               </div>
             )}
           </Card>

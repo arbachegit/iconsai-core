@@ -2,32 +2,13 @@ export class AudioStreamPlayer {
   private audioContext: AudioContext | null = null;
   private audioQueue: ArrayBuffer[] = [];
   private isPlaying = false;
-  private isPaused = false;
   private currentSource: AudioBufferSourceNode | null = null;
-  private onProgressCallback?: (progress: number, duration: number) => void;
-  private progressInterval?: number;
-  private playbackRate: number = 1.0;
 
   constructor() {
     // Initialize on user interaction
     if (typeof window !== "undefined") {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
-  }
-
-  setProgressCallback(callback: (progress: number, duration: number) => void) {
-    this.onProgressCallback = callback;
-  }
-
-  setPlaybackRate(rate: number): void {
-    this.playbackRate = rate;
-    if (this.currentSource) {
-      this.currentSource.playbackRate.value = rate;
-    }
-  }
-
-  getPlaybackRate(): number {
-    return this.playbackRate;
   }
 
   async playAudioFromUrl(url: string): Promise<void> {
@@ -58,9 +39,6 @@ export class AudioStreamPlayer {
   private async processQueue(): Promise<void> {
     if (this.audioQueue.length === 0) {
       this.isPlaying = false;
-      if (this.progressInterval) {
-        clearInterval(this.progressInterval);
-      }
       return;
     }
 
@@ -74,28 +52,9 @@ export class AudioStreamPlayer {
       
       this.currentSource = this.audioContext.createBufferSource();
       this.currentSource.buffer = audioBuffer;
-      this.currentSource.playbackRate.value = this.playbackRate;
       this.currentSource.connect(this.audioContext.destination);
       
-      const startTime = this.audioContext.currentTime;
-      const duration = audioBuffer.duration;
-      
-      // Update progress during playback
-      if (this.onProgressCallback) {
-        this.progressInterval = window.setInterval(() => {
-          if (this.currentSource && this.audioContext) {
-            const elapsed = this.audioContext.currentTime - startTime;
-            const progress = Math.min((elapsed / duration) * 100, 100);
-            this.onProgressCallback?.(progress, duration);
-          }
-        }, 100);
-      }
-      
       this.currentSource.onended = () => {
-        if (this.progressInterval) {
-          clearInterval(this.progressInterval);
-        }
-        this.onProgressCallback?.(100, duration);
         this.currentSource = null;
         this.processQueue();
       };
@@ -103,24 +62,7 @@ export class AudioStreamPlayer {
       this.currentSource.start(0);
     } catch (error) {
       console.error("Erro ao decodificar áudio:", error);
-      if (this.progressInterval) {
-        clearInterval(this.progressInterval);
-      }
       this.processQueue(); // Continue com próximo na fila
-    }
-  }
-
-  async pause(): Promise<void> {
-    if (this.audioContext && this.isPlaying && !this.isPaused) {
-      await this.audioContext.suspend();
-      this.isPaused = true;
-    }
-  }
-
-  async resume(): Promise<void> {
-    if (this.audioContext && this.isPaused) {
-      await this.audioContext.resume();
-      this.isPaused = false;
     }
   }
 
@@ -129,21 +71,12 @@ export class AudioStreamPlayer {
       this.currentSource.stop();
       this.currentSource = null;
     }
-    if (this.progressInterval) {
-      clearInterval(this.progressInterval);
-    }
     this.audioQueue = [];
     this.isPlaying = false;
-    this.isPaused = false;
-    this.onProgressCallback?.(0, 0);
   }
 
   isCurrentlyPlaying(): boolean {
     return this.isPlaying;
-  }
-
-  isPausedState(): boolean {
-    return this.isPaused;
   }
 }
 
@@ -163,29 +96,7 @@ export async function generateAudioUrl(text: string): Promise<string> {
     throw new Error("Falha ao gerar áudio");
   }
 
-  // Convert stream to blob
+  // Convert stream to blob and create URL
   const audioBlob = await response.blob();
-  
-  // Upload to Supabase Storage for permanent URL
-  const { supabase } = await import("@/integrations/supabase/client");
-  const fileName = `tooltip-${Date.now()}.mp3`;
-  
-  const { data: uploadData, error: uploadError } = await supabase.storage
-    .from('tooltip-audio')
-    .upload(fileName, audioBlob, {
-      contentType: 'audio/mpeg',
-      cacheControl: '3600',
-    });
-
-  if (uploadError) {
-    console.error("Erro ao fazer upload do áudio:", uploadError);
-    throw new Error("Falha ao salvar áudio");
-  }
-
-  // Get permanent public URL
-  const { data: { publicUrl } } = supabase.storage
-    .from('tooltip-audio')
-    .getPublicUrl(fileName);
-
-  return publicUrl;
+  return URL.createObjectURL(audioBlob);
 }

@@ -1,28 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Play, Square, Download, Loader2 } from "lucide-react";
+import { X, Play, Pause, Edit2, Save } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { useTooltipContent } from "@/hooks/useTooltipContent";
 import { useToast } from "@/hooks/use-toast";
-import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
-import { TooltipSingleImage } from "./TooltipSingleImage";
 
 interface DraggablePreviewPanelProps {
   sectionId: string;
   onClose: () => void;
 }
-
-const sectionSubtitles: Record<string, string> = {
-  "bom-prompt": "Como construir um prompt eficaz",
-  "ia-nova-era": "IA generativa como motor de ideias e acelerador tecnológico",
-  "internet": "A Internet como infraestrutura para a Inteligência Artificial e o conhecimento global",
-  "knowyou": "KnowYOU e ACC: inteligência conversacional centrada no humano",
-  "software": "Como isto impactou a IA",
-  "tech-sem-proposito": "O Contraste com a IA: Propósito Claro e o Poder da Comunicação",
-  "watson": "O Despertar do Propósito e a Longa Jornada da Comunicação",
-  "kubrick": "A Influência de HAL e a Era da Comunicação Semântica"
-};
 
 export const DraggablePreviewPanel = ({
   sectionId,
@@ -34,27 +22,20 @@ export const DraggablePreviewPanel = ({
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isEditMode, setIsEditMode] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const [audioProgress, setAudioProgress] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(0);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedContent, setEditedContent] = useState("");
   
   const panelRef = useRef<HTMLDivElement>(null);
-  const audioPlayerRef = useRef<AudioStreamPlayer | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Initialize audio player with progress callback
   useEffect(() => {
-    const player = new AudioStreamPlayer();
-    player.setProgressCallback((progress, duration) => {
-      setAudioProgress(progress);
-      setAudioDuration(duration);
-    });
-    audioPlayerRef.current = player;
-
-    return () => {
-      player.stop();
-    };
-  }, []);
+    if (content) {
+      setEditedTitle(content.title);
+      setEditedContent(content.content);
+    }
+  }, [content]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest(".no-drag")) return;
@@ -90,94 +71,49 @@ export const DraggablePreviewPanel = ({
     }
   }, [isDragging, dragOffset]);
 
-  const handlePlayAudio = async () => {
-    if (!audioPlayerRef.current) return;
-
-    try {
-      // If currently playing, pause
-      if (isPlaying && !audioPlayerRef.current.isPausedState()) {
-        await audioPlayerRef.current.pause();
-      } 
-      // If paused, resume
-      else if (isPlaying && audioPlayerRef.current.isPausedState()) {
-        await audioPlayerRef.current.resume();
-      } 
-      // If not playing at all, start playback
-      else {
-        // Check if audio URL exists, if not generate it
-        let audioUrl = content?.audio_url;
-        
-        if (!audioUrl && content?.content) {
-          setIsGeneratingAudio(true);
-          try {
-            audioUrl = await generateAudioUrl(content.content);
-            
-            // Save to database cache
-            try {
-              await updateContent({ audio_url: audioUrl });
-              toast({
-                title: "Áudio gerado",
-                description: "O áudio foi gerado e salvo com sucesso.",
-              });
-            } catch (updateError) {
-              console.error("Error saving audio URL:", updateError);
-              toast({
-                title: "Aviso",
-                description: "Áudio gerado mas não foi possível salvar no cache.",
-                variant: "destructive",
-              });
-            }
-          } catch (error) {
-            console.error("Error generating audio:", error);
-            toast({
-              title: "Erro ao gerar áudio",
-              description: "Não foi possível gerar o áudio. Tente novamente.",
-              variant: "destructive",
-            });
-            setIsGeneratingAudio(false);
-            return;
-          } finally {
-            setIsGeneratingAudio(false);
-          }
-        }
-        
-        if (audioUrl) {
-          await audioPlayerRef.current.playAudioFromUrl(audioUrl);
-          setIsPlaying(true);
-        }
-      }
-    } catch (error) {
-      console.error("Error playing audio:", error);
-      toast({
-        title: "Erro ao reproduzir áudio",
-        description: "Não foi possível reproduzir o áudio. Tente novamente.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleStopAudio = () => {
-    audioPlayerRef.current?.stop();
-    setIsPlaying(false);
-    setAudioProgress(0);
-  };
-
-  const handleDownloadAudio = () => {
+  const handlePlayAudio = () => {
     if (!content?.audio_url) {
       toast({
         title: "Áudio não disponível",
-        description: "Este tooltip ainda não possui áudio para download.",
+        description: "Este tooltip ainda não possui áudio.",
         variant: "destructive",
       });
       return;
     }
 
-    const link = document.createElement('a');
-    link.href = content.audio_url;
-    link.download = `${content.title.replace(/\s+/g, '-')}.mp3`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (isPlaying && audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      if (!audioRef.current) {
+        audioRef.current = new Audio(content.audio_url);
+        audioRef.current.onended = () => setIsPlaying(false);
+      }
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      await updateContent({
+        title: editedTitle,
+        content: editedContent,
+      });
+      
+      toast({
+        title: "Salvo com sucesso",
+        description: "O conteúdo do tooltip foi atualizado.",
+      });
+      
+      setIsEditMode(false);
+    } catch (error) {
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível atualizar o tooltip.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -187,27 +123,27 @@ export const DraggablePreviewPanel = ({
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm animate-in fade-in duration-300"
+        className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
         onClick={onClose}
       />
       
       <Card
         ref={panelRef}
-        className="fixed z-50 w-[750px] max-h-[80vh] flex flex-col bg-card/95 backdrop-blur-md border-primary/20 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500"
+        className="fixed z-50 w-[500px] max-h-[600px] flex flex-col bg-card/95 backdrop-blur-md border-primary/20 shadow-2xl"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
+          cursor: isDragging ? "grabbing" : "grab",
         }}
       >
         <div
           className="flex items-center justify-between p-4 border-b border-primary/20"
           onMouseDown={handleMouseDown}
-          style={{ cursor: isDragging ? "grabbing" : "grab" }}
         >
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <h3 className="font-semibold text-foreground">
-              Informações
+              {isEditMode ? "Editar Tooltip" : "Informações"}
             </h3>
           </div>
           
@@ -222,107 +158,85 @@ export const DraggablePreviewPanel = ({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4 no-drag">
-          <h2 className="text-2xl font-bold text-gradient">
-            {content?.title}
-          </h2>
-          
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePlayAudio}
-                disabled={isGeneratingAudio}
-                className="gap-2"
-              >
-                {isGeneratingAudio ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Gerando...
-                  </>
-                ) : isPlaying && !audioPlayerRef.current?.isPausedState() ? (
-                  <>
-                    <Square className="w-4 h-4" />
-                    Pausar
-                  </>
-                ) : isPlaying && audioPlayerRef.current?.isPausedState() ? (
-                  <>
-                    <Play className="w-4 h-4" />
-                    Retomar
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4" />
-                    Play
-                  </>
-                )}
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleStopAudio}
-                disabled={!content?.audio_url || isGeneratingAudio}
-                className="gap-2"
-              >
-                <Square className="w-4 h-4" />
-                Stop
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadAudio}
-                disabled={!content?.audio_url || isGeneratingAudio}
-                className="gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Download
-              </Button>
-            </div>
-            
-            {/* Progress bar - só aparece quando há áudio */}
-            {content?.audio_url && (
-              <div className="space-y-1">
-                <Progress value={audioProgress} className="h-2" />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>
-                    {Math.floor((audioProgress / 100) * audioDuration / 60)}:
-                    {String(Math.floor((audioProgress / 100) * audioDuration % 60)).padStart(2, '0')}
-                  </span>
-                  <span>
-                    {Math.floor(audioDuration / 60)}:
-                    {String(Math.floor(audioDuration % 60)).padStart(2, '0')}
-                  </span>
-                </div>
+          {isEditMode ? (
+            <>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Título
+                </label>
+                <Input
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  className="bg-background/50"
+                />
               </div>
-            )}
-            
-            {/* Mensagem quando não há áudio */}
-            {!content?.audio_url && (
-              <p className="text-xs text-muted-foreground italic">
-                Áudio em breve
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Conteúdo
+                </label>
+                <Textarea
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                  rows={10}
+                  className="bg-background/50 resize-none"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold text-gradient">
+                {content?.title}
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                {content?.content}
               </p>
-            )}
-          </div>
-          
-          {/* Imagem fixa */}
-          <div className="py-4">
-            <TooltipSingleImage sectionId={sectionId} />
-          </div>
-          
-          {/* Subtítulo intermediário */}
-          {sectionSubtitles[sectionId] && (
-            <div className="border-t border-b border-primary/20 py-3 my-4">
-              <h3 className="text-lg font-semibold text-primary/90">
-                📌 {sectionSubtitles[sectionId]}
-              </h3>
-            </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between p-4 border-t border-primary/20 no-drag gap-2">
+          {content?.audio_url && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePlayAudio}
+              className="gap-2"
+            >
+              {isPlaying ? (
+                <>
+                  <Pause className="w-4 h-4" />
+                  Pausar
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  Ouvir
+                </>
+              )}
+            </Button>
           )}
           
-          <p className="text-muted-foreground leading-relaxed">
-            {content?.content}
-          </p>
+          {isEditMode ? (
+            <Button
+              size="sm"
+              onClick={handleSave}
+              className="gap-2 ml-auto"
+            >
+              <Save className="w-4 h-4" />
+              Salvar
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsEditMode(true)}
+              className="gap-2 ml-auto"
+            >
+              <Edit2 className="w-4 h-4" />
+              Editar
+            </Button>
+          )}
         </div>
       </Card>
     </>

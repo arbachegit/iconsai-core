@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Brain } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Menu, X } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
 
 const Header = () => {
@@ -54,24 +53,14 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-6">
             {navItems.map((item) => (
-              <div key={item.href} className="flex items-center gap-2">
-                <button
-                  onClick={() => scrollToSection(item.href)}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors relative group"
-                >
-                  {item.label}
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
-                </button>
-                {item.href === "#bom-prompt" && (
-                  <Link 
-                    to="/admin"
-                    className="text-primary hover:text-primary/80 transition-all hover:scale-110 transform duration-200"
-                    aria-label="Painel Administrativo"
-                  >
-                    <Brain className="w-5 h-5" />
-                  </Link>
-                )}
-              </div>
+              <button
+                key={item.href}
+                onClick={() => scrollToSection(item.href)}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors relative group"
+              >
+                {item.label}
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
+              </button>
             ))}
           </nav>
 
@@ -90,23 +79,13 @@ const Header = () => {
         {isMobileMenuOpen && (
           <nav className="lg:hidden mt-4 pb-4 space-y-3 animate-fade-in">
             {navItems.map((item) => (
-              <div key={item.href} className="flex items-center gap-2">
-                <button
-                  onClick={() => scrollToSection(item.href)}
-                  className="block w-full text-left py-2 px-4 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
-                >
-                  {item.label}
-                </button>
-                {item.href === "#bom-prompt" && (
-                  <Link 
-                    to="/admin"
-                    className="text-primary hover:text-primary/80 transition-all hover:scale-110 transform duration-200 px-2"
-                    aria-label="Painel Administrativo"
-                  >
-                    <Brain className="w-5 h-5" />
-                  </Link>
-                )}
-              </div>
+              <button
+                key={item.href}
+                onClick={() => scrollToSection(item.href)}
+                className="block w-full text-left py-2 px-4 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
+              >
+                {item.label}
+              </button>
             ))}
           </nav>
         )}

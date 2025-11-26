@@ -57,22 +57,14 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
-  html, body {
-    overflow-x: hidden;
-    max-width: 100vw;
-  }
-
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    overflow-y: auto;
-    overscroll-behavior: none;
   }
 
-  /* Temporarily disabled to test scroll issues */
-  /* html {
+  html {
     scroll-behavior: smooth;
-  } */
+  }
 }
 
 @layer utilities {
@@ -102,11 +94,7 @@ All colors MUST be HSL.
   }
 
   .animate-pulse-slow {
-    animation: pulse-slow 4s ease-in-out infinite;
-  }
-
-  .animate-bounce-subtle {
-    animation: bounce-subtle 3s ease-in-out infinite;
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   @keyframes float {
@@ -117,40 +105,14 @@ All colors MUST be HSL.
       transform: translateY(-20px);
     }
   }
+}
 
-  @keyframes pulse-slow {
-    0%, 100% {
-      transform: scale(1);
-      opacity: 1;
-    }
-    50% {
-      transform: scale(1.05);
-      opacity: 0.9;
-    }
+@layer base {
+  * {
+    @apply border-border;
   }
 
-  @keyframes bounce-subtle {
-    0%, 100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-8px);
-    }
-  }
-
-  /* Isolar animações para não afetar layout */
-  .animate-ping, .animate-pulse, .animate-bounce-subtle {
-    contain: layout;
-  }
-
-  /* Conter TODAS as animações Tailwind que podem causar overflow */
-  [class*="animate-"] {
-    contain: layout style;
-    will-change: transform, opacity;
-  }
-
-  /* Prevenir que elementos fixos causem overflow */
-  .fixed {
-    contain: layout;
+  body {
+    @apply bg-background text-foreground;
   }
 }

@@ -4,16 +4,12 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { DashboardTab } from "@/components/admin/DashboardTab";
 import { ChatConfigTab } from "@/components/admin/ChatConfigTab";
 import { TooltipsTab } from "@/components/admin/TooltipsTab";
-import { EmailTab } from "@/components/admin/EmailTab";
+import { GmailTab } from "@/components/admin/GmailTab";
 import { AnalyticsTab } from "@/components/admin/AnalyticsTab";
-import { ImageAnalyticsTab } from "@/components/admin/ImageAnalyticsTab";
-import { ImageCacheTab } from "@/components/admin/ImageCacheTab";
-import { CreditsDashboardTab } from "@/components/admin/CreditsDashboardTab";
-import { DebugLogsTab } from "@/components/admin/DebugLogsTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "email" | "analytics" | "images" | "cache" | "credits" | "debug";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -79,18 +75,10 @@ const Admin = () => {
         return <ChatConfigTab />;
       case "tooltips":
         return <TooltipsTab />;
-      case "email":
-        return <EmailTab />;
+      case "gmail":
+        return <GmailTab />;
       case "analytics":
         return <AnalyticsTab />;
-      case "images":
-        return <ImageAnalyticsTab />;
-      case "cache":
-        return <ImageCacheTab />;
-      case "credits":
-        return <CreditsDashboardTab />;
-      case "debug":
-        return <DebugLogsTab />;
       default:
         return <DashboardTab />;
     }

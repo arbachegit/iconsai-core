@@ -3,9 +3,6 @@ project_id = "gmflpmcepempcygdrayv"
 [functions.chat]
 verify_jwt = false
 
-[functions.health-chat]
-verify_jwt = false
-
 [functions.generate-image]
 verify_jwt = false
 
@@ -16,7 +13,4 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.youtube-videos]
-verify_jwt = false
-
-[functions.check-credits-preload]
 verify_jwt = false

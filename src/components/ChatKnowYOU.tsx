@@ -3,117 +3,33 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Send, Loader2, Play, Pause, Square, Download, Mic, X, Check } from "lucide-react";
+import { Send, Trash2, Loader2, Volume2, VolumeX, ImagePlus } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
-import HospitalMap from "@/components/HospitalMap";
-import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
-import { VoiceMessagePlayer } from "@/components/VoiceMessagePlayer";
-import { cn } from "@/lib/utils";
-import { debugLog } from "@/lib/environment";
 
-interface ChatKnowYOUProps {
-  variant?: "embedded" | "modal";
-  chatHook?: ReturnType<typeof useChatKnowYOU>;
-}
-
-export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: ChatKnowYOUProps) {
-  // Embedded = health chat, Modal = company chat
-  const internalHook = useChatKnowYOU({ chatType: variant === "embedded" ? "health" : "company" });
-  const chatHook = externalHook || internalHook;
-  
+export default function ChatKnowYOU() {
   const { 
     messages, 
     isLoading, 
     isGeneratingAudio,
     isGeneratingImage,
     currentlyPlayingIndex,
-    isAudioPaused,
-    audioProgress,
-    audioDuration,
-    playbackRate,
     suggestions, 
-    sendMessage,
-    sendVoiceMessage,
+    sendMessage, 
     clearHistory,
     playAudio,
-    pauseAudio,
-    resumeAudio,
     stopAudio,
-    downloadAudio,
-    changePlaybackRate,
     generateImage,
-  } = chatHook;
+  } = useChatKnowYOU();
   const [input, setInput] = useState("");
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const prevMessagesLength = useRef(messages.length);
-  
-  const {
-    isListening,
-    isSupported: isSpeechSupported,
-    transcript,
-    interimTranscript,
-    startListening,
-    stopListening,
-    resetTranscript,
-  } = useSpeechRecognition();
-
-  const {
-    isRecording,
-    recordingDuration,
-    audioBlob,
-    startRecording,
-    stopRecording,
-    cancelRecording,
-    isSupported: isRecorderSupported,
-  } = useVoiceRecorder();
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
 
   useEffect(() => {
-    if (messages.length > 0 && messages.length !== prevMessagesLength.current) {
-      debugLog.effect("ChatKnowYOU", "Messages changed, scrolling into view", {
-        prevLength: prevMessagesLength.current,
-        newLength: messages.length,
-        variant,
-        windowScrollY: window.scrollY
-      });
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      prevMessagesLength.current = messages.length;
-      
-      // Log scroll position after scrollIntoView
-      setTimeout(() => {
-        debugLog.scroll("After scrollIntoView in chat", {
-          windowScrollY: window.scrollY,
-          variant
-        });
-      }, 500);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, variant]);
-
-  // Update input with voice transcript - show interim transcript while listening
-  useEffect(() => {
-    if (isListening && interimTranscript) {
-      // Show interim transcript in real-time while listening
-      setInput(prev => {
-        const baseText = prev.replace(interimTranscript, '').trim();
-        return baseText ? `${baseText} ${interimTranscript}` : interimTranscript;
-      });
-    } else if (transcript && !isListening) {
-      // Finalize with full transcript when listening stops
-      setInput(prev => {
-        const cleaned = prev.replace(interimTranscript, '').trim();
-        return cleaned ? `${cleaned} ${transcript}`.trim() : transcript.trim();
-      });
-      resetTranscript();
-    }
-  }, [transcript, isListening, interimTranscript, resetTranscript]);
+  }, [messages]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,91 +43,47 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
     sendMessage(suggestion);
   };
 
-  const handleVoiceToggle = () => {
-    if (isListening) {
-      stopListening();
-    } else {
-      startListening();
-    }
-  };
-
-  const handleStartRecording = async () => {
-    await startRecording();
-  };
-
-  const handleSendVoiceMessage = async () => {
-    if (audioBlob) {
-      await sendVoiceMessage(audioBlob);
-      stopRecording();
-    }
-  };
-
-  const handleCancelRecording = () => {
-    cancelRecording();
-  };
-
-  const [imagePrompt, setImagePrompt] = useState("");
-  const [showImageDialog, setShowImageDialog] = useState(false);
-
-  const handleGenerateImage = async () => {
-    console.log("🎨 [Desenhar] handleGenerateImage chamado", { 
-      promptLength: imagePrompt.trim().length,
-      prompt: imagePrompt,
-      isGeneratingImage 
-    });
-    
+  const handleGenerateImage = () => {
     if (imagePrompt.trim()) {
-      console.log("🎨 [Desenhar] Chamando generateImage do hook...");
-      try {
-        await generateImage(imagePrompt);
-        console.log("🎨 [Desenhar] generateImage concluído com sucesso");
-        setImagePrompt("");
-        setShowImageDialog(false);
-      } catch (error) {
-        console.error("🎨 [Desenhar] Erro ao gerar imagem:", error);
-      }
-    } else {
-      console.warn("🎨 [Desenhar] Prompt vazio, não gerando imagem");
+      generateImage(imagePrompt);
+      setImagePrompt("");
+      setIsImageDialogOpen(false);
     }
   };
-
-  const containerClass = variant === "modal"
-    ? "h-full flex flex-col bg-transparent" 
-    : "w-full max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl border border-primary/20 shadow-xl overflow-hidden";
-
-  const showHeader = variant === "embedded";
 
   return (
-    <div className={containerClass}>
-      {showHeader && (
-        <div className="bg-gradient-primary p-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-background/20 flex items-center justify-center backdrop-blur-sm">
-              <span className="text-2xl font-bold text-primary-foreground">K</span>
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-primary-foreground">KnowYOU</h3>
-              <p className="text-sm text-primary-foreground/80">Assistente de IA em Saúde</p>
-            </div>
+    <div className="w-full max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl border border-primary/20 shadow-xl overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-primary p-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-background/20 flex items-center justify-center backdrop-blur-sm">
+            <span className="text-2xl font-bold text-primary-foreground">K</span>
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-primary-foreground">KnowYOU</h3>
+            <p className="text-sm text-primary-foreground/80">Assistente de IA em Saúde</p>
           </div>
         </div>
-      )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={clearHistory}
+          className="text-primary-foreground hover:bg-background/20"
+        >
+          <Trash2 className="w-5 h-5" />
+        </Button>
+      </div>
 
       {/* Messages Area */}
-      <ScrollArea className={`${variant === "modal" ? "h-full" : "h-[500px]"} p-6`} ref={scrollRef}>
+      <ScrollArea className="h-[500px] p-6" ref={scrollRef}>
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-12">
+          <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
               <span className="text-4xl font-bold text-primary-foreground">K</span>
             </div>
-            <h4 className="text-xl font-semibold mb-2">
-              {variant === "modal" ? "Olá! Sou o KnowYOU" : "Olá! Sou o KnowYOU Health"}
-            </h4>
+            <h4 className="text-xl font-semibold mb-2">Olá! Sou o KnowYOU</h4>
             <p className="text-muted-foreground max-w-md">
-              {variant === "modal" 
-                ? "Estou aqui para conversar sobre a KnowRISK, Arquitetura Cognitiva e o conteúdo desta landing page. Como posso ajudá-lo?"
-                : "Seu assistente especializado em saúde e Hospital Moinhos de Vento. Como posso ajudá-lo hoje?"
-              }
+              Seu assistente especializado em saúde. Como posso ajudá-lo hoje?
             </p>
           </div>
         ) : (
@@ -245,122 +117,39 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
                         />
                       </DialogContent>
                     </Dialog>
-                   )}
-                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                   
-                   {/* Voice message player for user messages */}
-                   {msg.role === "user" && msg.voiceMessageUrl && (
-                     <div className="mt-2">
-                       <VoiceMessagePlayer
-                         audioUrl={msg.voiceMessageUrl}
-                         duration={msg.voiceMessageDuration}
-                       />
-                     </div>
-                   )}
-                   
-                   <span className="text-xs opacity-70 block mt-2">
-                     {msg.timestamp.toLocaleTimeString("pt-BR", {
-                       hour: "2-digit",
-                       minute: "2-digit",
-                     })}
-                   </span>
-                  
-                  {msg.role === "assistant" && msg.audioUrl && (
-                    <div className="mt-3 pt-3 border-t border-border/30 space-y-2">
-                      {/* Control Buttons */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => {
-                              if (currentlyPlayingIndex === idx) {
-                                if (isAudioPaused) {
-                                  resumeAudio();
-                                } else {
-                                  pauseAudio();
-                                }
-                              } else {
-                                playAudio(idx);
-                              }
-                            }}
-                          >
-                            {currentlyPlayingIndex === idx && !isAudioPaused ? (
-                              <Pause className="w-4 h-4" />
-                            ) : (
-                              <Play className="w-4 h-4" />
-                            )}
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={stopAudio}
-                            disabled={currentlyPlayingIndex !== idx}
-                          >
-                            <Square className="w-3 h-3" />
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => downloadAudio(idx)}
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                        </div>
-
-                        {/* Playback Speed Controls */}
-                        <div className="flex items-center gap-1">
-                          {[0.5, 1, 1.5, 2].map((rate) => (
-                            <Button
-                              key={rate}
-                              variant={playbackRate === rate ? "default" : "ghost"}
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => changePlaybackRate(rate)}
-                            >
-                              {rate}x
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Progress Bar */}
-                      {currentlyPlayingIndex === idx && (
-                        <div className="space-y-1">
-                          <Progress value={audioProgress} className="h-1.5" />
-                          <div className="flex items-center justify-between text-xs opacity-70">
-                            <span>{formatTime((audioDuration * audioProgress) / 100)}</span>
-                            <span>{formatTime(audioDuration)}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   )}
-
-                  {msg.role === "assistant" && msg.showMap && msg.coordinates && msg.hospitalName && (
-                    <div className="mt-3">
-                      <HospitalMap
-                        latitude={msg.coordinates.lat}
-                        longitude={msg.coordinates.lng}
-                        hospitalName={msg.hospitalName}
-                      />
-                    </div>
-                  )}
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-xs opacity-70">
+                      {msg.timestamp.toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    {msg.role === "assistant" && msg.audioUrl && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => currentlyPlayingIndex === idx ? stopAudio() : playAudio(idx)}
+                      >
+                        {currentlyPlayingIndex === idx ? (
+                          <VolumeX className="w-4 h-4" />
+                        ) : (
+                          <Volume2 className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
-            <div ref={messagesEndRef} />
-            {(isLoading || isGeneratingAudio) && (
+            {(isLoading || isGeneratingAudio || isGeneratingImage) && (
               <div className="flex justify-start">
                 <div className="bg-muted rounded-2xl px-4 py-3 flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span className="text-sm">
-                    {isGeneratingAudio ? "Gerando áudio..." : "Pensando..."}
+                    {isGeneratingImage ? "Gerando imagem..." : isGeneratingAudio ? "Gerando áudio..." : "Pensando..."}
                   </span>
                 </div>
               </div>
@@ -369,8 +158,8 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
         )}
       </ScrollArea>
 
-      {/* Suggestions - only for embedded health chat */}
-      {variant === "embedded" && suggestions.length > 0 && !isLoading && (
+      {/* Suggestions */}
+      {suggestions.length > 0 && !isLoading && (
         <div className="px-6 py-4 bg-muted/50 border-t border-border/50">
           <p className="text-xs font-medium text-muted-foreground mb-2">💡 Sugestões:</p>
           <div className="flex flex-wrap gap-2">
@@ -391,210 +180,82 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
 
       {/* Input Area */}
       <form onSubmit={handleSubmit} className="p-6 border-t border-border/50">
-        {/* Voice Recording UI */}
-        {isRecording ? (
-          <div className="space-y-4 bg-muted/50 p-4 rounded-lg border border-primary/30">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded-full bg-destructive animate-pulse" />
-                <span className="text-sm font-medium">Gravando...</span>
-                <span className="text-sm text-muted-foreground">
-                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                </span>
-              </div>
-            </div>
-            
-            {/* Animated waveform */}
-            <div className="flex items-center justify-center gap-1 h-16">
-              {[...Array(20)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-1 bg-primary rounded-full animate-pulse"
-                  style={{
-                    height: `${20 + Math.random() * 60}%`,
-                    animationDelay: `${i * 50}ms`,
-                    animationDuration: `${500 + Math.random() * 500}ms`,
-                  }}
-                />
-              ))}
-            </div>
-            
-            <div className="flex gap-2 justify-center">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCancelRecording}
-                className="gap-2"
-              >
-                <X className="w-4 h-4" />
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSendVoiceMessage}
-                className="gap-2"
-              >
-                <Check className="w-4 h-4" />
-                Enviar
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex gap-3">
-            <div className="flex-1 space-y-3">
-              <div className="relative">
-                <Textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit(e);
-                    }
-                  }}
-                  placeholder={isListening ? "Ouvindo..." : variant === "modal" ? "Digite ou fale algo do conteúdo do APP ou a respeito do knowyou..." : "Digite ou fale sua mensagem sobre saúde..."}
-                  className={cn(
-                    "min-h-[60px] resize-none pr-24",
-                    isListening && "border-primary ring-2 ring-primary/20"
-                  )}
-                  disabled={isLoading}
-                />
-                <div className="absolute right-2 top-2 flex gap-1">
-                  {/* Voice transcription button */}
-                  {isSpeechSupported && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleVoiceToggle}
-                      className={cn(
-                        "h-8 w-8 transition-colors",
-                        isListening && "text-green-500 animate-pulse"
-                      )}
-                      disabled={isLoading}
-                    >
-                      <Mic className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              
-              {/* Draw medical image button - only for embedded health chat */}
-              {variant === "embedded" && (
+        <div className="flex gap-3">
+          <div className="flex-1 space-y-3">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+              placeholder="Digite sua mensagem sobre saúde..."
+              className="min-h-[60px] resize-none"
+              disabled={isLoading}
+            />
+            <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+              <DialogTrigger asChild>
                 <Button
                   type="button"
-                  variant="default"
-                  size="default"
-                  onClick={() => {
-                    console.log("🎨 [Botão Desenhar] Clicado", { 
-                      isLoading, 
-                      isGeneratingImage,
-                      showImageDialog 
-                    });
-                    setShowImageDialog(true);
-                  }}
-                  disabled={isLoading || isGeneratingImage}
-                  className="w-full mt-3 bg-gradient-to-r from-primary via-secondary to-accent hover:opacity-90 transition-opacity shadow-lg shadow-primary/30 font-semibold text-base py-6"
-                >
-                  {isGeneratingImage ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Gerando imagem...
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-xl mr-2">🩺</span>
-                      Desenhar Imagem Médica
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-            <Button
-              type="submit"
-              size="icon"
-              disabled={!input.trim() || isLoading}
-              className="h-[60px] w-[60px] rounded-xl flex-shrink-0"
-            >
-              <Send className="w-5 h-5" />
-            </Button>
-          </div>
-        )}
-        
-        {/* Typing indicator */}
-        {input.trim() && !isLoading && (
-          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground animate-fade-in">
-            <div className="flex gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
-            </div>
-            <span>Digitando...</span>
-          </div>
-        )}
-      </form>
-
-      {/* Medical Image Dialog - only for embedded */}
-      {variant === "embedded" && (
-        <Dialog 
-          open={showImageDialog} 
-          onOpenChange={(open) => {
-            console.log("🎨 [Dialog] Estado alterado:", open);
-            setShowImageDialog(open);
-          }}
-        >
-          <DialogContent>
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Desenhar Imagem Médica</h3>
-                <p className="text-sm text-muted-foreground">
-                  Descreva a imagem médica que você deseja gerar (anatomia, procedimento, equipamento, etc.)
-                </p>
-              </div>
-              <Textarea
-                value={imagePrompt}
-                onChange={(e) => {
-                  console.log("🎨 [Textarea] Prompt alterado:", e.target.value);
-                  setImagePrompt(e.target.value);
-                }}
-                placeholder="Ex: anatomia do coração humano, equipamento de ressonância magnética, célula cancerígena..."
-                className="min-h-[100px]"
-              />
-              <div className="flex gap-2 justify-end">
-                <Button
                   variant="outline"
-                  onClick={() => {
-                    console.log("🎨 [Botão Cancelar] Clicado");
-                    setShowImageDialog(false);
-                    setImagePrompt("");
-                  }}
+                  size="sm"
+                  disabled={isGeneratingImage}
+                  className="w-full"
                 >
-                  Cancelar
+                  <ImagePlus className="w-4 h-4 mr-2" />
+                  Gerar Imagem Educativa
                 </Button>
-                <Button
-                  onClick={() => {
-                    console.log("🎨 [Botão Gerar] Clicado", { 
-                      promptLength: imagePrompt.trim().length,
-                      disabled: !imagePrompt.trim() || isGeneratingImage 
-                    });
-                    handleGenerateImage();
-                  }}
-                  disabled={!imagePrompt.trim() || isGeneratingImage}
-                >
-                  {isGeneratingImage ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Gerando...
-                    </>
-                  ) : (
-                    "Gerar Imagem"
-                  )}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+              </DialogTrigger>
+              <DialogContent>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Gerar Imagem sobre Saúde</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Descreva o tema de saúde que você gostaria de visualizar em uma imagem educativa.
+                    </p>
+                  </div>
+                  <Textarea
+                    value={imagePrompt}
+                    onChange={(e) => setImagePrompt(e.target.value)}
+                    placeholder="Ex: Anatomia do coração humano, processo de cicatrização, etc."
+                    className="min-h-[100px]"
+                  />
+                  <Button
+                    onClick={handleGenerateImage}
+                    disabled={!imagePrompt.trim() || isGeneratingImage}
+                    className="w-full"
+                  >
+                    {isGeneratingImage ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Gerando...
+                      </>
+                    ) : (
+                      <>
+                        <ImagePlus className="w-4 h-4 mr-2" />
+                        Gerar Imagem
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <Button
+            type="submit"
+            size="icon"
+            disabled={!input.trim() || isLoading}
+            className="h-[60px] w-[60px] rounded-xl flex-shrink-0"
+          >
+            <Send className="w-5 h-5" />
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Pressione Enter para enviar • Shift+Enter para nova linha
+        </p>
+      </form>
     </div>
   );
 }

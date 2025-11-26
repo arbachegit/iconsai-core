@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Music, Youtube, ExternalLink, Filter } from "lucide-react";
-import { useYouTubeCache } from "@/hooks/useYouTubeCache";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-  type CarouselApi,
 } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,24 +37,39 @@ const categories = [
 ];
 
 export const MediaCarousel = () => {
+  const [videos, setVideos] = useState<YouTubeVideo[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [api, setApi] = useState<CarouselApi>();
-  const [current, setCurrent] = useState(0);
-  const [count, setCount] = useState(0);
-  
-  const category = categories.find(c => c.id === selectedCategory);
-  const { videos, loading } = useYouTubeCache(category?.query || '');
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (!api) return;
+    fetchYouTubeVideos();
+  }, [selectedCategory]);
 
-    setCount(api.scrollSnapList().length);
-    setCurrent(api.selectedScrollSnap());
-
-    api.on("select", () => {
-      setCurrent(api.selectedScrollSnap());
-    });
-  }, [api]);
+  const fetchYouTubeVideos = async () => {
+    setLoading(true);
+    try {
+      const category = categories.find(c => c.id === selectedCategory);
+      const { data, error } = await supabase.functions.invoke('youtube-videos', {
+        body: { category: category?.query || '' }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.videos) {
+        setVideos(data.videos);
+      }
+    } catch (error) {
+      console.error('Error fetching YouTube videos:', error);
+      toast({
+        title: "Erro ao carregar vídeos",
+        description: "Não foi possível carregar os vídeos do YouTube.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -129,33 +144,15 @@ export const MediaCarousel = () => {
               </Card>
             ))}
           </div>
-        ) : videos.length > 0 ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-center gap-4">
-              <div className="flex gap-2">
-                {Array.from({ length: count }).map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => api?.scrollTo(index)}
-                    className={`h-2 rounded-full transition-all ${
-                      index === current
-                        ? "w-8 bg-primary"
-                        : "w-2 bg-primary/30 hover:bg-primary/50"
-                    }`}
-                    aria-label={`Ir para vídeo ${index + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-            <Carousel
-              setApi={setApi}
-              opts={{
-                align: "start",
-                loop: true,
-              }}
-              className="w-full"
-            >
-              <CarouselContent>
+        ) : (
+          <Carousel
+            opts={{
+              align: "start",
+              loop: true,
+            }}
+            className="w-full"
+          >
+            <CarouselContent>
               {videos.map((video, index) => (
                 <CarouselItem 
                   key={video.id.videoId} 
@@ -197,14 +194,9 @@ export const MediaCarousel = () => {
                 </CarouselItem>
               ))}
             </CarouselContent>
-              <CarouselPrevious className="hidden md:flex h-12 w-12" />
-              <CarouselNext className="hidden md:flex h-12 w-12" />
-            </Carousel>
-          </div>
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>Nenhum vídeo disponível no momento.</p>
-          </div>
+            <CarouselPrevious className="hidden md:flex" />
+            <CarouselNext className="hidden md:flex" />
+          </Carousel>
         )}
       </div>
     </div>
