@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { useTooltipContent } from "@/hooks/useTooltipContent";
 import { useToast } from "@/hooks/use-toast";
 import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
-import { TooltipImageCarousel } from "./TooltipImageCarousel";
+import { TooltipSingleImage } from "./TooltipSingleImage";
 
 interface DraggablePreviewPanelProps {
   sectionId: string;
@@ -306,9 +306,9 @@ export const DraggablePreviewPanel = ({
             )}
           </div>
           
-          {/* Carrossel de imagens */}
+          {/* Imagem fixa */}
           <div className="py-4">
-            <TooltipImageCarousel sectionId={sectionId} />
+            <TooltipSingleImage sectionId={sectionId} />
           </div>
           
           {/* Subtítulo intermediário */}

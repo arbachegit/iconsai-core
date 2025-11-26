@@ -105,6 +105,7 @@ export const SectionImageCarousel = ({ sectionId, priority = false }: SectionIma
   const [usesFallback, setUsesFallback] = useState(false);
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
+  const [prefetchedImages, setPrefetchedImages] = useState<Set<number>>(new Set());
   const { ref, inView } = useInView({
     triggerOnce: true,
     threshold: 0.1,
@@ -113,8 +114,25 @@ export const SectionImageCarousel = ({ sectionId, priority = false }: SectionIma
   useEffect(() => {
     if (!api) return;
     setCurrent(api.selectedScrollSnap());
-    api.on("select", () => setCurrent(api.selectedScrollSnap()));
-  }, [api]);
+    
+    const onSelect = () => {
+      const newCurrent = api.selectedScrollSnap();
+      setCurrent(newCurrent);
+      
+      // Prefetch próxima imagem
+      const nextIndex = (newCurrent + 1) % images.length;
+      if (images[nextIndex] && !prefetchedImages.has(nextIndex)) {
+        const img = new Image();
+        img.src = images[nextIndex]!;
+        setPrefetchedImages(prev => new Set(prev).add(nextIndex));
+      }
+    };
+    
+    api.on("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
+  }, [api, images, prefetchedImages]);
   
   useEffect(() => {
     if (!inView) return;
@@ -316,7 +334,7 @@ export const SectionImageCarousel = ({ sectionId, priority = false }: SectionIma
                   <OptimizedImage
                     src={img}
                     alt={`${sectionId} - Imagem ${index + 1}`}
-                    priority={priority && index === 0}
+                    priority={index === current}
                     aspectRatio="square"
                   />
                 ) : (
