@@ -66,8 +66,7 @@ const sectionPrompts: Record<string, string[]> = {
   "kubrick": [
     "HAL 9000: olho vermelho icônico da IA, câmera fisheye, atmosfera cinematográfica sci-fi, contraste vermelho e azul, sem texto",
     "2001 Uma Odisseia no Espaço: consciência artificial emergindo, formas geométricas no espaço, paleta roxa/ciano, estilo Kubrick, sem texto",
-    "Visão de 1969 sobre IA conversacional: humano dialogando com máquina inteligente, design retro-futurista, gradientes tecnológicos, sem texto",
-    "Profecia se tornando realidade: HAL 9000 evoluindo para assistentes de IA modernos, ponte temporal 1969-2024, estilo tech-forward, sem texto"
+    "Visão de 1969 sobre IA conversacional: humano dialogando com máquina inteligente, design retro-futurista, gradientes tecnológicos, sem texto"
   ],
   "watson": [
     "IBM Watson competindo no Jeopardy 2011: palco televisivo icônico, tela digital mostrando Watson respondendo questões, público assistindo, atmosfera de competição histórica humano vs máquina, iluminação de estúdio, tons azuis e roxos tecnológicos, sem texto",
