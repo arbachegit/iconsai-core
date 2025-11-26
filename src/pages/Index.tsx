@@ -13,9 +13,13 @@ import { FloatingChatButton } from "@/components/FloatingChatButton";
 import { ChatModal } from "@/components/ChatModal";
 import { debugLog, getEnvironmentInfo } from "@/lib/environment";
 import TuringLegacy from "@/components/TuringLegacy";
+import { useImagePreload } from "@/hooks/useImagePreload";
 
 const Index = () => {
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  
+  // Pré-carregar imagens críticas em paralelo
+  useImagePreload();
 
   useEffect(() => {
     debugLog.mount("Index Page", getEnvironmentInfo());
