@@ -154,10 +154,24 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
   const [showImageDialog, setShowImageDialog] = useState(false);
 
   const handleGenerateImage = async () => {
+    console.log("🎨 [Desenhar] handleGenerateImage chamado", { 
+      promptLength: imagePrompt.trim().length,
+      prompt: imagePrompt,
+      isGeneratingImage 
+    });
+    
     if (imagePrompt.trim()) {
-      await generateImage(imagePrompt);
-      setImagePrompt("");
-      setShowImageDialog(false);
+      console.log("🎨 [Desenhar] Chamando generateImage do hook...");
+      try {
+        await generateImage(imagePrompt);
+        console.log("🎨 [Desenhar] generateImage concluído com sucesso");
+        setImagePrompt("");
+        setShowImageDialog(false);
+      } catch (error) {
+        console.error("🎨 [Desenhar] Erro ao gerar imagem:", error);
+      }
+    } else {
+      console.warn("🎨 [Desenhar] Prompt vazio, não gerando imagem");
     }
   };
 
@@ -471,7 +485,14 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
                   type="button"
                   variant="default"
                   size="default"
-                  onClick={() => setShowImageDialog(true)}
+                  onClick={() => {
+                    console.log("🎨 [Botão Desenhar] Clicado", { 
+                      isLoading, 
+                      isGeneratingImage,
+                      showImageDialog 
+                    });
+                    setShowImageDialog(true);
+                  }}
                   disabled={isLoading || isGeneratingImage}
                   className="w-full mt-3 bg-gradient-to-r from-primary via-secondary to-accent hover:opacity-90 transition-opacity shadow-lg shadow-primary/30 font-semibold text-base py-6"
                 >
@@ -515,7 +536,13 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
 
       {/* Medical Image Dialog - only for embedded */}
       {variant === "embedded" && (
-        <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
+        <Dialog 
+          open={showImageDialog} 
+          onOpenChange={(open) => {
+            console.log("🎨 [Dialog] Estado alterado:", open);
+            setShowImageDialog(open);
+          }}
+        >
           <DialogContent>
             <div className="space-y-4">
               <div>
@@ -526,7 +553,10 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
               </div>
               <Textarea
                 value={imagePrompt}
-                onChange={(e) => setImagePrompt(e.target.value)}
+                onChange={(e) => {
+                  console.log("🎨 [Textarea] Prompt alterado:", e.target.value);
+                  setImagePrompt(e.target.value);
+                }}
                 placeholder="Ex: anatomia do coração humano, equipamento de ressonância magnética, célula cancerígena..."
                 className="min-h-[100px]"
               />
@@ -534,6 +564,7 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
                 <Button
                   variant="outline"
                   onClick={() => {
+                    console.log("🎨 [Botão Cancelar] Clicado");
                     setShowImageDialog(false);
                     setImagePrompt("");
                   }}
@@ -541,7 +572,13 @@ export function ChatKnowYOU({ variant = "embedded", chatHook: externalHook }: Ch
                   Cancelar
                 </Button>
                 <Button
-                  onClick={handleGenerateImage}
+                  onClick={() => {
+                    console.log("🎨 [Botão Gerar] Clicado", { 
+                      promptLength: imagePrompt.trim().length,
+                      disabled: !imagePrompt.trim() || isGeneratingImage 
+                    });
+                    handleGenerateImage();
+                  }}
                   disabled={!imagePrompt.trim() || isGeneratingImage}
                 >
                   {isGeneratingImage ? (

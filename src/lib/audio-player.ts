@@ -163,7 +163,29 @@ export async function generateAudioUrl(text: string): Promise<string> {
     throw new Error("Falha ao gerar áudio");
   }
 
-  // Convert stream to blob and create URL
+  // Convert stream to blob
   const audioBlob = await response.blob();
-  return URL.createObjectURL(audioBlob);
+  
+  // Upload to Supabase Storage for permanent URL
+  const { supabase } = await import("@/integrations/supabase/client");
+  const fileName = `tooltip-${Date.now()}.mp3`;
+  
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from('tooltip-audio')
+    .upload(fileName, audioBlob, {
+      contentType: 'audio/mpeg',
+      cacheControl: '3600',
+    });
+
+  if (uploadError) {
+    console.error("Erro ao fazer upload do áudio:", uploadError);
+    throw new Error("Falha ao salvar áudio");
+  }
+
+  // Get permanent public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('tooltip-audio')
+    .getPublicUrl(fileName);
+
+  return publicUrl;
 }
