@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, RefreshCw, Sparkles, Database, Clock, Volume2 } from "lucide-react";
+import { Trash2, RefreshCw, Sparkles, Database, Clock, Volume2, Eye, Download, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -15,6 +15,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const SECTIONS = [
   { id: "software", name: "Software (1950)" },
@@ -27,19 +36,33 @@ const SECTIONS = [
   { id: "bom-prompt", name: "Bom Prompt" },
 ];
 
+interface CachedImage {
+  id: string;
+  section_id: string;
+  prompt_key: string;
+  image_url: string;
+  created_at: string;
+}
+
 export const ImageCacheTab = () => {
   const [isClearing, setIsClearing] = useState(false);
   const [isPreloading, setIsPreloading] = useState(false);
   const [cacheStats, setCacheStats] = useState<{ total: number; bySection: Record<string, number> } | null>(null);
   const [audioCacheStats, setAudioCacheStats] = useState<{ section: string; title: string; type: 'section' | 'tooltip' }[]>([]);
+  const [cachedImages, setCachedImages] = useState<CachedImage[]>([]);
+  const [selectedImage, setSelectedImage] = useState<CachedImage | null>(null);
+  const [viewMode, setViewMode] = useState<'stats' | 'gallery'>('stats');
 
   const loadCacheStats = async () => {
     try {
       const { data, error } = await supabase
         .from('generated_images')
-        .select('section_id');
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      setCachedImages(data || []);
 
       const stats = {
         total: data?.length || 0,
@@ -54,6 +77,42 @@ export const ImageCacheTab = () => {
       setCacheStats(stats);
     } catch (error) {
       console.error("Erro ao carregar estatísticas:", error);
+    }
+  };
+
+  const deleteImage = async (imageId: string) => {
+    try {
+      const { error } = await supabase
+        .from('generated_images')
+        .delete()
+        .eq('id', imageId);
+
+      if (error) throw error;
+
+      toast.success("Imagem removida do cache!");
+      await loadCacheStats();
+    } catch (error) {
+      console.error("Erro ao deletar imagem:", error);
+      toast.error("Erro ao remover imagem");
+    }
+  };
+
+  const downloadImage = async (imageUrl: string, fileName: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Download iniciado!");
+    } catch (error) {
+      console.error("Erro ao baixar imagem:", error);
+      toast.error("Erro ao baixar imagem");
     }
   };
 
@@ -204,14 +263,126 @@ export const ImageCacheTab = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Gerenciamento de Cache</h2>
-        <p className="text-muted-foreground">
-          Gerencie o cache de imagens geradas e otimize o uso de créditos
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold mb-2">Gerenciamento de Cache</h2>
+          <p className="text-muted-foreground">
+            Gerencie o cache de imagens geradas e otimize o uso de créditos
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === 'stats' ? 'default' : 'outline'}
+            onClick={() => setViewMode('stats')}
+            size="sm"
+          >
+            <Database className="mr-2 h-4 w-4" />
+            Estatísticas
+          </Button>
+          <Button
+            variant={viewMode === 'gallery' ? 'default' : 'outline'}
+            onClick={() => setViewMode('gallery')}
+            size="sm"
+          >
+            <ImageIcon className="mr-2 h-4 w-4" />
+            Galeria ({cachedImages.length})
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      {viewMode === 'gallery' ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5" />
+              Galeria de Imagens em Cache
+            </CardTitle>
+            <CardDescription>
+              Visualize e gerencie todas as imagens geradas ({cachedImages.length} total)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[600px] pr-4">
+              {cachedImages.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                  <p>Nenhuma imagem em cache</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {cachedImages.map((image) => (
+                    <div key={image.id} className="group relative border rounded-lg overflow-hidden bg-muted/20 hover:shadow-lg transition-all">
+                      <div className="aspect-square relative">
+                        <img
+                          src={image.image_url}
+                          alt={`${image.section_id} - ${image.prompt_key}`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => setSelectedImage(image)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => downloadImage(image.image_url, `${image.section_id}-${image.prompt_key}.png`)}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Deletar imagem?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta ação removerá a imagem do cache. Ela precisará ser gerada novamente.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteImage(image.id)}>
+                                  Deletar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                      <div className="p-2 space-y-1">
+                        <Badge variant="secondary" className="text-xs">
+                          {image.section_id}
+                        </Badge>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {image.prompt_key}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(image.created_at).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -424,6 +595,75 @@ export const ImageCacheTab = () => {
           </AlertDialog>
         </CardContent>
       </Card>
+        </>
+      )}
+
+      {/* Dialog de visualização de imagem */}
+      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Pré-visualização da Imagem</DialogTitle>
+            <DialogDescription>
+              {selectedImage && (
+                <div className="space-y-2 mt-2">
+                  <div className="flex gap-2">
+                    <Badge>{selectedImage.section_id}</Badge>
+                    <Badge variant="outline">{selectedImage.prompt_key}</Badge>
+                  </div>
+                  <p className="text-sm">
+                    Criado em: {new Date(selectedImage.created_at).toLocaleString('pt-BR')}
+                  </p>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedImage && (
+            <div className="space-y-4">
+              <div className="relative rounded-lg overflow-hidden bg-muted/20">
+                <img
+                  src={selectedImage.image_url}
+                  alt={`${selectedImage.section_id} - ${selectedImage.prompt_key}`}
+                  className="w-full h-auto"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => downloadImage(selectedImage.image_url, `${selectedImage.section_id}-${selectedImage.prompt_key}.png`)}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Baixar
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Deletar
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Deletar imagem?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação removerá a imagem do cache. Ela precisará ser gerada novamente.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => {
+                        deleteImage(selectedImage.id);
+                        setSelectedImage(null);
+                      }}>
+                        Deletar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
