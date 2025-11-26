@@ -113,12 +113,20 @@ export const DraggablePreviewPanel = ({
             audioUrl = await generateAudioUrl(content.content);
             
             // Save to database cache
-            await updateContent({ audio_url: audioUrl });
-            
-            toast({
-              title: "Áudio gerado",
-              description: "O áudio foi gerado e salvo com sucesso.",
-            });
+            try {
+              await updateContent({ audio_url: audioUrl });
+              toast({
+                title: "Áudio gerado",
+                description: "O áudio foi gerado e salvo com sucesso.",
+              });
+            } catch (updateError) {
+              console.error("Error saving audio URL:", updateError);
+              toast({
+                title: "Aviso",
+                description: "Áudio gerado mas não foi possível salvar no cache.",
+                variant: "destructive",
+              });
+            }
           } catch (error) {
             console.error("Error generating audio:", error);
             toast({
@@ -245,7 +253,7 @@ export const DraggablePreviewPanel = ({
                 ) : (
                   <>
                     <Play className="w-4 h-4" />
-                    {content?.audio_url ? 'Play' : 'Gerar e Reproduzir'}
+                    Play
                   </>
                 )}
               </Button>
