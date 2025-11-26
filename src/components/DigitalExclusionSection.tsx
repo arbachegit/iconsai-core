@@ -106,7 +106,7 @@ export const DigitalExclusionSection = () => {
           <div className="max-w-4xl mx-auto">
             <div className="bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm border border-primary/20 rounded-lg p-8 shadow-lg">
               <div className="text-center space-y-4">
-                <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+                <h1 className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
                   5,74 bilhões
                 </h1>
                 <h2 className="text-2xl md:text-3xl font-semibold text-foreground/90 mt-4">
