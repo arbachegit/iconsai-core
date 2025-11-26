@@ -302,22 +302,47 @@ export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
 
   const generateImage = useCallback(
     async (prompt: string) => {
-      if (!prompt.trim() || isGeneratingImage) return;
+      console.log("🖼️ [generateImage Hook] Iniciando geração", { 
+        prompt, 
+        promptLength: prompt.trim().length,
+        isGeneratingImage,
+        messagesCount: messages.length 
+      });
+
+      if (!prompt.trim()) {
+        console.warn("🖼️ [generateImage Hook] Prompt vazio, abortando");
+        return;
+      }
+      
+      if (isGeneratingImage) {
+        console.warn("🖼️ [generateImage Hook] Já está gerando imagem, abortando");
+        return;
+      }
 
       setIsGeneratingImage(true);
+      console.log("🖼️ [generateImage Hook] isGeneratingImage = true");
 
       try {
+        console.log("🖼️ [generateImage Hook] Invocando edge function generate-image...");
         const { data, error } = await import("@/integrations/supabase/client").then(
           (m) => m.supabase.functions.invoke("generate-image", {
             body: { prompt },
           })
         );
 
-        if (error) throw error;
+        console.log("🖼️ [generateImage Hook] Resposta da edge function:", { data, error });
+
+        if (error) {
+          console.error("🖼️ [generateImage Hook] Erro da edge function:", error);
+          throw error;
+        }
 
         if (!data?.imageUrl) {
+          console.error("🖼️ [generateImage Hook] data.imageUrl ausente:", data);
           throw new Error("Nenhuma imagem foi gerada");
         }
+
+        console.log("🖼️ [generateImage Hook] Imagem gerada com sucesso:", data.imageUrl);
 
         // Adicionar mensagem do assistente com a imagem
         const imageMessage: Message = {
@@ -331,12 +356,14 @@ export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
         setMessages(updatedMessages);
         saveHistory(updatedMessages);
 
+        console.log("🖼️ [generateImage Hook] Mensagem adicionada ao chat");
+
         toast({
           title: "Imagem gerada",
           description: "A imagem foi criada com sucesso!",
         });
       } catch (error: any) {
-        console.error("Erro ao gerar imagem:", error);
+        console.error("🖼️ [generateImage Hook] Erro crítico:", error);
         toast({
           title: "Erro ao gerar imagem",
           description: error.message || "Não foi possível gerar a imagem. Tente novamente.",
@@ -344,6 +371,7 @@ export function useChatKnowYOU(props?: UseChatKnowYOUProps) {
         });
       } finally {
         setIsGeneratingImage(false);
+        console.log("🖼️ [generateImage Hook] isGeneratingImage = false");
       }
     },
     [messages, isGeneratingImage, toast, saveHistory]
