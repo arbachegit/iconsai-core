@@ -167,44 +167,44 @@ const DigitalExclusionSection = () => {
 
   return (
     <div className="relative py-2 w-full">
-      <div className="container mx-auto max-w-4xl px-4">
-        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          {/* Título Impactante */}
-          <div className="text-center space-y-6 mb-4">
-            <div className="space-y-2">
-              <h2 className="text-6xl md:text-7xl lg:text-8xl font-bold text-gradient animate-fade-in whitespace-nowrap mx-auto">
-                5,74 bilhões
-              </h2>
-              <p className="text-2xl md:text-3xl text-foreground/90 animate-fade-in">
-                de pessoas ainda não conseguem
-              </p>
-              <p className="text-2xl md:text-3xl text-foreground/90 animate-fade-in">
-                acessar a internet
-              </p>
-            </div>
-
-            {/* Botão de Expandir/Colapsar */}
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="outline" 
-                className="gap-2 border-primary/30 hover:bg-primary/10 transition-all"
-              >
-                {isOpen ? (
-                  <>
-                    <ChevronUp className="w-4 h-4" />
-                    Recolher
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="w-4 h-4" />
-                    Saiba mais sobre esse desafio
-                  </>
-                )}
-              </Button>
-            </CollapsibleTrigger>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        {/* Título Impactante - Centralizado e Independente */}
+        <div className="text-center space-y-6 mb-4">
+          <div className="space-y-2">
+            <h2 className="text-6xl md:text-7xl lg:text-8xl font-bold text-gradient animate-fade-in whitespace-nowrap mx-auto">
+              5,74 bilhões
+            </h2>
+            <p className="text-2xl md:text-3xl text-foreground/90 animate-fade-in">
+              de pessoas ainda não conseguem
+            </p>
+            <p className="text-2xl md:text-3xl text-foreground/90 animate-fade-in">
+              acessar a internet
+            </p>
           </div>
 
-          {/* Conteúdo Expansível */}
+          {/* Botão de Expandir/Colapsar */}
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="gap-2 border-primary/30 hover:bg-primary/10 transition-all"
+            >
+              {isOpen ? (
+                <>
+                  <ChevronUp className="w-4 h-4" />
+                  Recolher
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4" />
+                  Saiba mais sobre esse desafio
+                </>
+              )}
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+
+        {/* Conteúdo Expansível */}
+        <div className="container mx-auto max-w-4xl px-4">
           <CollapsibleContent className="animate-accordion-down">
             <div className="space-y-8 text-lg leading-relaxed">
               {/* Controles de Áudio - MOVIDO PARA O TOPO */}
@@ -312,8 +312,8 @@ const DigitalExclusionSection = () => {
               </div>
             </div>
           </CollapsibleContent>
-        </Collapsible>
-      </div>
+        </div>
+      </Collapsible>
     </div>
   );
 };
