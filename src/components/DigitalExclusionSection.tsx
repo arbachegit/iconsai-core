@@ -166,8 +166,8 @@ const DigitalExclusionSection = () => {
   const currentTime = (audioDuration * audioProgress) / 100;
 
   return (
-    <div className="relative py-2 px-4">
-      <div className="container mx-auto max-w-4xl">
+    <div className="relative py-2 w-full">
+      <div className="container mx-auto max-w-4xl px-4">
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           {/* Título Impactante */}
           <div className="text-center space-y-6 mb-4">
