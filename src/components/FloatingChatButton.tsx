@@ -1,10 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatModal } from "@/components/ChatModal";
 
 export const FloatingChatButton = () => {
   const [isOpen, setIsOpen] = useState(false);
+
+  // Broadcast stop audio event when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      window.dispatchEvent(new CustomEvent('stopAllAudio'));
+    }
+  }, [isOpen]);
 
   return (
     <>
