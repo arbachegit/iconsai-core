@@ -63,6 +63,8 @@ serve(async (req) => {
 
     console.log(`Gerando imagem para era: ${eraId}`);
 
+    console.log(`Chamando Lovable AI Gateway com modelo: google/gemini-3-pro-image-preview`);
+    
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -80,6 +82,8 @@ serve(async (req) => {
         modalities: ["image", "text"],
       }),
     });
+
+    console.log(`Response status: ${response.status}`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -99,15 +103,44 @@ serve(async (req) => {
         );
       }
 
-      throw new Error(`Falha ao gerar imagem: ${response.status}`);
+      throw new Error(`Falha ao gerar imagem: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    console.log("Response data structure:", JSON.stringify({
+      hasChoices: !!data.choices,
+      choicesLength: data.choices?.length,
+      hasMessage: !!data.choices?.[0]?.message,
+      hasImages: !!data.choices?.[0]?.message?.images,
+      imagesLength: data.choices?.[0]?.message?.images?.length,
+      firstImageType: data.choices?.[0]?.message?.images?.[0]?.type,
+    }));
+    
+    // Try multiple possible response structures
+    let imageUrl;
+    
+    // Structure 1: choices[0].message.images[0].image_url.url
+    if (data.choices?.[0]?.message?.images?.[0]?.image_url?.url) {
+      imageUrl = data.choices[0].message.images[0].image_url.url;
+      console.log("Found image at: choices[0].message.images[0].image_url.url");
+    }
+    // Structure 2: choices[0].message.content (might be base64)
+    else if (data.choices?.[0]?.message?.content) {
+      imageUrl = data.choices[0].message.content;
+      console.log("Found image at: choices[0].message.content");
+    }
+    // Structure 3: Direct image field
+    else if (data.image) {
+      imageUrl = data.image;
+      console.log("Found image at: data.image");
+    }
 
     if (!imageUrl) {
-      throw new Error("Nenhuma imagem gerada na resposta");
+      console.error("Full response data:", JSON.stringify(data, null, 2));
+      throw new Error("Nenhuma imagem gerada na resposta. Estrutura de resposta não reconhecida.");
     }
+    
+    console.log("Image URL length:", imageUrl.length);
     
     // Save to cache
     await supabaseClient
