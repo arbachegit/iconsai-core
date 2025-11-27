@@ -208,6 +208,16 @@ const HeroSection = () => {
               Explorar a História
             </Button>
           </div>
+
+          {/* Citação Introdutória */}
+          <blockquote className="mt-12 max-w-3xl mx-auto">
+            <p className="text-xl md:text-2xl italic bg-gradient-to-r from-cyan-400 via-green-400 to-yellow-400 bg-clip-text text-transparent leading-relaxed">
+              "O momento exato em que deixamos de apenas operar máquinas e começamos, de fato, a pensar com elas."
+            </p>
+            <footer className="mt-4 text-sm text-muted-foreground">
+              by Fernando Arbache
+            </footer>
+          </blockquote>
         </div>
       </div>
 
