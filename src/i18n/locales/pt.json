@@ -1,0 +1,92 @@
+{
+  "header": {
+    "software": "Software",
+    "internet": "Internet",
+    "tech": "Tecnologias",
+    "kubrick": "1969 Kubrick",
+    "watson": "Watson",
+    "newEra": "IA Nova Era",
+    "knowyou": "KnowYOU",
+    "goodPrompt": "Bom Prompt"
+  },
+  "hero": {
+    "title": "KnowYOU",
+    "subtitle": "A Evolução da Inteligência Artificial",
+    "ctaHealth": "Saiba mais a respeito de Saúde",
+    "ctaHistory": "Explorar a história da IA",
+    "quote": "O momento exato em que deixamos de apenas operar máquinas e começamos, de fato, a pensar com elas.",
+    "quoteAuthor": "by Fernando Arbache"
+  },
+  "sections": {
+    "software": {
+      "title": "A Primeira Revolução",
+      "subtitle": "Software: A Primeira Comunicação Humano-Máquina",
+      "content": "Na década de 1950, quando os primeiros softwares foram desenvolvidos, iniciou-se uma revolução silenciosa: pela primeira vez na história, humanos podiam dar instruções diretas a máquinas através de linguagens de programação. Esse foi o primeiro passo em direção à comunicação entre homem e máquina."
+    },
+    "internet": {
+      "title": "A Era da Conectividade",
+      "subtitle": "Internet: A Revolução da Conexão Global",
+      "content": "Nos anos 1990, a Internet transformou radicalmente a forma como nos comunicamos, trabalhamos e acessamos informação. O que começou como um projeto militar tornou-se a infraestrutura fundamental da sociedade digital moderna."
+    },
+    "techNoPropose": {
+      "title": "O Hype Tecnológico",
+      "subtitle": "Tecnologias Sem Propósito Claro",
+      "content": "Entre 2020-2022, testemunhamos o surgimento de tecnologias como Metaverso e NFTs que, apesar do hype massivo, não conseguiram demonstrar propósito claro ou valor tangível para a sociedade."
+    },
+    "kubrick": {
+      "title": "A Profecia de Kubrick",
+      "subtitle": "1969: Kubrick e a Visão de HAL 9000",
+      "content": "Em '2001: Uma Odisseia no Espaço', Stanley Kubrick visualizou HAL 9000, um computador que não apenas processava dados, mas conversava naturalmente com humanos, antecipando décadas antes o que hoje experimentamos com IAs conversacionais."
+    },
+    "watson": {
+      "title": "Watson: A Revolução da Cognição",
+      "subtitle": "2004-2011: O Despertar da IA Cognitiva",
+      "content": "O IBM Watson revolucionou o conceito de inteligência artificial ao vencer campeões humanos no Jeopardy! em 2011. Pela primeira vez, uma máquina demonstrou capacidade de compreender linguagem natural, processar contexto e responder com precisão a perguntas complexas."
+    },
+    "newEra": {
+      "title": "A Nova Era da IA",
+      "subtitle": "IA Generativa: Comunicação Natural e Criatividade",
+      "content": "A partir de 2022, com o lançamento do ChatGPT, entramos na era da IA generativa, onde máquinas não apenas respondem, mas conversam, criam conteúdo e colaboram naturalmente com humanos em diversos contextos."
+    },
+    "digitalExclusion": {
+      "title": "5,74 bilhões",
+      "subtitle": "de pessoas ainda não conseguem acessar a internet",
+      "expandText": "Saiba mais sobre esse desafio",
+      "content": "Enquanto celebramos os avanços da IA, é crucial reconhecer que 5,74 bilhões de pessoas ainda não têm acesso à internet. Essa exclusão digital representa não apenas uma lacuna tecnológica, mas uma barreira fundamental ao conhecimento, oportunidades e participação na sociedade moderna.\n\nAlém do acesso físico, enfrentamos barreiras linguísticas: a maioria dos modelos de IA são treinados predominantemente em inglês, limitando sua eficácia para bilhões de falantes de outros idiomas. Existe também uma lacuna cognitiva significativa - muitas pessoas carecem de alfabetização digital básica e habilidades necessárias para interagir efetivamente com sistemas de IA.\n\nPara que a revolução da IA seja verdadeiramente inclusiva, precisamos abordar simultaneamente a infraestrutura de acesso, o desenvolvimento multilíngue de modelos e programas abrangentes de educação digital que capacitem pessoas de todas as origens a participar desta nova era tecnológica."
+    },
+    "goodPrompt": {
+      "title": "A Arte do Bom Prompt",
+      "subtitle": "Como Comunicar Efetivamente com IA",
+      "content": "Um prompt eficaz é claro, específico e contextual. Aprenda a arte de formular perguntas e instruções que maximizem a qualidade das respostas da IA."
+    }
+  },
+  "turingLegacy": {
+    "title": "O Legado de Turing",
+    "quote": "Muito antes de falarmos com computadores, ele ousou perguntar se eles poderiam pensar. Decifrar o Enigma venceu a guerra, mas o 'Jogo da Imitação' venceu o tempo.",
+    "author": "by Fernando Arbache"
+  },
+  "footer": {
+    "rights": "© 2024 KnowRisk. Todos os direitos reservados."
+  },
+  "chat": {
+    "titleStudy": "Assistente de IA para ajudar a estudar",
+    "titleHealth": "Assistente de Saúde",
+    "placeholder": "Digite sua mensagem...",
+    "placeholderImage": "Descreva a imagem que deseja gerar...",
+    "send": "Enviar",
+    "record": "Gravar áudio",
+    "draw": "Desenhar",
+    "play": "Reproduzir",
+    "stop": "Parar",
+    "download": "Baixar",
+    "imageMode": "Gerar Imagem Educativa",
+    "exitImageMode": "Modo Normal"
+  },
+  "floatingButton": {
+    "tooltip": "Fale com o KnowYOU"
+  },
+  "aiHistory": {
+    "title": "História da Inteligência Artificial",
+    "close": "Fechar"
+  }
+}

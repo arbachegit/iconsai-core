@@ -2,8 +2,10 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AIHistoryPanel } from "./AIHistoryPanel";
+import { useTranslation } from "react-i18next";
 
 const HeroSection = () => {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
@@ -173,19 +175,16 @@ const HeroSection = () => {
           <div className="inline-flex items-center gap-2 bg-card/50 backdrop-blur-sm px-4 py-2 rounded-full border border-primary/20">
             <Sparkles className="w-4 h-4 text-primary" />
             <span className="text-sm text-muted-foreground">
-              A Revolução da IA na Saúde
+              {t("hero.title")}
             </span>
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold leading-tight">
-            Transformando a{" "}
-            <span className="text-gradient">Comunicação</span> na Era da
-            Inteligência Artificial
+            {t("hero.subtitle")}
           </h1>
 
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Explore a jornada da evolução tecnológica e descubra como a IA está
-            revolucionando a comunicação no setor de saúde com o KnowYOU.
+            {t("hero.subtitle")}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
@@ -196,7 +195,7 @@ const HeroSection = () => {
                 document.querySelector("#knowyou")?.scrollIntoView({ behavior: "smooth" })
               }
             >
-              Saiba mais a respeito de Saúde
+              {t("hero.ctaHealth")}
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </Button>
             <Button
@@ -208,7 +207,7 @@ const HeroSection = () => {
               <span className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-accent opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
               <span className="relative flex items-center gap-2">
                 <Sparkles className="w-4 h-4 animate-pulse" />
-                Explorar a História
+                {t("hero.ctaHistory")}
                 <ArrowRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </span>
             </Button>
@@ -217,10 +216,10 @@ const HeroSection = () => {
           {/* Citação Introdutória */}
           <blockquote className="mt-12 max-w-3xl mx-auto">
             <p className="text-xl md:text-2xl italic bg-gradient-to-r from-cyan-400 via-green-400 to-yellow-400 bg-clip-text text-transparent leading-relaxed">
-              "O momento exato em que deixamos de apenas operar máquinas e começamos, de fato, a pensar com elas."
+              "{t("hero.quote")}"
             </p>
             <footer className="mt-4 text-sm text-muted-foreground">
-              by Fernando Arbache
+              {t("hero.quoteAuthor")}
             </footer>
           </blockquote>
         </div>

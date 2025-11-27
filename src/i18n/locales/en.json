@@ -1,0 +1,92 @@
+{
+  "header": {
+    "software": "Software",
+    "internet": "Internet",
+    "tech": "Technologies",
+    "kubrick": "1969 Kubrick",
+    "watson": "Watson",
+    "newEra": "AI New Era",
+    "knowyou": "KnowYOU",
+    "goodPrompt": "Good Prompt"
+  },
+  "hero": {
+    "title": "KnowYOU",
+    "subtitle": "The Evolution of Artificial Intelligence",
+    "ctaHealth": "Learn more about Health",
+    "ctaHistory": "Explore AI history",
+    "quote": "The exact moment we stopped just operating machines and started, in fact, thinking with them.",
+    "quoteAuthor": "by Fernando Arbache"
+  },
+  "sections": {
+    "software": {
+      "title": "The First Revolution",
+      "subtitle": "Software: The First Human-Machine Communication",
+      "content": "In the 1950s, when the first software programs were developed, a silent revolution began: for the first time in history, humans could give direct instructions to machines through programming languages. This was the first step towards communication between man and machine."
+    },
+    "internet": {
+      "title": "The Age of Connectivity",
+      "subtitle": "Internet: The Global Connection Revolution",
+      "content": "In the 1990s, the Internet radically transformed how we communicate, work, and access information. What started as a military project became the fundamental infrastructure of modern digital society."
+    },
+    "techNoPropose": {
+      "title": "The Technology Hype",
+      "subtitle": "Technologies Without Clear Purpose",
+      "content": "Between 2020-2022, we witnessed the emergence of technologies like Metaverse and NFTs that, despite massive hype, failed to demonstrate clear purpose or tangible value to society."
+    },
+    "kubrick": {
+      "title": "Kubrick's Prophecy",
+      "subtitle": "1969: Kubrick and the Vision of HAL 9000",
+      "content": "In '2001: A Space Odyssey', Stanley Kubrick envisioned HAL 9000, a computer that not only processed data but conversed naturally with humans, anticipating decades in advance what we experience today with conversational AI."
+    },
+    "watson": {
+      "title": "Watson: The Cognition Revolution",
+      "subtitle": "2004-2011: The Awakening of Cognitive AI",
+      "content": "IBM Watson revolutionized the concept of artificial intelligence by defeating human champions on Jeopardy! in 2011. For the first time, a machine demonstrated the ability to understand natural language, process context, and respond accurately to complex questions."
+    },
+    "newEra": {
+      "title": "The New Era of AI",
+      "subtitle": "Generative AI: Natural Communication and Creativity",
+      "content": "Starting in 2022, with the launch of ChatGPT, we entered the era of generative AI, where machines not only respond but converse, create content, and collaborate naturally with humans in various contexts."
+    },
+    "digitalExclusion": {
+      "title": "5.74 billion",
+      "subtitle": "people still cannot access the internet",
+      "expandText": "Learn more about this challenge",
+      "content": "While we celebrate AI advances, it is crucial to recognize that 5.74 billion people still lack internet access. This digital exclusion represents not just a technological gap, but a fundamental barrier to knowledge, opportunities, and participation in modern society.\n\nBeyond physical access, we face linguistic barriers: most AI models are trained predominantly in English, limiting their effectiveness for billions of speakers of other languages. There is also a significant cognitive gap - many people lack basic digital literacy and skills needed to interact effectively with AI systems.\n\nFor the AI revolution to be truly inclusive, we must simultaneously address access infrastructure, multilingual model development, and comprehensive digital education programs that empower people from all backgrounds to participate in this new technological era."
+    },
+    "goodPrompt": {
+      "title": "The Art of Good Prompting",
+      "subtitle": "How to Communicate Effectively with AI",
+      "content": "An effective prompt is clear, specific, and contextual. Learn the art of formulating questions and instructions that maximize the quality of AI responses."
+    }
+  },
+  "turingLegacy": {
+    "title": "Turing's Legacy",
+    "quote": "Long before we talked to computers, he dared to ask if they could think. Breaking Enigma won the war, but the 'Imitation Game' won time.",
+    "author": "by Fernando Arbache"
+  },
+  "footer": {
+    "rights": "© 2024 KnowRisk. All rights reserved."
+  },
+  "chat": {
+    "titleStudy": "AI Assistant to help you study",
+    "titleHealth": "Health Assistant",
+    "placeholder": "Type your message...",
+    "placeholderImage": "Describe the image you want to generate...",
+    "send": "Send",
+    "record": "Record audio",
+    "draw": "Draw",
+    "play": "Play",
+    "stop": "Stop",
+    "download": "Download",
+    "imageMode": "Generate Educational Image",
+    "exitImageMode": "Normal Mode"
+  },
+  "floatingButton": {
+    "tooltip": "Talk to KnowYOU"
+  },
+  "aiHistory": {
+    "title": "History of Artificial Intelligence",
+    "close": "Close"
+  }
+}
