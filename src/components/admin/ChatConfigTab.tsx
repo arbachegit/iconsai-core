@@ -1,13 +1,18 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { useToast } from "@/hooks/use-toast";
-import { Volume2, Play, Loader2 } from "lucide-react";
+import { Volume2, Play, Loader2, Bell } from "lucide-react";
+import { useState } from "react";
 
 export const ChatConfigTab = () => {
   const { settings, updateSettings, isLoading } = useAdminSettings();
   const { toast } = useToast();
+  const [alertEmail, setAlertEmail] = useState(settings?.alert_email || "");
+  const [alertThreshold, setAlertThreshold] = useState(settings?.alert_threshold || 0.30);
 
   const handleToggle = async (field: "chat_audio_enabled" | "auto_play_audio") => {
     if (!settings) return;
@@ -30,13 +35,34 @@ export const ChatConfigTab = () => {
     }
   };
 
+  const handleAlertSettings = async () => {
+    if (!settings) return;
+
+    try {
+      await updateSettings({
+        alert_email: alertEmail,
+        alert_threshold: alertThreshold,
+      });
+
+      toast({
+        title: "Configurações de alerta atualizadas",
+        description: "As alterações foram salvas com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível salvar as alterações.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const testElevenLabs = () => {
     toast({
       title: "Teste de conexão",
       description: "Verificando conexão com ElevenLabs...",
     });
 
-    // In production, this would actually test the connection
     setTimeout(() => {
       toast({
         title: "Conexão bem-sucedida",
@@ -103,6 +129,66 @@ export const ChatConfigTab = () => {
               onCheckedChange={() => handleToggle("auto_play_audio")}
               disabled={!settings?.chat_audio_enabled}
             />
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-6 bg-card/50 backdrop-blur-sm border-primary/20">
+        <h2 className="text-xl font-bold text-foreground mb-6">Alertas de Sentimento</h2>
+        
+        <div className="space-y-6">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-background/50">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium text-foreground">Alertas Automáticos</h3>
+                <p className="text-sm text-muted-foreground">
+                  Receba emails quando conversas negativas forem detectadas
+                </p>
+              </div>
+            </div>
+
+            <Switch
+              checked={settings?.alert_enabled || false}
+              onCheckedChange={() => handleToggle("alert_enabled" as any)}
+            />
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="alert-email">Email para Alertas</Label>
+              <Input
+                id="alert-email"
+                type="email"
+                placeholder="admin@knowrisk.io"
+                value={alertEmail}
+                onChange={(e) => setAlertEmail(e.target.value)}
+                disabled={!settings?.alert_enabled}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="alert-threshold">Threshold de Sentimento (0-1)</Label>
+              <Input
+                id="alert-threshold"
+                type="number"
+                step="0.01"
+                min="0"
+                max="1"
+                value={alertThreshold}
+                onChange={(e) => setAlertThreshold(parseFloat(e.target.value))}
+                disabled={!settings?.alert_enabled}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Alertas serão enviados quando o score for menor que {alertThreshold} (padrão: 0.30)
+              </p>
+            </div>
+
+            <Button onClick={handleAlertSettings} disabled={!settings?.alert_enabled}>
+              Salvar Configurações de Alerta
+            </Button>
           </div>
         </div>
       </Card>
