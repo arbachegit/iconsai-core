@@ -6,6 +6,7 @@ import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
 import { Send, Loader2, ImagePlus, Mic, Square } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
+import { MarkdownContent } from "./MarkdownContent";
 import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 
 // 30 sugestões de saúde para rotação
@@ -102,6 +103,7 @@ export default function ChatKnowYOU() {
   const [isImageMode, setIsImageMode] = useState(false);
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const [audioStates, setAudioStates] = useState<{[key: number]: { isPlaying: boolean; currentTime: number; duration: number }}>({});
@@ -119,11 +121,12 @@ export default function ChatKnowYOU() {
     return () => clearInterval(interval);
   }, [isImageMode]);
 
+  // Auto-scroll to latest message
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [messages, isLoading]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -372,7 +375,7 @@ export default function ChatKnowYOU() {
                       className="max-w-full rounded-lg mb-2"
                     />
                   )}
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  <MarkdownContent content={msg.content} className="text-sm leading-relaxed" />
                   
                   {msg.role === "assistant" && msg.audioUrl && (
                     <AudioControls
@@ -403,6 +406,7 @@ export default function ChatKnowYOU() {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </ScrollArea>
