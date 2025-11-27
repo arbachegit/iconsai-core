@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Send, Trash2, Loader2, Volume2, VolumeX, ImagePlus } from "lucide-react";
+import { Send, Trash2, Loader2, Volume2, VolumeX, ImagePlus, Mic, Square } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 export default function ChatKnowYOU() {
@@ -23,7 +23,11 @@ export default function ChatKnowYOU() {
   const [input, setInput] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -50,6 +54,46 @@ export default function ChatKnowYOU() {
       setIsImageDialogOpen(false);
     }
   };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        // TODO: Send to Whisper API for transcription
+        // For now, just show a placeholder message
+        setInput("[Áudio gravado - transcrição pendente]");
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Erro ao iniciar gravação:", error);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsTyping(input.length > 0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [input]);
 
   return (
     <div className="w-full max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl border border-primary/20 shadow-xl overflow-hidden">
@@ -180,6 +224,16 @@ export default function ChatKnowYOU() {
 
       {/* Input Area */}
       <form onSubmit={handleSubmit} className="p-6 border-t border-border/50">
+        {isTyping && (
+          <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
+            <div className="flex gap-1">
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+            </div>
+            Digitando...
+          </div>
+        )}
         <div className="flex gap-3">
           <div className="flex-1 space-y-3">
             <Textarea
@@ -243,14 +297,25 @@ export default function ChatKnowYOU() {
               </DialogContent>
             </Dialog>
           </div>
-          <Button
-            type="submit"
-            size="icon"
-            disabled={!input.trim() || isLoading}
-            className="h-[60px] w-[60px] rounded-xl flex-shrink-0"
-          >
-            <Send className="w-5 h-5" />
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={isRecording ? stopRecording : startRecording}
+              className={`h-[60px] w-[60px] rounded-xl flex-shrink-0 ${isRecording ? 'bg-destructive text-destructive-foreground' : ''}`}
+            >
+              {isRecording ? <Square className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </Button>
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!input.trim() || isLoading}
+              className="h-[60px] w-[60px] rounded-xl flex-shrink-0"
+            >
+              <Send className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
           Pressione Enter para enviar • Shift+Enter para nova linha

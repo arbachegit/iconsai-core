@@ -7,13 +7,19 @@ import { DigitalExclusionSection } from "@/components/DigitalExclusionSection";
 import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
+import { FloatingChatButton } from "@/components/FloatingChatButton";
 const Index = () => {
   return <div className="min-h-screen bg-background">
       <Header />
       <HeroSection />
 
       {/* Section 1: Software */}
-      <Section id="software" title="A Primeira Revolução" subtitle="Anos 1940-1980">
+      <Section 
+        id="software" 
+        title="A Primeira Revolução" 
+        subtitle="Anos 1940-1980"
+        quote="O código é a primeira linguagem universal entre humanos e máquinas."
+      >
         <p className="text-lg leading-relaxed">
           O software representou a primeira grande comunicação entre humanos e máquinas.
           Através de linguagens de programação, conseguimos instruir computadores a
@@ -27,7 +33,13 @@ const Index = () => {
       </Section>
 
       {/* Section 2: Internet */}
-      <Section id="internet" title="A Era da Conectividade" subtitle="Anos 1990-2000" reverse>
+      <Section 
+        id="internet" 
+        title="A Era da Conectividade" 
+        subtitle="Anos 1990-2000" 
+        reverse
+        quote="A conectividade transformou o mundo em uma aldeia global digital."
+      >
         <p className="text-lg leading-relaxed">
           A Internet democratizou o acesso à informação e transformou completamente
           a forma como nos comunicamos. De repente, o mundo inteiro estava conectado,
@@ -40,7 +52,12 @@ const Index = () => {
       </Section>
 
       {/* Section 3: Tecnologias Sem Propósito */}
-      <Section id="tech-sem-proposito" title="O Hype Tecnológico" subtitle="Anos 2020-2022">
+      <Section 
+        id="tech-sem-proposito" 
+        title="O Hype Tecnológico" 
+        subtitle="Anos 2020-2022"
+        quote="Sem um propósito claro, a inovação deixa de ser uma ferramenta de progresso e se torna apenas uma distração sofisticada."
+      >
         <p className="text-lg leading-relaxed">
           Nem toda inovação tecnológica encontra seu propósito. O Metaverso e os NFTs
           prometeram revolucionar o mundo digital, mas faltou-lhes aplicação prática
@@ -53,7 +70,13 @@ const Index = () => {
       </Section>
 
       {/* Section 4: 1969 Kubrick */}
-      <Section id="kubrick" title="A Profecia de Kubrick" subtitle="1969 - 2001: Uma Odisseia no Espaço" reverse>
+      <Section 
+        id="kubrick" 
+        title="A Profecia de Kubrick" 
+        subtitle="1969 - 2001: Uma Odisseia no Espaço" 
+        reverse
+        quote="A arte antecipou a ciência ao imaginar conversas naturais com máquinas."
+      >
         <p className="text-lg leading-relaxed">
           Em 1969, Stanley Kubrick nos apresentou HAL 9000, uma IA que não apenas
           processava comandos, mas conversava, entendia contexto e tinha personalidade.
@@ -66,7 +89,12 @@ const Index = () => {
       </Section>
 
       {/* Section 5: Watson */}
-      <Section id="watson" title="Watson: A Era da Cognição" subtitle="2004 - IBM Watson">
+      <Section 
+        id="watson" 
+        title="Watson: A Era da Cognição" 
+        subtitle="2004 - IBM Watson"
+        quote="Watson provou que máquinas poderiam não apenas calcular, mas compreender."
+      >
         <p className="text-lg leading-relaxed">
           O IBM Watson marcou o início da era cognitiva, demonstrando que máquinas
           poderiam não apenas processar dados, mas compreender linguagem natural,
@@ -80,7 +108,13 @@ const Index = () => {
       </Section>
 
       {/* Section 6: IA Nova Era */}
-      <Section id="ia-nova-era" title="A Nova Era da IA" subtitle="2022 - Presente" reverse>
+      <Section 
+        id="ia-nova-era" 
+        title="A Nova Era da IA" 
+        subtitle="2022 - Presente" 
+        reverse
+        quote="Pela primeira vez, qualquer pessoa pode conversar com uma inteligência artificial."
+      >
         <p className="text-lg leading-relaxed">
           Com o ChatGPT e modelos similares, entramos em uma nova era onde a
           comunicação com máquinas é natural, fluida e acessível a todos. A barreira
@@ -124,7 +158,13 @@ const Index = () => {
       <DigitalExclusionSection />
 
       {/* Section 8: Bom Prompt */}
-      <Section id="bom-prompt" title="A Arte do Bom Prompt" subtitle="Comunicação Efetiva com IA" reverse>
+      <Section 
+        id="bom-prompt" 
+        title="A Arte do Bom Prompt" 
+        subtitle="Comunicação Efetiva com IA" 
+        reverse
+        quote="A qualidade da resposta depende da qualidade da pergunta."
+      >
         <div className="relative">
           <Link to="/admin/login" className="absolute -top-16 right-0 text-muted-foreground/20 hover:text-muted-foreground/40 transition-opacity" aria-label="Admin Login">
             <Brain className="w-5 h-5" />
@@ -189,6 +229,9 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      {/* Floating Chat Button */}
+      <FloatingChatButton />
     </div>;
 };
 export default Index;

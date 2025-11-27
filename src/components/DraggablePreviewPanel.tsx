@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Play, Pause, Edit2, Save } from "lucide-react";
+import { X, Play, Square, Download, Edit2, Save } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +24,8 @@ export const DraggablePreviewPanel = ({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedContent, setEditedContent] = useState("");
   
@@ -81,17 +83,46 @@ export const DraggablePreviewPanel = ({
       return;
     }
 
-    if (isPlaying && audioRef.current) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      if (!audioRef.current) {
-        audioRef.current = new Audio(content.audio_url);
-        audioRef.current.onended = () => setIsPlaying(false);
-      }
-      audioRef.current.play();
-      setIsPlaying(true);
+    if (!audioRef.current) {
+      audioRef.current = new Audio(content.audio_url);
+      audioRef.current.onended = () => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+      };
+      audioRef.current.ontimeupdate = () => {
+        setCurrentTime(audioRef.current?.currentTime || 0);
+      };
+      audioRef.current.onloadedmetadata = () => {
+        setDuration(audioRef.current?.duration || 0);
+      };
     }
+    
+    audioRef.current.play();
+    setIsPlaying(true);
+  };
+
+  const handleStopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+      setCurrentTime(0);
+    }
+  };
+
+  const handleDownloadAudio = () => {
+    if (content?.audio_url) {
+      const link = document.createElement('a');
+      link.href = content.audio_url;
+      link.download = `tooltip-${sectionId}-audio.mp3`;
+      link.click();
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleSave = async () => {
@@ -195,28 +226,58 @@ export const DraggablePreviewPanel = ({
           )}
         </div>
 
-        <div className="flex items-center justify-between p-4 border-t border-primary/20 no-drag gap-2">
+        <div className="border-t border-primary/20 no-drag">
           {content?.audio_url && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePlayAudio}
-              className="gap-2"
-            >
-              {isPlaying ? (
-                <>
-                  <Pause className="w-4 h-4" />
-                  Pausar
-                </>
-              ) : (
-                <>
+            <div className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePlayAudio}
+                  disabled={isPlaying}
+                  className="gap-2"
+                >
                   <Play className="w-4 h-4" />
-                  Ouvir
-                </>
-              )}
-            </Button>
+                  Play
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleStopAudio}
+                  disabled={!isPlaying}
+                  className="gap-2"
+                >
+                  <Square className="w-4 h-4" />
+                  Stop
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadAudio}
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </Button>
+              </div>
+              
+              {/* Progress bar */}
+              <div className="space-y-1">
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all duration-200"
+                    style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+              </div>
+            </div>
           )}
           
+          <div className="flex items-center justify-end p-4 border-t border-primary/20 gap-2">
           {isEditMode ? (
             <Button
               size="sm"
@@ -237,6 +298,7 @@ export const DraggablePreviewPanel = ({
               Editar
             </Button>
           )}
+          </div>
         </div>
       </Card>
     </>
