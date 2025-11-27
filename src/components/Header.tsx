@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Brain } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
 
 const Header = () => {
@@ -62,6 +63,13 @@ const Header = () => {
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
               </button>
             ))}
+            <Link 
+              to="/admin" 
+              className="text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
+              title="Admin Panel"
+            >
+              <Brain className="w-5 h-5" />
+            </Link>
           </nav>
 
           {/* Mobile Menu Button */}

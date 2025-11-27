@@ -109,6 +109,8 @@ export type Database = {
           created_at: string
           id: string
           messages: Json
+          sentiment_label: string | null
+          sentiment_score: number | null
           session_id: string
           title: string
           updated_at: string
@@ -117,6 +119,8 @@ export type Database = {
           created_at?: string
           id?: string
           messages?: Json
+          sentiment_label?: string | null
+          sentiment_score?: number | null
           session_id: string
           title: string
           updated_at?: string
@@ -125,6 +129,8 @@ export type Database = {
           created_at?: string
           id?: string
           messages?: Json
+          sentiment_label?: string | null
+          sentiment_score?: number | null
           session_id?: string
           title?: string
           updated_at?: string
