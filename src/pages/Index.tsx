@@ -9,7 +9,11 @@ import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
 import { FloatingChatButton } from "@/components/FloatingChatButton";
+import { useTranslation } from "react-i18next";
+
 const Index = () => {
+  const { t } = useTranslation();
+  
   return <div className="min-h-screen bg-background">
       <Header />
       <HeroSection />
@@ -17,120 +21,99 @@ const Index = () => {
       {/* Section 1: Software */}
       <Section 
         id="software" 
-        title="A Primeira Revolução" 
-        subtitle="Anos 1940-1980"
-        quote="O momento exato em que deixamos de apenas operar máquinas e começamos, de fato, a pensar com elas."
-        quoteAuthor="Fernando Arbache"
+        title={t('sections.software.title')}
+        subtitle={t('sections.software.subtitle')}
+        quote={t('sections.software.quote')}
+        quoteAuthor={t('sections.software.quoteAuthor')}
       >
         <p className="text-lg leading-relaxed">
-          O software representou a primeira grande comunicação entre humanos e máquinas.
-          Através de linguagens de programação, conseguimos instruir computadores a
-          executar tarefas complexas. Era uma comunicação rígida, técnica, acessível
-          apenas a especialistas.
+          {t('sections.software.content1')}
         </p>
         <p className="text-lg leading-relaxed mt-4">
-          Essa era marcou o início da transformação digital, estabelecendo as bases
-          para todas as revoluções tecnológicas que viriam a seguir.
+          {t('sections.software.content2')}
         </p>
       </Section>
 
       {/* Section 2: Internet */}
       <Section 
         id="internet" 
-        title="A Era da Conectividade" 
-        subtitle="Anos 1990-2000" 
+        title={t('sections.internet.title')}
+        subtitle={t('sections.internet.subtitle')}
         reverse
-        quote="A internet não apenas encurtou distâncias geográficas; ela entrelaçou o destino da humanidade em uma única rede pulsante."
-        quoteAuthor="Fernando Arbache"
+        quote={t('sections.internet.quote')}
+        quoteAuthor={t('sections.internet.quoteAuthor')}
       >
         <p className="text-lg leading-relaxed">
-          A Internet democratizou o acesso à informação e transformou completamente
-          a forma como nos comunicamos. De repente, o mundo inteiro estava conectado,
-          compartilhando conhecimento em escala global.
+          {t('sections.internet.content1')}
         </p>
         <p className="text-lg leading-relaxed mt-4">
-          Esta revolução não apenas conectou computadores, mas conectou pessoas,
-          culturas e ideias de maneiras nunca antes imaginadas.
+          {t('sections.internet.content2')}
         </p>
       </Section>
 
       {/* Section 3: Tecnologias Sem Propósito */}
       <Section 
         id="tech-sem-proposito" 
-        title="O Hype Tecnológico" 
-        subtitle="Anos 2020-2022"
-        quote="Sem um propósito claro, a inovação deixa de ser uma ferramenta de progresso e se torna apenas uma distração sofisticada."
-        quoteAuthor="Fernando Arbache"
+        title={t('sections.techNoPropose.title')}
+        subtitle={t('sections.techNoPropose.subtitle')}
+        quote={t('sections.techNoPropose.quote')}
+        quoteAuthor={t('sections.techNoPropose.quoteAuthor')}
       >
         <p className="text-lg leading-relaxed">
-          Nem toda inovação tecnológica encontra seu propósito. O Metaverso e os NFTs
-          prometeram revolucionar o mundo digital, mas faltou-lhes aplicação prática
-          e valor real para os usuários.
+          {t('sections.techNoPropose.content1')}
         </p>
         <p className="text-lg leading-relaxed mt-4">
-          Esta fase nos ensinou lições valiosas sobre a diferença entre inovação
-          tecnológica e inovação com propósito real para a sociedade.
+          {t('sections.techNoPropose.content2')}
         </p>
       </Section>
 
       {/* Section 4: 1969 Kubrick */}
       <Section 
         id="kubrick" 
-        title="A Profecia de Kubrick" 
-        subtitle="1969 - 2001: Uma Odisseia no Espaço" 
+        title={t('sections.kubrick.title')}
+        subtitle={t('sections.kubrick.subtitle')}
         reverse
-        quote="Agora que a ficção de 2001 se tornou realidade, o mistério não é mais a capacidade da máquina, mas a intenção humana por trás dela."
-        quoteAuthor="Fernando Arbache"
+        quote={t('sections.kubrick.quote')}
+        quoteAuthor={t('sections.kubrick.quoteAuthor')}
       >
         <p className="text-lg leading-relaxed">
-          Em 1969, Stanley Kubrick nos apresentou HAL 9000, uma IA que não apenas
-          processava comandos, mas conversava, entendia contexto e tinha personalidade.
-          Foi um presságio impressionante do futuro que estamos vivendo hoje.
+          {t('sections.kubrick.content1')}
         </p>
         <p className="text-lg leading-relaxed mt-4">
-          O que parecia ficção científica há 50 anos, tornou-se realidade com o
-          advento dos grandes modelos de linguagem e assistentes de IA conversacionais.
+          {t('sections.kubrick.content2')}
         </p>
       </Section>
 
       {/* Section 5: Watson */}
       <Section 
         id="watson" 
-        title="Watson: A Era da Cognição" 
-        subtitle="2004 - IBM Watson"
-        quote="Ao ensinar uma máquina a ler nuances, descobrimos que a verdadeira inteligência não está em dar respostas, mas em compreender as perguntas."
-        quoteAuthor="Fernando Arbache"
+        title={t('sections.watson.title')}
+        subtitle={t('sections.watson.subtitle')}
+        quote={t('sections.watson.quote')}
+        quoteAuthor={t('sections.watson.quoteAuthor')}
       >
         <p className="text-lg leading-relaxed">
-          O IBM Watson marcou o início da era cognitiva, demonstrando que máquinas
-          poderiam não apenas processar dados, mas compreender linguagem natural,
-          raciocinar e aprender.
+          {t('sections.watson.content1')}
         </p>
         <p className="text-lg leading-relaxed mt-4">
-          Sua vitória no Jeopardy! em 2011 foi um marco histórico, provando que a
-          IA poderia competir com humanos em tarefas que requerem conhecimento amplo
-          e compreensão contextual.
+          {t('sections.watson.content2')}
         </p>
       </Section>
 
       {/* Section 6: IA Nova Era */}
       <Section 
         id="ia-nova-era" 
-        title="A Nova Era da IA" 
-        subtitle="2022 - Presente" 
+        title={t('sections.newEra.title')}
+        subtitle={t('sections.newEra.subtitle')}
         reverse
-        quote="Ao democratizar a inteligência, não estamos apenas atualizando o software do mundo, mas reescrevendo o potencial de cada ser humano."
-        quoteAuthor="Fernando Arbache"
+        quote={t('sections.newEra.quote')}
+        quoteAuthor={t('sections.newEra.quoteAuthor')}
       >
         <p className="text-lg leading-relaxed">
-          Com o ChatGPT e modelos similares, entramos em uma nova era onde a
-          comunicação com máquinas é natural, fluida e acessível a todos. A barreira
-          técnica foi eliminada.
+          {t('sections.newEra.content1')}
         </p>
         <p className="text-lg leading-relaxed mt-4">
-          Agora, qualquer pessoa pode conversar com uma IA como conversaria com um
-          especialista humano, abrindo possibilidades infinitas em educação, saúde,
-          negócios e muito mais.
+          {t('sections.newEra.content2')}
         </p>
       </Section>
 
@@ -140,25 +123,21 @@ const Index = () => {
           <div className="max-w-6xl mx-auto text-center space-y-6">
             {/* Title */}
             <h2 className="text-4xl md:text-5xl font-bold text-gradient">
-              KnowYOU: Reskilling na Era da IA
+              {t('sections.knowyou.title')}
             </h2>
             
             {/* Subtitle */}
             <p className="text-xl text-muted-foreground">
-              Tecnologia Conversacional na Saúde
+              {t('sections.knowyou.subtitle')}
             </p>
             
             {/* Description Text */}
             <div className="text-center max-w-3xl mx-auto space-y-4">
               <p className="text-lg leading-relaxed">
-                O problema da Cauda Longa de Gauss revela um desafio crítico: a maioria
-                das pessoas não sabe como comunicar-se efetivamente com IA. É aqui que
-                entra o KnowYOU.
+                {t('sections.knowyou.content1')}
               </p>
               <p className="text-lg leading-relaxed">
-                Nossa tecnologia conversacional foi especialmente desenvolvida para o setor
-                de saúde, tornando a comunicação com IA natural e produtiva para todos os
-                profissionais, independente de seu conhecimento técnico.
+                {t('sections.knowyou.content2')}
               </p>
             </div>
             
@@ -181,11 +160,11 @@ const Index = () => {
       {/* Section 8: Bom Prompt */}
       <Section
         id="bom-prompt" 
-        title="A Arte do Bom Prompt" 
-        subtitle="Comunicação Efetiva com IA" 
+        title={t('sections.goodPrompt.title')}
+        subtitle={t('sections.goodPrompt.subtitle')}
         reverse
-        quote="A qualidade da resposta depende da qualidade da pergunta."
-        quoteAuthor="Fernando Arbache"
+        quote={t('sections.goodPrompt.quote')}
+        quoteAuthor={t('sections.goodPrompt.quoteAuthor')}
       >
         <div className="relative">
           <Link to="/admin/login" className="absolute -top-16 right-0 text-muted-foreground/20 hover:text-muted-foreground/40 transition-opacity" aria-label="Admin Login">
@@ -193,34 +172,28 @@ const Index = () => {
           </Link>
           
           <p className="text-lg leading-relaxed">
-            Saber fazer as perguntas certas é fundamental na era da IA. Um bom prompt
-            é claro, específico, contextualizado e direcionado ao objetivo desejado.
+            {t('sections.goodPrompt.content1')}
           </p>
           <p className="text-lg leading-relaxed mt-4">
-            O KnowYOU não apenas responde suas perguntas, mas ensina você a se comunicar
-            melhor com IA, desenvolvendo uma habilidade essencial para o futuro do
-            trabalho em saúde.
+            {t('sections.goodPrompt.content2')}
           </p>
           <div className="mt-6 space-y-3">
             <div className="p-4 bg-card rounded-lg border border-primary/10">
-              <p className="text-sm font-medium text-primary">Seja Específico</p>
+              <p className="text-sm font-medium text-primary">{t('sections.goodPrompt.beSpecific')}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Em vez de "fale sobre diabetes", pergunte "quais são os principais
-                indicadores para diagnóstico de diabetes tipo 2 em adultos?"
+                {t('sections.goodPrompt.beSpecificDesc')}
               </p>
             </div>
             <div className="p-4 bg-card rounded-lg border border-primary/10">
-              <p className="text-sm font-medium text-secondary">Forneça Contexto</p>
+              <p className="text-sm font-medium text-secondary">{t('sections.goodPrompt.giveContext')}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Explique sua situação, seu papel e o que você precisa alcançar com
-                a resposta.
+                {t('sections.goodPrompt.giveContextDesc')}
               </p>
             </div>
             <div className="p-4 bg-card rounded-lg border border-primary/10">
-              <p className="text-sm font-medium text-accent">Itere e Refine</p>
+              <p className="text-sm font-medium text-accent">{t('sections.goodPrompt.iterateRefine')}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Não tenha medo de fazer perguntas de acompanhamento para obter
-                exatamente a informação que precisa.
+                {t('sections.goodPrompt.iterateRefineDesc')}
               </p>
             </div>
           </div>
@@ -240,10 +213,10 @@ const Index = () => {
                 <span className="text-lg font-bold text-gradient">KnowYOU</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Revolucionando o Reskilling na Era da IA
+                {t('footer.tagline')}
               </p>
               <p className="text-xs text-muted-foreground">
-                © 2024 KnowYOU by KnowRisk. Todos os direitos reservados.
+                {t('footer.copyright')}
               </p>
             </div>
             

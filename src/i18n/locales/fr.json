@@ -20,45 +20,168 @@
   "sections": {
     "software": {
       "title": "La Première Révolution",
-      "subtitle": "Logiciel: La Première Communication Homme-Machine",
-      "content": "Dans les années 1950, lorsque les premiers logiciels ont été développés, une révolution silencieuse a commencé: pour la première fois dans l'histoire, les humains pouvaient donner des instructions directes aux machines via des langages de programmation. Ce fut le premier pas vers la communication entre l'homme et la machine."
+      "subtitle": "Années 1940-1980",
+      "quote": "Le moment exact où nous avons cessé de simplement opérer des machines et avons commencé, en fait, à penser avec elles.",
+      "quoteAuthor": "Fernando Arbache",
+      "content1": "Le logiciel a représenté la première grande communication entre humains et machines. Grâce aux langages de programmation, nous avons pu instruire les ordinateurs à effectuer des tâches complexes. C'était une communication rigide, technique, accessible uniquement aux spécialistes.",
+      "content2": "Cette ère a marqué le début de la transformation numérique, établissant les bases de toutes les révolutions technologiques à venir."
     },
     "internet": {
       "title": "L'Ère de la Connectivité",
-      "subtitle": "Internet: La Révolution de la Connexion Mondiale",
-      "content": "Dans les années 1990, Internet a radicalement transformé notre façon de communiquer, de travailler et d'accéder à l'information. Ce qui a commencé comme un projet militaire est devenu l'infrastructure fondamentale de la société numérique moderne."
+      "subtitle": "Années 1990-2000",
+      "quote": "Internet n'a pas seulement raccourci les distances géographiques ; il a entrelacé le destin de l'humanité dans un seul réseau pulsant.",
+      "quoteAuthor": "Fernando Arbache",
+      "content1": "Internet a démocratisé l'accès à l'information et transformé complètement notre façon de communiquer. Soudain, le monde entier était connecté, partageant des connaissances à l'échelle mondiale.",
+      "content2": "Cette révolution n'a pas seulement connecté des ordinateurs, mais des personnes, des cultures et des idées d'une manière jamais imaginée auparavant."
     },
     "techNoPropose": {
       "title": "Le Battage Technologique",
-      "subtitle": "Technologies Sans But Clair",
-      "content": "Entre 2020-2022, nous avons assisté à l'émergence de technologies comme le Metaverse et les NFT qui, malgré un battage médiatique massif, n'ont pas réussi à démontrer un but clair ou une valeur tangible pour la société."
+      "subtitle": "Années 2020-2022",
+      "quote": "Sans but clair, l'innovation cesse d'être un outil de progrès et devient simplement une distraction sophistiquée.",
+      "quoteAuthor": "Fernando Arbache",
+      "content1": "Toutes les innovations technologiques ne trouvent pas leur but. Le Métavers et les NFT promettaient de révolutionner le monde numérique, mais manquaient d'application pratique et de valeur réelle pour les utilisateurs.",
+      "content2": "Cette phase nous a enseigné de précieuses leçons sur la différence entre l'innovation technologique et l'innovation avec un but réel pour la société."
     },
     "kubrick": {
       "title": "La Prophétie de Kubrick",
-      "subtitle": "1969: Kubrick et la Vision de HAL 9000",
-      "content": "Dans '2001: L'Odyssée de l'espace', Stanley Kubrick a imaginé HAL 9000, un ordinateur qui ne traitait pas seulement des données mais conversait naturellement avec les humains, anticipant des décennies à l'avance ce que nous expérimentons aujourd'hui avec l'IA conversationnelle."
+      "subtitle": "1969 - 2001: L'Odyssée de l'espace",
+      "quote": "Maintenant que la fiction de 2001 est devenue réalité, le mystère n'est plus la capacité de la machine, mais l'intention humaine derrière elle.",
+      "quoteAuthor": "Fernando Arbache",
+      "content1": "En 1969, Stanley Kubrick nous a présenté HAL 9000, une IA qui non seulement traitait des commandes, mais conversait, comprenait le contexte et avait de la personnalité. C'était une prémonition impressionnante du futur que nous vivons aujourd'hui.",
+      "content2": "Ce qui semblait être de la science-fiction il y a 50 ans est devenu réalité avec l'avènement des grands modèles de langage et des assistants IA conversationnels."
     },
     "watson": {
-      "title": "Watson: La Révolution de la Cognition",
-      "subtitle": "2004-2011: L'Éveil de l'IA Cognitive",
-      "content": "IBM Watson a révolutionné le concept d'intelligence artificielle en battant des champions humains à Jeopardy! en 2011. Pour la première fois, une machine a démontré la capacité de comprendre le langage naturel, de traiter le contexte et de répondre avec précision à des questions complexes."
+      "title": "Watson: L'Ère de la Cognition",
+      "subtitle": "2004 - IBM Watson",
+      "quote": "En enseignant à une machine à lire les nuances, nous avons découvert que la véritable intelligence n'est pas dans les réponses, mais dans la compréhension des questions.",
+      "quoteAuthor": "Fernando Arbache",
+      "content1": "IBM Watson a marqué le début de l'ère cognitive, démontrant que les machines pouvaient non seulement traiter des données, mais comprendre le langage naturel, raisonner et apprendre.",
+      "content2": "Sa victoire à Jeopardy! en 2011 a été une étape historique, prouvant que l'IA pouvait rivaliser avec les humains dans des tâches nécessitant des connaissances larges et une compréhension contextuelle."
     },
     "newEra": {
       "title": "La Nouvelle Ère de l'IA",
-      "subtitle": "IA Générative: Communication Naturelle et Créativité",
-      "content": "À partir de 2022, avec le lancement de ChatGPT, nous sommes entrés dans l'ère de l'IA générative, où les machines ne se contentent pas de répondre mais conversent, créent du contenu et collaborent naturellement avec les humains dans divers contextes."
+      "subtitle": "2022 - Présent",
+      "quote": "En démocratisant l'intelligence, nous ne mettons pas seulement à jour le logiciel du monde, mais réécrivons le potentiel de chaque être humain.",
+      "quoteAuthor": "Fernando Arbache",
+      "content1": "Avec ChatGPT et des modèles similaires, nous sommes entrés dans une nouvelle ère où la communication avec les machines est naturelle, fluide et accessible à tous. La barrière technique a été éliminée.",
+      "content2": "Maintenant, n'importe qui peut converser avec une IA comme il le ferait avec un expert humain, ouvrant des possibilités infinies dans l'éducation, la santé, les affaires et bien plus encore."
     },
-    "digitalExclusion": {
-      "title": "5,74 milliards",
-      "subtitle": "de personnes ne peuvent toujours pas accéder à Internet",
-      "expandText": "En savoir plus sur ce défi",
-      "content": "Alors que nous célébrons les progrès de l'IA, il est crucial de reconnaître que 5,74 milliards de personnes n'ont toujours pas accès à Internet. Cette exclusion numérique représente non seulement un fossé technologique, mais une barrière fondamentale à la connaissance, aux opportunités et à la participation dans la société moderne.\n\nAu-delà de l'accès physique, nous faisons face à des barrières linguistiques: la plupart des modèles d'IA sont principalement entraînés en anglais, limitant leur efficacité pour des milliards de locuteurs d'autres langues. Il existe également un fossé cognitif important - de nombreuses personnes manquent d'alphabétisation numérique de base et de compétences nécessaires pour interagir efficacement avec les systèmes d'IA.\n\nPour que la révolution de l'IA soit véritablement inclusive, nous devons simultanément aborder l'infrastructure d'accès, le développement multilingue de modèles et des programmes complets d'éducation numérique qui permettent aux personnes de tous horizons de participer à cette nouvelle ère technologique."
+    "knowyou": {
+      "title": "KnowYOU: Requalification à l'Ère de l'IA",
+      "subtitle": "Technologie Conversationnelle dans la Santé",
+      "content1": "Le problème de la Longue Traîne révèle un défi critique: la plupart des gens ne savent pas comment communiquer efficacement avec l'IA. C'est là qu'intervient KnowYOU.",
+      "content2": "Notre technologie conversationnelle a été spécialement développée pour le secteur de la santé, rendant la communication avec l'IA naturelle et productive pour tous les professionnels, indépendamment de leurs connaissances techniques."
     },
     "goodPrompt": {
       "title": "L'Art du Bon Prompt",
-      "subtitle": "Comment Communiquer Efficacement avec l'IA",
-      "content": "Un prompt efficace est clair, spécifique et contextuel. Apprenez l'art de formuler des questions et des instructions qui maximisent la qualité des réponses de l'IA."
+      "subtitle": "Communication Efficace avec l'IA",
+      "quote": "La qualité de la réponse dépend de la qualité de la question.",
+      "quoteAuthor": "Fernando Arbache",
+      "content1": "Savoir poser les bonnes questions est fondamental à l'ère de l'IA. Un bon prompt est clair, spécifique, contextualisé et dirigé vers l'objectif souhaité.",
+      "content2": "KnowYOU ne répond pas seulement à vos questions, mais vous apprend à mieux communiquer avec l'IA, développant une compétence essentielle pour l'avenir du travail en santé.",
+      "beSpecific": "Soyez Spécifique",
+      "beSpecificDesc": "Au lieu de 'parler du diabète', demandez 'quels sont les principaux indicateurs pour diagnostiquer le diabète de type 2 chez les adultes?'",
+      "giveContext": "Fournissez du Contexte",
+      "giveContextDesc": "Expliquez votre situation, votre rôle et ce que vous devez accomplir avec la réponse.",
+      "iterateRefine": "Itérez et Affinez",
+      "iterateRefineDesc": "N'ayez pas peur de poser des questions de suivi pour obtenir exactement les informations dont vous avez besoin."
     }
+  },
+  "digitalExclusion": {
+    "title": "5,74 milliards",
+    "subtitle": "de personnes ne peuvent toujours pas accéder à Internet",
+    "expandText": "En savoir plus sur ce défi",
+    "content1": "Alors que nous célébrons les progrès de l'intelligence artificielle et sa capacité à transformer les industries, la communication et les connaissances, une réalité troublante demeure: 5,74 milliards de personnes dans le monde n'ont toujours pas accès à Internet. Cette exclusion numérique représente non seulement une barrière technologique, mais un abîme d'opportunités qui s'élargit exponentiellement à l'ère de l'IA générative.",
+    "content2": "La démocratisation de l'intelligence artificielle dépend fondamentalement de l'accès à la connectivité. Sans Internet, des milliards de personnes sont exclues non seulement des outils d'IA, mais aussi de l'alphabétisation nécessaire pour comprendre, questionner et utiliser ces technologies de manière critique et productive.",
+    "content3": "Au-delà des barrières d'infrastructure, nous faisons face à des défis linguistiques et cognitifs: la plupart des modèles d'IA sont formés principalement en anglais, et même lorsqu'ils sont disponibles dans d'autres langues, nécessitent un niveau d'alphabétisation numérique qu'une grande partie de la population mondiale ne possède pas encore. La véritable révolution de l'IA ne sera complète que lorsque nous parviendrons à inclure ces 5,74 milliards de voix dans la conversation."
+  },
+  "aiHistory": {
+    "title": "L'Histoire de l'Intelligence Artificielle",
+    "close": "Fermer",
+    "eras": {
+      "dream": {
+        "title": "Le Rêve (Avant 1950)",
+        "subtitle": "Où tout était science-fiction et désir humain.",
+        "items": [
+          "Antiquité: Les mythes grecs parlaient déjà d'automates et de statues qui prenaient vie (comme Talos, le géant de bronze).",
+          "1843 - La 'Grand-mère' de la Programmation: Ada Lovelace écrit le premier algorithme pour une machine.",
+          "1920 - Le mot 'Robot' naît: Une pièce de théâtre tchèque (R.U.R.) utilise le terme pour la première fois."
+        ]
+      },
+      "birth": {
+        "title": "La Naissance (Années 50)",
+        "subtitle": "Où l'IA gagne un nom et fait ses premiers pas.",
+        "items": [
+          "1950 - Le Test de Turing: Alan Turing pose la question: 'Les machines peuvent-elles penser?'",
+          "1956 - Le Baptême: La Conférence de Dartmouth invente officiellement le terme 'Intelligence Artificielle'.",
+          "1957 - Perceptron: Frank Rosenblatt crée une machine qui tente d'imiter un neurone."
+        ]
+      },
+      "childhood": {
+        "title": "L'Enfance et l'Adolescence (Années 60 à 80)",
+        "subtitle": "Hauts et bas, rébellion et films hollywoodiens.",
+        "items": [
+          "1966 - ELIZA, la 'Psychologue': Le premier chatbot de l'histoire!",
+          "Années 70 - L'Hiver de l'IA: Les promesses étaient trop grandes et la technologie ne tenait pas.",
+          "Années 80 - Le Retour: L'IA revient avec les 'Systèmes Experts'.",
+          "Terminator (1984): Le cinéma crée l'image de l'IA comme méchant."
+        ]
+      },
+      "adulthood": {
+        "title": "La Phase Adulte (Années 90 et 2000)",
+        "subtitle": "L'IA commence à battre les humains et à entrer dans nos maisons.",
+        "items": [
+          "1997 - Échec et mat: L'ordinateur Deep Blue (IBM) bat Garry Kasparov aux échecs.",
+          "2002 - Roomba: L'IA entre dans votre salon... pour passer l'aspirateur.",
+          "2011 - 'Hé, Siri': Nous commençons à parler à nos téléphones."
+        ]
+      },
+      "revolution": {
+        "title": "La Révolution Générative (Années 2010 à Aujourd'hui)",
+        "subtitle": "L'IA cesse d'analyser seulement et commence à CRÉER.",
+        "items": [
+          "2012 - Le 'Big Bang' du Deep Learning: Les réseaux neuronaux apprennent à identifier les chats sur YouTube par eux-mêmes.",
+          "2016 - AlphaGo: L'IA bat le champion mondial de Go avec des coups 'créatifs'.",
+          "2017 - Le Transformer: Google publie un article qui change tout.",
+          "2022/2023 - L'Ère de ChatGPT et Gemini: L'IA 'sort de sa cage'."
+        ]
+      }
+    }
+  },
+  "chat": {
+    "healthTitle": "KnowYOU",
+    "healthSubtitle": "Assistant IA de Santé",
+    "studyTitle": "Assistant IA pour vous aider à étudier",
+    "greeting": "Bonjour! Je suis KnowYOU",
+    "greetingDesc": "Votre assistant spécialisé en santé. Comment puis-je vous aider aujourd'hui?",
+    "placeholder": "Tapez votre message sur la santé...",
+    "placeholderStudy": "Tapez votre question sur KnowRisk, KnowYOU ou ACC...",
+    "placeholderImage": "Décrivez l'image éducative de santé que vous souhaitez générer...",
+    "placeholderImageStudy": "Décrivez l'image éducative que vous souhaitez générer...",
+    "imageLimitHealth": "Images limitées au contenu de santé",
+    "imageLimitStudy": "Images limitées à l'IA et KnowRISK",
+    "suggestions": "Suggestions:",
+    "imageSuggestions": "Suggestions d'Images:",
+    "typing": "Écriture...",
+    "transcribing": "Transcription...",
+    "generatingImage": "Génération d'image...",
+    "generatingAudio": "Génération d'audio...",
+    "thinking": "Réflexion...",
+    "clear": "Effacer",
+    "speechNotAvailable": "Reconnaissance vocale non disponible",
+    "speechFallback": "Utilisation d'une méthode de transcription alternative.",
+    "micError": "Erreur lors de l'activation du microphone",
+    "micPermissions": "Vérifiez les autorisations de votre navigateur.",
+    "transcriptionError": "Erreur de transcription",
+    "transcriptionRetry": "Impossible de transcrire l'audio. Veuillez réessayer."
+  },
+  "audio": {
+    "play": "Lire",
+    "pause": "Pause",
+    "stop": "Arrêter",
+    "download": "Télécharger",
+    "notAvailable": "Audio non disponible",
+    "playError": "Erreur lors de la lecture de l'audio"
   },
   "turingLegacy": {
     "title": "L'Héritage de Turing",
@@ -66,27 +189,10 @@
     "author": "par Fernando Arbache"
   },
   "footer": {
-    "rights": "© 2024 KnowRisk. Tous droits réservés."
-  },
-  "chat": {
-    "titleStudy": "Assistant IA pour vous aider à étudier",
-    "titleHealth": "Assistant Santé",
-    "placeholder": "Tapez votre message...",
-    "placeholderImage": "Décrivez l'image que vous souhaitez générer...",
-    "send": "Envoyer",
-    "record": "Enregistrer l'audio",
-    "draw": "Dessiner",
-    "play": "Lire",
-    "stop": "Arrêter",
-    "download": "Télécharger",
-    "imageMode": "Générer une Image Éducative",
-    "exitImageMode": "Mode Normal"
+    "tagline": "Révolutionner la Requalification à l'Ère de l'IA",
+    "copyright": "© 2024 KnowYOU par KnowRisk. Tous droits réservés."
   },
   "floatingButton": {
     "tooltip": "Parler avec KnowYOU"
-  },
-  "aiHistory": {
-    "title": "Histoire de l'Intelligence Artificielle",
-    "close": "Fermer"
   }
 }
