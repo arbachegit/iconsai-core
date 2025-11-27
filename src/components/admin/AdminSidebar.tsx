@@ -9,9 +9,10 @@ import {
   ArrowLeft,
   LogOut,
   MessagesSquare,
+  Image,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -31,6 +32,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
     { id: "chat" as TabType, label: "Chat Config", icon: MessageSquare },
     { id: "tooltips" as TabType, label: "Tooltips", icon: FileText },
     { id: "conversations" as TabType, label: "Conversas", icon: MessagesSquare },
+    { id: "images" as TabType, label: "Imagens", icon: Image },
     { id: "gmail" as TabType, label: "Gmail", icon: Mail },
     { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
   ];
