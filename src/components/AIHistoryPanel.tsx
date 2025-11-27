@@ -3,20 +3,30 @@ import { X, Play, StopCircle, Download, Clock, Baby, Users, GraduationCap, Rocke
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileHistoryCarousel } from "./MobileHistoryCarousel";
+import { cn } from "@/lib/utils";
 
 interface AIHistoryPanelProps {
   onClose: () => void;
 }
 
 export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
+  const isMobile = useIsMobile();
   const [position, setPosition] = useState({ x: window.innerWidth / 2 - 400, y: 50 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [eraImages, setEraImages] = useState<Record<string, string>>({});
+  const [loadingImages, setLoadingImages] = useState(true);
+  const [currentEraId, setCurrentEraId] = useState("dream");
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const eraRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const fullText = `O Sonho (Antes de 1950). Onde tudo era ficção científica e desejo humano.
 
@@ -157,6 +167,193 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Timestamps de cada era no áudio (em segundos)
+  const eraTimestamps = [
+    { id: 'dream', startTime: 0, endTime: 45 },
+    { id: 'birth', startTime: 45, endTime: 90 },
+    { id: 'childhood', startTime: 90, endTime: 150 },
+    { id: 'adulthood', startTime: 150, endTime: 200 },
+    { id: 'revolution', startTime: 200, endTime: 280 }
+  ];
+
+  // Estrutura de dados das eras
+  const erasData = [
+    {
+      id: 'dream',
+      title: 'O Sonho (Antes de 1950)',
+      subtitle: 'Onde tudo era ficção científica e desejo humano.',
+      icon: Clock,
+      colorFrom: 'amber-500',
+      colorTo: 'orange-500',
+      items: [
+        { icon: Sparkles, text: 'Antiguidade: Mitos gregos já falavam de autômatos e estátuas que ganhavam vida (como Talos, o gigante de bronze).' },
+        { icon: Sparkles, text: '1843 - A "Avó" da Programação: Ada Lovelace escreve o primeiro algoritmo para uma máquina.' },
+        { icon: Bot, text: '1920 - Nasce a palavra "Robô": Uma peça de teatro tcheca (R.U.R.) usa o termo pela primeira vez.' }
+      ]
+    },
+    {
+      id: 'birth',
+      title: 'O Nascimento (Anos 50)',
+      subtitle: 'Onde a IA ganha nome e dá os primeiros passos.',
+      icon: Baby,
+      colorFrom: 'blue-500',
+      colorTo: 'cyan-500',
+      items: [
+        { icon: Lightbulb, text: '1950 - O Teste de Turing: Alan Turing lança a pergunta: "Máquinas podem pensar?"' },
+        { icon: Sparkles, text: '1956 - O Batismo: Conferência de Dartmouth cunha oficialmente o termo "Inteligência Artificial".' },
+        { icon: Bot, text: '1957 - Perceptron: Frank Rosenblatt cria uma máquina que tenta imitar um neurônio.' }
+      ]
+    },
+    {
+      id: 'childhood',
+      title: 'A Infância e Adolescência (Anos 60 a 80)',
+      subtitle: 'Altos e baixos, rebeldia e filmes de Hollywood.',
+      icon: Users,
+      colorFrom: 'purple-500',
+      colorTo: 'pink-500',
+      items: [
+        { icon: Bot, text: '1966 - ELIZA, a "Psicóloga": O primeiro chatbot da história!' },
+        { icon: Snowflake, text: 'Anos 70 - O Inverno da IA: As promessas eram grandes demais e a tecnologia não entregava.' },
+        { icon: Sparkles, text: 'Anos 80 - O Retorno: A IA volta com os "Sistemas Especialistas".' },
+        { icon: Skull, text: 'O Exterminador do Futuro (1984): O cinema cria a imagem da IA como vilã.' }
+      ]
+    },
+    {
+      id: 'adulthood',
+      title: 'A Fase Adulta (Anos 90 e 2000)',
+      subtitle: 'A IA começa a ganhar dos humanos e a entrar na nossa casa.',
+      icon: GraduationCap,
+      colorFrom: 'green-500',
+      colorTo: 'emerald-500',
+      items: [
+        { icon: Crown, text: '1997 - Xeque-mate: O computador Deep Blue (IBM) vence Garry Kasparov no xadrez.' },
+        { icon: Home, text: '2002 - Roomba: A IA entra na sua sala... para aspirar pó.' },
+        { icon: Bot, text: '2011 - "Ei, Siri": Começamos a falar com nossos telefones.' }
+      ]
+    },
+    {
+      id: 'revolution',
+      title: 'A Revolução Generativa (2010s até Hoje)',
+      subtitle: 'A IA deixa de apenas analisar e começa a CRIAR.',
+      icon: Rocket,
+      colorFrom: 'cyan-500',
+      colorTo: 'blue-600',
+      items: [
+        { icon: Cat, text: '2012 - O "Big Bang" do Deep Learning: Redes neurais aprendem a identificar gatos no YouTube sozinhas.' },
+        { icon: Crown, text: '2016 - AlphaGo: A IA vence o campeão mundial de Go com jogadas "criativas".' },
+        { icon: Sparkles, text: '2017 - O Transformer: O Google publica um artigo que muda tudo.' },
+        { icon: Palette, text: '2022/2023 - A Era do ChatGPT e Gemini: A IA "sai da jaula".' }
+      ]
+    }
+  ];
+
+  // Carregar imagens das eras
+  useEffect(() => {
+    const loadImages = async () => {
+      setLoadingImages(true);
+      const images: Record<string, string> = {};
+
+      for (const era of erasData) {
+        try {
+          const { data, error } = await supabase.functions.invoke('generate-history-image', {
+            body: { eraId: era.id }
+          });
+
+          if (error) throw error;
+          if (data?.imageUrl) {
+            images[era.id] = data.imageUrl;
+          }
+        } catch (error) {
+          console.error(`Erro ao carregar imagem da era ${era.id}:`, error);
+        }
+      }
+
+      setEraImages(images);
+      setLoadingImages(false);
+    };
+
+    loadImages();
+  }, []);
+
+  // Auto-scroll sincronizado com áudio
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const currentEra = eraTimestamps.find(
+      (era) => currentTime >= era.startTime && currentTime < era.endTime
+    );
+
+    if (currentEra && currentEra.id !== currentEraId) {
+      setCurrentEraId(currentEra.id);
+      
+      // Desktop: scroll suave para a seção
+      if (!isMobile && eraRefs.current[currentEra.id]) {
+        eraRefs.current[currentEra.id]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }
+      // Mobile: o carousel já sincroniza via props currentEraId
+    }
+  }, [currentTime, isPlaying, isMobile, currentEraId]);
+
+  // Renderização mobile
+  if (isMobile) {
+    return (
+      <Drawer open={true} onOpenChange={(open) => !open && onClose()}>
+        <DrawerContent className="h-[90vh]">
+          <div className="p-4 space-y-4 h-full flex flex-col">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+                História da IA
+              </h2>
+              <Button variant="ghost" size="icon" onClick={onClose}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+
+            {/* Audio Controls */}
+            <div className="p-3 rounded-lg bg-muted/50 border border-border">
+              <div className="flex items-center gap-2 mb-2">
+                <Button onClick={handlePlayAudio} disabled={isPlaying} size="sm" variant="outline">
+                  <Play className="w-4 h-4 mr-1" />
+                  Play
+                </Button>
+                <Button onClick={handleStopAudio} disabled={!isPlaying} size="sm" variant="outline">
+                  <StopCircle className="w-4 h-4 mr-1" />
+                  Stop
+                </Button>
+                <Button onClick={handleDownloadAudio} disabled={!audioRef.current} size="sm" variant="outline">
+                  <Download className="w-4 h-4 mr-1" />
+                  Download
+                </Button>
+              </div>
+              {duration > 0 && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-300"
+                      style={{ width: `${(currentTime / duration) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px]">{formatTime(currentTime)} / {formatTime(duration)}</span>
+                </div>
+              )}
+            </div>
+
+            <MobileHistoryCarousel
+              eras={erasData}
+              currentEraId={currentEraId}
+              eraImages={eraImages}
+              loadingImages={loadingImages}
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Renderização desktop
   return (
     <>
       <div 
@@ -233,138 +430,75 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
 
           <ScrollArea className="h-[calc(80vh-250px)]">
             <div className="space-y-8 pr-4">
-              {/* Era 1: O Sonho */}
-              <div className="relative pl-10 border-l-2 border-amber-500/30">
-                <div className="absolute -left-5 top-0 w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg">
-                  <Clock className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
-                  O Sonho (Antes de 1950)
-                </h3>
-                <p className="text-sm text-muted-foreground italic mb-4">Onde tudo era ficção científica e desejo humano.</p>
-                <ul className="space-y-3 text-sm">
-                  <li className="flex gap-3">
-                    <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>Antiguidade:</strong> Mitos gregos já falavam de autômatos e estátuas que ganhavam vida (como Talos, o gigante de bronze).</div>
-                  </li>
-                  <li className="flex gap-3">
-                    <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>1843 - A "Avó" da Programação:</strong> Ada Lovelace escreve o primeiro algoritmo para uma máquina.</div>
-                  </li>
-                  <li className="flex gap-3">
-                    <Bot className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>1920 - Nasce a palavra "Robô":</strong> Uma peça de teatro tcheca (R.U.R.) usa o termo pela primeira vez.</div>
-                  </li>
-                </ul>
-              </div>
+              {erasData.map((era) => {
+                const Icon = era.icon;
+                return (
+                  <div
+                    key={era.id}
+                    ref={(el) => (eraRefs.current[era.id] = el)}
+                    className={cn(
+                      "relative pl-10 border-l-2 transition-all duration-500",
+                      currentEraId === era.id
+                        ? `border-${era.colorFrom} bg-${era.colorFrom}/5 scale-[1.02]`
+                        : `border-${era.colorFrom}/30`
+                    )}
+                  >
+                    <div
+                      className="absolute -left-5 top-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg"
+                      style={{
+                        background: `linear-gradient(to bottom right, hsl(var(--${era.colorFrom})), hsl(var(--${era.colorTo})))`,
+                      }}
+                    >
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
 
-              {/* Era 2: O Nascimento */}
-              <div className="relative pl-10 border-l-2 border-blue-500/30">
-                <div className="absolute -left-5 top-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
-                  <Baby className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-xl font-bold bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-                  O Nascimento (Anos 50)
-                </h3>
-                <p className="text-sm text-muted-foreground italic mb-4">Onde a IA ganha nome e dá os primeiros passos.</p>
-                <ul className="space-y-3 text-sm">
-                  <li className="flex gap-3">
-                    <Lightbulb className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>1950 - O Teste de Turing:</strong> Alan Turing lança a pergunta: "Máquinas podem pensar?"</div>
-                  </li>
-                  <li className="flex gap-3">
-                    <Sparkles className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>1956 - O Batismo:</strong> Conferência de Dartmouth cunha oficialmente o termo "Inteligência Artificial".</div>
-                  </li>
-                  <li className="flex gap-3">
-                    <Bot className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>1957 - Perceptron:</strong> Frank Rosenblatt cria uma máquina que tenta imitar um neurônio.</div>
-                  </li>
-                </ul>
-              </div>
+                    <div className="flex gap-6">
+                      <div className="flex-1">
+                        <h3
+                          className="text-xl font-bold bg-clip-text text-transparent"
+                          style={{
+                            backgroundImage: `linear-gradient(to right, hsl(var(--${era.colorFrom})), hsl(var(--${era.colorTo})))`,
+                          }}
+                        >
+                          {era.title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground italic mb-4">{era.subtitle}</p>
+                        <ul className="space-y-3 text-sm">
+                          {era.items.map((item, idx) => {
+                            const ItemIcon = item.icon;
+                            return (
+                              <li key={idx} className="flex gap-3">
+                                <ItemIcon className={`w-4 h-4 text-${era.colorFrom} flex-shrink-0 mt-0.5`} />
+                                <div>{item.text}</div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
 
-              {/* Era 3: Infância e Adolescência */}
-              <div className="relative pl-10 border-l-2 border-purple-500/30">
-                <div className="absolute -left-5 top-0 w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
-                  <Users className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
-                  A Infância e Adolescência (Anos 60 a 80)
-                </h3>
-                <p className="text-sm text-muted-foreground italic mb-4">Altos e baixos, rebeldia e filmes de Hollywood.</p>
-                <ul className="space-y-3 text-sm">
-                  <li className="flex gap-3">
-                    <Bot className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>1966 - ELIZA, a "Psicóloga":</strong> O primeiro chatbot da história!</div>
-                  </li>
-                  <li className="flex gap-3">
-                    <Snowflake className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>Anos 70 - O Inverno da IA:</strong> As promessas eram grandes demais e a tecnologia não entregava.</div>
-                  </li>
-                  <li className="flex gap-3">
-                    <Sparkles className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>Anos 80 - O Retorno:</strong> A IA volta com os "Sistemas Especialistas".</div>
-                  </li>
-                  <li className="flex gap-3">
-                    <Skull className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>O Exterminador do Futuro (1984):</strong> O cinema cria a imagem da IA como vilã.</div>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Era 4: Fase Adulta */}
-              <div className="relative pl-10 border-l-2 border-green-500/30">
-                <div className="absolute -left-5 top-0 w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg">
-                  <GraduationCap className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">
-                  A Fase Adulta (Anos 90 e 2000)
-                </h3>
-                <p className="text-sm text-muted-foreground italic mb-4">A IA começa a ganhar dos humanos e a entrar na nossa casa.</p>
-                <ul className="space-y-3 text-sm">
-                  <li className="flex gap-3">
-                    <Crown className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>1997 - Xeque-mate:</strong> O computador Deep Blue (IBM) vence Garry Kasparov no xadrez.</div>
-                  </li>
-                  <li className="flex gap-3">
-                    <Home className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>2002 - Roomba:</strong> A IA entra na sua sala... para aspirar pó.</div>
-                  </li>
-                  <li className="flex gap-3">
-                    <Bot className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>2011 - "Ei, Siri":</strong> Começamos a falar com nossos telefones.</div>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Era 5: Revolução Generativa */}
-              <div className="relative pl-10 border-l-2 border-cyan-500/30">
-                <div className="absolute -left-5 top-0 w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg animate-pulse">
-                  <Rocket className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-xl font-bold bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text text-transparent">
-                  A Revolução Generativa (2010s até Hoje)
-                </h3>
-                <p className="text-sm text-muted-foreground italic mb-4">A IA deixa de apenas analisar e começa a CRIAR.</p>
-                <ul className="space-y-3 text-sm">
-                  <li className="flex gap-3">
-                    <Cat className="w-4 h-4 text-cyan-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>2012 - O "Big Bang" do Deep Learning:</strong> Redes neurais aprendem a identificar gatos no YouTube sozinhas.</div>
-                  </li>
-                  <li className="flex gap-3">
-                    <Crown className="w-4 h-4 text-cyan-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>2016 - AlphaGo:</strong> A IA vence o campeão mundial de Go com jogadas "criativas".</div>
-                  </li>
-                  <li className="flex gap-3">
-                    <Sparkles className="w-4 h-4 text-cyan-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>2017 - O Transformer:</strong> Google publica "Attention Is All You Need". Nasce a arquitetura do GPT.</div>
-                  </li>
-                  <li className="flex gap-3">
-                    <Palette className="w-4 h-4 text-cyan-500 flex-shrink-0 mt-0.5" />
-                    <div><strong>2022/2023 - A Era do ChatGPT e Gemini:</strong> A IA "sai da jaula" e se torna uma co-piloto criativa.</div>
-                  </li>
-                </ul>
-              </div>
+                      {/* Imagem da era */}
+                      <div className="w-64 flex-shrink-0">
+                        <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-muted/50 border border-border">
+                          {loadingImages ? (
+                            <Skeleton className="w-full h-full" />
+                          ) : eraImages[era.id] ? (
+                            <img
+                              src={eraImages[era.id]}
+                              alt={era.title}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Icon className="w-16 h-16 text-muted-foreground/50" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
 
               {/* Conclusão */}
               <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 border border-primary/20">
