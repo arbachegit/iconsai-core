@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatModal } from "@/components/ChatModal";
+import { useTranslation } from "react-i18next";
 
 export const FloatingChatButton = () => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   // Broadcast stop audio event when modal closes
@@ -20,7 +22,7 @@ export const FloatingChatButton = () => {
           onClick={() => setIsOpen(true)}
           size="icon"
           className="relative w-20 h-20 rounded-full bg-gradient-to-br from-primary via-secondary to-accent shadow-2xl hover:shadow-primary/50 transition-all duration-300 group overflow-visible"
-          aria-label="Fale com o KnowYOU"
+          aria-label={t('floatingButton.tooltip')}
         >
           {/* Glow rings */}
           <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />

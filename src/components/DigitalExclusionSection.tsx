@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { AudioStreamPlayer } from "@/lib/audio-player";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export const DigitalExclusionSection = () => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -107,10 +109,10 @@ export const DigitalExclusionSection = () => {
             <div className="bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm border border-primary/20 rounded-lg p-8 shadow-lg">
               <div className="text-center space-y-4">
                 <h1 className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-                  5,74 bilhões
+                  {t('digitalExclusion.title')}
                 </h1>
                 <h1 className="text-2xl md:text-3xl font-semibold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mt-4">
-                  de pessoas ainda não conseguem acessar a internet
+                  {t('digitalExclusion.subtitle')}
                 </h1>
                 
                 <CollapsibleTrigger asChild>
@@ -118,7 +120,7 @@ export const DigitalExclusionSection = () => {
                     variant="outline" 
                     className="group bg-primary/30 border-2 border-primary hover:bg-primary/50 hover:border-primary hover:shadow-lg hover:shadow-primary/40 transition-all duration-300"
                   >
-                    <span className="mr-2 font-semibold">Saiba mais sobre esse desafio</span>
+                    <span className="mr-2 font-semibold">{t('digitalExclusion.expandText')}</span>
                     <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
                   </Button>
                 </CollapsibleTrigger>
@@ -136,7 +138,7 @@ export const DigitalExclusionSection = () => {
                         className="gap-2"
                       >
                         <Play className="h-4 w-4" />
-                        {isPlaying ? 'Pausar' : 'Play'}
+                        {isPlaying ? t('audio.pause') : t('audio.play')}
                       </Button>
                       <Button
                         size="sm"
@@ -145,7 +147,7 @@ export const DigitalExclusionSection = () => {
                         className="gap-2"
                       >
                         <Square className="h-4 w-4" />
-                        Stop
+                        {t('audio.stop')}
                       </Button>
                       <Button
                         size="sm"
@@ -154,7 +156,7 @@ export const DigitalExclusionSection = () => {
                         className="gap-2"
                       >
                         <Download className="h-4 w-4" />
-                        Download
+                        {t('audio.download')}
                       </Button>
                     </div>
 
@@ -177,10 +179,7 @@ export const DigitalExclusionSection = () => {
                 {/* Content Text */}
                 <div className="prose prose-invert max-w-none space-y-4 text-muted-foreground">
                   <p>
-                    Enquanto celebramos os avanços da inteligência artificial e sua capacidade de transformar indústrias, 
-                    comunicação e conhecimento, uma realidade inquietante permanece: 5,74 bilhões de pessoas ao redor do 
-                    mundo ainda não têm acesso à internet. Essa exclusão digital representa não apenas uma barreira 
-                    tecnológica, mas um abismo de oportunidades que se amplia exponencialmente na era da IA generativa.
+                    {t('digitalExclusion.content1')}
                   </p>
 
                   <div className="my-8 flex justify-center">
@@ -190,18 +189,11 @@ export const DigitalExclusionSection = () => {
                   </div>
 
                   <p>
-                    A democratização da inteligência artificial depende fundamentalmente do acesso à conectividade. 
-                    Sem internet, bilhões de pessoas estão excluídas não apenas das ferramentas de IA, mas também da 
-                    alfabetização necessária para compreender, questionar e utilizar essas tecnologias de forma crítica 
-                    e produtiva.
+                    {t('digitalExclusion.content2')}
                   </p>
 
                   <p>
-                    Além das barreiras de infraestrutura, enfrentamos desafios linguísticos e cognitivos: a maioria dos 
-                    modelos de IA é treinada predominantemente em inglês, e mesmo quando disponíveis em outros idiomas, 
-                    exigem um nível de alfabetização digital que grande parte da população global ainda não possui. 
-                    A verdadeira revolução da IA só será completa quando conseguirmos incluir essas 5,74 bilhões de 
-                    vozes na conversa.
+                    {t('digitalExclusion.content3')}
                   </p>
                 </div>
               </CollapsibleContent>
