@@ -2,6 +2,7 @@ import { useChatAnalytics } from "@/hooks/useChatAnalytics";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   LineChart,
   Line,
@@ -19,10 +20,14 @@ import {
 } from "recharts";
 import { format, subDays, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { MessageSquare, Clock, TrendingUp, Smile } from "lucide-react";
+import { MessageSquare, Clock, TrendingUp, Smile, TrendingDown, Download } from "lucide-react";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { useRef } from "react";
 
 export const AnalyticsTab = () => {
   const { analytics, isLoading } = useChatAnalytics();
+  const dashboardRef = useRef<HTMLDivElement>(null);
 
   // Fetch conversation data for sentiment and peak hours analysis
   const { data: conversations } = useQuery({
@@ -38,7 +43,7 @@ export const AnalyticsTab = () => {
     },
   });
 
-  // Calculate summary stats
+  // Calculate summary stats - current week
   const today = startOfDay(new Date());
   const todayConversations = conversations?.filter(
     (c) => new Date(c.created_at) >= today
@@ -48,6 +53,38 @@ export const AnalyticsTab = () => {
     (sum, c) => sum + ((c.messages as any[])?.length || 0),
     0
   ) || 0;
+
+  // Calculate previous week stats for comparison
+  const currentWeekStart = subDays(new Date(), 7);
+  const previousWeekStart = subDays(new Date(), 14);
+  
+  const currentWeekConversations = conversations?.filter(
+    (c) => new Date(c.created_at) >= currentWeekStart
+  ).length || 0;
+  
+  const previousWeekConversations = conversations?.filter((c) => {
+    const date = new Date(c.created_at);
+    return date >= previousWeekStart && date < currentWeekStart;
+  }).length || 0;
+
+  const currentWeekMessages = conversations
+    ?.filter((c) => new Date(c.created_at) >= currentWeekStart)
+    ?.reduce((sum, c) => sum + ((c.messages as any[])?.length || 0), 0) || 0;
+  
+  const previousWeekMessages = conversations
+    ?.filter((c) => {
+      const date = new Date(c.created_at);
+      return date >= previousWeekStart && date < currentWeekStart;
+    })
+    ?.reduce((sum, c) => sum + ((c.messages as any[])?.length || 0), 0) || 0;
+
+  const calculateGrowth = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const conversationsGrowth = calculateGrowth(currentWeekConversations, previousWeekConversations);
+  const messagesGrowth = calculateGrowth(currentWeekMessages, previousWeekMessages);
 
   // Peak hours analysis
   const hourlyData = Array.from({ length: 24 }, (_, hour) => {
@@ -120,13 +157,48 @@ export const AnalyticsTab = () => {
     .slice(0, 10)
     .map(([topic, count]) => ({ topic, count }));
 
+  const exportToPDF = async () => {
+    if (!dashboardRef.current) return;
+    
+    try {
+      const canvas = await html2canvas(dashboardRef.current, { scale: 2 });
+      const imgData = canvas.toDataURL("image/png");
+      
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      // Header
+      pdf.setFontSize(20);
+      pdf.text("KnowYOU - Relatório de Analytics", 20, 20);
+      pdf.setFontSize(12);
+      pdf.text(`Gerado em: ${new Date().toLocaleDateString("pt-BR")}`, 20, 30);
+      
+      // Add graphics
+      pdf.addImage(imgData, "PNG", 10, 40, pdfWidth - 20, pdfHeight);
+      
+      pdf.save(`knowyou-analytics-${Date.now()}.pdf`);
+    } catch (error) {
+      console.error("Erro ao exportar PDF:", error);
+    }
+  };
+
   if (isLoading) {
     return <div className="text-center py-8">Carregando analytics...</div>;
   }
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button onClick={exportToPDF} className="gap-2">
+          <Download className="w-4 h-4" />
+          Exportar PDF
+        </Button>
+      </div>
+
+      <div ref={dashboardRef} className="space-y-6">
+      {/* Summary Cards com Comparativo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -134,6 +206,16 @@ export const AnalyticsTab = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Conversas Hoje</p>
                 <p className="text-2xl font-bold">{todayConversations}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  {conversationsGrowth >= 0 ? (
+                    <TrendingUp className="w-3 h-3 text-green-500" />
+                  ) : (
+                    <TrendingDown className="w-3 h-3 text-red-500" />
+                  )}
+                  <span className={`text-xs ${conversationsGrowth >= 0 ? "text-green-500" : "text-red-500"}`}>
+                    {conversationsGrowth.toFixed(1)}% vs. semana anterior
+                  </span>
+                </div>
               </div>
               <MessageSquare className="w-8 h-8 text-primary" />
             </div>
@@ -146,6 +228,16 @@ export const AnalyticsTab = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Total Mensagens</p>
                 <p className="text-2xl font-bold">{totalMessages}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  {messagesGrowth >= 0 ? (
+                    <TrendingUp className="w-3 h-3 text-green-500" />
+                  ) : (
+                    <TrendingDown className="w-3 h-3 text-red-500" />
+                  )}
+                  <span className={`text-xs ${messagesGrowth >= 0 ? "text-green-500" : "text-red-500"}`}>
+                    {messagesGrowth.toFixed(1)}% vs. semana anterior
+                  </span>
+                </div>
               </div>
               <TrendingUp className="w-8 h-8 text-primary" />
             </div>
@@ -299,6 +391,7 @@ export const AnalyticsTab = () => {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 };

@@ -16,6 +16,9 @@ export type Database = {
     Tables: {
       admin_settings: {
         Row: {
+          alert_email: string | null
+          alert_enabled: boolean | null
+          alert_threshold: number | null
           auto_play_audio: boolean | null
           chat_audio_enabled: boolean | null
           created_at: string | null
@@ -25,6 +28,9 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          alert_email?: string | null
+          alert_enabled?: boolean | null
+          alert_threshold?: number | null
           auto_play_audio?: boolean | null
           chat_audio_enabled?: boolean | null
           created_at?: string | null
@@ -34,6 +40,9 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          alert_email?: string | null
+          alert_enabled?: boolean | null
+          alert_threshold?: number | null
           auto_play_audio?: boolean | null
           chat_audio_enabled?: boolean | null
           created_at?: string | null

@@ -4,6 +4,7 @@ import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "./useAdminSettings";
 import { useChatAnalytics } from "./useChatAnalytics";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
@@ -26,6 +27,10 @@ export function useChatKnowYOU() {
     "Como prevenir doenças crônicas?",
     "Tendências em saúde digital",
   ]);
+  const [currentSentiment, setCurrentSentiment] = useState<{
+    label: "positive" | "negative" | "neutral";
+    score: number;
+  } | null>(null);
   const [sessionId] = useState(() => {
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
@@ -68,6 +73,47 @@ export function useChatKnowYOU() {
     }
   }, []);
 
+  const analyzeSentiment = async (text: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-sentiment", {
+        body: { text },
+      });
+
+      if (error) throw error;
+
+      const sentiment = {
+        label: data.sentiment_label as "positive" | "negative" | "neutral",
+        score: parseFloat(data.sentiment_score),
+      };
+
+      setCurrentSentiment(sentiment);
+
+      // Verificar se precisa enviar alerta
+      if (
+        settings?.alert_enabled &&
+        sentiment.label === "negative" &&
+        sentiment.score < (settings.alert_threshold || 0.3) &&
+        settings.alert_email
+      ) {
+        // Enviar alerta
+        await supabase.functions.invoke("sentiment-alert", {
+          body: {
+            session_id: sessionId,
+            sentiment_label: sentiment.label,
+            sentiment_score: sentiment.score,
+            last_messages: messages.slice(-3).map((m) => ({ role: m.role, content: m.content })),
+            alert_email: settings.alert_email,
+          },
+        });
+      }
+
+      return sentiment;
+    } catch (error) {
+      console.error("Erro ao analisar sentimento:", error);
+      return null;
+    }
+  };
+
   const sendMessage = useCallback(
     async (input: string) => {
       if (!input.trim() || isLoading) return;
@@ -82,6 +128,9 @@ export function useChatKnowYOU() {
       setMessages(newMessages);
       saveHistory(newMessages);
       setIsLoading(true);
+
+      // Análise de sentimento em tempo real
+      await analyzeSentiment(input);
 
       let assistantContent = "";
       let fullResponse = "";
@@ -301,6 +350,7 @@ export function useChatKnowYOU() {
     isGeneratingImage,
     currentlyPlayingIndex,
     suggestions,
+    currentSentiment,
     sendMessage,
     clearHistory,
     playAudio,

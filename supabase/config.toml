@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.analyze-sentiment]
 verify_jwt = false
+
+[functions.sentiment-alert]
+verify_jwt = false

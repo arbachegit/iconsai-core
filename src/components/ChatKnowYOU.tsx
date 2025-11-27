@@ -52,6 +52,28 @@ const IMAGE_SUGGESTIONS = [
   "Sistema nervoso central"
 ];
 
+const SentimentIndicator = ({ sentiment }: { sentiment: { label: string; score: number } | null }) => {
+  if (!sentiment) return null;
+  
+  const emoji = {
+    positive: "😊",
+    neutral: "😐",
+    negative: "😟",
+  };
+  const color = {
+    positive: "text-green-500",
+    neutral: "text-yellow-500",
+    negative: "text-red-500",
+  };
+  
+  return (
+    <div className={`flex items-center gap-2 px-3 py-1 rounded-full bg-background/50 backdrop-blur-sm ${color[sentiment.label as keyof typeof color]}`}>
+      <span className="text-lg">{emoji[sentiment.label as keyof typeof emoji]}</span>
+      <span className="text-xs font-medium">{(sentiment.score * 100).toFixed(0)}%</span>
+    </div>
+  );
+};
+
 export default function ChatKnowYOU() {
   const { 
     messages, 
@@ -59,7 +81,8 @@ export default function ChatKnowYOU() {
     isGeneratingAudio,
     isGeneratingImage,
     currentlyPlayingIndex,
-    suggestions, 
+    suggestions,
+    currentSentiment,
     sendMessage, 
     clearHistory,
     playAudio,
@@ -176,6 +199,7 @@ export default function ChatKnowYOU() {
             <p className="text-sm text-primary-foreground/80">Assistente de IA em Saúde</p>
           </div>
         </div>
+        <SentimentIndicator sentiment={currentSentiment} />
       </div>
 
       {/* Messages Area */}
