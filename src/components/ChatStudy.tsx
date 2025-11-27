@@ -110,6 +110,72 @@ export default function ChatStudy() {
 
   const startRecording = async () => {
     try {
+      // Tentar usar Web Speech API para transcrição em tempo real
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onstart = () => {
+          setIsRecording(true);
+          setIsTranscribing(true);
+        };
+
+        recognition.onresult = (event: any) => {
+          let interimTranscript = '';
+          let finalTranscript = input;
+
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript + ' ';
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+
+          setInput(finalTranscript + interimTranscript);
+        };
+
+        recognition.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
+          setIsRecording(false);
+          setIsTranscribing(false);
+          
+          // Fallback para gravação com Whisper se Web Speech API falhar
+          toast({
+            title: "Reconhecimento de voz não disponível",
+            description: "Usando método alternativo de transcrição.",
+          });
+          startRecordingWithWhisper();
+        };
+
+        recognition.onend = () => {
+          setIsRecording(false);
+          setIsTranscribing(false);
+        };
+
+        mediaRecorderRef.current = recognition as any;
+        recognition.start();
+      } else {
+        // Fallback: usar gravação com Whisper
+        startRecordingWithWhisper();
+      }
+    } catch (error) {
+      console.error("Erro ao iniciar gravação:", error);
+      toast({
+        title: "Erro ao ativar microfone",
+        description: "Verifique as permissões do navegador.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startRecordingWithWhisper = async () => {
+    try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -147,13 +213,25 @@ export default function ChatStudy() {
       setIsRecording(true);
     } catch (error) {
       console.error("Erro ao iniciar gravação:", error);
+      toast({
+        title: "Erro ao ativar microfone",
+        description: "Verifique as permissões do navegador.",
+        variant: "destructive",
+      });
     }
   };
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+      // Check if it's Web Speech API or MediaRecorder
+      if (mediaRecorderRef.current.stop) {
+        mediaRecorderRef.current.stop();
+      }
+      if ((mediaRecorderRef.current as any).abort) {
+        (mediaRecorderRef.current as any).abort();
+      }
       setIsRecording(false);
+      setIsTranscribing(false);
     }
   };
 
@@ -221,7 +299,7 @@ export default function ChatStudy() {
 
       {/* Messages */}
       <ScrollArea 
-        className="flex-1 p-4 border-2 border-t-black/40 border-l-black/40 border-r-white/10 border-b-white/10 bg-background/30 rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3)]" 
+        className="flex-1 p-4 border-2 border-cyan-400/60 bg-background/30 rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" 
         style={{
           transform: 'translateZ(-10px)',
           backfaceVisibility: 'hidden'
@@ -315,7 +393,7 @@ export default function ChatStudy() {
                 e.target.placeholder = "Descreva a imagem educativa que deseja gerar...";
               }
             }}
-            className="min-h-[60px] flex-1 resize-none border-2 border-t-black/40 border-l-black/40 border-r-white/10 border-b-white/10 focus:border-primary/50 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25)]"
+            className="min-h-[60px] flex-1 resize-none border-2 border-cyan-400/60 focus:border-primary/50 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]"
             style={{
               transform: 'translateZ(-8px)',
               backfaceVisibility: 'hidden'
