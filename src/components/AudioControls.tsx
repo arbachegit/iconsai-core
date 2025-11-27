@@ -1,6 +1,7 @@
 import { Play, Square, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { useTranslation } from "react-i18next";
 
 interface AudioControlsProps {
   audioUrl?: string;
@@ -21,6 +22,8 @@ export function AudioControls({
   onStop,
   onDownload,
 }: AudioControlsProps) {
+  const { t } = useTranslation();
+  
   if (!audioUrl) return null;
 
   const formatTime = (seconds: number) => {

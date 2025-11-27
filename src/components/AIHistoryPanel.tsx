@@ -10,12 +10,13 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHistoryCarousel } from "./MobileHistoryCarousel";
 import { cn } from "@/lib/utils";
 import { generateAudioUrl } from "@/lib/audio-player";
+import { useTranslation } from "react-i18next";
 
 interface AIHistoryPanelProps {
   onClose: () => void;
 }
 
-// Estrutura de dados das eras (constante estática fora do componente)
+// Estrutura de dados das eras (constante estática fora do componente) - será usado apenas como base
 const ERAS_DATA = [
   {
     id: 'dream',
@@ -87,6 +88,7 @@ const ERAS_DATA = [
 ];
 
 export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [position, setPosition] = useState({ x: window.innerWidth / 2 - 400, y: 50 });
   const [isDragging, setIsDragging] = useState(false);
@@ -99,6 +101,70 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const [currentEraId, setCurrentEraId] = useState("dream");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const eraRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  
+  // Traduções das eras
+  const erasData = [
+    {
+      id: 'dream',
+      title: t('aiHistory.eras.dream.title'),
+      subtitle: t('aiHistory.eras.dream.subtitle'),
+      icon: Clock,
+      colorFrom: 'amber-500',
+      colorTo: 'orange-500',
+      items: (t('aiHistory.eras.dream.items', { returnObjects: true }) as string[]).map((text, idx) => ({
+        icon: [Sparkles, Sparkles, Bot][idx],
+        text
+      }))
+    },
+    {
+      id: 'birth',
+      title: t('aiHistory.eras.birth.title'),
+      subtitle: t('aiHistory.eras.birth.subtitle'),
+      icon: Baby,
+      colorFrom: 'blue-500',
+      colorTo: 'cyan-500',
+      items: (t('aiHistory.eras.birth.items', { returnObjects: true }) as string[]).map((text, idx) => ({
+        icon: [Lightbulb, Sparkles, Bot][idx],
+        text
+      }))
+    },
+    {
+      id: 'childhood',
+      title: t('aiHistory.eras.childhood.title'),
+      subtitle: t('aiHistory.eras.childhood.subtitle'),
+      icon: Users,
+      colorFrom: 'purple-500',
+      colorTo: 'pink-500',
+      items: (t('aiHistory.eras.childhood.items', { returnObjects: true }) as string[]).map((text, idx) => ({
+        icon: [Bot, Snowflake, Sparkles, Skull][idx],
+        text
+      }))
+    },
+    {
+      id: 'adulthood',
+      title: t('aiHistory.eras.adulthood.title'),
+      subtitle: t('aiHistory.eras.adulthood.subtitle'),
+      icon: GraduationCap,
+      colorFrom: 'green-500',
+      colorTo: 'emerald-500',
+      items: (t('aiHistory.eras.adulthood.items', { returnObjects: true }) as string[]).map((text, idx) => ({
+        icon: [Crown, Home, Bot][idx],
+        text
+      }))
+    },
+    {
+      id: 'revolution',
+      title: t('aiHistory.eras.revolution.title'),
+      subtitle: t('aiHistory.eras.revolution.subtitle'),
+      icon: Rocket,
+      colorFrom: 'cyan-500',
+      colorTo: 'blue-600',
+      items: (t('aiHistory.eras.revolution.items', { returnObjects: true }) as string[]).map((text, idx) => ({
+        icon: [Cat, Crown, Sparkles, Palette][idx],
+        text
+      }))
+    }
+  ];
 
   const fullText = `O Sonho (Antes de 1950). Onde tudo era ficção científica e desejo humano.
 
@@ -247,7 +313,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
       setLoadingImages(true);
       const images: Record<string, string> = {};
 
-      for (const era of ERAS_DATA) {
+      for (const era of erasData) {
         try {
           const { data, error } = await supabase.functions.invoke('generate-history-image', {
             body: { eraId: era.id }
@@ -268,7 +334,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
     };
 
     loadImages();
-  }, []); // ✅ Rodar apenas UMA VEZ na montagem
+  }, [erasData]); // Rodar quando erasData mudar
   
   // Cleanup audio on component unmount
   useEffect(() => {
@@ -347,7 +413,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
           <div className="p-4 space-y-4 h-full flex flex-col">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-                História da IA
+                {t('aiHistory.title')}
               </h2>
               <Button variant="ghost" size="icon" onClick={onClose}>
                 <X className="w-5 h-5" />
@@ -359,15 +425,15 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
               <div className="flex items-center gap-2 mb-2">
                 <Button onClick={handlePlayAudio} disabled={isPlaying} size="sm" variant="outline">
                   <Play className="w-4 h-4 mr-1" />
-                  Play
+                  {t('audio.play')}
                 </Button>
                 <Button onClick={handleStopAudio} disabled={!isPlaying} size="sm" variant="outline">
                   <StopCircle className="w-4 h-4 mr-1" />
-                  Stop
+                  {t('audio.stop')}
                 </Button>
                 <Button onClick={handleDownloadAudio} disabled={!audioRef.current} size="sm" variant="outline">
                   <Download className="w-4 h-4 mr-1" />
-                  Download
+                  {t('audio.download')}
                 </Button>
               </div>
               {duration > 0 && (
@@ -384,7 +450,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
             </div>
 
             <MobileHistoryCarousel
-              eras={ERAS_DATA}
+              eras={erasData}
               currentEraId={currentEraId}
               eraImages={eraImages}
               loadingImages={loadingImages}
@@ -427,12 +493,12 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
           </Button>
 
           <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-            A História da Inteligência Artificial
+            {t('aiHistory.title')}
           </h2>
 
           {/* Era Navigation */}
           <div className="flex items-center justify-center gap-2 mb-4 flex-wrap flex-shrink-0">
-            {ERAS_DATA.map((era) => {
+            {erasData.map((era) => {
               const Icon = era.icon;
               return (
                 <Button
@@ -451,7 +517,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
 
           {/* Audio Controls */}
           <div className="mb-4 p-4 rounded-lg bg-muted/50 border border-border flex-shrink-0">
-            <div className="flex items-center gap-3 mb-2">
+             <div className="flex items-center gap-3 mb-2">
               <Button
                 onClick={handlePlayAudio}
                 disabled={isPlaying}
@@ -459,7 +525,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
                 variant="outline"
               >
                 <Play className="w-4 h-4 mr-2" />
-                Play
+                {t('audio.play')}
               </Button>
               <Button
                 onClick={handleStopAudio}
@@ -468,7 +534,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
                 variant="outline"
               >
                 <StopCircle className="w-4 h-4 mr-2" />
-                Stop
+                {t('audio.stop')}
               </Button>
               <Button
                 onClick={handleDownloadAudio}
@@ -477,7 +543,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
                 variant="outline"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Download
+                {t('audio.download')}
               </Button>
             </div>
             {duration > 0 && (
@@ -495,7 +561,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
 
           <ScrollArea className="flex-1 min-h-0">
             <div className="space-y-8 pr-4">
-              {ERAS_DATA.map((era) => {
+              {erasData.map((era) => {
                 const Icon = era.icon;
                 return (
                   <div

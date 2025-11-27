@@ -40,7 +40,7 @@ export const DigitalExclusionSection = () => {
 
   const handlePlayAudio = async () => {
     if (!audioUrl) {
-      toast.error("Áudio não disponível");
+      toast.error(t('audio.notAvailable'));
       return;
     }
 
@@ -73,7 +73,7 @@ export const DigitalExclusionSection = () => {
       setIsPlaying(true);
     } catch (error) {
       console.error('Error playing audio:', error);
-      toast.error("Erro ao reproduzir áudio");
+      toast.error(t('audio.playError'));
     }
   };
 
