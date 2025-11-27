@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Brain, Languages, Check } from "lucide-react";
+import { Menu, X, Brain, Languages, Check, Loader2 } from "lucide-react";
+import Cookies from 'js-cookie';
 import knowriskLogo from "@/assets/knowrisk-logo.png";
 import {
   DropdownMenu,
@@ -16,6 +17,7 @@ const Header = () => {
   const { t, i18n } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isChangingLanguage, setIsChangingLanguage] = useState(false);
 
   const languages = [
     { code: "pt", label: "Português", flag: "🇧🇷" },
@@ -23,9 +25,12 @@ const Header = () => {
     { code: "fr", label: "Français", flag: "🇫🇷" },
   ];
 
-  const handleLanguageChange = (code: string) => {
-    i18n.changeLanguage(code);
+  const handleLanguageChange = async (code: string) => {
+    setIsChangingLanguage(true);
+    await i18n.changeLanguage(code);
     localStorage.setItem("language", code);
+    Cookies.set("language", code, { expires: 365 });
+    setTimeout(() => setIsChangingLanguage(false), 400);
   };
 
   useEffect(() => {
@@ -90,8 +95,13 @@ const Header = () => {
                 <button 
                   className="text-muted-foreground hover:text-foreground transition-all duration-200 hover:scale-110 flex items-center gap-1"
                   title="Idioma / Language"
+                  disabled={isChangingLanguage}
                 >
-                  <Languages className="w-5 h-5" />
+                  {isChangingLanguage ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Languages className="w-5 h-5" />
+                  )}
                   <span className="text-xs uppercase">{i18n.language}</span>
                 </button>
               </DropdownMenuTrigger>
