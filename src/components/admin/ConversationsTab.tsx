@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, MessageSquare, Smile, Frown, Meh, Calendar } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Search, MessageSquare, Smile, Frown, Meh, Calendar, Download, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -24,6 +25,8 @@ export const ConversationsTab = () => {
   const [sentimentFilter, setSentimentFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [minMessages, setMinMessages] = useState("");
+  const [maxMessages, setMaxMessages] = useState("");
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
 
   const { data: conversations, isLoading } = useQuery({
@@ -81,6 +84,80 @@ export const ConversationsTab = () => {
     }
   };
 
+  // Filter conversations by message count on client side
+  const filteredConversations = useMemo(() => {
+    if (!conversations) return [];
+    
+    return conversations.filter((conv) => {
+      const messageCount = conv.messages?.length || 0;
+      const min = minMessages ? parseInt(minMessages) : 0;
+      const max = maxMessages ? parseInt(maxMessages) : Infinity;
+      
+      return messageCount >= min && messageCount <= max;
+    });
+  }, [conversations, minMessages, maxMessages]);
+
+  // Export to CSV function
+  const exportToCSV = () => {
+    if (!filteredConversations || filteredConversations.length === 0) return;
+    
+    const headers = [
+      "session_id",
+      "titulo",
+      "data_criacao",
+      "sentimento",
+      "score_sentimento",
+      "num_mensagens",
+      "primeira_mensagem",
+      "ultima_mensagem"
+    ];
+    
+    const rows = filteredConversations.map((conv) => {
+      const messages = conv.messages || [];
+      const firstMsg = messages[0]?.content?.substring(0, 100) || "";
+      const lastMsg = messages[messages.length - 1]?.content?.substring(0, 100) || "";
+      
+      return [
+        conv.session_id,
+        conv.title.replace(/,/g, ";"),
+        format(new Date(conv.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+        getSentimentText(conv.sentiment_label),
+        conv.sentiment_score?.toFixed(2) || "N/A",
+        messages.length,
+        `"${firstMsg.replace(/"/g, '""')}"`,
+        `"${lastMsg.replace(/"/g, '""')}"`
+      ];
+    });
+    
+    const csvContent = [
+      "\uFEFF", // UTF-8 BOM for Excel compatibility
+      headers.join(","),
+      ...rows.map(row => row.join(","))
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `conversas-knowyou-${format(new Date(), "yyyy-MM-dd")}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSentimentFilter("all");
+    setDateFrom("");
+    setDateTo("");
+    setMinMessages("");
+    setMaxMessages("");
+  };
+
+  const hasActiveFilters = searchTerm || sentimentFilter !== "all" || dateFrom || dateTo || minMessages || maxMessages;
+
   return (
     <div className="space-y-6">
       <Card>
@@ -92,8 +169,43 @@ export const ConversationsTab = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {/* Filters Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-medium">🔍 Filtros Avançados</h3>
+                {filteredConversations && (
+                  <Badge variant="secondary">
+                    {filteredConversations.length} conversas encontradas
+                  </Badge>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportToCSV}
+                  disabled={!filteredConversations || filteredConversations.length === 0}
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Exportar CSV
+                </Button>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    Limpar Filtros
+                  </Button>
+                )}
+              </div>
+            </div>
+
             {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -155,18 +267,40 @@ export const ConversationsTab = () => {
                   <Frown className="w-4 h-4" />
                 </Button>
               </div>
+
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Número de Mensagens</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    placeholder="Mín"
+                    value={minMessages}
+                    onChange={(e) => setMinMessages(e.target.value)}
+                    className="flex-1"
+                    min="0"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Máx"
+                    value={maxMessages}
+                    onChange={(e) => setMaxMessages(e.target.value)}
+                    className="flex-1"
+                    min="0"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Conversations List */}
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Carregando...</div>
-            ) : !conversations || conversations.length === 0 ? (
+            ) : !filteredConversations || filteredConversations.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Nenhuma conversa encontrada
+                Nenhuma conversa encontrada com os filtros aplicados
               </div>
             ) : (
               <div className="space-y-2">
-                {conversations.map((conv) => (
+                {filteredConversations.map((conv) => (
                   <Card
                     key={conv.id}
                     className="cursor-pointer hover:bg-accent/50 transition-colors"

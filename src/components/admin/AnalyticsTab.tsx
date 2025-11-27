@@ -17,6 +17,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  AreaChart,
+  Area,
 } from "recharts";
 import { format, subDays, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -157,6 +159,32 @@ export const AnalyticsTab = () => {
     .slice(0, 10)
     .map(([topic, count]) => ({ topic, count }));
 
+  // Sentiment trend over time (14 days)
+  const sentimentTrendData = Array.from({ length: 14 }, (_, i) => {
+    const date = subDays(new Date(), 13 - i);
+    const dayConversations = conversations?.filter((c) => {
+      const convDate = new Date(c.created_at);
+      return convDate.toDateString() === date.toDateString();
+    });
+    
+    const positiveCount = dayConversations?.filter(c => c.sentiment_label === 'positive').length || 0;
+    const negativeCount = dayConversations?.filter(c => c.sentiment_label === 'negative').length || 0;
+    const neutralCount = dayConversations?.filter(c => c.sentiment_label === 'neutral').length || 0;
+    
+    const totalDay = positiveCount + negativeCount + neutralCount;
+    const avgScore = totalDay > 0
+      ? dayConversations?.reduce((sum, c) => sum + (c.sentiment_score || 0.5), 0)! / totalDay
+      : 0.5;
+    
+    return {
+      date: format(date, "dd/MM", { locale: ptBR }),
+      positivo: positiveCount,
+      negativo: negativeCount,
+      neutro: neutralCount,
+      scoreMedia: avgScore,
+    };
+  });
+
   const exportToPDF = async () => {
     if (!dashboardRef.current) return;
     
@@ -285,6 +313,90 @@ export const AnalyticsTab = () => {
               <Tooltip />
               <Line type="monotone" dataKey="conversas" stroke="hsl(var(--primary))" strokeWidth={2} />
             </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Sentiment Trend Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>📈 Tendência de Sentimento (14 dias)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={sentimentTrendData}>
+              <defs>
+                <linearGradient id="colorPositivo" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0.1}/>
+                </linearGradient>
+                <linearGradient id="colorNeutro" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#eab308" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#eab308" stopOpacity={0.1}/>
+                </linearGradient>
+                <linearGradient id="colorNegativo" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis label={{ value: 'Conversas', angle: -90, position: 'insideLeft' }} />
+              <Tooltip 
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+                        <p className="font-medium mb-2">{payload[0].payload.date}</p>
+                        <div className="space-y-1">
+                          <p className="text-sm flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                            Positivo: <strong>{payload[0].payload.positivo}</strong>
+                          </p>
+                          <p className="text-sm flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
+                            Neutro: <strong>{payload[0].payload.neutro}</strong>
+                          </p>
+                          <p className="text-sm flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                            Negativo: <strong>{payload[0].payload.negativo}</strong>
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Score médio: <strong>{payload[0].payload.scoreMedia.toFixed(2)}</strong>
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Legend />
+              <Area 
+                type="monotone" 
+                dataKey="positivo" 
+                stackId="1"
+                stroke="#22c55e" 
+                fill="url(#colorPositivo)" 
+                name="Positivo"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="neutro" 
+                stackId="1"
+                stroke="#eab308" 
+                fill="url(#colorNeutro)" 
+                name="Neutro"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="negativo" 
+                stackId="1"
+                stroke="#ef4444" 
+                fill="url(#colorNegativo)" 
+                name="Negativo"
+              />
+            </AreaChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
