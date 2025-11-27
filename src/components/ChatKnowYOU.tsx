@@ -238,9 +238,13 @@ export default function ChatKnowYOU() {
   }, [input]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl border-2 border-primary/30 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_0_0_1px_rgba(139,92,246,0.1),0_0_80px_rgba(139,92,246,0.15)] overflow-hidden transform hover:translate-y-[-2px] transition-all duration-300 relative before:absolute before:inset-0 before:rounded-2xl before:p-[2px] before:bg-gradient-to-br before:from-primary/30 before:via-secondary/30 before:to-accent/30 before:-z-10 before:blur-sm">
+    <div className="w-full max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl border-2 border-t-white/20 border-l-white/20 border-r-black/30 border-b-black/30 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_8px_32px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.1)] overflow-hidden transform hover:translate-y-[-2px] transition-all duration-300 relative before:absolute before:inset-0 before:rounded-2xl before:p-[2px] before:bg-gradient-to-br before:from-primary/30 before:via-secondary/30 before:to-accent/30 before:-z-10 before:blur-sm"
+      style={{
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden'
+      }}>
       {/* Header */}
-      <div className="bg-gradient-primary p-6 flex items-center justify-between">
+      <div className="bg-gradient-primary p-6 flex items-center justify-between shadow-[0_2px_12px_rgba(0,0,0,0.2)]">
         <div className="flex items-center gap-3">
           <img src={knowriskLogo} alt="KnowRisk Logo" className="w-12 h-12 rounded-full bg-background/20 p-1" />
           <div>
@@ -252,7 +256,13 @@ export default function ChatKnowYOU() {
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="h-[500px] p-6" ref={scrollRef}>
+      <ScrollArea 
+        className="h-[500px] p-6 border-2 border-t-black/40 border-l-black/40 border-r-white/10 border-b-white/10 bg-background/30 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3)]"
+        style={{
+          transform: 'translateZ(-10px)',
+          backfaceVisibility: 'hidden'
+        }}
+        ref={scrollRef}>
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
@@ -342,7 +352,7 @@ export default function ChatKnowYOU() {
       )}
 
       {/* Input Area */}
-      <form onSubmit={handleSubmit} className="p-6 border-t border-border/50">
+      <form onSubmit={handleSubmit} className="p-6 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
         {isTyping && (
           <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
             <div className="flex gap-1">
@@ -378,7 +388,11 @@ export default function ChatKnowYOU() {
                 e.target.placeholder = "Descreva a imagem educativa de saúde que deseja gerar...";
               }
             }}
-            className="min-h-[60px] resize-none flex-1"
+            className="min-h-[60px] resize-none flex-1 border-2 border-t-black/40 border-l-black/40 border-r-white/10 border-b-white/10 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25)]"
+            style={{
+              transform: 'translateZ(-8px)',
+              backfaceVisibility: 'hidden'
+            }}
             disabled={isLoading || isTranscribing}
           />
           
@@ -388,7 +402,7 @@ export default function ChatKnowYOU() {
               size="icon"
               variant="ghost"
               onClick={isRecording ? stopRecording : startRecording}
-              className={isRecording ? "text-red-500" : ""}
+              className={`shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500" : ""}`}
             >
               {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </Button>
@@ -397,6 +411,7 @@ export default function ChatKnowYOU() {
               type="submit"
               size="icon"
               disabled={isLoading || !input.trim()}
+              className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -412,6 +427,7 @@ export default function ChatKnowYOU() {
               onClick={toggleImageMode}
               disabled={isGeneratingImage}
               title="Desenhar"
+              className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow"
             >
               <ImagePlus className="w-4 h-4" />
             </Button>
