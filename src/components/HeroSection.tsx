@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AIHistoryPanel } from "./AIHistoryPanel";
 
 const HeroSection = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -201,9 +203,7 @@ const HeroSection = () => {
               size="lg"
               variant="outline"
               className="border-primary/50 hover:bg-primary/10"
-              onClick={() =>
-                document.querySelector("#software")?.scrollIntoView({ behavior: "smooth" })
-              }
+              onClick={() => setIsHistoryOpen(true)}
             >
               Explorar a História
             </Button>
@@ -222,6 +222,8 @@ const HeroSection = () => {
       </div>
 
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background pointer-events-none" />
+      
+      {isHistoryOpen && <AIHistoryPanel onClose={() => setIsHistoryOpen(false)} />}
     </section>
   );
 };
