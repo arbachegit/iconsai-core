@@ -24,14 +24,19 @@ export const FloatingChatButton = () => {
           
           {/* Green pulsating dot with frequency waves */}
           <div className="absolute -top-1 -right-1 z-20">
-            <div className="relative w-5 h-5">
-              {/* Wave circles emanating outward */}
-              <div className="absolute inset-0 rounded-full bg-green-400/60 animate-ping" style={{ animationDuration: '1.5s' }} />
-              <div className="absolute inset-0 rounded-full bg-green-400/40 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.3s' }} />
-              <div className="absolute inset-0 rounded-full bg-green-400/20 animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.6s' }} />
+            <div className="relative w-6 h-6 flex items-center justify-center">
+              {/* Frequency wave layers - emanating outward */}
+              <div className="absolute w-full h-full rounded-full bg-green-400/50 animate-ping" 
+                   style={{ animationDuration: '1.5s' }} />
+              <div className="absolute w-full h-full rounded-full bg-green-400/40 animate-ping" 
+                   style={{ animationDuration: '2s', animationDelay: '0.4s' }} />
+              <div className="absolute w-full h-full rounded-full bg-green-400/30 animate-ping" 
+                   style={{ animationDuration: '2.5s', animationDelay: '0.8s' }} />
+              <div className="absolute w-full h-full rounded-full bg-green-400/20 animate-ping" 
+                   style={{ animationDuration: '3s', animationDelay: '1.2s' }} />
               
-              {/* Core pulsating green circle */}
-              <div className="absolute inset-0 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/50" />
+              {/* Core pulsating green circle - solid center */}
+              <div className="w-4 h-4 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/60 border border-green-400/50" />
             </div>
           </div>
         </Button>
