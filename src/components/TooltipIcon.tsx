@@ -13,10 +13,10 @@ export const TooltipIcon = ({ sectionId }: TooltipIconProps) => {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/30 flex items-center justify-center transition-all hover:scale-110 animate-pulse-slow group"
+        className="relative ml-2 w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/30 flex items-center justify-center transition-all hover:scale-110 group"
         aria-label="Abrir informações"
       >
-        <HelpCircle className="w-5 h-5 text-primary" />
+        <HelpCircle className="w-4 h-4 text-primary" />
         
         {/* Green pulsating dot - positioned externally */}
         <div className="absolute -top-1 -right-1 z-20">
