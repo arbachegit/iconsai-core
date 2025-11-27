@@ -40,11 +40,15 @@ export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
-          className="w-full max-w-4xl bg-card/95 backdrop-blur-md rounded-2xl shadow-2xl border border-primary/20 pointer-events-auto animate-in zoom-in-95 duration-300"
+          className="w-full max-w-4xl bg-card/95 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.1)] border-t-2 border-l-2 border-t-white/20 border-l-white/20 border-r border-b border-r-black/30 border-b-black/30 pointer-events-auto animate-in zoom-in-95 duration-300"
+          style={{
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden'
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border/50">
+          <div className="flex items-center justify-between p-4 border-b border-border/50 shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
             <h2 className="text-xl font-bold text-gradient">Fale com o KnowYOU</h2>
             <Button
               variant="ghost"
