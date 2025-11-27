@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHistoryCarousel } from "./MobileHistoryCarousel";
 import { cn } from "@/lib/utils";
+import { generateAudioUrl } from "@/lib/audio-player";
 
 interface AIHistoryPanelProps {
   onClose: () => void;
@@ -111,14 +112,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
       setIsPlaying(true);
     } else {
       try {
-        const response = await supabase.functions.invoke('text-to-speech', {
-          body: { text: fullText }
-        });
-
-        if (response.error) throw response.error;
-
-        const audioBlob = await response.data;
-        const audioUrl = URL.createObjectURL(audioBlob);
+        const audioUrl = await generateAudioUrl(fullText);
         
         const audio = new Audio(audioUrl);
         audioRef.current = audio;
