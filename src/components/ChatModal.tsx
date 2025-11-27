@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import ChatKnowYOU from "@/components/ChatKnowYOU";
+import ChatStudy from "@/components/ChatStudy";
 
 interface ChatModalProps {
   isOpen: boolean;
@@ -38,8 +38,8 @@ export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
           </div>
 
           {/* Chat Content */}
-          <div className="p-4">
-            <ChatKnowYOU />
+          <div className="p-4 h-[600px]">
+            <ChatStudy />
           </div>
         </div>
       </div>
