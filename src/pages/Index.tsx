@@ -134,32 +134,46 @@ const Index = () => {
         </p>
       </Section>
 
-      {/* Section 7: KnowYOU - Interactive Chat */}
-      <Section id="knowyou" title="KnowYOU: Reskilling na Era da IA" subtitle="Tecnologia Conversacional na Saúde">
-        <p className="text-lg leading-relaxed">
-          O problema da Cauda Longa de Gauss revela um desafio crítico: a maioria
-          das pessoas não sabe como comunicar-se efetivamente com IA. É aqui que
-          entra o KnowYOU.
-        </p>
-        <p className="text-lg leading-relaxed mt-4">
-          Nossa tecnologia conversacional foi especialmente desenvolvida para o setor
-          de saúde, tornando a comunicação com IA natural e produtiva para todos os
-          profissionais, independente de seu conhecimento técnico.
-        </p>
-        <div className="mt-8">
-          <ChatKnowYOU />
+      {/* Section 7: KnowYOU - Interactive Chat - Custom Full Width Layout */}
+      <section id="knowyou" className="py-8 relative overflow-hidden">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto text-center space-y-6">
+            {/* Title */}
+            <h2 className="text-4xl md:text-5xl font-bold text-gradient">
+              KnowYOU: Reskilling na Era da IA
+            </h2>
+            
+            {/* Subtitle */}
+            <p className="text-xl text-muted-foreground">
+              Tecnologia Conversacional na Saúde
+            </p>
+            
+            {/* Description Text */}
+            <div className="text-center max-w-3xl mx-auto space-y-4">
+              <p className="text-lg leading-relaxed">
+                O problema da Cauda Longa de Gauss revela um desafio crítico: a maioria
+                das pessoas não sabe como comunicar-se efetivamente com IA. É aqui que
+                entra o KnowYOU.
+              </p>
+              <p className="text-lg leading-relaxed">
+                Nossa tecnologia conversacional foi especialmente desenvolvida para o setor
+                de saúde, tornando a comunicação com IA natural e produtiva para todos os
+                profissionais, independente de seu conhecimento técnico.
+              </p>
+            </div>
+            
+            {/* Chat Component - Full Width */}
+            <div className="mt-8 w-full">
+              <ChatKnowYOU />
+            </div>
+            
+            {/* Media Carousel - Full Width */}
+            <div className="mt-12 w-full">
+              <MediaCarousel />
+            </div>
+          </div>
         </div>
-        
-        {/* Media Carousel - Spotify & YouTube */}
-        <div className="mt-12">
-          <MediaCarousel />
-        </div>
-        
-        {/* Logo abaixo do carrossel */}
-        <div className="mt-8 flex justify-center">
-          
-        </div>
-      </Section>
+      </section>
 
       {/* Digital Exclusion Section */}
       <DigitalExclusionSection />
