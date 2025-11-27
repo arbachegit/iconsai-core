@@ -1,6 +1,8 @@
 import { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { TooltipIcon } from "@/components/TooltipIcon";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SectionProps {
   id: string;
@@ -13,6 +15,20 @@ interface SectionProps {
 }
 
 const Section = ({ id, title, subtitle, children, reverse = false, quote, quoteAuthor }: SectionProps) => {
+  const { data: sectionImage, isLoading } = useQuery({
+    queryKey: ['section-image', id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('generated_images')
+        .select('image_url')
+        .eq('section_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data?.image_url;
+    }
+  });
+
   return (
     <section id={id} className="py-8 relative">
       <div className="container mx-auto px-4">
@@ -49,13 +65,20 @@ const Section = ({ id, title, subtitle, children, reverse = false, quote, quoteA
 
           <div className={reverse ? "lg:order-1" : ""}>
             <Card className="p-8 bg-card/50 backdrop-blur-sm border-primary/10 glow-effect-secondary">
-              <div className="aspect-square rounded-lg bg-gradient-subtle flex items-center justify-center">
-                <div className="text-6xl text-primary/20">
-                  {/* Placeholder for visual content */}
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-32 h-32 rounded-full bg-gradient-primary opacity-20 animate-pulse-slow" />
+              <div className="aspect-square rounded-lg bg-gradient-subtle flex items-center justify-center overflow-hidden">
+                {isLoading || !sectionImage ? (
+                  <div className="text-6xl text-primary/20">
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-32 h-32 rounded-full bg-gradient-primary opacity-20 animate-pulse-slow" />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <img 
+                    src={sectionImage} 
+                    alt={title}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                )}
               </div>
             </Card>
           </div>
