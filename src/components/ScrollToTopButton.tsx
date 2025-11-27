@@ -6,9 +6,16 @@ export const ScrollToTopButton = () => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    let ticking = false;
+    
     const handleScroll = () => {
-      // Show button after scrolling down 400px
-      setIsVisible(window.scrollY > 400);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsVisible(window.scrollY > 400);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
