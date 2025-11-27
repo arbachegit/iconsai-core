@@ -220,7 +220,13 @@ export default function ChatStudy() {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4 border-2 border-border/30 bg-background/30 rounded-lg m-2" ref={scrollRef}>
+      <ScrollArea 
+        className="flex-1 p-4 border-2 border-t-black/40 border-l-black/40 border-r-white/10 border-b-white/10 bg-background/30 rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3)]" 
+        style={{
+          transform: 'translateZ(-10px)',
+          backfaceVisibility: 'hidden'
+        }}
+        ref={scrollRef}>
         <div className="space-y-4">
           {messages.map((message, index) => (
             <div
@@ -289,7 +295,7 @@ export default function ChatStudy() {
       )}
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t-2 border-primary/30 bg-muted/30 rounded-b-lg">
+      <form onSubmit={handleSubmit} className="p-4 border-t-2 border-primary/30 bg-muted/30 rounded-b-lg shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
         <div className="flex gap-2">
           <Textarea
             value={input}
@@ -309,7 +315,11 @@ export default function ChatStudy() {
                 e.target.placeholder = "Descreva a imagem educativa que deseja gerar...";
               }
             }}
-            className="min-h-[60px] flex-1 resize-none border-2 border-border/60 focus:border-primary/50"
+            className="min-h-[60px] flex-1 resize-none border-2 border-t-black/40 border-l-black/40 border-r-white/10 border-b-white/10 focus:border-primary/50 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25)]"
+            style={{
+              transform: 'translateZ(-8px)',
+              backfaceVisibility: 'hidden'
+            }}
             disabled={isTranscribing}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -325,7 +335,7 @@ export default function ChatStudy() {
               size="icon"
               variant="ghost"
               onClick={isRecording ? stopRecording : startRecording}
-              className={isRecording ? "text-red-500" : ""}
+              className={`shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500" : ""}`}
             >
               {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </Button>
@@ -334,6 +344,7 @@ export default function ChatStudy() {
               type="submit"
               size="icon"
               disabled={isLoading || !input.trim()}
+              className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -348,6 +359,7 @@ export default function ChatStudy() {
               variant={isImageMode ? "default" : "ghost"}
               onClick={toggleImageMode}
               disabled={isGeneratingImage}
+              className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow"
             >
               <ImagePlus className="w-4 h-4" />
             </Button>
