@@ -18,6 +18,7 @@ const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isChangingLanguage, setIsChangingLanguage] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   const languages = [
     { code: "pt", label: "Português", flag: "🇧🇷" },
@@ -36,8 +37,17 @@ const Header = () => {
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
+      
+      // Calculate scroll progress percentage
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      const scrollTop = window.scrollY;
+      const maxScroll = documentHeight - windowHeight;
+      const progress = maxScroll > 0 ? (scrollTop / maxScroll) * 100 : 0;
+      setScrollProgress(Math.min(progress, 100));
     };
-    window.addEventListener("scroll", handleScroll);
+    
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -66,6 +76,13 @@ const Header = () => {
         isScrolled ? "bg-background/80 backdrop-blur-lg shadow-lg" : "bg-transparent"
       }`}
     >
+      {/* Scroll Progress Bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-border/20">
+        <div 
+          className="h-full bg-gradient-to-r from-primary via-secondary to-accent transition-all duration-150 ease-out"
+          style={{ width: `${scrollProgress}%` }}
+        />
+      </div>
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">

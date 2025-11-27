@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
 import { FloatingChatButton } from "@/components/FloatingChatButton";
+import { ScrollToTopButton } from "@/components/ScrollToTopButton";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 
@@ -269,6 +270,9 @@ const Index = () => {
 
       {/* Floating Chat Button */}
       <FloatingChatButton />
+      
+      {/* Scroll to Top Button */}
+      <ScrollToTopButton />
     </div>;
 };
 export default Index;
