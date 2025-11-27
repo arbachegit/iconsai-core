@@ -22,11 +22,16 @@ export const FloatingChatButton = () => {
           {/* Icon */}
           <MessageCircle className="w-10 h-10 relative z-10 text-primary-foreground" />
           
-          {/* Green pulsating dot - positioned externally */}
+          {/* Green pulsating dot with frequency waves */}
           <div className="absolute -top-1 -right-1 z-20">
-            <div className="relative">
-              <div className="w-5 h-5 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/50" />
-              <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+            <div className="relative w-5 h-5">
+              {/* Wave circles emanating outward */}
+              <div className="absolute inset-0 rounded-full bg-green-400/60 animate-ping" style={{ animationDuration: '1.5s' }} />
+              <div className="absolute inset-0 rounded-full bg-green-400/40 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.3s' }} />
+              <div className="absolute inset-0 rounded-full bg-green-400/20 animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.6s' }} />
+              
+              {/* Core pulsating green circle */}
+              <div className="absolute inset-0 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/50" />
             </div>
           </div>
         </Button>
