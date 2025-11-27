@@ -12,11 +12,12 @@ import { FloatingChatButton } from "@/components/FloatingChatButton";
 import { useTranslation } from "react-i18next";
 
 const Index = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   
   return <div className="min-h-screen bg-background">
       <Header />
-      <HeroSection />
+      <div key={i18n.language} className="language-transition">
+        <HeroSection />
 
       {/* Section 1: Software */}
       <Section 
@@ -227,6 +228,7 @@ const Index = () => {
           </div>
         </div>
       </footer>
+      </div>
 
       {/* Floating Chat Button */}
       <FloatingChatButton />
