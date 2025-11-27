@@ -262,6 +262,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
           if (error) throw error;
           if (data?.imageUrl) {
             images[era.id] = data.imageUrl;
+            console.log(`Era ${era.id}: ${data.fromCache ? 'cache' : 'gerado'}`);
           }
         } catch (error) {
           console.error(`Erro ao carregar imagem da era ${era.id}:`, error);
@@ -274,6 +275,27 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
 
     loadImages();
   }, []);
+  
+  // Função para pular para uma era específica
+  const handleJumpToEra = (eraId: string) => {
+    setCurrentEraId(eraId);
+    
+    // Scroll para a era (desktop)
+    if (!isMobile && eraRefs.current[eraId]) {
+      eraRefs.current[eraId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+    
+    // Se áudio existir, pula para o timestamp da era
+    if (audioRef.current) {
+      const eraTimestamp = eraTimestamps.find(e => e.id === eraId);
+      if (eraTimestamp) {
+        audioRef.current.currentTime = eraTimestamp.startTime;
+      }
+    }
+  };
 
   // Auto-scroll sincronizado com áudio
   useEffect(() => {
@@ -346,6 +368,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
               currentEraId={currentEraId}
               eraImages={eraImages}
               loadingImages={loadingImages}
+              onEraSelect={handleJumpToEra}
             />
           </div>
         </DrawerContent>
@@ -383,6 +406,25 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
           <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
             A História da Inteligência Artificial
           </h2>
+
+          {/* Era Navigation */}
+          <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
+            {erasData.map((era) => {
+              const Icon = era.icon;
+              return (
+                <Button
+                  key={era.id}
+                  variant={currentEraId === era.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleJumpToEra(era.id)}
+                  className="flex items-center gap-2"
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{era.title.split('(')[0].trim()}</span>
+                </Button>
+              );
+            })}
+          </div>
 
           {/* Audio Controls */}
           <div className="mb-6 p-4 rounded-lg bg-muted/50 border border-border">

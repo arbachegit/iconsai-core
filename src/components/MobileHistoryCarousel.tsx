@@ -10,6 +10,7 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface Era {
   id: string;
@@ -29,6 +30,7 @@ interface MobileHistoryCarouselProps {
   currentEraId: string;
   eraImages: Record<string, string>;
   loadingImages: boolean;
+  onEraSelect?: (eraId: string) => void;
 }
 
 export const MobileHistoryCarousel = ({
@@ -36,6 +38,7 @@ export const MobileHistoryCarousel = ({
   currentEraId,
   eraImages,
   loadingImages,
+  onEraSelect,
 }: MobileHistoryCarouselProps) => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -129,18 +132,29 @@ export const MobileHistoryCarousel = ({
         <CarouselNext className="right-2" />
       </Carousel>
 
-      {/* Dot indicators */}
+      {/* Dot indicators com ícones */}
       <div className="flex justify-center gap-2 py-4">
-        {eras.map((era, index) => (
-          <button
-            key={era.id}
-            onClick={() => api?.scrollTo(index)}
-            className={`h-2 rounded-full transition-all ${
-              index === current ? "w-8 bg-primary" : "w-2 bg-muted-foreground/30"
-            }`}
-            aria-label={`Ir para ${era.title}`}
-          />
-        ))}
+        {eras.map((era, index) => {
+          const Icon = era.icon;
+          return (
+            <button
+              key={era.id}
+              onClick={() => {
+                api?.scrollTo(index);
+                onEraSelect?.(era.id);
+              }}
+              className={cn(
+                "rounded-full transition-all flex items-center justify-center",
+                index === current 
+                  ? "w-8 h-8 bg-primary" 
+                  : "w-6 h-6 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+              )}
+              aria-label={`Ir para ${era.title}`}
+            >
+              {index === current && <Icon className="w-4 h-4 text-primary-foreground" />}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,10 +12,34 @@ serve(async (req) => {
   }
 
   try {
-    const { eraId } = await req.json();
+    const { eraId, forceRegenerate } = await req.json();
+    
+    // Initialize Supabase client for caching
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
     if (!eraId) {
       throw new Error("Era ID é obrigatório");
+    }
+    
+    // Check cache first (unless forced regeneration)
+    const cacheKey = `history-${eraId}`;
+    
+    if (!forceRegenerate) {
+      const { data: cached } = await supabaseClient
+        .from('generated_images')
+        .select('image_url')
+        .eq('section_id', cacheKey)
+        .maybeSingle();
+      
+      if (cached?.image_url) {
+        console.log(`Cache hit para era: ${eraId}`);
+        return new Response(
+          JSON.stringify({ imageUrl: cached.image_url, fromCache: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -83,9 +108,23 @@ serve(async (req) => {
     if (!imageUrl) {
       throw new Error("Nenhuma imagem gerada na resposta");
     }
+    
+    // Save to cache
+    await supabaseClient
+      .from('generated_images')
+      .upsert({
+        section_id: cacheKey,
+        prompt_key: eraId,
+        image_url: imageUrl,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'section_id'
+      });
+    
+    console.log(`Imagem gerada e cacheada para era: ${eraId}`);
 
     return new Response(
-      JSON.stringify({ imageUrl }),
+      JSON.stringify({ imageUrl, fromCache: false }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
