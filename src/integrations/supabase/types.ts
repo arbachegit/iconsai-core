@@ -115,6 +115,7 @@ export type Database = {
       }
       conversation_history: {
         Row: {
+          chat_type: string | null
           created_at: string
           id: string
           messages: Json
@@ -125,6 +126,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          chat_type?: string | null
           created_at?: string
           id?: string
           messages?: Json
@@ -135,6 +137,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          chat_type?: string | null
           created_at?: string
           id?: string
           messages?: Json
