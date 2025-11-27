@@ -22,7 +22,6 @@ const Index = () => {
   useEffect(() => {
     const savedPosition = localStorage.getItem(SCROLL_POSITION_KEY);
     if (savedPosition) {
-      // Use setTimeout to ensure DOM is fully rendered
       setTimeout(() => {
         window.scrollTo({
           top: parseInt(savedPosition, 10),
@@ -30,25 +29,20 @@ const Index = () => {
         });
       }, 100);
     }
-  }, []);
-  
-  // Save scroll position on scroll with debounce
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    const handleScroll = () => {
-      // Debounce to avoid excessive localStorage writes
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        localStorage.setItem(SCROLL_POSITION_KEY, window.scrollY.toString());
-      }, 150);
+
+    // Save scroll position only when leaving page (much more efficient)
+    const saveScrollPosition = () => {
+      localStorage.setItem(SCROLL_POSITION_KEY, window.scrollY.toString());
     };
-    
-    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    window.addEventListener("beforeunload", saveScrollPosition);
+    window.addEventListener("pagehide", saveScrollPosition);
     
     return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("beforeunload", saveScrollPosition);
+      window.removeEventListener("pagehide", saveScrollPosition);
+      // Save on unmount as well
+      saveScrollPosition();
     };
   }, []);
   

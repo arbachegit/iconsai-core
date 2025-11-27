@@ -35,16 +35,26 @@ const Header = () => {
   };
 
   useEffect(() => {
+    let ticking = false;
+    
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-      
-      // Calculate scroll progress percentage
-      const windowHeight = window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
-      const scrollTop = window.scrollY;
-      const maxScroll = documentHeight - windowHeight;
-      const progress = maxScroll > 0 ? (scrollTop / maxScroll) * 100 : 0;
-      setScrollProgress(Math.min(progress, 100));
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 20);
+          
+          // Calculate scroll progress percentage
+          const windowHeight = window.innerHeight;
+          const documentHeight = document.documentElement.scrollHeight;
+          const scrollTop = window.scrollY;
+          const maxScroll = documentHeight - windowHeight;
+          const progress = maxScroll > 0 ? (scrollTop / maxScroll) * 100 : 0;
+          setScrollProgress(Math.min(progress, 100));
+          
+          ticking = false;
+        });
+        
+        ticking = true;
+      }
     };
     
     window.addEventListener("scroll", handleScroll, { passive: true });
