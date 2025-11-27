@@ -40,11 +40,14 @@ export const MediaCarousel = () => {
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchYouTubeVideos();
-  }, [selectedCategory]);
+    if (!quotaExceeded) {
+      fetchYouTubeVideos();
+    }
+  }, [selectedCategory, quotaExceeded]);
 
   const fetchYouTubeVideos = async () => {
     setLoading(true);
@@ -54,18 +57,44 @@ export const MediaCarousel = () => {
         body: { category: category?.query || '' }
       });
       
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
+      
+      if (data?.error) {
+        const message: string = data.error as string;
+        if (message.toLowerCase().includes('quota') || message.toLowerCase().includes('quotaexceeded')) {
+          setQuotaExceeded(true);
+          toast({
+            title: "Limite da API do YouTube atingido",
+            description: "O YouTube temporariamente bloqueou novas requisições. Estamos exibindo apenas o link do canal.",
+            variant: "destructive",
+          });
+          setVideos([]);
+          return;
+        }
+      }
       
       if (data?.videos) {
         setVideos(data.videos);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching YouTube videos:', error);
-      toast({
-        title: "Erro ao carregar vídeos",
-        description: "Não foi possível carregar os vídeos do YouTube.",
-        variant: "destructive",
-      });
+      const message = typeof error?.message === 'string' ? error.message : '';
+      if (message.toLowerCase().includes('quota') || message.toLowerCase().includes('quotaexceeded')) {
+        setQuotaExceeded(true);
+        toast({
+          title: "Limite da API do YouTube atingido",
+          description: "O YouTube temporariamente bloqueou novas requisições. Estamos exibindo apenas o link do canal.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro ao carregar vídeos",
+          description: "Não foi possível carregar os vídeos do YouTube.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -144,6 +173,32 @@ export const MediaCarousel = () => {
               </Card>
             ))}
           </div>
+        ) : quotaExceeded ? (
+          <Card className="bg-card/50 border-primary/10">
+            <CardContent className="p-6 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                No momento atingimos o limite de uso da API do YouTube. Você ainda pode acessar
+                todos os conteúdos diretamente no nosso canal.
+              </p>
+              <a
+                href="https://www.youtube.com/@KnowRISKio"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+              >
+                Ir para o canal no YouTube
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </CardContent>
+          </Card>
+        ) : videos.length === 0 ? (
+          <Card className="bg-card/50 border-primary/10">
+            <CardContent className="p-6">
+              <p className="text-sm text-muted-foreground">
+                Nenhum vídeo encontrado para este filtro no momento.
+              </p>
+            </CardContent>
+          </Card>
         ) : (
           <Carousel
             opts={{
