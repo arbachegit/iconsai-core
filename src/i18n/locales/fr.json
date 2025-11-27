@@ -1,0 +1,92 @@
+{
+  "header": {
+    "software": "Logiciel",
+    "internet": "Internet",
+    "tech": "Technologies",
+    "kubrick": "1969 Kubrick",
+    "watson": "Watson",
+    "newEra": "Nouvelle ère IA",
+    "knowyou": "KnowYOU",
+    "goodPrompt": "Bon Prompt"
+  },
+  "hero": {
+    "title": "KnowYOU",
+    "subtitle": "L'Évolution de l'Intelligence Artificielle",
+    "ctaHealth": "En savoir plus sur la Santé",
+    "ctaHistory": "Explorer l'histoire de l'IA",
+    "quote": "Le moment exact où nous avons cessé de simplement opérer des machines et avons commencé, en fait, à penser avec elles.",
+    "quoteAuthor": "par Fernando Arbache"
+  },
+  "sections": {
+    "software": {
+      "title": "La Première Révolution",
+      "subtitle": "Logiciel: La Première Communication Homme-Machine",
+      "content": "Dans les années 1950, lorsque les premiers logiciels ont été développés, une révolution silencieuse a commencé: pour la première fois dans l'histoire, les humains pouvaient donner des instructions directes aux machines via des langages de programmation. Ce fut le premier pas vers la communication entre l'homme et la machine."
+    },
+    "internet": {
+      "title": "L'Ère de la Connectivité",
+      "subtitle": "Internet: La Révolution de la Connexion Mondiale",
+      "content": "Dans les années 1990, Internet a radicalement transformé notre façon de communiquer, de travailler et d'accéder à l'information. Ce qui a commencé comme un projet militaire est devenu l'infrastructure fondamentale de la société numérique moderne."
+    },
+    "techNoPropose": {
+      "title": "Le Battage Technologique",
+      "subtitle": "Technologies Sans But Clair",
+      "content": "Entre 2020-2022, nous avons assisté à l'émergence de technologies comme le Metaverse et les NFT qui, malgré un battage médiatique massif, n'ont pas réussi à démontrer un but clair ou une valeur tangible pour la société."
+    },
+    "kubrick": {
+      "title": "La Prophétie de Kubrick",
+      "subtitle": "1969: Kubrick et la Vision de HAL 9000",
+      "content": "Dans '2001: L'Odyssée de l'espace', Stanley Kubrick a imaginé HAL 9000, un ordinateur qui ne traitait pas seulement des données mais conversait naturellement avec les humains, anticipant des décennies à l'avance ce que nous expérimentons aujourd'hui avec l'IA conversationnelle."
+    },
+    "watson": {
+      "title": "Watson: La Révolution de la Cognition",
+      "subtitle": "2004-2011: L'Éveil de l'IA Cognitive",
+      "content": "IBM Watson a révolutionné le concept d'intelligence artificielle en battant des champions humains à Jeopardy! en 2011. Pour la première fois, une machine a démontré la capacité de comprendre le langage naturel, de traiter le contexte et de répondre avec précision à des questions complexes."
+    },
+    "newEra": {
+      "title": "La Nouvelle Ère de l'IA",
+      "subtitle": "IA Générative: Communication Naturelle et Créativité",
+      "content": "À partir de 2022, avec le lancement de ChatGPT, nous sommes entrés dans l'ère de l'IA générative, où les machines ne se contentent pas de répondre mais conversent, créent du contenu et collaborent naturellement avec les humains dans divers contextes."
+    },
+    "digitalExclusion": {
+      "title": "5,74 milliards",
+      "subtitle": "de personnes ne peuvent toujours pas accéder à Internet",
+      "expandText": "En savoir plus sur ce défi",
+      "content": "Alors que nous célébrons les progrès de l'IA, il est crucial de reconnaître que 5,74 milliards de personnes n'ont toujours pas accès à Internet. Cette exclusion numérique représente non seulement un fossé technologique, mais une barrière fondamentale à la connaissance, aux opportunités et à la participation dans la société moderne.\n\nAu-delà de l'accès physique, nous faisons face à des barrières linguistiques: la plupart des modèles d'IA sont principalement entraînés en anglais, limitant leur efficacité pour des milliards de locuteurs d'autres langues. Il existe également un fossé cognitif important - de nombreuses personnes manquent d'alphabétisation numérique de base et de compétences nécessaires pour interagir efficacement avec les systèmes d'IA.\n\nPour que la révolution de l'IA soit véritablement inclusive, nous devons simultanément aborder l'infrastructure d'accès, le développement multilingue de modèles et des programmes complets d'éducation numérique qui permettent aux personnes de tous horizons de participer à cette nouvelle ère technologique."
+    },
+    "goodPrompt": {
+      "title": "L'Art du Bon Prompt",
+      "subtitle": "Comment Communiquer Efficacement avec l'IA",
+      "content": "Un prompt efficace est clair, spécifique et contextuel. Apprenez l'art de formuler des questions et des instructions qui maximisent la qualité des réponses de l'IA."
+    }
+  },
+  "turingLegacy": {
+    "title": "L'Héritage de Turing",
+    "quote": "Bien avant que nous parlions aux ordinateurs, il a osé demander s'ils pouvaient penser. Déchiffrer Enigma a gagné la guerre, mais le 'Jeu de l'imitation' a gagné le temps.",
+    "author": "par Fernando Arbache"
+  },
+  "footer": {
+    "rights": "© 2024 KnowRisk. Tous droits réservés."
+  },
+  "chat": {
+    "titleStudy": "Assistant IA pour vous aider à étudier",
+    "titleHealth": "Assistant Santé",
+    "placeholder": "Tapez votre message...",
+    "placeholderImage": "Décrivez l'image que vous souhaitez générer...",
+    "send": "Envoyer",
+    "record": "Enregistrer l'audio",
+    "draw": "Dessiner",
+    "play": "Lire",
+    "stop": "Arrêter",
+    "download": "Télécharger",
+    "imageMode": "Générer une Image Éducative",
+    "exitImageMode": "Mode Normal"
+  },
+  "floatingButton": {
+    "tooltip": "Parler avec KnowYOU"
+  },
+  "aiHistory": {
+    "title": "Histoire de l'Intelligence Artificielle",
+    "close": "Fermer"
+  }
+}

@@ -10,13 +10,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 const Header = () => {
+  const { t, i18n } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState(() => {
-    return localStorage.getItem("language") || "pt";
-  });
 
   const languages = [
     { code: "pt", label: "Português", flag: "🇧🇷" },
@@ -25,7 +24,7 @@ const Header = () => {
   ];
 
   const handleLanguageChange = (code: string) => {
-    setCurrentLanguage(code);
+    i18n.changeLanguage(code);
     localStorage.setItem("language", code);
   };
 
@@ -38,14 +37,14 @@ const Header = () => {
   }, []);
 
   const navItems = [
-    { label: "Software", href: "#software" },
-    { label: "Internet", href: "#internet" },
-    { label: "Tecnologias", href: "#tech-sem-proposito" },
-    { label: "1969 Kubrick", href: "#kubrick" },
-    { label: "Watson", href: "#watson" },
-    { label: "IA Nova Era", href: "#ia-nova-era" },
-    { label: "KnowYOU", href: "#knowyou" },
-    { label: "Bom Prompt", href: "#bom-prompt" },
+    { label: t("header.software"), href: "#software" },
+    { label: t("header.internet"), href: "#internet" },
+    { label: t("header.tech"), href: "#tech-sem-proposito" },
+    { label: t("header.kubrick"), href: "#kubrick" },
+    { label: t("header.watson"), href: "#watson" },
+    { label: t("header.newEra"), href: "#ia-nova-era" },
+    { label: t("header.knowyou"), href: "#knowyou" },
+    { label: t("header.goodPrompt"), href: "#bom-prompt" },
   ];
 
   const scrollToSection = (href: string) => {
@@ -93,7 +92,7 @@ const Header = () => {
                   title="Idioma / Language"
                 >
                   <Languages className="w-5 h-5" />
-                  <span className="text-xs uppercase">{currentLanguage}</span>
+                  <span className="text-xs uppercase">{i18n.language}</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent 
@@ -108,7 +107,7 @@ const Header = () => {
                   >
                     <span className="text-lg">{lang.flag}</span>
                     <span>{lang.label}</span>
-                    {currentLanguage === lang.code && (
+                    {i18n.language === lang.code && (
                       <Check className="w-4 h-4 ml-auto text-primary" />
                     )}
                   </DropdownMenuItem>
@@ -160,14 +159,14 @@ const Header = () => {
                   onClick={() => handleLanguageChange(lang.code)}
                   className={cn(
                     "flex items-center gap-3 w-full py-2 px-4 rounded-lg transition-all",
-                    currentLanguage === lang.code 
+                    i18n.language === lang.code 
                       ? "bg-primary/10 text-primary" 
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                 >
                   <span className="text-lg">{lang.flag}</span>
                   <span>{lang.label}</span>
-                  {currentLanguage === lang.code && (
+                  {i18n.language === lang.code && (
                     <Check className="w-4 h-4 ml-auto" />
                   )}
                 </button>
