@@ -408,7 +408,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
       />
       
       <Card
-        className="fixed z-50 w-[800px] max-h-[80vh] bg-background/95 backdrop-blur-md border-primary/20 shadow-2xl animate-scale-in"
+        className="fixed z-50 w-[800px] h-[80vh] overflow-hidden bg-background/95 backdrop-blur-md border-primary/20 shadow-2xl animate-scale-in"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
@@ -416,7 +416,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
         }}
         onMouseDown={handleMouseDown}
       >
-        <div className="relative p-6">
+        <div className="relative p-6 h-full flex flex-col">
           <Button
             variant="ghost"
             size="icon"
@@ -431,7 +431,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
           </h2>
 
           {/* Era Navigation */}
-          <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
+          <div className="flex items-center justify-center gap-2 mb-4 flex-wrap flex-shrink-0">
             {ERAS_DATA.map((era) => {
               const Icon = era.icon;
               return (
@@ -450,7 +450,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
           </div>
 
           {/* Audio Controls */}
-          <div className="mb-6 p-4 rounded-lg bg-muted/50 border border-border">
+          <div className="mb-4 p-4 rounded-lg bg-muted/50 border border-border flex-shrink-0">
             <div className="flex items-center gap-3 mb-2">
               <Button
                 onClick={handlePlayAudio}
@@ -493,7 +493,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
             )}
           </div>
 
-          <ScrollArea className="h-[calc(80vh-250px)]">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="space-y-8 pr-4">
               {ERAS_DATA.map((era) => {
                 const Icon = era.icon;
