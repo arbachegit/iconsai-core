@@ -19,7 +19,7 @@ const Index = () => {
         id="software" 
         title="A Primeira Revolução" 
         subtitle="Anos 1940-1980"
-        quote="O código é a primeira linguagem universal entre humanos e máquinas."
+        quote="O momento exato em que deixamos de apenas operar máquinas e começamos, de fato, a pensar com elas."
         quoteAuthor="Fernando Arbache"
       >
         <p className="text-lg leading-relaxed">
@@ -40,7 +40,7 @@ const Index = () => {
         title="A Era da Conectividade" 
         subtitle="Anos 1990-2000" 
         reverse
-        quote="A conectividade transformou o mundo em uma aldeia global digital."
+        quote="A internet não apenas encurtou distâncias geográficas; ela entrelaçou o destino da humanidade em uma única rede pulsante."
         quoteAuthor="Fernando Arbache"
       >
         <p className="text-lg leading-relaxed">
@@ -79,7 +79,7 @@ const Index = () => {
         title="A Profecia de Kubrick" 
         subtitle="1969 - 2001: Uma Odisseia no Espaço" 
         reverse
-        quote="A arte antecipou a ciência ao imaginar conversas naturais com máquinas."
+        quote="Agora que a ficção de 2001 se tornou realidade, o mistério não é mais a capacidade da máquina, mas a intenção humana por trás dela."
         quoteAuthor="Fernando Arbache"
       >
         <p className="text-lg leading-relaxed">
@@ -98,7 +98,7 @@ const Index = () => {
         id="watson" 
         title="Watson: A Era da Cognição" 
         subtitle="2004 - IBM Watson"
-        quote="Watson provou que máquinas poderiam não apenas calcular, mas compreender."
+        quote="Ao ensinar uma máquina a ler nuances, descobrimos que a verdadeira inteligência não está em dar respostas, mas em compreender as perguntas."
         quoteAuthor="Fernando Arbache"
       >
         <p className="text-lg leading-relaxed">
@@ -119,7 +119,7 @@ const Index = () => {
         title="A Nova Era da IA" 
         subtitle="2022 - Presente" 
         reverse
-        quote="Pela primeira vez, qualquer pessoa pode conversar com uma inteligência artificial."
+        quote="Ao democratizar a inteligência, não estamos apenas atualizando o software do mundo, mas reescrevendo o potencial de cada ser humano."
         quoteAuthor="Fernando Arbache"
       >
         <p className="text-lg leading-relaxed">
