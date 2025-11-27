@@ -7,6 +7,9 @@ interface AdminSettings {
   auto_play_audio: boolean;
   gmail_api_configured: boolean;
   gmail_notification_email: string | null;
+  alert_email: string | null;
+  alert_enabled: boolean | null;
+  alert_threshold: number | null;
 }
 
 export const useAdminSettings = () => {

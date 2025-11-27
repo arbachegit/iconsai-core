@@ -254,7 +254,7 @@ export function useChatKnowYOU() {
         setIsLoading(false);
       }
     },
-    [messages, isLoading, toast, saveHistory, settings, sessionId, updateSession, analyzeSentiment]
+    [messages, isLoading, toast, saveHistory, settings, sessionId, updateSession]
   );
 
   const clearHistory = useCallback(() => {
