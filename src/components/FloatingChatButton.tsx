@@ -8,11 +8,11 @@ export const FloatingChatButton = () => {
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 z-50" style={{ contain: "paint" }}>
+      <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsOpen(true)}
           size="icon"
-          className="relative w-20 h-20 rounded-full bg-gradient-to-br from-primary via-secondary to-accent shadow-2xl hover:shadow-primary/50 transition-all duration-300 group"
+          className="relative w-20 h-20 rounded-full bg-gradient-to-br from-primary via-secondary to-accent shadow-2xl hover:shadow-primary/50 transition-all duration-300 group overflow-visible"
           aria-label="Fale com o KnowYOU"
         >
           {/* Glow rings */}
