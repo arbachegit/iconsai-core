@@ -7,10 +7,11 @@ import { TooltipsTab } from "@/components/admin/TooltipsTab";
 import { GmailTab } from "@/components/admin/GmailTab";
 import { AnalyticsTab } from "@/components/admin/AnalyticsTab";
 import { ConversationsTab } from "@/components/admin/ConversationsTab";
+import { ImageCacheTab } from "@/components/admin/ImageCacheTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -82,6 +83,8 @@ const Admin = () => {
         return <GmailTab />;
       case "analytics":
         return <AnalyticsTab />;
+      case "images":
+        return <ImageCacheTab />;
       default:
         return <DashboardTab />;
     }
