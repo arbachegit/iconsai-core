@@ -39,6 +39,12 @@ serve(async (req) => {
     if (!searchResponse.ok) {
       const errorText = await searchResponse.text();
       console.error('YouTube API channel search error:', errorText);
+      if (errorText.includes('quotaExceeded')) {
+        return new Response(JSON.stringify({ videos: [], error: 'quotaExceeded' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       throw new Error(`YouTube API error: ${searchResponse.status} - ${errorText}`);
     }
     
@@ -67,6 +73,12 @@ serve(async (req) => {
     if (!videosResponse.ok) {
       const errorText = await videosResponse.text();
       console.error('YouTube API videos error:', errorText);
+      if (errorText.includes('quotaExceeded')) {
+        return new Response(JSON.stringify({ videos: [], error: 'quotaExceeded' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       throw new Error(`Failed to fetch videos: ${videosResponse.status} - ${errorText}`);
     }
     
