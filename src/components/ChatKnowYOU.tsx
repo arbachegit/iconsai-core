@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Send, Trash2, Loader2, Volume2, VolumeX, ImagePlus, Mic, Square } from "lucide-react";
+import { Send, Loader2, Volume2, VolumeX, ImagePlus, Mic, Square } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 export default function ChatKnowYOU() {
@@ -108,14 +108,6 @@ export default function ChatKnowYOU() {
             <p className="text-sm text-primary-foreground/80">Assistente de IA em Saúde</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={clearHistory}
-          className="text-primary-foreground hover:bg-background/20"
-        >
-          <Trash2 className="w-5 h-5" />
-        </Button>
       </div>
 
       {/* Messages Area */}
