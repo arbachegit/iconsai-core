@@ -73,7 +73,7 @@ export function useChatKnowYOU() {
     }
   }, []);
 
-  const analyzeSentiment = async (text: string) => {
+  const analyzeSentiment = useCallback(async (text: string, currentMessages: Message[]) => {
     try {
       const { data, error } = await supabase.functions.invoke("analyze-sentiment", {
         body: { text },
@@ -101,7 +101,7 @@ export function useChatKnowYOU() {
             session_id: sessionId,
             sentiment_label: sentiment.label,
             sentiment_score: sentiment.score,
-            last_messages: messages.slice(-3).map((m) => ({ role: m.role, content: m.content })),
+            last_messages: currentMessages.slice(-3).map((m) => ({ role: m.role, content: m.content })),
             alert_email: settings.alert_email,
           },
         });
@@ -112,7 +112,7 @@ export function useChatKnowYOU() {
       console.error("Erro ao analisar sentimento:", error);
       return null;
     }
-  };
+  }, [sessionId, settings]);
 
   const sendMessage = useCallback(
     async (input: string) => {
@@ -130,7 +130,7 @@ export function useChatKnowYOU() {
       setIsLoading(true);
 
       // Análise de sentimento em tempo real
-      await analyzeSentiment(input);
+      await analyzeSentiment(input, newMessages);
 
       let assistantContent = "";
       let fullResponse = "";
@@ -254,7 +254,7 @@ export function useChatKnowYOU() {
         setIsLoading(false);
       }
     },
-    [messages, isLoading, toast, saveHistory]
+    [messages, isLoading, toast, saveHistory, settings, sessionId, updateSession, analyzeSentiment]
   );
 
   const clearHistory = useCallback(() => {
