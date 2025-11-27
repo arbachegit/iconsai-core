@@ -1,12 +1,33 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Brain } from "lucide-react";
+import { Menu, X, Brain, Languages, Check } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState(() => {
+    return localStorage.getItem("language") || "pt";
+  });
+
+  const languages = [
+    { code: "pt", label: "Português", flag: "🇧🇷" },
+    { code: "en", label: "English", flag: "🇺🇸" },
+    { code: "fr", label: "Français", flag: "🇫🇷" },
+  ];
+
+  const handleLanguageChange = (code: string) => {
+    setCurrentLanguage(code);
+    localStorage.setItem("language", code);
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -63,6 +84,38 @@ const Header = () => {
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
               </button>
             ))}
+            
+            {/* Language Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className="text-muted-foreground hover:text-foreground transition-all duration-200 hover:scale-110 flex items-center gap-1"
+                  title="Idioma / Language"
+                >
+                  <Languages className="w-5 h-5" />
+                  <span className="text-xs uppercase">{currentLanguage}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent 
+                align="end" 
+                className="bg-background/95 backdrop-blur-lg border-border z-[100]"
+              >
+                {languages.map((lang) => (
+                  <DropdownMenuItem
+                    key={lang.code}
+                    onClick={() => handleLanguageChange(lang.code)}
+                    className="flex items-center gap-3 cursor-pointer"
+                  >
+                    <span className="text-lg">{lang.flag}</span>
+                    <span>{lang.label}</span>
+                    {currentLanguage === lang.code && (
+                      <Check className="w-4 h-4 ml-auto text-primary" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Link 
               to="/admin" 
               className="text-white hover:text-white transition-all duration-200 hover:scale-110"
@@ -95,6 +148,31 @@ const Header = () => {
                 {item.label}
               </button>
             ))}
+            
+            {/* Language options in mobile menu */}
+            <div className="border-t border-border pt-3 mt-3">
+              <p className="px-4 text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                Idioma
+              </p>
+              {languages.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => handleLanguageChange(lang.code)}
+                  className={cn(
+                    "flex items-center gap-3 w-full py-2 px-4 rounded-lg transition-all",
+                    currentLanguage === lang.code 
+                      ? "bg-primary/10 text-primary" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <span className="text-lg">{lang.flag}</span>
+                  <span>{lang.label}</span>
+                  {currentLanguage === lang.code && (
+                    <Check className="w-4 h-4 ml-auto" />
+                  )}
+                </button>
+              ))}
+            </div>
           </nav>
         )}
       </div>
