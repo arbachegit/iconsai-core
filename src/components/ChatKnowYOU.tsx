@@ -96,7 +96,7 @@ export default function ChatKnowYOU() {
   }, [input]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl border border-primary/20 shadow-xl overflow-hidden">
+    <div className="w-full max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl border-2 border-primary/30 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_0_0_1px_rgba(139,92,246,0.1),0_0_80px_rgba(139,92,246,0.15)] overflow-hidden transform hover:translate-y-[-2px] transition-all duration-300 relative before:absolute before:inset-0 before:rounded-2xl before:p-[2px] before:bg-gradient-to-br before:from-primary/30 before:via-secondary/30 before:to-accent/30 before:-z-10 before:blur-sm">
       {/* Header */}
       <div className="bg-gradient-primary p-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
