@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Play, Square, Download, Edit2, Save } from "lucide-react";
+import { X, Play, Square, Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { useTooltipContent } from "@/hooks/useTooltipContent";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface DraggablePreviewPanelProps {
   sectionId: string;
@@ -22,22 +22,52 @@ export const DraggablePreviewPanel = ({
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [isEditMode, setIsEditMode] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [editedTitle, setEditedTitle] = useState("");
-  const [editedContent, setEditedContent] = useState("");
   
   const panelRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    if (content) {
-      setEditedTitle(content.title);
-      setEditedContent(content.content);
+  // Fetch image for this section
+  const { data: sectionImage } = useQuery({
+    queryKey: ["section-image", sectionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("generated_images")
+        .select("image_url")
+        .eq("section_id", sectionId)
+        .limit(1)
+        .single();
+      
+      if (error) throw error;
+      return data?.image_url;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Parse subtitle and main content
+  const parseContent = (text: string) => {
+    const lines = text.split('\n\n');
+    let subtitle = "";
+    let mainContent = text;
+    
+    // Look for subtitle pattern (usually after first paragraph)
+    if (lines.length > 1) {
+      // Check if second paragraph looks like a subtitle (shorter, bold-like text)
+      const potentialSubtitle = lines[1].trim();
+      if (potentialSubtitle.length < 100) {
+        subtitle = potentialSubtitle;
+        mainContent = [lines[0], ...lines.slice(2)].join('\n\n');
+      }
     }
-  }, [content]);
+    
+    return { subtitle, mainContent };
+  };
+
+  const { subtitle, mainContent } = content 
+    ? parseContent(content.content) 
+    : { subtitle: "", mainContent: "" };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest(".no-drag")) return;
@@ -125,28 +155,6 @@ export const DraggablePreviewPanel = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleSave = async () => {
-    try {
-      await updateContent({
-        title: editedTitle,
-        content: editedContent,
-      });
-      
-      toast({
-        title: "Salvo com sucesso",
-        description: "O conteúdo do tooltip foi atualizado.",
-      });
-      
-      setIsEditMode(false);
-    } catch (error) {
-      toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível atualizar o tooltip.",
-        variant: "destructive",
-      });
-    }
-  };
-
   if (isLoading) {
     return null;
   }
@@ -160,7 +168,7 @@ export const DraggablePreviewPanel = ({
       
       <Card
         ref={panelRef}
-        className="fixed z-50 w-[500px] max-h-[600px] flex flex-col bg-card/95 backdrop-blur-md border-primary/20 shadow-2xl"
+        className="fixed z-50 w-[700px] max-h-[700px] flex flex-col bg-card/95 backdrop-blur-md border-primary/20 shadow-2xl"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
@@ -173,9 +181,7 @@ export const DraggablePreviewPanel = ({
         >
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <h3 className="font-semibold text-foreground">
-              {isEditMode ? "Editar Tooltip" : "Informações"}
-            </h3>
+            <h3 className="font-semibold text-foreground">Informações</h3>
           </div>
           
           <Button
@@ -188,47 +194,15 @@ export const DraggablePreviewPanel = ({
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 no-drag">
-          {isEditMode ? (
-            <>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  Título
-                </label>
-                <Input
-                  value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
-                  className="bg-background/50"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  Conteúdo
-                </label>
-                <Textarea
-                  value={editedContent}
-                  onChange={(e) => setEditedContent(e.target.value)}
-                  rows={10}
-                  className="bg-background/50 resize-none"
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <h2 className="text-2xl font-bold text-gradient">
-                {content?.title}
-              </h2>
-              <p className="text-muted-foreground leading-relaxed">
-                {content?.content}
-              </p>
-            </>
-          )}
-        </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 no-drag">
+          {/* Main Title */}
+          <h2 className="text-2xl font-bold text-gradient">
+            {content?.title}
+          </h2>
 
-        <div className="border-t border-primary/20 no-drag">
+          {/* Audio Controls */}
           {content?.audio_url && (
-            <div className="p-4 space-y-3">
+            <div className="space-y-3 pb-4 border-b border-primary/20">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -261,7 +235,6 @@ export const DraggablePreviewPanel = ({
                 </Button>
               </div>
               
-              {/* Progress bar */}
               <div className="space-y-1">
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div 
@@ -276,30 +249,33 @@ export const DraggablePreviewPanel = ({
               </div>
             </div>
           )}
-          
-          <div className="flex items-center justify-end p-4 border-t border-primary/20 gap-2">
-          {isEditMode ? (
-            <Button
-              size="sm"
-              onClick={handleSave}
-              className="gap-2 ml-auto"
-            >
-              <Save className="w-4 h-4" />
-              Salvar
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsEditMode(true)}
-              className="gap-2 ml-auto"
-            >
-              <Edit2 className="w-4 h-4" />
-              Editar
-            </Button>
+
+          {/* Section Image */}
+          {sectionImage && (
+            <div className="rounded-lg overflow-hidden">
+              <img 
+                src={sectionImage} 
+                alt={content?.title}
+                className="w-full h-auto object-cover"
+              />
+            </div>
           )}
-          </div>
+
+          {/* Intermediate Subtitle */}
+          {subtitle && (
+            <div className="py-4 border-t border-b border-primary/20">
+              <h3 className="text-lg font-semibold text-foreground/90">
+                {subtitle}
+              </h3>
+            </div>
+          )}
+
+          {/* Main Content */}
+          <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+            {mainContent}
+          </p>
         </div>
+
       </Card>
     </>
   );
