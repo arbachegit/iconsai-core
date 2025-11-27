@@ -343,6 +343,32 @@ export function useChatKnowYOU() {
     [messages, isGeneratingImage, toast, saveHistory]
   );
 
+  const transcribeAudio = useCallback(async (audioBlob: Blob): Promise<string> => {
+    try {
+      // Convert blob to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+      });
+      reader.readAsDataURL(audioBlob);
+      const base64Audio = await base64Promise;
+
+      // Call voice-to-text edge function
+      const { data, error } = await supabase.functions.invoke('voice-to-text', {
+        body: { audio: base64Audio }
+      });
+
+      if (error) throw error;
+      return data.text || '';
+    } catch (error) {
+      console.error('Error transcribing audio:', error);
+      throw error;
+    }
+  }, []);
+
   return {
     messages,
     isLoading,
@@ -356,5 +382,6 @@ export function useChatKnowYOU() {
     playAudio,
     stopAudio,
     generateImage,
+    transcribeAudio,
   };
 }

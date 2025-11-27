@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ChatStudy from "@/components/ChatStudy";
+import { useRef, useEffect } from "react";
 
 interface ChatModalProps {
   isOpen: boolean;
@@ -8,6 +9,20 @@ interface ChatModalProps {
 }
 
 export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleClose = () => {
+    // Stop any audio playback
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    // Broadcast stop audio event
+    window.dispatchEvent(new CustomEvent('stopAllAudio'));
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -15,7 +30,7 @@ export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-in fade-in duration-300"
-        onClick={onClose}
+        onClick={handleClose}
       />
 
       {/* Modal */}
@@ -30,7 +45,7 @@ export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={onClose}
+              onClick={handleClose}
               className="rounded-full"
             >
               <X className="w-5 h-5" />

@@ -26,6 +26,11 @@ export function useChatStudy() {
     "Como funciona o ACC?",
     "O que é o KnowYOU?",
   ]);
+  const [currentSentiment, setCurrentSentiment] = useState<{
+    label: "positive" | "negative" | "neutral";
+    score: number;
+  } | null>(null);
+  const [sessionId] = useState(() => `study_${new Date().toISOString().split('T')[0]}_${Date.now()}`);
   
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
   const { toast } = useToast();
@@ -56,6 +61,59 @@ export function useChatStudy() {
       console.error("Erro ao salvar histórico:", error);
     }
   }, []);
+
+  const analyzeSentiment = useCallback(async (text: string, currentMessages: Message[]) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-sentiment", {
+        body: { text },
+      });
+
+      if (error) throw error;
+
+      const sentiment = {
+        label: data.sentiment_label,
+        score: data.sentiment_score,
+      };
+
+      setCurrentSentiment(sentiment);
+
+      // Save to database with sentiment
+      await saveConversationToDatabase(currentMessages, sentiment);
+
+      // Trigger alert if negative sentiment
+      if (sentiment.label === "negative" && sentiment.score < 0.3) {
+        await supabase.functions.invoke("sentiment-alert", {
+          body: {
+            message: text,
+            sentiment: sentiment.label,
+            score: sentiment.score,
+            chat_type: "study",
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error analyzing sentiment:", error);
+    }
+  }, []);
+
+  const saveConversationToDatabase = useCallback(async (msgs: Message[], sentiment: any) => {
+    try {
+      const title = msgs.find(m => m.role === "user")?.content?.substring(0, 50) || 'Nova conversa de estudo';
+      
+      const { error } = await supabase.from("conversation_history").upsert({
+        session_id: sessionId,
+        title: `Estudo - ${title}`,
+        messages: msgs as any,
+        sentiment_label: sentiment?.label,
+        sentiment_score: sentiment?.score,
+        chat_type: "study",
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error saving conversation:", error);
+    }
+  }, [sessionId]);
 
   const sendMessage = useCallback(
     async (input: string) => {
@@ -177,6 +235,9 @@ export function useChatStudy() {
           setSuggestions(newSuggestions);
         }
 
+        // Analyze sentiment
+        analyzeSentiment(input, finalUpdated);
+
         // Gerar áudio para a resposta
         try {
           setIsGeneratingAudio(true);
@@ -207,7 +268,7 @@ export function useChatStudy() {
         setIsLoading(false);
       }
     },
-    [messages, saveHistory, toast]
+    [messages, saveHistory, toast, analyzeSentiment]
   );
 
   const clearHistory = useCallback(() => {
@@ -286,6 +347,32 @@ export function useChatStudy() {
     [messages, saveHistory, toast]
   );
 
+  const transcribeAudio = useCallback(async (audioBlob: Blob): Promise<string> => {
+    try {
+      // Convert blob to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+      });
+      reader.readAsDataURL(audioBlob);
+      const base64Audio = await base64Promise;
+
+      // Call voice-to-text edge function
+      const { data, error } = await supabase.functions.invoke('voice-to-text', {
+        body: { audio: base64Audio }
+      });
+
+      if (error) throw error;
+      return data.text || '';
+    } catch (error) {
+      console.error('Error transcribing audio:', error);
+      throw error;
+    }
+  }, []);
+
   return {
     messages,
     isLoading,
@@ -293,10 +380,12 @@ export function useChatStudy() {
     isGeneratingImage,
     currentlyPlayingIndex,
     suggestions,
+    currentSentiment,
     sendMessage,
     clearHistory,
     playAudio,
     stopAudio,
     generateImage,
+    transcribeAudio,
   };
 }

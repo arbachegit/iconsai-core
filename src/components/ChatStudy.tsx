@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatStudy } from "@/hooks/useChatStudy";
 import { Send, Loader2, ImagePlus, Mic, Square } from "lucide-react";
 import { AudioControls } from "./AudioControls";
+import { useToast } from "@/hooks/use-toast";
 import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 
 // Sugestões de estudo sobre KnowRisk/KnowYOU/ACC
@@ -34,6 +35,7 @@ const IMAGE_SUGGESTIONS = [
 ];
 
 export default function ChatStudy() {
+  const { toast } = useToast();
   const { 
     messages, 
     isLoading, 
@@ -41,15 +43,18 @@ export default function ChatStudy() {
     isGeneratingImage,
     currentlyPlayingIndex,
     suggestions,
+    currentSentiment,
     sendMessage, 
     clearHistory,
     playAudio,
     stopAudio,
     generateImage,
+    transcribeAudio,
   } = useChatStudy();
   
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isImageMode, setIsImageMode] = useState(false);
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -119,17 +124,23 @@ export default function ChatStudy() {
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         stream.getTracks().forEach((track) => track.stop());
+        audioChunksRef.current = [];
         
-        // Enviar para transcrição
-        const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
-        reader.onloadend = async () => {
-          const base64Audio = reader.result as string;
-          
-          // Chamar edge function de transcrição
-          // Por enquanto, apenas mostrar erro
-          console.log("Audio capturado, transcrição necessária");
-        };
+        // Transcribe audio using Whisper API
+        setIsTranscribing(true);
+        try {
+          const transcribedText = await transcribeAudio(audioBlob);
+          setInput(transcribedText);
+        } catch (error) {
+          console.error("Error transcribing audio:", error);
+          toast({
+            title: "Erro na transcrição",
+            description: "Não foi possível transcrever o áudio. Tente novamente.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsTranscribing(false);
+        }
       };
 
       mediaRecorder.start();
@@ -145,6 +156,13 @@ export default function ChatStudy() {
       setIsRecording(false);
     }
   };
+
+  // Listen for global stop audio event
+  useEffect(() => {
+    const handleStopAll = () => stopAudio();
+    window.addEventListener('stopAllAudio', handleStopAll);
+    return () => window.removeEventListener('stopAllAudio', handleStopAll);
+  }, [stopAudio]);
 
   const handleAudioPlay = (index: number) => {
     playAudio(index);
@@ -164,12 +182,25 @@ export default function ChatStudy() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border border-border/50">
+    <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border-2 border-primary/40 shadow-[0_0_15px_rgba(139,92,246,0.2),0_0_30px_rgba(139,92,246,0.1)]">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border/50">
+      <div className="flex items-center justify-between p-4 border-b-2 border-primary/30">
         <div className="flex items-center gap-3">
           <img src={knowriskLogo} alt="KnowRisk Logo" className="w-10 h-10" />
-          <h2 className="text-lg font-bold text-gradient">Assistente de IA para ajudar a estudar</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-bold text-gradient">Assistente de IA para ajudar a estudar</h2>
+            {currentSentiment && (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50 border border-border/30">
+                <span className="text-2xl">
+                  {currentSentiment.label === "positive" ? "😊" : 
+                   currentSentiment.label === "negative" ? "😟" : "😐"}
+                </span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {(currentSentiment.score * 100).toFixed(0)}%
+                </span>
+              </div>
+            )}
+          </div>
         </div>
         <Button
           variant="ghost"
@@ -182,7 +213,7 @@ export default function ChatStudy() {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-4 border-2 border-border/30 bg-background/30 rounded-lg m-2" ref={scrollRef}>
         <div className="space-y-4">
           {messages.map((message, index) => (
             <div
@@ -251,17 +282,28 @@ export default function ChatStudy() {
       )}
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-border/50">
+      <form onSubmit={handleSubmit} className="p-4 border-t-2 border-primary/30 bg-muted/30 rounded-b-lg">
         <div className="flex gap-2">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
-              isImageMode
-                ? "Desenhos limitados a IA e KnowRISK"
-                : "Pergunte sobre KnowRisk, KnowYOU ou ACC..."
+              isTranscribing ? "Transcrevendo..." :
+              isImageMode ? "Descreva a imagem educativa que deseja gerar..." : 
+              "Digite sua pergunta sobre KnowRisk, KnowYOU ou ACC..."
             }
-            className="min-h-[60px] flex-1 resize-none"
+            onFocus={(e) => {
+              if (isImageMode) {
+                e.target.placeholder = "Desenhos limitados a IA e KnowRISK";
+              }
+            }}
+            onBlur={(e) => {
+              if (isImageMode) {
+                e.target.placeholder = "Descreva a imagem educativa que deseja gerar...";
+              }
+            }}
+            className="min-h-[60px] flex-1 resize-none border-2 border-border/60 focus:border-primary/50"
+            disabled={isTranscribing}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();

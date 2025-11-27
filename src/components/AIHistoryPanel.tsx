@@ -268,7 +268,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
     };
 
     loadImages();
-  }, []);
+  }, [loadingImages, eraImages, erasData]);
   
   // Função para pular para uma era específica
   const handleJumpToEra = (eraId: string) => {

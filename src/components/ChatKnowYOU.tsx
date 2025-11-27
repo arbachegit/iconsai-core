@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
 import { Send, Loader2, ImagePlus, Mic, Square } from "lucide-react";
 import { AudioControls } from "./AudioControls";
+import { useToast } from "@/hooks/use-toast";
 import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 
 // 30 sugestões de saúde para rotação
@@ -76,6 +77,7 @@ const SentimentIndicator = ({ sentiment }: { sentiment: { label: string; score: 
 };
 
 export default function ChatKnowYOU() {
+  const { toast } = useToast();
   const { 
     messages, 
     isLoading, 
@@ -89,11 +91,13 @@ export default function ChatKnowYOU() {
     playAudio,
     stopAudio,
     generateImage,
+    transcribeAudio,
   } = useChatKnowYOU();
   const [input, setInput] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isImageMode, setIsImageMode] = useState(false);
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
@@ -178,10 +182,24 @@ export default function ChatKnowYOU() {
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        // TODO: Send to Whisper API for transcription
-        // For now, just show a placeholder message
-        setInput("[Áudio gravado - transcrição pendente]");
+        audioChunksRef.current = [];
         stream.getTracks().forEach(track => track.stop());
+        
+        // Transcribe audio using Whisper API
+        setIsTranscribing(true);
+        try {
+          const transcribedText = await transcribeAudio(audioBlob);
+          setInput(transcribedText);
+        } catch (error) {
+          console.error('Error transcribing audio:', error);
+          toast({
+            title: "Erro na transcrição",
+            description: "Não foi possível transcrever o áudio. Tente novamente.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsTranscribing(false);
+        }
       };
 
       mediaRecorder.start();
@@ -197,6 +215,13 @@ export default function ChatKnowYOU() {
       setIsRecording(false);
     }
   };
+
+  // Listen for global stop audio event
+  useEffect(() => {
+    const handleStopAll = () => stopAudio();
+    window.addEventListener('stopAllAudio', handleStopAll);
+    return () => window.removeEventListener('stopAllAudio', handleStopAll);
+  }, [stopAudio]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -331,9 +356,23 @@ export default function ChatKnowYOU() {
                 handleSubmit(e);
               }
             }}
-            placeholder={isImageMode ? "Desenhos limitados a conteúdos de saúde" : "Digite sua mensagem sobre saúde..."}
+            placeholder={
+              isTranscribing ? "Transcrevendo..." :
+              isImageMode ? "Descreva a imagem educativa de saúde que deseja gerar..." : 
+              "Digite sua mensagem sobre saúde..."
+            }
+            onFocus={(e) => {
+              if (isImageMode) {
+                e.target.placeholder = "Desenhos limitados a conteúdos de saúde";
+              }
+            }}
+            onBlur={(e) => {
+              if (isImageMode) {
+                e.target.placeholder = "Descreva a imagem educativa de saúde que deseja gerar...";
+              }
+            }}
             className="min-h-[60px] resize-none flex-1"
-            disabled={isLoading}
+            disabled={isLoading || isTranscribing}
           />
           
           <div className="flex flex-col gap-2">
