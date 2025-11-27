@@ -15,6 +15,77 @@ interface AIHistoryPanelProps {
   onClose: () => void;
 }
 
+// Estrutura de dados das eras (constante estática fora do componente)
+const ERAS_DATA = [
+  {
+    id: 'dream',
+    title: 'O Sonho (Antes de 1950)',
+    subtitle: 'Onde tudo era ficção científica e desejo humano.',
+    icon: Clock,
+    colorFrom: 'amber-500',
+    colorTo: 'orange-500',
+    items: [
+      { icon: Sparkles, text: 'Antiguidade: Mitos gregos já falavam de autômatos e estátuas que ganhavam vida (como Talos, o gigante de bronze).' },
+      { icon: Sparkles, text: '1843 - A "Avó" da Programação: Ada Lovelace escreve o primeiro algoritmo para uma máquina.' },
+      { icon: Bot, text: '1920 - Nasce a palavra "Robô": Uma peça de teatro tcheca (R.U.R.) usa o termo pela primeira vez.' }
+    ]
+  },
+  {
+    id: 'birth',
+    title: 'O Nascimento (Anos 50)',
+    subtitle: 'Onde a IA ganha nome e dá os primeiros passos.',
+    icon: Baby,
+    colorFrom: 'blue-500',
+    colorTo: 'cyan-500',
+    items: [
+      { icon: Lightbulb, text: '1950 - O Teste de Turing: Alan Turing lança a pergunta: "Máquinas podem pensar?"' },
+      { icon: Sparkles, text: '1956 - O Batismo: Conferência de Dartmouth cunha oficialmente o termo "Inteligência Artificial".' },
+      { icon: Bot, text: '1957 - Perceptron: Frank Rosenblatt cria uma máquina que tenta imitar um neurônio.' }
+    ]
+  },
+  {
+    id: 'childhood',
+    title: 'A Infância e Adolescência (Anos 60 a 80)',
+    subtitle: 'Altos e baixos, rebeldia e filmes de Hollywood.',
+    icon: Users,
+    colorFrom: 'purple-500',
+    colorTo: 'pink-500',
+    items: [
+      { icon: Bot, text: '1966 - ELIZA, a "Psicóloga": O primeiro chatbot da história!' },
+      { icon: Snowflake, text: 'Anos 70 - O Inverno da IA: As promessas eram grandes demais e a tecnologia não entregava.' },
+      { icon: Sparkles, text: 'Anos 80 - O Retorno: A IA volta com os "Sistemas Especialistas".' },
+      { icon: Skull, text: 'O Exterminador do Futuro (1984): O cinema cria a imagem da IA como vilã.' }
+    ]
+  },
+  {
+    id: 'adulthood',
+    title: 'A Fase Adulta (Anos 90 e 2000)',
+    subtitle: 'A IA começa a ganhar dos humanos e a entrar na nossa casa.',
+    icon: GraduationCap,
+    colorFrom: 'green-500',
+    colorTo: 'emerald-500',
+    items: [
+      { icon: Crown, text: '1997 - Xeque-mate: O computador Deep Blue (IBM) vence Garry Kasparov no xadrez.' },
+      { icon: Home, text: '2002 - Roomba: A IA entra na sua sala... para aspirar pó.' },
+      { icon: Bot, text: '2011 - "Ei, Siri": Começamos a falar com nossos telefones.' }
+    ]
+  },
+  {
+    id: 'revolution',
+    title: 'A Revolução Generativa (2010s até Hoje)',
+    subtitle: 'A IA deixa de apenas analisar e começa a CRIAR.',
+    icon: Rocket,
+    colorFrom: 'cyan-500',
+    colorTo: 'blue-600',
+    items: [
+      { icon: Cat, text: '2012 - O "Big Bang" do Deep Learning: Redes neurais aprendem a identificar gatos no YouTube sozinhas.' },
+      { icon: Crown, text: '2016 - AlphaGo: A IA vence o campeão mundial de Go com jogadas "criativas".' },
+      { icon: Sparkles, text: '2017 - O Transformer: O Google publica um artigo que muda tudo.' },
+      { icon: Palette, text: '2022/2023 - A Era do ChatGPT e Gemini: A IA "sai da jaula".' }
+    ]
+  }
+];
+
 export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const isMobile = useIsMobile();
   const [position, setPosition] = useState({ x: window.innerWidth / 2 - 400, y: 50 });
@@ -170,84 +241,13 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
     { id: 'revolution', startTime: 200, endTime: 280 }
   ];
 
-  // Estrutura de dados das eras
-  const erasData = [
-    {
-      id: 'dream',
-      title: 'O Sonho (Antes de 1950)',
-      subtitle: 'Onde tudo era ficção científica e desejo humano.',
-      icon: Clock,
-      colorFrom: 'amber-500',
-      colorTo: 'orange-500',
-      items: [
-        { icon: Sparkles, text: 'Antiguidade: Mitos gregos já falavam de autômatos e estátuas que ganhavam vida (como Talos, o gigante de bronze).' },
-        { icon: Sparkles, text: '1843 - A "Avó" da Programação: Ada Lovelace escreve o primeiro algoritmo para uma máquina.' },
-        { icon: Bot, text: '1920 - Nasce a palavra "Robô": Uma peça de teatro tcheca (R.U.R.) usa o termo pela primeira vez.' }
-      ]
-    },
-    {
-      id: 'birth',
-      title: 'O Nascimento (Anos 50)',
-      subtitle: 'Onde a IA ganha nome e dá os primeiros passos.',
-      icon: Baby,
-      colorFrom: 'blue-500',
-      colorTo: 'cyan-500',
-      items: [
-        { icon: Lightbulb, text: '1950 - O Teste de Turing: Alan Turing lança a pergunta: "Máquinas podem pensar?"' },
-        { icon: Sparkles, text: '1956 - O Batismo: Conferência de Dartmouth cunha oficialmente o termo "Inteligência Artificial".' },
-        { icon: Bot, text: '1957 - Perceptron: Frank Rosenblatt cria uma máquina que tenta imitar um neurônio.' }
-      ]
-    },
-    {
-      id: 'childhood',
-      title: 'A Infância e Adolescência (Anos 60 a 80)',
-      subtitle: 'Altos e baixos, rebeldia e filmes de Hollywood.',
-      icon: Users,
-      colorFrom: 'purple-500',
-      colorTo: 'pink-500',
-      items: [
-        { icon: Bot, text: '1966 - ELIZA, a "Psicóloga": O primeiro chatbot da história!' },
-        { icon: Snowflake, text: 'Anos 70 - O Inverno da IA: As promessas eram grandes demais e a tecnologia não entregava.' },
-        { icon: Sparkles, text: 'Anos 80 - O Retorno: A IA volta com os "Sistemas Especialistas".' },
-        { icon: Skull, text: 'O Exterminador do Futuro (1984): O cinema cria a imagem da IA como vilã.' }
-      ]
-    },
-    {
-      id: 'adulthood',
-      title: 'A Fase Adulta (Anos 90 e 2000)',
-      subtitle: 'A IA começa a ganhar dos humanos e a entrar na nossa casa.',
-      icon: GraduationCap,
-      colorFrom: 'green-500',
-      colorTo: 'emerald-500',
-      items: [
-        { icon: Crown, text: '1997 - Xeque-mate: O computador Deep Blue (IBM) vence Garry Kasparov no xadrez.' },
-        { icon: Home, text: '2002 - Roomba: A IA entra na sua sala... para aspirar pó.' },
-        { icon: Bot, text: '2011 - "Ei, Siri": Começamos a falar com nossos telefones.' }
-      ]
-    },
-    {
-      id: 'revolution',
-      title: 'A Revolução Generativa (2010s até Hoje)',
-      subtitle: 'A IA deixa de apenas analisar e começa a CRIAR.',
-      icon: Rocket,
-      colorFrom: 'cyan-500',
-      colorTo: 'blue-600',
-      items: [
-        { icon: Cat, text: '2012 - O "Big Bang" do Deep Learning: Redes neurais aprendem a identificar gatos no YouTube sozinhas.' },
-        { icon: Crown, text: '2016 - AlphaGo: A IA vence o campeão mundial de Go com jogadas "criativas".' },
-        { icon: Sparkles, text: '2017 - O Transformer: O Google publica um artigo que muda tudo.' },
-        { icon: Palette, text: '2022/2023 - A Era do ChatGPT e Gemini: A IA "sai da jaula".' }
-      ]
-    }
-  ];
-
-  // Carregar imagens das eras
+  // Carregar imagens das eras (executar apenas UMA VEZ)
   useEffect(() => {
     const loadImages = async () => {
       setLoadingImages(true);
       const images: Record<string, string> = {};
 
-      for (const era of erasData) {
+      for (const era of ERAS_DATA) {
         try {
           const { data, error } = await supabase.functions.invoke('generate-history-image', {
             body: { eraId: era.id }
@@ -268,7 +268,33 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
     };
 
     loadImages();
-  }, [loadingImages, eraImages, erasData]);
+  }, []); // ✅ Rodar apenas UMA VEZ na montagem
+  
+  // Cleanup audio on component unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // Listen for global stop audio event
+  useEffect(() => {
+    const handleStopAll = () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        setIsPlaying(false);
+        setCurrentTime(0);
+      }
+    };
+    
+    window.addEventListener('stopAllAudio', handleStopAll);
+    return () => window.removeEventListener('stopAllAudio', handleStopAll);
+  }, []);
   
   // Função para pular para uma era específica
   const handleJumpToEra = (eraId: string) => {
@@ -358,7 +384,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
             </div>
 
             <MobileHistoryCarousel
-              eras={erasData}
+              eras={ERAS_DATA}
               currentEraId={currentEraId}
               eraImages={eraImages}
               loadingImages={loadingImages}
@@ -375,7 +401,10 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
     <>
       <div 
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 animate-fade-in"
-        onClick={onClose}
+        onClick={() => {
+          window.dispatchEvent(new CustomEvent('stopAllAudio'));
+          onClose();
+        }}
       />
       
       <Card
@@ -403,7 +432,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
 
           {/* Era Navigation */}
           <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
-            {erasData.map((era) => {
+            {ERAS_DATA.map((era) => {
               const Icon = era.icon;
               return (
                 <Button
@@ -466,7 +495,7 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
 
           <ScrollArea className="h-[calc(80vh-250px)]">
             <div className="space-y-8 pr-4">
-              {erasData.map((era) => {
+              {ERAS_DATA.map((era) => {
                 const Icon = era.icon;
                 return (
                   <div

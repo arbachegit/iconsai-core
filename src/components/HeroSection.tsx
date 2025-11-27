@@ -228,7 +228,14 @@ const HeroSection = () => {
 
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background pointer-events-none" />
       
-      {isHistoryOpen && <AIHistoryPanel onClose={() => setIsHistoryOpen(false)} />}
+      {isHistoryOpen && (
+        <AIHistoryPanel 
+          onClose={() => {
+            window.dispatchEvent(new CustomEvent('stopAllAudio'));
+            setIsHistoryOpen(false);
+          }} 
+        />
+      )}
     </section>
   );
 };
