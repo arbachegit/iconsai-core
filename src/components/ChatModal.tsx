@@ -18,9 +18,13 @@ export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
       audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
-    // Broadcast stop audio event
+    // Broadcast stop audio event FIRST
     window.dispatchEvent(new CustomEvent('stopAllAudio'));
-    onClose();
+    
+    // Small delay to ensure event is processed before unmounting
+    requestAnimationFrame(() => {
+      onClose();
+    });
   };
 
   if (!isOpen) return null;

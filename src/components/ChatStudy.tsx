@@ -164,6 +164,13 @@ export default function ChatStudy() {
     return () => window.removeEventListener('stopAllAudio', handleStopAll);
   }, [stopAudio]);
 
+  // Cleanup audio on component unmount
+  useEffect(() => {
+    return () => {
+      stopAudio();
+    };
+  }, [stopAudio]);
+
   const handleAudioPlay = (index: number) => {
     playAudio(index);
   };
