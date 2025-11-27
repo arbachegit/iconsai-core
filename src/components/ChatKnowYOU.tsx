@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Send, Loader2, Volume2, VolumeX, ImagePlus, Mic, Square } from "lucide-react";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Send, Loader2, ImagePlus, Mic, Square } from "lucide-react";
+import { AudioControls } from "./AudioControls";
+import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 
 // 30 sugestões de saúde para rotação
 const HEALTH_SUGGESTIONS = [
@@ -99,6 +100,7 @@ export default function ChatKnowYOU() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const [audioStates, setAudioStates] = useState<{[key: number]: { isPlaying: boolean; currentTime: number; duration: number }}>({});
 
   // Rotação de sugestões a cada 10 segundos
   useEffect(() => {
@@ -146,6 +148,23 @@ export default function ChatKnowYOU() {
     setInput("");
   };
 
+  const handleAudioPlay = (index: number) => {
+    playAudio(index);
+  };
+
+  const handleAudioStop = () => {
+    stopAudio();
+  };
+
+  const handleDownloadAudio = (audioUrl: string, index: number) => {
+    const link = document.createElement("a");
+    link.href = audioUrl;
+    link.download = `knowyou-saude-${index}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -191,9 +210,7 @@ export default function ChatKnowYOU() {
       {/* Header */}
       <div className="bg-gradient-primary p-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-background/20 flex items-center justify-center backdrop-blur-sm">
-            <span className="text-2xl font-bold text-primary-foreground">K</span>
-          </div>
+          <img src={knowriskLogo} alt="KnowRisk Logo" className="w-12 h-12 rounded-full bg-background/20 p-1" />
           <div>
             <h3 className="text-xl font-bold text-primary-foreground">KnowYOU</h3>
             <p className="text-sm text-primary-foreground/80">Assistente de IA em Saúde</p>
@@ -229,46 +246,30 @@ export default function ChatKnowYOU() {
                   }`}
                 >
                   {msg.imageUrl && (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <img
-                          src={msg.imageUrl}
-                          alt="Imagem gerada"
-                          className="max-w-full rounded-lg mb-2 cursor-pointer hover:opacity-90 transition-opacity"
-                        />
-                      </DialogTrigger>
-                      <DialogContent className="max-w-4xl">
-                        <img
-                          src={msg.imageUrl}
-                          alt="Imagem gerada"
-                          className="w-full h-auto rounded-lg"
-                        />
-                      </DialogContent>
-                    </Dialog>
+                    <img
+                      src={msg.imageUrl}
+                      alt="Imagem gerada"
+                      className="max-w-full rounded-lg mb-2"
+                    />
                   )}
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs opacity-70">
-                      {msg.timestamp.toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                    {msg.role === "assistant" && msg.audioUrl && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => currentlyPlayingIndex === idx ? stopAudio() : playAudio(idx)}
-                      >
-                        {currentlyPlayingIndex === idx ? (
-                          <VolumeX className="w-4 h-4" />
-                        ) : (
-                          <Volume2 className="w-4 h-4" />
-                        )}
-                      </Button>
-                    )}
-                  </div>
+                  
+                  {msg.role === "assistant" && msg.audioUrl && (
+                    <AudioControls
+                      audioUrl={msg.audioUrl}
+                      isPlaying={currentlyPlayingIndex === idx}
+                      onPlay={() => handleAudioPlay(idx)}
+                      onStop={handleAudioStop}
+                      onDownload={() => handleDownloadAudio(msg.audioUrl!, idx)}
+                    />
+                  )}
+                  
+                  <span className="text-xs opacity-70 block mt-2">
+                    {msg.timestamp.toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
                 </div>
               </div>
             ))}
@@ -320,54 +321,53 @@ export default function ChatKnowYOU() {
             Digitando...
           </div>
         )}
-        <div className="flex gap-3">
-          <div className="flex-1 space-y-3">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }
-              }}
-              placeholder={isImageMode ? "Criar imagem da área de saúde..." : "Digite sua mensagem sobre saúde..."}
-              className="min-h-[60px] resize-none"
-              disabled={isLoading}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={toggleImageMode}
-              disabled={isGeneratingImage}
-              className={`w-full transition-all ${
-                isImageMode 
-                  ? "bg-gradient-to-r from-primary via-secondary to-accent text-primary-foreground hover:opacity-90" 
-                  : ""
-              }`}
-            >
-              <ImagePlus className="w-4 h-4 mr-2" />
-              {isImageMode ? "Modo Texto" : "Gerar Imagem Educativa"}
-            </Button>
-          </div>
+        <div className="flex gap-2">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+            placeholder={isImageMode ? "Desenhos limitados a conteúdos de saúde" : "Digite sua mensagem sobre saúde..."}
+            className="min-h-[60px] resize-none flex-1"
+            disabled={isLoading}
+          />
+          
           <div className="flex flex-col gap-2">
             <Button
               type="button"
               size="icon"
-              variant="outline"
+              variant="ghost"
               onClick={isRecording ? stopRecording : startRecording}
-              className={`h-[60px] w-[60px] rounded-xl flex-shrink-0 ${isRecording ? 'bg-destructive text-destructive-foreground' : ''}`}
+              className={isRecording ? "text-red-500" : ""}
             >
-              {isRecording ? <Square className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </Button>
+            
             <Button
               type="submit"
               size="icon"
-              disabled={!input.trim() || isLoading}
-              className="h-[60px] w-[60px] rounded-xl flex-shrink-0"
+              disabled={isLoading || !input.trim()}
             >
-              <Send className="w-5 h-5" />
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+            
+            <Button
+              type="button"
+              size="icon"
+              variant={isImageMode ? "default" : "ghost"}
+              onClick={toggleImageMode}
+              disabled={isGeneratingImage}
+              title="Desenhar"
+            >
+              <ImagePlus className="w-4 h-4" />
             </Button>
           </div>
         </div>

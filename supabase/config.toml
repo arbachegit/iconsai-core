@@ -3,6 +3,9 @@ project_id = "gmflpmcepempcygdrayv"
 [functions.chat]
 verify_jwt = false
 
+[functions.chat-study]
+verify_jwt = false
+
 [functions.generate-image]
 verify_jwt = false
 
