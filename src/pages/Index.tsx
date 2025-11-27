@@ -10,9 +10,46 @@ import { Brain } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
 import { FloatingChatButton } from "@/components/FloatingChatButton";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
+
+const SCROLL_POSITION_KEY = "knowyou_scroll_position";
 
 const Index = () => {
   const { t, i18n } = useTranslation();
+  
+  // Restore scroll position on mount
+  useEffect(() => {
+    const savedPosition = localStorage.getItem(SCROLL_POSITION_KEY);
+    if (savedPosition) {
+      // Use setTimeout to ensure DOM is fully rendered
+      setTimeout(() => {
+        window.scrollTo({
+          top: parseInt(savedPosition, 10),
+          behavior: "instant"
+        });
+      }, 100);
+    }
+  }, []);
+  
+  // Save scroll position on scroll with debounce
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    const handleScroll = () => {
+      // Debounce to avoid excessive localStorage writes
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        localStorage.setItem(SCROLL_POSITION_KEY, window.scrollY.toString());
+      }, 150);
+    };
+    
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
   
   return <div className="min-h-screen bg-background">
       <Header />
