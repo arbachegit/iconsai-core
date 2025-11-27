@@ -26,7 +26,12 @@ export function useChatKnowYOU() {
     "Como prevenir doenças crônicas?",
     "Tendências em saúde digital",
   ]);
-  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random()}`);
+  const [sessionId] = useState(() => {
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timestamp = Date.now();
+    return `chat_${dateStr}_${timestamp}`;
+  });
   
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
   const { toast } = useToast();

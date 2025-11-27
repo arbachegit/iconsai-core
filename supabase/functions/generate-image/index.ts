@@ -34,6 +34,31 @@ serve(async (req) => {
       );
     }
 
+    // Validação de keywords de saúde
+    const healthKeywords = [
+      "saúde", "médico", "hospital", "paciente", "tratamento", "diagnóstico",
+      "anatomia", "coração", "cérebro", "medicina", "cirurgia", "enfermagem",
+      "farmácia", "medicamento", "doença", "terapia", "exame", "consulta",
+      "clínica", "bem-estar", "nutrição", "fisioterapia", "saúde mental",
+      "sistema", "órgão", "célula", "corpo", "humano", "respiratório",
+      "digestivo", "circulatório", "nervoso", "esqueleto", "moinhos de vento"
+    ];
+
+    const promptLower = prompt.toLowerCase();
+    const containsHealthKeyword = healthKeywords.some(keyword => 
+      promptLower.includes(keyword)
+    );
+
+    if (!containsHealthKeyword) {
+      return new Response(
+        JSON.stringify({ error: "Apenas imagens relacionadas à área da saúde são permitidas" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {

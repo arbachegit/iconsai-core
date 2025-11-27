@@ -6,6 +6,52 @@ import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
 import { Send, Loader2, Volume2, VolumeX, ImagePlus, Mic, Square } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
+// 30 sugestões de saúde para rotação
+const HEALTH_SUGGESTIONS = [
+  "O que é telemedicina?",
+  "Como prevenir doenças cardíacas?",
+  "Quais especialidades o Hospital Moinhos de Vento oferece?",
+  "Como funciona a robótica cirúrgica?",
+  "O que são doenças crônicas?",
+  "Como manter uma alimentação saudável?",
+  "Quais exames preventivos fazer anualmente?",
+  "O que é diabetes tipo 2?",
+  "Como controlar a pressão arterial?",
+  "O que faz um cardiologista?",
+  "Como prevenir o câncer?",
+  "O que é saúde mental?",
+  "Como funciona a fisioterapia?",
+  "Quais sintomas indicam AVC?",
+  "O que é medicina preventiva?",
+  "Como melhorar a qualidade do sono?",
+  "O que são exames de imagem?",
+  "Como funciona a vacinação?",
+  "O que é obesidade mórbida?",
+  "Como tratar ansiedade?",
+  "O que faz um endocrinologista?",
+  "Como prevenir osteoporose?",
+  "O que é check-up médico?",
+  "Como funciona a nutrição clínica?",
+  "Quais benefícios da atividade física?",
+  "O que é colesterol alto?",
+  "Como identificar depressão?",
+  "O que são doenças autoimunes?",
+  "Como funciona o transplante de órgãos?",
+  "Qual a importância da hidratação?"
+];
+
+// Sugestões específicas para modo de geração de imagem
+const IMAGE_SUGGESTIONS = [
+  "Anatomia do coração humano",
+  "Sistema respiratório",
+  "Processo de cicatrização",
+  "Estrutura de um neurônio",
+  "Aparelho digestivo",
+  "Sistema circulatório",
+  "Esqueleto humano",
+  "Sistema nervoso central"
+];
+
 export default function ChatKnowYOU() {
   const { 
     messages, 
@@ -25,9 +71,24 @@ export default function ChatKnowYOU() {
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isImageMode, setIsImageMode] = useState(false);
+  const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Rotação de sugestões a cada 10 segundos
+  useEffect(() => {
+    const rotateSuggestions = () => {
+      const sourceList = isImageMode ? IMAGE_SUGGESTIONS : HEALTH_SUGGESTIONS;
+      const shuffled = [...sourceList].sort(() => Math.random() - 0.5);
+      setDisplayedSuggestions(shuffled.slice(0, 4));
+    };
+    
+    rotateSuggestions();
+    const interval = setInterval(rotateSuggestions, 10000);
+    return () => clearInterval(interval);
+  }, [isImageMode]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -38,21 +99,28 @@ export default function ChatKnowYOU() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
-      sendMessage(input);
-      setInput("");
+      if (isImageMode) {
+        generateImage(input);
+        setInput("");
+        setIsImageMode(false);
+      } else {
+        sendMessage(input);
+        setInput("");
+      }
     }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    sendMessage(suggestion);
+    if (isImageMode) {
+      generateImage(suggestion);
+    } else {
+      sendMessage(suggestion);
+    }
   };
 
-  const handleGenerateImage = () => {
-    if (imagePrompt.trim()) {
-      generateImage(imagePrompt);
-      setImagePrompt("");
-      setIsImageDialogOpen(false);
-    }
+  const toggleImageMode = () => {
+    setIsImageMode(!isImageMode);
+    setInput("");
   };
 
   const startRecording = async () => {
@@ -194,14 +262,16 @@ export default function ChatKnowYOU() {
         )}
       </ScrollArea>
 
-      {/* Suggestions */}
-      {suggestions.length > 0 && !isLoading && (
+      {/* Suggestions com slider */}
+      {displayedSuggestions.length > 0 && !isLoading && (
         <div className="px-6 py-4 bg-muted/50 border-t border-border/50">
-          <p className="text-xs font-medium text-muted-foreground mb-2">💡 Sugestões:</p>
-          <div className="flex flex-wrap gap-2">
-            {suggestions.map((suggestion, idx) => (
+          <p className="text-xs font-medium text-muted-foreground mb-2">
+            💡 {isImageMode ? "Sugestões de Imagens:" : "Sugestões:"}
+          </p>
+          <div className="flex flex-wrap gap-2 suggestions-slider">
+            {displayedSuggestions.map((suggestion, idx) => (
               <Button
-                key={idx}
+                key={`${suggestion}-${idx}`}
                 variant="outline"
                 size="sm"
                 onClick={() => handleSuggestionClick(suggestion)}
@@ -237,57 +307,25 @@ export default function ChatKnowYOU() {
                   handleSubmit(e);
                 }
               }}
-              placeholder="Digite sua mensagem sobre saúde..."
+              placeholder={isImageMode ? "Criar imagem da área de saúde..." : "Digite sua mensagem sobre saúde..."}
               className="min-h-[60px] resize-none"
               disabled={isLoading}
             />
-            <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={isGeneratingImage}
-                  className="w-full"
-                >
-                  <ImagePlus className="w-4 h-4 mr-2" />
-                  Gerar Imagem Educativa
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Gerar Imagem sobre Saúde</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Descreva o tema de saúde que você gostaria de visualizar em uma imagem educativa.
-                    </p>
-                  </div>
-                  <Textarea
-                    value={imagePrompt}
-                    onChange={(e) => setImagePrompt(e.target.value)}
-                    placeholder="Ex: Anatomia do coração humano, processo de cicatrização, etc."
-                    className="min-h-[100px]"
-                  />
-                  <Button
-                    onClick={handleGenerateImage}
-                    disabled={!imagePrompt.trim() || isGeneratingImage}
-                    className="w-full"
-                  >
-                    {isGeneratingImage ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Gerando...
-                      </>
-                    ) : (
-                      <>
-                        <ImagePlus className="w-4 h-4 mr-2" />
-                        Gerar Imagem
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={toggleImageMode}
+              disabled={isGeneratingImage}
+              className={`w-full transition-all ${
+                isImageMode 
+                  ? "bg-gradient-to-r from-primary via-secondary to-accent text-primary-foreground hover:opacity-90" 
+                  : ""
+              }`}
+            >
+              <ImagePlus className="w-4 h-4 mr-2" />
+              {isImageMode ? "Modo Texto" : "Gerar Imagem Educativa"}
+            </Button>
           </div>
           <div className="flex flex-col gap-2">
             <Button

@@ -105,6 +105,21 @@ All colors MUST be HSL.
       transform: translateY(-20px);
     }
   }
+
+  @keyframes slideLeft {
+    from {
+      transform: translateX(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .suggestions-slider {
+    animation: slideLeft 0.5s ease-out;
+  }
 }
 
 @layer base {
