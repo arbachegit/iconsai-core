@@ -8,11 +8,13 @@ interface SectionProps {
   subtitle: string;
   children: ReactNode;
   reverse?: boolean;
+  quote?: string;
+  quoteAuthor?: string;
 }
 
-const Section = ({ id, title, subtitle, children, reverse = false }: SectionProps) => {
+const Section = ({ id, title, subtitle, children, reverse = false, quote, quoteAuthor }: SectionProps) => {
   return (
-    <section id={id} className="py-24 relative">
+    <section id={id} className="py-8 relative">
       <TooltipIcon sectionId={id} />
       <div className="container mx-auto px-4">
         <div
@@ -28,6 +30,17 @@ const Section = ({ id, title, subtitle, children, reverse = false }: SectionProp
             <div className="prose prose-invert max-w-none text-muted-foreground">
               {children}
             </div>
+            
+            {quote && (
+              <blockquote className="mt-6 pt-4 border-t border-primary/20 italic text-gradient">
+                "{quote}"
+                {quoteAuthor && (
+                  <footer className="mt-2 text-sm text-muted-foreground not-italic">
+                    — {quoteAuthor}
+                  </footer>
+                )}
+              </blockquote>
+            )}
           </div>
 
           <div className={reverse ? "lg:order-1" : ""}>
