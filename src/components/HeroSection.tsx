@@ -202,10 +202,15 @@ const HeroSection = () => {
             <Button
               size="lg"
               variant="outline"
-              className="border-primary/50 hover:bg-primary/10"
+              className="relative border-primary/50 hover:bg-primary/10 bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group"
               onClick={() => setIsHistoryOpen(true)}
             >
-              Explorar a História
+              <span className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-accent opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+              <span className="relative flex items-center gap-2">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+                Explorar a História
+                <ArrowRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </span>
             </Button>
           </div>
 
