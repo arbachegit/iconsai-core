@@ -103,6 +103,17 @@ export const DraggablePreviewPanel = ({
     }
   }, [isDragging, dragOffset]);
 
+  // Cleanup: parar áudio quando o componente for fechado
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
   const handlePlayAudio = () => {
     if (!content?.audio_url) {
       toast({
