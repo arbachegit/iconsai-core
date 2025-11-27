@@ -8,6 +8,7 @@ import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
 import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
+import { useTranslation } from "react-i18next";
 
 // Sugestões de estudo sobre KnowRisk/KnowYOU/ACC
 const STUDY_SUGGESTIONS = [
@@ -36,6 +37,7 @@ const IMAGE_SUGGESTIONS = [
 ];
 
 export default function ChatStudy() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { 
     messages, 
@@ -150,8 +152,8 @@ export default function ChatStudy() {
           
           // Fallback para gravação com Whisper se Web Speech API falhar
           toast({
-            title: "Reconhecimento de voz não disponível",
-            description: "Usando método alternativo de transcrição.",
+            title: t('chat.speechNotAvailable'),
+            description: t('chat.speechFallback'),
           });
           startRecordingWithWhisper();
         };
@@ -170,8 +172,8 @@ export default function ChatStudy() {
     } catch (error) {
       console.error("Erro ao iniciar gravação:", error);
       toast({
-        title: "Erro ao ativar microfone",
-        description: "Verifique as permissões do navegador.",
+        title: t('chat.micError'),
+        description: t('chat.micPermissions'),
         variant: "destructive",
       });
     }
@@ -203,8 +205,8 @@ export default function ChatStudy() {
         } catch (error) {
           console.error("Error transcribing audio:", error);
           toast({
-            title: "Erro na transcrição",
-            description: "Não foi possível transcrever o áudio. Tente novamente.",
+            title: t('chat.transcriptionError'),
+            description: t('chat.transcriptionRetry'),
             variant: "destructive",
           });
         } finally {
@@ -217,8 +219,8 @@ export default function ChatStudy() {
     } catch (error) {
       console.error("Erro ao iniciar gravação:", error);
       toast({
-        title: "Erro ao ativar microfone",
-        description: "Verifique as permissões do navegador.",
+        title: t('chat.micError'),
+        description: t('chat.micPermissions'),
         variant: "destructive",
       });
     }
@@ -276,7 +278,7 @@ export default function ChatStudy() {
         <div className="flex items-center gap-3">
           <img src={knowriskLogo} alt="KnowRisk Logo" className="w-10 h-10" />
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-gradient">Assistente de IA para ajudar a estudar</h2>
+            <h2 className="text-lg font-bold text-gradient">{t('chat.studyTitle')}</h2>
             {currentSentiment && (
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50 border border-border/30">
                 <span className="text-2xl">
@@ -296,7 +298,7 @@ export default function ChatStudy() {
           onClick={clearHistory}
           className="text-xs"
         >
-          Limpar
+          {t('chat.clear')}
         </Button>
       </div>
 
@@ -383,18 +385,18 @@ export default function ChatStudy() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
-              isTranscribing ? "Transcrevendo..." :
-              isImageMode ? "Descreva a imagem educativa que deseja gerar..." : 
-              "Digite sua pergunta sobre KnowRisk, KnowYOU ou ACC..."
+              isTranscribing ? t('chat.transcribing') :
+              isImageMode ? t('chat.placeholderImageStudy') : 
+              t('chat.placeholderStudy')
             }
             onFocus={(e) => {
               if (isImageMode) {
-                e.target.placeholder = "Desenhos limitados a IA e KnowRISK";
+                e.target.placeholder = t('chat.imageLimitStudy');
               }
             }}
             onBlur={(e) => {
               if (isImageMode) {
-                e.target.placeholder = "Descreva a imagem educativa que deseja gerar...";
+                e.target.placeholder = t('chat.placeholderImageStudy');
               }
             }}
             className="min-h-[60px] flex-1 resize-none border-2 border-cyan-400/60 focus:border-primary/50 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]"

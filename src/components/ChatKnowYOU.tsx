@@ -8,6 +8,7 @@ import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
 import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
+import { useTranslation } from "react-i18next";
 
 // 30 sugestões de saúde para rotação
 const HEALTH_SUGGESTIONS = [
@@ -78,6 +79,7 @@ const SentimentIndicator = ({ sentiment }: { sentiment: { label: string; score: 
 };
 
 export default function ChatKnowYOU() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { 
     messages, 
@@ -211,8 +213,8 @@ export default function ChatKnowYOU() {
           
           // Fallback para gravação com Whisper se Web Speech API falhar
           toast({
-            title: "Reconhecimento de voz não disponível",
-            description: "Usando método alternativo de transcrição.",
+            title: t('chat.speechNotAvailable'),
+            description: t('chat.speechFallback'),
           });
           startRecordingWithWhisper();
         };
@@ -231,8 +233,8 @@ export default function ChatKnowYOU() {
     } catch (error) {
       console.error("Erro ao iniciar gravação:", error);
       toast({
-        title: "Erro ao ativar microfone",
-        description: "Verifique as permissões do navegador.",
+        title: t('chat.micError'),
+        description: t('chat.micPermissions'),
         variant: "destructive",
       });
     }
@@ -262,8 +264,8 @@ export default function ChatKnowYOU() {
         } catch (error) {
           console.error('Error transcribing audio:', error);
           toast({
-            title: "Erro na transcrição",
-            description: "Não foi possível transcrever o áudio. Tente novamente.",
+            title: t('chat.transcriptionError'),
+            description: t('chat.transcriptionRetry'),
             variant: "destructive",
           });
         } finally {
@@ -276,8 +278,8 @@ export default function ChatKnowYOU() {
     } catch (error) {
       console.error("Erro ao iniciar gravação:", error);
       toast({
-        title: "Erro ao ativar microfone",
-        description: "Verifique as permissões do navegador.",
+        title: t('chat.micError'),
+        description: t('chat.micPermissions'),
         variant: "destructive",
       });
     }
@@ -329,8 +331,8 @@ export default function ChatKnowYOU() {
         <div className="flex items-center gap-3">
           <img src={knowriskLogo} alt="KnowRisk Logo" className="w-12 h-12 rounded-full bg-background/20 p-1" />
           <div>
-            <h3 className="text-xl font-bold text-primary-foreground">KnowYOU</h3>
-            <p className="text-sm text-primary-foreground/80">Assistente de IA em Saúde</p>
+            <h3 className="text-xl font-bold text-primary-foreground">{t('chat.healthTitle')}</h3>
+            <p className="text-sm text-primary-foreground/80">{t('chat.healthSubtitle')}</p>
           </div>
         </div>
         <SentimentIndicator sentiment={currentSentiment} />
@@ -349,9 +351,9 @@ export default function ChatKnowYOU() {
             <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
               <span className="text-4xl font-bold text-primary-foreground">K</span>
             </div>
-            <h4 className="text-xl font-semibold mb-2">Olá! Sou o KnowYOU</h4>
+            <h4 className="text-xl font-semibold mb-2">{t('chat.greeting')}</h4>
             <p className="text-muted-foreground max-w-md">
-              Seu assistente especializado em saúde. Como posso ajudá-lo hoje?
+              {t('chat.greetingDesc')}
             </p>
           </div>
         ) : (
@@ -401,7 +403,7 @@ export default function ChatKnowYOU() {
                 <div className="bg-muted rounded-2xl px-4 py-3 flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span className="text-sm">
-                    {isGeneratingImage ? "Gerando imagem..." : isGeneratingAudio ? "Gerando áudio..." : "Pensando..."}
+                    {isGeneratingImage ? t('chat.generatingImage') : isGeneratingAudio ? t('chat.generatingAudio') : t('chat.thinking')}
                   </span>
                 </div>
               </div>
@@ -415,7 +417,7 @@ export default function ChatKnowYOU() {
       {displayedSuggestions.length > 0 && !isLoading && (
         <div className="px-6 py-4 bg-muted/50 border-t border-border/50">
           <p className="text-xs font-medium text-muted-foreground mb-2">
-            💡 {isImageMode ? "Sugestões de Imagens:" : "Sugestões:"}
+            💡 {isImageMode ? t('chat.imageSuggestions') : t('chat.suggestions')}
           </p>
           <div className="flex flex-wrap gap-2 suggestions-slider">
             {displayedSuggestions.map((suggestion, idx) => (
@@ -442,7 +444,7 @@ export default function ChatKnowYOU() {
               <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
               <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
             </div>
-            Digitando...
+            {t('chat.typing')}
           </div>
         )}
         <div className="flex gap-2">
@@ -456,18 +458,18 @@ export default function ChatKnowYOU() {
               }
             }}
             placeholder={
-              isTranscribing ? "Transcrevendo..." :
-              isImageMode ? "Descreva a imagem educativa de saúde que deseja gerar..." : 
-              "Digite sua mensagem sobre saúde..."
+              isTranscribing ? t('chat.transcribing') :
+              isImageMode ? t('chat.placeholderImage') : 
+              t('chat.placeholder')
             }
             onFocus={(e) => {
               if (isImageMode) {
-                e.target.placeholder = "Desenhos limitados a conteúdos de saúde";
+                e.target.placeholder = t('chat.imageLimitHealth');
               }
             }}
             onBlur={(e) => {
               if (isImageMode) {
-                e.target.placeholder = "Descreva a imagem educativa de saúde que deseja gerar...";
+                e.target.placeholder = t('chat.placeholderImage');
               }
             }}
             className="min-h-[60px] resize-none flex-1 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]"

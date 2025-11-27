@@ -179,11 +179,11 @@ const HeroSection = () => {
             </span>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold leading-tight bg-gradient-to-r from-cyan-400 via-green-400 to-yellow-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight tracking-tight bg-gradient-to-r from-cyan-400 via-green-400 to-yellow-400 bg-clip-text text-transparent px-4">
             {t("hero.subtitle")}
           </h1>
 
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-4">
             {t("hero.description")}
           </p>
 
