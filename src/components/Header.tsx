@@ -65,7 +65,7 @@ const Header = () => {
             ))}
             <Link 
               to="/admin" 
-              className="text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
+              className="text-white hover:text-white transition-all duration-200 hover:scale-110"
               title="Admin Panel"
             >
               <Brain className="w-5 h-5" />
