@@ -223,6 +223,13 @@ export default function ChatKnowYOU() {
     return () => window.removeEventListener('stopAllAudio', handleStopAll);
   }, [stopAudio]);
 
+  // Cleanup audio on component unmount
+  useEffect(() => {
+    return () => {
+      stopAudio();
+    };
+  }, [stopAudio]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsTyping(input.length > 0);

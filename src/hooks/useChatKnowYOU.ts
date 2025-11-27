@@ -290,7 +290,11 @@ export function useChatKnowYOU() {
   }, [messages, toast]);
 
   const stopAudio = useCallback(() => {
-    audioPlayerRef.current.stop();
+    try {
+      audioPlayerRef.current.stop();
+    } catch (e) {
+      console.error('Error stopping audio:', e);
+    }
     setCurrentlyPlayingIndex(null);
   }, []);
 

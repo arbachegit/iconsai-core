@@ -67,9 +67,15 @@ export class AudioStreamPlayer {
   }
 
   stop(): void {
-    if (this.currentSource) {
-      this.currentSource.stop();
-      this.currentSource = null;
+    try {
+      if (this.currentSource) {
+        this.currentSource.stop();
+        this.currentSource.disconnect();
+        this.currentSource = null;
+      }
+    } catch (e) {
+      // Ignorar erros se o áudio já estava parado
+      console.debug('Audio already stopped:', e);
     }
     this.audioQueue = [];
     this.isPlaying = false;
