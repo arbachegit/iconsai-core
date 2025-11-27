@@ -15,7 +15,6 @@ interface SectionProps {
 const Section = ({ id, title, subtitle, children, reverse = false, quote, quoteAuthor }: SectionProps) => {
   return (
     <section id={id} className="py-8 relative">
-      <TooltipIcon sectionId={id} />
       <div className="container mx-auto px-4">
         <div
           className={`grid lg:grid-cols-2 gap-12 items-center ${
@@ -23,8 +22,11 @@ const Section = ({ id, title, subtitle, children, reverse = false, quote, quoteA
           }`}
         >
           <div className={`space-y-6 ${reverse ? "lg:order-2" : ""}`}>
-            <div className="inline-block px-4 py-1 bg-primary/10 rounded-full border border-primary/20">
-              <span className="text-sm text-primary font-medium">{subtitle}</span>
+            <div className="flex items-center">
+              <div className="inline-block px-4 py-1 bg-primary/10 rounded-full border border-primary/20">
+                <span className="text-sm text-primary font-medium">{subtitle}</span>
+              </div>
+              <TooltipIcon sectionId={id} />
             </div>
             <h2 className="text-4xl md:text-5xl font-bold">{title}</h2>
             <div className="prose prose-invert max-w-none text-muted-foreground">
@@ -32,11 +34,13 @@ const Section = ({ id, title, subtitle, children, reverse = false, quote, quoteA
             </div>
             
             {quote && (
-              <blockquote className="mt-6 pt-4 border-t border-primary/20 italic text-gradient">
-                "{quote}"
+              <blockquote className="mt-6 pt-4 border-t border-primary/20">
+                <p className="text-xl md:text-2xl italic bg-gradient-to-r from-cyan-400 via-green-400 to-yellow-400 bg-clip-text text-transparent">
+                  "{quote}"
+                </p>
                 {quoteAuthor && (
                   <footer className="mt-2 text-sm text-muted-foreground not-italic">
-                    — {quoteAuthor}
+                    by {quoteAuthor}
                   </footer>
                 )}
               </blockquote>

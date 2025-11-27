@@ -4,6 +4,7 @@ import Section from "@/components/Section";
 import ChatKnowYOU from "@/components/ChatKnowYOU";
 import { MediaCarousel } from "@/components/MediaCarousel";
 import { DigitalExclusionSection } from "@/components/DigitalExclusionSection";
+import TuringLegacy from "@/components/TuringLegacy";
 import { Link } from "react-router-dom";
 import { Brain } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
@@ -19,6 +20,7 @@ const Index = () => {
         title="A Primeira Revolução" 
         subtitle="Anos 1940-1980"
         quote="O código é a primeira linguagem universal entre humanos e máquinas."
+        quoteAuthor="Fernando Arbache"
       >
         <p className="text-lg leading-relaxed">
           O software representou a primeira grande comunicação entre humanos e máquinas.
@@ -39,6 +41,7 @@ const Index = () => {
         subtitle="Anos 1990-2000" 
         reverse
         quote="A conectividade transformou o mundo em uma aldeia global digital."
+        quoteAuthor="Fernando Arbache"
       >
         <p className="text-lg leading-relaxed">
           A Internet democratizou o acesso à informação e transformou completamente
@@ -57,6 +60,7 @@ const Index = () => {
         title="O Hype Tecnológico" 
         subtitle="Anos 2020-2022"
         quote="Sem um propósito claro, a inovação deixa de ser uma ferramenta de progresso e se torna apenas uma distração sofisticada."
+        quoteAuthor="Fernando Arbache"
       >
         <p className="text-lg leading-relaxed">
           Nem toda inovação tecnológica encontra seu propósito. O Metaverso e os NFTs
@@ -76,6 +80,7 @@ const Index = () => {
         subtitle="1969 - 2001: Uma Odisseia no Espaço" 
         reverse
         quote="A arte antecipou a ciência ao imaginar conversas naturais com máquinas."
+        quoteAuthor="Fernando Arbache"
       >
         <p className="text-lg leading-relaxed">
           Em 1969, Stanley Kubrick nos apresentou HAL 9000, uma IA que não apenas
@@ -94,6 +99,7 @@ const Index = () => {
         title="Watson: A Era da Cognição" 
         subtitle="2004 - IBM Watson"
         quote="Watson provou que máquinas poderiam não apenas calcular, mas compreender."
+        quoteAuthor="Fernando Arbache"
       >
         <p className="text-lg leading-relaxed">
           O IBM Watson marcou o início da era cognitiva, demonstrando que máquinas
@@ -114,6 +120,7 @@ const Index = () => {
         subtitle="2022 - Presente" 
         reverse
         quote="Pela primeira vez, qualquer pessoa pode conversar com uma inteligência artificial."
+        quoteAuthor="Fernando Arbache"
       >
         <p className="text-lg leading-relaxed">
           Com o ChatGPT e modelos similares, entramos em uma nova era onde a
@@ -158,12 +165,13 @@ const Index = () => {
       <DigitalExclusionSection />
 
       {/* Section 8: Bom Prompt */}
-      <Section 
+      <Section
         id="bom-prompt" 
         title="A Arte do Bom Prompt" 
         subtitle="Comunicação Efetiva com IA" 
         reverse
         quote="A qualidade da resposta depende da qualidade da pergunta."
+        quoteAuthor="Fernando Arbache"
       >
         <div className="relative">
           <Link to="/admin/login" className="absolute -top-16 right-0 text-muted-foreground/20 hover:text-muted-foreground/40 transition-opacity" aria-label="Admin Login">
@@ -204,6 +212,9 @@ const Index = () => {
           </div>
         </div>
       </Section>
+
+      {/* Turing Legacy Section */}
+      <TuringLegacy />
 
       {/* Footer */}
       <footer className="py-12 border-t border-border/50">
