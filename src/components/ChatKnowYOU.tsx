@@ -7,6 +7,7 @@ import { Send, Loader2, ImagePlus, Mic, Square } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
+import { TypingIndicator } from "./TypingIndicator";
 import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 import { useTranslation } from "react-i18next";
 
@@ -412,12 +413,7 @@ export default function ChatKnowYOU() {
             ))}
             {(isLoading || isGeneratingAudio || isGeneratingImage) && (
               <div className="flex justify-start">
-                <div className="bg-muted rounded-2xl px-4 py-3 flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">
-                    {isGeneratingImage ? t('chat.generatingImage') : isGeneratingAudio ? t('chat.generatingAudio') : t('chat.thinking')}
-                  </span>
-                </div>
+                <TypingIndicator />
               </div>
             )}
             <div ref={messagesEndRef} />
