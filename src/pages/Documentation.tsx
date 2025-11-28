@@ -1,15 +1,95 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { FileText, Download, Loader2 } from 'lucide-react';
+import { 
+  FileText, Download, Loader2, ArrowUp, List, Folder, 
+  FileCode, Layers, Code, Server, GitBranch, CheckSquare, Cpu, Menu, FileCode2
+} from 'lucide-react';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useTranslation } from 'react-i18next';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from '@/lib/utils';
+
+// Sections data structure
+const sections = [
+  { id: 'capa', title: 'Capa', icon: FileText },
+  { id: 'indice', title: 'Índice', icon: List },
+  { id: 'estrutura-diretorios', title: '1. Estrutura de Diretórios', icon: Folder },
+  { id: 'convencoes-nomenclatura', title: '2. Convenções de Nomenclatura', icon: FileCode },
+  { id: 'inventario-componentes', title: '3. Inventário de Componentes', icon: Layers },
+  { id: 'hooks-customizados', title: '4. Hooks Customizados', icon: Code },
+  { id: 'edge-functions', title: '5. Edge Functions', icon: Server },
+  { id: 'hierarquia-componentes', title: '6. Hierarquia de Componentes', icon: GitBranch },
+  { id: 'padroes-codigo', title: '7. Padrões de Código', icon: FileCode2 },
+  { id: 'checklist-review', title: '8. Checklist de Code Review', icon: CheckSquare },
+  { id: 'tecnologias', title: 'Tecnologias', icon: Cpu },
+];
 
 const Documentation = () => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [isExporting, setIsExporting] = useState(false);
+  const [activeSection, setActiveSection] = useState('capa');
+  const [readProgress, setReadProgress] = useState(0);
+
+  // Smooth scroll to section
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      window.history.pushState(null, '', `#${id}`);
+    }
+  };
+
+  // Progress bar
+  useEffect(() => {
+    const handleScroll = () => {
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight - windowHeight;
+      const scrolled = window.scrollY;
+      setReadProgress((scrolled / documentHeight) * 100);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // IntersectionObserver for active section
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      { rootMargin: '-20% 0px -60% 0px' }
+    );
+
+    sections.forEach((section) => {
+      const el = document.getElementById(section.id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  // URL hash navigation
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash) {
+      setTimeout(() => scrollToSection(hash), 100);
+    }
+  }, []);
 
   const exportToPDF = async () => {
     setIsExporting(true);
@@ -109,37 +189,147 @@ const Documentation = () => {
     style B fill:#10B981
     style I fill:#F59E0B`;
 
+  // Sidebar navigation component
+  const SidebarNav = () => (
+    <aside className="fixed left-8 top-24 w-64 h-[calc(100vh-12rem)] overflow-y-auto space-y-1 pr-4">
+      <div className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+        <FileText className="h-4 w-4" />
+        Navegação
+      </div>
+      <nav className="space-y-1">
+        {sections.map((section) => {
+          const Icon = section.icon;
+          return (
+            <button
+              key={section.id}
+              onClick={() => scrollToSection(section.id)}
+              className={cn(
+                "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2",
+                activeSection === section.id
+                  ? "bg-primary text-primary-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{section.title}</span>
+            </button>
+          );
+        })}
+      </nav>
+      <div className="mt-6 pt-4 border-t border-border">
+        <Button
+          onClick={exportToPDF}
+          disabled={isExporting}
+          size="sm"
+          className="w-full gap-2"
+        >
+          {isExporting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Gerando...
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              Exportar PDF
+            </>
+          )}
+        </Button>
+      </div>
+    </aside>
+  );
+
+  // Mobile dropdown navigation
+  const MobileNav = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg">
+          <Menu className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        {sections.map((section) => {
+          const Icon = section.icon;
+          return (
+            <DropdownMenuItem
+              key={section.id}
+              onClick={() => scrollToSection(section.id)}
+              className={cn(
+                "flex items-center gap-2",
+                activeSection === section.id && "bg-primary/10 font-medium"
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {section.title}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  // Back to index button
+  const BackToIndex = () => (
+    <div className="flex justify-end mt-4">
+      <button
+        onClick={() => scrollToSection('indice')}
+        className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+      >
+        <ArrowUp className="h-4 w-4" />
+        Voltar ao índice
+      </button>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      {/* Progress bar */}
+      <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50">
+        <div
+          className="h-full bg-primary transition-all"
+          style={{ width: `${readProgress}%` }}
+        />
+      </div>
+
+      {/* Desktop sidebar navigation */}
+      {!isMobile && <SidebarNav />}
+
+      {/* Mobile navigation */}
+      {isMobile && <MobileNav />}
+
+      {/* Main content */}
+      <div className={cn(
+        "container mx-auto px-4 py-8",
+        !isMobile ? "max-w-4xl ml-auto mr-8" : "max-w-6xl"
+      )}>
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-3">
             <FileText className="h-8 w-8 text-primary" />
             <h1 className="text-4xl font-bold">Guia de Estilo de Código</h1>
           </div>
-          <Button
-            onClick={exportToPDF}
-            disabled={isExporting}
-            size="lg"
-            className="gap-2"
-          >
-            {isExporting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Gerando PDF...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                Exportar PDF
-              </>
-            )}
-          </Button>
+          {isMobile && (
+            <Button
+              onClick={exportToPDF}
+              disabled={isExporting}
+              size="sm"
+              className="gap-2"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         <div id="documentation-content" className="space-y-8">
           {/* Capa */}
-          <Card className="p-12 text-center bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20">
+          <Card id="capa" className="p-12 text-center bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 scroll-mt-20">
             <h1 className="text-5xl font-bold mb-4">KnowRisk</h1>
             <h2 className="text-3xl mb-6">Guia de Estilo de Código</h2>
             <p className="text-muted-foreground">
@@ -151,22 +341,24 @@ const Documentation = () => {
           </Card>
 
           {/* Índice */}
-          <Card className="p-6">
+          <Card id="indice" className="p-6 scroll-mt-20">
             <h2 className="text-2xl font-bold mb-4">Índice</h2>
-            <ol className="space-y-2 text-muted-foreground">
-              <li>1. Estrutura de Diretórios</li>
-              <li>2. Convenções de Nomenclatura</li>
-              <li>3. Inventário de Componentes</li>
-              <li>4. Hooks Customizados</li>
-              <li>5. Edge Functions</li>
-              <li>6. Hierarquia de Componentes</li>
-              <li>7. Padrões de Código</li>
-              <li>8. Checklist de Code Review</li>
+            <ol className="space-y-2">
+              {sections.slice(2).map((section) => (
+                <li key={section.id}>
+                  <button
+                    onClick={() => scrollToSection(section.id)}
+                    className="text-left hover:text-primary transition-colors cursor-pointer underline-offset-4 hover:underline"
+                  >
+                    {section.title}
+                  </button>
+                </li>
+              ))}
             </ol>
           </Card>
 
           {/* 1. Estrutura de Diretórios */}
-          <Card className="p-6">
+          <Card id="estrutura-diretorios" className="p-6 scroll-mt-20">
             <h2 className="text-2xl font-bold mb-4">1. Estrutura de Diretórios</h2>
             <MermaidDiagram chart={directoryStructure} id="directory-structure" />
             
@@ -201,10 +393,11 @@ const Documentation = () => {
                 <p className="text-muted-foreground">Edge Functions (backend serverless)</p>
               </div>
             </div>
+            <BackToIndex />
           </Card>
 
           {/* 2. Convenções de Nomenclatura */}
-          <Card className="p-6">
+          <Card id="convencoes-nomenclatura" className="p-6 scroll-mt-20">
             <h2 className="text-2xl font-bold mb-4">2. Convenções de Nomenclatura</h2>
             
             <div className="space-y-6">
@@ -240,10 +433,11 @@ const Documentation = () => {
                 </div>
               </div>
             </div>
+            <BackToIndex />
           </Card>
 
           {/* 3. Inventário de Componentes */}
-          <Card className="p-6">
+          <Card id="inventario-componentes" className="p-6 scroll-mt-20">
             <h2 className="text-2xl font-bold mb-4">3. Inventário de Componentes</h2>
             
             <div className="space-y-6">
@@ -312,10 +506,11 @@ const Documentation = () => {
                 </p>
               </div>
             </div>
+            <BackToIndex />
           </Card>
 
           {/* 4. Hooks Customizados */}
-          <Card className="p-6">
+          <Card id="hooks-customizados" className="p-6 scroll-mt-20">
             <h2 className="text-2xl font-bold mb-4">4. Hooks Customizados</h2>
             
             <div className="space-y-4">
@@ -368,10 +563,11 @@ const Documentation = () => {
                 </div>
               ))}
             </div>
+            <BackToIndex />
           </Card>
 
           {/* 5. Edge Functions */}
-          <Card className="p-6">
+          <Card id="edge-functions" className="p-6 scroll-mt-20">
             <h2 className="text-2xl font-bold mb-4">5. Edge Functions (Backend)</h2>
             
             <div className="space-y-4">
@@ -427,16 +623,18 @@ const Documentation = () => {
                 </div>
               ))}
             </div>
+            <BackToIndex />
           </Card>
 
           {/* 6. Hierarquia de Componentes */}
-          <Card className="p-6">
+          <Card id="hierarquia-componentes" className="p-6 scroll-mt-20">
             <h2 className="text-2xl font-bold mb-4">6. Hierarquia de Componentes</h2>
             <MermaidDiagram chart={componentHierarchy} id="component-hierarchy" />
+            <BackToIndex />
           </Card>
 
           {/* 7. Padrões de Código */}
-          <Card className="p-6">
+          <Card id="padroes-codigo" className="p-6 scroll-mt-20">
             <h2 className="text-2xl font-bold mb-4">7. Padrões de Código</h2>
             
             <div className="space-y-6">
@@ -516,10 +714,11 @@ export const Component = () => {
                 </pre>
               </div>
             </div>
+            <BackToIndex />
           </Card>
 
           {/* 8. Checklist */}
-          <Card className="p-6">
+          <Card id="checklist-review" className="p-6 scroll-mt-20">
             <h2 className="text-2xl font-bold mb-4">8. Code Review Checklist</h2>
             
             <div className="space-y-3">
@@ -548,10 +747,11 @@ export const Component = () => {
                 </div>
               ))}
             </div>
+            <BackToIndex />
           </Card>
 
           {/* Tecnologias */}
-          <Card className="p-6">
+          <Card id="tecnologias" className="p-6 scroll-mt-20">
             <h2 className="text-2xl font-bold mb-4">Tecnologias Principais</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -590,6 +790,7 @@ export const Component = () => {
                 </ul>
               </div>
             </div>
+            <BackToIndex />
           </Card>
 
           {/* Footer */}
