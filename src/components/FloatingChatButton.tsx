@@ -17,8 +17,8 @@ export const FloatingChatButton = () => {
 
   return (
     <>
-      {/* Container with overflow-hidden to prevent layout expansion */}
-      <div className="fixed bottom-6 right-6 z-50 overflow-hidden" style={{ contain: 'layout' }}>
+      {/* Container without overflow-hidden to allow waves to be visible */}
+      <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsOpen(true)}
           size="icon"
@@ -32,13 +32,28 @@ export const FloatingChatButton = () => {
           {/* Icon */}
           <MessageCircle className="w-10 h-10 relative z-10 text-primary-foreground" />
           
-          {/* Green pulsating dot with frequency waves - positioned within button bounds */}
-          <div className="absolute -top-1 -right-1 z-20 w-6 h-6 flex items-center justify-center">
+          {/* Green pulsating dot with sequential frequency waves */}
+          <div className="absolute -top-1 -right-1 z-20 w-8 h-8 flex items-center justify-center">
             {/* Core pulsating green circle */}
             <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/60 border-2 border-green-400" />
-            {/* Single subtle wave */}
-            <div className="absolute w-6 h-6 rounded-full bg-green-400/30 animate-ping" 
-                 style={{ animationDuration: '2s' }} />
+            
+            {/* Sequential waves - each with different delay */}
+            <div 
+              className="absolute w-5 h-5 rounded-full border-2 border-green-400/50 animate-ping" 
+              style={{ animationDuration: '2s', animationDelay: '0s' }} 
+            />
+            <div 
+              className="absolute w-6 h-6 rounded-full border-2 border-green-400/40 animate-ping" 
+              style={{ animationDuration: '2s', animationDelay: '0.4s' }} 
+            />
+            <div 
+              className="absolute w-7 h-7 rounded-full border-2 border-green-400/30 animate-ping" 
+              style={{ animationDuration: '2s', animationDelay: '0.8s' }} 
+            />
+            <div 
+              className="absolute w-8 h-8 rounded-full border-2 border-green-400/20 animate-ping" 
+              style={{ animationDuration: '2s', animationDelay: '1.2s' }} 
+            />
           </div>
         </Button>
       </div>

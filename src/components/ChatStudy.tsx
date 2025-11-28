@@ -290,7 +290,26 @@ export default function ChatStudy() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b-2 border-primary/30">
         <div className="flex items-center gap-3">
-          <img src={knowriskLogo} alt="KnowRisk Logo" className="w-10 h-10" />
+          <div className="relative">
+            <img src={knowriskLogo} alt="KnowRisk Logo" className="w-10 h-10" />
+            
+            {/* Online indicator with sequential waves */}
+            <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 flex items-center justify-center">
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-md shadow-green-500/50 border border-green-400" />
+              <div 
+                className="absolute w-3.5 h-3.5 rounded-full border border-green-400/50 animate-ping" 
+                style={{ animationDuration: '1.5s', animationDelay: '0s' }} 
+              />
+              <div 
+                className="absolute w-4.5 h-4.5 rounded-full border border-green-400/40 animate-ping" 
+                style={{ animationDuration: '1.5s', animationDelay: '0.3s' }} 
+              />
+              <div 
+                className="absolute w-5 h-5 rounded-full border border-green-400/30 animate-ping" 
+                style={{ animationDuration: '1.5s', animationDelay: '0.6s' }} 
+              />
+            </div>
+          </div>
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-bold text-gradient">{t('chat.studyTitle')}</h2>
             {currentSentiment && (
