@@ -8,10 +8,11 @@ import { GmailTab } from "@/components/admin/GmailTab";
 import { AnalyticsTab } from "@/components/admin/AnalyticsTab";
 import { ConversationsTab } from "@/components/admin/ConversationsTab";
 import { ImageCacheTab } from "@/components/admin/ImageCacheTab";
+import { YouTubeCacheTab } from "@/components/admin/YouTubeCacheTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -85,6 +86,8 @@ const Admin = () => {
         return <AnalyticsTab />;
       case "images":
         return <ImageCacheTab />;
+      case "youtube":
+        return <YouTubeCacheTab />;
       default:
         return <DashboardTab />;
     }
