@@ -199,7 +199,7 @@ const HeroSection = () => {
                 <TooltipTrigger asChild>
                   <Button
                     size="lg"
-                    className="bg-gradient-primary hover:opacity-90 transition-opacity glow-effect group"
+                    className="bg-gradient-primary hover:bg-gradient-to-r hover:from-primary/10 hover:via-secondary/10 hover:to-accent/10 hover:border hover:border-primary/50 transition-all duration-300 glow-effect hover:shadow-none group"
                     onClick={() =>
                       document.querySelector("#knowyou")?.scrollIntoView({ behavior: "smooth" })
                     }
@@ -220,7 +220,7 @@ const HeroSection = () => {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="relative border-primary/50 hover:bg-primary/10 hover:text-white bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group"
+                    className="relative border-primary/50 hover:border-transparent hover:bg-gradient-primary bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)]"
                     onClick={() => setIsHistoryOpen(true)}
                   >
                     <span className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-accent opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
