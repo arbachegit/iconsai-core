@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { 
   FileText, Download, Loader2, ArrowUp, List, Folder, 
-  FileCode, Layers, Code, Server, GitBranch, CheckSquare, Cpu, Menu, FileCode2
+  FileCode, Layers, Code, Server, GitBranch, CheckSquare, Cpu, Menu, FileCode2,
+  Sun, Moon
 } from 'lucide-react';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
 import html2canvas from 'html2canvas';
@@ -39,6 +40,18 @@ const Documentation = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [activeSection, setActiveSection] = useState('capa');
   const [readProgress, setReadProgress] = useState(0);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('docs-theme');
+    return saved !== 'light';
+  });
+
+  // Persist theme preference
+  useEffect(() => {
+    localStorage.setItem('docs-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
+  // Toggle theme
+  const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
   // Smooth scroll to section
   const scrollToSection = (id: string) => {
@@ -93,15 +106,28 @@ const Documentation = () => {
 
   const exportToPDF = async () => {
     setIsExporting(true);
+    
+    // Force light mode temporarily for print-friendly PDF
+    const element = document.getElementById('documentation-content');
+    if (!element) {
+      setIsExporting(false);
+      return;
+    }
+    
+    const container = document.querySelector('.docs-page');
+    const wasLight = container?.classList.contains('docs-light');
+    
+    if (!wasLight) {
+      container?.classList.add('docs-light');
+      await new Promise(r => setTimeout(r, 100));
+    }
+    
     try {
-      const element = document.getElementById('documentation-content');
-      if (!element) return;
-
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#0a0a0f',
+        backgroundColor: '#ffffff',
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -131,6 +157,10 @@ const Documentation = () => {
     } catch (error) {
       console.error('Error generating PDF:', error);
     } finally {
+      // Restore original theme
+      if (!wasLight) {
+        container?.classList.remove('docs-light');
+      }
       setIsExporting(false);
     }
   };
@@ -196,6 +226,29 @@ const Documentation = () => {
         <FileText className="h-4 w-4" />
         Navegação
       </div>
+      
+      {/* Theme Toggle */}
+      <div className="mb-3 pb-3 border-b border-border">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={toggleTheme}
+          className="w-full gap-2 no-print"
+        >
+          {isDarkMode ? (
+            <>
+              <Sun className="h-4 w-4" />
+              Modo Claro
+            </>
+          ) : (
+            <>
+              <Moon className="h-4 w-4" />
+              Modo Escuro
+            </>
+          )}
+        </Button>
+      </div>
+      
       <nav className="space-y-1">
         {sections.map((section) => {
           const Icon = section.icon;
@@ -221,7 +274,7 @@ const Documentation = () => {
           onClick={exportToPDF}
           disabled={isExporting}
           size="sm"
-          className="w-full gap-2"
+          className="w-full gap-2 no-print"
         >
           {isExporting ? (
             <>
@@ -243,11 +296,33 @@ const Documentation = () => {
   const MobileNav = () => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg">
+        <Button variant="outline" size="icon" className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg no-print">
           <Menu className="h-5 w-5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
+        {/* Theme Toggle */}
+        <div className="p-2 border-b border-border">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleTheme}
+            className="w-full gap-2"
+          >
+            {isDarkMode ? (
+              <>
+                <Sun className="h-4 w-4" />
+                Modo Claro
+              </>
+            ) : (
+              <>
+                <Moon className="h-4 w-4" />
+                Modo Escuro
+              </>
+            )}
+          </Button>
+        </div>
+        
         {sections.map((section) => {
           const Icon = section.icon;
           return (
@@ -282,7 +357,10 @@ const Documentation = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className={cn(
+      "min-h-screen bg-background text-foreground docs-page",
+      !isDarkMode && "docs-light"
+    )}>
       {/* Progress bar */}
       <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50">
         <div
@@ -329,7 +407,12 @@ const Documentation = () => {
 
         <div id="documentation-content" className="space-y-8">
           {/* Capa */}
-          <Card id="capa" className="p-12 text-center bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 scroll-mt-20">
+          <Card id="capa" className={cn(
+            "p-12 text-center scroll-mt-20",
+            isDarkMode 
+              ? "bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20"
+              : "bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10"
+          )}>
             <h1 className="text-5xl font-bold mb-4">KnowRisk</h1>
             <h2 className="text-3xl mb-6">Guia de Estilo de Código</h2>
             <p className="text-muted-foreground">
@@ -360,7 +443,7 @@ const Documentation = () => {
           {/* 1. Estrutura de Diretórios */}
           <Card id="estrutura-diretorios" className="p-6 scroll-mt-20">
             <h2 className="text-2xl font-bold mb-4">1. Estrutura de Diretórios</h2>
-            <MermaidDiagram chart={directoryStructure} id="directory-structure" />
+            <MermaidDiagram chart={directoryStructure} id="directory-structure" theme={isDarkMode ? 'dark' : 'light'} />
             
             <div className="mt-6 space-y-4">
               <div>
@@ -629,7 +712,7 @@ const Documentation = () => {
           {/* 6. Hierarquia de Componentes */}
           <Card id="hierarquia-componentes" className="p-6 scroll-mt-20">
             <h2 className="text-2xl font-bold mb-4">6. Hierarquia de Componentes</h2>
-            <MermaidDiagram chart={componentHierarchy} id="component-hierarchy" />
+            <MermaidDiagram chart={componentHierarchy} id="component-hierarchy" theme={isDarkMode ? 'dark' : 'light'} />
             <BackToIndex />
           </Card>
 

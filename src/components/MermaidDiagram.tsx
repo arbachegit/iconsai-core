@@ -4,17 +4,28 @@ import mermaid from 'mermaid';
 interface MermaidDiagramProps {
   chart: string;
   id: string;
+  theme?: 'dark' | 'light';
 }
 
-export const MermaidDiagram = ({ chart, id }: MermaidDiagramProps) => {
+export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (containerRef.current) {
       mermaid.initialize({
         startOnLoad: true,
-        theme: 'dark',
-        themeVariables: {
+        theme: theme === 'light' ? 'default' : 'dark',
+        themeVariables: theme === 'light' ? {
+          primaryColor: '#0ea5e9',
+          primaryTextColor: '#1e293b',
+          primaryBorderColor: '#0284c7',
+          lineColor: '#64748b',
+          secondaryColor: '#10b981',
+          tertiaryColor: '#3b82f6',
+          background: '#f8fafc',
+          mainBkg: '#ffffff',
+          textColor: '#1e293b',
+        } : {
           primaryColor: '#8B5CF6',
           primaryTextColor: '#fff',
           primaryBorderColor: '#7C3AED',
