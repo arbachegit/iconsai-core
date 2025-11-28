@@ -153,3 +153,41 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Light theme for Documentation page - print-friendly */
+.docs-light {
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 98%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 191 100% 40%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 270 64% 50%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 8% 46%;
+  --accent: 150 100% 40%;
+  --accent-foreground: 0 0% 100%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 191 100% 40%;
+}
+
+/* Print styles for Documentation PDF export */
+@media print {
+  .docs-page {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 98%;
+    --card-foreground: 222 47% 11%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 8% 46%;
+    --border: 220 13% 91%;
+  }
+  
+  .docs-page .no-print {
+    display: none !important;
+  }
+}
