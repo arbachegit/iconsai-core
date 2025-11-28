@@ -22,21 +22,27 @@ const Index = () => {
   // Auto-preload YouTube videos in background when cache expires
   useYouTubeAutoPreload();
   
-  // Restore scroll position on mount
+  // Restore scroll position on mount - only if not at top
   useEffect(() => {
     const savedPosition = localStorage.getItem(SCROLL_POSITION_KEY);
-    if (savedPosition) {
-      setTimeout(() => {
+    if (savedPosition && parseInt(savedPosition, 10) > 0) {
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
         window.scrollTo({
           top: parseInt(savedPosition, 10),
           behavior: "instant"
         });
-      }, 100);
+      });
     }
 
     // Save scroll position only when leaving page (much more efficient)
     const saveScrollPosition = () => {
-      localStorage.setItem(SCROLL_POSITION_KEY, window.scrollY.toString());
+      // Only save if scrolled significantly (prevent saving near-top positions)
+      if (window.scrollY > 100) {
+        localStorage.setItem(SCROLL_POSITION_KEY, window.scrollY.toString());
+      } else {
+        localStorage.removeItem(SCROLL_POSITION_KEY);
+      }
     };
 
     window.addEventListener("beforeunload", saveScrollPosition);
