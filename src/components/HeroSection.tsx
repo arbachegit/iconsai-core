@@ -163,7 +163,7 @@ const HeroSection = () => {
   }, []);
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16 md:pt-20">
       <canvas
         ref={canvasRef}
         className="absolute inset-0 pointer-events-none"
