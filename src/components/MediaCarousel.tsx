@@ -122,9 +122,29 @@ export const MediaCarousel = () => {
     
     const cachedVideos = getCachedVideos(categoryQuery);
     if (cachedVideos) {
+      // Track cache HIT
+      try {
+        const metricsKey = 'youtube_cache_metrics';
+        const metrics = JSON.parse(localStorage.getItem(metricsKey) || '{"hits": 0, "misses": 0}');
+        metrics.hits = (metrics.hits || 0) + 1;
+        localStorage.setItem(metricsKey, JSON.stringify(metrics));
+      } catch (e) {
+        console.error('Error tracking cache hit:', e);
+      }
+      
       setVideos(cachedVideos);
       setLoading(false);
       return;
+    }
+    
+    // Track cache MISS (API call required)
+    try {
+      const metricsKey = 'youtube_cache_metrics';
+      const metrics = JSON.parse(localStorage.getItem(metricsKey) || '{"hits": 0, "misses": 0}');
+      metrics.misses = (metrics.misses || 0) + 1;
+      localStorage.setItem(metricsKey, JSON.stringify(metrics));
+    } catch (e) {
+      console.error('Error tracking cache miss:', e);
     }
     
     setLoading(true);

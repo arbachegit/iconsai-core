@@ -22,6 +22,7 @@ export const YouTubeCacheTab = () => {
   const { toast } = useToast();
   const [isPreloading, setIsPreloading] = useState(false);
   const [cacheStats, setCacheStats] = useState<any>(null);
+  const [cacheMetrics, setCacheMetrics] = useState<any>(null);
 
   const getCacheStatistics = () => {
     const stats: any = {
@@ -67,6 +68,23 @@ export const YouTubeCacheTab = () => {
     });
 
     setCacheStats(stats);
+    
+    // Get cache metrics
+    try {
+      const metricsKey = 'youtube_cache_metrics';
+      const metrics = JSON.parse(localStorage.getItem(metricsKey) || '{"hits": 0, "misses": 0}');
+      const total = metrics.hits + metrics.misses;
+      const hitRate = total > 0 ? ((metrics.hits / total) * 100).toFixed(1) : '0';
+      setCacheMetrics({
+        hits: metrics.hits || 0,
+        misses: metrics.misses || 0,
+        total,
+        hitRate
+      });
+    } catch (error) {
+      console.error('Error reading cache metrics:', error);
+    }
+    
     return stats;
   };
 
@@ -303,6 +321,68 @@ export const YouTubeCacheTab = () => {
             )}
           </div>
 
+          {/* Cache Performance Metrics */}
+          {cacheMetrics && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5" />
+                  Métricas de Desempenho do Cache
+                </CardTitle>
+                <CardDescription>
+                  Taxa de acertos (hit rate) e uso do cache
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Cache Hits</p>
+                    <p className="text-2xl font-bold text-green-600">{cacheMetrics.hits}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Cache Misses</p>
+                    <p className="text-2xl font-bold text-orange-600">{cacheMetrics.misses}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Total de Requisições</p>
+                    <p className="text-2xl font-bold">{cacheMetrics.total}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Taxa de Acerto</p>
+                    <p className="text-2xl font-bold text-primary">{cacheMetrics.hitRate}%</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="h-4 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-green-500 to-primary transition-all duration-500"
+                      style={{ width: `${cacheMetrics.hitRate}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    {cacheMetrics.hitRate}% das requisições foram servidas do cache
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    localStorage.removeItem('youtube_cache_metrics');
+                    getCacheStatistics();
+                    toast({
+                      title: "Métricas resetadas",
+                      description: "Os contadores de cache foram zerados.",
+                    });
+                  }}
+                  className="mt-4"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Resetar Métricas
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Info Card */}
           <Card className="bg-muted/50">
             <CardContent className="pt-6">
@@ -311,6 +391,7 @@ export const YouTubeCacheTab = () => {
                 <p><strong>Bloqueio de Quota:</strong> Dura 24 horas após exceder limite</p>
                 <p><strong>Pré-carregamento:</strong> Busca vídeos de todas as categorias e armazena localmente</p>
                 <p><strong>Consumo de Quota:</strong> 1 unidade por requisição (usando playlistItems API)</p>
+                <p><strong>Notificações:</strong> Email automático enviado ao admin quando quota é excedida</p>
               </div>
             </CardContent>
           </Card>

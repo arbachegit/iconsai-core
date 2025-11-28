@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,6 +44,34 @@ serve(async (req) => {
       const errorText = await videosResponse.text();
       console.error('YouTube API videos error:', errorText);
       if (errorText.includes('quotaExceeded')) {
+        // Send email notification to admin about quota exceeded
+        try {
+          const supabaseUrl = Deno.env.get('SUPABASE_URL');
+          const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+          
+          if (supabaseUrl && supabaseKey) {
+            const supabaseClient = createClient(supabaseUrl, supabaseKey);
+            
+            const { data: settings } = await supabaseClient
+              .from('admin_settings')
+              .select('alert_email, alert_enabled')
+              .single();
+            
+            if (settings?.alert_enabled && settings?.alert_email) {
+              await supabaseClient.functions.invoke('send-email', {
+                body: {
+                  to: settings.alert_email,
+                  subject: 'Alerta: Quota do YouTube API Excedida',
+                  body: `A quota da API do YouTube foi excedida em ${new Date().toLocaleString('pt-BR')}. As requisições estão bloqueadas por 24 horas. Os vídeos em cache continuarão sendo exibidos durante este período.`
+                }
+              });
+              console.log('Quota exceeded notification sent to admin:', settings.alert_email);
+            }
+          }
+        } catch (emailError) {
+          console.error('Failed to send quota notification:', emailError);
+        }
+        
         return new Response(JSON.stringify({ videos: [], error: 'quotaExceeded' }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
