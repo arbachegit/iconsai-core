@@ -14,47 +14,11 @@ import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import { useYouTubeAutoPreload } from "@/hooks/useYouTubeAutoPreload";
 
-const SCROLL_POSITION_KEY = "knowyou_scroll_position";
-
 const Index = () => {
   const { t, i18n } = useTranslation();
   
   // Auto-preload YouTube videos in background when cache expires
   useYouTubeAutoPreload();
-  
-  // Restore scroll position on mount - only if not at top
-  useEffect(() => {
-    const savedPosition = localStorage.getItem(SCROLL_POSITION_KEY);
-    if (savedPosition && parseInt(savedPosition, 10) > 0) {
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        window.scrollTo({
-          top: parseInt(savedPosition, 10),
-          behavior: "instant"
-        });
-      });
-    }
-
-    // Save scroll position only when leaving page (much more efficient)
-    const saveScrollPosition = () => {
-      // Only save if scrolled significantly (prevent saving near-top positions)
-      if (window.scrollY > 100) {
-        localStorage.setItem(SCROLL_POSITION_KEY, window.scrollY.toString());
-      } else {
-        localStorage.removeItem(SCROLL_POSITION_KEY);
-      }
-    };
-
-    window.addEventListener("beforeunload", saveScrollPosition);
-    window.addEventListener("pagehide", saveScrollPosition);
-    
-    return () => {
-      window.removeEventListener("beforeunload", saveScrollPosition);
-      window.removeEventListener("pagehide", saveScrollPosition);
-      // Save on unmount as well
-      saveScrollPosition();
-    };
-  }, []);
   
   return <div className="min-h-screen bg-background">
       <Header />
