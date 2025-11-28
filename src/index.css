@@ -7,6 +7,13 @@ All colors MUST be HSL.
 */
 
 @layer base {
+  /* Prevent horizontal overflow and layout shifts */
+  html,
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
   :root {
     --background: 225 71% 8%;
     --foreground: 220 17% 93%;

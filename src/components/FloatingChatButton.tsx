@@ -17,36 +17,28 @@ export const FloatingChatButton = () => {
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* Container with overflow-hidden to prevent layout expansion */}
+      <div className="fixed bottom-6 right-6 z-50 overflow-hidden" style={{ contain: 'layout' }}>
         <Button
           onClick={() => setIsOpen(true)}
           size="icon"
-          className="relative w-20 h-20 rounded-full bg-gradient-to-br from-primary via-secondary to-accent shadow-2xl hover:shadow-primary/50 transition-all duration-300 group overflow-visible"
+          className="relative w-20 h-20 rounded-full bg-gradient-to-br from-primary via-secondary to-accent shadow-2xl hover:shadow-primary/50 transition-all duration-300 group"
           aria-label={t('floatingButton.tooltip')}
         >
-          {/* Glow rings */}
+          {/* Glow rings - contained within parent */}
           <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
           <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 via-secondary/30 to-accent/30 blur-xl" />
           
           {/* Icon */}
           <MessageCircle className="w-10 h-10 relative z-10 text-primary-foreground" />
           
-          {/* Green pulsating dot with frequency waves */}
-          <div className="absolute -top-2 -right-2 z-20">
-            <div className="relative w-8 h-8 flex items-center justify-center">
-              {/* Frequency wave layers - emanating outward with increasing sizes */}
-              <div className="absolute w-8 h-8 rounded-full bg-green-400/50 animate-ping" 
-                   style={{ animationDuration: '1.5s' }} />
-              <div className="absolute w-10 h-10 -top-1 -left-1 rounded-full bg-green-400/40 animate-ping" 
-                   style={{ animationDuration: '2s', animationDelay: '0.3s' }} />
-              <div className="absolute w-12 h-12 -top-2 -left-2 rounded-full bg-green-400/30 animate-ping" 
-                   style={{ animationDuration: '2.5s', animationDelay: '0.6s' }} />
-              <div className="absolute w-14 h-14 -top-3 -left-3 rounded-full bg-green-400/20 animate-ping" 
-                   style={{ animationDuration: '3s', animationDelay: '0.9s' }} />
-              
-              {/* Core pulsating green circle - solid center */}
-              <div className="w-4 h-4 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/60 border-2 border-green-400" />
-            </div>
+          {/* Green pulsating dot with frequency waves - positioned within button bounds */}
+          <div className="absolute -top-1 -right-1 z-20 w-6 h-6 flex items-center justify-center">
+            {/* Core pulsating green circle */}
+            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/60 border-2 border-green-400" />
+            {/* Single subtle wave */}
+            <div className="absolute w-6 h-6 rounded-full bg-green-400/30 animate-ping" 
+                 style={{ animationDuration: '2s' }} />
           </div>
         </Button>
       </div>

@@ -65,6 +65,8 @@ export default function ChatStudy() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const [audioStates, setAudioStates] = useState<{[key: number]: { isPlaying: boolean; currentTime: number; duration: number }}>({});
+  const isInitialMount = useRef(true);
+  const previousMessagesLength = useRef(messages.length);
 
   // Rotação de sugestões a cada 10 segundos
   useEffect(() => {
@@ -79,11 +81,21 @@ export default function ChatStudy() {
     return () => clearInterval(interval);
   }, [isImageMode]);
 
-  // Auto-scroll to latest message
+  // Auto-scroll to latest message - only for NEW messages, not initial load
   useEffect(() => {
-    if (messagesEndRef.current) {
+    // Skip scroll on initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      previousMessagesLength.current = messages.length;
+      return;
+    }
+    
+    // Only scroll if messages actually increased (new message sent)
+    if (messages.length > previousMessagesLength.current && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
+    
+    previousMessagesLength.current = messages.length;
   }, [messages, isLoading]);
 
   const handleSubmit = (e: React.FormEvent) => {
