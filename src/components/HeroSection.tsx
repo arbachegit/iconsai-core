@@ -220,7 +220,7 @@ const HeroSection = () => {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="relative border-primary/50 hover:bg-primary/10 bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group"
+                    className="relative border-primary/50 hover:bg-primary/10 hover:text-white bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group"
                     onClick={() => setIsHistoryOpen(true)}
                   >
                     <span className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-accent opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
