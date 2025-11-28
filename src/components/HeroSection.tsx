@@ -199,7 +199,7 @@ const HeroSection = () => {
                 <TooltipTrigger asChild>
                   <Button
                     size="lg"
-                    className="bg-gradient-primary hover:[background-image:linear-gradient(to_right,hsl(191_100%_50%/0.1),hsl(270_64%_58%/0.1),hsl(150_100%_50%/0.1))] hover:border hover:border-primary/50 transition-all duration-300 glow-effect hover:shadow-none group"
+                    className="bg-gradient-primary hover:!bg-transparent hover:![background-image:linear-gradient(to_right,hsl(191_100%_50%/0.1),hsl(270_64%_58%/0.1),hsl(150_100%_50%/0.1))] hover:border hover:border-primary/50 transition-all duration-300 glow-effect hover:!shadow-none group"
                     onClick={() =>
                       document.querySelector("#knowyou")?.scrollIntoView({ behavior: "smooth" })
                     }
