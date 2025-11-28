@@ -208,7 +208,7 @@ const HeroSection = () => {
                     <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-[200px] bg-background/95 border-primary/30 text-center">
+                <TooltipContent className="max-w-[200px] bg-background/95 border-primary/30 text-center duration-300">
                   <p>{t("hero.ctaHealthTooltip")}</p>
                 </TooltipContent>
               </Tooltip>
@@ -231,7 +231,7 @@ const HeroSection = () => {
                     </span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-[220px] bg-background/95 border-primary/30 text-center">
+                <TooltipContent className="max-w-[220px] bg-background/95 border-primary/30 text-center duration-300">
                   <p>{t("hero.ctaHistoryTooltip")}</p>
                 </TooltipContent>
               </Tooltip>
