@@ -12,11 +12,15 @@ import { FloatingChatButton } from "@/components/FloatingChatButton";
 import { ScrollToTopButton } from "@/components/ScrollToTopButton";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
+import { useYouTubeAutoPreload } from "@/hooks/useYouTubeAutoPreload";
 
 const SCROLL_POSITION_KEY = "knowyou_scroll_position";
 
 const Index = () => {
   const { t, i18n } = useTranslation();
+  
+  // Auto-preload YouTube videos in background when cache expires
+  useYouTubeAutoPreload();
   
   // Restore scroll position on mount
   useEffect(() => {
