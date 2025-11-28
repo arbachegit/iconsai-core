@@ -209,7 +209,7 @@ const HeroSection = () => {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Navegar até a seção interativa do KnowYOU para conversar com o assistente de saúde</p>
+                  <p>{t("hero.ctaHealthTooltip")}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -232,7 +232,7 @@ const HeroSection = () => {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Abrir linha do tempo interativa mostrando a evolução da Inteligência Artificial desde 1950</p>
+                  <p>{t("hero.ctaHistoryTooltip")}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
