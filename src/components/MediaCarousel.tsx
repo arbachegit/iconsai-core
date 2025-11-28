@@ -36,11 +36,77 @@ const categories = [
   { id: 'innovation', label: 'Inovação', query: 'Innovation' },
 ];
 
+// Cache keys and TTLs
+const QUOTA_EXCEEDED_KEY = 'youtube_quota_exceeded';
+const VIDEOS_CACHE_KEY = 'youtube_videos_cache';
+const QUOTA_EXCEEDED_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const VIDEOS_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
+
+// Helper to get cached videos
+const getCachedVideos = (category: string): YouTubeVideo[] | null => {
+  try {
+    const cached = localStorage.getItem(`${VIDEOS_CACHE_KEY}_${category}`);
+    if (cached) {
+      const { videos, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < VIDEOS_CACHE_TTL) {
+        console.log(`Using cached videos for category: ${category}`);
+        return videos;
+      }
+      localStorage.removeItem(`${VIDEOS_CACHE_KEY}_${category}`);
+    }
+  } catch (error) {
+    console.error('Error reading video cache:', error);
+  }
+  return null;
+};
+
+// Helper to cache videos
+const cacheVideos = (category: string, videos: YouTubeVideo[]) => {
+  try {
+    localStorage.setItem(`${VIDEOS_CACHE_KEY}_${category}`, JSON.stringify({
+      videos,
+      timestamp: Date.now()
+    }));
+  } catch (error) {
+    console.error('Error caching videos:', error);
+  }
+};
+
+// Helper to check quota exceeded status
+const getQuotaExceededStatus = (): boolean => {
+  try {
+    const cached = localStorage.getItem(QUOTA_EXCEEDED_KEY);
+    if (cached) {
+      const { exceeded, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < QUOTA_EXCEEDED_TTL) {
+        console.log('Quota exceeded status from cache: blocked for 24h');
+        return exceeded;
+      }
+      localStorage.removeItem(QUOTA_EXCEEDED_KEY);
+    }
+  } catch (error) {
+    console.error('Error reading quota status:', error);
+  }
+  return false;
+};
+
+// Helper to set quota exceeded
+const setQuotaExceededStatus = (exceeded: boolean) => {
+  try {
+    localStorage.setItem(QUOTA_EXCEEDED_KEY, JSON.stringify({
+      exceeded,
+      timestamp: Date.now()
+    }));
+  } catch (error) {
+    console.error('Error setting quota status:', error);
+  }
+};
+
 export const MediaCarousel = () => {
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [quotaExceeded, setQuotaExceeded] = useState(() => getQuotaExceededStatus());
   const { toast } = useToast();
 
   useEffect(() => {
@@ -50,11 +116,22 @@ export const MediaCarousel = () => {
   }, [selectedCategory, quotaExceeded]);
 
   const fetchYouTubeVideos = async () => {
+    // Check cache first
+    const category = categories.find(c => c.id === selectedCategory);
+    const categoryQuery = category?.query || '';
+    
+    const cachedVideos = getCachedVideos(categoryQuery);
+    if (cachedVideos) {
+      setVideos(cachedVideos);
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     try {
-      const category = categories.find(c => c.id === selectedCategory);
+      console.log(`Fetching fresh videos for category: ${categoryQuery}`);
       const { data, error } = await supabase.functions.invoke('youtube-videos', {
-        body: { category: category?.query || '' }
+        body: { category: categoryQuery }
       });
       
       if (error) {
@@ -65,9 +142,10 @@ export const MediaCarousel = () => {
         const message: string = data.error as string;
         if (message.toLowerCase().includes('quota') || message.toLowerCase().includes('quotaexceeded')) {
           setQuotaExceeded(true);
+          setQuotaExceededStatus(true);
           toast({
             title: "Limite da API do YouTube atingido",
-            description: "O YouTube temporariamente bloqueou novas requisições. Estamos exibindo apenas o link do canal.",
+            description: "O YouTube temporariamente bloqueou novas requisições. Cache será usado por 24 horas.",
             variant: "destructive",
           });
           setVideos([]);
@@ -77,15 +155,18 @@ export const MediaCarousel = () => {
       
       if (data?.videos) {
         setVideos(data.videos);
+        cacheVideos(categoryQuery, data.videos);
+        console.log(`Cached ${data.videos.length} videos for category: ${categoryQuery}`);
       }
     } catch (error: any) {
       console.error('Error fetching YouTube videos:', error);
       const message = typeof error?.message === 'string' ? error.message : '';
       if (message.toLowerCase().includes('quota') || message.toLowerCase().includes('quotaexceeded')) {
         setQuotaExceeded(true);
+        setQuotaExceededStatus(true);
         toast({
           title: "Limite da API do YouTube atingido",
-          description: "O YouTube temporariamente bloqueou novas requisições. Estamos exibindo apenas o link do canal.",
+          description: "O YouTube temporariamente bloqueou novas requisições. Cache será usado por 24 horas.",
           variant: "destructive",
         });
       } else {
