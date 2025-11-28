@@ -17,7 +17,9 @@ serve(async (req) => {
       throw new Error('YOUTUBE_API_KEY not configured');
     }
 
-    const channelHandle = '@KnowRISKio';
+    // Hardcoded channel ID for @KnowRISKio (UC prefix means channel, UU prefix is uploads playlist)
+    const channelId = 'UCzXJXLFv5_ybFQqr3TZkqJw';
+    const uploadsPlaylistId = 'UUzXJXLFv5_ybFQqr3TZkqJw'; // UU prefix for uploads playlist
     
     // Parse category from request body or query params
     let category = '';
@@ -29,44 +31,11 @@ serve(async (req) => {
       category = url.searchParams.get('category') || '';
     }
     
-    console.log(`Fetching YouTube videos for ${channelHandle}, category: "${category}"`);
+    console.log(`Fetching YouTube videos for @KnowRISKio, category: "${category}"`);
     
-    // Use channel handle to search for the channel ID
-    const searchResponse = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(channelHandle)}&key=${YOUTUBE_API_KEY}`
-    );
-    
-    if (!searchResponse.ok) {
-      const errorText = await searchResponse.text();
-      console.error('YouTube API channel search error:', errorText);
-      if (errorText.includes('quotaExceeded')) {
-        return new Response(JSON.stringify({ videos: [], error: 'quotaExceeded' }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      throw new Error(`YouTube API error: ${searchResponse.status} - ${errorText}`);
-    }
-    
-    const searchData = await searchResponse.json();
-    console.log('Channel search response:', JSON.stringify(searchData, null, 2));
-    
-    if (!searchData.items || searchData.items.length === 0) {
-      console.error('Channel not found for handle:', channelHandle);
-      throw new Error('Channel not found');
-    }
-    
-    const channelId = searchData.items[0].snippet.channelId || searchData.items[0].id?.channelId;
-    console.log('Found channel ID:', channelId);
-    
-    if (!channelId) {
-      throw new Error('Could not extract channel ID');
-    }
-    
-    // Get latest videos from the channel
-    const searchQuery = category ? `&q=${encodeURIComponent(category)}` : '';
-    const videosUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=12${searchQuery}&key=${YOUTUBE_API_KEY}`;
-    console.log('Fetching videos from:', videosUrl.replace(YOUTUBE_API_KEY, 'API_KEY'));
+    // Use playlistItems API instead of search (1 quota unit vs 100!)
+    const videosUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=12&key=${YOUTUBE_API_KEY}`;
+    console.log('Fetching videos from uploads playlist');
     
     const videosResponse = await fetch(videosUrl);
     
@@ -85,7 +54,25 @@ serve(async (req) => {
     const videosData = await videosResponse.json();
     console.log('Successfully fetched YouTube videos:', videosData.items?.length || 0);
     
-    return new Response(JSON.stringify({ videos: videosData.items || [] }), {
+    // Transform playlistItems format to match search format for compatibility
+    const transformedVideos = (videosData.items || []).map((item: any) => ({
+      id: {
+        videoId: item.snippet.resourceId?.videoId || item.id
+      },
+      snippet: item.snippet
+    }));
+    
+    // Filter by category if specified (client-side filtering since playlistItems doesn't support search)
+    const filteredVideos = category 
+      ? transformedVideos.filter((video: any) => {
+          const title = video.snippet.title?.toLowerCase() || '';
+          const description = video.snippet.description?.toLowerCase() || '';
+          const searchTerm = category.toLowerCase();
+          return title.includes(searchTerm) || description.includes(searchTerm);
+        })
+      : transformedVideos;
+    
+    return new Response(JSON.stringify({ videos: filteredVideos }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
     
