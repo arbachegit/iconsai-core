@@ -11,6 +11,7 @@ import {
   MessagesSquare,
   Image,
   Youtube,
+  BookOpen,
 } from "lucide-react";
 
 type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube";
@@ -68,6 +69,15 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       </nav>
 
       <div className="p-4 border-t border-primary/20 space-y-2">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3"
+          onClick={() => navigate("/docs")}
+        >
+          <BookOpen className="w-4 h-4" />
+          Documentação
+        </Button>
+
         <Button
           variant="ghost"
           className="w-full justify-start gap-3"
