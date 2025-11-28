@@ -3,6 +3,12 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AIHistoryPanel } from "./AIHistoryPanel";
 import { useTranslation } from "react-i18next";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const HeroSection = () => {
   const { t } = useTranslation();
@@ -188,29 +194,48 @@ const HeroSection = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <Button
-              size="lg"
-              className="bg-gradient-primary hover:opacity-90 transition-opacity glow-effect group"
-              onClick={() =>
-                document.querySelector("#knowyou")?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              {t("hero.ctaHealth")}
-              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="relative border-primary/50 hover:bg-primary/10 bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group"
-              onClick={() => setIsHistoryOpen(true)}
-            >
-              <span className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-accent opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
-              <span className="relative flex items-center gap-2">
-                <Sparkles className="w-4 h-4 animate-pulse" />
-                {t("hero.ctaHistory")}
-                <ArrowRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </span>
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="lg"
+                    className="bg-gradient-primary hover:opacity-90 transition-opacity glow-effect group"
+                    onClick={() =>
+                      document.querySelector("#knowyou")?.scrollIntoView({ behavior: "smooth" })
+                    }
+                  >
+                    {t("hero.ctaHealth")}
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Navegar até a seção interativa do KnowYOU para conversar com o assistente de saúde</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="relative border-primary/50 hover:bg-primary/10 bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group"
+                    onClick={() => setIsHistoryOpen(true)}
+                  >
+                    <span className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-accent opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+                    <span className="relative flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 animate-pulse" />
+                      {t("hero.ctaHistory")}
+                      <ArrowRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Abrir linha do tempo interativa mostrando a evolução da Inteligência Artificial desde 1950</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           {/* Citação Introdutória */}
