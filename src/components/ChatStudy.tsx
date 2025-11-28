@@ -7,6 +7,7 @@ import { Send, Loader2, ImagePlus, Mic, Square } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
+import { TypingIndicator } from "./TypingIndicator";
 import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 import { useTranslation } from "react-i18next";
 
@@ -360,11 +361,9 @@ export default function ChatStudy() {
             </div>
           ))}
           
-          {isLoading && (
+          {(isLoading || isGeneratingAudio || isGeneratingImage) && (
             <div className="flex justify-start">
-              <div className="bg-muted rounded-lg p-3">
-                <Loader2 className="w-4 h-4 animate-spin" />
-              </div>
+              <TypingIndicator />
             </div>
           )}
           <div ref={messagesEndRef} />
