@@ -43,6 +43,16 @@ serve(async (req) => {
     if (!videosResponse.ok) {
       const errorText = await videosResponse.text();
       console.error('YouTube API videos error:', errorText);
+      
+      // Handle 404 - playlist not found (channel doesn't exist or ID is wrong)
+      if (videosResponse.status === 404) {
+        console.warn('Playlist not found - returning empty videos array. Please configure correct channel ID.');
+        return new Response(JSON.stringify({ videos: [], error: 'playlistNotFound' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
       if (errorText.includes('quotaExceeded')) {
         // Send email notification to admin about quota exceeded
         try {
