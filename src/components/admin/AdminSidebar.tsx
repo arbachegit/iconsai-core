@@ -14,7 +14,7 @@ import {
   BookOpen,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -34,6 +34,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
     { id: "chat" as TabType, label: "Chat Config", icon: MessageSquare },
     { id: "tooltips" as TabType, label: "Tooltips", icon: FileText },
     { id: "conversations" as TabType, label: "Conversas", icon: MessagesSquare },
+    { id: "documents" as TabType, label: "Documentos", icon: FileText },
     { id: "images" as TabType, label: "Imagens", icon: Image },
     { id: "youtube" as TabType, label: "YouTube", icon: Youtube },
     { id: "gmail" as TabType, label: "Gmail", icon: Mail },
