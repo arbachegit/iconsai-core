@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { 
   FileText, Download, Loader2, Menu, Sun, Moon, Database,
-  Server, Code, ArrowLeft, Maximize2, Table, GitBranch, Lock
+  Server, Code, ArrowLeft, Maximize2, Table, GitBranch, Lock,
+  Search, FileCode, Globe, History, Shield
 } from 'lucide-react';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
 import { MermaidZoomModal } from '@/components/MermaidZoomModal';
@@ -24,13 +30,41 @@ const sections = [
   { id: 'database', title: '🗄️ Database', icon: Database },
   { id: 'backend', title: '⚡ Backend', icon: Server },
   { id: 'frontend', title: '🖥️ Frontend', icon: Code },
+  { id: 'changelog', title: '📋 Changelog', icon: History },
+];
+
+// Searchable items for filtering
+interface SearchableItem {
+  id: string;
+  title: string;
+  section: string;
+  type: 'table' | 'function' | 'component';
+  keywords: string[];
+}
+
+const searchableItems: SearchableItem[] = [
+  { id: 'documents', title: 'documents', section: 'database', type: 'table', keywords: ['pdf', 'rag', 'status', 'chunks', 'target_chat'] },
+  { id: 'document_chunks', title: 'document_chunks', section: 'database', type: 'table', keywords: ['embeddings', 'vector', 'pgvector', 'search'] },
+  { id: 'document_tags', title: 'document_tags', section: 'database', type: 'table', keywords: ['tags', 'parent', 'child', 'hierarchy'] },
+  { id: 'process-bulk-document', title: 'process-bulk-document', section: 'backend', type: 'function', keywords: ['bulk', 'pdf', 'llm', 'categorização', 'auto'] },
+  { id: 'chat', title: 'chat', section: 'backend', type: 'function', keywords: ['chat', 'rag', 'health', 'saúde', 'streaming'] },
+  { id: 'chat-study', title: 'chat-study', section: 'backend', type: 'function', keywords: ['study', 'estudo', 'rag', 'knowrisk'] },
+  { id: 'search-documents', title: 'search-documents', section: 'backend', type: 'function', keywords: ['search', 'busca', 'semântica', 'embeddings', 'pgvector'] },
+  { id: 'text-to-speech', title: 'text-to-speech', section: 'backend', type: 'function', keywords: ['tts', 'audio', 'elevenlabs', 'speech'] },
+  { id: 'voice-to-text', title: 'voice-to-text', section: 'backend', type: 'function', keywords: ['stt', 'whisper', 'transcription'] },
+  { id: 'generate-image', title: 'generate-image', section: 'backend', type: 'function', keywords: ['image', 'gemini', 'nano', 'health'] },
+  { id: 'DocumentsTab', title: 'DocumentsTab', section: 'frontend', type: 'component', keywords: ['upload', 'pdf', 'admin', 'documents'] },
+  { id: 'ChatKnowYOU', title: 'ChatKnowYOU', section: 'frontend', type: 'component', keywords: ['chat', 'health', 'modal', 'rag'] },
 ];
 
 const Documentation = () => {
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isExporting, setIsExporting] = useState(false);
   const [activeSection, setActiveSection] = useState('menu-principal');
   const [readProgress, setReadProgress] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchableItem[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('docs-theme');
     return saved !== 'light';
@@ -47,6 +81,20 @@ const Documentation = () => {
     title: '',
   });
 
+  // Fetch changelog versions
+  const { data: versions } = useQuery({
+    queryKey: ["documentation-versions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("documentation_versions")
+        .select("*")
+        .order("release_date", { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Persist theme preference
   useEffect(() => {
     localStorage.setItem('docs-theme', isDarkMode ? 'dark' : 'light');
@@ -58,6 +106,21 @@ const Documentation = () => {
   // Open zoom modal
   const openZoomModal = (chart: string, id: string, title: string) => {
     setZoomModal({ open: true, chart, id, title });
+  };
+
+  // Handle search
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    const results = searchableItems.filter(item =>
+      item.title.toLowerCase().includes(query.toLowerCase()) ||
+      item.keywords.some(k => k.toLowerCase().includes(query.toLowerCase()))
+    );
+    setSearchResults(results);
   };
 
   // Smooth scroll to section
@@ -170,6 +233,75 @@ const Documentation = () => {
     }
   };
 
+  const exportToMarkdown = () => {
+    const markdown = `# Documentação Técnica KnowRisk\n\n## 🗄️ Database\n\n### Extensões\n- **pgvector**: Busca semântica via embeddings\n\n### Tabelas\n| Tabela | Descrição |\n|--------|-----------|\n| documents | PDFs processados pelo RAG |\n| document_chunks | Chunks vetorizados |\n\n## ⚡ Backend\n\n### Edge Functions\n\n#### process-bulk-document\n- **Método**: POST\n- **JWT**: verify_jwt = false\n\n*Documentação completa gerada em ${new Date().toLocaleDateString()}*`;
+    
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'KnowRisk-Documentacao.md';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToHTML = () => {
+    const element = document.getElementById('documentation-content');
+    if (!element) return;
+    
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentação Técnica KnowRisk</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+    h1, h2, h3 { color: #8B5CF6; }
+    table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #8B5CF6; color: white; }
+  </style>
+</head>
+<body>
+  ${element.innerHTML}
+</body>
+</html>`;
+    
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'KnowRisk-Documentacao.html';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToJSON = () => {
+    const data = {
+      version: "1.0.0",
+      exportedAt: new Date().toISOString(),
+      database: {
+        extensions: [{ name: "pgvector", type: "VECTOR(1536)" }],
+        tables: ["documents", "document_chunks", "document_tags"],
+      },
+      backend: {
+        edgeFunctions: ["process-bulk-document", "chat", "chat-study", "search-documents"],
+      },
+      frontend: {
+        components: ["DocumentsTab", "ChatKnowYOU", "AIHistoryPanel"],
+      }
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'KnowRisk-Documentacao.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Backend flow diagram
   const backendFlowDiagram = `flowchart TD
     subgraph Frontend["🖥️ Frontend"]
@@ -205,6 +337,49 @@ const Documentation = () => {
       <div className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
         <FileText className="h-4 w-4" />
         Navegação
+      </div>
+      
+      {/* Search Bar */}
+      <div className="mb-3 pb-3 border-b border-border">
+        <Input
+          type="text"
+          placeholder="Buscar tabelas ou funções..."
+          value={searchQuery}
+          onChange={(e) => handleSearch(e.target.value)}
+          className="w-full text-sm"
+        />
+        {searchResults.length > 0 && (
+          <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+            {searchResults.map((result) => (
+              <button
+                key={result.id}
+                onClick={() => {
+                  scrollToSection(result.section);
+                  setSearchQuery('');
+                  setSearchResults([]);
+                }}
+                className="w-full text-left px-2 py-1 rounded text-xs hover:bg-muted flex items-center gap-2"
+              >
+                <Search className="h-3 w-3" />
+                <span className="truncate">{result.title}</span>
+                <Badge variant="outline" className="text-xs ml-auto">{result.type}</Badge>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Admin Link */}
+      <div className="mb-3 pb-3 border-b border-border">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate('/admin')}
+          className="w-full gap-2 no-print"
+        >
+          <Shield className="h-4 w-4" />
+          Voltar ao Admin
+        </Button>
       </div>
       
       <div className="mb-3 pb-3 border-b border-border">
@@ -248,25 +423,48 @@ const Documentation = () => {
           );
         })}
       </nav>
-      <div className="mt-6 pt-4 border-t border-border">
-        <Button
-          onClick={exportToPDF}
-          disabled={isExporting}
-          size="sm"
-          className="w-full gap-2 no-print"
-        >
-          {isExporting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Gerando...
-            </>
-          ) : (
-            <>
-              <Download className="h-4 w-4" />
-              Exportar PDF
-            </>
-          )}
-        </Button>
+      
+      {/* Export Dropdown */}
+      <div className="mt-6 pt-4 border-t border-border space-y-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              disabled={isExporting}
+              size="sm"
+              className="w-full gap-2 no-print"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Exportando...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Exportar
+                </>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem onClick={exportToPDF}>
+              <FileText className="mr-2 h-4 w-4" />
+              <span>PDF</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportToMarkdown}>
+              <FileCode className="mr-2 h-4 w-4" />
+              <span>Markdown</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportToHTML}>
+              <Globe className="mr-2 h-4 w-4" />
+              <span>HTML</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportToJSON}>
+              <Code className="mr-2 h-4 w-4" />
+              <span>JSON</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </aside>
   );
@@ -1025,6 +1223,83 @@ await supabase.functions.invoke("process-bulk-document", {
                   <p className="text-xs text-muted-foreground">Fetch conteúdo tooltips com cache e validação</p>
                 </div>
               </div>
+            </Card>
+          </section>
+
+          {/* ===== CHANGELOG ===== */}
+          <section id="changelog" className="scroll-mt-20 space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold flex items-center gap-3">
+                <History className="h-8 w-8 text-primary" />
+                📋 Changelog
+              </h2>
+            </div>
+
+            <BackToIndex />
+
+            <Card className="p-6">
+              <h3 className="text-2xl font-semibold mb-6 flex items-center gap-2">
+                <History className="h-6 w-6 text-secondary" />
+                Histórico de Versões
+              </h3>
+              
+              {versions && versions.length > 0 ? (
+                <div className="space-y-6">
+                  {versions.map((version) => (
+                    <div key={version.id} className="border-l-4 border-primary pl-6 pb-6">
+                      <div className="flex items-center gap-3 mb-3">
+                        <h4 className="text-xl font-bold">Versão {version.version}</h4>
+                        <Badge variant="outline">
+                          {new Date(version.release_date).toLocaleDateString('pt-BR')}
+                        </Badge>
+                        {version.author && (
+                          <Badge variant="secondary">{version.author}</Badge>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        {(version.changes as any[]).map((change: any, idx: number) => {
+                          const typeColors = {
+                            added: 'bg-green-500/10 text-green-500 border-green-500',
+                            changed: 'bg-yellow-500/10 text-yellow-500 border-yellow-500',
+                            fixed: 'bg-blue-500/10 text-blue-500 border-blue-500',
+                            removed: 'bg-red-500/10 text-red-500 border-red-500',
+                          };
+                          
+                          const typeLabels = {
+                            added: 'Adicionado',
+                            changed: 'Modificado',
+                            fixed: 'Corrigido',
+                            removed: 'Removido',
+                          };
+                          
+                          return (
+                            <div key={idx} className="flex items-start gap-3">
+                              <Badge 
+                                variant="outline" 
+                                className={cn("mt-0.5", typeColors[change.type as keyof typeof typeColors])}
+                              >
+                                {typeLabels[change.type as keyof typeof typeLabels]}
+                              </Badge>
+                              <div className="flex-1">
+                                <span className="text-xs text-muted-foreground uppercase font-semibold">
+                                  {change.component}
+                                </span>
+                                <p className="text-sm">{change.description}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                  <p>Carregando histórico...</p>
+                </div>
+              )}
             </Card>
           </section>
         </div>

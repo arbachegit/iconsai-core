@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -139,6 +140,50 @@ export const DocumentsTab = () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast.success("Documento deletado");
       setSelectedDoc(null);
+    }
+  });
+
+  // Reprocess failed document
+  const reprocessMutation = useMutation({
+    mutationFn: async (docId: string) => {
+      // 1. Fetch document
+      const { data: doc, error: fetchError } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("id", docId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // 2. Clear old data
+      await supabase.from("document_chunks").delete().eq("document_id", docId);
+      await supabase.from("document_tags").delete().eq("document_id", docId);
+      
+      // 3. Reset status
+      await supabase
+        .from("documents")
+        .update({ status: "pending", error_message: null })
+        .eq("id", docId);
+      
+      // 4. Reprocess
+      const { error: processError } = await supabase.functions.invoke("process-bulk-document", {
+        body: {
+          documents_data: [{
+            document_id: docId,
+            full_text: doc.original_text,
+            title: doc.filename
+          }]
+        }
+      });
+      
+      if (processError) throw processError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      toast.success("Documento reprocessado com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao reprocessar: ${error.message}`);
     }
   });
 
@@ -289,16 +334,31 @@ export const DocumentsTab = () => {
                   <TableCell>{doc.total_chunks}</TableCell>
                   <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteMutation.mutate(doc.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      {doc.status === "failed" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            reprocessMutation.mutate(doc.id);
+                          }}
+                          disabled={reprocessMutation.isPending}
+                        >
+                          <RefreshCw className={cn("h-4 w-4", reprocessMutation.isPending && "animate-spin")} />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteMutation.mutate(doc.id);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
