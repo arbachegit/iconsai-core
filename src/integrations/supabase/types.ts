@@ -323,6 +323,7 @@ export type Database = {
           error_message: string | null
           filename: string
           id: string
+          implementation_status: string | null
           is_readable: boolean | null
           original_text: string
           readability_score: number | null
@@ -339,6 +340,7 @@ export type Database = {
           error_message?: string | null
           filename: string
           id?: string
+          implementation_status?: string | null
           is_readable?: boolean | null
           original_text: string
           readability_score?: number | null
@@ -355,6 +357,7 @@ export type Database = {
           error_message?: string | null
           filename?: string
           id?: string
+          implementation_status?: string | null
           is_readable?: boolean | null
           original_text?: string
           readability_score?: number | null

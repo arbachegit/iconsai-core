@@ -14,8 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export const DocumentsTab = () => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [targetChat, setTargetChat] = useState<"health" | "study" | "general">("health");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const queryClient = useQueryClient();
@@ -52,63 +51,66 @@ export const DocumentsTab = () => {
     return fullText;
   };
 
-  // Upload and process document
+  // Upload and process documents (bulk)
   const uploadMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedFile) throw new Error("Nenhum arquivo selecionado");
+      if (selectedFiles.length === 0) throw new Error("Nenhum arquivo selecionado");
       
       setUploading(true);
       
       try {
-        // Extract text from PDF
-        console.log("Extraindo texto do PDF...");
-        const extractedText = await extractTextFromPDF(selectedFile);
+        const documentsData: Array<{document_id: string; full_text: string; title: string}> = [];
         
-        if (extractedText.length < 100) {
-          throw new Error("Texto extraído muito curto (mínimo 100 caracteres)");
+        // Extract text from all PDFs and create document records
+        for (const file of selectedFiles) {
+          console.log(`Extraindo texto de ${file.name}...`);
+          const extractedText = await extractTextFromPDF(file);
+          
+          if (extractedText.length < 100) {
+            toast.error(`${file.name}: Texto muito curto (mínimo 100 caracteres)`);
+            continue;
+          }
+          
+          // Create document record
+          const { data: documents, error: docError } = await supabase
+            .from("documents")
+            .insert([{
+              filename: file.name,
+              original_text: extractedText,
+              text_preview: extractedText.substring(0, 500),
+              status: "pending",
+              target_chat: "general" // Será atualizado pela auto-categorização
+            }])
+            .select();
+          
+          const document = documents?.[0];
+          
+          if (docError) {
+            toast.error(`${file.name}: Erro ao criar registro`);
+            continue;
+          }
+          
+          documentsData.push({
+            document_id: document.id,
+            full_text: extractedText,
+            title: file.name
+          });
         }
         
-        console.log(`Texto extraído: ${extractedText.length} caracteres`);
+        if (documentsData.length === 0) {
+          throw new Error("Nenhum documento válido para processar");
+        }
         
-        // Create document record
-        const { data: document, error: docError } = await supabase
-          .from("documents")
-          .insert({
-            filename: selectedFile.name,
-            original_text: extractedText,
-            text_preview: extractedText.substring(0, 500),
-            target_chat: targetChat,
-            status: "pending"
-          })
-          .select()
-          .single();
+        // Process all documents in bulk
+        console.log(`Processando ${documentsData.length} documentos em lote...`);
+        const { error: processError } = await supabase.functions.invoke("process-bulk-document", {
+          body: { documents_data: documentsData }
+        });
         
-        if (docError) throw docError;
+        if (processError) throw processError;
         
-        console.log("Documento criado:", document.id);
-        
-        // Process document in background
-        const processPromises = [
-          supabase.functions.invoke("process-document-with-text", {
-            body: { 
-              documentId: document.id, 
-              text: extractedText,
-              filename: selectedFile.name,
-              targetChat: targetChat
-            }
-          }),
-          supabase.functions.invoke("suggest-document-tags", {
-            body: { documentId: document.id, text: extractedText }
-          }),
-          supabase.functions.invoke("generate-document-summary", {
-            body: { documentId: document.id, text: extractedText }
-          })
-        ];
-        
-        await Promise.all(processPromises);
-        
-        toast.success("Documento enviado com sucesso!");
-        setSelectedFile(null);
+        toast.success(`${documentsData.length} documento(s) processado(s) com sucesso!`);
+        setSelectedFiles([]);
         
       } finally {
         setUploading(false);
@@ -157,11 +159,13 @@ export const DocumentsTab = () => {
   });
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type === "application/pdf") {
-      setSelectedFile(file);
+    const files = Array.from(e.target.files || []);
+    const pdfFiles = files.filter(f => f.type === "application/pdf");
+    
+    if (pdfFiles.length === 0) {
+      toast.error("Por favor, selecione arquivo(s) PDF");
     } else {
-      toast.error("Por favor, selecione um arquivo PDF");
+      setSelectedFiles(pdfFiles);
     }
   }, []);
 
@@ -180,55 +184,50 @@ export const DocumentsTab = () => {
       {/* Upload Section */}
       <Card className="p-6">
         <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <label className="block mb-2 text-sm font-medium">Selecionar PDF</label>
-              <input
-                type="file"
-                accept=".pdf"
-                onChange={handleFileSelect}
-                className="block w-full text-sm border rounded-lg cursor-pointer"
-                disabled={uploading}
-              />
-            </div>
-            
-            <div className="w-48">
-              <label className="block mb-2 text-sm font-medium">Chat Alvo</label>
-              <Select value={targetChat} onValueChange={(v: any) => setTargetChat(v)} disabled={uploading}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="health">Saúde</SelectItem>
-                  <SelectItem value="study">Estudo</SelectItem>
-                  <SelectItem value="general">Geral</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <label className="block mb-2 text-sm font-medium">
+              Selecionar PDF(s) - Auto-categorização via IA
+            </label>
+            <input
+              type="file"
+              accept=".pdf"
+              multiple
+              onChange={handleFileSelect}
+              className="block w-full text-sm border rounded-lg cursor-pointer"
+              disabled={uploading}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Os documentos serão automaticamente categorizados em Saúde, Estudo ou Geral
+            </p>
           </div>
 
-          {selectedFile && (
-            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-              <FileText className="h-5 w-5" />
-              <span className="text-sm">{selectedFile.name}</span>
-              <Badge>{(selectedFile.size / 1024).toFixed(2)} KB</Badge>
+          {selectedFiles.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">{selectedFiles.length} arquivo(s) selecionado(s):</p>
+              {selectedFiles.map((file, idx) => (
+                <div key={idx} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                  <FileText className="h-4 w-4" />
+                  <span className="text-sm flex-1">{file.name}</span>
+                  <Badge variant="outline">{(file.size / 1024).toFixed(2)} KB</Badge>
+                </div>
+              ))}
             </div>
           )}
 
           <Button
             onClick={() => uploadMutation.mutate()}
-            disabled={!selectedFile || uploading}
+            disabled={selectedFiles.length === 0 || uploading}
             className="w-full"
           >
             {uploading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processando...
+                Processando {selectedFiles.length} documento(s)...
               </>
             ) : (
               <>
                 <Upload className="mr-2 h-4 w-4" />
-                Enviar e Processar
+                Enviar e Processar em Lote
               </>
             )}
           </Button>
@@ -250,6 +249,7 @@ export const DocumentsTab = () => {
                 <TableHead>Nome</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Chat</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead>Chunks</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Ações</TableHead>
@@ -273,7 +273,18 @@ export const DocumentsTab = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{doc.target_chat}</Badge>
+                    <Badge variant="outline">{doc.target_chat || "pendente"}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {doc.implementation_status && (
+                      <Badge variant={
+                        doc.implementation_status === "ready" ? "default" :
+                        doc.implementation_status === "needs_review" ? "secondary" :
+                        "outline"
+                      }>
+                        {doc.implementation_status}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>{doc.total_chunks}</TableCell>
                   <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
@@ -307,7 +318,19 @@ export const DocumentsTab = () => {
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="text-lg font-semibold">{selectedDoc.filename}</h3>
-                <p className="text-sm text-muted-foreground">
+                <div className="flex gap-2 mt-1">
+                  <Badge variant="outline">{selectedDoc.target_chat || "não categorizado"}</Badge>
+                  {selectedDoc.implementation_status && (
+                    <Badge variant={
+                      selectedDoc.implementation_status === "ready" ? "default" :
+                      selectedDoc.implementation_status === "needs_review" ? "secondary" :
+                      "outline"
+                    }>
+                      {selectedDoc.implementation_status}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
                   {selectedDoc.total_words} palavras • {selectedDoc.total_chunks} chunks
                 </p>
               </div>
@@ -318,7 +341,7 @@ export const DocumentsTab = () => {
 
             {selectedDoc.ai_summary && (
               <div>
-                <h4 className="font-medium mb-2">Resumo</h4>
+                <h4 className="font-medium mb-2">Resumo (Auto-gerado)</h4>
                 <p className="text-sm text-muted-foreground">{selectedDoc.ai_summary}</p>
               </div>
             )}

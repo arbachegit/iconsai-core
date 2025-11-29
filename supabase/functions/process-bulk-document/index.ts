@@ -1,0 +1,265 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+interface DocumentInput {
+  document_id: string;
+  full_text: string;
+  title: string;
+}
+
+// 1. VALIDAÇÃO DE SANIDADE
+function validateTextSanity(text: string): { valid: boolean; reason?: string } {
+  if (!text || text.length < 100) {
+    return { valid: false, reason: "Texto muito curto (mínimo 100 caracteres)" };
+  }
+  
+  const validChars = text.match(/[a-zA-Z0-9\s]/g)?.length || 0;
+  const ratio = validChars / text.length;
+  
+  if (ratio < 0.8) {
+    return { valid: false, reason: "Proporção de caracteres inválida (< 80%)" };
+  }
+  
+  return { valid: true };
+}
+
+// 2. AUTO-CATEGORIZAÇÃO VIA LLM
+async function classifyTargetChat(text: string, apiKey: string): Promise<string> {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: `Você é um classificador de documentos. Analise o texto e classifique em UMA das categorias:
+- HEALTH: Documentos sobre saúde, medicina, hospitais, tratamentos, Hospital Moinhos de Vento
+- STUDY: Documentos sobre KnowRISK, KnowYOU, ACC, tecnologia da empresa
+- GENERAL: Outros documentos
+
+IMPORTANTE: Retorne APENAS a palavra: HEALTH, STUDY ou GENERAL`
+        },
+        { role: "user", content: `Classifique:\n\n${text.substring(0, 3000)}` }
+      ],
+    }),
+  });
+  
+  const data = await response.json();
+  const classification = data.choices[0].message.content.trim().toUpperCase();
+  
+  if (["HEALTH", "STUDY", "GENERAL"].includes(classification)) {
+    return classification.toLowerCase();
+  }
+  return "general";
+}
+
+// 3. ENRIQUECIMENTO DE METADADOS
+async function generateMetadata(text: string, apiKey: string): Promise<{
+  tags: { parent: string; children: string[]; confidence: number }[];
+  summary: string;
+  implementation_status: string;
+}> {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: `Analise o documento e retorne APENAS JSON válido:
+{
+  "tags": [
+    {"parent": "Categoria Pai", "children": ["Filho 1", "Filho 2"], "confidence": 0.85}
+  ],
+  "summary": "Resumo de 150-300 palavras...",
+  "implementation_status": "ready|needs_review|incomplete"
+}`
+        },
+        { role: "user", content: text.substring(0, 5000) }
+      ],
+    }),
+  });
+  
+  const data = await response.json();
+  const content = data.choices[0].message.content
+    .replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  
+  return JSON.parse(content);
+}
+
+// 4. CHUNKING
+function chunkText(text: string, size = 750, overlap = 180): string[] {
+  const words = text.split(/\s+/);
+  const chunks: string[] = [];
+  
+  for (let i = 0; i < words.length; i += (size - overlap)) {
+    const chunkWords = words.slice(i, i + size);
+    chunks.push(chunkWords.join(" "));
+    if (i + size >= words.length) break;
+  }
+  
+  return chunks;
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const results: { document_id: string; status: string; error?: string }[] = [];
+
+  try {
+    const { documents_data } = await req.json() as { documents_data: DocumentInput[] };
+    
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const lovableKey = Deno.env.get("LOVABLE_API_KEY")!;
+    const openAIKey = Deno.env.get("OPENAI_API_KEY")!;
+    
+    for (const doc of documents_data) {
+      try {
+        console.log(`Processing document ${doc.document_id}: ${doc.title}`);
+        
+        // 1. VALIDAÇÃO
+        const validation = validateTextSanity(doc.full_text);
+        if (!validation.valid) {
+          await supabase.from("documents").update({
+            status: "failed",
+            error_message: validation.reason,
+            is_readable: false
+          }).eq("id", doc.document_id);
+          
+          results.push({ document_id: doc.document_id, status: "failed", error: validation.reason });
+          continue;
+        }
+        
+        // Update status to processing
+        await supabase.from("documents").update({ status: "processing" }).eq("id", doc.document_id);
+        
+        // 2. AUTO-CATEGORIZAÇÃO
+        const targetChat = await classifyTargetChat(doc.full_text, lovableKey);
+        console.log(`Document ${doc.document_id} classified as: ${targetChat}`);
+        
+        // 3. ENRIQUECIMENTO
+        const metadata = await generateMetadata(doc.full_text, lovableKey);
+        console.log(`Metadata generated for ${doc.document_id}`);
+        
+        // Save tags
+        for (const tag of metadata.tags) {
+          const { data: parentTag } = await supabase.from("document_tags").insert({
+            document_id: doc.document_id,
+            tag_name: tag.parent,
+            tag_type: "parent",
+            confidence: tag.confidence,
+            source: "ai"
+          }).select().single();
+          
+          if (parentTag) {
+            for (const child of tag.children) {
+              await supabase.from("document_tags").insert({
+                document_id: doc.document_id,
+                tag_name: child,
+                tag_type: "child",
+                parent_tag_id: parentTag.id,
+                confidence: tag.confidence * 0.9,
+                source: "ai"
+              });
+            }
+          }
+        }
+        
+        // 4. CHUNKING E EMBEDDINGS
+        const chunks = chunkText(doc.full_text, 750, 180);
+        console.log(`Created ${chunks.length} chunks for ${doc.document_id}`);
+        
+        for (let i = 0; i < chunks.length; i++) {
+          const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${openAIKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "text-embedding-3-small",
+              input: chunks[i],
+            }),
+          });
+          
+          if (embeddingResponse.ok) {
+            const embeddingData = await embeddingResponse.json();
+            const embedding = embeddingData.data[0].embedding;
+            
+            await supabase.from("document_chunks").insert({
+              document_id: doc.document_id,
+              chunk_index: i,
+              content: chunks[i],
+              word_count: chunks[i].split(/\s+/).length,
+              embedding: embedding,
+              metadata: {
+                target_chat: targetChat,
+                document_title: doc.title,
+                tags: metadata.tags.map(t => t.parent),
+                implementation_status: metadata.implementation_status
+              }
+            });
+          }
+        }
+        
+        // Update document with completion
+        await supabase.from("documents").update({
+          status: "completed",
+          target_chat: targetChat,
+          ai_summary: metadata.summary,
+          implementation_status: metadata.implementation_status,
+          total_chunks: chunks.length,
+          total_words: doc.full_text.split(/\s+/).length
+        }).eq("id", doc.document_id);
+        
+        results.push({ document_id: doc.document_id, status: "completed" });
+        console.log(`Document ${doc.document_id} processed successfully as ${targetChat}`);
+        
+      } catch (docError) {
+        console.error(`Error processing ${doc.document_id}:`, docError);
+        
+        await supabase.from("documents").update({
+          status: "failed",
+          error_message: docError instanceof Error ? docError.message : "Erro desconhecido"
+        }).eq("id", doc.document_id);
+        
+        results.push({ 
+          document_id: doc.document_id, 
+          status: "failed", 
+          error: docError instanceof Error ? docError.message : "Unknown error" 
+        });
+      }
+    }
+    
+    return new Response(
+      JSON.stringify({ success: true, results }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+    
+  } catch (error) {
+    console.error("Error in process-bulk-document:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
