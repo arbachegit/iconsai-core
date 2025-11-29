@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,9 +19,39 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY não configurada");
     }
 
+    // Get last user message for RAG search
+    const lastUserMessage = messages.filter((m: any) => m.role === "user").pop();
+    const userQuery = lastUserMessage?.content || "";
+
+    // Search for relevant documents using RAG
+    let ragContext = "";
+    if (userQuery) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const { data: searchResults } = await supabase.functions.invoke("search-documents", {
+          body: { 
+            query: userQuery,
+            targetChat: "study",
+            matchCount: 3
+          }
+        });
+
+        if (searchResults?.results && searchResults.results.length > 0) {
+          console.log(`Found ${searchResults.results.length} relevant chunks from documents`);
+          ragContext = `\n\n📚 CONTEXTO RELEVANTE DOS DOCUMENTOS:\n\n${searchResults.results.map((r: any) => r.content).join("\n\n---\n\n")}\n\nUse este contexto para responder de forma precisa. Se não houver informação relevante, responda com conhecimento geral.\n\n`;
+        }
+      } catch (error) {
+        console.error("RAG search error:", error);
+        // Continue without RAG context if search fails
+      }
+    }
+
     // System prompt focado em KnowRisk, KnowYOU, ACC e navegação do website
     const systemPrompt = `Você é um assistente de IA especializado em ajudar a estudar e entender a KnowRISK, o KnowYOU e a Arquitetura Cognitiva e Comportamental (ACC).
-
+${ragContext}
 ESCOPO PRINCIPAL:
 
 1. **Sobre a KnowRISK**:

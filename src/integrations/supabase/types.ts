@@ -227,6 +227,146 @@ export type Database = {
         }
         Relationships: []
       }
+      document_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string | null
+          document_id: string
+          embedding: string | null
+          id: string
+          metadata: Json | null
+          word_count: number
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string | null
+          document_id: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+          word_count: number
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string | null
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+          word_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_tags: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          document_id: string
+          id: string
+          parent_tag_id: string | null
+          source: string | null
+          tag_name: string
+          tag_type: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          document_id: string
+          id?: string
+          parent_tag_id?: string | null
+          source?: string | null
+          tag_name: string
+          tag_type: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          document_id?: string
+          id?: string
+          parent_tag_id?: string | null
+          source?: string | null
+          tag_name?: string
+          tag_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_tags_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_tags_parent_tag_id_fkey"
+            columns: ["parent_tag_id"]
+            isOneToOne: false
+            referencedRelation: "document_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          ai_summary: string | null
+          created_at: string | null
+          error_message: string | null
+          filename: string
+          id: string
+          is_readable: boolean | null
+          original_text: string
+          readability_score: number | null
+          status: string | null
+          target_chat: string
+          text_preview: string | null
+          total_chunks: number | null
+          total_words: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          filename: string
+          id?: string
+          is_readable?: boolean | null
+          original_text: string
+          readability_score?: number | null
+          status?: string | null
+          target_chat: string
+          text_preview?: string | null
+          total_chunks?: number | null
+          total_words?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          filename?: string
+          id?: string
+          is_readable?: boolean | null
+          original_text?: string
+          readability_score?: number | null
+          status?: string | null
+          target_chat?: string
+          text_preview?: string | null
+          total_chunks?: number | null
+          total_words?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       feature_flags: {
         Row: {
           created_at: string
@@ -416,6 +556,21 @@ export type Database = {
           p_success: boolean
         }
         Returns: string
+      }
+      search_documents: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+          target_chat_filter?: string
+        }
+        Returns: {
+          chunk_id: string
+          content: string
+          document_id: string
+          metadata: Json
+          similarity: number
+        }[]
       }
     }
     Enums: {
