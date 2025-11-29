@@ -33,29 +33,218 @@ const sections = [
   { id: 'changelog', title: '📋 Changelog', icon: History },
 ];
 
-// Searchable items for filtering
-interface SearchableItem {
+// Search result interface for full-text search
+interface SearchResult {
   id: string;
-  title: string;
   section: string;
-  type: 'table' | 'function' | 'component';
-  keywords: string[];
+  sectionTitle: string;
+  matchedText: string;
+  highlightedText: string;
+  elementId?: string;
+  type: 'title' | 'content' | 'table' | 'code';
 }
 
-const searchableItems: SearchableItem[] = [
-  { id: 'documents', title: 'documents', section: 'database', type: 'table', keywords: ['pdf', 'rag', 'status', 'chunks', 'target_chat'] },
-  { id: 'document_chunks', title: 'document_chunks', section: 'database', type: 'table', keywords: ['embeddings', 'vector', 'pgvector', 'search'] },
-  { id: 'document_tags', title: 'document_tags', section: 'database', type: 'table', keywords: ['tags', 'parent', 'child', 'hierarchy'] },
-  { id: 'process-bulk-document', title: 'process-bulk-document', section: 'backend', type: 'function', keywords: ['bulk', 'pdf', 'llm', 'categorização', 'auto'] },
-  { id: 'chat', title: 'chat', section: 'backend', type: 'function', keywords: ['chat', 'rag', 'health', 'saúde', 'streaming'] },
-  { id: 'chat-study', title: 'chat-study', section: 'backend', type: 'function', keywords: ['study', 'estudo', 'rag', 'knowrisk'] },
-  { id: 'search-documents', title: 'search-documents', section: 'backend', type: 'function', keywords: ['search', 'busca', 'semântica', 'embeddings', 'pgvector'] },
-  { id: 'text-to-speech', title: 'text-to-speech', section: 'backend', type: 'function', keywords: ['tts', 'audio', 'elevenlabs', 'speech'] },
-  { id: 'voice-to-text', title: 'voice-to-text', section: 'backend', type: 'function', keywords: ['stt', 'whisper', 'transcription'] },
-  { id: 'generate-image', title: 'generate-image', section: 'backend', type: 'function', keywords: ['image', 'gemini', 'nano', 'health'] },
-  { id: 'DocumentsTab', title: 'DocumentsTab', section: 'frontend', type: 'component', keywords: ['upload', 'pdf', 'admin', 'documents'] },
-  { id: 'ChatKnowYOU', title: 'ChatKnowYOU', section: 'frontend', type: 'component', keywords: ['chat', 'health', 'modal', 'rag'] },
-];
+// Comprehensive documentation content for full-text search
+const documentationContent = {
+  database: {
+    title: 'Database',
+    sections: [
+      {
+        id: 'pgvector-extension',
+        title: 'Extensão pgvector',
+        content: 'Busca semântica via embeddings VECTOR(1536) utilizando cosine distance. Integração com OpenAI text-embedding-3-small para geração de embeddings vetoriais. Permite queries de similaridade semântica em documentos processados pelo sistema RAG.'
+      },
+      {
+        id: 'documents-table',
+        title: 'Tabela documents',
+        content: 'Armazena PDFs processados pelo sistema RAG. Campos principais: id UUID, filename texto nome arquivo, target_chat enum health study general, original_text texto completo extraído, ai_summary resumo gerado por IA, implementation_status enum ready needs_review incomplete, status enum pending processing completed failed, total_chunks número de fragmentos, total_words contagem palavras, readability_score pontuação legibilidade, is_readable boolean validação leitura, error_message texto erros processamento, created_at timestamp criação, updated_at timestamp atualização'
+      },
+      {
+        id: 'document-chunks-table',
+        title: 'Tabela document_chunks',
+        content: 'Fragmentos vetorizados de documentos. Campos: id UUID, document_id referência documents, chunk_index número sequencial fragmento, content texto fragmento 1500 palavras, word_count contagem palavras, embedding VECTOR(1536) vetor OpenAI, metadata JSONB informações adicionais, created_at timestamp. Indexado por embedding usando HNSW para busca rápida. Utilizado pela função search_documents para recuperação RAG via pgvector cosine distance.'
+      },
+      {
+        id: 'document-tags-table',
+        title: 'Tabela document_tags',
+        content: 'Sistema hierárquico de categorização. Campos: id UUID, document_id referência, tag_name texto categoria, tag_type enum parent child, parent_tag_id referência hierarquia, confidence NUMERIC decimal 0-1 confiança IA, source enum AI admin manual automated, created_at timestamp. Tags parent são categorias amplas 3-5 por documento, tags child são tópicos específicos 5-10 por parent. Sugestões dinâmicas chat baseadas nestas tags.'
+      },
+      {
+        id: 'conversation-history-table',
+        title: 'Tabela conversation_history',
+        content: 'Histórico completo conversas chat. Campos: id UUID, session_id identificador sessão, title texto auto-gerado, messages JSONB array objetos mensagem, chat_type enum study health diferenciação assistentes, sentiment_score NUMERIC análise sentimento, sentiment_label enum positive negative neutral, created_at timestamp, updated_at timestamp. RLS permite CRUD completo usuários próprias conversas. Indexado por session_id created_at para queries otimizadas.'
+      },
+      {
+        id: 'chat-analytics-table',
+        title: 'Tabela chat_analytics',
+        content: 'Métricas interação usuário. Campos: id UUID, session_id string, user_name texto opcional, message_count integer contador mensagens, audio_plays integer reproduções áudio, topics array tópicos discutidos, started_at timestamp início, last_interaction timestamp última ação. Dashboard admin visualiza métricas tempo real. RLS protege contra acesso público dados sensíveis.'
+      },
+      {
+        id: 'admin-settings-table',
+        title: 'Tabela admin_settings',
+        content: 'Configurações sistema. Campos: id UUID, chat_audio_enabled boolean ativa áudio, auto_play_audio boolean reprodução automática, alert_enabled boolean alertas sentimento, alert_threshold NUMERIC limite ativação, alert_email texto destino notificações, gmail_api_configured boolean status integração, gmail_notification_email texto conta Gmail, created_at timestamp, updated_at timestamp. Apenas administradores autenticados acesso via RLS.'
+      },
+      {
+        id: 'rls-policies',
+        title: 'Row Level Security Políticas',
+        content: 'Todas tabelas críticas protegidas RLS. admin_settings chat_analytics somente admin autenticado. conversation_history CRUD completo usuários próprias conversas. documents document_chunks document_tags leitura pública inserção restrita admin. Políticas verificam auth.uid() role via has_role função. Previne exposição dados sensíveis emails nomes usuários implementação_status documentos.'
+      }
+    ]
+  },
+  backend: {
+    title: 'Backend',
+    sections: [
+      {
+        id: 'process-bulk-document-function',
+        title: 'Edge Function process-bulk-document',
+        content: 'POST endpoint verify_jwt false. Recebe array documents_data com full_text pre-extraído frontend pdfjs-dist. Validação mínimo 100 caracteres sanitização Unicode previne surrogate errors. Chunking 750 palavras overlap 50 palavras. Embeddings OpenAI text-embedding-3-small. Auto-categorização LLM google/gemini-2.5-flash classifica HEALTH STUDY GENERAL. Metadata unificada single LLM call gera parent/child tags 150-300 palavras summary implementation_status ready needs_review incomplete. Background processing waitUntil resposta 202 Accepted. Salva documents document_chunks document_tags tables.'
+      },
+      {
+        id: 'chat-function',
+        title: 'Edge Function chat',
+        content: 'POST streaming SSE verify_jwt false. Chat saúde Hospital Moinhos Vento. Recebe messages array query string session_id. Invoca search-documents com query embeddings retrieval. Context RAG prepended system prompt. Lovable AI Gateway google/gemini-2.5-pro streaming response. TextEncoder SSE format data: json. Sentiment analysis real-time. Salva conversation_history chat_type health. Rate limiting previne abuse. Scope restrito healthcare topics reject non-health queries.'
+      },
+      {
+        id: 'chat-study-function',
+        title: 'Edge Function chat-study',
+        content: 'POST streaming SSE verify_jwt false. Assistente estudo KnowRISK ACC KnowYOU navegação site. Recebe messages query session_id. RAG retrieval search-documents target_chat study. System prompt empresa-específico framework ACC landing page sections. Lovable AI google/gemini-2.5-flash streaming. Salva conversation_history chat_type study. Scope limitado company content AI KnowRISK. Suggestions dinâmicas document tags rotation 10 segundos.'
+      },
+      {
+        id: 'search-documents-function',
+        title: 'Edge Function search-documents',
+        content: 'POST verify_jwt false. Busca semântica pgvector cosine distance. Recebe query_text string target_chat_filter optional. Gera embedding OpenAI text-embedding-3-small query. Invoca search_documents PostgreSQL function VECTOR similarity. Retorna top 5 chunks mais similares com content metadata document_id similarity score. Match_threshold 0.7 default. Usado por chat e chat-study RAG context retrieval. Performance otimizada HNSW index embeddings column.'
+      },
+      {
+        id: 'text-to-speech-function',
+        title: 'Edge Function text-to-speech',
+        content: 'POST verify_jwt false. Texto para áudio ElevenLabs API Fernando Arbache voice ID. Recebe text string validation máximo 5000 caracteres previne abuse. Streaming áudio MP3 response. Rate limiting protege credit exhaustion. Usado tooltip audio chat messages AI History Digital Exclusion audio controls. Web Audio API frontend true streaming 200-500ms latency. Cached audio_url database tooltip_contents section_audio tables persistent URLs Supabase Storage evita blob expiration.'
+      },
+      {
+        id: 'voice-to-text-function',
+        title: 'Edge Function voice-to-text',
+        content: 'POST verify_jwt false. Transcrição áudio OpenAI Whisper API. Recebe audio base64 ou Blob format. Fallback browser Web Speech API fails. Suporte Português Brasil language. Retorna transcribed_text string. Usado chat voice messages microphone button immediate transcription auto-populate input field seamless voice-to-text experience. Rate limiting previne abuse API quotas.'
+      },
+      {
+        id: 'generate-image-function',
+        title: 'Edge Function generate-image',
+        content: 'POST verify_jwt false. Geração imagem Lovable AI google/gemini-3-pro-image-preview. Recebe prompt validation health keywords only saúde médico hospital paciente tratamento diagnóstico anatomia coração cérebro medicina cirurgia enfermagem farmácia medicamento doença terapia exame consulta clínica bem-estar nutrição fisioterapia saúde mental. Rejeita non-health prompts 400 error. Base64 image response. Usado chat draw mode button healthcare images only. Caching generated_images table section-specific keys reduce API credit consumption 402 fallback SVG placeholders.'
+      },
+      {
+        id: 'generate-history-image-function',
+        title: 'Edge Function generate-history-image',
+        content: 'POST verify_jwt false. Imagens AI History modal eras. Recebe era_id prompt. Lovable AI google/gemini-3-pro-image-preview contextual era-specific imagery HAL 9000 red eye Kubrick Deep Blue chess Adulthood ChatGPT interface Generative. Caching database history-{eraId} format. Upsert unique index section_id prevents duplicates. Base64 response. Eliminates regeneration repeat visits improved performance quota efficiency.'
+      },
+      {
+        id: 'send-email-function',
+        title: 'Edge Function send-email',
+        content: 'POST verify_jwt false. Email notifications Resend API. Domain verification knowrisk.io required production suporte@knowrisk.io sender. Recebe to subject html text. Professional enterprise capability replaces Gmail API. Rate limiting spam prevention. Usado sentiment alerts admin notifications critical events. Requires Resend secret key configured.'
+      },
+      {
+        id: 'sentiment-alert-function',
+        title: 'Edge Function sentiment-alert',
+        content: 'POST verify_jwt false. Monitora sentiment negativo conversas. Threshold configurável admin_settings alert_threshold. Recebe session_id sentiment_score sentiment_label. Compara threshold ativa send-email notification alert_email destination. Critical user satisfaction tracking intervention triggers. Background processing waitUntil. Integrado chat chat-study real-time sentiment analysis.'
+      }
+    ]
+  },
+  frontend: {
+    title: 'Frontend',
+    sections: [
+      {
+        id: 'documents-tab-component',
+        title: 'Componente DocumentsTab',
+        content: 'Admin panel gestão RAG documents. Drag-drop upload mandatory target_chat selection study health. Sortable table Name Status Target Chat Date Categories AI-suggested tags badges. Detail panel AI summary hierarchical tag structure text preview metrics pages words chunks. Download original PDF button. Bulk actions reprocess delete change destination. Failed documents error details. Readability indicator readable unreadable AI assessment. Reprocessar button clears data resets status reinvokes process-bulk-document.'
+      },
+      {
+        id: 'chat-knowyou-component',
+        title: 'Componente ChatKnowYOU',
+        content: 'Chat saúde Hospital Moinhos modal interface. KnowRisk circular logo header. Input layout Textarea Mic Send Draw horizontal. Draw button image generation health-only scope. 3D relief aesthetic baixo relevo input/output alto relevo frame. Audio controls Play Stop Download every message progress bar MM:SS. Voice transcription immediate microphone activation. Suggestions rotation 30 health questions 10 segundos. Image generation mode placeholder switch health topics validation. Session tracking chat_type health conversation_history. RAG integration search-documents context retrieval. Sentiment real-time header indicators.'
+      },
+      {
+        id: 'chat-study-component',
+        title: 'Componente ChatStudy',
+        content: 'Assistente estudo KnowRISK modal. Logo header unified interface. Scope company-specific KnowRISK KnowYOU ACC landing page navigation. Draw mode AI KnowRISK content only. 3D relief design consistent. Audio controls universal implementation. Voice immediate transcription. Suggestions company topics O que é KnowRisk Como funciona ACC Quais seções site Era Generativa. Session chat_type study. RAG documents KnowRISK ACC retrieval. Educational purpose help users understand offerings locate sections.'
+      },
+      {
+        id: 'ai-history-panel-component',
+        title: 'Componente AIHistoryPanel',
+        content: 'Modal educacional timeline evolução IA. Desktop draggable panel vertical timeline scrollable. Mobile fullscreen drawer horizontal swipe Embla Carousel. Four eras Symbolic 1950-1970 Turing Dartmouth, AI Winters 1970-1990 Expert Systems, Machine Learning 1990-2015 Deep Blue Watson AlphaGo, Generative 2017-Today Transformer ChatGPT Gemini Claude backend to frontend shift. Audio controls top narration combined eras Play Stop Download progress bar. Synchronized scrolling timestamps map eras audio playback auto-scroll timeline desktop carousel mobile immersive. Era jump buttons direct navigation icon bar desktop tappable dots mobile audio seek timestamp. Contextual images generate-history-image era-specific HAL 9000 chess game ChatGPT interface strengthen text-image relationship. Audio cleanup stopAllAudio multiple mechanisms useEffect event listeners handleClose backdrop prevent background playback after close critical requirement.'
+      },
+      {
+        id: 'floating-chat-button-component',
+        title: 'Componente FloatingChatButton',
+        content: 'Fixed bottom-right corner pulsating green dot indicator. Gradient styling from-primary via-secondary to-accent glow effects. Animated tooltip Fale com KnowYOU. Opens ChatStudy modal primary gateway interactive chat. Prominent visual affordances user interaction. Position conflicts resolved ScrollToTopButton bottom-left prevents z-index overlap.'
+      },
+      {
+        id: 'digital-exclusion-section-component',
+        title: 'Componente DigitalExclusionSection',
+        content: 'Collapsible landing page section between MediaCarousel Bom Prompt. H1 5,74 bilhões above trigger de pessoas ainda não conseguem acessar internet Saiba mais desafio. Radix Collapsible animated chevron. Expanded content audio controls top progress bar text global inequality AI literacy gaps Nano Banana image midway narrative paragraphs barriers solutions. Audio cached database section_audio prevent regeneration TTS Fernando Arbache. Smooth animations consistent design aesthetic. Critical education section digital divide healthcare AI access.'
+      },
+      {
+        id: 'media-carousel-component',
+        title: 'Componente MediaCarousel',
+        content: 'Side-by-side horizontal layout Spotify podcast embed YouTube video carousel. Balanced two-column presentation positioned below KnowYOU chat section. YouTube API optimization hardcoded channelId @KnowRISKio playlistItems endpoint 1 unit vs search 100 units. Database caching youtube_videos_cache 6-hour TTL localStorage quota_exceeded 24-hour. Quota consumption 200 units to 1 unit enables 10000 requests daily vs 50 previous. Reduces API exhaustion improves reliability.'
+      },
+      {
+        id: 'admin-panel-components',
+        title: 'Painel Admin Componentes',
+        content: 'AdminSidebar navigation tabs Dashboard Analytics Conversations Documents Tooltips Gmail YouTube Cache Image Cache RAG Metrics Chat Config. DashboardTab overview metrics cards. AnalyticsTab charts visualizations. ConversationsTab filtering chat_type study health sentiment analysis. DocumentsTab RAG management upload reprocess. TooltipsTab DraggablePreviewPanel editor content audio generation. GmailTab API integration configuration. YouTubeCacheTab preload management. ImageCacheTab Nano Banana generated images. RagMetricsTab summary cards charts document status chunk count success rate distribution. ChatConfigTab audio settings sentiment alerts thresholds.'
+      },
+      {
+        id: 'hooks-custom',
+        title: 'Custom Hooks',
+        content: 'useAdminSettings fetch admin_settings table real-time updates. useChatAnalytics track metrics session message audio topics timestamps. useChatKnowYOU health chat logic RAG image generation suggestions sentiment. useChatStudy company chat RAG document retrieval scoped content. useTooltipContent fetch tooltip_contents audio generation caching. useYouTubeAutoPreload automatic video refresh configuration management. use-mobile responsive breakpoint detection. use-toast notification system feedback user actions.'
+      },
+      {
+        id: 'internationalization-system',
+        title: 'Sistema i18n react-i18next',
+        content: 'Complete translation system three languages Portuguese pt English en French fr. i18n/config.ts initialization localStorage persistence. Translation files pt.json en.json fr.json comprehensive coverage all 8 landing page sections Digital Exclusion AI History 5 eras both chat assistants UI strings placeholders suggestions messages audio controls footer. All components useTranslation hook t functions Index HeroSection TuringLegacy DigitalExclusionSection AIHistoryPanel ChatKnowYOU ChatStudy FloatingChatButton AudioControls. Language selector header Languages icon Lucide PT EN FR flag emojis dropdown checkmark selected. Desktop navigation between links admin mobile menu bottom section. Integrated existing localStorage preference.'
+      }
+    ]
+  }
+};
+
+// Full-text search function
+const performFullTextSearch = (query: string): SearchResult[] => {
+  if (!query.trim() || query.length < 2) return [];
+  
+  const results: SearchResult[] = [];
+  const searchTerms = query.toLowerCase().split(' ').filter(t => t.length > 1);
+  
+  Object.entries(documentationContent).forEach(([sectionKey, section]) => {
+    section.sections.forEach((item) => {
+      const fullText = `${item.title} ${item.content}`.toLowerCase();
+      
+      const matches = searchTerms.filter(term => fullText.includes(term));
+      
+      if (matches.length > 0) {
+        // Find first match position
+        const firstMatchIndex = fullText.indexOf(matches[0]);
+        const contextStart = Math.max(0, firstMatchIndex - 40);
+        const contextEnd = Math.min(item.content.length, firstMatchIndex + 100);
+        const contextText = item.content.substring(contextStart, contextEnd);
+        
+        // Highlight matches
+        let highlightedText = contextText;
+        searchTerms.forEach(term => {
+          const regex = new RegExp(`(${term})`, 'gi');
+          highlightedText = highlightedText.replace(regex, '<mark class="bg-yellow-300 dark:bg-yellow-600 px-1 rounded font-semibold">$1</mark>');
+        });
+        
+        results.push({
+          id: item.id,
+          section: sectionKey,
+          sectionTitle: section.title,
+          matchedText: `${contextStart > 0 ? '...' : ''}${contextText}${contextEnd < item.content.length ? '...' : ''}`,
+          highlightedText: `${contextStart > 0 ? '...' : ''}${highlightedText}${contextEnd < item.content.length ? '...' : ''}`,
+          elementId: item.id,
+          type: 'content'
+        });
+      }
+    });
+  });
+  
+  return results.slice(0, 10); // Limit to top 10 results
+};
 
 const Documentation = () => {
   const navigate = useNavigate();
@@ -64,7 +253,7 @@ const Documentation = () => {
   const [activeSection, setActiveSection] = useState('menu-principal');
   const [readProgress, setReadProgress] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchableItem[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('docs-theme');
     return saved !== 'light';
@@ -108,7 +297,7 @@ const Documentation = () => {
     setZoomModal({ open: true, chart, id, title });
   };
 
-  // Handle search
+  // Handle full-text search
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     if (!query.trim()) {
@@ -116,19 +305,23 @@ const Documentation = () => {
       return;
     }
     
-    const results = searchableItems.filter(item =>
-      item.title.toLowerCase().includes(query.toLowerCase()) ||
-      item.keywords.some(k => k.toLowerCase().includes(query.toLowerCase()))
-    );
+    const results = performFullTextSearch(query);
     setSearchResults(results);
   };
 
-  // Smooth scroll to section
-  const scrollToSection = (id: string) => {
+  // Smooth scroll to section with highlight
+  const scrollToSection = (id: string, highlightElement = false) => {
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       window.history.pushState(null, '', `#${id}`);
+      
+      if (highlightElement) {
+        element.classList.add('ring-2', 'ring-primary', 'ring-offset-2', 'transition-all', 'duration-300');
+        setTimeout(() => {
+          element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2', 'transition-all', 'duration-300');
+        }, 3000);
+      }
     }
   };
 
@@ -173,6 +366,49 @@ const Documentation = () => {
       setTimeout(() => scrollToSection(hash), 100);
     }
   }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+K or Cmd+K to focus search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.getElementById('docs-search-input') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+      }
+      
+      // Escape to clear search
+      if (e.key === 'Escape') {
+        setSearchQuery('');
+        setSearchResults([]);
+      }
+      
+      // Enter to navigate to first result
+      if (e.key === 'Enter' && searchResults.length > 0 && document.activeElement?.id === 'docs-search-input') {
+        e.preventDefault();
+        const firstResult = searchResults[0];
+        scrollToSection(firstResult.section, true);
+        if (firstResult.elementId) {
+          setTimeout(() => {
+            const element = document.getElementById(firstResult.elementId || '');
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              element.classList.add('ring-2', 'ring-primary', 'ring-offset-2', 'transition-all', 'duration-300');
+              setTimeout(() => {
+                element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2', 'transition-all', 'duration-300');
+              }, 3000);
+            }
+          }, 500);
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchResults]);
 
   const exportToPDF = async () => {
     setIsExporting(true);
@@ -341,30 +577,63 @@ const Documentation = () => {
       
       {/* Search Bar */}
       <div className="mb-3 pb-3 border-b border-border">
-        <Input
-          type="text"
-          placeholder="Buscar tabelas ou funções..."
-          value={searchQuery}
-          onChange={(e) => handleSearch(e.target.value)}
-          className="w-full text-sm"
-        />
+        <div className="relative">
+          <Input
+            id="docs-search-input"
+            type="text"
+            placeholder="Buscar em toda documentação... (Ctrl+K)"
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="w-full text-sm pr-8"
+          />
+          <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        </div>
+        
         {searchResults.length > 0 && (
-          <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
-            {searchResults.map((result) => (
+          <div className="mt-3 space-y-2 max-h-80 overflow-y-auto border rounded-lg p-2 bg-background/50 backdrop-blur-sm">
+            <div className="text-xs text-muted-foreground mb-2 px-1 flex items-center justify-between">
+              <span>{searchResults.length} resultado(s) encontrado(s)</span>
+              <kbd className="px-2 py-0.5 text-xs bg-muted rounded border">ESC</kbd>
+            </div>
+            
+            {searchResults.map((result, idx) => (
               <button
-                key={result.id}
+                key={`${result.id}-${idx}`}
                 onClick={() => {
-                  scrollToSection(result.section);
+                  scrollToSection(result.section, true);
+                  if (result.elementId) {
+                    setTimeout(() => {
+                      const element = document.getElementById(result.elementId || '');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        element.classList.add('ring-2', 'ring-primary', 'ring-offset-2', 'transition-all', 'duration-300');
+                        setTimeout(() => {
+                          element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2', 'transition-all', 'duration-300');
+                        }, 3000);
+                      }
+                    }, 500);
+                  }
                   setSearchQuery('');
                   setSearchResults([]);
                 }}
-                className="w-full text-left px-2 py-1 rounded text-xs hover:bg-muted flex items-center gap-2"
+                className="w-full text-left p-3 rounded-lg hover:bg-muted/50 border border-border/50 hover:border-primary/50 transition-all group"
               >
-                <Search className="h-3 w-3" />
-                <span className="truncate">{result.title}</span>
-                <Badge variant="outline" className="text-xs ml-auto">{result.type}</Badge>
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="outline" className="text-xs">{result.sectionTitle}</Badge>
+                  <Search className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+                <p 
+                  className="text-xs text-muted-foreground line-clamp-3 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: result.highlightedText }}
+                />
               </button>
             ))}
+          </div>
+        )}
+        
+        {searchQuery && searchResults.length === 0 && (
+          <div className="mt-3 p-3 rounded-lg border border-border/50 text-xs text-muted-foreground text-center">
+            Nenhum resultado encontrado para "{searchQuery}"
           </div>
         )}
       </div>
