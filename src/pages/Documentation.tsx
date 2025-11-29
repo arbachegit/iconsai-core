@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { 
-  FileText, Download, Loader2, ArrowUp, List, Folder, 
-  FileCode, Layers, Code, Server, GitBranch, CheckSquare, Cpu, Menu, FileCode2,
-  Sun, Moon
+  FileText, Download, Loader2, Menu, Sun, Moon, Database,
+  Server, Code, ArrowLeft, Maximize2, Table, GitBranch, Lock
 } from 'lucide-react';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
+import { MermaidZoomModal } from '@/components/MermaidZoomModal';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { useTranslation } from 'react-i18next';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   DropdownMenu,
@@ -21,28 +20,31 @@ import { cn } from '@/lib/utils';
 
 // Sections data structure
 const sections = [
-  { id: 'capa', title: 'Capa', icon: FileText },
-  { id: 'indice', title: 'Índice', icon: List },
-  { id: 'estrutura-diretorios', title: '1. Estrutura de Diretórios', icon: Folder },
-  { id: 'convencoes-nomenclatura', title: '2. Convenções de Nomenclatura', icon: FileCode },
-  { id: 'inventario-componentes', title: '3. Inventário de Componentes', icon: Layers },
-  { id: 'hooks-customizados', title: '4. Hooks Customizados', icon: Code },
-  { id: 'edge-functions', title: '5. Edge Functions', icon: Server },
-  { id: 'hierarquia-componentes', title: '6. Hierarquia de Componentes', icon: GitBranch },
-  { id: 'padroes-codigo', title: '7. Padrões de Código', icon: FileCode2 },
-  { id: 'checklist-review', title: '8. Checklist de Code Review', icon: CheckSquare },
-  { id: 'tecnologias', title: 'Tecnologias', icon: Cpu },
+  { id: 'menu-principal', title: '🏠 Menu Principal', icon: FileText },
+  { id: 'database', title: '🗄️ Database', icon: Database },
+  { id: 'backend', title: '⚡ Backend', icon: Server },
+  { id: 'frontend', title: '🖥️ Frontend', icon: Code },
 ];
 
 const Documentation = () => {
-  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [isExporting, setIsExporting] = useState(false);
-  const [activeSection, setActiveSection] = useState('capa');
+  const [activeSection, setActiveSection] = useState('menu-principal');
   const [readProgress, setReadProgress] = useState(0);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('docs-theme');
     return saved !== 'light';
+  });
+  const [zoomModal, setZoomModal] = useState<{
+    open: boolean;
+    chart: string;
+    id: string;
+    title: string;
+  }>({
+    open: false,
+    chart: '',
+    id: '',
+    title: '',
   });
 
   // Persist theme preference
@@ -52,6 +54,11 @@ const Documentation = () => {
 
   // Toggle theme
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+  // Open zoom modal
+  const openZoomModal = (chart: string, id: string, title: string) => {
+    setZoomModal({ open: true, chart, id, title });
+  };
 
   // Smooth scroll to section
   const scrollToSection = (id: string) => {
@@ -107,7 +114,6 @@ const Documentation = () => {
   const exportToPDF = async () => {
     setIsExporting(true);
     
-    // Force light mode temporarily for print-friendly PDF
     const element = document.getElementById('documentation-content');
     if (!element) {
       setIsExporting(false);
@@ -153,11 +159,10 @@ const Documentation = () => {
         heightLeft -= pdfHeight;
       }
 
-      pdf.save('KnowRisk-Guia-de-Estilo.pdf');
+      pdf.save('KnowRisk-Documentacao-Tecnica.pdf');
     } catch (error) {
       console.error('Error generating PDF:', error);
     } finally {
-      // Restore original theme
       if (!wasLight) {
         container?.classList.remove('docs-light');
       }
@@ -165,59 +170,34 @@ const Documentation = () => {
     }
   };
 
-  const directoryStructure = `graph TD
-    A[src/] --> B[components/]
-    A --> C[pages/]
-    A --> D[hooks/]
-    A --> E[lib/]
-    A --> F[integrations/]
-    A --> G[i18n/]
+  // Backend flow diagram
+  const backendFlowDiagram = `flowchart TD
+    subgraph Frontend["🖥️ Frontend"]
+        U[Usuário] --> PDF[Upload PDF]
+        U --> Chat[Chat Interface]
+    end
     
-    B --> B1[admin/]
-    B --> B2[ui/]
-    B --> B3[Core Components]
+    subgraph EdgeFunctions["⚡ Edge Functions"]
+        PDF --> PBD[process-bulk-document]
+        PBD --> VAL[Validação]
+        PBD --> CLASS[Auto-Categorização LLM]
+        PBD --> CHUNK[Chunking 750w]
+        PBD --> EMB[Embeddings OpenAI]
+        
+        Chat --> CHATFN[chat / chat-study]
+        CHATFN --> RAG[search-documents]
+        RAG --> DB[(PostgreSQL + pgvector)]
+        CHATFN --> AI[Lovable AI Gateway]
+    end
     
-    C --> C1[Index.tsx]
-    C --> C2[Admin.tsx]
-    C --> C3[AdminLogin.tsx]
-    C --> C4[Documentation.tsx]
+    subgraph Outputs["📤 Outputs"]
+        AI --> Stream[SSE Streaming]
+        Stream --> U
+    end
     
-    D --> D1[useChatKnowYOU.ts]
-    D --> D2[useChatStudy.ts]
-    D --> D3[useAdminSettings.ts]
-    
-    style A fill:#8B5CF6
-    style B fill:#10B981
-    style C fill:#3B82F6
-    style D fill:#F59E0B`;
-
-  const componentHierarchy = `graph TD
-    A[App.tsx] --> B[Index.tsx]
-    B --> C[Header]
-    B --> D[HeroSection]
-    B --> E[Section Components]
-    B --> F[TuringLegacy]
-    B --> G[DigitalExclusionSection]
-    B --> H[MediaCarousel]
-    B --> I[FloatingChatButton]
-    
-    E --> E1[Software]
-    E --> E2[Internet]
-    E --> E3[Tech Sem Propósito]
-    E --> E4[Watson]
-    E --> E5[Nova Era]
-    E --> E6[KnowYOU Chat]
-    E --> E7[Bom Prompt]
-    
-    I --> J[ChatModal]
-    J --> K[ChatStudy]
-    
-    C --> L[Language Selector]
-    C --> M[Scroll Progress]
-    
-    style A fill:#8B5CF6
-    style B fill:#10B981
-    style I fill:#F59E0B`;
+    style Frontend fill:#8B5CF6,color:#fff
+    style EdgeFunctions fill:#10B981,color:#fff
+    style Outputs fill:#3B82F6,color:#fff`;
 
   // Sidebar navigation component
   const SidebarNav = () => (
@@ -227,7 +207,6 @@ const Documentation = () => {
         Navegação
       </div>
       
-      {/* Theme Toggle */}
       <div className="mb-3 pb-3 border-b border-border">
         <Button
           variant="outline"
@@ -301,588 +280,765 @@ const Documentation = () => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        {/* Theme Toggle */}
-        <div className="p-2 border-b border-border">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleTheme}
-            className="w-full gap-2"
-          >
-            {isDarkMode ? (
-              <>
-                <Sun className="h-4 w-4" />
-                Modo Claro
-              </>
-            ) : (
-              <>
-                <Moon className="h-4 w-4" />
-                Modo Escuro
-              </>
-            )}
-          </Button>
-        </div>
-        
         {sections.map((section) => {
           const Icon = section.icon;
           return (
             <DropdownMenuItem
               key={section.id}
               onClick={() => scrollToSection(section.id)}
-              className={cn(
-                "flex items-center gap-2",
-                activeSection === section.id && "bg-primary/10 font-medium"
-              )}
+              className={activeSection === section.id ? "bg-primary/10" : ""}
             >
-              <Icon className="h-4 w-4" />
-              {section.title}
+              <Icon className="mr-2 h-4 w-4" />
+              <span>{section.title}</span>
             </DropdownMenuItem>
           );
         })}
+        <DropdownMenuItem onClick={toggleTheme}>
+          {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+          <span>{isDarkMode ? 'Modo Claro' : 'Modo Escuro'}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={exportToPDF} disabled={isExporting}>
+          {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+          <span>{isExporting ? 'Gerando...' : 'Exportar PDF'}</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 
   // Back to index button
   const BackToIndex = () => (
-    <div className="flex justify-end mt-4">
-      <button
-        onClick={() => scrollToSection('indice')}
-        className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
-      >
-        <ArrowUp className="h-4 w-4" />
-        Voltar ao índice
-      </button>
-    </div>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => scrollToSection('menu-principal')}
+      className="gap-2 mb-6"
+    >
+      <ArrowLeft className="h-4 w-4" />
+      Voltar ao Menu Principal
+    </Button>
   );
 
   return (
-    <div className={cn(
-      "min-h-screen bg-background text-foreground docs-page",
-      !isDarkMode && "docs-light"
-    )}>
-      {/* Progress bar */}
-      <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50">
-        <div
-          className="h-full bg-primary transition-all"
+    <div className={cn("docs-page min-h-screen transition-colors", isDarkMode ? "bg-background text-foreground" : "docs-light bg-white text-gray-900")}>
+      {/* Progress Bar */}
+      <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50 no-print">
+        <div 
+          className="h-full bg-gradient-to-r from-primary via-secondary to-accent transition-all duration-300"
           style={{ width: `${readProgress}%` }}
         />
       </div>
 
-      {/* Desktop sidebar navigation */}
+      {/* Sidebar Navigation (Desktop) */}
       {!isMobile && <SidebarNav />}
 
-      {/* Mobile navigation */}
+      {/* Mobile Navigation */}
       {isMobile && <MobileNav />}
 
-      {/* Main content */}
-      <div className={cn(
-        "container mx-auto px-4 py-8",
-        !isMobile ? "max-w-4xl ml-auto mr-8" : "max-w-6xl"
-      )}>
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-3">
-            <FileText className="h-8 w-8 text-primary" />
-            <h1 className="text-4xl font-bold">Guia de Estilo de Código</h1>
-          </div>
-          {isMobile && (
-            <Button
-              onClick={exportToPDF}
-              disabled={isExporting}
-              size="sm"
-              className="gap-2"
-            >
-              {isExporting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" />
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-
-        <div id="documentation-content" className="space-y-8">
-          {/* Capa */}
-          <Card id="capa" className={cn(
-            "p-12 text-center scroll-mt-20",
-            isDarkMode 
-              ? "bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20"
-              : "bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10"
-          )}>
-            <h1 className="text-5xl font-bold mb-4">KnowRisk</h1>
-            <h2 className="text-3xl mb-6">Guia de Estilo de Código</h2>
-            <p className="text-muted-foreground">
-              Convenções, Padrões e Arquitetura do Projeto
-            </p>
-            <p className="text-sm text-muted-foreground mt-4">
-              Gerado em: {new Date().toLocaleDateString('pt-BR')}
-            </p>
-          </Card>
-
-          {/* Índice */}
-          <Card id="indice" className="p-6 scroll-mt-20">
-            <h2 className="text-2xl font-bold mb-4">Índice</h2>
-            <ol className="space-y-2">
-              {sections.slice(2).map((section) => (
-                <li key={section.id}>
-                  <button
-                    onClick={() => scrollToSection(section.id)}
-                    className="text-left hover:text-primary transition-colors cursor-pointer underline-offset-4 hover:underline"
-                  >
-                    {section.title}
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </Card>
-
-          {/* 1. Estrutura de Diretórios */}
-          <Card id="estrutura-diretorios" className="p-6 scroll-mt-20">
-            <h2 className="text-2xl font-bold mb-4">1. Estrutura de Diretórios</h2>
-            <MermaidDiagram chart={directoryStructure} id="directory-structure" theme={isDarkMode ? 'dark' : 'light'} />
-            
-            <div className="mt-6 space-y-4">
-              <div>
-                <h3 className="text-xl font-semibold mb-2">src/components/</h3>
-                <p className="text-muted-foreground">Componentes React reutilizáveis</p>
-                <ul className="list-disc list-inside ml-4 text-sm text-muted-foreground mt-2">
-                  <li><code>admin/</code> - Componentes da área administrativa</li>
-                  <li><code>ui/</code> - Componentes base (shadcn/ui)</li>
-                  <li>Componentes core no nível raiz</li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold mb-2">src/pages/</h3>
-                <p className="text-muted-foreground">Páginas principais da aplicação</p>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold mb-2">src/hooks/</h3>
-                <p className="text-muted-foreground">React hooks customizados</p>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold mb-2">src/lib/</h3>
-                <p className="text-muted-foreground">Utilitários e helpers</p>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold mb-2">supabase/functions/</h3>
-                <p className="text-muted-foreground">Edge Functions (backend serverless)</p>
-              </div>
-            </div>
-            <BackToIndex />
-          </Card>
-
-          {/* 2. Convenções de Nomenclatura */}
-          <Card id="convencoes-nomenclatura" className="p-6 scroll-mt-20">
-            <h2 className="text-2xl font-bold mb-4">2. Convenções de Nomenclatura</h2>
-            
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold mb-3 text-primary">PascalCase</h3>
-                <div className="bg-muted/50 p-4 rounded-lg">
-                  <p className="mb-2"><strong>Uso:</strong> Componentes React, Interfaces TypeScript, Types</p>
-                  <code className="text-sm">HeroSection.tsx, ChatKnowYOU.tsx, AdminSettings</code>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold mb-3 text-secondary">camelCase</h3>
-                <div className="bg-muted/50 p-4 rounded-lg">
-                  <p className="mb-2"><strong>Uso:</strong> Variáveis, funções, hooks customizados</p>
-                  <code className="text-sm">useChatKnowYOU, sendMessage, audioRef</code>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold mb-3 text-accent">kebab-case</h3>
-                <div className="bg-muted/50 p-4 rounded-lg">
-                  <p className="mb-2"><strong>Uso:</strong> Componentes UI (shadcn), Edge Functions</p>
-                  <code className="text-sm">alert-dialog.tsx, text-to-speech</code>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold mb-3 text-orange-500">SCREAMING_SNAKE_CASE</h3>
-                <div className="bg-muted/50 p-4 rounded-lg">
-                  <p className="mb-2"><strong>Uso:</strong> Constantes globais</p>
-                  <code className="text-sm">CREDITS_EXHAUSTED_KEY, MAX_RETRIES</code>
-                </div>
-              </div>
-            </div>
-            <BackToIndex />
-          </Card>
-
-          {/* 3. Inventário de Componentes */}
-          <Card id="inventario-componentes" className="p-6 scroll-mt-20">
-            <h2 className="text-2xl font-bold mb-4">3. Inventário de Componentes</h2>
-            
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold mb-3">Core Components (26)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[
-                    'AIHistoryPanel.tsx - Modal com timeline da história da IA',
-                    'AudioControls.tsx - Controles de áudio (Play/Stop/Download)',
-                    'ChatKnowYOU.tsx - Chat assistente de saúde',
-                    'ChatModal.tsx - Modal wrapper para chat',
-                    'ChatStudy.tsx - Chat assistente de estudos',
-                    'DigitalExclusionSection.tsx - Seção exclusão digital',
-                    'DraggablePreviewPanel.tsx - Painel arrastável tooltips',
-                    'FloatingChatButton.tsx - Botão flutuante chat',
-                    'Header.tsx - Cabeçalho com navegação',
-                    'HeroSection.tsx - Hero com animação partículas',
-                    'MediaCarousel.tsx - Carrossel Spotify/YouTube',
-                    'MermaidDiagram.tsx - Renderizador de diagramas',
-                    'MarkdownContent.tsx - Renderizador Markdown',
-                    'MobileHistoryCarousel.tsx - Carrossel mobile',
-                    'NavLink.tsx - Links de navegação',
-                    'ScrollToTopButton.tsx - Botão voltar ao topo',
-                    'Section.tsx - Container de seção',
-                    'TooltipIcon.tsx - Ícone tooltip com indicador',
-                    'TuringLegacy.tsx - Seção Alan Turing',
-                    'TypingIndicator.tsx - Indicador digitando',
-                  ].map((item, i) => (
-                    <div key={i} className="bg-muted/30 p-3 rounded text-sm">
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold mb-3">Admin Components (8)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[
-                    'AdminSidebar.tsx - Menu lateral admin',
-                    'AnalyticsTab.tsx - Dashboard analytics',
-                    'ChatConfigTab.tsx - Configurações chat',
-                    'ConversationsTab.tsx - Histórico conversas',
-                    'DashboardTab.tsx - Visão geral',
-                    'GmailTab.tsx - Integração Gmail',
-                    'ImageCacheTab.tsx - Gestão cache imagens',
-                    'TooltipsTab.tsx - Editor tooltips',
-                    'YouTubeCacheTab.tsx - Cache YouTube',
-                  ].map((item, i) => (
-                    <div key={i} className="bg-muted/30 p-3 rounded text-sm">
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold mb-3">UI Components (45)</h3>
-                <p className="text-muted-foreground text-sm mb-3">
-                  Componentes shadcn/ui: accordion, alert, alert-dialog, avatar, badge, button, 
-                  calendar, card, carousel, chart, checkbox, collapsible, command, context-menu, 
-                  dialog, drawer, dropdown-menu, form, hover-card, input, input-otp, label, 
-                  menubar, navigation-menu, pagination, popover, progress, radio-group, resizable, 
-                  scroll-area, select, separator, sheet, sidebar, skeleton, slider, sonner, switch, 
-                  table, tabs, textarea, toast, toaster, toggle, toggle-group, tooltip
+      {/* Main Content */}
+      <main className={cn("mx-auto px-6 py-12", isMobile ? "max-w-4xl" : "ml-80 mr-8 max-w-5xl")}>
+        <div id="documentation-content" className="space-y-12">
+          
+          {/* ===== MENU PRINCIPAL ===== */}
+          <section id="menu-principal" className="scroll-mt-20">
+            <Card className="p-8 bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 border-2">
+              <div className="text-center space-y-6">
+                <FileText className="h-20 w-20 mx-auto text-primary" />
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+                  Documentação Técnica
+                </h1>
+                <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                  Sistema RAG com Auto-Categorização LLM, Processamento em Lote e Chat Multimodal
                 </p>
-              </div>
-            </div>
-            <BackToIndex />
-          </Card>
-
-          {/* 4. Hooks Customizados */}
-          <Card id="hooks-customizados" className="p-6 scroll-mt-20">
-            <h2 className="text-2xl font-bold mb-4">4. Hooks Customizados</h2>
-            
-            <div className="space-y-4">
-              {[
-                {
-                  name: 'useChatKnowYOU',
-                  file: 'src/hooks/useChatKnowYOU.ts',
-                  desc: 'Gerencia chat assistente de saúde com streaming AI, TTS, sentimento',
-                },
-                {
-                  name: 'useChatStudy',
-                  file: 'src/hooks/useChatStudy.ts',
-                  desc: 'Gerencia chat assistente de estudos com AI e histórico',
-                },
-                {
-                  name: 'useAdminSettings',
-                  file: 'src/hooks/useAdminSettings.ts',
-                  desc: 'Carrega configurações admin do banco de dados',
-                },
-                {
-                  name: 'useChatAnalytics',
-                  file: 'src/hooks/useChatAnalytics.ts',
-                  desc: 'Rastreia analytics de conversações e interações',
-                },
-                {
-                  name: 'useTooltipContent',
-                  file: 'src/hooks/useTooltipContent.ts',
-                  desc: 'Carrega conteúdo dinâmico de tooltips',
-                },
-                {
-                  name: 'useYouTubeAutoPreload',
-                  file: 'src/hooks/useYouTubeAutoPreload.ts',
-                  desc: 'Pré-carrega vídeos YouTube com cache',
-                },
-                {
-                  name: 'use-mobile',
-                  file: 'src/hooks/use-mobile.tsx',
-                  desc: 'Detecta viewport mobile/desktop',
-                },
-                {
-                  name: 'use-toast',
-                  file: 'src/hooks/use-toast.ts',
-                  desc: 'Sistema de notificações toast',
-                },
-              ].map((hook) => (
-                <div key={hook.name} className="bg-muted/30 p-4 rounded">
-                  <code className="text-primary font-semibold">{hook.name}</code>
-                  <p className="text-sm text-muted-foreground mt-1">{hook.file}</p>
-                  <p className="text-sm mt-2">{hook.desc}</p>
+                <div className="flex flex-wrap justify-center gap-4 pt-6">
+                  <Button onClick={() => scrollToSection('database')} size="lg" className="gap-2">
+                    <Database className="h-5 w-5" />
+                    Database
+                  </Button>
+                  <Button onClick={() => scrollToSection('backend')} size="lg" variant="secondary" className="gap-2">
+                    <Server className="h-5 w-5" />
+                    Backend
+                  </Button>
+                  <Button onClick={() => scrollToSection('frontend')} size="lg" variant="outline" className="gap-2">
+                    <Code className="h-5 w-5" />
+                    Frontend
+                  </Button>
                 </div>
-              ))}
-            </div>
-            <BackToIndex />
-          </Card>
+              </div>
+            </Card>
+          </section>
 
-          {/* 5. Edge Functions */}
-          <Card id="edge-functions" className="p-6 scroll-mt-20">
-            <h2 className="text-2xl font-bold mb-4">5. Edge Functions (Backend)</h2>
-            
-            <div className="space-y-4">
-              {[
-                {
-                  name: 'chat',
-                  desc: 'Streaming AI chat usando Lovable AI Gateway (Gemini Pro)',
-                },
-                {
-                  name: 'chat-study',
-                  desc: 'Chat focado em estudos KnowRISK/ACC',
-                },
-                {
-                  name: 'text-to-speech',
-                  desc: 'Geração áudio via ElevenLabs (Fernando Arbache)',
-                },
-                {
-                  name: 'voice-to-text',
-                  desc: 'Transcrição áudio via OpenAI Whisper',
-                },
-                {
-                  name: 'generate-image',
-                  desc: 'Geração imagens via Gemini 3 Pro Image',
-                },
-                {
-                  name: 'generate-history-image',
-                  desc: 'Imagens específicas timeline IA',
-                },
-                {
-                  name: 'generate-section-image',
-                  desc: 'Imagens para seções landing page',
-                },
-                {
-                  name: 'analyze-sentiment',
-                  desc: 'Análise de sentimento conversas',
-                },
-                {
-                  name: 'sentiment-alert',
-                  desc: 'Alertas sentimento negativo',
-                },
-                {
-                  name: 'send-email',
-                  desc: 'Envio emails via Resend API',
-                },
-                {
-                  name: 'youtube-videos',
-                  desc: 'Busca vídeos YouTube com cache',
-                },
-              ].map((func) => (
-                <div key={func.name} className="bg-muted/30 p-4 rounded">
-                  <code className="text-secondary font-semibold">{func.name}</code>
-                  <p className="text-sm mt-2">{func.desc}</p>
+          {/* ===== DATABASE ===== */}
+          <section id="database" className="scroll-mt-20 space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold flex items-center gap-3">
+                <Database className="h-8 w-8 text-primary" />
+                🗄️ Database
+              </h2>
+            </div>
+
+            <BackToIndex />
+
+            {/* Extensões */}
+            <Card className="p-6">
+              <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+                <GitBranch className="h-6 w-6 text-secondary" />
+                Extensões
+              </h3>
+              <div className="space-y-4">
+                <div className="border-l-4 border-primary pl-4">
+                  <h4 className="font-bold text-lg">pgvector</h4>
+                  <ul className="list-disc list-inside text-muted-foreground space-y-1 mt-2">
+                    <li><strong>Propósito:</strong> Busca semântica via embeddings</li>
+                    <li><strong>Tipo:</strong> VECTOR(1536)</li>
+                    <li><strong>Operador:</strong> <code className="bg-muted px-2 py-1 rounded">&lt;=&gt;</code> (cosine distance)</li>
+                    <li><strong>Uso:</strong> Armazena embeddings gerados pela OpenAI text-embedding-3-small</li>
+                  </ul>
                 </div>
-              ))}
-            </div>
-            <BackToIndex />
-          </Card>
-
-          {/* 6. Hierarquia de Componentes */}
-          <Card id="hierarquia-componentes" className="p-6 scroll-mt-20">
-            <h2 className="text-2xl font-bold mb-4">6. Hierarquia de Componentes</h2>
-            <MermaidDiagram chart={componentHierarchy} id="component-hierarchy" theme={isDarkMode ? 'dark' : 'light'} />
-            <BackToIndex />
-          </Card>
-
-          {/* 7. Padrões de Código */}
-          <Card id="padroes-codigo" className="p-6 scroll-mt-20">
-            <h2 className="text-2xl font-bold mb-4">7. Padrões de Código</h2>
-            
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold mb-3">React Component Pattern</h3>
-                <pre className="bg-muted/50 p-4 rounded-lg overflow-x-auto text-xs">
-{`import { useState } from 'react';
-import { cn } from '@/lib/utils';
-
-interface MyComponentProps {
-  title: string;
-  className?: string;
-}
-
-export const MyComponent = ({ title, className }: MyComponentProps) => {
-  const [state, setState] = useState<string>('');
-
-  return (
-    <div className={cn("base-styles", className)}>
-      <h2>{title}</h2>
-    </div>
-  );
-};`}
-                </pre>
               </div>
+            </Card>
 
-              <div>
-                <h3 className="text-xl font-semibold mb-3">Custom Hook Pattern</h3>
-                <pre className="bg-muted/50 p-4 rounded-lg overflow-x-auto text-xs">
-{`import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-
-export const useMyHook = () => {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    // Fetch logic
-    setLoading(false);
-  };
-
-  return { data, loading, loadData };
-};`}
-                </pre>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold mb-3">Tailwind + cn() Pattern</h3>
-                <pre className="bg-muted/50 p-4 rounded-lg overflow-x-auto text-xs">
-{`import { cn } from '@/lib/utils';
-
-// Uso de tokens semânticos
-<div className={cn(
-  "bg-background text-foreground",
-  "border border-border",
-  isActive && "bg-primary text-primary-foreground",
-  className
-)} />`}
-                </pre>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold mb-3">i18n Pattern</h3>
-                <pre className="bg-muted/50 p-4 rounded-lg overflow-x-auto text-xs">
-{`import { useTranslation } from 'react-i18next';
-
-export const Component = () => {
-  const { t } = useTranslation();
-  
-  return <h1>{t('hero.title')}</h1>;
-};`}
-                </pre>
-              </div>
-            </div>
-            <BackToIndex />
-          </Card>
-
-          {/* 8. Checklist */}
-          <Card id="checklist-review" className="p-6 scroll-mt-20">
-            <h2 className="text-2xl font-bold mb-4">8. Code Review Checklist</h2>
-            
-            <div className="space-y-3">
-              {[
-                '✓ Nomenclatura segue convenções (PascalCase, camelCase, etc.)',
-                '✓ Imports organizados: React → Third-party → Local',
-                '✓ Tipos TypeScript definidos (interfaces/types)',
-                '✓ Props components tipadas com interface',
-                '✓ Estados com tipos explícitos useState<Type>()',
-                '✓ Estilos usando cn() e tokens semânticos',
-                '✓ Sem cores hardcoded (text-white, bg-black)',
-                '✓ i18n implementado (useTranslation + t())',
-                '✓ Validação de entrada em Edge Functions',
-                '✓ Variáveis ambiente checadas (VITE_*, process.env)',
-                '✓ RLS policies configuradas em tabelas',
-                '✓ Cleanup em useEffect (audio, listeners)',
-                '✓ Loading states para operações async',
-                '✓ Error handling com try-catch',
-                '✓ Acessibilidade (aria-labels, roles)',
-                '✓ Mobile-first responsive design',
-                '✓ Performance (lazy loading, memoization)',
-              ].map((item, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm">
-                  <span className="text-green-500 mt-0.5">✓</span>
-                  <span>{item}</span>
+            {/* Tabelas */}
+            <Card className="p-6">
+              <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+                <Table className="h-6 w-6 text-secondary" />
+                Tabelas Principais
+              </h3>
+              
+              {/* documents */}
+              <div className="space-y-6">
+                <div className="border rounded-lg p-4 bg-muted/30">
+                  <h4 className="font-bold text-lg mb-3">documents</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Armazena PDFs processados pelo sistema RAG com metadados enriquecidos por LLM.
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Coluna</th>
+                          <th className="text-left p-2">Tipo</th>
+                          <th className="text-left p-2">Descrição</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        <tr><td className="p-2 font-mono">id</td><td className="p-2">UUID</td><td className="p-2">Identificador único</td></tr>
+                        <tr><td className="p-2 font-mono">filename</td><td className="p-2">TEXT</td><td className="p-2">Nome do arquivo PDF</td></tr>
+                        <tr><td className="p-2 font-mono">target_chat</td><td className="p-2">TEXT</td><td className="p-2">health/study/general (auto-classificado)</td></tr>
+                        <tr><td className="p-2 font-mono">ai_summary</td><td className="p-2">TEXT</td><td className="p-2">Resumo LLM (150-300 palavras)</td></tr>
+                        <tr><td className="p-2 font-mono">implementation_status</td><td className="p-2">TEXT</td><td className="p-2">ready/needs_review/incomplete</td></tr>
+                        <tr><td className="p-2 font-mono">status</td><td className="p-2">TEXT</td><td className="p-2">pending/processing/completed/failed</td></tr>
+                        <tr><td className="p-2 font-mono">total_chunks</td><td className="p-2">INTEGER</td><td className="p-2">Quantidade de chunks criados</td></tr>
+                        <tr><td className="p-2 font-mono">is_readable</td><td className="p-2">BOOLEAN</td><td className="p-2">Validação de legibilidade</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-4 p-3 bg-background rounded border">
+                    <p className="text-sm font-semibold mb-2">Foreign Keys:</p>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• <code>document_chunks.document_id</code> → <code>documents.id</code></li>
+                      <li>• <code>document_tags.document_id</code> → <code>documents.id</code></li>
+                    </ul>
+                  </div>
                 </div>
-              ))}
+
+                {/* document_chunks */}
+                <div className="border rounded-lg p-4 bg-muted/30">
+                  <h4 className="font-bold text-lg mb-3">document_chunks</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Chunks vetorizados com embeddings para busca semântica.
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Coluna</th>
+                          <th className="text-left p-2">Tipo</th>
+                          <th className="text-left p-2">Descrição</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        <tr><td className="p-2 font-mono">id</td><td className="p-2">UUID</td><td className="p-2">Identificador único</td></tr>
+                        <tr><td className="p-2 font-mono">document_id</td><td className="p-2">UUID</td><td className="p-2">FK para documents</td></tr>
+                        <tr><td className="p-2 font-mono">content</td><td className="p-2">TEXT</td><td className="p-2">Texto do chunk (750 palavras)</td></tr>
+                        <tr><td className="p-2 font-mono">embedding</td><td className="p-2">VECTOR(1536)</td><td className="p-2">Vetor para busca semântica</td></tr>
+                        <tr><td className="p-2 font-mono">chunk_index</td><td className="p-2">INTEGER</td><td className="p-2">Ordem no documento</td></tr>
+                        <tr><td className="p-2 font-mono">word_count</td><td className="p-2">INTEGER</td><td className="p-2">Contagem de palavras</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* document_tags */}
+                <div className="border rounded-lg p-4 bg-muted/30">
+                  <h4 className="font-bold text-lg mb-3">document_tags</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Tags hierárquicas (parent/child) geradas por LLM.
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Coluna</th>
+                          <th className="text-left p-2">Tipo</th>
+                          <th className="text-left p-2">Descrição</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        <tr><td className="p-2 font-mono">id</td><td className="p-2">UUID</td><td className="p-2">Identificador único</td></tr>
+                        <tr><td className="p-2 font-mono">document_id</td><td className="p-2">UUID</td><td className="p-2">FK para documents</td></tr>
+                        <tr><td className="p-2 font-mono">tag_name</td><td className="p-2">TEXT</td><td className="p-2">Nome da tag</td></tr>
+                        <tr><td className="p-2 font-mono">tag_type</td><td className="p-2">TEXT</td><td className="p-2">parent/child</td></tr>
+                        <tr><td className="p-2 font-mono">parent_tag_id</td><td className="p-2">UUID</td><td className="p-2">FK para parent tag</td></tr>
+                        <tr><td className="p-2 font-mono">confidence</td><td className="p-2">NUMERIC(3,2)</td><td className="p-2">Score 0.0-1.0</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Outras tabelas resumidas */}
+                <div className="border rounded-lg p-4 bg-muted/30">
+                  <h4 className="font-bold text-lg mb-3">Outras Tabelas</h4>
+                  <ul className="space-y-2 text-sm">
+                    <li>• <strong>conversation_history:</strong> Histórico de conversas com chat_type (study/health)</li>
+                    <li>• <strong>chat_analytics:</strong> Métricas de uso (message_count, audio_plays, topics)</li>
+                    <li>• <strong>admin_settings:</strong> Configurações do painel admin</li>
+                    <li>• <strong>tooltip_contents:</strong> Conteúdo tooltips com áudio TTS</li>
+                    <li>• <strong>generated_images:</strong> Cache de imagens geradas (Nano Banana)</li>
+                    <li>• <strong>user_roles:</strong> RBAC com role 'admin'</li>
+                    <li>• <strong>credits_usage:</strong> Log de consumo de créditos API</li>
+                  </ul>
+                </div>
+              </div>
+            </Card>
+
+            {/* RLS Policies */}
+            <Card className="p-6">
+              <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+                <Lock className="h-6 w-6 text-secondary" />
+                Políticas RLS (Row Level Security)
+              </h3>
+              <div className="space-y-4">
+                <div className="border-l-4 border-destructive pl-4">
+                  <h4 className="font-bold">admin_settings</h4>
+                  <ul className="list-disc list-inside text-muted-foreground text-sm mt-2">
+                    <li>SELECT/UPDATE: Apenas admins autenticados</li>
+                    <li>Protege gmail_notification_email de acesso público</li>
+                  </ul>
+                </div>
+                <div className="border-l-4 border-destructive pl-4">
+                  <h4 className="font-bold">documents</h4>
+                  <ul className="list-disc list-inside text-muted-foreground text-sm mt-2">
+                    <li>INSERT/UPDATE: Sistema pode inserir (verify_jwt = false)</li>
+                    <li>SELECT/DELETE: Apenas admins</li>
+                  </ul>
+                </div>
+                <div className="border-l-4 border-warning pl-4">
+                  <h4 className="font-bold">conversation_history</h4>
+                  <ul className="list-disc list-inside text-muted-foreground text-sm mt-2">
+                    <li>ALL: Acesso público para INSERT/SELECT/UPDATE/DELETE</li>
+                    <li>Permite salvar conversas sem autenticação</li>
+                  </ul>
+                </div>
+              </div>
+            </Card>
+          </section>
+
+          {/* ===== BACKEND ===== */}
+          <section id="backend" className="scroll-mt-20 space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold flex items-center gap-3">
+                <Server className="h-8 w-8 text-primary" />
+                ⚡ Backend
+              </h2>
             </div>
+
             <BackToIndex />
-          </Card>
 
-          {/* Tecnologias */}
-          <Card id="tecnologias" className="p-6 scroll-mt-20">
-            <h2 className="text-2xl font-bold mb-4">Tecnologias Principais</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-muted/30 p-4 rounded">
-                <h3 className="font-semibold mb-2">Frontend</h3>
-                <ul className="text-sm space-y-1 text-muted-foreground">
-                  <li>React 18</li>
-                  <li>TypeScript</li>
-                  <li>Tailwind CSS</li>
-                  <li>Vite</li>
-                  <li>shadcn/ui</li>
-                  <li>React Router</li>
-                  <li>React Query</li>
-                </ul>
+            {/* Diagrama de Fluxo Principal */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-semibold">Diagrama de Fluxo Principal</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openZoomModal(backendFlowDiagram, 'backend-flow', 'Fluxo Backend Completo')}
+                  className="gap-2"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                  Ampliar
+                </Button>
               </div>
+              <div className="cursor-pointer" onClick={() => openZoomModal(backendFlowDiagram, 'backend-flow', 'Fluxo Backend Completo')}>
+                <MermaidDiagram 
+                  chart={backendFlowDiagram} 
+                  id="backend-flow-diagram" 
+                  theme={isDarkMode ? 'dark' : 'light'} 
+                />
+              </div>
+            </Card>
 
-              <div className="bg-muted/30 p-4 rounded">
-                <h3 className="font-semibold mb-2">Backend</h3>
-                <ul className="text-sm space-y-1 text-muted-foreground">
-                  <li>Lovable Cloud</li>
-                  <li>PostgreSQL</li>
-                  <li>Edge Functions</li>
-                  <li>Row Level Security</li>
-                  <li>Realtime subscriptions</li>
-                </ul>
-              </div>
+            {/* Edge Functions */}
+            <Card className="p-6">
+              <h3 className="text-2xl font-semibold mb-6">Edge Functions (16 funções)</h3>
+              
+              <div className="space-y-8">
+                {/* process-bulk-document */}
+                <div className="border rounded-lg p-5 bg-muted/30">
+                  <h4 className="text-xl font-bold mb-4 text-primary">process-bulk-document</h4>
+                  <div className="grid md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <p className="text-sm font-semibold text-muted-foreground">Caminho</p>
+                      <code className="text-xs bg-background p-2 rounded block mt-1">supabase/functions/process-bulk-document/index.ts</code>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-muted-foreground">Método / JWT</p>
+                      <p className="text-sm mt-1"><code className="bg-background px-2 py-1 rounded">POST</code> <code className="bg-background px-2 py-1 rounded ml-2">verify_jwt = false</code></p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Input JSON:</p>
+                      <pre className="bg-background p-3 rounded text-xs overflow-x-auto">
+{`{
+  "documents_data": [
+    {
+      "document_id": "uuid",
+      "full_text": "texto extraído do PDF",
+      "title": "nome_arquivo.pdf"
+    }
+  ]
+}`}
+                      </pre>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Output JSON (Success):</p>
+                      <pre className="bg-background p-3 rounded text-xs overflow-x-auto">
+{`{
+  "success": true,
+  "results": [
+    { "document_id": "uuid", "status": "completed" }
+  ]
+}`}
+                      </pre>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Códigos de Status:</p>
+                      <table className="w-full text-xs border rounded">
+                        <tbody className="divide-y">
+                          <tr><td className="p-2 font-mono">200</td><td className="p-2">Sucesso</td></tr>
+                          <tr><td className="p-2 font-mono">400</td><td className="p-2">Texto inválido (&lt; 100 chars ou ratio &lt; 80%)</td></tr>
+                          <tr><td className="p-2 font-mono">500</td><td className="p-2">Erro interno</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Fluxo Interno:</p>
+                      <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+                        <li>Validação de sanidade do texto</li>
+                        <li>Auto-categorização via LLM (HEALTH/STUDY/GENERAL)</li>
+                        <li>Geração de metadados (tags, resumo, implementation_status)</li>
+                        <li>Chunking (750 palavras, 180 overlap)</li>
+                        <li>Embeddings via OpenAI text-embedding-3-small</li>
+                        <li>Persistência em document_chunks</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
 
-              <div className="bg-muted/30 p-4 rounded">
-                <h3 className="font-semibold mb-2">APIs Externas</h3>
-                <ul className="text-sm space-y-1 text-muted-foreground">
-                  <li>Lovable AI (Gemini)</li>
-                  <li>ElevenLabs TTS</li>
-                  <li>OpenAI Whisper</li>
-                  <li>YouTube Data API</li>
-                  <li>Resend Email</li>
-                </ul>
+                {/* chat / chat-study */}
+                <div className="border rounded-lg p-5 bg-muted/30">
+                  <h4 className="text-xl font-bold mb-4 text-primary">chat / chat-study</h4>
+                  <div className="grid md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <p className="text-sm font-semibold text-muted-foreground">Caminhos</p>
+                      <code className="text-xs bg-background p-2 rounded block mt-1">supabase/functions/chat/index.ts</code>
+                      <code className="text-xs bg-background p-2 rounded block mt-1">supabase/functions/chat-study/index.ts</code>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-muted-foreground">Método / JWT</p>
+                      <p className="text-sm mt-1"><code className="bg-background px-2 py-1 rounded">POST</code> <code className="bg-background px-2 py-1 rounded ml-2">verify_jwt = false</code></p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Input JSON:</p>
+                      <pre className="bg-background p-3 rounded text-xs overflow-x-auto">
+{`{
+  "messages": [
+    { "role": "user", "content": "pergunta do usuário" }
+  ],
+  "session_id": "chat_2025-01-01_123456"
+}`}
+                      </pre>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Output:</p>
+                      <p className="text-xs text-muted-foreground">SSE Streaming (text/event-stream)</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Fluxo Interno:</p>
+                      <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+                        <li>Busca RAG via search-documents (contexto relevante)</li>
+                        <li>Monta prompt com contexto + mensagens</li>
+                        <li>Streaming via Lovable AI Gateway (google/gemini-2.5-flash)</li>
+                        <li>Análise de sentimento ao final</li>
+                        <li>Salva conversa em conversation_history</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+
+                {/* search-documents */}
+                <div className="border rounded-lg p-5 bg-muted/30">
+                  <h4 className="text-xl font-bold mb-4 text-primary">search-documents</h4>
+                  <div className="grid md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <p className="text-sm font-semibold text-muted-foreground">Caminho</p>
+                      <code className="text-xs bg-background p-2 rounded block mt-1">supabase/functions/search-documents/index.ts</code>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-muted-foreground">Método / JWT</p>
+                      <p className="text-sm mt-1"><code className="bg-background px-2 py-1 rounded">POST</code> <code className="bg-background px-2 py-1 rounded ml-2">verify_jwt = false</code></p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Input JSON:</p>
+                      <pre className="bg-background p-3 rounded text-xs overflow-x-auto">
+{`{
+  "query": "pergunta do usuário",
+  "targetChat": "health",
+  "matchThreshold": 0.7,
+  "matchCount": 5
+}`}
+                      </pre>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Output JSON:</p>
+                      <pre className="bg-background p-3 rounded text-xs overflow-x-auto">
+{`{
+  "results": [
+    {
+      "chunk_id": "uuid",
+      "content": "texto do chunk",
+      "similarity": 0.85
+    }
+  ]
+}`}
+                      </pre>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Fluxo Interno:</p>
+                      <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+                        <li>Gera embedding da query via OpenAI</li>
+                        <li>Busca no PostgreSQL usando cosine distance (pgvector)</li>
+                        <li>Filtra por target_chat e similarity threshold</li>
+                        <li>Retorna top N chunks mais similares</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Outras Edge Functions (resumidas) */}
+                <div className="border rounded-lg p-5 bg-muted/30">
+                  <h4 className="text-xl font-bold mb-4">Outras Edge Functions</h4>
+                  <div className="grid gap-4">
+                    <div className="border-l-4 border-primary pl-4">
+                      <p className="font-semibold text-sm">text-to-speech</p>
+                      <p className="text-xs text-muted-foreground">TTS ElevenLabs (Fernando Arbache voice), streaming Web Audio API</p>
+                    </div>
+                    <div className="border-l-4 border-primary pl-4">
+                      <p className="font-semibold text-sm">voice-to-text</p>
+                      <p className="text-xs text-muted-foreground">STT OpenAI Whisper, suporte PT-BR</p>
+                    </div>
+                    <div className="border-l-4 border-secondary pl-4">
+                      <p className="font-semibold text-sm">generate-image</p>
+                      <p className="text-xs text-muted-foreground">Geração imagens saúde via google/gemini-3-pro-image-preview</p>
+                    </div>
+                    <div className="border-l-4 border-secondary pl-4">
+                      <p className="font-semibold text-sm">generate-history-image</p>
+                      <p className="text-xs text-muted-foreground">Imagens timeline IA (AI History modal)</p>
+                    </div>
+                    <div className="border-l-4 border-secondary pl-4">
+                      <p className="font-semibold text-sm">generate-section-image</p>
+                      <p className="text-xs text-muted-foreground">Imagens seções landing page</p>
+                    </div>
+                    <div className="border-l-4 border-accent pl-4">
+                      <p className="font-semibold text-sm">analyze-sentiment</p>
+                      <p className="text-xs text-muted-foreground">Análise sentimento via Lovable AI</p>
+                    </div>
+                    <div className="border-l-4 border-accent pl-4">
+                      <p className="font-semibold text-sm">sentiment-alert</p>
+                      <p className="text-xs text-muted-foreground">Alertas email para conversas negativas</p>
+                    </div>
+                    <div className="border-l-4 border-warning pl-4">
+                      <p className="font-semibold text-sm">send-email</p>
+                      <p className="text-xs text-muted-foreground">Emails via Resend API</p>
+                    </div>
+                    <div className="border-l-4 border-warning pl-4">
+                      <p className="font-semibold text-sm">youtube-videos</p>
+                      <p className="text-xs text-muted-foreground">Cache YouTube API, otimização quota (hardcoded channelId)</p>
+                    </div>
+                    <div className="border-l-4 border-muted pl-4">
+                      <p className="font-semibold text-sm">process-document-with-text</p>
+                      <p className="text-xs text-muted-foreground">Processamento individual (legado, substituído por process-bulk-document)</p>
+                    </div>
+                    <div className="border-l-4 border-muted pl-4">
+                      <p className="font-semibold text-sm">suggest-document-tags</p>
+                      <p className="text-xs text-muted-foreground">Sugestão tags via LLM (agora integrado em process-bulk-document)</p>
+                    </div>
+                    <div className="border-l-4 border-muted pl-4">
+                      <p className="font-semibold text-sm">generate-document-summary</p>
+                      <p className="text-xs text-muted-foreground">Resumo via LLM (agora integrado em process-bulk-document)</p>
+                    </div>
+                  </div>
+                </div>
               </div>
+            </Card>
+          </section>
+
+          {/* ===== FRONTEND ===== */}
+          <section id="frontend" className="scroll-mt-20 space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold flex items-center gap-3">
+                <Code className="h-8 w-8 text-primary" />
+                🖥️ Frontend
+              </h2>
             </div>
-            <BackToIndex />
-          </Card>
 
-          {/* Footer */}
-          <div className="text-center text-sm text-muted-foreground pt-8 border-t border-border">
-            <p>KnowRisk Application - Guia de Estilo de Código</p>
-            <p className="mt-1">© 2024 KnowRisk - Todos os direitos reservados</p>
-          </div>
+            <BackToIndex />
+
+            {/* Dependências */}
+            <Card className="p-6">
+              <h3 className="text-2xl font-semibold mb-4">Dependências Core</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2">Pacote</th>
+                      <th className="text-left p-2">Versão</th>
+                      <th className="text-left p-2">Uso</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    <tr>
+                      <td className="p-2 font-mono">pdfjs-dist</td>
+                      <td className="p-2">^5.4.449</td>
+                      <td className="p-2">Extração texto PDF no cliente</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 font-mono">mermaid</td>
+                      <td className="p-2">^11.12.1</td>
+                      <td className="p-2">Diagramas de fluxo</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 font-mono">react-i18next</td>
+                      <td className="p-2">^16.3.5</td>
+                      <td className="p-2">Internacionalização PT/EN/FR</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 font-mono">@tanstack/react-query</td>
+                      <td className="p-2">^5.83.0</td>
+                      <td className="p-2">Cache e fetching assíncrono</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 font-mono">lucide-react</td>
+                      <td className="p-2">^0.462.0</td>
+                      <td className="p-2">Biblioteca de ícones</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 font-mono">@supabase/supabase-js</td>
+                      <td className="p-2">^2.84.0</td>
+                      <td className="p-2">Cliente Supabase/Lovable Cloud</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* Componentes */}
+            <Card className="p-6">
+              <h3 className="text-2xl font-semibold mb-6">Componentes Principais</h3>
+              
+              <div className="space-y-6">
+                {/* DocumentsTab.tsx */}
+                <div className="border rounded-lg p-5 bg-muted/30">
+                  <h4 className="text-xl font-bold mb-3 text-primary">DocumentsTab.tsx</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    <strong>Caminho:</strong> <code>src/components/admin/DocumentsTab.tsx</code>
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Descrição:</p>
+                      <p className="text-sm text-muted-foreground">
+                        Tab de gerenciamento de documentos RAG no painel admin. Permite upload múltiplo de PDFs, 
+                        processamento em lote com auto-categorização LLM, e visualização de documentos com status.
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Dependências:</p>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground">
+                        <li><code>pdfjs-dist</code> - Extração de texto</li>
+                        <li><code>@tanstack/react-query</code> - Cache e mutations</li>
+                        <li><code>@supabase/supabase-js</code> - Chamadas backend</li>
+                      </ul>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Ações Principais:</p>
+                      <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+                        <li><strong>Upload múltiplo de PDFs:</strong> Aceita arquivos <code>.pdf</code> via drag-and-drop ou file input</li>
+                        <li><strong>Extração de texto:</strong> Usa <code>pdfjsLib.getDocument()</code> para extrair texto página por página</li>
+                        <li><strong>Criação de registros:</strong> Insere documentos com status "pending" e <code>target_chat: "general"</code></li>
+                        <li><strong>Processamento em lote:</strong> Invoca <code>process-bulk-document</code> edge function</li>
+                        <li><strong>Auto-categorização:</strong> LLM classifica automaticamente (HEALTH/STUDY/GENERAL)</li>
+                        <li><strong>Visualização:</strong> Tabela com status, target_chat, implementation_status, resumo AI, tags</li>
+                      </ol>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Lógica Principal:</p>
+                      <pre className="bg-background p-3 rounded text-xs overflow-x-auto">
+{`// Extração de texto PDF
+const extractTextFromPDF = async (file: File): Promise<string> => {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    fullText += textContent.items.map((item: any) => item.str).join(' ');
+  }
+  return fullText;
+};
+
+// Processamento bulk
+await supabase.functions.invoke("process-bulk-document", {
+  body: { documents_data }
+});`}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ChatKnowYOU.tsx / ChatStudy.tsx */}
+                <div className="border rounded-lg p-5 bg-muted/30">
+                  <h4 className="text-xl font-bold mb-3 text-primary">ChatKnowYOU.tsx / ChatStudy.tsx</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    <strong>Caminhos:</strong> 
+                    <code className="block mt-1">src/components/ChatKnowYOU.tsx</code>
+                    <code className="block mt-1">src/components/ChatStudy.tsx</code>
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Descrição:</p>
+                      <p className="text-sm text-muted-foreground">
+                        Componentes de chat interativo com RAG. ChatKnowYOU focado em saúde (Hospital Moinhos), 
+                        ChatStudy focado em conteúdo KnowRISK/KnowYOU. Ambos incluem geração de imagens, 
+                        áudio TTS/STT, e análise de sentimento.
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Funcionalidades:</p>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        <li>Streaming SSE de respostas via edge functions</li>
+                        <li>Modo de geração de imagens (botão "Desenhar")</li>
+                        <li>Controles de áudio (Play, Stop, Download) com progresso</li>
+                        <li>Gravação de voz com transcrição automática (Whisper)</li>
+                        <li>Sugestões contextuais dinâmicas (baseadas em tags de documentos)</li>
+                        <li>Histórico de conversas persistente (localStorage + DB)</li>
+                        <li>Análise de sentimento em tempo real</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Outros componentes resumidos */}
+                <div className="border rounded-lg p-5 bg-muted/30">
+                  <h4 className="text-xl font-bold mb-4">Outros Componentes</h4>
+                  <div className="grid gap-3">
+                    <div className="border-l-4 border-primary pl-4">
+                      <p className="font-semibold text-sm">AIHistoryPanel.tsx</p>
+                      <p className="text-xs text-muted-foreground">Modal timeline evolução IA com 5 eras, áudio sincronizado, navegação jump</p>
+                    </div>
+                    <div className="border-l-4 border-primary pl-4">
+                      <p className="font-semibold text-sm">DraggablePreviewPanel.tsx</p>
+                      <p className="text-xs text-muted-foreground">Painel arrastável para tooltips com áudio TTS e carrosséis de imagens</p>
+                    </div>
+                    <div className="border-l-4 border-secondary pl-4">
+                      <p className="font-semibold text-sm">Header.tsx</p>
+                      <p className="text-xs text-muted-foreground">Navegação fixa com seletor de idiomas (PT/EN/FR), scroll progress, tema claro/escuro</p>
+                    </div>
+                    <div className="border-l-4 border-secondary pl-4">
+                      <p className="font-semibold text-sm">MediaCarousel.tsx</p>
+                      <p className="text-xs text-muted-foreground">Carrossel lado a lado: Spotify podcast + YouTube videos</p>
+                    </div>
+                    <div className="border-l-4 border-accent pl-4">
+                      <p className="font-semibold text-sm">MermaidDiagram.tsx</p>
+                      <p className="text-xs text-muted-foreground">Renderização de diagramas Mermaid com tema adaptativo</p>
+                    </div>
+                    <div className="border-l-4 border-accent pl-4">
+                      <p className="font-semibold text-sm">MermaidZoomModal.tsx</p>
+                      <p className="text-xs text-muted-foreground">Modal fullscreen com zoom (+ / - / Reset) e pan para diagramas</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Hooks */}
+            <Card className="p-6">
+              <h3 className="text-2xl font-semibold mb-4">Hooks Customizados</h3>
+              <div className="space-y-3">
+                <div className="border-l-4 border-primary pl-4">
+                  <p className="font-semibold text-sm">useChatKnowYOU.ts</p>
+                  <p className="text-xs text-muted-foreground">Lógica chat saúde: streaming, histórico, geração imagem, análise sentimento</p>
+                </div>
+                <div className="border-l-4 border-primary pl-4">
+                  <p className="font-semibold text-sm">useChatStudy.ts</p>
+                  <p className="text-xs text-muted-foreground">Lógica chat estudos: RAG KnowRISK/KnowYOU, sugestões dinâmicas</p>
+                </div>
+                <div className="border-l-4 border-secondary pl-4">
+                  <p className="font-semibold text-sm">useAdminSettings.ts</p>
+                  <p className="text-xs text-muted-foreground">Gerenciamento configurações admin (audio, alerts, Gmail API)</p>
+                </div>
+                <div className="border-l-4 border-secondary pl-4">
+                  <p className="font-semibold text-sm">useChatAnalytics.ts</p>
+                  <p className="text-xs text-muted-foreground">Tracking métricas: message_count, audio_plays, topics</p>
+                </div>
+                <div className="border-l-4 border-accent pl-4">
+                  <p className="font-semibold text-sm">useTooltipContent.ts</p>
+                  <p className="text-xs text-muted-foreground">Fetch conteúdo tooltips com cache e validação</p>
+                </div>
+              </div>
+            </Card>
+          </section>
         </div>
-      </div>
+      </main>
+
+      {/* Zoom Modal */}
+      <MermaidZoomModal
+        chart={zoomModal.chart}
+        id={zoomModal.id}
+        title={zoomModal.title}
+        open={zoomModal.open}
+        onOpenChange={(open) => setZoomModal({ ...zoomModal, open })}
+        theme={isDarkMode ? 'dark' : 'light'}
+      />
     </div>
   );
 };
