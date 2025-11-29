@@ -316,6 +316,33 @@ export type Database = {
           },
         ]
       }
+      documentation_versions: {
+        Row: {
+          author: string | null
+          changes: Json
+          created_at: string
+          id: string
+          release_date: string
+          version: string
+        }
+        Insert: {
+          author?: string | null
+          changes?: Json
+          created_at?: string
+          id?: string
+          release_date?: string
+          version: string
+        }
+        Update: {
+          author?: string | null
+          changes?: Json
+          created_at?: string
+          id?: string
+          release_date?: string
+          version?: string
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           ai_summary: string | null
