@@ -47,6 +47,47 @@ Deno.serve(async (req) => {
       throw fetchError;
     }
 
+    // Recalcular tags dos documentos
+    const { data: tags } = await supabase
+      .from("document_tags")
+      .select(`
+        tag_name,
+        tag_type,
+        confidence,
+        documents!inner(target_chat, status)
+      `)
+      .eq("documents.target_chat", chatType)
+      .eq("documents.status", "completed");
+
+    // Agregar tags parent com confidence >= 0.7
+    const parentTags = (tags || [])
+      .filter((t: any) => t.tag_type === "parent" && t.confidence >= 0.7)
+      .map((t: any) => t.tag_name);
+    
+    const uniqueTags = [...new Set(parentTags)];
+
+    // Agregar dados completos das tags
+    const tagStats = (tags || []).reduce((acc: any, tag: any) => {
+      if (!acc[tag.tag_name]) {
+        acc[tag.tag_name] = {
+          tag_name: tag.tag_name,
+          tag_type: tag.tag_type,
+          confidences: [],
+          count: 0
+        };
+      }
+      acc[tag.tag_name].confidences.push(tag.confidence);
+      acc[tag.tag_name].count++;
+      return acc;
+    }, {});
+
+    const documentTagsData = Object.values(tagStats).map((stat: any) => ({
+      tag_name: stat.tag_name,
+      tag_type: stat.tag_type,
+      avg_confidence: stat.confidences.reduce((a: number, b: number) => a + b, 0) / stat.confidences.length,
+      count: stat.count
+    })).sort((a: any, b: any) => b.count - a.count || b.avg_confidence - a.avg_confidence);
+
     // Update config
     const { error: updateError } = await supabase
       .from("chat_config")
@@ -56,6 +97,8 @@ Deno.serve(async (req) => {
         ...(updates.scopeTopics !== undefined && { scope_topics: updates.scopeTopics }),
         ...(updates.rejectionMessage !== undefined && { rejection_message: updates.rejectionMessage }),
         ...(updates.systemPromptBase !== undefined && { system_prompt_base: updates.systemPromptBase }),
+        scope_topics: uniqueTags,
+        document_tags_data: documentTagsData,
         updated_at: new Date().toISOString(),
       })
       .eq("chat_type", chatType);

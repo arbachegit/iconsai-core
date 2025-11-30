@@ -147,6 +147,7 @@ export type Database = {
         Row: {
           chat_type: string
           created_at: string | null
+          document_tags_data: Json | null
           health_issues: Json | null
           health_status: string | null
           id: string
@@ -164,6 +165,7 @@ export type Database = {
         Insert: {
           chat_type: string
           created_at?: string | null
+          document_tags_data?: Json | null
           health_issues?: Json | null
           health_status?: string | null
           id?: string
@@ -181,6 +183,7 @@ export type Database = {
         Update: {
           chat_type?: string
           created_at?: string | null
+          document_tags_data?: Json | null
           health_issues?: Json | null
           health_status?: string | null
           id?: string
