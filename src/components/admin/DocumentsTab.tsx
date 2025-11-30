@@ -1214,9 +1214,24 @@ export const DocumentsTab = () => {
                   </TableCell>
                   <TableCell>
                     {fileStatus.targetChat ? <Badge variant="outline" className={getChatBadgeColor(fileStatus.targetChat)}>
-                        {fileStatus.targetChat === 'health' && '🏥 HEALTH'}
-                        {fileStatus.targetChat === 'study' && '📚 STUDY'}
-                        {fileStatus.targetChat === 'general' && '📄 GENERAL'}
+                        {fileStatus.targetChat === 'health' && (
+                          <span className="flex items-center gap-1.5">
+                            <Heart className="h-3.5 w-3.5" />
+                            HEALTH
+                          </span>
+                        )}
+                        {fileStatus.targetChat === 'study' && (
+                          <span className="flex items-center gap-1.5">
+                            <GraduationCap className="h-3.5 w-3.5" />
+                            STUDY
+                          </span>
+                        )}
+                        {fileStatus.targetChat === 'general' && (
+                          <span className="flex items-center gap-1.5">
+                            <FileText className="h-3.5 w-3.5" />
+                            GENERAL
+                          </span>
+                        )}
                       </Badge> : <span className="text-xs text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
@@ -1283,9 +1298,24 @@ export const DocumentsTab = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="high">🟢 Alta (≥80%)</SelectItem>
-                    <SelectItem value="medium">🔵 Média (50-79%)</SelectItem>
-                    <SelectItem value="low">🔴 Baixa (&lt;50%)</SelectItem>
+                    <SelectItem value="high">
+                      <span className="flex items-center gap-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                        Alta (≥80%)
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="medium">
+                      <span className="flex items-center gap-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" />
+                        Média (50-79%)
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="low">
+                      <span className="flex items-center gap-2">
+                        <XCircle className="h-3.5 w-3.5 text-red-500" />
+                        Baixa (&lt;50%)
+                      </span>
+                    </SelectItem>
                     <SelectItem value="unscored">Sem pontuação</SelectItem>
                   </SelectContent>
                 </Select>
@@ -1299,18 +1329,28 @@ export const DocumentsTab = () => {
               setSortField("created_at");
               setSortDirection("desc");
             }}>
-                🔄 Limpar Filtros
+                <X className="mr-2 h-4 w-4" />
+                Limpar Filtros
               </Button>
               
-              <Button variant="outline" onClick={handleReprocessAllPendingFailed} disabled={isBulkReprocessing}>
-                {isBulkReprocessing ? <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Reprocessando...
-                  </> : <>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Reprocessar Pendentes/Falhados
-                  </>}
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" onClick={handleReprocessAllPendingFailed} disabled={isBulkReprocessing}>
+                      {isBulkReprocessing ? <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Reprocessando...
+                        </> : <>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Reprocessar Pendentes/Falhados
+                        </>}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-sm">Reprocessar todos os documentos com status pendente ou falhado</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
           
@@ -1360,32 +1400,110 @@ export const DocumentsTab = () => {
                   <div className="flex items-center gap-2">
                     Status
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "status" && "text-primary")} />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-sm">Estado atual do processamento do documento</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </TableHead>
                 <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("target_chat")}>
                   <div className="flex items-center gap-2">
                     Chat
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "target_chat" && "text-primary")} />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-sm">Chat de destino detectado automaticamente pela IA</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </TableHead>
                 <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("inserted_in_chat")}>
                   <div className="flex items-center gap-2">
                     Chat Inserido
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "inserted_in_chat" && "text-primary")} />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-sm">Chat onde o documento foi efetivamente inserido</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </TableHead>
                 <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("is_inserted")}>
                   <div className="flex items-center gap-2">
                     Inserido
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "is_inserted" && "text-primary")} />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-sm">Indica se o documento já foi inserido em algum chat</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </TableHead>
-                <TableHead>TAG Principal</TableHead>
-                <TableHead>Estado</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    TAG Principal
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-sm">Categoria principal identificada pela IA</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    Estado
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-sm">Estado de implementação: ready, needs_review, incomplete</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </TableHead>
                 <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("total_chunks")}>
                   <div className="flex items-center gap-2">
                     Chunks
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "total_chunks" && "text-primary")} />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-sm">Quantidade de fragmentos do documento para busca RAG</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </TableHead>
                 <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("readability_score")}>
@@ -1488,15 +1606,35 @@ export const DocumentsTab = () => {
                   <TableCell onClick={e => !doc.is_inserted && e.stopPropagation()}>
                     {doc.is_inserted && doc.inserted_in_chat ? <Badge className={getChatBadgeColor(doc.inserted_in_chat)}>
                         {doc.inserted_in_chat}
-                      </Badge> : <Button variant="outline" size="sm" onClick={e => {
-                  e.stopPropagation();
-                  setInsertionModalDoc(doc);
-                }} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 border-blue-500/30" title="Inserir em Chat">
-                        <Plus className="h-4 w-4" />
-                      </Button>}
+                      </Badge> : <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={e => {
+                              e.stopPropagation();
+                              setInsertionModalDoc(doc);
+                            }} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 border-blue-500/30">
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-sm">Inserir manualmente em um chat (Health ou Study)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>}
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)} className="text-center">
-                    {doc.is_inserted ? <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" /> : <XCircle className="h-5 w-5 text-gray-400 mx-auto" />}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="inline-flex">
+                            {doc.is_inserted ? <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" /> : <XCircle className="h-5 w-5 text-gray-400 mx-auto" />}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-sm">{doc.is_inserted ? "Documento inserido em um chat" : "Documento ainda não inserido"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
                     <Button variant="ghost" size="sm" onClick={e => {
@@ -1540,24 +1678,51 @@ export const DocumentsTab = () => {
                   <TableCell onClick={() => setSelectedDoc(doc)}>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={e => {
-                    e.stopPropagation();
-                    downloadAsPDF(doc);
-                  }} title="Download PDF">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      {(doc.status === "failed" || doc.status === "pending") && <Button variant="ghost" size="sm" onClick={e => {
-                    e.stopPropagation();
-                    reprocessMutation.mutate(doc.id);
-                  }} disabled={reprocessMutation.isPending} title="Reprocessar">
-                          <RefreshCw className={cn("h-4 w-4", reprocessMutation.isPending && "animate-spin")} />
-                        </Button>}
-                      <Button variant="ghost" size="sm" onClick={e => {
-                    e.stopPropagation();
-                    deleteMutation.mutate(doc.id);
-                  }} title="Deletar">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="sm" onClick={e => {
+                              e.stopPropagation();
+                              downloadAsPDF(doc);
+                            }}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-sm">Baixar documento como PDF</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      {(doc.status === "failed" || doc.status === "pending") && <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="sm" onClick={e => {
+                              e.stopPropagation();
+                              reprocessMutation.mutate(doc.id);
+                            }} disabled={reprocessMutation.isPending}>
+                              <RefreshCw className={cn("h-4 w-4", reprocessMutation.isPending && "animate-spin")} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-sm">Reprocessar documento falhado ou pendente</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="sm" onClick={e => {
+                              e.stopPropagation();
+                              deleteMutation.mutate(doc.id);
+                            }}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-sm">Deletar documento permanentemente</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </TableCell>
                 </TableRow>)}
