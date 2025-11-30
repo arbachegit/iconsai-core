@@ -105,13 +105,13 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
   ];
 
   return (
-    <aside className="w-64 bg-card border-r border-primary/20 flex flex-col">
+    <aside className="w-64 bg-card border-r border-primary/20 flex flex-col h-screen overflow-hidden">
       <div className="p-6 border-b border-primary/20">
         <h1 className="text-xl font-bold text-gradient">Admin Panel</h1>
         <p className="text-sm text-muted-foreground mt-1">KnowYOU</p>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-4 pb-0 space-y-1 overflow-y-auto">
         {menuCategories.map((category, index) => (
           <div key={category.id}>
             {index > 0 && <Separator className="my-2 bg-primary/10" />}
@@ -149,36 +149,36 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
             </Collapsible>
           </div>
         ))}
+
+        <div className="sticky bottom-0 p-4 mt-4 border-t border-primary/20 bg-card space-y-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3"
+            onClick={() => navigate("/docs")}
+          >
+            <BookOpen className="w-4 h-4" />
+            Documentação
+          </Button>
+
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-primary hover:text-primary"
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Voltar ao APP
+          </Button>
+
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-destructive hover:text-destructive"
+            onClick={handleLogout}
+          >
+            <LogOut className="w-4 h-4" />
+            Sair
+          </Button>
+        </div>
       </nav>
-
-      <div className="sticky bottom-0 p-4 border-t border-primary/20 bg-card space-y-2">
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3"
-          onClick={() => navigate("/docs")}
-        >
-          <BookOpen className="w-4 h-4" />
-          Documentação
-        </Button>
-
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3 text-primary hover:text-primary"
-          onClick={() => navigate("/")}
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Voltar ao APP
-        </Button>
-
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3 text-destructive hover:text-destructive"
-          onClick={handleLogout}
-        >
-          <LogOut className="w-4 h-4" />
-          Sair
-        </Button>
-      </div>
     </aside>
   );
 };
