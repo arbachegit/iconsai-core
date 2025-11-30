@@ -316,7 +316,7 @@ export function useChatStudy() {
       setIsGeneratingImage(true);
 
       try {
-        const { data, error } = await supabase.functions.invoke("generate-image", {
+        const { data, error } = await supabase.functions.invoke("generate-image-study", {
           body: { prompt: prompt.trim() },
         });
 
