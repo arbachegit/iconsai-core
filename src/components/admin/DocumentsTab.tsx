@@ -1,23 +1,40 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Configure PDF.js worker with local bundle
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+interface FileUploadStatus {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  status: 'waiting' | 'extracting' | 'uploading' | 'processing' | 'completed' | 'failed';
+  progress: number;
+  targetChat: string | null;
+  details: string;
+  totalChunks?: number;
+  documentId?: string;
+  error?: string;
+}
 
 export const DocumentsTab = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
+  const [uploadStatuses, setUploadStatuses] = useState<FileUploadStatus[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch documents
@@ -52,73 +69,205 @@ export const DocumentsTab = () => {
     return fullText;
   };
 
-  // Upload and process documents (bulk)
+  // Poll document status
+  const pollDocumentStatus = async (documentId: string, fileId: string) => {
+    const maxAttempts = 30;
+    let attempts = 0;
+    
+    const poll = setInterval(async () => {
+      attempts++;
+      
+      const { data, error } = await supabase
+        .from('documents')
+        .select('status, target_chat, total_chunks, error_message')
+        .eq('id', documentId)
+        .single();
+      
+      if (error || attempts >= maxAttempts) {
+        clearInterval(poll);
+        setUploadStatuses(prev => prev.map(s => 
+          s.id === fileId 
+            ? { 
+                ...s, 
+                status: 'failed', 
+                progress: 100, 
+                details: error?.message || 'Timeout ao aguardar processamento'
+              }
+            : s
+        ));
+        return;
+      }
+      
+      if (data?.status === 'completed') {
+        clearInterval(poll);
+        setUploadStatuses(prev => prev.map(s => 
+          s.id === fileId 
+            ? { 
+                ...s, 
+                status: 'completed', 
+                progress: 100,
+                targetChat: data.target_chat,
+                totalChunks: data.total_chunks,
+                details: `Processado com sucesso em ${data.total_chunks} chunks`
+              }
+            : s
+        ));
+      } else if (data?.status === 'failed') {
+        clearInterval(poll);
+        setUploadStatuses(prev => prev.map(s => 
+          s.id === fileId 
+            ? { 
+                ...s, 
+                status: 'failed', 
+                progress: 100,
+                details: `Falha: ${data.error_message || 'Erro desconhecido'}`
+              }
+            : s
+        ));
+      } else {
+        // Still processing
+        setUploadStatuses(prev => prev.map(s => 
+          s.id === fileId 
+            ? { 
+                ...s, 
+                progress: Math.min(s.progress + 2, 90),
+                details: 'Processando documento...'
+              }
+            : s
+        ));
+      }
+    }, 2000);
+  };
+
+  // Upload and process documents with real-time status
   const uploadMutation = useMutation({
     mutationFn: async () => {
       if (selectedFiles.length === 0) throw new Error("Nenhum arquivo selecionado");
       
       setUploading(true);
       
+      // Initialize status for all files
+      const initialStatuses: FileUploadStatus[] = selectedFiles.map((file, idx) => ({
+        id: `file-${Date.now()}-${idx}`,
+        fileName: file.name,
+        fileSize: file.size,
+        status: 'waiting',
+        progress: 0,
+        targetChat: null,
+        details: 'Na fila'
+      }));
+      
+      setUploadStatuses(initialStatuses);
+      
       try {
         const documentsData: Array<{document_id: string; full_text: string; title: string}> = [];
         
-        // Extract text from all PDFs and create document records
-        for (const file of selectedFiles) {
-          console.log(`Extraindo texto de ${file.name}...`);
-          const extractedText = await extractTextFromPDF(file);
+        // Process each file
+        for (let i = 0; i < selectedFiles.length; i++) {
+          const file = selectedFiles[i];
+          const fileId = initialStatuses[i].id;
           
-          if (extractedText.length < 100) {
-            toast.error(`${file.name}: Texto muito curto (mínimo 100 caracteres)`);
-            continue;
+          try {
+            // Phase 1: Extracting
+            setUploadStatuses(prev => prev.map(s => 
+              s.id === fileId 
+                ? { ...s, status: 'extracting', progress: 10, details: 'Extraindo texto do PDF...' }
+                : s
+            ));
+            
+            const extractedText = await extractTextFromPDF(file);
+            
+            if (extractedText.length < 100) {
+              setUploadStatuses(prev => prev.map(s => 
+                s.id === fileId 
+                  ? { ...s, status: 'failed', progress: 100, details: 'Texto muito curto (mínimo 100 caracteres)' }
+                  : s
+              ));
+              continue;
+            }
+            
+            // Phase 2: Uploading
+            setUploadStatuses(prev => prev.map(s => 
+              s.id === fileId 
+                ? { ...s, status: 'uploading', progress: 40, details: 'Criando registro no banco...' }
+                : s
+            ));
+            
+            const { data: documents, error: docError } = await supabase
+              .from("documents")
+              .insert([{
+                filename: file.name,
+                original_text: extractedText,
+                text_preview: extractedText.substring(0, 500),
+                status: "pending",
+                target_chat: "general"
+              }])
+              .select();
+            
+            const document = documents?.[0];
+            
+            if (docError || !document) {
+              setUploadStatuses(prev => prev.map(s => 
+                s.id === fileId 
+                  ? { ...s, status: 'failed', progress: 100, details: 'Erro ao criar registro' }
+                  : s
+              ));
+              continue;
+            }
+            
+            // Phase 3: Processing
+            setUploadStatuses(prev => prev.map(s => 
+              s.id === fileId 
+                ? { ...s, status: 'processing', progress: 60, details: 'Aguardando processamento...', documentId: document.id }
+                : s
+            ));
+            
+            documentsData.push({
+              document_id: document.id,
+              full_text: extractedText,
+              title: file.name
+            });
+            
+          } catch (error: any) {
+            setUploadStatuses(prev => prev.map(s => 
+              s.id === fileId 
+                ? { ...s, status: 'failed', progress: 100, details: `Erro: ${error.message}` }
+                : s
+            ));
           }
-          
-          // Create document record
-          const { data: documents, error: docError } = await supabase
-            .from("documents")
-            .insert([{
-              filename: file.name,
-              original_text: extractedText,
-              text_preview: extractedText.substring(0, 500),
-              status: "pending",
-              target_chat: "general" // Será atualizado pela auto-categorização
-            }])
-            .select();
-          
-          const document = documents?.[0];
-          
-          if (docError) {
-            toast.error(`${file.name}: Erro ao criar registro`);
-            continue;
-          }
-          
-          documentsData.push({
-            document_id: document.id,
-            full_text: extractedText,
-            title: file.name
-          });
         }
         
         if (documentsData.length === 0) {
           throw new Error("Nenhum documento válido para processar");
         }
         
-        // Process all documents in bulk
-        console.log(`Processando ${documentsData.length} documentos em lote...`);
+        // Send to bulk processing
         const { error: processError } = await supabase.functions.invoke("process-bulk-document", {
           body: { documents_data: documentsData }
         });
         
         if (processError) throw processError;
         
-        toast.success(`${documentsData.length} documento(s) processado(s) com sucesso!`);
-        setSelectedFiles([]);
+        // Start polling for each document
+        documentsData.forEach((doc, idx) => {
+          const fileId = uploadStatuses.find(s => s.documentId === doc.document_id)?.id;
+          if (fileId) {
+            pollDocumentStatus(doc.document_id, fileId);
+          }
+        });
         
+        toast.success(`${documentsData.length} documento(s) enviado(s) para processamento!`);
+        
+      } catch (error: any) {
+        console.error("Erro ao processar documentos:", error);
+        toast.error(`Erro: ${error.message}`);
       } finally {
         setUploading(false);
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
+      setSelectedFiles([]);
     },
     onError: (error: any) => {
       console.error("Erro ao processar documento:", error);
@@ -243,8 +392,61 @@ export const DocumentsTab = () => {
       toast.error("Por favor, selecione arquivo(s) PDF");
     } else {
       setSelectedFiles(pdfFiles);
+      setUploadStatuses([]);
     }
   }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const pdfFiles = files.filter(f => f.type === "application/pdf");
+    
+    if (pdfFiles.length === 0) {
+      toast.error("Por favor, arraste arquivo(s) PDF");
+    } else {
+      setSelectedFiles(pdfFiles);
+      setUploadStatuses([]);
+    }
+  }, []);
+
+  const getStatusIcon = (status: FileUploadStatus['status']) => {
+    switch (status) {
+      case 'completed': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      case 'failed': return <XCircle className="h-4 w-4 text-destructive" />;
+      case 'waiting': return <Clock className="h-4 w-4 text-muted-foreground" />;
+      default: return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
+    }
+  };
+
+  const getStatusBadgeVariant = (status: FileUploadStatus['status']) => {
+    switch (status) {
+      case 'completed': return 'default';
+      case 'failed': return 'destructive';
+      case 'processing': return 'secondary';
+      default: return 'outline';
+    }
+  };
+
+  const getChatBadgeColor = (chat: string | null) => {
+    switch (chat?.toUpperCase()) {
+      case 'HEALTH': return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
+      case 'STUDY': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      case 'GENERAL': return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
+      default: return '';
+    }
+  };
 
   const parentTags = tags?.filter(t => t.tag_type === "parent") || [];
   const childTags = tags?.filter(t => t.tag_type === "child") || [];
@@ -292,24 +494,60 @@ export const DocumentsTab = () => {
         )}
       </Card>
 
-      {/* Upload Section */}
+      {/* Upload Section with Drag-and-Drop */}
       <Card className="p-6">
         <div className="space-y-4">
           <div>
             <label className="block mb-2 text-sm font-medium">
-              Selecionar PDF(s) - Auto-categorização via IA
+              Upload de Documentos PDF - Auto-categorização via IA
             </label>
-            <input
-              type="file"
-              accept=".pdf"
-              multiple
-              onChange={handleFileSelect}
-              className="block w-full text-sm border rounded-lg cursor-pointer"
-              disabled={uploading}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Os documentos serão automaticamente categorizados em Saúde, Estudo ou Geral
-            </p>
+            
+            {/* Drag and Drop Zone */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={cn(
+                "relative border-2 border-dashed rounded-lg p-12 text-center transition-colors",
+                isDragging 
+                  ? "border-primary bg-primary/5" 
+                  : "border-muted-foreground/25 hover:border-primary/50",
+                uploading && "opacity-50 pointer-events-none"
+              )}
+            >
+              <div className="flex flex-col items-center gap-4">
+                <Upload className={cn(
+                  "h-12 w-12 transition-colors",
+                  isDragging ? "text-primary" : "text-muted-foreground"
+                )} />
+                <div>
+                  <p className="text-lg font-medium mb-1">
+                    📄 Arraste arquivos PDF aqui
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">ou</p>
+                  <Button 
+                    variant="outline" 
+                    size="lg"
+                    onClick={() => document.getElementById('file-input')?.click()}
+                    disabled={uploading}
+                  >
+                    Escolher Arquivos
+                  </Button>
+                  <input
+                    id="file-input"
+                    type="file"
+                    accept=".pdf"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Aceita múltiplos PDFs • Auto-categorização via IA
+                </p>
+              </div>
+            </div>
           </div>
 
           {selectedFiles.length > 0 && (
@@ -329,6 +567,7 @@ export const DocumentsTab = () => {
             onClick={() => uploadMutation.mutate()}
             disabled={selectedFiles.length === 0 || uploading}
             className="w-full"
+            size="lg"
           >
             {uploading ? (
               <>
@@ -338,12 +577,85 @@ export const DocumentsTab = () => {
             ) : (
               <>
                 <Upload className="mr-2 h-4 w-4" />
-                Enviar e Processar em Lote
+                Enviar e Processar
               </>
             )}
           </Button>
         </div>
       </Card>
+
+      {/* Real-time Upload Status Table */}
+      {uploadStatuses.length > 0 && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Status de Upload</h3>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[35%]">Nome do Arquivo</TableHead>
+                <TableHead className="w-[15%]">Status</TableHead>
+                <TableHead className="w-[20%]">Progresso</TableHead>
+                <TableHead className="w-[12%]">Chat Destino</TableHead>
+                <TableHead className="w-[18%]">Detalhes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {uploadStatuses.map((fileStatus) => (
+                <TableRow key={fileStatus.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(fileStatus.status)}
+                      <span className="truncate">{fileStatus.fileName}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusBadgeVariant(fileStatus.status)}>
+                      {fileStatus.status === 'waiting' && 'Aguardando'}
+                      {fileStatus.status === 'extracting' && 'Extraindo'}
+                      {fileStatus.status === 'uploading' && 'Enviando'}
+                      {fileStatus.status === 'processing' && 'Processando'}
+                      {fileStatus.status === 'completed' && 'Concluído'}
+                      {fileStatus.status === 'failed' && 'Falhou'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {fileStatus.status !== 'completed' && fileStatus.status !== 'failed' ? (
+                      <div className="space-y-1">
+                        <Progress value={fileStatus.progress} className="h-2" />
+                        <span className="text-xs text-muted-foreground">{fileStatus.progress}%</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        {fileStatus.progress}%
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {fileStatus.targetChat ? (
+                      <Badge variant="outline" className={getChatBadgeColor(fileStatus.targetChat)}>
+                        {fileStatus.targetChat === 'health' && '🏥 HEALTH'}
+                        {fileStatus.targetChat === 'study' && '📚 STUDY'}
+                        {fileStatus.targetChat === 'general' && '📄 GENERAL'}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <span className={cn(
+                      "text-xs",
+                      fileStatus.status === 'completed' ? "text-green-600" : 
+                      fileStatus.status === 'failed' ? "text-destructive" : 
+                      "text-muted-foreground"
+                    )}>
+                      {fileStatus.details}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
 
       {/* Documents Table */}
       <Card className="p-6">
