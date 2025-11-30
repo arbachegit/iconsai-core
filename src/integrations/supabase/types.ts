@@ -143,6 +143,60 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_config: {
+        Row: {
+          chat_type: string
+          created_at: string | null
+          health_issues: Json | null
+          health_status: string | null
+          id: string
+          last_document_added: string | null
+          match_count: number | null
+          match_threshold: number | null
+          rag_priority_instruction: string | null
+          rejection_message: string | null
+          scope_topics: string[] | null
+          system_prompt_base: string | null
+          total_chunks: number | null
+          total_documents: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          chat_type: string
+          created_at?: string | null
+          health_issues?: Json | null
+          health_status?: string | null
+          id?: string
+          last_document_added?: string | null
+          match_count?: number | null
+          match_threshold?: number | null
+          rag_priority_instruction?: string | null
+          rejection_message?: string | null
+          scope_topics?: string[] | null
+          system_prompt_base?: string | null
+          total_chunks?: number | null
+          total_documents?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          chat_type?: string
+          created_at?: string | null
+          health_issues?: Json | null
+          health_status?: string | null
+          id?: string
+          last_document_added?: string | null
+          match_count?: number | null
+          match_threshold?: number | null
+          rag_priority_instruction?: string | null
+          rejection_message?: string | null
+          scope_topics?: string[] | null
+          system_prompt_base?: string | null
+          total_chunks?: number | null
+          total_documents?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       conversation_history: {
         Row: {
           chat_type: string | null
@@ -795,6 +849,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      initialize_chat_config_stats: { Args: never; Returns: undefined }
       log_credit_usage: {
         Args: {
           p_error_code?: string

@@ -29,7 +29,7 @@ import {
   TestTube,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -69,6 +69,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       icon: MessageCircle,
       items: [
         { id: "chat" as TabType, label: "Chat Config", icon: MessageSquare },
+        { id: "chat-scope-config" as TabType, label: "Delimitações", icon: Settings },
         { id: "conversations" as TabType, label: "Conversas", icon: MessagesSquare },
         { id: "rag-diagnostics" as TabType, label: "Diagnóstico RAG", icon: TestTube },
         { id: "tooltips" as TabType, label: "Tooltips", icon: FileText },
