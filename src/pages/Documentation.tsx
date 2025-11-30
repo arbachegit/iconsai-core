@@ -8,8 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   FileText, Download, Loader2, Menu, Sun, Moon, Database,
-  Server, Code, ArrowLeft, Maximize2, Table, GitBranch, Lock,
-  Search, FileCode, Globe, History, Shield
+  Server, Code, ArrowLeft, Maximize2, Table as TableIcon, GitBranch, Lock,
+  Search, FileCode, Globe, History, Shield, Palette, Play, Square,
+  Upload, Send, Mic, ImagePlus, RefreshCw, Trash2, Edit2, Save,
+  Check, CheckCircle2, XCircle, Clock, MessageCircle, MessageSquare,
+  Mail, Youtube, Music, Image, BarChart3, Brain, Languages,
+  LogOut, Tags, ArrowRight, ArrowUp, ChevronDown, ChevronLeft,
+  ChevronRight, X, Home, Baby, Users, GraduationCap, Rocket,
+  Bot, Sparkles, Lightbulb, Crown, Cat, Snowflake, Skull
 } from 'lucide-react';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
 import { MermaidZoomModal } from '@/components/MermaidZoomModal';
@@ -22,6 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
 // Sections data structure
@@ -30,7 +37,94 @@ const sections = [
   { id: 'database', title: '🗄️ Database', icon: Database },
   { id: 'backend', title: '⚡ Backend', icon: Server },
   { id: 'frontend', title: '🖥️ Frontend', icon: Code },
+  { id: 'ui-reference', title: '🎨 Referência UI', icon: Palette },
   { id: 'changelog', title: '📋 Changelog', icon: History },
+];
+
+// Icons reference data
+const ICONS_DATA = [
+  // Navegação
+  { name: 'ArrowLeft', component: ArrowLeft, description: 'Voltar à página anterior', category: 'Navegação' },
+  { name: 'ArrowRight', component: ArrowRight, description: 'Avançar, continuar, próximo', category: 'Navegação' },
+  { name: 'ArrowUp', component: ArrowUp, description: 'Voltar ao topo da página', category: 'Navegação' },
+  { name: 'ChevronDown', component: ChevronDown, description: 'Expandir conteúdo colapsável', category: 'Navegação' },
+  { name: 'ChevronLeft', component: ChevronLeft, description: 'Navegação anterior em carrossel', category: 'Navegação' },
+  { name: 'ChevronRight', component: ChevronRight, description: 'Navegação próxima em carrossel', category: 'Navegação' },
+  { name: 'Menu', component: Menu, description: 'Abrir menu mobile hamburger', category: 'Navegação' },
+  { name: 'X', component: X, description: 'Fechar modal/drawer/painel', category: 'Navegação' },
+  { name: 'Home', component: Home, description: 'Ir para página inicial', category: 'Navegação' },
+  // Ação
+  { name: 'Play', component: Play, description: 'Iniciar reprodução de áudio', category: 'Ação' },
+  { name: 'Square', component: Square, description: 'Parar reprodução de áudio', category: 'Ação' },
+  { name: 'Download', component: Download, description: 'Baixar arquivo/áudio', category: 'Ação' },
+  { name: 'Upload', component: Upload, description: 'Enviar arquivo (drag & drop)', category: 'Ação' },
+  { name: 'Send', component: Send, description: 'Enviar mensagem no chat', category: 'Ação' },
+  { name: 'Mic', component: Mic, description: 'Ativar gravação de voz', category: 'Ação' },
+  { name: 'ImagePlus', component: ImagePlus, description: 'Gerar imagem (modo draw)', category: 'Ação' },
+  { name: 'Search', component: Search, description: 'Buscar/filtrar conteúdo', category: 'Ação' },
+  { name: 'RefreshCw', component: RefreshCw, description: 'Reprocessar documento', category: 'Ação' },
+  { name: 'Trash2', component: Trash2, description: 'Excluir item', category: 'Ação' },
+  { name: 'Edit2', component: Edit2, description: 'Editar conteúdo', category: 'Ação' },
+  { name: 'Save', component: Save, description: 'Salvar alterações', category: 'Ação' },
+  // Status
+  { name: 'Loader2', component: Loader2, description: 'Indicador de carregamento', category: 'Status' },
+  { name: 'Check', component: Check, description: 'Confirmação/seleção', category: 'Status' },
+  { name: 'CheckCircle2', component: CheckCircle2, description: 'Documento processado com sucesso', category: 'Status' },
+  { name: 'XCircle', component: XCircle, description: 'Erro/falha no processamento', category: 'Status' },
+  { name: 'Clock', component: Clock, description: 'Pendente/aguardando', category: 'Status' },
+  // Comunicação
+  { name: 'MessageCircle', component: MessageCircle, description: 'Botão flutuante de chat', category: 'Comunicação' },
+  { name: 'MessageSquare', component: MessageSquare, description: 'Configuração de chat', category: 'Comunicação' },
+  { name: 'Mail', component: Mail, description: 'Configuração de email', category: 'Comunicação' },
+  // Mídia
+  { name: 'Youtube', component: Youtube, description: 'Cache de vídeos YouTube', category: 'Mídia' },
+  { name: 'Music', component: Music, description: 'Embed de podcast Spotify', category: 'Mídia' },
+  { name: 'Image', component: Image, description: 'Cache de imagens geradas', category: 'Mídia' },
+  // Data
+  { name: 'BarChart3', component: BarChart3, description: 'Métricas e analytics', category: 'Data' },
+  { name: 'Database', component: Database, description: 'Métricas RAG/banco de dados', category: 'Data' },
+  { name: 'FileText', component: FileText, description: 'Documento/tooltip', category: 'Data' },
+  // Sistema
+  { name: 'Brain', component: Brain, description: 'Acesso ao painel admin', category: 'Sistema' },
+  { name: 'Languages', component: Languages, description: 'Seletor de idioma', category: 'Sistema' },
+  { name: 'Sun', component: Sun, description: 'Tema claro', category: 'Sistema' },
+  { name: 'Moon', component: Moon, description: 'Tema escuro', category: 'Sistema' },
+  { name: 'Lock', component: Lock, description: 'Autenticação admin', category: 'Sistema' },
+  { name: 'LogOut', component: LogOut, description: 'Sair do sistema', category: 'Sistema' },
+  { name: 'GitBranch', component: GitBranch, description: 'Controle de versão', category: 'Sistema' },
+  { name: 'Tags', component: Tags, description: 'Gerenciamento de tags', category: 'Sistema' },
+  // Temático (AI History)
+  { name: 'Clock', component: Clock, description: 'Era: O Sonho (Antes 1950)', category: 'Temático' },
+  { name: 'Baby', component: Baby, description: 'Era: Nascimento (Anos 50)', category: 'Temático' },
+  { name: 'Users', component: Users, description: 'Era: Infância (Anos 60-80)', category: 'Temático' },
+  { name: 'GraduationCap', component: GraduationCap, description: 'Era: Fase Adulta (90s-2000s)', category: 'Temático' },
+  { name: 'Rocket', component: Rocket, description: 'Era: Revolução Generativa', category: 'Temático' },
+  { name: 'Bot', component: Bot, description: 'Marcos de IA (chatbots, Siri)', category: 'Temático' },
+  { name: 'Sparkles', component: Sparkles, description: 'Momentos históricos', category: 'Temático' },
+  { name: 'Lightbulb', component: Lightbulb, description: 'Insights/descobertas', category: 'Temático' },
+  { name: 'Crown', component: Crown, description: 'Vitórias (Deep Blue, AlphaGo)', category: 'Temático' },
+  { name: 'Cat', component: Cat, description: 'Deep Learning YouTube', category: 'Temático' },
+  { name: 'Palette', component: Palette, description: 'Era ChatGPT/Gemini criativa', category: 'Temático' },
+  { name: 'Snowflake', component: Snowflake, description: 'Inverno da IA', category: 'Temático' },
+  { name: 'Skull', component: Skull, description: 'Exterminador do Futuro', category: 'Temático' },
+];
+
+// Animations reference data
+const ANIMATIONS_DATA = [
+  { className: 'animate-accordion-down', description: 'Expandir conteúdo collapsible suavemente', category: 'Transição' },
+  { className: 'animate-accordion-up', description: 'Colapsar conteúdo suavemente', category: 'Transição' },
+  { className: 'animate-fade-in', description: 'Entrada suave com deslocamento Y', category: 'Entrada' },
+  { className: 'animate-scale-in', description: 'Escala de entrada (0.95 → 1)', category: 'Entrada' },
+  { className: 'animate-slide-in-right', description: 'Deslizar da direita para esquerda', category: 'Entrada' },
+  { className: 'animate-float', description: 'Flutuação contínua (6s loop)', category: 'Ênfase' },
+  { className: 'animate-pulse-slow', description: 'Pulsação lenta (4s) para destaque', category: 'Ênfase' },
+  { className: 'animate-pulse', description: 'Pulsação padrão para indicadores', category: 'Ênfase' },
+  { className: 'animate-ping', description: 'Ondas expansivas (botão chat)', category: 'Ênfase' },
+  { className: 'animate-spin', description: 'Rotação para loaders', category: 'Status' },
+  { className: 'suggestions-slider', description: 'Slide lateral de sugestões (10s)', category: 'Transição' },
+  { className: 'language-transition', description: 'Transição de idioma (fade + Y)', category: 'Transição' },
+  { className: 'hover:scale-110 transition-transform', description: 'Escala hover em botões', category: 'Interação' },
+  { className: 'transition-all duration-300', description: 'Transição suave universal', category: 'Transição' },
 ];
 
 // Search result interface for full-text search
@@ -198,6 +292,21 @@ const documentationContent = {
         id: 'internationalization-system',
         title: 'Sistema i18n react-i18next',
         content: 'Complete translation system three languages Portuguese pt English en French fr. i18n/config.ts initialization localStorage persistence. Translation files pt.json en.json fr.json comprehensive coverage all 8 landing page sections Digital Exclusion AI History 5 eras both chat assistants UI strings placeholders suggestions messages audio controls footer. All components useTranslation hook t functions Index HeroSection TuringLegacy DigitalExclusionSection AIHistoryPanel ChatKnowYOU ChatStudy FloatingChatButton AudioControls. Language selector header Languages icon Lucide PT EN FR flag emojis dropdown checkmark selected. Desktop navigation between links admin mobile menu bottom section. Integrated existing localStorage preference.'
+      }
+    ]
+  },
+  'ui-reference': {
+    title: 'Referência UI',
+    sections: [
+      {
+        id: 'icons-library',
+        title: 'Biblioteca de Ícones',
+        content: 'Lucide React icons biblioteca completa 70+ ícones. Categorias Navegação ArrowLeft ArrowRight ArrowUp ChevronDown Menu X Home, Ação Play Square Download Upload Send Mic ImagePlus Search RefreshCw Trash2 Edit2 Save, Status Loader2 Check CheckCircle2 XCircle Clock, Comunicação MessageCircle MessageSquare Mail, Mídia Youtube Music Image, Data BarChart3 Database FileText, Sistema Brain Languages Sun Moon Lock LogOut GitBranch Tags, Temático Baby Users GraduationCap Rocket Bot Sparkles Lightbulb Crown Cat Palette Snowflake Skull. Import direto import { IconName } from lucide-react. Cada ícone aceita props size color strokeWidth className. Renderização inline SVG tree-shakeable apenas ícones usados bundle final. Documentação completa lucide.dev guia uso personalização estilos.'
+      },
+      {
+        id: 'animations-library',
+        title: 'Efeitos de Animação',
+        content: 'Tailwind CSS animações customizadas. Transição animate-accordion-down accordion-up expand collapse 0.2s ease-out, animate-fade-in entrada opacity translateY 0.3s, animate-slide-in-right deslizar 100% 0 0.3s. Entrada animate-scale-in escala 0.95 1 opacity 0 1. Ênfase animate-float flutuação contínua 6s loop, animate-pulse-slow 4s destaque, animate-pulse padrão 2s, animate-ping ondas expansivas chat button. Status animate-spin rotação loaders. Transição suggestions-slider slide 10s sugestões chat, language-transition fade Y idioma. Interação hover:scale-110 transition-transform botões. Universal transition-all duration-300 smooth. Configuração tailwind.config.ts keyframes animation classes. Usage className="animate-fade-in" ou compose hover-scale utility classes. Suporte cubic-bezier easing customizado delay stagger effects.'
       }
     ]
   }
@@ -1491,6 +1600,182 @@ await supabase.functions.invoke("process-bulk-document", {
                   <p className="font-semibold text-sm">useTooltipContent.ts</p>
                   <p className="text-xs text-muted-foreground">Fetch conteúdo tooltips com cache e validação</p>
                 </div>
+              </div>
+            </Card>
+          </section>
+
+          {/* ===== UI REFERENCE ===== */}
+          <section id="ui-reference" className="scroll-mt-20 space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold flex items-center gap-3">
+                <Palette className="h-8 w-8 text-primary" />
+                🎨 Referência UI
+              </h2>
+            </div>
+
+            {/* Icons Library */}
+            <Card className="p-6 space-y-4">
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold flex items-center gap-2">
+                  <Image className="h-6 w-6 text-secondary" />
+                  📦 Biblioteca de Ícones (Lucide React)
+                </h3>
+                <p className="text-muted-foreground">
+                  Biblioteca completa de 70+ ícones usados na interface. Todos os ícones são renderizados como componentes React inline SVG tree-shakeable.
+                </p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-24">Visualização</TableHead>
+                      <TableHead className="min-w-[180px]">Nome Técnico</TableHead>
+                      <TableHead>Descrição/Uso</TableHead>
+                      <TableHead className="w-32">Categoria</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ICONS_DATA.map((iconData, index) => {
+                      const IconComponent = iconData.component;
+                      return (
+                        <TableRow key={`${iconData.name}-${index}`}>
+                          <TableCell>
+                            <div className="flex items-center justify-center">
+                              <IconComponent className="h-5 w-5 text-primary" />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-xs bg-muted px-2 py-1 rounded">{iconData.name}</code>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {iconData.description}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{iconData.category}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="pt-4 border-t">
+                <h4 className="text-sm font-semibold mb-2">Como usar:</h4>
+                <pre className="bg-background p-3 rounded text-xs overflow-x-auto">
+{`import { ArrowLeft, Play, Download } from 'lucide-react';
+
+// Uso básico
+<ArrowLeft className="h-5 w-5" />
+
+// Com props customizadas
+<Play size={24} color="red" strokeWidth={2} />
+
+// Com classes Tailwind
+<Download className="h-6 w-6 text-primary hover:text-primary/80" />`}
+                </pre>
+              </div>
+            </Card>
+
+            {/* Animations Library */}
+            <Card className="p-6 space-y-4">
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold flex items-center gap-2">
+                  <Sparkles className="h-6 w-6 text-accent animate-pulse" />
+                  🎭 Efeitos de Animação
+                </h3>
+                <p className="text-muted-foreground">
+                  Animações customizadas configuradas em <code>tailwind.config.ts</code>. Todas as animações usam timing functions suaves e são otimizadas para performance.
+                </p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-32">Preview</TableHead>
+                      <TableHead className="min-w-[200px]">Nome Técnico</TableHead>
+                      <TableHead>Descrição/Uso</TableHead>
+                      <TableHead className="w-32">Categoria</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ANIMATIONS_DATA.map((animData, index) => (
+                      <TableRow key={`${animData.className}-${index}`}>
+                        <TableCell>
+                          <div className="flex items-center justify-center">
+                            <div 
+                              className={cn(
+                                "w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded",
+                                animData.className
+                              )}
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <code className="text-xs bg-muted px-2 py-1 rounded whitespace-nowrap">
+                            {animData.className}
+                          </code>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {animData.description}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{animData.category}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="pt-4 border-t">
+                <h4 className="text-sm font-semibold mb-2">Como usar:</h4>
+                <pre className="bg-background p-3 rounded text-xs overflow-x-auto">
+{`// Aplicar diretamente no className
+<div className="animate-fade-in">Conteúdo</div>
+
+// Combinar múltiplas classes
+<button className="animate-pulse hover:scale-110 transition-transform">
+  Clique aqui
+</button>
+
+// Com delays customizados
+<div className="animate-fade-in" style={{ animationDelay: '200ms' }}>
+  Aparece depois
+</div>
+
+// Animações infinitas
+<div className="animate-float">
+  Flutuando...
+</div>`}
+                </pre>
+              </div>
+
+              <div className="pt-4 border-t">
+                <h4 className="text-sm font-semibold mb-2">Configuração (tailwind.config.ts):</h4>
+                <pre className="bg-background p-3 rounded text-xs overflow-x-auto">
+{`// Em tailwind.config.ts
+theme: {
+  extend: {
+    keyframes: {
+      "fade-in": {
+        "0%": { opacity: "0", transform: "translateY(10px)" },
+        "100%": { opacity: "1", transform: "translateY(0)" }
+      },
+      "float": {
+        "0%, 100%": { transform: "translateY(0)" },
+        "50%": { transform: "translateY(-10px)" }
+      }
+    },
+    animation: {
+      "fade-in": "fade-in 0.3s ease-out",
+      "float": "float 6s ease-in-out infinite"
+    }
+  }
+}`}
+                </pre>
               </div>
             </Card>
           </section>
