@@ -29,7 +29,7 @@ import {
   TestTube,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -80,6 +80,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       label: "RAG & Análise",
       icon: Brain,
       items: [
+        { id: "rag-documentation" as TabType, label: "📖 Documentação RAG", icon: BookOpen },
         { id: "rag-metrics" as TabType, label: "Métricas RAG", icon: Database },
         { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
         { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
