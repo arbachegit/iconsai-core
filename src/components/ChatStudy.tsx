@@ -72,6 +72,9 @@ export default function ChatStudy() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const inputRef = useRef<string>("");
   const [audioStates, setAudioStates] = useState<{[key: number]: { isPlaying: boolean; currentTime: number; duration: number }}>({});
   const mountTimeRef = useRef(Date.now());
   const previousMessagesLength = useRef(messages.length);
@@ -84,6 +87,11 @@ export default function ChatStudy() {
   useEffect(() => {
     requestLocation();
   }, []);
+
+  // Sync inputRef with input state
+  useEffect(() => {
+    inputRef.current = input;
+  }, [input]);
 
   // IntersectionObserver para detectar quando mensagem de áudio sai do viewport
   useEffect(() => {
@@ -197,7 +205,7 @@ export default function ChatStudy() {
 
         recognition.onresult = (event: any) => {
           let interimTranscript = '';
-          let finalTranscript = input;
+          let finalTranscript = inputRef.current; // Use ref to avoid stale closure
 
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
@@ -212,36 +220,56 @@ export default function ChatStudy() {
         };
 
         recognition.onspeechend = () => {
-          // Não encerrar imediatamente - aguardar 5 segundos de silêncio
+          // Clear any existing timers
+          if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+          if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+          
           setVoiceStatus('waiting');
           setWaitingCountdown(5);
           
-          // Contador regressivo visual
-          const countdownInterval = setInterval(() => {
+          // Countdown interval - store in ref
+          countdownIntervalRef.current = setInterval(() => {
             setWaitingCountdown(prev => {
               if (prev <= 1) {
-                clearInterval(countdownInterval);
+                if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
                 return 0;
               }
               return prev - 1;
             });
           }, 1000);
 
-          silenceTimeout = setTimeout(() => {
-            clearInterval(countdownInterval);
+          // Silence timeout - store in ref
+          silenceTimeoutRef.current = setTimeout(() => {
+            if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
             recognition.stop();
           }, SILENCE_TIMEOUT);
         };
 
         recognition.onspeechstart = () => {
-          // Cancelar timeout se fala reiniciar
-          if (silenceTimeout) clearTimeout(silenceTimeout);
+          // Clear BOTH timeout and interval when speech resumes
+          if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+          }
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
           setVoiceStatus('listening');
+          setWaitingCountdown(5); // Reset countdown
         };
 
         recognition.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error);
-          if (silenceTimeout) clearTimeout(silenceTimeout);
+          // Cleanup all timers
+          if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+          }
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
           setIsRecording(false);
           setIsTranscribing(false);
           setVoiceStatus('idle');
@@ -255,7 +283,15 @@ export default function ChatStudy() {
         };
 
         recognition.onend = () => {
-          if (silenceTimeout) clearTimeout(silenceTimeout);
+          // Cleanup all timers
+          if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+          }
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
           setIsRecording(false);
           setIsTranscribing(false);
           setVoiceStatus('idle');
@@ -284,6 +320,45 @@ export default function ChatStudy() {
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
+      // Setup AudioContext for silence detection
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      const microphone = audioContext.createMediaStreamSource(stream);
+      microphone.connect(analyser);
+      analyser.fftSize = 2048;
+      
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      let silenceStart: number | null = null;
+      let animationFrameId: number;
+
+      const checkSilence = () => {
+        if (!isRecording) return;
+        
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        
+        if (average < 10) { // Silence threshold
+          if (!silenceStart) {
+            silenceStart = Date.now();
+            setVoiceStatus('waiting');
+          } else if (Date.now() - silenceStart > 5000) {
+            // 5 seconds of silence - stop recording
+            mediaRecorder.stop();
+            cancelAnimationFrame(animationFrameId);
+            return;
+          }
+          // Update countdown
+          const elapsed = Math.floor((Date.now() - silenceStart) / 1000);
+          setWaitingCountdown(Math.max(0, 5 - elapsed));
+        } else {
+          silenceStart = null;
+          setVoiceStatus('listening');
+          setWaitingCountdown(5);
+        }
+        
+        animationFrameId = requestAnimationFrame(checkSilence);
+      };
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
@@ -291,6 +366,9 @@ export default function ChatStudy() {
       };
 
       mediaRecorder.onstop = async () => {
+        cancelAnimationFrame(animationFrameId);
+        audioContext.close();
+        
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         stream.getTracks().forEach((track) => track.stop());
         audioChunksRef.current = [];
@@ -317,6 +395,8 @@ export default function ChatStudy() {
 
       mediaRecorder.start();
       setIsRecording(true);
+      setVoiceStatus('listening');
+      checkSilence(); // Start silence detection
     } catch (error) {
       console.error("Erro ao iniciar gravação:", error);
       toast({
@@ -354,6 +434,14 @@ export default function ChatStudy() {
       stopAudio();
     };
   }, [stopAudio]);
+
+  // Cleanup timers on component unmount
+  useEffect(() => {
+    return () => {
+      if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, []);
 
   const handleAudioPlay = (index: number) => {
     playAudio(index);
