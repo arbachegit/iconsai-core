@@ -555,7 +555,6 @@ export default function ChatStudy() {
               >
                 <div className="flex items-start gap-2">
                   <MarkdownContent content={message.content} className="text-sm flex-1" />
-                  {message.role === "assistant" && <CopyButton content={message.content} />}
                 </div>
                 
                 {message.imageUrl && (
@@ -567,28 +566,18 @@ export default function ChatStudy() {
                 )}
 
                 {message.role === "assistant" && (
-                  <>
-                    <span className="text-xs opacity-70 block mt-2">
-                      {message.timestamp.toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                    {message.audioUrl && (
-                      <AudioControls
-                        audioUrl={message.audioUrl}
-                        isPlaying={currentlyPlayingIndex === index}
-                        currentTime={audioStates[index]?.currentTime}
-                        duration={audioStates[index]?.duration}
-                        timestamp={message.timestamp}
-                        location={location || undefined}
-                        messageContent={message.content}
-                        onPlay={() => handleAudioPlay(index)}
-                        onStop={handleAudioStop}
-                        onDownload={() => handleDownloadAudio(message.audioUrl!, index)}
-                      />
-                    )}
-                  </>
+                  <AudioControls
+                    audioUrl={message.audioUrl}
+                    isPlaying={currentlyPlayingIndex === index}
+                    currentTime={audioStates[index]?.currentTime}
+                    duration={audioStates[index]?.duration}
+                    timestamp={message.timestamp}
+                    location={location || undefined}
+                    messageContent={message.content}
+                    onPlay={() => handleAudioPlay(index)}
+                    onStop={handleAudioStop}
+                    onDownload={message.audioUrl ? () => handleDownloadAudio(message.audioUrl!, index) : undefined}
+                  />
                 )}
               </div>
             </div>

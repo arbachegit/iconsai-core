@@ -664,17 +664,9 @@ export default function ChatKnowYOU() {
                   )}
                   <div className="flex items-start gap-2">
                     <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1" />
-                    {msg.role === "assistant" && <CopyButton content={msg.content} />}
                   </div>
                   
-                  <span className="text-xs opacity-70 block mt-2">
-                    {msg.timestamp.toLocaleTimeString("pt-BR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                  
-                  {msg.role === "assistant" && msg.audioUrl && (
+                  {msg.role === "assistant" && (
                     <AudioControls
                       audioUrl={msg.audioUrl}
                       isPlaying={currentlyPlayingIndex === idx}
@@ -685,7 +677,7 @@ export default function ChatKnowYOU() {
                       messageContent={msg.content}
                       onPlay={() => handleAudioPlay(idx)}
                       onStop={handleAudioStop}
-                      onDownload={() => handleDownloadAudio(msg.audioUrl!, idx)}
+                      onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined}
                     />
                   )}
                 </div>

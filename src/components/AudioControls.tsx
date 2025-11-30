@@ -2,6 +2,7 @@ import { Play, Square, Download, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useTranslation } from "react-i18next";
+import { useToast } from "@/hooks/use-toast";
 
 interface AudioControlsProps {
   audioUrl?: string;
@@ -31,8 +32,7 @@ export function AudioControls({
   onCopy,
 }: AudioControlsProps) {
   const { t } = useTranslation();
-  
-  if (!audioUrl) return null;
+  const { toast } = useToast();
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -43,8 +43,20 @@ export function AudioControls({
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const handleCopy = async () => {
-    if (messageContent && onCopy) {
-      onCopy();
+    if (messageContent) {
+      try {
+        await navigator.clipboard.writeText(messageContent);
+        toast({
+          title: t("chat.copied"),
+          duration: 2000,
+        });
+        if (onCopy) onCopy();
+      } catch (error) {
+        toast({
+          title: t("chat.copyFailed"),
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -52,35 +64,39 @@ export function AudioControls({
     <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-border/30">
       {/* Layout 100% horizontal: [Play] [Stop] [Download] [Copy] | [Data] [Hora] [Local] */}
       <div className="flex items-center gap-2 flex-wrap">
-        {/* Play */}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={isPlaying ? onStop : onPlay}
-          className="h-7 w-7 p-0"
-          title={isPlaying ? t("chat.stop") : t("chat.play")}
-        >
-          {isPlaying ? (
+        {/* Play - só aparece se houver audioUrl */}
+        {audioUrl && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={isPlaying ? onStop : onPlay}
+            className="h-7 w-7 p-0"
+            title={isPlaying ? t("chat.stop") : t("chat.play")}
+          >
+            {isPlaying ? (
+              <Square className="h-3.5 w-3.5" />
+            ) : (
+              <Play className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        )}
+
+        {/* Stop - só aparece se houver audioUrl */}
+        {audioUrl && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onStop}
+            className="h-7 w-7 p-0"
+            title={t("chat.stop")}
+            disabled={!isPlaying}
+          >
             <Square className="h-3.5 w-3.5" />
-          ) : (
-            <Play className="h-3.5 w-3.5" />
-          )}
-        </Button>
+          </Button>
+        )}
 
-        {/* Stop */}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={onStop}
-          className="h-7 w-7 p-0"
-          title={t("chat.stop")}
-          disabled={!isPlaying}
-        >
-          <Square className="h-3.5 w-3.5" />
-        </Button>
-
-        {/* Download */}
-        {onDownload && (
+        {/* Download - só aparece se houver audioUrl */}
+        {audioUrl && onDownload && (
           <Button
             size="sm"
             variant="ghost"
@@ -92,8 +108,8 @@ export function AudioControls({
           </Button>
         )}
 
-        {/* Copy */}
-        {onCopy && messageContent && (
+        {/* Copy - SEMPRE aparece */}
+        {messageContent && (
           <Button
             size="sm"
             variant="ghost"
@@ -138,7 +154,7 @@ export function AudioControls({
       </div>
 
       {/* Progress bar (linha abaixo quando tocando) */}
-      {isPlaying && duration > 0 && (
+      {isPlaying && audioUrl && duration > 0 && (
         <div className="flex items-center gap-2 mt-1">
           <Progress value={progress} className="h-1 flex-1" />
           <span className="text-xs text-muted-foreground whitespace-nowrap">
