@@ -569,12 +569,12 @@ export default function ChatKnowYOU() {
                 </AlertDescription>
               </Alert>}
             
-            {messages.map((msg, idx) => <div key={idx} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`} ref={el => {
+            {messages.map((msg, idx) => <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`} ref={el => {
           if (msg.role === "assistant" && msg.audioUrl) {
             audioMessageRefs.current[idx] = el;
           }
         }}>
-                <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground" : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground"}`}>
+                <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right" : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"}`}>
                   {msg.imageUrl && <img src={msg.imageUrl} alt={t('chat.generatingImage')} className="max-w-full rounded-lg mb-2" />}
                   <div className="flex items-start gap-2">
                     <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1" />
@@ -583,7 +583,7 @@ export default function ChatKnowYOU() {
                   {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} isPlaying={currentlyPlayingIndex === idx} currentTime={audioStates[idx]?.currentTime} duration={audioStates[idx]?.duration} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} />}
                 </div>
               </div>)}
-              {(isLoading || isGeneratingAudio || isGeneratingImage) && <div className="flex justify-end">
+              {(isLoading || isGeneratingAudio || isGeneratingImage) && <div className="flex justify-start">
                   <TypingIndicator isDrawing={isGeneratingImage} />
                 </div>}
             <div ref={messagesEndRef} />
