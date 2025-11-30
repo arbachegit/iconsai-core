@@ -537,9 +537,9 @@ export default function ChatStudy() {
         ref={scrollRef}>
         <div className="space-y-4">
           {messages.map((message, index) => (
-            <div
-              key={index}
-              className="flex justify-start"
+              <div
+                key={index}
+                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               ref={(el) => {
                 if (message.role === "assistant" && message.audioUrl) {
                   audioMessageRefs.current[index] = el;
