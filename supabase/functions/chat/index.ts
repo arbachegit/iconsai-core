@@ -23,21 +23,33 @@ serve(async (req) => {
     const lastUserMessage = messages.filter((m: any) => m.role === "user").pop();
     const userQuery = lastUserMessage?.content || "";
 
+    // Get chat configuration from database
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data: chatConfig } = await supabase
+      .from("chat_config")
+      .select("*")
+      .eq("chat_type", "health")
+      .single();
+
+    const matchThreshold = chatConfig?.match_threshold || 0.15;
+    const matchCount = chatConfig?.match_count || 5;
+
+    console.log(`Using chat config: threshold=${matchThreshold}, count=${matchCount}`);
+
     // Search for relevant documents using RAG
     let ragContext = "";
     let hasRagContext = false;
     if (userQuery) {
       try {
-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const supabase = createClient(supabaseUrl, supabaseKey);
-
         const { data: searchResults } = await supabase.functions.invoke("search-documents", {
           body: { 
             query: userQuery,
             targetChat: "health",
-            matchThreshold: 0.15,
-            matchCount: 5
+            matchThreshold,
+            matchCount
           }
         });
 
