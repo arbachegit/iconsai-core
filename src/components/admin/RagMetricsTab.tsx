@@ -1,7 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Database, FileText, Search, CheckCircle2, Loader2, Clock, TrendingUp } from "lucide-react";
+import { Database, FileText, Search, CheckCircle2, Loader2, Clock, TrendingUp, Download, FileSpreadsheet, FileJson, FileDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { exportData, type ExportFormat } from "@/lib/export-utils";
+import { toast } from "sonner";
 import {
   BarChart,
   Bar,
@@ -209,13 +218,69 @@ export const RagMetricsTab = () => {
     );
   }
 
+  const handleExport = async (format: ExportFormat) => {
+    const exportColumns = [
+      { key: 'query', label: 'Query' },
+      { key: 'latency_ms', label: 'Latência (ms)' },
+      { key: 'success_status', label: 'Sucesso' },
+      { key: 'similarity_score', label: 'Similaridade' },
+      { key: 'results_count', label: 'Resultados' },
+      { key: 'created_at', label: 'Data' },
+    ];
+
+    const exportableData = ragAnalytics?.map(r => ({
+      query: r.query,
+      latency_ms: r.latency_ms,
+      success_status: r.success_status ? 'Sim' : 'Não',
+      similarity_score: r.top_similarity_score?.toFixed(4) || 'N/A',
+      results_count: r.results_count || 0,
+      created_at: new Date(r.created_at).toLocaleString('pt-BR'),
+    })) || [];
+
+    try {
+      await exportData({
+        filename: 'rag_metrics',
+        data: exportableData,
+        format,
+        columns: exportColumns,
+      });
+      toast.success(`Dados exportados em formato ${format.toUpperCase()}`);
+    } catch (error) {
+      toast.error("Erro ao exportar dados");
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold mb-2">📊 Métricas RAG</h2>
-        <p className="text-muted-foreground">
-          Estatísticas detalhadas do sistema de Recuperação Aumentada por Geração
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold mb-2">📊 Métricas RAG</h2>
+          <p className="text-muted-foreground">
+            Estatísticas detalhadas do sistema de Recuperação Aumentada por Geração
+          </p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => handleExport('csv')}>
+              <FileText className="h-4 w-4 mr-2" /> CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('json')}>
+              <FileJson className="h-4 w-4 mr-2" /> JSON
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('pdf')}>
+              <FileDown className="h-4 w-4 mr-2" /> PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Summary Cards */}

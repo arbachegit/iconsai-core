@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -17,8 +18,15 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown } from "lucide-react";
+import { exportData, type ExportFormat } from "@/lib/export-utils";
+import { toast } from "sonner";
 
 interface Document {
   id: string;
@@ -152,16 +160,74 @@ export const DocumentAnalysisTab = () => {
     );
   }
 
+  const handleExport = async (format: ExportFormat) => {
+    const exportColumns = [
+      { key: 'filename', label: 'Nome do Arquivo' },
+      { key: 'target_chat', label: 'Chat' },
+      { key: 'status', label: 'Status' },
+      { key: 'implementation_status', label: 'Status de Implementação' },
+      { key: 'total_chunks', label: 'Total de Chunks' },
+      { key: 'total_words', label: 'Total de Palavras' },
+      { key: 'created_at', label: 'Data de Criação' },
+    ];
+
+    const exportableData = filteredDocs.map(doc => ({
+      filename: doc.filename,
+      target_chat: doc.target_chat,
+      status: doc.status,
+      implementation_status: doc.implementation_status || 'N/A',
+      total_chunks: doc.total_chunks || 0,
+      total_words: doc.total_words || 0,
+      created_at: new Date(doc.created_at).toLocaleString('pt-BR'),
+    }));
+
+    try {
+      await exportData({
+        filename: 'documentos_analise',
+        data: exportableData,
+        format,
+        columns: exportColumns,
+      });
+      toast.success(`Dados exportados em formato ${format.toUpperCase()}`);
+    } catch (error) {
+      toast.error("Erro ao exportar dados");
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <FileText className="h-6 w-6" />
-          Análise de Documentos
-        </h2>
-        <p className="text-muted-foreground mt-1">
-          Visualização detalhada de documentos com resumos AI, tags e status
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <FileText className="h-6 w-6" />
+            Análise de Documentos
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Visualização detalhada de documentos e suas categorizações
+          </p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => handleExport('csv')}>
+              <FileText className="h-4 w-4 mr-2" /> CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('json')}>
+              <FileJson className="h-4 w-4 mr-2" /> JSON
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('pdf')}>
+              <FileDown className="h-4 w-4 mr-2" /> PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Filters */}
