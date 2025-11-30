@@ -392,14 +392,6 @@ export function ChatScopeConfigTab() {
         </p>
       </div>
 
-      {/* Chat Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {renderChatCard(studyConfig, "Chat de Estudo", <FileText className="h-5 w-5" />)}
-        {renderChatCard(healthConfig, "Chat de Saúde", <MessageSquare className="h-5 w-5" />)}
-      </div>
-
-      <Separator />
-
       {/* RAG Test Section */}
       <Card>
         <CardHeader>
@@ -452,5 +444,13 @@ export function ChatScopeConfigTab() {
             </div>}
         </CardContent>
       </Card>
+
+      <Separator />
+
+      {/* Chat Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {renderChatCard(studyConfig, "Chat de Estudo", <FileText className="h-5 w-5" />)}
+        {renderChatCard(healthConfig, "Chat de Saúde", <MessageSquare className="h-5 w-5" />)}
+      </div>
     </div>;
 }
