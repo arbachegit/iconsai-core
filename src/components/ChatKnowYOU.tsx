@@ -3,13 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Send, Loader2, ImagePlus, Mic, Square } from "lucide-react";
+import { Send, Loader2, ImagePlus, Mic, Square, X } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
 import { TypingIndicator } from "./TypingIndicator";
 import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 import { useTranslation } from "react-i18next";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
+import { DocumentAttachButton } from "./DocumentAttachButton";
 
 // 30 sugestões de saúde para rotação
 const HEALTH_SUGGESTIONS = [
@@ -90,12 +93,16 @@ export default function ChatKnowYOU() {
     currentlyPlayingIndex,
     suggestions,
     currentSentiment,
+    activeDisclaimer,
+    attachedDocumentId,
     sendMessage, 
     clearHistory,
     playAudio,
     stopAudio,
     generateImage,
     transcribeAudio,
+    attachDocument,
+    detachDocument,
   } = useChatKnowYOU();
   const [input, setInput] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
@@ -372,6 +379,27 @@ export default function ChatKnowYOU() {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Disclaimer when document is attached */}
+            {activeDisclaimer && (
+              <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <AlertTitle className="flex items-center justify-between">
+                  ⚠️ Disclamer - Conteúdo Novo Adicionado
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={detachDocument}
+                    className="h-6 w-6 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </AlertTitle>
+                <AlertDescription>
+                  {activeDisclaimer.message}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             {messages.map((msg, idx) => (
               <div
                 key={idx}
@@ -456,8 +484,12 @@ export default function ChatKnowYOU() {
             {t('chat.typing')}
           </div>
         )}
-        <div className="flex gap-2">
-          <Textarea
+          <div className="flex gap-2 items-end">
+            <DocumentAttachButton 
+              onAttach={attachDocument}
+              disabled={isLoading || isGeneratingAudio || isGeneratingImage}
+            />
+            <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
