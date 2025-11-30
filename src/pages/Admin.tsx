@@ -11,10 +11,11 @@ import { ImageCacheTab } from "@/components/admin/ImageCacheTab";
 import { YouTubeCacheTab } from "@/components/admin/YouTubeCacheTab";
 import { DocumentsTab } from "@/components/admin/DocumentsTab";
 import { RagMetricsTab } from "@/components/admin/RagMetricsTab";
+import { VersionControlTab } from "@/components/admin/VersionControlTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -90,6 +91,8 @@ const Admin = () => {
         return <DocumentsTab />;
       case "rag-metrics":
         return <RagMetricsTab />;
+      case "version-control":
+        return <VersionControlTab />;
       case "images":
         return <ImageCacheTab />;
       case "youtube":
