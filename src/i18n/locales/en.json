@@ -168,6 +168,9 @@
     "imageSuggestions": "Image Suggestions:",
     "typing": "Typing...",
     "transcribing": "Transcribing...",
+    "listening": "Listening... (speak naturally)",
+    "processing": "Processing...",
+    "voiceTimeout": "Dictation ends after 5 seconds of silence",
     "generatingImage": "Generating image...",
     "generatingAudio": "Generating audio...",
     "thinking": "Thinking...",
@@ -178,6 +181,9 @@
     "micPermissions": "Check your browser permissions.",
     "transcriptionError": "Transcription error",
     "transcriptionRetry": "Could not transcribe audio. Please try again.",
+    "imageRejected": "Image not allowed",
+    "imageGuardrailHealth": "Only health-related images are allowed in this chat.",
+    "imageGuardrailStudy": "Only AI and KnowRISK-related images are allowed in this chat.",
     "copied": "Text copied!",
     "copyFailed": "Copy failed",
     "miniPlayer": {
@@ -190,7 +196,8 @@
     "pause": "Pause",
     "stop": "Stop",
     "download": "Download",
-    "notAvailable": "Audio not available",
+    "copy": "Copy",
+    "notAvailable": "Audio unavailable",
     "playError": "Error playing audio"
   },
   "turingLegacy": {

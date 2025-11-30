@@ -168,6 +168,9 @@
     "imageSuggestions": "Suggestions d'Images:",
     "typing": "Écriture...",
     "transcribing": "Transcription...",
+    "listening": "Écoute... (parlez naturellement)",
+    "processing": "Traitement...",
+    "voiceTimeout": "La dictée se termine après 5 secondes de silence",
     "generatingImage": "Génération d'image...",
     "generatingAudio": "Génération d'audio...",
     "thinking": "Réflexion...",
@@ -178,6 +181,9 @@
     "micPermissions": "Vérifiez les autorisations de votre navigateur.",
     "transcriptionError": "Erreur de transcription",
     "transcriptionRetry": "Impossible de transcrire l'audio. Veuillez réessayer.",
+    "imageRejected": "Image non autorisée",
+    "imageGuardrailHealth": "Seules les images liées à la santé sont autorisées dans ce chat.",
+    "imageGuardrailStudy": "Seules les images liées à l'IA et KnowRISK sont autorisées dans ce chat.",
     "copied": "Texte copié!",
     "copyFailed": "Échec de la copie",
     "miniPlayer": {
@@ -190,6 +196,7 @@
     "pause": "Pause",
     "stop": "Arrêter",
     "download": "Télécharger",
+    "copy": "Copier",
     "notAvailable": "Audio non disponible",
     "playError": "Erreur lors de la lecture de l'audio"
   },

@@ -291,30 +291,31 @@ export const ConversationsTab = () => {
                               </p>
                               <MarkdownContent content={msg.content} className="text-sm text-left" />
                               
-                              {msg.role === 'assistant' && (
-                                <div className="mt-3 pt-3 border-t border-border/30">
-                                  <AudioControls
-                                    audioUrl={msg.audioUrl}
-                                    isPlaying={playingAudioIdx === `${conv.id}-${idx}`}
-                                    timestamp={msg.timestamp ? new Date(msg.timestamp) : undefined}
-                                    messageContent={msg.content}
-                                    onPlay={() => setPlayingAudioIdx(`${conv.id}-${idx}`)}
-                                    onStop={() => setPlayingAudioIdx(null)}
-                                    onDownload={() => {
-                                      if (msg.audioUrl) {
-                                        const link = document.createElement('a');
-                                        link.href = msg.audioUrl;
-                                        link.download = `audio-${conv.id}-${idx}.mp3`;
-                                        link.click();
-                                      }
-                                    }}
-                                    onCopy={() => {
-                                      navigator.clipboard.writeText(msg.content);
-                                      toast.success("Texto copiado!");
-                                    }}
-                                  />
-                                </div>
-                              )}
+                               {msg.role === 'assistant' && (
+                                 <div className="mt-3 pt-3 border-t border-border/30">
+                                   <AudioControls
+                                     audioUrl={msg.audioUrl}
+                                     isPlaying={playingAudioIdx === `${conv.id}-${idx}`}
+                                     timestamp={msg.timestamp ? new Date(msg.timestamp) : undefined}
+                                     location={msg.location || undefined}
+                                     messageContent={msg.content}
+                                     onPlay={() => setPlayingAudioIdx(`${conv.id}-${idx}`)}
+                                     onStop={() => setPlayingAudioIdx(null)}
+                                     onDownload={() => {
+                                       if (msg.audioUrl) {
+                                         const link = document.createElement('a');
+                                         link.href = msg.audioUrl;
+                                         link.download = `audio-${conv.id}-${idx}.mp3`;
+                                         link.click();
+                                       }
+                                     }}
+                                     onCopy={() => {
+                                       navigator.clipboard.writeText(msg.content);
+                                       toast.success("Texto copiado!");
+                                     }}
+                                   />
+                                 </div>
+                               )}
                               
                               {msg.timestamp && (
                                 <span className="text-xs opacity-70 block mt-2">
