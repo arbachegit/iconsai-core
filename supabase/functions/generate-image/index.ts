@@ -36,20 +36,30 @@ serve(async (req) => {
 
     // Validação de keywords de saúde (PT e EN)
     const healthKeywords = [
-      // Português
+      // Português - termos clássicos de saúde
       "saúde", "médico", "hospital", "paciente", "tratamento", "diagnóstico",
       "anatomia", "coração", "cérebro", "medicina", "cirurgia", "enfermagem",
       "farmácia", "medicamento", "doença", "terapia", "exame", "consulta",
       "clínica", "bem-estar", "nutrição", "fisioterapia", "saúde mental",
       "sistema", "órgão", "célula", "corpo", "humano", "respiratório",
       "digestivo", "circulatório", "nervoso", "esqueleto", "moinhos de vento",
-      // English
+      
+      // Português - IA/RAG em contexto de saúde
+      "fluxo rag", "rag clínico", "rag em saúde", "ia em saúde", "inteligência artificial em saúde",
+      "sistema de apoio à decisão clínica", "prontuário eletrônico", "prontuario eletrônico",
+      "hospital moinhos", "hospital moinhos de vento",
+      
+      // English - termos clássicos de saúde
       "health", "medical", "doctor", "hospital", "patient", "treatment", "diagnosis",
       "anatomy", "heart", "brain", "medicine", "surgery", "nursing",
       "pharmacy", "medication", "disease", "therapy", "exam", "consultation",
       "clinic", "wellness", "nutrition", "physiotherapy", "mental health",
       "system", "organ", "cell", "body", "human", "respiratory",
-      "digestive", "circulatory", "nervous", "skeleton", "bone"
+      "digestive", "circulatory", "nervous", "skeleton", "bone",
+
+      // English - AI/RAG em contexto de saúde
+      "rag flow", "rag pipeline", "clinical rag", "medical rag", "ai in healthcare",
+      "clinical decision support", "electronic health record", "ehr", "emr"
     ];
 
     const promptLower = prompt.toLowerCase();
