@@ -14,6 +14,8 @@ import {
   Pie,
   Cell,
   Legend,
+  LineChart,
+  Line,
 } from "recharts";
 
 export const RagMetricsTab = () => {
@@ -23,14 +25,14 @@ export const RagMetricsTab = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("documents")
-        .select("status, target_chat, total_chunks");
+        .select("status, target_chat, total_chunks, is_readable");
       
       if (error) throw error;
       return data;
     },
   });
 
-  // Fetch chunks count
+  // Fetch chunks count and metrics
   const { data: chunksCount, isLoading: chunksLoading } = useQuery({
     queryKey: ["rag-metrics-chunks"],
     queryFn: async () => {
@@ -43,6 +45,70 @@ export const RagMetricsTab = () => {
     },
   });
 
+  // Fetch chunk details for performance metrics
+  const { data: chunkDetails } = useQuery({
+    queryKey: ["rag-metrics-chunk-details"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("document_chunks")
+        .select("word_count, document_id");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch temporal evolution data
+  const { data: temporalData } = useQuery({
+    queryKey: ["rag-metrics-temporal"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("created_at, status")
+        .order("created_at", { ascending: true });
+      
+      if (error) throw error;
+      
+      // Group by date
+      const grouped = data.reduce((acc: any, doc) => {
+        const date = new Date(doc.created_at).toISOString().split('T')[0];
+        if (!acc[date]) {
+          acc[date] = { date, total: 0, completed: 0, failed: 0 };
+        }
+        acc[date].total++;
+        if (doc.status === 'completed') acc[date].completed++;
+        if (doc.status === 'failed') acc[date].failed++;
+        return acc;
+      }, {});
+      
+      return Object.values(grouped);
+    },
+  });
+
+  // Fetch tag distribution data
+  const { data: tagDistribution } = useQuery({
+    queryKey: ["rag-metrics-tags"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("document_tags")
+        .select("tag_name");
+      
+      if (error) throw error;
+      
+      // Count occurrences
+      const counts = data.reduce((acc: any, tag) => {
+        acc[tag.tag_name] = (acc[tag.tag_name] || 0) + 1;
+        return acc;
+      }, {});
+      
+      // Sort and get top 10
+      return Object.entries(counts)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a: any, b: any) => b.value - a.value)
+        .slice(0, 10);
+    },
+  });
+
   // Calculate metrics
   const totalDocs = docsData?.length || 0;
   const completedDocs = docsData?.filter(d => d.status === "completed").length || 0;
@@ -50,6 +116,12 @@ export const RagMetricsTab = () => {
   const pendingDocs = docsData?.filter(d => d.status === "pending" || d.status === "processing").length || 0;
   const successRate = totalDocs > 0 ? Math.round((completedDocs / totalDocs) * 100) : 0;
   const avgChunks = totalDocs > 0 ? Math.round((chunksCount || 0) / totalDocs) : 0;
+  
+  // Performance metrics
+  const avgWordsPerChunk = chunkDetails?.length ? 
+    Math.round(chunkDetails.reduce((sum, c) => sum + c.word_count, 0) / chunkDetails.length) : 0;
+  const readableDocs = docsData?.filter(d => d.is_readable).length || 0;
+  const readableRate = totalDocs > 0 ? Math.round((readableDocs / totalDocs) * 100) : 0;
 
   // Status distribution data
   const statusData = [
@@ -130,7 +202,69 @@ export const RagMetricsTab = () => {
         </Card>
       </div>
 
+      {/* Performance Metrics */}
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4">Métricas de Performance RAG</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 bg-muted/50 rounded-lg text-center">
+            <p className="text-sm text-muted-foreground mb-2">Média de Chunks/Documento</p>
+            <p className="text-3xl font-bold text-primary">{avgChunks}</p>
+            <p className="text-xs text-muted-foreground mt-1">chunks por documento</p>
+          </div>
+          <div className="p-4 bg-muted/50 rounded-lg text-center">
+            <p className="text-sm text-muted-foreground mb-2">Média de Palavras/Chunk</p>
+            <p className="text-3xl font-bold text-secondary">{avgWordsPerChunk}</p>
+            <p className="text-xs text-muted-foreground mt-1">palavras por chunk</p>
+          </div>
+          <div className="p-4 bg-muted/50 rounded-lg text-center">
+            <p className="text-sm text-muted-foreground mb-2">Taxa de Legibilidade</p>
+            <p className="text-3xl font-bold text-accent">{readableRate}%</p>
+            <p className="text-xs text-muted-foreground mt-1">{readableDocs}/{totalDocs} legíveis</p>
+          </div>
+        </div>
+      </Card>
+
       {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Temporal Evolution */}
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Evolução Temporal de Uploads</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={temporalData || []}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="date" 
+                tick={{ fontSize: 11 }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" name="Total" strokeWidth={2} />
+              <Line type="monotone" dataKey="completed" stroke="#10B981" name="Completos" strokeWidth={2} />
+              <Line type="monotone" dataKey="failed" stroke="#EF4444" name="Falhas" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+
+        {/* Tag Distribution */}
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Top 10 Tags Mais Usadas</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={tagDistribution || []} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" />
+              <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Bar dataKey="value" fill="hsl(var(--secondary))" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      {/* Status and Chat Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Distribution */}
         <Card className="p-6">
