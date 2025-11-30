@@ -37,6 +37,12 @@ export function useChatKnowYOU() {
     const timestamp = Date.now();
     return `chat_${dateStr}_${timestamp}`;
   });
+  const [activeDisclaimer, setActiveDisclaimer] = useState<{
+    documentName: string;
+    category: string;
+    message: string;
+  } | null>(null);
+  const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
   
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
   const { toast } = useToast();
@@ -160,10 +166,73 @@ export function useChatKnowYOU() {
       };
 
       try {
-        await streamChat({
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
-          onDelta: (chunk) => updateAssistantMessage(chunk),
-          onDone: async () => {
+        // Use chat-unified if document is attached
+        if (attachedDocumentId) {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-unified`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              },
+              body: JSON.stringify({
+                messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+                chatType: "health",
+                documentId: attachedDocumentId,
+                sessionId: sessionId,
+              }),
+            }
+          );
+
+          if (!response.ok || !response.body) {
+            throw new Error("Failed to start stream");
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let textBuffer = "";
+          let streamDone = false;
+
+          while (!streamDone) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            textBuffer += decoder.decode(value, { stream: true });
+
+            let newlineIndex: number;
+            while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+              let line = textBuffer.slice(0, newlineIndex);
+              textBuffer = textBuffer.slice(newlineIndex + 1);
+
+              if (line.endsWith("\r")) line = line.slice(0, -1);
+              if (line.startsWith(":") || line.trim() === "") continue;
+              if (!line.startsWith("data: ")) continue;
+
+              const jsonStr = line.slice(6).trim();
+              if (jsonStr === "[DONE]") {
+                streamDone = true;
+                break;
+              }
+
+              try {
+                const parsed = JSON.parse(jsonStr);
+                const content = parsed.choices?.[0]?.delta?.content;
+                if (content) updateAssistantMessage(content);
+              } catch {
+                textBuffer = line + "\n" + textBuffer;
+                break;
+              }
+            }
+          }
+
+          // Clear attached document after sending
+          setAttachedDocumentId(null);
+        } else {
+          // Use regular chat endpoint
+          await streamChat({
+            messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+            onDelta: (chunk) => updateAssistantMessage(chunk),
+            onDone: async () => {
             const extractedSuggestions = extractSuggestions(fullResponse);
             if (extractedSuggestions.length > 0) {
               setSuggestions(extractedSuggestions);
@@ -244,6 +313,79 @@ export function useChatKnowYOU() {
             setIsLoading(false);
           },
         });
+        }
+
+        // Common post-processing for both paths
+        const extractedSuggestions = extractSuggestions(fullResponse);
+        if (extractedSuggestions.length > 0) {
+          setSuggestions(extractedSuggestions);
+        }
+
+        const cleanedResponse = removeSuggestionsFromText(fullResponse);
+
+        // Gerar áudio da resposta (somente se habilitado)
+        if (settings?.chat_audio_enabled) {
+          setIsGeneratingAudio(true);
+          try {
+            const audioUrl = await generateAudioUrl(cleanedResponse);
+            
+            setMessages((prev) => {
+              const updated = prev.map((m, i) =>
+                i === prev.length - 1
+                  ? { ...m, content: cleanedResponse, audioUrl }
+                  : m
+              );
+              saveHistory(updated);
+              return updated;
+            });
+
+            // Auto-play do áudio se habilitado
+            if (settings?.auto_play_audio) {
+              const messageIndex = messages.length;
+              setCurrentlyPlayingIndex(messageIndex);
+              await audioPlayerRef.current.playAudioFromUrl(audioUrl);
+              setCurrentlyPlayingIndex(null);
+            }
+
+            // Update analytics with audio play
+            updateSession({
+              session_id: sessionId,
+              updates: { audio_plays: messages.filter(m => m.audioUrl).length + 1 },
+            }).catch(console.error);
+          } catch (error) {
+            console.error("Erro ao gerar áudio:", error);
+            setMessages((prev) => {
+              const updated = prev.map((m, i) =>
+                i === prev.length - 1
+                  ? { ...m, content: cleanedResponse }
+                  : m
+              );
+              saveHistory(updated);
+              return updated;
+            });
+          } finally {
+            setIsGeneratingAudio(false);
+          }
+        } else {
+          // No audio - just save the message
+          setMessages((prev) => {
+            const updated = prev.map((m, i) =>
+              i === prev.length - 1
+                ? { ...m, content: cleanedResponse }
+                : m
+            );
+            saveHistory(updated);
+            return updated;
+          });
+        }
+
+        // Update analytics with message count
+        updateSession({
+          session_id: sessionId,
+          updates: { message_count: messages.length + 2 },
+        }).catch(console.error);
+
+        setIsLoading(false);
       } catch (error) {
         console.error("Erro ao enviar mensagem:", error);
         toast({
@@ -373,6 +515,28 @@ export function useChatKnowYOU() {
     }
   }, []);
 
+  const attachDocument = useCallback((documentId: string, documentName: string) => {
+    setAttachedDocumentId(documentId);
+    setActiveDisclaimer({
+      documentName,
+      category: "health",
+      message: `Este chat foi ampliado com o documento "${documentName}". As informações são EDUCACIONAIS. Consulte um profissional de saúde para orientação personalizada.`,
+    });
+    toast({
+      title: "Documento anexado",
+      description: `"${documentName}" foi anexado ao contexto do chat.`,
+    });
+  }, [toast]);
+
+  const detachDocument = useCallback(() => {
+    setAttachedDocumentId(null);
+    setActiveDisclaimer(null);
+    toast({
+      title: "Documento removido",
+      description: "O contexto do chat foi restaurado ao padrão.",
+    });
+  }, [toast]);
+
   return {
     messages,
     isLoading,
@@ -381,11 +545,15 @@ export function useChatKnowYOU() {
     currentlyPlayingIndex,
     suggestions,
     currentSentiment,
+    activeDisclaimer,
+    attachedDocumentId,
     sendMessage,
     clearHistory,
     playAudio,
     stopAudio,
     generateImage,
     transcribeAudio,
+    attachDocument,
+    detachDocument,
   };
 }
