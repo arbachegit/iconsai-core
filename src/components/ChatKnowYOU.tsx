@@ -16,6 +16,7 @@ import { DocumentAttachButton } from "./DocumentAttachButton";
 import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
+import { useGeolocation } from "@/hooks/useGeolocation";
 
 // 30 sugestões de saúde para rotação
 const HEALTH_SUGGESTIONS = [
@@ -88,6 +89,7 @@ const SentimentIndicator = ({ sentiment }: { sentiment: { label: string; score: 
 export default function ChatKnowYOU() {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { location, requestLocation } = useGeolocation();
   const { 
     messages, 
     isLoading, 
@@ -126,6 +128,11 @@ export default function ChatKnowYOU() {
   const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
   const [audioVisibility, setAudioVisibility] = useState<{[key: number]: boolean}>({});
   const audioMessageRefs = useRef<{[key: number]: HTMLDivElement | null}>({});
+
+  // Request location on mount
+  useEffect(() => {
+    requestLocation();
+  }, []);
 
   // IntersectionObserver para detectar quando mensagem de áudio sai do viewport
   useEffect(() => {
@@ -382,19 +389,22 @@ export default function ChatKnowYOU() {
   }, [input]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl border-2 border-t-white/20 border-l-white/20 border-r-black/30 border-b-black/30 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_8px_32px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.1)] overflow-hidden transform hover:translate-y-[-2px] transition-all duration-300 relative before:absolute before:inset-0 before:rounded-2xl before:p-[2px] before:bg-gradient-to-br before:from-primary/30 before:via-secondary/30 before:to-accent/30 before:-z-10 before:blur-sm"
-      style={{
-        transform: 'translateZ(0)',
-        backfaceVisibility: 'hidden'
-      }}>
+    <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border-2 border-primary/40 shadow-[0_0_15px_rgba(139,92,246,0.2),0_0_30px_rgba(139,92,246,0.1)] animate-fade-in">
       {/* Header */}
-      <div className="bg-gradient-primary p-6 flex items-center justify-between shadow-[0_2px_12px_rgba(0,0,0,0.2)]">
+      <div className="flex items-center justify-between p-4 border-b-2 border-primary/30">
         <div className="flex items-center gap-3">
-          <img src={knowriskLogo} alt="KnowRisk Logo" className="w-12 h-12 rounded-full bg-background/20 p-1" />
-          <div>
-            <h3 className="text-xl font-bold text-primary-foreground">{t('chat.healthTitle')}</h3>
-            <p className="text-sm text-primary-foreground/80">{t('chat.healthSubtitle')}</p>
+          <div className="relative">
+            <img src={knowriskLogo} alt="KnowRisk Logo" className="w-10 h-10" />
+            
+            {/* Online indicator with sequential waves */}
+            <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 flex items-center justify-center">
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse z-10" />
+              <div className="absolute w-5 h-5 rounded-full bg-green-500/30 animate-ping animation-delay-0" />
+              <div className="absolute w-5 h-5 rounded-full bg-green-500/20 animate-ping animation-delay-150" />
+              <div className="absolute w-5 h-5 rounded-full bg-green-500/10 animate-ping animation-delay-300" />
+            </div>
           </div>
+          <h2 className="text-lg font-bold text-gradient">{t('chat.healthTitle')}</h2>
         </div>
         <SentimentIndicator sentiment={currentSentiment} />
       </div>
@@ -484,6 +494,7 @@ export default function ChatKnowYOU() {
                       currentTime={audioStates[idx]?.currentTime}
                       duration={audioStates[idx]?.duration}
                       timestamp={msg.timestamp}
+                      location={location || undefined}
                       messageContent={msg.content}
                       onPlay={() => handleAudioPlay(idx)}
                       onStop={handleAudioStop}
@@ -577,7 +588,7 @@ export default function ChatKnowYOU() {
             placeholder={
               isTranscribing ? t('chat.transcribing') :
               isImageMode ? t('chat.placeholderImage') : 
-              t('chat.placeholder')
+              t('chat.placeholderHealth')
             }
             onFocus={(e) => {
               if (isImageMode) {

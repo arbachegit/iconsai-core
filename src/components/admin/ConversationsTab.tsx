@@ -17,6 +17,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
+import { AudioControls } from "@/components/AudioControls";
+import { MarkdownContent } from "@/components/MarkdownContent";
 
 export const ConversationsTab = () => {
   const [conversations, setConversations] = useState<any[]>([]);
@@ -25,6 +27,7 @@ export const ConversationsTab = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
+  const [playingAudioIdx, setPlayingAudioIdx] = useState<string | null>(null);
 
   useEffect(() => {
     fetchConversations();
@@ -251,7 +254,7 @@ export const ConversationsTab = () => {
                     </div>
                     
                     {/* Conversa Completa Inline */}
-                    <div className="border rounded-lg bg-[hsl(var(--chat-saved-bg))] border-[hsl(var(--chat-saved-border))]">
+                    <div className="border-2 border-[hsl(var(--chat-container-border))] bg-[hsl(var(--chat-container-bg))] rounded-lg shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3)]">
                       <div className="p-3 bg-muted/50 border-b flex items-center justify-between">
                         <h4 className="text-sm font-semibold flex items-center gap-2">
                           <MessageSquare className="h-4 w-4" />
@@ -286,7 +289,32 @@ export const ConversationsTab = () => {
                                   </>
                                 )}
                               </p>
-                              <p className="text-sm whitespace-pre-wrap text-left">{msg.content}</p>
+                              <MarkdownContent content={msg.content} className="text-sm text-left" />
+                              
+                              {msg.role === 'assistant' && (
+                                <div className="mt-3 pt-3 border-t border-border/30">
+                                  <AudioControls
+                                    audioUrl={msg.audioUrl}
+                                    isPlaying={playingAudioIdx === `${conv.id}-${idx}`}
+                                    timestamp={msg.timestamp ? new Date(msg.timestamp) : undefined}
+                                    messageContent={msg.content}
+                                    onPlay={() => setPlayingAudioIdx(`${conv.id}-${idx}`)}
+                                    onStop={() => setPlayingAudioIdx(null)}
+                                    onDownload={() => {
+                                      if (msg.audioUrl) {
+                                        const link = document.createElement('a');
+                                        link.href = msg.audioUrl;
+                                        link.download = `audio-${conv.id}-${idx}.mp3`;
+                                        link.click();
+                                      }
+                                    }}
+                                    onCopy={() => {
+                                      navigator.clipboard.writeText(msg.content);
+                                      toast.success("Texto copiado!");
+                                    }}
+                                  />
+                                </div>
+                              )}
                               
                               {msg.timestamp && (
                                 <span className="text-xs opacity-70 block mt-2">
