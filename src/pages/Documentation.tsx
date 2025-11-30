@@ -44,87 +44,87 @@ const sections = [
 // Icons reference data
 const ICONS_DATA = [
   // Navegação
-  { name: 'ArrowLeft', component: ArrowLeft, description: 'Voltar à página anterior', category: 'Navegação' },
-  { name: 'ArrowRight', component: ArrowRight, description: 'Avançar, continuar, próximo', category: 'Navegação' },
-  { name: 'ArrowUp', component: ArrowUp, description: 'Voltar ao topo da página', category: 'Navegação' },
-  { name: 'ChevronDown', component: ChevronDown, description: 'Expandir conteúdo colapsável', category: 'Navegação' },
-  { name: 'ChevronLeft', component: ChevronLeft, description: 'Navegação anterior em carrossel', category: 'Navegação' },
-  { name: 'ChevronRight', component: ChevronRight, description: 'Navegação próxima em carrossel', category: 'Navegação' },
-  { name: 'Menu', component: Menu, description: 'Abrir menu mobile hamburger', category: 'Navegação' },
-  { name: 'X', component: X, description: 'Fechar modal/drawer/painel', category: 'Navegação' },
-  { name: 'Home', component: Home, description: 'Ir para página inicial', category: 'Navegação' },
+  { name: 'ArrowLeft', component: ArrowLeft, description: 'Voltar à página anterior', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'ArrowRight', component: ArrowRight, description: 'Avançar, continuar, próximo', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'ArrowUp', component: ArrowUp, description: 'Voltar ao topo da página', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'ChevronDown', component: ChevronDown, description: 'Expandir conteúdo colapsável', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'ChevronLeft', component: ChevronLeft, description: 'Navegação anterior em carrossel', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'ChevronRight', component: ChevronRight, description: 'Navegação próxima em carrossel', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'Menu', component: Menu, description: 'Abrir menu mobile hamburger', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'X', component: X, description: 'Fechar modal/drawer/painel', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'Home', component: Home, description: 'Ir para página inicial', category: 'Navegação', origin: 'Lucide-React' },
   // Ação
-  { name: 'Play', component: Play, description: 'Iniciar reprodução de áudio', category: 'Ação' },
-  { name: 'Square', component: Square, description: 'Parar reprodução de áudio', category: 'Ação' },
-  { name: 'Download', component: Download, description: 'Baixar arquivo/áudio', category: 'Ação' },
-  { name: 'Upload', component: Upload, description: 'Enviar arquivo (drag & drop)', category: 'Ação' },
-  { name: 'Send', component: Send, description: 'Enviar mensagem no chat', category: 'Ação' },
-  { name: 'Mic', component: Mic, description: 'Ativar gravação de voz', category: 'Ação' },
-  { name: 'ImagePlus', component: ImagePlus, description: 'Gerar imagem (modo draw)', category: 'Ação' },
-  { name: 'Search', component: Search, description: 'Buscar/filtrar conteúdo', category: 'Ação' },
-  { name: 'RefreshCw', component: RefreshCw, description: 'Reprocessar documento', category: 'Ação' },
-  { name: 'Trash2', component: Trash2, description: 'Excluir item', category: 'Ação' },
-  { name: 'Edit2', component: Edit2, description: 'Editar conteúdo', category: 'Ação' },
-  { name: 'Save', component: Save, description: 'Salvar alterações', category: 'Ação' },
+  { name: 'Play', component: Play, description: 'Iniciar reprodução de áudio', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Square', component: Square, description: 'Parar reprodução de áudio', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Download', component: Download, description: 'Baixar arquivo/áudio', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Upload', component: Upload, description: 'Enviar arquivo (drag & drop)', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Send', component: Send, description: 'Enviar mensagem no chat', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Mic', component: Mic, description: 'Ativar gravação de voz', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'ImagePlus', component: ImagePlus, description: 'Gerar imagem (modo draw)', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Search', component: Search, description: 'Buscar/filtrar conteúdo', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'RefreshCw', component: RefreshCw, description: 'Reprocessar documento', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Trash2', component: Trash2, description: 'Excluir item', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Edit2', component: Edit2, description: 'Editar conteúdo', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Save', component: Save, description: 'Salvar alterações', category: 'Ação', origin: 'Lucide-React' },
   // Status
-  { name: 'Loader2', component: Loader2, description: 'Indicador de carregamento', category: 'Status' },
-  { name: 'Check', component: Check, description: 'Confirmação/seleção', category: 'Status' },
-  { name: 'CheckCircle2', component: CheckCircle2, description: 'Documento processado com sucesso', category: 'Status' },
-  { name: 'XCircle', component: XCircle, description: 'Erro/falha no processamento', category: 'Status' },
-  { name: 'Clock', component: Clock, description: 'Pendente/aguardando', category: 'Status' },
+  { name: 'Loader2', component: Loader2, description: 'Indicador de carregamento', category: 'Status', origin: 'Lucide-React' },
+  { name: 'Check', component: Check, description: 'Confirmação/seleção', category: 'Status', origin: 'Lucide-React' },
+  { name: 'CheckCircle2', component: CheckCircle2, description: 'Documento processado com sucesso', category: 'Status', origin: 'Lucide-React' },
+  { name: 'XCircle', component: XCircle, description: 'Erro/falha no processamento', category: 'Status', origin: 'Lucide-React' },
+  { name: 'Clock', component: Clock, description: 'Pendente/aguardando', category: 'Status', origin: 'Lucide-React' },
   // Comunicação
-  { name: 'MessageCircle', component: MessageCircle, description: 'Botão flutuante de chat', category: 'Comunicação' },
-  { name: 'MessageSquare', component: MessageSquare, description: 'Configuração de chat', category: 'Comunicação' },
-  { name: 'Mail', component: Mail, description: 'Configuração de email', category: 'Comunicação' },
+  { name: 'MessageCircle', component: MessageCircle, description: 'Botão flutuante de chat', category: 'Comunicação', origin: 'Lucide-React' },
+  { name: 'MessageSquare', component: MessageSquare, description: 'Configuração de chat', category: 'Comunicação', origin: 'Lucide-React' },
+  { name: 'Mail', component: Mail, description: 'Configuração de email', category: 'Comunicação', origin: 'Lucide-React' },
   // Mídia
-  { name: 'Youtube', component: Youtube, description: 'Cache de vídeos YouTube', category: 'Mídia' },
-  { name: 'Music', component: Music, description: 'Embed de podcast Spotify', category: 'Mídia' },
-  { name: 'Image', component: Image, description: 'Cache de imagens geradas', category: 'Mídia' },
+  { name: 'Youtube', component: Youtube, description: 'Cache de vídeos YouTube', category: 'Mídia', origin: 'Lucide-React' },
+  { name: 'Music', component: Music, description: 'Embed de podcast Spotify', category: 'Mídia', origin: 'Lucide-React' },
+  { name: 'Image', component: Image, description: 'Cache de imagens geradas', category: 'Mídia', origin: 'Lucide-React' },
   // Data
-  { name: 'BarChart3', component: BarChart3, description: 'Métricas e analytics', category: 'Data' },
-  { name: 'Database', component: Database, description: 'Métricas RAG/banco de dados', category: 'Data' },
-  { name: 'FileText', component: FileText, description: 'Documento/tooltip', category: 'Data' },
+  { name: 'BarChart3', component: BarChart3, description: 'Métricas e analytics', category: 'Data', origin: 'Lucide-React' },
+  { name: 'Database', component: Database, description: 'Métricas RAG/banco de dados', category: 'Data', origin: 'Lucide-React' },
+  { name: 'FileText', component: FileText, description: 'Documento/tooltip', category: 'Data', origin: 'Lucide-React' },
   // Sistema
-  { name: 'Brain', component: Brain, description: 'Acesso ao painel admin', category: 'Sistema' },
-  { name: 'Languages', component: Languages, description: 'Seletor de idioma', category: 'Sistema' },
-  { name: 'Sun', component: Sun, description: 'Tema claro', category: 'Sistema' },
-  { name: 'Moon', component: Moon, description: 'Tema escuro', category: 'Sistema' },
-  { name: 'Lock', component: Lock, description: 'Autenticação admin', category: 'Sistema' },
-  { name: 'LogOut', component: LogOut, description: 'Sair do sistema', category: 'Sistema' },
-  { name: 'GitBranch', component: GitBranch, description: 'Controle de versão', category: 'Sistema' },
-  { name: 'Tags', component: Tags, description: 'Gerenciamento de tags', category: 'Sistema' },
+  { name: 'Brain', component: Brain, description: 'Acesso ao painel admin', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Languages', component: Languages, description: 'Seletor de idioma', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Sun', component: Sun, description: 'Tema claro', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Moon', component: Moon, description: 'Tema escuro', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Lock', component: Lock, description: 'Autenticação admin', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'LogOut', component: LogOut, description: 'Sair do sistema', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'GitBranch', component: GitBranch, description: 'Controle de versão', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Tags', component: Tags, description: 'Gerenciamento de tags', category: 'Sistema', origin: 'Lucide-React' },
   // Temático (AI History)
-  { name: 'Clock', component: Clock, description: 'Era: O Sonho (Antes 1950)', category: 'Temático' },
-  { name: 'Baby', component: Baby, description: 'Era: Nascimento (Anos 50)', category: 'Temático' },
-  { name: 'Users', component: Users, description: 'Era: Infância (Anos 60-80)', category: 'Temático' },
-  { name: 'GraduationCap', component: GraduationCap, description: 'Era: Fase Adulta (90s-2000s)', category: 'Temático' },
-  { name: 'Rocket', component: Rocket, description: 'Era: Revolução Generativa', category: 'Temático' },
-  { name: 'Bot', component: Bot, description: 'Marcos de IA (chatbots, Siri)', category: 'Temático' },
-  { name: 'Sparkles', component: Sparkles, description: 'Momentos históricos', category: 'Temático' },
-  { name: 'Lightbulb', component: Lightbulb, description: 'Insights/descobertas', category: 'Temático' },
-  { name: 'Crown', component: Crown, description: 'Vitórias (Deep Blue, AlphaGo)', category: 'Temático' },
-  { name: 'Cat', component: Cat, description: 'Deep Learning YouTube', category: 'Temático' },
-  { name: 'Palette', component: Palette, description: 'Era ChatGPT/Gemini criativa', category: 'Temático' },
-  { name: 'Snowflake', component: Snowflake, description: 'Inverno da IA', category: 'Temático' },
-  { name: 'Skull', component: Skull, description: 'Exterminador do Futuro', category: 'Temático' },
+  { name: 'Clock', component: Clock, description: 'Era: O Sonho (Antes 1950)', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Baby', component: Baby, description: 'Era: Nascimento (Anos 50)', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Users', component: Users, description: 'Era: Infância (Anos 60-80)', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'GraduationCap', component: GraduationCap, description: 'Era: Fase Adulta (90s-2000s)', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Rocket', component: Rocket, description: 'Era: Revolução Generativa', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Bot', component: Bot, description: 'Marcos de IA (chatbots, Siri)', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Sparkles', component: Sparkles, description: 'Momentos históricos', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Lightbulb', component: Lightbulb, description: 'Insights/descobertas', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Crown', component: Crown, description: 'Vitórias (Deep Blue, AlphaGo)', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Cat', component: Cat, description: 'Deep Learning YouTube', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Palette', component: Palette, description: 'Era ChatGPT/Gemini criativa', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Snowflake', component: Snowflake, description: 'Inverno da IA', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Skull', component: Skull, description: 'Exterminador do Futuro', category: 'Temático', origin: 'Lucide-React' },
 ];
 
 // Animations reference data
 const ANIMATIONS_DATA = [
-  { className: 'animate-accordion-down', description: 'Expandir conteúdo collapsible suavemente', category: 'Transição' },
-  { className: 'animate-accordion-up', description: 'Colapsar conteúdo suavemente', category: 'Transição' },
-  { className: 'animate-fade-in', description: 'Entrada suave com deslocamento Y', category: 'Entrada' },
-  { className: 'animate-scale-in', description: 'Escala de entrada (0.95 → 1)', category: 'Entrada' },
-  { className: 'animate-slide-in-right', description: 'Deslizar da direita para esquerda', category: 'Entrada' },
-  { className: 'animate-float', description: 'Flutuação contínua (6s loop)', category: 'Ênfase' },
-  { className: 'animate-pulse-slow', description: 'Pulsação lenta (4s) para destaque', category: 'Ênfase' },
-  { className: 'animate-pulse', description: 'Pulsação padrão para indicadores', category: 'Ênfase' },
-  { className: 'animate-ping', description: 'Ondas expansivas (botão chat)', category: 'Ênfase' },
-  { className: 'animate-spin', description: 'Rotação para loaders', category: 'Status' },
-  { className: 'suggestions-slider', description: 'Slide lateral de sugestões (10s)', category: 'Transição' },
-  { className: 'language-transition', description: 'Transição de idioma (fade + Y)', category: 'Transição' },
-  { className: 'hover:scale-110 transition-transform', description: 'Escala hover em botões', category: 'Interação' },
-  { className: 'transition-all duration-300', description: 'Transição suave universal', category: 'Transição' },
+  { className: 'animate-accordion-down', description: 'Expandir conteúdo collapsible suavemente', category: 'Transição', origin: 'Tailwind keyframes (index.css)' },
+  { className: 'animate-accordion-up', description: 'Colapsar conteúdo suavemente', category: 'Transição', origin: 'Tailwind keyframes (index.css)' },
+  { className: 'animate-fade-in', description: 'Entrada suave com deslocamento Y', category: 'Entrada', origin: 'Custom keyframes (index.css)' },
+  { className: 'animate-scale-in', description: 'Escala de entrada (0.95 → 1)', category: 'Entrada', origin: 'Custom keyframes (index.css)' },
+  { className: 'animate-slide-in-right', description: 'Deslizar da direita para esquerda', category: 'Entrada', origin: 'Custom keyframes (index.css)' },
+  { className: 'animate-float', description: 'Flutuação contínua (6s loop)', category: 'Ênfase', origin: 'Custom keyframes (index.css)' },
+  { className: 'animate-pulse-slow', description: 'Pulsação lenta (4s) para destaque', category: 'Ênfase', origin: 'Custom animation (tailwind.config.ts)' },
+  { className: 'animate-pulse', description: 'Pulsação padrão para indicadores', category: 'Ênfase', origin: 'Tailwind CSS (built-in)' },
+  { className: 'animate-ping', description: 'Ondas expansivas (botão chat)', category: 'Ênfase', origin: 'Tailwind CSS (built-in)' },
+  { className: 'animate-spin', description: 'Rotação para loaders', category: 'Status', origin: 'Tailwind CSS (built-in)' },
+  { className: 'suggestions-slider', description: 'Slide lateral de sugestões (10s)', category: 'Transição', origin: 'Custom keyframes (index.css)' },
+  { className: 'language-transition', description: 'Transição de idioma (fade + Y)', category: 'Transição', origin: 'Custom keyframes (index.css)' },
+  { className: 'hover:scale-110 transition-transform', description: 'Escala hover em botões', category: 'Interação', origin: 'Tailwind CSS utility' },
+  { className: 'transition-all duration-300', description: 'Transição suave universal', category: 'Transição', origin: 'Tailwind CSS utility' },
 ];
 
 // Search result interface for full-text search
@@ -1633,6 +1633,7 @@ await supabase.functions.invoke("process-bulk-document", {
                       <TableHead className="min-w-[180px]">Nome Técnico</TableHead>
                       <TableHead>Descrição/Uso</TableHead>
                       <TableHead className="w-32">Categoria</TableHead>
+                      <TableHead className="w-40">Origem</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1653,6 +1654,9 @@ await supabase.functions.invoke("process-bulk-document", {
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary">{iconData.category}</Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {iconData.origin}
                           </TableCell>
                         </TableRow>
                       );
@@ -1698,6 +1702,7 @@ await supabase.functions.invoke("process-bulk-document", {
                       <TableHead className="min-w-[200px]">Nome Técnico</TableHead>
                       <TableHead>Descrição/Uso</TableHead>
                       <TableHead className="w-32">Categoria</TableHead>
+                      <TableHead className="w-48">Origem</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1723,6 +1728,9 @@ await supabase.functions.invoke("process-bulk-document", {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{animData.category}</Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {animData.origin}
                         </TableCell>
                       </TableRow>
                     ))}
