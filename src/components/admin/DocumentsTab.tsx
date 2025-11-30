@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -20,6 +20,16 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 // Configure PDF.js worker with local bundle
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -47,9 +57,14 @@ export const DocumentsTab = () => {
   // Filter and sort states
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [chatFilter, setChatFilter] = useState<string>("all");
+  const [readabilityFilter, setReadabilityFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<"created_at" | "filename" | "total_chunks">("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Tag editing states
   const [editingTagsDoc, setEditingTagsDoc] = useState<any>(null);
@@ -801,6 +816,19 @@ export const DocumentsTab = () => {
       filtered = filtered.filter(d => d.target_chat?.toLowerCase() === chatFilter);
     }
     
+    // Readability filter
+    if (readabilityFilter !== "all") {
+      if (readabilityFilter === "high") {
+        filtered = filtered.filter(d => d.readability_score !== null && d.readability_score >= 0.8);
+      } else if (readabilityFilter === "medium") {
+        filtered = filtered.filter(d => d.readability_score !== null && d.readability_score >= 0.5 && d.readability_score < 0.8);
+      } else if (readabilityFilter === "low") {
+        filtered = filtered.filter(d => d.readability_score !== null && d.readability_score < 0.5);
+      } else if (readabilityFilter === "unscored") {
+        filtered = filtered.filter(d => d.readability_score === null);
+      }
+    }
+    
     // Sorting
     filtered = [...filtered].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;
@@ -823,7 +851,18 @@ export const DocumentsTab = () => {
     });
     
     return filtered;
-  }, [documents, statusFilter, chatFilter, sortField, sortDirection, searchQuery]);
+  }, [documents, statusFilter, chatFilter, readabilityFilter, sortField, sortDirection, searchQuery]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil((filteredDocuments?.length || 0) / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedDocuments = filteredDocuments?.slice(startIndex, endIndex) || [];
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, chatFilter, readabilityFilter, searchQuery]);
 
   // Toggle document selection
   const toggleDocSelection = useCallback((docId: string) => {
@@ -1205,11 +1244,28 @@ export const DocumentsTab = () => {
                 </Select>
               </div>
               
+              <div className="flex-1">
+                <Label className="text-sm font-medium mb-2 block">Legibilidade</Label>
+                <Select value={readabilityFilter} onValueChange={setReadabilityFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="high">🟢 Alta (≥80%)</SelectItem>
+                    <SelectItem value="medium">🔵 Média (50-79%)</SelectItem>
+                    <SelectItem value="low">🔴 Baixa (&lt;50%)</SelectItem>
+                    <SelectItem value="unscored">Sem pontuação</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
               <Button 
                 variant="outline" 
                 onClick={() => {
                   setStatusFilter("all");
                   setChatFilter("all");
+                  setReadabilityFilter("all");
                   setSearchQuery("");
                   setSortField("created_at");
                   setSortDirection("desc");
@@ -1325,6 +1381,22 @@ export const DocumentsTab = () => {
                     <ArrowUpDown className="h-4 w-4" />
                   </div>
                 </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    Legibilidade
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-sm">Percentual de qualidade e clareza do texto extraído do documento.</p>
+                          <p className="text-xs mt-1">🟢 80-100%: Alta | 🔵 60-79%: Boa | 🟡 40-59%: Moderada | 🔴 0-39%: Baixa</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </TableHead>
                 <TableHead 
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => toggleSort("created_at")}
@@ -1338,7 +1410,7 @@ export const DocumentsTab = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredDocuments.map((doc) => (
+              {paginatedDocuments.map((doc) => (
                 <TableRow 
                   key={doc.id}
                   className="hover:bg-muted/50"
@@ -1380,6 +1452,28 @@ export const DocumentsTab = () => {
                     )}
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>{doc.total_chunks}</TableCell>
+                  <TableCell onClick={() => setSelectedDoc(doc)}>
+                    {doc.readability_score !== null ? (
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${
+                          doc.readability_score >= 0.8 ? 'bg-green-500' :
+                          doc.readability_score >= 0.6 ? 'bg-blue-500' :
+                          doc.readability_score >= 0.4 ? 'bg-yellow-500' : 'bg-red-500'
+                        }`} />
+                        <span className={`font-medium ${
+                          doc.readability_score >= 0.8 ? 'text-green-500' :
+                          doc.readability_score >= 0.6 ? 'text-blue-500' :
+                          doc.readability_score >= 0.4 ? 'text-yellow-500' : 'text-red-500'
+                        }`}>
+                          {Math.round(doc.readability_score * 100)}%
+                        </span>
+                      </div>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">
+                        {doc.is_readable ? "✓ Legível" : "✗ Ilegível"}
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -1428,6 +1522,85 @@ export const DocumentsTab = () => {
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             Nenhum documento encontrado
+          </div>
+        )}
+        
+        {/* Pagination Controls */}
+        {filteredDocuments && filteredDocuments.length > 0 && (
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <p className="text-sm text-muted-foreground">
+                  Mostrando {startIndex + 1}-{Math.min(endIndex, filteredDocuments.length)} de {filteredDocuments.length} documentos
+                </p>
+                
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">Por página:</Label>
+                  <Select 
+                    value={itemsPerPage.toString()} 
+                    onValueChange={(v) => {
+                      setItemsPerPage(Number(v));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[80px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {totalPages > 1 && (
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                    
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => 
+                        page === 1 || 
+                        page === totalPages || 
+                        Math.abs(page - currentPage) <= 1
+                      )
+                      .map((page, idx, arr) => (
+                        <>
+                          {idx > 0 && arr[idx - 1] !== page - 1 && (
+                            <PaginationItem key={`ellipsis-${page}`}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          )}
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(page)}
+                              isActive={currentPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        </>
+                      ))}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
+            </div>
           </div>
         )}
         </div>
