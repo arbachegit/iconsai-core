@@ -62,6 +62,7 @@ export const DocumentsTab = () => {
   // Bulk export states
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
+  const [isBulkReprocessing, setIsBulkReprocessing] = useState(false);
   
   // Duplicate detection states
   const [duplicateInfo, setDuplicateInfo] = useState<{
@@ -462,6 +463,59 @@ export const DocumentsTab = () => {
     } catch (error: any) {
       toast.error(`Erro ao substituir: ${error.message}`);
     }
+  };
+
+  // Reprocess selected documents
+  const handleBulkReprocess = async () => {
+    setIsBulkReprocessing(true);
+    try {
+      const docsToReprocess = documents?.filter(d => 
+        selectedDocs.has(d.id) && 
+        (d.status === "failed" || d.status === "pending")
+      ) || [];
+      
+      for (const doc of docsToReprocess) {
+        await reprocessMutation.mutateAsync(doc.id);
+      }
+      
+      toast.success(`${docsToReprocess.length} documento(s) reprocessado(s)`);
+      setSelectedDocs(new Set());
+    } catch (error: any) {
+      toast.error(`Erro: ${error.message}`);
+    } finally {
+      setIsBulkReprocessing(false);
+    }
+  };
+
+  // Reprocess ALL pending/failed documents
+  const handleReprocessAllPendingFailed = async () => {
+    const pendingFailed = documents?.filter(d => 
+      d.status === "failed" || d.status === "pending"
+    ) || [];
+    
+    if (pendingFailed.length === 0) {
+      toast.info("Nenhum documento pendente ou falhado encontrado");
+      return;
+    }
+    
+    setIsBulkReprocessing(true);
+    try {
+      for (const doc of pendingFailed) {
+        await reprocessMutation.mutateAsync(doc.id);
+      }
+      toast.success(`${pendingFailed.length} documento(s) reprocessado(s)`);
+    } catch (error: any) {
+      toast.error(`Erro: ${error.message}`);
+    } finally {
+      setIsBulkReprocessing(false);
+    }
+  };
+
+  // Check if document is stuck in processing
+  const isStuck = (doc: any) => {
+    if (doc.status !== "processing") return false;
+    const twoMinutesAgo = Date.now() - 2 * 60 * 1000;
+    return new Date(doc.updated_at).getTime() < twoMinutesAgo;
   };
 
   // Fetch last documentation version
@@ -1142,6 +1196,24 @@ export const DocumentsTab = () => {
               >
                 🔄 Limpar Filtros
               </Button>
+              
+              <Button 
+                variant="outline"
+                onClick={handleReprocessAllPendingFailed}
+                disabled={isBulkReprocessing}
+              >
+                {isBulkReprocessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Reprocessando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Reprocessar Pendentes/Falhados
+                  </>
+                )}
+              </Button>
             </div>
           </div>
           
@@ -1166,6 +1238,24 @@ export const DocumentsTab = () => {
                   <>
                     <Package className="mr-2 h-4 w-4" />
                     Exportar ZIP
+                  </>
+                )}
+              </Button>
+              <Button 
+                variant="secondary"
+                size="sm"
+                onClick={handleBulkReprocess}
+                disabled={isBulkReprocessing}
+              >
+                {isBulkReprocessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Reprocessando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Reprocessar Selecionados
                   </>
                 )}
               </Button>
@@ -1246,11 +1336,12 @@ export const DocumentsTab = () => {
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
                     <Badge variant={
+                      isStuck(doc) ? "destructive" :
                       doc.status === "completed" ? "default" :
                       doc.status === "failed" ? "destructive" :
                       "secondary"
                     }>
-                      {doc.status}
+                      {isStuck(doc) ? "⚠️ TRAVADO" : doc.status}
                     </Badge>
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
@@ -1282,7 +1373,7 @@ export const DocumentsTab = () => {
                       >
                         <Download className="h-4 w-4" />
                       </Button>
-                      {doc.status === "failed" && (
+                      {(doc.status === "failed" || doc.status === "pending") && (
                         <Button
                           variant="ghost"
                           size="sm"
