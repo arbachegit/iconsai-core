@@ -21,27 +21,41 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY not configured");
     }
     
-    // Use Lovable AI to generate hierarchical tags
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `Você é um especialista em categorização de documentos. Analise o texto e gere tags hierárquicas.
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Fetch existing parent tags to avoid duplicates
+    const { data: existingTags } = await supabase
+      .from("document_tags")
+      .select("id, tag_name, tag_type")
+      .is("parent_tag_id", null)
+      .order("tag_name");
+    
+    const existingTagNames = existingTags?.map(t => t.tag_name) || [];
+    console.log(`Found ${existingTagNames.length} existing parent tags`);
+    
+    // Use Lovable AI to generate hierarchical tags with context of existing tags
+    const systemPrompt = `Você é um especialista em categorização de documentos. Analise o texto e gere tags hierárquicas.
+
+TAGS EXISTENTES NO SISTEMA:
+${existingTagNames.length > 0 ? existingTagNames.map(name => `- "${name}"`).join('\n') : '(Nenhuma tag existente)'}
+
+REGRAS DE PADRONIZAÇÃO:
+1. SE uma tag existente é semanticamente equivalente à que você criaria, USE A EXISTENTE (retorne "existingName" com o nome exato)
+2. SE a tag não existe mas é similar (ex: "IA" vs "Inteligência Artificial"), sugira a versão mais completa e padronizada
+3. NUNCA crie duplicatas como "Machine Learning" e "Aprendizado de Máquina" - escolha UMA versão padronizada
+4. Para tags filhas, certifique-se de que o nome seja específico e não genérico
+5. Priorize REUTILIZAR tags existentes quando o documento se enquadrar nelas
 
 IMPORTANTE: Retorne APENAS um JSON válido, sem markdown, sem explicações.
 
 Formato esperado:
 {
   "parentTags": [
-    {"name": "Categoria Ampla 1", "confidence": 0.95},
-    {"name": "Categoria Ampla 2", "confidence": 0.85}
+    {"name": "Categoria Ampla 1", "confidence": 0.95, "existingName": "nome-exato-se-existir-ou-null"},
+    {"name": "Categoria Ampla 2", "confidence": 0.85, "existingName": null}
   ],
   "childTags": {
     "Categoria Ampla 1": [
@@ -57,7 +71,21 @@ Formato esperado:
 Regras:
 - 3-5 tags pai (categorias amplas)
 - 5-10 tags filhas no total, distribuídas entre os pais
-- Confidence entre 0.0 e 1.0 (NUNCA use percentagens)`
+- Confidence entre 0.0 e 1.0 (NUNCA use percentagens)
+- Use "existingName" quando a tag já existe no sistema para evitar duplicatas`;
+    
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
           },
           {
             role: "user",
@@ -86,29 +114,40 @@ Regras:
       throw new Error("Failed to parse AI response");
     }
     
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Create index of existing tags for fast lookup
+    const existingTagIndex = new Map(
+      existingTags?.map(t => [t.tag_name.toLowerCase(), t.id]) || []
+    );
     
-    // Save parent tags
+    // Save parent tags (reuse existing or create new)
     const parentTagIds: { [key: string]: string } = {};
     
     for (const parentTag of tags.parentTags) {
-      const { data: savedTag } = await supabase
-        .from("document_tags")
-        .insert({
-          document_id: documentId,
-          tag_name: parentTag.name,
-          tag_type: "parent",
-          confidence: parentTag.confidence,
-          source: "ai"
-        })
-        .select()
-        .single();
+      const tagNameToUse = parentTag.existingName || parentTag.name;
+      const existingId = existingTagIndex.get(tagNameToUse.toLowerCase());
       
-      if (savedTag) {
-        parentTagIds[parentTag.name] = savedTag.id;
+      if (existingId) {
+        // Reuse existing tag
+        parentTagIds[parentTag.name] = existingId;
+        console.log(`Reusing existing parent tag: ${tagNameToUse}`);
+      } else {
+        // Create new tag
+        const { data: savedTag } = await supabase
+          .from("document_tags")
+          .insert({
+            document_id: documentId,
+            tag_name: tagNameToUse,
+            tag_type: "parent",
+            confidence: parentTag.confidence,
+            source: "ai"
+          })
+          .select()
+          .single();
+        
+        if (savedTag) {
+          parentTagIds[parentTag.name] = savedTag.id;
+          console.log(`Created new parent tag: ${tagNameToUse}`);
+        }
       }
     }
     

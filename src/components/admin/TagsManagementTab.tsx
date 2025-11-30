@@ -42,8 +42,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle } from "lucide-react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Tag {
   id: string;
@@ -65,6 +71,11 @@ export const TagsManagementTab = () => {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; tagId: string | null }>({
     open: false,
     tagId: null,
+  });
+  const [mergeDialog, setMergeDialog] = useState<{ open: boolean; tagName: string; ids: string[] }>({
+    open: false,
+    tagName: "",
+    ids: [],
   });
   const [filterSource, setFilterSource] = useState<string>("all");
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
@@ -110,6 +121,18 @@ export const TagsManagementTab = () => {
   const filteredParentTags = filterSource === "all" 
     ? parentTags 
     : parentTags.filter((t) => t.source === filterSource);
+
+  // Detect duplicates
+  const duplicateParentTags = parentTags.reduce((acc, tag) => {
+    const existing = acc.find((item) => item.tag_name === tag.tag_name);
+    if (existing) {
+      existing.count += 1;
+      existing.ids.push(tag.id);
+    } else {
+      acc.push({ tag_name: tag.tag_name, count: 1, ids: [tag.id] });
+    }
+    return acc;
+  }, [] as { tag_name: string; count: number; ids: string[] }[]).filter((item) => item.count > 1);
 
   // Pagination
   const totalPages = Math.ceil(filteredParentTags.length / itemsPerPage);
@@ -189,6 +212,49 @@ export const TagsManagementTab = () => {
       toast.error(`Erro ao deletar tag: ${error.message}`);
     },
   });
+
+  // Merge tags mutation
+  const mergeTagsMutation = useMutation({
+    mutationFn: async ({ targetTagId, sourceTagIds }: { targetTagId: string; sourceTagIds: string[] }) => {
+      // Move all child tags to target
+      for (const sourceId of sourceTagIds) {
+        await supabase
+          .from("document_tags")
+          .update({ parent_tag_id: targetTagId })
+          .eq("parent_tag_id", sourceId);
+      }
+      
+      // Delete duplicate parent tags
+      await supabase
+        .from("document_tags")
+        .delete()
+        .in("id", sourceTagIds);
+    },
+    onSuccess: () => {
+      toast.success("Tags unificadas com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["all-tags"] });
+      setMergeDialog({ open: false, tagName: "", ids: [] });
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao unificar tags: ${error.message}`);
+    },
+  });
+
+  const openMergeDialog = (tagName: string, ids: string[]) => {
+    setMergeDialog({ open: true, tagName, ids });
+  };
+
+  const handleMerge = () => {
+    if (mergeDialog.ids.length < 2) {
+      toast.error("Selecione pelo menos 2 tags para unificar");
+      return;
+    }
+    
+    const targetTagId = mergeDialog.ids[0]; // Keep the first (oldest) tag
+    const sourceTagIds = mergeDialog.ids.slice(1); // Remove duplicates
+    
+    mergeTagsMutation.mutate({ targetTagId, sourceTagIds });
+  };
 
   const resetForm = () => {
     setFormData({
@@ -337,6 +403,26 @@ export const TagsManagementTab = () => {
         </div>
       </div>
 
+      {/* Duplicate Detection */}
+      {duplicateParentTags.length > 0 && (
+        <Card className="p-4 border-yellow-500/50 bg-yellow-500/5">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+            <h3 className="font-semibold">Tags Duplicadas Detectadas</h3>
+          </div>
+          <div className="space-y-2">
+            {duplicateParentTags.map(({ tag_name, count, ids }) => (
+              <div key={tag_name} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                <span className="text-sm">"{tag_name}" - {count}x ocorrências</span>
+                <Button size="sm" variant="outline" onClick={() => openMergeDialog(tag_name, ids)}>
+                  <Merge className="h-4 w-4 mr-1" /> Unificar
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* Filters */}
       <Card className="p-4">
         <div className="flex items-center gap-4">
@@ -390,9 +476,28 @@ export const TagsManagementTab = () => {
                         <Badge variant={parent.source === "ai" ? "secondary" : "default"}>
                           {parent.source}
                         </Badge>
-                        <Badge variant="outline">
-                          {Math.round((parent.confidence || 0) * 100)}% confiança
-                        </Badge>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex items-center gap-1">
+                                <Badge variant="outline">
+                                  {Math.round((parent.confidence || 0) * 100)}% confiança
+                                </Badge>
+                                <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[300px]">
+                              <p className="font-semibold">Grau de Confiança</p>
+                              <p className="text-sm">Representa a certeza da IA (0-100%) ao classificar este documento com esta tag.</p>
+                              <ul className="text-sm mt-1 list-disc pl-4">
+                                <li>90-100%: Altamente relevante</li>
+                                <li>70-89%: Relevante</li>
+                                <li>50-69%: Parcialmente relevante</li>
+                                <li>&lt;50%: Baixa relevância</li>
+                              </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -432,9 +537,22 @@ export const TagsManagementTab = () => {
                                 <Badge variant="outline" className="text-xs">
                                   {child.tag_type}
                                 </Badge>
-                                <Badge variant="outline" className="text-xs">
-                                  {Math.round((child.confidence || 0) * 100)}%
-                                </Badge>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="flex items-center gap-1">
+                                        <Badge variant="outline" className="text-xs">
+                                          {Math.round((child.confidence || 0) * 100)}%
+                                        </Badge>
+                                        <HelpCircle className="h-2.5 w-2.5 text-muted-foreground cursor-help" />
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[300px]">
+                                      <p className="font-semibold">Grau de Confiança</p>
+                                      <p className="text-sm">Certeza da IA (0-100%) ao classificar com esta tag.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Button
@@ -595,6 +713,48 @@ export const TagsManagementTab = () => {
                 </>
               ) : (
                 "Deletar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Merge Tags Dialog */}
+      <Dialog open={mergeDialog.open} onOpenChange={(open) => !open && setMergeDialog({ open: false, tagName: "", ids: [] })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unificar Tags Duplicadas</DialogTitle>
+            <DialogDescription>
+              Você está prestes a unificar todas as ocorrências de "{mergeDialog.tagName}". 
+              <br /><br />
+              <strong>O que acontecerá:</strong>
+              <ul className="list-disc pl-5 mt-2">
+                <li>A tag mais antiga será mantida</li>
+                <li>Todas as tags filhas serão movidas para a tag mantida</li>
+                <li>As tags duplicadas serão removidas</li>
+              </ul>
+              <br />
+              Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMergeDialog({ open: false, tagName: "", ids: [] })}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleMerge}
+              disabled={mergeTagsMutation.isPending}
+            >
+              {mergeTagsMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Unificando...
+                </>
+              ) : (
+                <>
+                  <Merge className="h-4 w-4 mr-2" />
+                  Unificar
+                </>
               )}
             </Button>
           </DialogFooter>
