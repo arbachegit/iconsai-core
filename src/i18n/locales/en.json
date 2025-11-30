@@ -184,6 +184,7 @@
     "imageRejected": "Image not allowed",
     "imageGuardrailHealth": "Only health-related images are allowed in this chat.",
     "imageGuardrailStudy": "Only AI and KnowRISK-related images are allowed in this chat.",
+    "imageGenerationError": "Could not generate the image. Please try again.",
     "copied": "Text copied!",
     "copyFailed": "Copy failed",
     "miniPlayer": {

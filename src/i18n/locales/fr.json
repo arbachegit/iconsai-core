@@ -184,6 +184,7 @@
     "imageRejected": "Image non autorisée",
     "imageGuardrailHealth": "Seules les images liées à la santé sont autorisées dans ce chat.",
     "imageGuardrailStudy": "Seules les images liées à l'IA et KnowRISK sont autorisées dans ce chat.",
+    "imageGenerationError": "Impossible de générer l'image. Veuillez réessayer.",
     "copied": "Texte copié!",
     "copyFailed": "Échec de la copie",
     "miniPlayer": {

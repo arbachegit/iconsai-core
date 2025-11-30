@@ -478,9 +478,18 @@ export function useChatKnowYOU() {
         });
       } catch (error: any) {
         console.error("Erro ao gerar imagem:", error);
+        
+        // Verificar se é erro de guardrail (validação de saúde)
+        const errorMessage = error?.message || error?.error || "";
+        const isGuardrailError = errorMessage.includes("saúde são permitidas") || 
+                                  errorMessage.includes("health") ||
+                                  error?.status === 400;
+        
         toast({
-          title: "Erro ao gerar imagem",
-          description: error.message || "Não foi possível gerar a imagem. Tente novamente.",
+          title: t("chat.imageRejected"),
+          description: isGuardrailError 
+            ? t("chat.imageGuardrailHealth")
+            : error.message || t("chat.imageGenerationError"),
           variant: "destructive",
         });
       } finally {
