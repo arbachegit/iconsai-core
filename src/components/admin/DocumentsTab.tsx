@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { RagFlowDiagram } from "./RagFlowDiagram";
 
 // Configure PDF.js worker with local bundle
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -1949,59 +1950,9 @@ export const DocumentsTab = () => {
             </div>
             
             {/* Infográfico */}
-            <div className="mt-6 p-4 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg border">
-              <h4 className="font-semibold mb-3 text-center">📈 Fluxo RAG - Infográfico</h4>
-              <div className="bg-card p-4 rounded-lg">
-                <svg viewBox="0 0 800 600" className="w-full h-auto">
-                  {/* ETL Phase */}
-                  <g>
-                    <rect x="50" y="50" width="150" height="200" rx="8" fill="hsl(var(--primary))" opacity="0.1" stroke="hsl(var(--primary))" strokeWidth="2" />
-                    <text x="125" y="80" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="16" fontWeight="bold">📥 Fase 1: ETL</text>
-                    
-                    <text x="125" y="110" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">PDF Upload</text>
-                    <text x="125" y="130" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">↓</text>
-                    <text x="125" y="150" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">pdfjs-dist</text>
-                    <text x="125" y="170" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">↓</text>
-                    <text x="125" y="190" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Validação SLM</text>
-                    <text x="125" y="210" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">↓</text>
-                    <text x="125" y="230" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Chunking</text>
-                  </g>
-                  
-                  {/* Arrow to Database */}
-                  <path d="M 200 150 L 280 300" stroke="hsl(var(--primary))" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
-                  
-                  {/* Database */}
-                  <g>
-                    <ellipse cx="350" cy="350" rx="80" ry="40" fill="hsl(var(--secondary))" opacity="0.2" stroke="hsl(var(--secondary))" strokeWidth="2" />
-                    <text x="350" y="340" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="bold">pgvector</text>
-                    <text x="350" y="360" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Postgres DB</text>
-                  </g>
-                  
-                  {/* Arrow to Retrieval */}
-                  <path d="M 430 350 L 550 200" stroke="hsl(var(--primary))" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
-                  
-                  {/* Retrieval Phase */}
-                  <g>
-                    <rect x="550" y="50" width="200" height="200" rx="8" fill="hsl(var(--accent))" opacity="0.1" stroke="hsl(var(--accent))" strokeWidth="2" />
-                    <text x="650" y="80" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="16" fontWeight="bold">🔍 Fase 2: Retrieval</text>
-                    
-                    <text x="650" y="110" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Query</text>
-                    <text x="650" y="130" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">↓</text>
-                    <text x="650" y="150" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Busca Híbrida</text>
-                    <text x="650" y="170" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">↓</text>
-                    <text x="650" y="190" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Top-K Chunks</text>
-                    <text x="650" y="210" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">↓</text>
-                    <text x="650" y="230" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">LLM/SLM</text>
-                  </g>
-                  
-                  {/* Arrow definitions */}
-                  <defs>
-                    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                      <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" />
-                    </marker>
-                  </defs>
-                </svg>
-              </div>
+            <div className="mt-6">
+              <h4 className="font-semibold mb-3 text-center">📈 Fluxo RAG - Infográfico Interativo</h4>
+              <RagFlowDiagram />
             </div>
             
             {/* Glossário de Siglas */}
