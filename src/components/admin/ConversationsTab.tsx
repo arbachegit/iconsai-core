@@ -272,8 +272,8 @@ export const ConversationsTab = () => {
                               key={idx}
                               className={`p-3 rounded-lg ${
                                 msg.role === 'user' 
-                                  ? 'bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground ml-8' 
-                                  : 'bg-[hsl(var(--chat-message-ai-bg))] text-foreground mr-8'
+                                  ? 'bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground' 
+                                  : 'bg-[hsl(var(--chat-message-ai-bg))] text-foreground'
                               }`}
                             >
                               <p className="text-xs font-medium mb-1 flex items-center gap-2 opacity-90">

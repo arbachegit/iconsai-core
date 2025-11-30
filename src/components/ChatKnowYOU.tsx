@@ -489,7 +489,7 @@ export default function ChatKnowYOU() {
             {messages.map((msg, idx) => (
               <div
                 key={idx}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                className="flex justify-start"
                 ref={(el) => {
                   if (msg.role === "assistant" && msg.audioUrl) {
                     audioMessageRefs.current[idx] = el;
