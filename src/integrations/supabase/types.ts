@@ -834,6 +834,21 @@ export type Database = {
           similarity: number
         }[]
       }
+      search_documents_keywords: {
+        Args: {
+          keywords: string[]
+          match_count?: number
+          target_chat_filter?: string
+        }
+        Returns: {
+          chunk_id: string
+          content: string
+          document_id: string
+          matched_keyword: string
+          metadata: Json
+          similarity: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"

@@ -87,7 +87,7 @@ export const RagDiagnosticsTab = () => {
         body: {
           query: testQuery,
           targetChat: testChatType,
-          matchThreshold: forceFulltext ? 0.0 : 0.20,
+          matchThreshold: forceFulltext ? 0.0 : 0.15,
           matchCount: 5,
         },
       });
@@ -134,7 +134,7 @@ export const RagDiagnosticsTab = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Threshold de Similaridade</p>
-              <p className="text-xl font-bold text-primary">0.20 (vector) / 0.50 (full-text)</p>
+              <p className="text-xl font-bold text-primary">0.15 (vector) / 0.50 (keyword)</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Modelo de Embedding</p>
@@ -146,7 +146,7 @@ export const RagDiagnosticsTab = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Busca Híbrida</p>
-              <Badge className="mt-1">Vector + Full-text Fallback</Badge>
+              <Badge className="mt-1">Vector + Keyword Fallback</Badge>
             </div>
           </div>
         </CardContent>
@@ -263,7 +263,8 @@ export const RagDiagnosticsTab = () => {
                 <h4 className="font-semibold">Resultados ({testResults.results?.length || 0} chunks)</h4>
                 <div className="flex items-center gap-2">
                   <Badge variant={testResults.search_type === 'vector' ? 'default' : 'secondary'}>
-                    {testResults.search_type === 'vector' ? '🔍 Vector' : '📝 Full-text'}
+                    {testResults.search_type === 'vector' ? '🔍 Vector' : 
+                     testResults.search_type === 'keyword' ? '🔑 Keyword' : '📝 Full-text'}
                   </Badge>
                   <span className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />
@@ -281,7 +282,7 @@ export const RagDiagnosticsTab = () => {
                 <div className="text-center py-8 text-muted-foreground">
                   <AlertCircle className="h-8 w-8 mx-auto mb-2" />
                   <p>Nenhum chunk encontrado para esta query</p>
-                  <p className="text-sm mt-1">Threshold atual: 0.20 (vector) / 0.50 (full-text)</p>
+                  <p className="text-sm mt-1">Threshold atual: 0.15 (vector) / 0.50 (keyword)</p>
                 </div>
               ) : (
                 <ScrollArea className="h-96">
@@ -290,7 +291,14 @@ export const RagDiagnosticsTab = () => {
                       <Card key={idx} className="border-l-4 border-l-primary">
                         <CardContent className="pt-4 space-y-2">
                           <div className="flex items-center justify-between">
-                            <Badge variant="secondary">Score: {result.similarity.toFixed(3)}</Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">Score: {result.similarity.toFixed(3)}</Badge>
+                              {result.matched_keyword && (
+                                <Badge variant="outline" className="text-xs">
+                                  Keyword: {result.matched_keyword}
+                                </Badge>
+                              )}
+                            </div>
                             <span className="text-xs text-muted-foreground">
                               Doc ID: {result.document_id.slice(0, 8)}...
                             </span>

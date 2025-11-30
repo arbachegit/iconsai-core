@@ -7,6 +7,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Extract keywords by removing Portuguese stopwords
+function extractKeywords(query: string): string[] {
+  const stopwords = ['quem', 'é', 'o', 'que', 'como', 'onde', 'qual', 'quando', 
+                     'por', 'para', 'de', 'da', 'do', 'em', 'um', 'uma', 'os', 'as',
+                     'fale', 'sobre', 'me', 'diga', 'explique', 'a', 'an', 'the', 'são'];
+  
+  return query
+    .toLowerCase()
+    .replace(/[?!.,;:]/g, '') // Remove punctuation
+    .split(/\s+/)
+    .filter(word => word.length > 2 && !stopwords.includes(word));
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -14,7 +27,7 @@ serve(async (req) => {
 
   try {
     const startTime = Date.now();
-    const { query, targetChat, matchThreshold = 0.20, matchCount = 5, sessionId, useHybridSearch = false } = await req.json();
+    const { query, targetChat, matchThreshold = 0.15, matchCount = 5, sessionId, useHybridSearch = false } = await req.json();
     
     console.log(`Searching documents for query: "${query}" (target: ${targetChat})`);
     
@@ -135,25 +148,31 @@ serve(async (req) => {
       
       console.log(`Vector search: ${results?.length || 0} matching chunks`);
       
-      // FALLBACK: If vector search returns 0 results, try full-text search
+      // FALLBACK: If vector search returns 0 results, try keyword-based search
       if (!results || results.length === 0) {
-        console.log("Vector search returned 0 results, falling back to full-text search...");
-        searchType = 'fulltext';
+        console.log("Vector search returned 0 results, falling back to keyword search...");
+        searchType = 'keyword';
         
-        const fulltextResults = await supabase.rpc("search_documents_fulltext", {
-          search_query: query,
-          target_chat_filter: targetChat,
-          match_count: matchCount
-        });
+        // Extract keywords from query
+        const keywords = extractKeywords(query);
+        console.log(`Extracted keywords: [${keywords.join(', ')}]`);
         
-        if (fulltextResults.error) {
-          console.error("Full-text search error:", fulltextResults.error);
-        } else {
-          results = fulltextResults.data?.map((r: any) => ({
-            ...r,
-            search_type: 'fulltext'
-          })) || [];
-          console.log(`Full-text search: ${results.length} matching chunks`);
+        if (keywords.length > 0) {
+          const keywordResults = await supabase.rpc("search_documents_keywords", {
+            keywords: keywords,
+            target_chat_filter: targetChat,
+            match_count: matchCount
+          });
+          
+          if (keywordResults.error) {
+            console.error("Keyword search error:", keywordResults.error);
+          } else {
+            results = keywordResults.data?.map((r: any) => ({
+              ...r,
+              search_type: 'keyword'
+            })) || [];
+            console.log(`Keyword search: ${results.length} matching chunks`);
+          }
         }
       }
     }
