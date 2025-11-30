@@ -211,8 +211,10 @@
     "noDocumentsDesc": "Téléchargez des documents dans le panneau d'administration",
     "chunks": "morceaux",
     "readable": "✓ Lisible",
-    "attached": "Document joint: {{documentName}}",
-    "detached": "Document supprimé",
+    "attached": "Document Joint",
+    "attachedDesc": "Le document \"{{documentName}}\" a été joint à la conversation.",
+    "removed": "Document Supprimé",
+    "removedDesc": "Le contexte du document a été supprimé de la conversation.",
     "disclaimerTitle": "⚠️ Avertissement - Nouveau Contenu Ajouté",
     "disclaimerMessage": "Le document \"{{documentName}}\" a été joint au contexte de cette conversation. Les réponses incluent maintenant des informations spécifiques de ce document. Cliquez sur X pour supprimer.",
     "removeButton": "Supprimer le document"

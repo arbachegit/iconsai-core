@@ -65,10 +65,10 @@ const buildDynamicPrompt = ({
   scopeDescription: string;
   ragContext: string;
 }): string => {
-  const basePrompt = `Você é um assistente de IA com a função de fornecer informações precisas, relevantes e seguras, sempre respeitando as diretrizes internas de segurança de conteúdo.
+  return `Você é um assistente de IA com a função de fornecer informações precisas, relevantes e seguras, sempre respeitando as diretrizes internas de segurança de conteúdo.
 
 **Contexto Principal:** ${category.toUpperCase()}
-${ragContext}
+
 **1. Escopo Atual do Chat:**
 ${scopeDescription}
 
@@ -81,20 +81,25 @@ ${document ? `
 - **Nome:** ${document.filename}
 - **Resumo:** ${document.ai_summary || 'Resumo não disponível'}
 
-${getDisclaimer(category, document)}
+⚠️ ${getDisclaimer(category, document)}
+
+**4. Contexto do Documento:**
+${ragContext}
+` : ragContext ? `
+**3. Contexto Relevante dos Documentos:**
+${ragContext}
 ` : ''}
 
-**4. Geração de Sugestões:**
+**${document ? '5' : ragContext ? '4' : '3'}. Geração de Sugestões:**
 ${document 
-  ? 'Gere sugestões que explorem EXCLUSIVAMENTE o conteúdo do documento inserido. A primeira sugestão deve introduzir o novo material.'
+  ? `- A PRIMEIRA sugestão DEVE introduzir o novo material: "${document.filename}"
+- As demais sugestões devem explorar EXCLUSIVAMENTE o conteúdo do documento
+- Inclua o disclaimer nas sugestões se for a primeira resposta com este documento`
   : 'Gere sugestões contextuais relacionadas ao tema discutido.'
 }
 
-FORMATO DAS SUGESTÕES (obrigatório):
-SUGESTÕES: ["Pergunta 1", "Pergunta 2", "Pergunta 3"]
-`;
-
-  return basePrompt;
+FORMATO OBRIGATÓRIO DAS SUGESTÕES:
+SUGESTÕES: ["Pergunta 1", "Pergunta 2", "Pergunta 3"]`;
 };
 
 // Log document routing to database

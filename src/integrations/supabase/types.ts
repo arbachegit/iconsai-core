@@ -482,9 +482,13 @@ export type Database = {
           filename: string
           id: string
           implementation_status: string | null
+          inserted_at: string | null
+          inserted_in_chat: string | null
+          is_inserted: boolean | null
           is_readable: boolean | null
           original_text: string
           readability_score: number | null
+          redirected_from: string | null
           status: string | null
           target_chat: string
           text_preview: string | null
@@ -500,9 +504,13 @@ export type Database = {
           filename: string
           id?: string
           implementation_status?: string | null
+          inserted_at?: string | null
+          inserted_in_chat?: string | null
+          is_inserted?: boolean | null
           is_readable?: boolean | null
           original_text: string
           readability_score?: number | null
+          redirected_from?: string | null
           status?: string | null
           target_chat: string
           text_preview?: string | null
@@ -518,9 +526,13 @@ export type Database = {
           filename?: string
           id?: string
           implementation_status?: string | null
+          inserted_at?: string | null
+          inserted_in_chat?: string | null
+          is_inserted?: boolean | null
           is_readable?: boolean | null
           original_text?: string
           readability_score?: number | null
+          redirected_from?: string | null
           status?: string | null
           target_chat?: string
           text_preview?: string | null

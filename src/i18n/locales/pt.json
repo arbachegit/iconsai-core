@@ -211,8 +211,10 @@
     "noDocumentsDesc": "Faça upload de documentos no painel admin",
     "chunks": "chunks",
     "readable": "✓ Legível",
-    "attached": "Documento anexado: {{documentName}}",
-    "detached": "Documento removido",
+    "attached": "Documento Anexado",
+    "attachedDesc": "O documento \"{{documentName}}\" foi anexado à conversa.",
+    "removed": "Documento Removido",
+    "removedDesc": "O contexto do documento foi removido da conversa.",
     "disclaimerTitle": "⚠️ Disclamer - Conteúdo Novo Adicionado",
     "disclaimerMessage": "O documento \"{{documentName}}\" foi anexado ao contexto desta conversa. As respostas agora incluem informações específicas deste documento. Clique no X para remover.",
     "removeButton": "Remover documento"

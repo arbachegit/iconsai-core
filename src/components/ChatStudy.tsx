@@ -402,9 +402,10 @@ export default function ChatStudy() {
         </div>
       </ScrollArea>
 
-      {/* Suggestions */}
+      {/* Suggestions with optional disclaimer */}
       {displayedSuggestions.length > 0 && (
-        <div className="px-4 pb-2">
+        <div className="px-4 pb-2 space-y-2">
+          {/* Show disclaimer if provided by backend */}
           <div className="flex gap-2 overflow-x-auto">
             {displayedSuggestions.map((suggestion, index) => (
               <Button

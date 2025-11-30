@@ -211,8 +211,10 @@
     "noDocumentsDesc": "Upload documents in the admin panel",
     "chunks": "chunks",
     "readable": "✓ Readable",
-    "attached": "Document attached: {{documentName}}",
-    "detached": "Document removed",
+    "attached": "Document Attached",
+    "attachedDesc": "The document \"{{documentName}}\" has been attached to the conversation.",
+    "removed": "Document Removed",
+    "removedDesc": "The document context has been removed from the conversation.",
     "disclaimerTitle": "⚠️ Disclaimer - New Content Added",
     "disclaimerMessage": "The document \"{{documentName}}\" has been attached to this conversation's context. Responses now include specific information from this document. Click X to remove.",
     "removeButton": "Remove document"

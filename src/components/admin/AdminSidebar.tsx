@@ -25,9 +25,10 @@ import {
   Brain,
   Palette,
   Settings,
+  Route,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -79,6 +80,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         { id: "rag-metrics" as TabType, label: "Métricas RAG", icon: Database },
         { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
         { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
+        { id: "document-routing-logs" as TabType, label: "Logs de Roteamento", icon: Route },
       ]
     },
     {
