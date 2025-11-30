@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
+import { Trash2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, ChevronDown, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -23,6 +25,7 @@ export const ConversationsTab = () => {
   const [selectedConversation, setSelectedConversation] = useState<any | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchConversations();
@@ -161,49 +164,110 @@ export const ConversationsTab = () => {
           </div>
 
           <div className="space-y-4">
-            {paginatedConversations.map((conv) => (
-                <Card
-                  key={conv.id}
-                  className="cursor-pointer hover:bg-accent/50"
-                  onClick={() => setSelectedConversation(conv)}
-                >
+            {paginatedConversations.map((conv) => {
+              const sentimentEmoji = conv.sentiment_label === 'positive' ? '😊' : 
+                                     conv.sentiment_label === 'negative' ? '😟' : '😐';
+              
+              return (
+                <Card key={conv.id}>
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div>
-                          <h3 className="font-semibold">{conv.title}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(conv.created_at).toLocaleString('pt-BR')}
-                          </p>
+                    <Collapsible
+                      open={expandedConvId === conv.id}
+                      onOpenChange={(open) => setExpandedConvId(open ? conv.id : null)}
+                    >
+                      {/* Card Principal - Informações Essenciais */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="flex-1">
+                            <h3 className="font-semibold">{conv.title}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(conv.created_at).toLocaleString('pt-BR')}
+                            </p>
+                          </div>
+                          <Badge variant={(conv.chat_type || 'health') === 'study' ? 'default' : 'secondary'}>
+                            {(conv.chat_type || 'health') === 'study' ? '📚 Estudo' : '🏥 Saúde'}
+                          </Badge>
                         </div>
-                        <Badge variant={(conv.chat_type || 'health') === 'study' ? 'default' : 'secondary'}>
-                          {(conv.chat_type || 'health') === 'study' ? '📚 Estudo' : '🏥 Saúde'}
-                        </Badge>
+                        
+                        <div className="flex items-center gap-2">
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+                              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${
+                                expandedConvId === conv.id ? 'rotate-180' : ''
+                              }`} />
+                              <span className="ml-2">Detalhes</span>
+                            </Button>
+                          </CollapsibleTrigger>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteConversation(conv.id);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteConversation(conv.id);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="mt-2 flex items-center gap-4 text-sm">
-                      <span>{conv.messages?.length || 0} mensagens</span>
-                      {conv.sentiment_label && (
-                        <Badge variant="outline">
-                          {conv.sentiment_label === 'positive' ? '😊' : 
-                           conv.sentiment_label === 'negative' ? '😟' : '😐'}
-                          {' '}{conv.sentiment_label}
-                        </Badge>
-                      )}
-                    </div>
+
+                      {/* Conteúdo Colapsável - Detalhes Técnicos */}
+                      <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                        <div className="mt-4 pt-4 border-t space-y-3">
+                          {/* Grid de Métricas */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {/* ID da Sessão */}
+                            <div className="p-3 bg-muted/30 rounded-lg">
+                              <p className="text-xs text-muted-foreground mb-1">ID da Sessão</p>
+                              <p className="text-sm font-mono truncate" title={conv.session_id}>
+                                {conv.session_id}
+                              </p>
+                            </div>
+                            
+                            {/* Quantidade de Mensagens */}
+                            <div className="p-3 bg-muted/30 rounded-lg">
+                              <p className="text-xs text-muted-foreground mb-1">Mensagens</p>
+                              <p className="text-lg font-semibold">{conv.messages?.length || 0}</p>
+                            </div>
+                            
+                            {/* Sentimento */}
+                            <div className="p-3 bg-muted/30 rounded-lg">
+                              <p className="text-xs text-muted-foreground mb-1">Sentimento</p>
+                              <div className="flex items-center gap-2">
+                                <span>{sentimentEmoji}</span>
+                                <span className="capitalize text-sm">{conv.sentiment_label || 'N/A'}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Score de Sentimento */}
+                            <div className="p-3 bg-muted/30 rounded-lg">
+                              <p className="text-xs text-muted-foreground mb-1">Score</p>
+                              <div className="flex items-center gap-2">
+                                <Progress value={(conv.sentiment_score || 0) * 100} className="h-2 flex-1" />
+                                <span className="text-sm font-medium">
+                                  {((conv.sentiment_score || 0) * 100).toFixed(0)}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Botão para ver mensagens */}
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full"
+                            onClick={() => setSelectedConversation(conv)}
+                          >
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Ver Mensagens ({conv.messages?.length || 0})
+                          </Button>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </CardContent>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
 
           {/* Pagination Controls */}
