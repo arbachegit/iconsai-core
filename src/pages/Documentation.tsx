@@ -645,7 +645,7 @@ const Documentation = () => {
   };
 
   const exportToMarkdown = () => {
-    const markdown = `# Documentação Técnica KnowRisk\n\n## 🗄️ Database\n\n### Extensões\n- **pgvector**: Busca semântica via embeddings\n\n### Tabelas\n| Tabela | Descrição |\n|--------|-----------|\n| documents | PDFs processados pelo RAG |\n| document_chunks | Chunks vetorizados |\n\n## ⚡ Backend\n\n### Edge Functions\n\n#### process-bulk-document\n- **Método**: POST\n- **JWT**: verify_jwt = false\n\n*Documentação completa gerada em ${new Date().toLocaleDateString()}*`;
+    const markdown = `# Documentação Técnica KnowRisk\n\n## Database\n\n### Extensões\n- **pgvector**: Busca semântica via embeddings\n\n### Tabelas\n| Tabela | Descrição |\n|--------|-----------|\n| documents | PDFs processados pelo RAG |\n| document_chunks | Chunks vetorizados |\n\n## Backend\n\n### Edge Functions\n\n#### process-bulk-document\n- **Método**: POST\n- **JWT**: verify_jwt = false\n\n*Documentação completa gerada em ${new Date().toLocaleDateString()}*`;
     
     const blob = new Blob([markdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -715,12 +715,12 @@ const Documentation = () => {
 
   // Backend flow diagram
   const backendFlowDiagram = `flowchart TD
-    subgraph Frontend["🖥️ Frontend"]
+    subgraph Frontend["Frontend"]
         U[Usuário] --> PDF[Upload PDF]
         U --> Chat[Chat Interface]
     end
     
-    subgraph EdgeFunctions["⚡ Edge Functions"]
+    subgraph EdgeFunctions["Edge Functions"]
         PDF --> PBD[process-bulk-document]
         PBD --> VAL[Validação]
         PBD --> CLASS[Auto-Categorização LLM]
@@ -733,7 +733,7 @@ const Documentation = () => {
         CHATFN --> AI[Lovable AI Gateway]
     end
     
-    subgraph Outputs["📤 Outputs"]
+    subgraph Outputs["Outputs"]
         AI --> Stream[SSE Streaming]
         Stream --> U
     end
@@ -1014,7 +1014,7 @@ const Documentation = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-3xl font-bold flex items-center gap-3">
                 <Database className="h-8 w-8 text-primary" />
-                🗄️ Database
+                Database
               </h2>
             </div>
 
@@ -1190,7 +1190,7 @@ const Documentation = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-3xl font-bold flex items-center gap-3">
                 <Server className="h-8 w-8 text-primary" />
-                ⚡ Backend
+                Backend
               </h2>
             </div>
 
@@ -1454,7 +1454,7 @@ const Documentation = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-3xl font-bold flex items-center gap-3">
                 <Code className="h-8 w-8 text-primary" />
-                🖥️ Frontend
+                Frontend
               </h2>
             </div>
 
@@ -1675,7 +1675,7 @@ await supabase.functions.invoke("process-bulk-document", {
             <div className="flex items-center justify-between">
               <h2 className="text-3xl font-bold flex items-center gap-3">
                 <Palette className="h-8 w-8 text-primary" />
-                🎨 Referência UI
+                Referência UI
               </h2>
             </div>
 
@@ -1684,7 +1684,7 @@ await supabase.functions.invoke("process-bulk-document", {
               <div className="space-y-2">
                 <h3 className="text-2xl font-bold flex items-center gap-2">
                   <Image className="h-6 w-6 text-secondary" />
-                  📦 Biblioteca de Ícones (Lucide React)
+                  Biblioteca de Ícones (Lucide React)
                 </h3>
                 <p className="text-muted-foreground">
                   Biblioteca completa de 70+ ícones usados na interface. Todos os ícones são renderizados como componentes React inline SVG tree-shakeable.
@@ -1822,7 +1822,7 @@ await supabase.functions.invoke("process-bulk-document", {
               <div className="space-y-2">
                 <h3 className="text-2xl font-bold flex items-center gap-2">
                   <Sparkles className="h-6 w-6 text-accent animate-pulse" />
-                  🎭 Efeitos de Animação
+                  Efeitos de Animação
                 </h3>
                 <p className="text-muted-foreground">
                   Animações customizadas configuradas em <code>tailwind.config.ts</code>. Todas as animações usam timing functions suaves e são otimizadas para performance.
@@ -1997,7 +1997,7 @@ theme: {
             <div className="flex items-center justify-between">
               <h2 className="text-3xl font-bold flex items-center gap-3">
                 <History className="h-8 w-8 text-primary" />
-                📋 Changelog
+                Changelog
               </h2>
             </div>
 
