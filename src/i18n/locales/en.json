@@ -169,6 +169,7 @@
     "typing": "Typing...",
     "transcribing": "Transcribing...",
     "listening": "Listening... (speak naturally)",
+    "waiting": "Waiting...",
     "processing": "Processing...",
     "voiceTimeout": "Dictation ends after 5 seconds of silence",
     "generatingImage": "Generating image...",

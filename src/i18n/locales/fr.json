@@ -169,6 +169,7 @@
     "typing": "Écriture...",
     "transcribing": "Transcription...",
     "listening": "Écoute... (parlez naturellement)",
+    "waiting": "En Attente...",
     "processing": "Traitement...",
     "voiceTimeout": "La dictée se termine après 5 secondes de silence",
     "generatingImage": "Génération d'image...",

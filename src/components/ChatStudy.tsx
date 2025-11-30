@@ -65,7 +65,8 @@ export default function ChatStudy() {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isImageMode, setIsImageMode] = useState(false);
-  const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'processing'>('idle');
+  const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
+  const [waitingCountdown, setWaitingCountdown] = useState(5);
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -212,7 +213,22 @@ export default function ChatStudy() {
 
         recognition.onspeechend = () => {
           // Não encerrar imediatamente - aguardar 5 segundos de silêncio
+          setVoiceStatus('waiting');
+          setWaitingCountdown(5);
+          
+          // Contador regressivo visual
+          const countdownInterval = setInterval(() => {
+            setWaitingCountdown(prev => {
+              if (prev <= 1) {
+                clearInterval(countdownInterval);
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+
           silenceTimeout = setTimeout(() => {
+            clearInterval(countdownInterval);
             recognition.stop();
           }, SILENCE_TIMEOUT);
         };
@@ -512,9 +528,23 @@ export default function ChatStudy() {
       <form onSubmit={handleSubmit} className="p-4 border-t-2 border-primary/30 bg-muted/30 rounded-b-lg shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
         {/* Indicador de voz ativo */}
         {isRecording && (
-          <div className="flex items-center gap-2 text-xs text-amber-500 mb-2">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            {voiceStatus === 'listening' ? t('chat.listening') : t('chat.processing')}
+          <div className="flex items-center gap-2 text-xs mb-2">
+            <div className={`w-2 h-2 rounded-full ${
+              voiceStatus === 'waiting' 
+                ? 'bg-amber-500' 
+                : voiceStatus === 'processing' 
+                ? 'bg-blue-500' 
+                : 'bg-red-500'
+            } animate-pulse`} />
+            <span className={
+              voiceStatus === 'waiting' 
+                ? 'text-amber-500' 
+                : 'text-muted-foreground'
+            }>
+              {voiceStatus === 'listening' && t('chat.listening')}
+              {voiceStatus === 'waiting' && `${t('chat.waiting')} (${waitingCountdown}s)`}
+              {voiceStatus === 'processing' && t('chat.processing')}
+            </span>
           </div>
         )}
         
