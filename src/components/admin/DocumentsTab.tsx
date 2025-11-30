@@ -1042,39 +1042,57 @@ export const DocumentsTab = () => {
 
       {/* RAG Metrics Summary */}
       {metrics && <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">📊 Resumo RAG</h3>
+          <div className="flex items-center gap-2 mb-4">
+            <Boxes className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold">Resumo RAG</h3>
+          </div>
           <div className="grid grid-cols-4 gap-4 mb-4">
             <div className="text-center p-4 bg-muted rounded-lg">
               <div className="text-3xl font-bold text-primary">{metrics.totalDocs}</div>
-              <div className="text-sm text-muted-foreground mt-1">📄 Documentos</div>
+              <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground mt-1">
+                <FileText className="h-4 w-4" />
+                Documentos
+              </div>
             </div>
             <div className="text-center p-4 bg-muted rounded-lg">
               <div className="text-3xl font-bold text-primary">{metrics.totalChunks}</div>
-              <div className="text-sm text-muted-foreground mt-1">📦 Chunks</div>
+              <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground mt-1">
+                <Package className="h-4 w-4" />
+                Chunks
+              </div>
             </div>
             <div className="text-center p-4 bg-muted rounded-lg">
               <div className="text-3xl font-bold text-green-600">{metrics.totalDocs > 0 ? Math.round(metrics.completed / metrics.totalDocs * 100) : 0}%</div>
-              <div className="text-sm text-muted-foreground mt-1">✅ Sucesso</div>
+              <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground mt-1">
+                <CheckCircle2 className="h-4 w-4" />
+                Sucesso
+              </div>
             </div>
             <div className="text-center p-4 bg-muted rounded-lg">
               <div className="text-3xl font-bold text-destructive">{metrics.failed}</div>
-              <div className="text-sm text-muted-foreground mt-1">❌ Falhas</div>
+              <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground mt-1">
+                <XCircle className="h-4 w-4" />
+                Falhas
+              </div>
             </div>
           </div>
           <div className="flex gap-4 justify-center text-sm">
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="bg-purple-500/10 text-purple-500 border-purple-500/20">
-                🏥 Health: {metrics.health}
+                <Heart className="h-3.5 w-3.5 mr-1" />
+                Health: {metrics.health}
               </Badge>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20">
-                📚 Study: {metrics.study}
+                <GraduationCap className="h-3.5 w-3.5 mr-1" />
+                Study: {metrics.study}
               </Badge>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="bg-gray-500/10 text-gray-500 border-gray-500/20">
-                📄 General: {metrics.general}
+                <FileText className="h-3.5 w-3.5 mr-1" />
+                General: {metrics.general}
               </Badge>
             </div>
           </div>
@@ -1456,7 +1474,12 @@ export const DocumentsTab = () => {
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
                     <Badge variant={isStuck(doc) ? "destructive" : doc.status === "completed" ? "default" : doc.status === "failed" ? "destructive" : "secondary"}>
-                      {isStuck(doc) ? "⚠️ TRAVADO" : doc.status}
+                      {isStuck(doc) ? (
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          TRAVADO
+                        </span>
+                      ) : doc.status}
                     </Badge>
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
@@ -1500,8 +1523,18 @@ export const DocumentsTab = () => {
                         <span className={`font-medium ${doc.readability_score >= 0.8 ? 'text-green-500' : doc.readability_score >= 0.6 ? 'text-blue-500' : doc.readability_score >= 0.4 ? 'text-yellow-500' : 'text-red-500'}`}>
                           {Math.round(doc.readability_score * 100)}%
                         </span>
-                      </div> : <Badge variant="outline" className="text-xs">
-                        {doc.is_readable ? "✓ Legível" : "✗ Ilegível"}
+                      </div> : <Badge variant="outline" className="text-xs flex items-center gap-1">
+                        {doc.is_readable ? (
+                          <>
+                            <CheckCircle2 className="h-3 w-3" />
+                            Legível
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-3 w-3" />
+                            Ilegível
+                          </>
+                        )}
                       </Badge>}
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
