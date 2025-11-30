@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GitBranch, Rocket, RefreshCw, Clock, Download, Undo2 } from "lucide-react";
+import { GitBranch, Rocket, RefreshCw, Clock, Download, Undo2, Tag, FileText } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export const VersionControlTab = () => {
   const [versionDialog, setVersionDialog] = useState<"minor" | "major" | null>(null);
@@ -34,6 +35,9 @@ export const VersionControlTab = () => {
   });
   const [logMessage, setLogMessage] = useState("");
   const [rollbackMessage, setRollbackMessage] = useState("");
+  const [releaseNotes, setReleaseNotes] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   const queryClient = useQueryClient();
 
   // Fetch version history
@@ -52,7 +56,12 @@ export const VersionControlTab = () => {
 
   // Increment version mutation
   const incrementVersion = useMutation({
-    mutationFn: async ({ action, message }: { action: "minor" | "major"; message: string }) => {
+    mutationFn: async ({ action, message, notes, versionTags }: { 
+      action: "minor" | "major"; 
+      message: string;
+      notes: string;
+      versionTags: string[];
+    }) => {
       const { data, error } = await supabase.functions.invoke("version-control", {
         body: {
           action,
@@ -61,6 +70,8 @@ export const VersionControlTab = () => {
             manual_trigger: true,
             triggered_by: "admin",
             timestamp: new Date().toISOString(),
+            release_notes: notes,
+            tags: versionTags,
           },
         },
       });
@@ -75,6 +86,8 @@ export const VersionControlTab = () => {
       queryClient.invalidateQueries({ queryKey: ["version-control"] });
       setVersionDialog(null);
       setLogMessage("");
+      setReleaseNotes("");
+      setTags([]);
     },
     onError: (error) => {
       toast.error(`Erro ao atualizar versão: ${error.message}`);
@@ -86,7 +99,23 @@ export const VersionControlTab = () => {
       toast.error("Por favor, descreva a mudança");
       return;
     }
-    incrementVersion.mutate({ action, message: logMessage });
+    incrementVersion.mutate({ 
+      action, 
+      message: logMessage,
+      notes: releaseNotes,
+      versionTags: tags
+    });
+  };
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
   };
 
   // Rollback mutation
@@ -378,7 +407,7 @@ export const VersionControlTab = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="log-message">Descreva as mudanças</Label>
+              <Label htmlFor="log-message">Título da Mudança</Label>
               <Input
                 id="log-message"
                 placeholder={
@@ -391,6 +420,66 @@ export const VersionControlTab = () => {
                 className="mt-2"
               />
             </div>
+
+            <div>
+              <Label htmlFor="release-notes" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Release Notes (Markdown)
+              </Label>
+              <Textarea
+                id="release-notes"
+                placeholder="# Principais Mudanças&#10;&#10;- Feature 1: Descrição...&#10;- Feature 2: Descrição...&#10;&#10;## Melhorias&#10;- Melhoria 1&#10;- Melhoria 2&#10;&#10;## Correções&#10;- Bug fix 1"
+                value={releaseNotes}
+                onChange={(e) => setReleaseNotes(e.target.value)}
+                className="mt-2 min-h-[200px] font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Suporta Markdown. Este conteúdo será incluído no changelog e email de notificação.
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="tags" className="flex items-center gap-2">
+                <Tag className="h-4 w-4" />
+                Tags
+              </Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  id="tags"
+                  placeholder="ex: breaking-change, feature, bugfix"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" onClick={handleAddTag}>
+                  Adicionar
+                </Button>
+              </div>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {tags.map(tag => (
+                    <Badge key={tag} variant="secondary" className="gap-1">
+                      {tag}
+                      <button
+                        onClick={() => handleRemoveTag(tag)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Sugestões: breaking-change, feature, bugfix, security, rag-update
+              </p>
+            </div>
+
             <div className="p-4 bg-muted rounded-lg">
               <p className="text-sm font-medium mb-1">Versão atual:</p>
               <p className="text-2xl font-bold text-gradient">{currentVersion}</p>
