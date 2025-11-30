@@ -17,6 +17,7 @@ export const RagDiagnosticsTab = () => {
   const [testChatType, setTestChatType] = useState<"study" | "health">("study");
   const [testResults, setTestResults] = useState<any>(null);
   const [isTestingRAG, setIsTestingRAG] = useState(false);
+  const [forceFulltext, setForceFulltext] = useState(false);
 
   // Fetch documents by chat type
   const { data: documentsStats } = useQuery({
@@ -86,7 +87,7 @@ export const RagDiagnosticsTab = () => {
         body: {
           query: testQuery,
           targetChat: testChatType,
-          matchThreshold: 0.35,
+          matchThreshold: forceFulltext ? 0.0 : 0.20,
           matchCount: 5,
         },
       });
@@ -97,7 +98,7 @@ export const RagDiagnosticsTab = () => {
       
       toast({
         title: "Teste concluído",
-        description: `${data.results?.length || 0} chunks encontrados`,
+        description: `${data.results?.length || 0} chunks encontrados via ${data.search_type || 'vector'}`,
       });
     } catch (error: any) {
       console.error("RAG test error:", error);
@@ -130,10 +131,10 @@ export const RagDiagnosticsTab = () => {
           <CardDescription>Parâmetros do sistema RAG</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Threshold de Similaridade</p>
-              <p className="text-2xl font-bold text-primary">0.35</p>
+              <p className="text-xl font-bold text-primary">0.20 (vector) / 0.50 (full-text)</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Modelo de Embedding</p>
@@ -142,6 +143,10 @@ export const RagDiagnosticsTab = () => {
             <div>
               <p className="text-sm text-muted-foreground">Match Count Padrão</p>
               <p className="text-2xl font-bold text-primary">5</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Busca Híbrida</p>
+              <Badge className="mt-1">Vector + Full-text Fallback</Badge>
             </div>
           </div>
         </CardContent>
@@ -236,6 +241,19 @@ export const RagDiagnosticsTab = () => {
               {isTestingRAG ? "Testando..." : "Testar"}
             </Button>
           </div>
+          
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="forceFulltext"
+              checked={forceFulltext}
+              onChange={(e) => setForceFulltext(e.target.checked)}
+              className="rounded"
+            />
+            <label htmlFor="forceFulltext" className="text-sm text-muted-foreground">
+              Forçar busca full-text (threshold 0.0)
+            </label>
+          </div>
 
           {testResults && (
             <div className="space-y-4 mt-4">
@@ -243,14 +261,17 @@ export const RagDiagnosticsTab = () => {
               
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold">Resultados ({testResults.results?.length || 0} chunks)</h4>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant={testResults.search_type === 'vector' ? 'default' : 'secondary'}>
+                    {testResults.search_type === 'vector' ? '🔍 Vector' : '📝 Full-text'}
+                  </Badge>
+                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />
                     {testResults.analytics?.latency_ms}ms
                   </span>
                   {testResults.analytics?.top_score && (
                     <Badge variant="outline">
-                      Top Score: {testResults.analytics.top_score.toFixed(3)}
+                      Score: {testResults.analytics.top_score.toFixed(3)}
                     </Badge>
                   )}
                 </div>
@@ -260,7 +281,7 @@ export const RagDiagnosticsTab = () => {
                 <div className="text-center py-8 text-muted-foreground">
                   <AlertCircle className="h-8 w-8 mx-auto mb-2" />
                   <p>Nenhum chunk encontrado para esta query</p>
-                  <p className="text-sm mt-1">Threshold atual: 0.35</p>
+                  <p className="text-sm mt-1">Threshold atual: 0.20 (vector) / 0.50 (full-text)</p>
                 </div>
               ) : (
                 <ScrollArea className="h-96">

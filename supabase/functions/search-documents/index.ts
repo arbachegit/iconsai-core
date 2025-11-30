@@ -14,7 +14,7 @@ serve(async (req) => {
 
   try {
     const startTime = Date.now();
-    const { query, targetChat, matchThreshold = 0.35, matchCount = 5, sessionId, useHybridSearch = false } = await req.json();
+    const { query, targetChat, matchThreshold = 0.20, matchCount = 5, sessionId, useHybridSearch = false } = await req.json();
     
     console.log(`Searching documents for query: "${query}" (target: ${targetChat})`);
     
@@ -51,6 +51,7 @@ serve(async (req) => {
     // Search for similar chunks
     let results;
     let error;
+    let searchType = 'vector';
     
     if (useHybridSearch) {
       // Hybrid Search: Combine vector similarity + tag matching
@@ -116,6 +117,7 @@ serve(async (req) => {
       console.log(`Hybrid search: ${results?.length || 0} results (combined vector + tags)`);
     } else {
       // Standard vector search
+      console.log(`Attempting vector search with threshold ${matchThreshold}`);
       const searchResults = await supabase.rpc("search_documents", {
         query_embedding: queryEmbedding,
         target_chat_filter: targetChat,
@@ -127,11 +129,33 @@ serve(async (req) => {
       error = searchResults.error;
       
       if (error) {
-        console.error("Search error:", error);
+        console.error("Vector search error:", error);
         throw error;
       }
       
-      console.log(`Found ${results?.length || 0} matching chunks`);
+      console.log(`Vector search: ${results?.length || 0} matching chunks`);
+      
+      // FALLBACK: If vector search returns 0 results, try full-text search
+      if (!results || results.length === 0) {
+        console.log("Vector search returned 0 results, falling back to full-text search...");
+        searchType = 'fulltext';
+        
+        const fulltextResults = await supabase.rpc("search_documents_fulltext", {
+          search_query: query,
+          target_chat_filter: targetChat,
+          match_count: matchCount
+        });
+        
+        if (fulltextResults.error) {
+          console.error("Full-text search error:", fulltextResults.error);
+        } else {
+          results = fulltextResults.data?.map((r: any) => ({
+            ...r,
+            search_type: 'fulltext'
+          })) || [];
+          console.log(`Full-text search: ${results.length} matching chunks`);
+        }
+      }
     }
     
     // Calcular latência e top score
@@ -163,6 +187,7 @@ serve(async (req) => {
         success: true, 
         results: results || [],
         count: results?.length || 0,
+        search_type: searchType,
         analytics: {
           latency_ms: latencyMs,
           top_score: topScore

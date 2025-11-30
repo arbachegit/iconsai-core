@@ -820,6 +820,20 @@ export type Database = {
           similarity: number
         }[]
       }
+      search_documents_fulltext: {
+        Args: {
+          match_count?: number
+          search_query: string
+          target_chat_filter?: string
+        }
+        Returns: {
+          chunk_id: string
+          content: string
+          document_id: string
+          metadata: Json
+          similarity: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"
