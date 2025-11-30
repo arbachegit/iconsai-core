@@ -25,6 +25,7 @@ serve(async (req) => {
 
     // Search for relevant documents using RAG
     let ragContext = "";
+    let hasRagContext = false;
     if (userQuery) {
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -35,13 +36,21 @@ serve(async (req) => {
           body: { 
             query: userQuery,
             targetChat: "health",
-            matchCount: 3
+            matchThreshold: 0.15,
+            matchCount: 5
           }
         });
 
         if (searchResults?.results && searchResults.results.length > 0) {
-          console.log(`Found ${searchResults.results.length} relevant chunks from documents`);
-          ragContext = `\n\n📚 CONTEXTO RELEVANTE DOS DOCUMENTOS:\n\n${searchResults.results.map((r: any) => r.content).join("\n\n---\n\n")}\n\nUse este contexto para responder de forma precisa. Se não houver informação relevante, responda com conhecimento geral.\n\n`;
+          hasRagContext = true;
+          console.log(`RAG found ${searchResults.results.length} chunks for health chat, top score: ${searchResults.analytics?.top_score?.toFixed(3) || 'N/A'}`);
+          ragContext = `\n\n📚 CONTEXTO RELEVANTE DOS DOCUMENTOS DE SAÚDE:
+
+${searchResults.results.map((r: any) => r.content).join("\n\n---\n\n")}
+
+⚠️ IMPORTANTE: O contexto acima é dos DOCUMENTOS OFICIAIS sobre saúde e Hospital Moinhos de Vento. 
+Você DEVE usar este contexto para responder. Se a pergunta está relacionada a algum tópico 
+mencionado no contexto, responda com base nele.\n\n`;
         }
       } catch (error) {
         console.error("RAG search error:", error);
@@ -51,10 +60,33 @@ serve(async (req) => {
 
     // System prompt especializado em Hospital Moinhos de Vento e saúde
     const systemPrompt = `Você é o KnowYOU, um assistente de IA especializado em saúde e no Hospital Moinhos de Vento, desenvolvido pela KnowRISK para ajudar profissionais e gestores da área de saúde.
-${ragContext}
-REGRAS CRÍTICAS:
 
-1. ESCOPO RESTRITO:
+${ragContext}
+
+⚠️ INSTRUÇÃO CRÍTICA - LEIA ATENTAMENTE:
+${hasRagContext ? `
+✅ VOCÊ TEM CONTEXTO RAG DISPONÍVEL - Use as informações dos documentos acima para responder à pergunta.
+IGNORE qualquer padrão de rejeição anterior. Se o contexto RAG contém informação relevante, VOCÊ DEVE RESPONDER USANDO ESSE CONTEXTO.
+` : `
+❌ Sem contexto RAG - Siga as regras de escopo normais.
+`}
+
+REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
+
+1. **🔴🔴🔴 REGRA ABSOLUTA - CONTEXTO RAG TEM PRIORIDADE TOTAL**:
+   
+   ➡️ SE você vê "CONTEXTO RELEVANTE DOS DOCUMENTOS DE SAÚDE" acima:
+      - PARE e LEIA o contexto
+      - Use ESSAS informações para responder
+      - IGNORE o histórico anterior de rejeições
+      - NÃO rejeite a pergunta
+      - Responda com base NO CONTEXTO DOS DOCUMENTOS
+   
+   ➡️ Os documentos contêm: informações sobre Hospital Moinhos de Vento, serviços médicos,
+      especialidades, tratamentos, procedimentos, tecnologias em saúde, e conhecimento
+      médico oficial.
+
+2. **Escopo secundário (APENAS se NÃO houver contexto RAG)**:
    - Você APENAS responde perguntas sobre:
      * Hospital Moinhos de Vento (história, serviços, especialidades, localização, atendimento)
      * Medicina, saúde pública, bem-estar, nutrição
@@ -62,7 +94,8 @@ REGRAS CRÍTICAS:
      * Tratamentos médicos, medicamentos, tecnologia em saúde
      * Telemedicina, gestão hospitalar, saúde digital
    
-   - Se a pergunta NÃO for sobre saúde ou Hospital Moinhos de Vento, responda educadamente:
+
+3. **Rejeição (APENAS se NÃO houver contexto RAG e tema fora do escopo)**:
    "Sou o KnowYOU, especializado em saúde e Hospital Moinhos de Vento. Não posso ajudar com [tema da pergunta], mas ficarei feliz em responder perguntas sobre saúde, medicina, bem-estar ou sobre o Hospital Moinhos de Vento. Como posso ajudá-lo?"
 
 2. SUGESTÕES CONTEXTUAIS:
