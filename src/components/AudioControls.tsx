@@ -70,45 +70,42 @@ export function AudioControls({
     <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-border/30">
       {/* Layout 100% horizontal: [Play] [Stop] [Download] [Copy] | [Data] [Hora] [Local] */}
       <div className="flex items-center gap-2 flex-wrap">
-        {/* Play - só aparece se houver audioUrl */}
-        {audioUrl && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={isPlaying ? onStop : onPlay}
-            className="h-7 w-7 p-0"
-            title={isPlaying ? t("chat.stop") : t("chat.play")}
-          >
-            {isPlaying ? (
-              <Square className="h-3.5 w-3.5" />
-            ) : (
-              <Play className="h-3.5 w-3.5" />
-            )}
-          </Button>
-        )}
-
-        {/* Stop - só aparece se houver audioUrl */}
-        {audioUrl && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onStop}
-            className="h-7 w-7 p-0"
-            title={t("chat.stop")}
-            disabled={!isPlaying}
-          >
+      {/* Play - SEMPRE aparece */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={isPlaying ? onStop : onPlay}
+          className="h-7 w-7 p-0"
+          title={isPlaying ? t("chat.stop") : t("chat.play")}
+        >
+          {isPlaying ? (
             <Square className="h-3.5 w-3.5" />
-          </Button>
-        )}
+          ) : (
+            <Play className="h-3.5 w-3.5" />
+          )}
+        </Button>
 
-        {/* Download - só aparece se houver audioUrl */}
-        {audioUrl && onDownload && (
+        {/* Stop - SEMPRE aparece */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onStop}
+          className="h-7 w-7 p-0"
+          title={t("chat.stop")}
+          disabled={!isPlaying}
+        >
+          <Square className="h-3.5 w-3.5" />
+        </Button>
+
+        {/* Download - SEMPRE aparece (desabilitado se não houver áudio) */}
+        {onDownload && (
           <Button
             size="sm"
             variant="ghost"
             onClick={onDownload}
             className="h-7 w-7 p-0"
             title={t("chat.download")}
+            disabled={!audioUrl}
           >
             <Download className="h-3.5 w-3.5" />
           </Button>

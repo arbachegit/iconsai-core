@@ -284,11 +284,44 @@ export function useChatStudy() {
 
   const playAudio = useCallback(async (messageIndex: number) => {
     const message = messages[messageIndex];
-    if (!message?.audioUrl) return;
+    if (!message) return;
 
+    let audioUrlToPlay = message.audioUrl;
+
+    // Se não tem audioUrl, gerar sob demanda
+    if (!audioUrlToPlay) {
+      try {
+        setIsGeneratingAudio(true);
+        const generatedUrl = await generateAudioUrl(message.content);
+        
+        // Atualizar a mensagem com o novo audioUrl
+        setMessages((prev) => {
+          const updated = [...prev];
+          if (updated[messageIndex]) {
+            updated[messageIndex] = { ...updated[messageIndex], audioUrl: generatedUrl };
+          }
+          saveHistory(updated);
+          return updated;
+        });
+        
+        audioUrlToPlay = generatedUrl;
+      } catch (error) {
+        console.error("Erro ao gerar áudio sob demanda:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível gerar o áudio.",
+          variant: "destructive",
+        });
+        return;
+      } finally {
+        setIsGeneratingAudio(false);
+      }
+    }
+
+    // Reproduzir o áudio
     try {
       setCurrentlyPlayingIndex(messageIndex);
-      await audioPlayerRef.current.playAudioFromUrl(message.audioUrl);
+      await audioPlayerRef.current.playAudioFromUrl(audioUrlToPlay);
     } catch (error) {
       console.error("Erro ao reproduzir áudio:", error);
       toast({
@@ -299,7 +332,7 @@ export function useChatStudy() {
     } finally {
       setCurrentlyPlayingIndex(null);
     }
-  }, [messages, toast]);
+  }, [messages, saveHistory, toast]);
 
   const stopAudio = useCallback(() => {
     try {
