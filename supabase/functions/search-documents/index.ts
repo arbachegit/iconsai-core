@@ -14,7 +14,7 @@ serve(async (req) => {
 
   try {
     const startTime = Date.now();
-    const { query, targetChat, matchThreshold = 0.7, matchCount = 5, sessionId, useHybridSearch = false } = await req.json();
+    const { query, targetChat, matchThreshold = 0.35, matchCount = 5, sessionId, useHybridSearch = false } = await req.json();
     
     console.log(`Searching documents for query: "${query}" (target: ${targetChat})`);
     
@@ -137,6 +137,8 @@ serve(async (req) => {
     // Calcular latência e top score
     const latencyMs = Date.now() - startTime;
     const topScore = results && results.length > 0 ? results[0].similarity : null;
+    
+    console.log(`RAG Search completed: ${results?.length || 0} results, top score: ${topScore?.toFixed(3) || 'N/A'}, latency: ${latencyMs}ms`);
     
     // Logar analytics de forma assíncrona (não bloqueia resposta)
     supabase.from("rag_analytics").insert({

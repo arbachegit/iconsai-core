@@ -16,10 +16,11 @@ import { VersionControlTab } from "@/components/admin/VersionControlTab";
 import { TagsManagementTab } from "@/components/admin/TagsManagementTab";
 import { DocumentAnalysisTab } from "@/components/admin/DocumentAnalysisTab";
 import { DocumentRoutingLogsTab } from "@/components/admin/DocumentRoutingLogsTab";
+import { RagDiagnosticsTab } from "@/components/admin/RagDiagnosticsTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -103,6 +104,8 @@ const Admin = () => {
         return <DocumentAnalysisTab />;
       case "document-routing-logs":
         return <DocumentRoutingLogsTab />;
+      case "rag-diagnostics":
+        return <RagDiagnosticsTab />;
       case "images":
         return <ImageCacheTab />;
       case "youtube":
