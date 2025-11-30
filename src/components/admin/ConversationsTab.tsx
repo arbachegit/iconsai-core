@@ -251,7 +251,7 @@ export const ConversationsTab = () => {
                     </div>
                     
                     {/* Conversa Completa Inline */}
-                    <div className="border rounded-lg">
+                    <div className="border rounded-lg bg-[hsl(var(--chat-saved-bg))] border-[hsl(var(--chat-saved-border))]">
                       <div className="p-3 bg-muted/50 border-b flex items-center justify-between">
                         <h4 className="text-sm font-semibold flex items-center gap-2">
                           <MessageSquare className="h-4 w-4" />
@@ -269,11 +269,11 @@ export const ConversationsTab = () => {
                               key={idx}
                               className={`p-3 rounded-lg ${
                                 msg.role === 'user' 
-                                  ? 'bg-primary/10 ml-8' 
-                                  : 'bg-secondary/10 mr-8'
+                                  ? 'bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground ml-8' 
+                                  : 'bg-[hsl(var(--chat-message-ai-bg))] text-foreground mr-8'
                               }`}
                             >
-                              <p className="text-xs font-medium mb-1 flex items-center gap-2">
+                              <p className="text-xs font-medium mb-1 flex items-center gap-2 opacity-90">
                                 {msg.role === 'user' ? (
                                   <>
                                     <User className="h-3 w-3" />
@@ -286,7 +286,19 @@ export const ConversationsTab = () => {
                                   </>
                                 )}
                               </p>
-                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                              <p className="text-sm whitespace-pre-wrap text-left">{msg.content}</p>
+                              
+                              {msg.timestamp && (
+                                <span className="text-xs opacity-70 block mt-2">
+                                  {new Date(msg.timestamp).toLocaleString("pt-BR", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                              )}
                             </div>
                           ))}
                         </div>

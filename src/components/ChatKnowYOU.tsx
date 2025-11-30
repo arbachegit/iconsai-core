@@ -127,6 +127,39 @@ export default function ChatKnowYOU() {
   const [audioVisibility, setAudioVisibility] = useState<{[key: number]: boolean}>({});
   const audioMessageRefs = useRef<{[key: number]: HTMLDivElement | null}>({});
 
+  // IntersectionObserver para detectar quando mensagem de áudio sai do viewport
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const idx = Number(entry.target.getAttribute('data-audio-index'));
+          if (!isNaN(idx)) {
+            setAudioVisibility(prev => ({ ...prev, [idx]: entry.isIntersecting }));
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    Object.entries(audioMessageRefs.current).forEach(([idx, el]) => {
+      if (el) {
+        el.setAttribute('data-audio-index', idx);
+        observer.observe(el);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [messages]);
+
+  // Mostrar FloatingPlayer quando áudio tocando E não visível
+  useEffect(() => {
+    if (currentlyPlayingIndex !== null && !audioVisibility[currentlyPlayingIndex]) {
+      setShowFloatingPlayer(true);
+    } else {
+      setShowFloatingPlayer(false);
+    }
+  }, [currentlyPlayingIndex, audioVisibility]);
+
   // Rotação de sugestões a cada 10 segundos (filtrar tags >80%)
   useEffect(() => {
     const rotateSuggestions = () => {
@@ -437,22 +470,26 @@ export default function ChatKnowYOU() {
                     {msg.role === "assistant" && <CopyButton content={msg.content} />}
                   </div>
                   
-                  {msg.role === "assistant" && msg.audioUrl && (
-                    <AudioControls
-                      audioUrl={msg.audioUrl}
-                      isPlaying={currentlyPlayingIndex === idx}
-                      onPlay={() => handleAudioPlay(idx)}
-                      onStop={handleAudioStop}
-                      onDownload={() => handleDownloadAudio(msg.audioUrl!, idx)}
-                    />
-                  )}
-                  
                   <span className="text-xs opacity-70 block mt-2">
                     {msg.timestamp.toLocaleTimeString("pt-BR", {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </span>
+                  
+                  {msg.role === "assistant" && msg.audioUrl && (
+                    <AudioControls
+                      audioUrl={msg.audioUrl}
+                      isPlaying={currentlyPlayingIndex === idx}
+                      currentTime={audioStates[idx]?.currentTime}
+                      duration={audioStates[idx]?.duration}
+                      timestamp={msg.timestamp}
+                      messageContent={msg.content}
+                      onPlay={() => handleAudioPlay(idx)}
+                      onStop={handleAudioStop}
+                      onDownload={() => handleDownloadAudio(msg.audioUrl!, idx)}
+                    />
+                  )}
                 </div>
               </div>
             ))}
