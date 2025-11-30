@@ -34,14 +34,22 @@ serve(async (req) => {
       );
     }
 
-    // Validação de keywords de saúde
+    // Validação de keywords de saúde (PT e EN)
     const healthKeywords = [
+      // Português
       "saúde", "médico", "hospital", "paciente", "tratamento", "diagnóstico",
       "anatomia", "coração", "cérebro", "medicina", "cirurgia", "enfermagem",
       "farmácia", "medicamento", "doença", "terapia", "exame", "consulta",
       "clínica", "bem-estar", "nutrição", "fisioterapia", "saúde mental",
       "sistema", "órgão", "célula", "corpo", "humano", "respiratório",
-      "digestivo", "circulatório", "nervoso", "esqueleto", "moinhos de vento"
+      "digestivo", "circulatório", "nervoso", "esqueleto", "moinhos de vento",
+      // English
+      "health", "medical", "doctor", "hospital", "patient", "treatment", "diagnosis",
+      "anatomy", "heart", "brain", "medicine", "surgery", "nursing",
+      "pharmacy", "medication", "disease", "therapy", "exam", "consultation",
+      "clinic", "wellness", "nutrition", "physiotherapy", "mental health",
+      "system", "organ", "cell", "body", "human", "respiratory",
+      "digestive", "circulatory", "nervous", "skeleton", "bone"
     ];
 
     const promptLower = prompt.toLowerCase();
@@ -50,6 +58,7 @@ serve(async (req) => {
     );
 
     if (!containsHealthKeyword) {
+      console.log("❌ Prompt rejeitado (sem keywords de saúde):", prompt);
       return new Response(
         JSON.stringify({ error: "Apenas imagens relacionadas à área da saúde são permitidas" }),
         {
@@ -58,6 +67,8 @@ serve(async (req) => {
         }
       );
     }
+
+    console.log("✅ Prompt aprovado:", prompt);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     

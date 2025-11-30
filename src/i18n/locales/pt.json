@@ -183,7 +183,7 @@
     "transcriptionRetry": "Não foi possível transcrever o áudio. Tente novamente.",
     "imageRejected": "Imagem não permitida",
     "imageGuardrailHealth": "Apenas imagens relacionadas à saúde são permitidas neste chat.",
-    "imageGuardrailStudy": "Apenas imagens relacionadas à IA e KnowRISK são permitidas neste chat.",
+    "imageGenerationError": "Não foi possível gerar a imagem. Tente novamente.",
     "copied": "Texto copiado!",
     "copyFailed": "Falha ao copiar",
     "miniPlayer": {
