@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2 } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Tag {
   id: string;
@@ -61,6 +61,8 @@ export const TagsManagementTab = () => {
   });
   const [filterSource, setFilterSource] = useState<string>("all");
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [formData, setFormData] = useState({
     tag_name: "",
     tag_type: "",
@@ -101,6 +103,11 @@ export const TagsManagementTab = () => {
   const filteredParentTags = filterSource === "all" 
     ? parentTags 
     : parentTags.filter((t) => t.source === filterSource);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredParentTags.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedParentTags = filteredParentTags.slice(startIndex, startIndex + itemsPerPage);
 
   // Create tag mutation
   const createTagMutation = useMutation({
@@ -276,12 +283,12 @@ export const TagsManagementTab = () => {
       {/* Tags List */}
       <Card className="p-6">
         <div className="space-y-4">
-          {filteredParentTags.length === 0 ? (
+          {paginatedParentTags.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               Nenhuma tag encontrada
             </div>
           ) : (
-            filteredParentTags.map((parent) => (
+            paginatedParentTags.map((parent) => (
               <Collapsible
                 key={parent.id}
                 open={expandedParents.has(parent.id)}
@@ -386,6 +393,37 @@ export const TagsManagementTab = () => {
             ))
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {filteredParentTags.length > 0 && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Itens por página:</span>
+              <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
+                <SelectTrigger className="w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredParentTags.length)} de {filteredParentTags.length}
+              </span>
+              <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Edit/Create Dialog */}

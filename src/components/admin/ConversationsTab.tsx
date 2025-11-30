@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2 } from "lucide-react";
+import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 export const ConversationsTab = () => {
@@ -14,6 +14,8 @@ export const ConversationsTab = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [chatTypeFilter, setChatTypeFilter] = useState<"all" | "health" | "study">("all");
   const [selectedConversation, setSelectedConversation] = useState<any | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     fetchConversations();
@@ -58,6 +60,11 @@ export const ConversationsTab = () => {
     return matchesSearch && matchesType;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredConversations.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedConversations = filteredConversations.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div className="space-y-6">
       <Card>
@@ -89,9 +96,8 @@ export const ConversationsTab = () => {
             </Select>
           </div>
 
-          <ScrollArea className="h-[500px]">
-            <div className="space-y-4">
-              {filteredConversations.map((conv) => (
+          <div className="space-y-4">
+            {paginatedConversations.map((conv) => (
                 <Card
                   key={conv.id}
                   className="cursor-pointer hover:bg-accent/50"
@@ -132,10 +138,38 @@ export const ConversationsTab = () => {
                       )}
                     </div>
                   </CardContent>
-                </Card>
-              ))}
+              </Card>
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between mt-4 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Itens por página:</span>
+              <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
+                <SelectTrigger className="w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </ScrollArea>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredConversations.length)} de {filteredConversations.length}
+              </span>
+              <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
           {selectedConversation && (
             <div className="mt-6 p-4 border rounded-lg">

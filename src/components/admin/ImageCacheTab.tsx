@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Image as ImageIcon } from "lucide-react";
+import { Loader2, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const SECTIONS = [
   { id: 'software', name: 'Software - A Primeira Revolução' },
@@ -20,6 +21,8 @@ export const ImageCacheTab = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [generatingSection, setGeneratingSection] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { data: existingImages } = useQuery({
     queryKey: ['section-images-admin'],
@@ -114,6 +117,11 @@ export const ImageCacheTab = () => {
     return existingImages?.find(img => img.section_id === sectionId);
   };
 
+  // Pagination
+  const totalPages = Math.ceil(SECTIONS.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedSections = SECTIONS.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div className="space-y-6">
       <Card>
@@ -124,7 +132,7 @@ export const ImageCacheTab = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {SECTIONS.map((section) => {
+          {paginatedSections.map((section) => {
             const existingImage = getSectionImage(section.id);
             const isGenerating = generatingSection === section.id;
 
@@ -201,6 +209,35 @@ export const ImageCacheTab = () => {
               </Card>
             );
           })}
+
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between mt-6 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Itens por página:</span>
+              <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
+                <SelectTrigger className="w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, SECTIONS.length)} de {SECTIONS.length}
+              </span>
+              <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
