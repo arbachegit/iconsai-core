@@ -175,9 +175,9 @@ serve(async (req) => {
       }
 
       // Regular version increment
-      if (!["patch", "minor", "major"].includes(action)) {
+      if (!["patch", "minor", "major", "code_change"].includes(action)) {
         return new Response(
-          JSON.stringify({ error: "Invalid action. Must be: patch, minor, major, rollback, or export_changelog" }),
+          JSON.stringify({ error: "Invalid action. Must be: patch, minor, major, code_change, rollback, or export_changelog" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -209,6 +209,10 @@ serve(async (req) => {
         case "major":
           newVersion = `${major + 1}.0.0`;
           triggerType = "MANUAL_MAJOR";
+          break;
+        case "code_change":
+          newVersion = `${major}.${minor}.${patch + 1}`;
+          triggerType = "CODE_CHANGE";
           break;
         default:
           newVersion = currentVersion;
