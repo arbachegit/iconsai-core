@@ -1,10 +1,10 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -12,6 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import jsPDF from "jspdf";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Configure PDF.js worker with local bundle
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -35,6 +39,19 @@ export const DocumentsTab = () => {
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [uploadStatuses, setUploadStatuses] = useState<FileUploadStatus[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  
+  // Filter and sort states
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [chatFilter, setChatFilter] = useState<string>("all");
+  const [sortField, setSortField] = useState<"created_at" | "filename" | "total_chunks">("created_at");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  
+  // Tag editing states
+  const [editingTagsDoc, setEditingTagsDoc] = useState<any>(null);
+  const [newParentTag, setNewParentTag] = useState("");
+  const [newChildTag, setNewChildTag] = useState("");
+  const [selectedParentForChild, setSelectedParentForChild] = useState<string | null>(null);
+  
   const queryClient = useQueryClient();
 
   // Fetch documents
@@ -384,6 +401,42 @@ export const DocumentsTab = () => {
     }
   });
 
+  // Fetch tags for editing document
+  const { data: editingTags, refetch: refetchEditingTags } = useQuery({
+    queryKey: ["document-tags-editing", editingTagsDoc?.id],
+    enabled: !!editingTagsDoc,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("document_tags")
+        .select("*")
+        .eq("document_id", editingTagsDoc.id)
+        .order("tag_type", { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // RAG Metrics query
+  const { data: metrics } = useQuery({
+    queryKey: ["rag-quick-metrics"],
+    queryFn: async () => {
+      const { data: docs } = await supabase.from("documents").select("status, target_chat");
+      const { count: chunks } = await supabase.from("document_chunks")
+        .select("*", { count: "exact", head: true });
+      
+      return {
+        totalDocs: docs?.length || 0,
+        totalChunks: chunks || 0,
+        completed: docs?.filter(d => d.status === "completed").length || 0,
+        failed: docs?.filter(d => d.status === "failed").length || 0,
+        health: docs?.filter(d => d.target_chat === "health").length || 0,
+        study: docs?.filter(d => d.target_chat === "study").length || 0,
+        general: docs?.filter(d => d.target_chat === "general").length || 0,
+      };
+    }
+  });
+
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const pdfFiles = files.filter(f => f.type === "application/pdf");
@@ -421,6 +474,126 @@ export const DocumentsTab = () => {
     }
   }, []);
 
+  // Download document as PDF
+  const downloadAsPDF = useCallback((doc: any) => {
+    try {
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 15;
+      const maxWidth = pageWidth - margin * 2;
+      
+      // Title
+      pdf.setFontSize(16);
+      pdf.text(doc.filename, margin, 20);
+      
+      // Document text
+      pdf.setFontSize(10);
+      const lines = pdf.splitTextToSize(doc.original_text || doc.text_preview || "Sem conteúdo", maxWidth);
+      
+      let y = 35;
+      lines.forEach((line: string) => {
+        if (y > 280) {
+          pdf.addPage();
+          y = 20;
+        }
+        pdf.text(line, margin, y);
+        y += 5;
+      });
+      
+      pdf.save(`${doc.filename.replace('.pdf', '')}_exportado.pdf`);
+      toast.success("PDF exportado com sucesso!");
+    } catch (error: any) {
+      toast.error(`Erro ao exportar PDF: ${error.message}`);
+    }
+  }, []);
+
+  // Add tag mutation
+  const addTagMutation = useMutation({
+    mutationFn: async ({ documentId, tagName, tagType, parentTagId }: {
+      documentId: string;
+      tagName: string;
+      tagType: string;
+      parentTagId?: string | null;
+    }) => {
+      const { error } = await supabase.from("document_tags").insert({
+        document_id: documentId,
+        tag_name: tagName,
+        tag_type: tagType,
+        parent_tag_id: parentTagId,
+        source: "admin",
+        confidence: 1.0
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      refetchEditingTags();
+      queryClient.invalidateQueries({ queryKey: ["document-tags"] });
+      toast.success("Tag adicionada");
+    }
+  });
+
+  // Remove tag mutation
+  const removeTagMutation = useMutation({
+    mutationFn: async (tagId: string) => {
+      // First remove child tags if it's a parent
+      await supabase.from("document_tags").delete().eq("parent_tag_id", tagId);
+      // Then remove the tag
+      await supabase.from("document_tags").delete().eq("id", tagId);
+    },
+    onSuccess: () => {
+      refetchEditingTags();
+      queryClient.invalidateQueries({ queryKey: ["document-tags"] });
+      toast.success("Tag removida");
+    }
+  });
+
+  // Filtered and sorted documents
+  const filteredDocuments = useMemo(() => {
+    let filtered = documents || [];
+    
+    // Status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(d => d.status === statusFilter);
+    }
+    
+    // Chat filter
+    if (chatFilter !== "all") {
+      filtered = filtered.filter(d => d.target_chat?.toLowerCase() === chatFilter);
+    }
+    
+    // Sorting
+    filtered = [...filtered].sort((a, b) => {
+      const direction = sortDirection === "asc" ? 1 : -1;
+      
+      if (sortField === "created_at") {
+        const aVal = a.created_at;
+        const bVal = b.created_at;
+        return (new Date(aVal).getTime() - new Date(bVal).getTime()) * direction;
+      }
+      
+      if (sortField === "filename") {
+        return (a.filename || "").localeCompare(b.filename || "") * direction;
+      }
+      
+      if (sortField === "total_chunks") {
+        return ((a.total_chunks || 0) - (b.total_chunks || 0)) * direction;
+      }
+      
+      return 0;
+    });
+    
+    return filtered;
+  }, [documents, statusFilter, chatFilter, sortField, sortDirection]);
+
+  const toggleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+
   const getStatusIcon = (status: FileUploadStatus['status']) => {
     switch (status) {
       case 'completed': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
@@ -450,6 +623,9 @@ export const DocumentsTab = () => {
 
   const parentTags = tags?.filter(t => t.tag_type === "parent") || [];
   const childTags = tags?.filter(t => t.tag_type === "child") || [];
+  
+  const editingParentTags = editingTags?.filter(t => t.tag_type === "parent") || [];
+  const editingChildTags = editingTags?.filter(t => t.tag_type === "child") || [];
 
   return (
     <div className="space-y-6">
@@ -459,6 +635,48 @@ export const DocumentsTab = () => {
           Gerencie documentos para o sistema de Recuperação Aumentada por Geração
         </p>
       </div>
+
+      {/* RAG Metrics Summary */}
+      {metrics && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">📊 Resumo RAG</h3>
+          <div className="grid grid-cols-4 gap-4 mb-4">
+            <div className="text-center p-4 bg-muted rounded-lg">
+              <div className="text-3xl font-bold text-primary">{metrics.totalDocs}</div>
+              <div className="text-sm text-muted-foreground mt-1">📄 Documentos</div>
+            </div>
+            <div className="text-center p-4 bg-muted rounded-lg">
+              <div className="text-3xl font-bold text-primary">{metrics.totalChunks}</div>
+              <div className="text-sm text-muted-foreground mt-1">📦 Chunks</div>
+            </div>
+            <div className="text-center p-4 bg-muted rounded-lg">
+              <div className="text-3xl font-bold text-green-600">{metrics.totalDocs > 0 ? Math.round((metrics.completed / metrics.totalDocs) * 100) : 0}%</div>
+              <div className="text-sm text-muted-foreground mt-1">✅ Sucesso</div>
+            </div>
+            <div className="text-center p-4 bg-muted rounded-lg">
+              <div className="text-3xl font-bold text-destructive">{metrics.failed}</div>
+              <div className="text-sm text-muted-foreground mt-1">❌ Falhas</div>
+            </div>
+          </div>
+          <div className="flex gap-4 justify-center text-sm">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-purple-500/10 text-purple-500 border-purple-500/20">
+                🏥 Health: {metrics.health}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20">
+                📚 Study: {metrics.study}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-gray-500/10 text-gray-500 border-gray-500/20">
+                📄 General: {metrics.general}
+              </Badge>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Documentation Generation Section */}
       <Card className="p-6">
@@ -659,27 +877,98 @@ export const DocumentsTab = () => {
 
       {/* Documents Table */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Documentos</h3>
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Documentos</h3>
+          
+          {/* Filters */}
+          <div className="flex gap-4 items-end">
+            <div className="flex-1">
+              <Label className="text-sm font-medium mb-2 block">Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="completed">Completo</SelectItem>
+                  <SelectItem value="failed">Falha</SelectItem>
+                  <SelectItem value="processing">Processando</SelectItem>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex-1">
+              <Label className="text-sm font-medium mb-2 block">Chat Destino</Label>
+              <Select value={chatFilter} onValueChange={setChatFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="health">Health</SelectItem>
+                  <SelectItem value="study">Study</SelectItem>
+                  <SelectItem value="general">General</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setStatusFilter("all");
+                setChatFilter("all");
+                setSortField("created_at");
+                setSortDirection("desc");
+              }}
+            >
+              🔄 Limpar Filtros
+            </Button>
+          </div>
         
         {isLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
-        ) : documents && documents.length > 0 ? (
+        ) : filteredDocuments && filteredDocuments.length > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggleSort("filename")}
+                >
+                  <div className="flex items-center gap-2">
+                    Nome
+                    <ArrowUpDown className="h-4 w-4" />
+                  </div>
+                </TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Chat</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Chunks</TableHead>
-                <TableHead>Data</TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggleSort("total_chunks")}
+                >
+                  <div className="flex items-center gap-2">
+                    Chunks
+                    <ArrowUpDown className="h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggleSort("created_at")}
+                >
+                  <div className="flex items-center gap-2">
+                    Data
+                    <ArrowUpDown className="h-4 w-4" />
+                  </div>
+                </TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {documents.map((doc) => (
+              {filteredDocuments.map((doc) => (
                 <TableRow 
                   key={doc.id}
                   className="cursor-pointer hover:bg-muted/50"
@@ -713,6 +1002,17 @@ export const DocumentsTab = () => {
                   <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadAsPDF(doc);
+                        }}
+                        title="Download PDF"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
                       {doc.status === "failed" && (
                         <Button
                           variant="ghost"
@@ -722,6 +1022,7 @@ export const DocumentsTab = () => {
                             reprocessMutation.mutate(doc.id);
                           }}
                           disabled={reprocessMutation.isPending}
+                          title="Reprocessar"
                         >
                           <RefreshCw className={cn("h-4 w-4", reprocessMutation.isPending && "animate-spin")} />
                         </Button>
@@ -733,6 +1034,7 @@ export const DocumentsTab = () => {
                           e.stopPropagation();
                           deleteMutation.mutate(doc.id);
                         }}
+                        title="Deletar"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -747,6 +1049,7 @@ export const DocumentsTab = () => {
             Nenhum documento encontrado
           </div>
         )}
+        </div>
       </Card>
 
       {/* Document Details */}
@@ -772,9 +1075,19 @@ export const DocumentsTab = () => {
                   {selectedDoc.total_words} palavras • {selectedDoc.total_chunks} chunks
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setSelectedDoc(null)}>
-                Fechar
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setEditingTagsDoc(selectedDoc)}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar Tags
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setSelectedDoc(null)}>
+                  Fechar
+                </Button>
+              </div>
             </div>
 
             {selectedDoc.ai_summary && (
@@ -816,6 +1129,152 @@ export const DocumentsTab = () => {
             )}
           </div>
         </Card>
+      )}
+
+      {/* Tag Editing Dialog */}
+      {editingTagsDoc && (
+        <Dialog open={!!editingTagsDoc} onOpenChange={(open) => !open && setEditingTagsDoc(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Tags - {editingTagsDoc.filename}</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+              {/* Parent Tags Section */}
+              <div>
+                <h4 className="font-semibold mb-3">📂 CATEGORIAS PRINCIPAIS</h4>
+                <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
+                  {editingParentTags.map((tag) => (
+                    <Badge key={tag.id} className="flex items-center gap-2 px-3 py-1">
+                      {tag.tag_name}
+                      <button
+                        onClick={() => removeTagMutation.mutate(tag.id)}
+                        className="hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+                
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    placeholder="Nova categoria"
+                    value={newParentTag}
+                    onChange={(e) => setNewParentTag(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && newParentTag.trim()) {
+                        addTagMutation.mutate({
+                          documentId: editingTagsDoc.id,
+                          tagName: newParentTag.trim(),
+                          tagType: "parent"
+                        });
+                        setNewParentTag("");
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (newParentTag.trim()) {
+                        addTagMutation.mutate({
+                          documentId: editingTagsDoc.id,
+                          tagName: newParentTag.trim(),
+                          tagType: "parent"
+                        });
+                        setNewParentTag("");
+                      }
+                    }}
+                    disabled={!newParentTag.trim()}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Child Tags Section */}
+              <div>
+                <h4 className="font-semibold mb-3">🏷️ TAGS (por categoria)</h4>
+                {editingParentTags.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">
+                    Adicione categorias principais primeiro
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {editingParentTags.map((parent) => (
+                      <div key={parent.id} className="border rounded-lg p-3">
+                        <div className="font-medium text-sm mb-2">{parent.tag_name}:</div>
+                        <div className="flex flex-wrap gap-2 mb-2 min-h-[40px]">
+                          {editingChildTags
+                            .filter(c => c.parent_tag_id === parent.id)
+                            .map(child => (
+                              <Badge key={child.id} variant="outline" className="flex items-center gap-2 text-xs px-2 py-1">
+                                {child.tag_name}
+                                <button
+                                  onClick={() => removeTagMutation.mutate(child.id)}
+                                  className="hover:text-destructive"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Nova tag"
+                            value={selectedParentForChild === parent.id ? newChildTag : ""}
+                            onFocus={() => setSelectedParentForChild(parent.id)}
+                            onChange={(e) => setNewChildTag(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter' && newChildTag.trim()) {
+                                addTagMutation.mutate({
+                                  documentId: editingTagsDoc.id,
+                                  tagName: newChildTag.trim(),
+                                  tagType: "child",
+                                  parentTagId: parent.id
+                                });
+                                setNewChildTag("");
+                              }
+                            }}
+                            className="text-sm"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (newChildTag.trim() && selectedParentForChild === parent.id) {
+                                addTagMutation.mutate({
+                                  documentId: editingTagsDoc.id,
+                                  tagName: newChildTag.trim(),
+                                  tagType: "child",
+                                  parentTagId: parent.id
+                                });
+                                setNewChildTag("");
+                              }
+                            }}
+                            disabled={!newChildTag.trim() || selectedParentForChild !== parent.id}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setEditingTagsDoc(null);
+                setNewParentTag("");
+                setNewChildTag("");
+                setSelectedParentForChild(null);
+              }}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
