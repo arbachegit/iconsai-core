@@ -383,7 +383,7 @@ export const RagFlowDiagram = () => {
               "5. Chunking (1500 palavras)",
               "6. OpenAI Embeddings"
             ]}
-            tooltip="Fase de extração, transformação e carregamento. PDFs são processados, validados e convertidos em chunks com embeddings vetoriais usando OpenAI text-embedding-3-small."
+            tooltip="Fase de extração, transformação e carregamento. PDFs são processados, validados e convertidos em chunks com embeddings vetoriais usando KY AI text-embedding-3-small."
             onMouseEnter={handleTooltipShow}
             onMouseLeave={handleTooltipHide}
           />
@@ -535,7 +535,7 @@ export const RagFlowDiagram = () => {
             label="CONTEXT"
             labelX={970}
             labelY={395}
-            tooltip="Chunks recuperados (Top-5) são concatenados e enviados como contexto RAG para o LLM. Sistema adiciona metadata: source documents, confidence scores, e chat scope validation."
+            tooltip="Chunks recuperados (Top-5) são concatenados e enviados como contexto RAG para o SLM. Sistema adiciona metadata: source documents, confidence scores, e chat scope validation."
             animationDelay={1}
             onMouseEnter={handleTooltipShow}
             onMouseLeave={handleTooltipHide}
@@ -554,10 +554,10 @@ export const RagFlowDiagram = () => {
             steps={[
               "1. Contexto RAG + Query",
               "2. System Prompt + Scope",
-              "3. LLM (Gemini/GPT)",
+              "3. SLM (KY AI)",
               "4. Resposta Fundamentada"
             ]}
-            tooltip="Fase de geração de resposta. LLM (Gemini 2.5 Pro ou GPT-5) recebe contexto RAG, system prompt com scope restrictions, e query original. Gera resposta fundamentada nos documentos respeitando delimitações definidas."
+            tooltip="Fase de geração de resposta. SLM (KY AI) recebe contexto RAG, system prompt com scope restrictions, e query original. Gera resposta fundamentada nos documentos respeitando delimitações definidas."
             onMouseEnter={handleTooltipShow}
             onMouseLeave={handleTooltipHide}
           />
@@ -602,7 +602,7 @@ export const RagFlowDiagram = () => {
               • Chunk Size: 1500 palavras
             </text>
             <text x="70" y="540" fill="hsl(var(--muted-foreground))" fontSize="12">
-              • LLMs: Gemini 2.5 Pro / GPT-5
+              • SLMs: KY AI
             </text>
             <text x="70" y="560" fill="hsl(var(--muted-foreground))" fontSize="12">
               • Busca: Vector + Keyword Fallback
@@ -611,7 +611,7 @@ export const RagFlowDiagram = () => {
               • Tags Hierárquicas: Parent/Child
             </text>
             <text x="70" y="600" fill="hsl(var(--muted-foreground))" fontSize="12">
-              • Auto-categorização: LLM-based
+              • Auto-categorização: SLM-based
             </text>
           </g>
 
