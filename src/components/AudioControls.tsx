@@ -50,85 +50,100 @@ export function AudioControls({
 
   return (
     <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-border/30">
-      {/* Controles de áudio principais */}
-      <div className="flex items-center gap-2">
+      {/* Layout 100% horizontal: [Play] [Stop] [Download] [Copy] | [Data] [Hora] [Local] */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Play */}
         <Button
           size="sm"
           variant="ghost"
           onClick={isPlaying ? onStop : onPlay}
-          className="h-8 w-8 p-0"
+          className="h-7 w-7 p-0"
           title={isPlaying ? t("chat.stop") : t("chat.play")}
         >
           {isPlaying ? (
-            <Square className="h-4 w-4" />
+            <Square className="h-3.5 w-3.5" />
           ) : (
-            <Play className="h-4 w-4" />
+            <Play className="h-3.5 w-3.5" />
           )}
         </Button>
 
+        {/* Stop */}
         <Button
           size="sm"
           variant="ghost"
           onClick={onStop}
-          className="h-8 w-8 p-0"
+          className="h-7 w-7 p-0"
           title={t("chat.stop")}
           disabled={!isPlaying}
         >
-          <Square className="h-4 w-4" />
+          <Square className="h-3.5 w-3.5" />
         </Button>
 
+        {/* Download */}
         {onDownload && (
           <Button
             size="sm"
             variant="ghost"
             onClick={onDownload}
-            className="h-8 w-8 p-0"
+            className="h-7 w-7 p-0"
             title={t("chat.download")}
           >
-            <Download className="h-4 w-4" />
+            <Download className="h-3.5 w-3.5" />
           </Button>
         )}
 
+        {/* Copy */}
         {onCopy && messageContent && (
           <Button
             size="sm"
             variant="ghost"
             onClick={handleCopy}
-            className="h-8 w-8 p-0"
+            className="h-7 w-7 p-0"
             title={t("chat.copy")}
           >
-            <Copy className="h-4 w-4" />
+            <Copy className="h-3.5 w-3.5" />
           </Button>
         )}
 
-        {/* Metadados */}
-        <div className="flex-1 flex items-center justify-end gap-3 text-xs text-muted-foreground">
-          {timestamp && (
-            <span>
-              {timestamp.toLocaleString("pt-BR", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          )}
-          {location && (
-            <span className="flex items-center gap-1">
-              📍 {location}
-            </span>
-          )}
-        </div>
+        {/* Separador visual */}
+        <span className="h-4 w-px bg-border/50 mx-1" />
+
+        {/* Data */}
+        {timestamp && (
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            📅 {timestamp.toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
+          </span>
+        )}
+
+        {/* Hora */}
+        {timestamp && (
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            🕐 {timestamp.toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        )}
+
+        {/* Localização */}
+        {location && (
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            📍 {location}
+          </span>
+        )}
       </div>
 
-      {/* Progress bar */}
-      {duration > 0 && (
-        <div className="flex flex-col gap-1">
-          <Progress value={progress} className="h-1" />
-          <div className="text-xs text-muted-foreground">
+      {/* Progress bar (linha abaixo quando tocando) */}
+      {isPlaying && duration > 0 && (
+        <div className="flex items-center gap-2 mt-1">
+          <Progress value={progress} className="h-1 flex-1" />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
             {formatTime(currentTime)} / {formatTime(duration)}
-          </div>
+          </span>
         </div>
       )}
     </div>

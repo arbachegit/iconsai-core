@@ -65,6 +65,7 @@ export default function ChatStudy() {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isImageMode, setIsImageMode] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'processing'>('idle');
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -183,10 +184,14 @@ export default function ChatStudy() {
         recognition.lang = 'pt-BR';
         recognition.continuous = true;
         recognition.interimResults = true;
+        
+        let silenceTimeout: NodeJS.Timeout | null = null;
+        const SILENCE_TIMEOUT = 5000; // 5 segundos
 
         recognition.onstart = () => {
           setIsRecording(true);
           setIsTranscribing(true);
+          setVoiceStatus('listening');
         };
 
         recognition.onresult = (event: any) => {
@@ -205,10 +210,25 @@ export default function ChatStudy() {
           setInput(finalTranscript + interimTranscript);
         };
 
+        recognition.onspeechend = () => {
+          // Não encerrar imediatamente - aguardar 5 segundos de silêncio
+          silenceTimeout = setTimeout(() => {
+            recognition.stop();
+          }, SILENCE_TIMEOUT);
+        };
+
+        recognition.onspeechstart = () => {
+          // Cancelar timeout se fala reiniciar
+          if (silenceTimeout) clearTimeout(silenceTimeout);
+          setVoiceStatus('listening');
+        };
+
         recognition.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error);
+          if (silenceTimeout) clearTimeout(silenceTimeout);
           setIsRecording(false);
           setIsTranscribing(false);
+          setVoiceStatus('idle');
           
           // Fallback para gravação com Whisper se Web Speech API falhar
           toast({
@@ -219,8 +239,10 @@ export default function ChatStudy() {
         };
 
         recognition.onend = () => {
+          if (silenceTimeout) clearTimeout(silenceTimeout);
           setIsRecording(false);
           setIsTranscribing(false);
+          setVoiceStatus('idle');
         };
 
         mediaRecorderRef.current = recognition as any;
@@ -259,9 +281,11 @@ export default function ChatStudy() {
         
         // Transcribe audio using Whisper API
         setIsTranscribing(true);
+        setVoiceStatus('processing');
         try {
           const transcribedText = await transcribeAudio(audioBlob);
-          setInput(transcribedText);
+          // MODO ANEXO: não sobrescrever texto existente
+          setInput(prev => prev + (prev ? ' ' : '') + transcribedText);
         } catch (error) {
           console.error("Error transcribing audio:", error);
           toast({
@@ -271,6 +295,7 @@ export default function ChatStudy() {
           });
         } finally {
           setIsTranscribing(false);
+          setVoiceStatus('idle');
         }
       };
 
@@ -487,6 +512,14 @@ export default function ChatStudy() {
 
       {/* Input */}
       <form onSubmit={handleSubmit} className="p-4 border-t-2 border-primary/30 bg-muted/30 rounded-b-lg shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
+        {/* Indicador de voz ativo */}
+        {isRecording && (
+          <div className="flex items-center gap-2 text-xs text-amber-500 mb-2">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            {voiceStatus === 'listening' ? t('chat.listening') : t('chat.processing')}
+          </div>
+        )}
+        
         <div className="flex gap-2">
           <Textarea
             value={input}

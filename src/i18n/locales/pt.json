@@ -168,6 +168,9 @@
     "imageSuggestions": "Sugestões de Imagens:",
     "typing": "Digitando...",
     "transcribing": "Transcrevendo...",
+    "listening": "Ouvindo... (fale naturalmente)",
+    "processing": "Processando...",
+    "voiceTimeout": "O ditado encerra após 5 segundos de silêncio",
     "generatingImage": "Gerando imagem...",
     "generatingAudio": "Gerando áudio...",
     "thinking": "Pensando...",
@@ -178,6 +181,9 @@
     "micPermissions": "Verifique as permissões do navegador.",
     "transcriptionError": "Erro na transcrição",
     "transcriptionRetry": "Não foi possível transcrever o áudio. Tente novamente.",
+    "imageRejected": "Imagem não permitida",
+    "imageGuardrailHealth": "Apenas imagens relacionadas à saúde são permitidas neste chat.",
+    "imageGuardrailStudy": "Apenas imagens relacionadas à IA e KnowRISK são permitidas neste chat.",
     "copied": "Texto copiado!",
     "copyFailed": "Falha ao copiar",
     "miniPlayer": {
@@ -186,10 +192,11 @@
     }
   },
   "audio": {
-    "play": "Play",
+    "play": "Reproduzir",
     "pause": "Pausar",
-    "stop": "Stop",
-    "download": "Download",
+    "stop": "Parar",
+    "download": "Baixar",
+    "copy": "Copiar",
     "notAvailable": "Áudio não disponível",
     "playError": "Erro ao reproduzir áudio"
   },
