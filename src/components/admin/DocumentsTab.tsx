@@ -22,19 +22,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 // Configure PDF.js worker with local bundle
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-
 interface FileUploadStatus {
   id: string;
   fileName: string;
@@ -47,42 +38,39 @@ interface FileUploadStatus {
   documentId?: string;
   error?: string;
 }
-
 export const DocumentsTab = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [uploadStatuses, setUploadStatuses] = useState<FileUploadStatus[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  
+
   // Filter and sort states
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [chatFilter, setChatFilter] = useState<string>("all");
   const [readabilityFilter, setReadabilityFilter] = useState<string>("all");
-  const [sortField, setSortField] = useState<
-    "created_at" | "filename" | "total_chunks" | "status" | "target_chat" | "is_inserted" | "inserted_in_chat" | "readability_score"
-  >("created_at");
+  const [sortField, setSortField] = useState<"created_at" | "filename" | "total_chunks" | "status" | "target_chat" | "is_inserted" | "inserted_in_chat" | "readability_score">("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  
+
   // Tag editing states
   const [editingTagsDoc, setEditingTagsDoc] = useState<any>(null);
   const [newParentTag, setNewParentTag] = useState("");
   const [newChildTag, setNewChildTag] = useState("");
   const [selectedParentForChild, setSelectedParentForChild] = useState<string | null>(null);
-  
+
   // Chunk visualization states
   const [viewChunksDoc, setViewChunksDoc] = useState<any>(null);
-  
+
   // Bulk export states
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
   const [isBulkReprocessing, setIsBulkReprocessing] = useState(false);
-  
+
   // Duplicate detection states
   const [duplicateInfo, setDuplicateInfo] = useState<{
     newFileName: string;
@@ -90,47 +78,48 @@ export const DocumentsTab = () => {
     existingDocId: string;
     newDocId: string;
   } | null>(null);
-  
+
   // RAG Info Modal state
   const [showRagInfoModal, setShowRagInfoModal] = useState(false);
-  
+
   // Tags modal state
   const [tagsModalDoc, setTagsModalDoc] = useState<any>(null);
-  
+
   // Manual insertion modal state
   const [insertionModalDoc, setInsertionModalDoc] = useState<any>(null);
-  
   const queryClient = useQueryClient();
 
   // Fetch documents
-  const { data: documents, isLoading } = useQuery({
+  const {
+    data: documents,
+    isLoading
+  } = useQuery({
     queryKey: ["documents"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("documents")
-        .select("*")
-        .order("created_at", { ascending: false });
-      
+      const {
+        data,
+        error
+      } = await supabase.from("documents").select("*").order("created_at", {
+        ascending: false
+      });
       if (error) throw error;
       return data;
-    },
+    }
   });
 
   // Extract text from PDF
   const extractTextFromPDF = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    
+    const pdf = await pdfjsLib.getDocument({
+      data: arrayBuffer
+    }).promise;
     let fullText = "";
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(" ");
+      const pageText = textContent.items.map((item: any) => item.str).join(" ");
       fullText += pageText + "\n";
     }
-    
     return fullText;
   };
 
@@ -138,68 +127,47 @@ export const DocumentsTab = () => {
   const pollDocumentStatus = async (documentId: string, fileId: string) => {
     const maxAttempts = 30;
     let attempts = 0;
-    
     const poll = setInterval(async () => {
       attempts++;
-      
-      const { data, error } = await supabase
-        .from('documents')
-        .select('status, target_chat, total_chunks, error_message')
-        .eq('id', documentId)
-        .single();
-      
+      const {
+        data,
+        error
+      } = await supabase.from('documents').select('status, target_chat, total_chunks, error_message').eq('id', documentId).single();
       if (error || attempts >= maxAttempts) {
         clearInterval(poll);
-        setUploadStatuses(prev => prev.map(s => 
-          s.id === fileId 
-            ? { 
-                ...s, 
-                status: 'failed', 
-                progress: 100, 
-                details: error?.message || 'Timeout ao aguardar processamento'
-              }
-            : s
-        ));
+        setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+          ...s,
+          status: 'failed',
+          progress: 100,
+          details: error?.message || 'Timeout ao aguardar processamento'
+        } : s));
         return;
       }
-      
       if (data?.status === 'completed') {
         clearInterval(poll);
-        setUploadStatuses(prev => prev.map(s => 
-          s.id === fileId 
-            ? { 
-                ...s, 
-                status: 'completed', 
-                progress: 100,
-                targetChat: data.target_chat,
-                totalChunks: data.total_chunks,
-                details: `Processado com sucesso em ${data.total_chunks} chunks`
-              }
-            : s
-        ));
+        setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+          ...s,
+          status: 'completed',
+          progress: 100,
+          targetChat: data.target_chat,
+          totalChunks: data.total_chunks,
+          details: `Processado com sucesso em ${data.total_chunks} chunks`
+        } : s));
       } else if (data?.status === 'failed') {
         clearInterval(poll);
-        setUploadStatuses(prev => prev.map(s => 
-          s.id === fileId 
-            ? { 
-                ...s, 
-                status: 'failed', 
-                progress: 100,
-                details: `Falha: ${data.error_message || 'Erro desconhecido'}`
-              }
-            : s
-        ));
+        setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+          ...s,
+          status: 'failed',
+          progress: 100,
+          details: `Falha: ${data.error_message || 'Erro desconhecido'}`
+        } : s));
       } else {
         // Still processing
-        setUploadStatuses(prev => prev.map(s => 
-          s.id === fileId 
-            ? { 
-                ...s, 
-                progress: Math.min(s.progress + 2, 90),
-                details: 'Processando documento...'
-              }
-            : s
-        ));
+        setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+          ...s,
+          progress: Math.min(s.progress + 2, 90),
+          details: 'Processando documento...'
+        } : s));
       }
     }, 2000);
   };
@@ -208,9 +176,8 @@ export const DocumentsTab = () => {
   const uploadMutation = useMutation({
     mutationFn: async () => {
       if (selectedFiles.length === 0) throw new Error("Nenhum arquivo selecionado");
-      
       setUploading(true);
-      
+
       // Initialize status for all files
       const initialStatuses: FileUploadStatus[] = selectedFiles.map((file, idx) => ({
         id: `file-${Date.now()}-${idx}`,
@@ -221,98 +188,102 @@ export const DocumentsTab = () => {
         targetChat: null,
         details: 'Na fila'
       }));
-      
       setUploadStatuses(initialStatuses);
-      
       try {
-        const documentsData: Array<{document_id: string; full_text: string; title: string}> = [];
-        
+        const documentsData: Array<{
+          document_id: string;
+          full_text: string;
+          title: string;
+        }> = [];
+
         // Process each file
         for (let i = 0; i < selectedFiles.length; i++) {
           const file = selectedFiles[i];
           const fileId = initialStatuses[i].id;
-          
           try {
             // Phase 1: Extracting
-            setUploadStatuses(prev => prev.map(s => 
-              s.id === fileId 
-                ? { ...s, status: 'extracting', progress: 10, details: 'Extraindo texto do PDF...' }
-                : s
-            ));
-            
+            setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+              ...s,
+              status: 'extracting',
+              progress: 10,
+              details: 'Extraindo texto do PDF...'
+            } : s));
             const extractedText = await extractTextFromPDF(file);
-            
             if (extractedText.length < 100) {
-              setUploadStatuses(prev => prev.map(s => 
-                s.id === fileId 
-                  ? { ...s, status: 'failed', progress: 100, details: 'Texto muito curto (mínimo 100 caracteres)' }
-                  : s
-              ));
+              setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+                ...s,
+                status: 'failed',
+                progress: 100,
+                details: 'Texto muito curto (mínimo 100 caracteres)'
+              } : s));
               continue;
             }
-            
+
             // Phase 2: Uploading
-            setUploadStatuses(prev => prev.map(s => 
-              s.id === fileId 
-                ? { ...s, status: 'uploading', progress: 40, details: 'Criando registro no banco...' }
-                : s
-            ));
-            
-            const { data: documents, error: docError } = await supabase
-              .from("documents")
-              .insert([{
-                filename: file.name,
-                original_text: extractedText,
-                text_preview: extractedText.substring(0, 500),
-                status: "pending",
-                target_chat: "general"
-              }])
-              .select();
-            
+            setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+              ...s,
+              status: 'uploading',
+              progress: 40,
+              details: 'Criando registro no banco...'
+            } : s));
+            const {
+              data: documents,
+              error: docError
+            } = await supabase.from("documents").insert([{
+              filename: file.name,
+              original_text: extractedText,
+              text_preview: extractedText.substring(0, 500),
+              status: "pending",
+              target_chat: "general"
+            }]).select();
             const document = documents?.[0];
-            
             if (docError || !document) {
-              setUploadStatuses(prev => prev.map(s => 
-                s.id === fileId 
-                  ? { ...s, status: 'failed', progress: 100, details: 'Erro ao criar registro' }
-                  : s
-              ));
+              setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+                ...s,
+                status: 'failed',
+                progress: 100,
+                details: 'Erro ao criar registro'
+              } : s));
               continue;
             }
-            
+
             // Phase 3: Processing
-            setUploadStatuses(prev => prev.map(s => 
-              s.id === fileId 
-                ? { ...s, status: 'processing', progress: 60, details: 'Aguardando processamento...', documentId: document.id }
-                : s
-            ));
-            
+            setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+              ...s,
+              status: 'processing',
+              progress: 60,
+              details: 'Aguardando processamento...',
+              documentId: document.id
+            } : s));
             documentsData.push({
               document_id: document.id,
               full_text: extractedText,
               title: file.name
             });
-            
           } catch (error: any) {
-            setUploadStatuses(prev => prev.map(s => 
-              s.id === fileId 
-                ? { ...s, status: 'failed', progress: 100, details: `Erro: ${error.message}` }
-                : s
-            ));
+            setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+              ...s,
+              status: 'failed',
+              progress: 100,
+              details: `Erro: ${error.message}`
+            } : s));
           }
         }
-        
         if (documentsData.length === 0) {
           throw new Error("Nenhum documento válido para processar");
         }
-        
+
         // Send to bulk processing
-        const { data: processResult, error: processError } = await supabase.functions.invoke("process-bulk-document", {
-          body: { documents_data: documentsData }
+        const {
+          data: processResult,
+          error: processError
+        } = await supabase.functions.invoke("process-bulk-document", {
+          body: {
+            documents_data: documentsData
+          }
         });
-        
         if (processError) throw processError;
-        
+
         // Check for duplicates in results
         if (processResult?.results) {
           const duplicates = processResult.results.filter((r: any) => r.status === "duplicate");
@@ -331,7 +302,7 @@ export const DocumentsTab = () => {
             }
           }
         }
-        
+
         // Start polling for each document
         documentsData.forEach((doc, idx) => {
           const fileId = uploadStatuses.find(s => s.documentId === doc.document_id)?.id;
@@ -339,9 +310,7 @@ export const DocumentsTab = () => {
             pollDocumentStatus(doc.document_id, fileId);
           }
         });
-        
         toast.success(`${documentsData.length} documento(s) enviado(s) para processamento!`);
-        
       } catch (error: any) {
         console.error("Erro ao processar documentos:", error);
         toast.error(`Erro: ${error.message}`);
@@ -350,7 +319,9 @@ export const DocumentsTab = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({
+        queryKey: ["documents"]
+      });
       setSelectedFiles([]);
     },
     onError: (error: any) => {
@@ -362,15 +333,15 @@ export const DocumentsTab = () => {
   // Delete document
   const deleteMutation = useMutation({
     mutationFn: async (docId: string) => {
-      const { error } = await supabase
-        .from("documents")
-        .delete()
-        .eq("id", docId);
-      
+      const {
+        error
+      } = await supabase.from("documents").delete().eq("id", docId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({
+        queryKey: ["documents"]
+      });
       toast.success("Documento deletado");
       setSelectedDoc(null);
     }
@@ -380,26 +351,26 @@ export const DocumentsTab = () => {
   const reprocessMutation = useMutation({
     mutationFn: async (docId: string) => {
       // 1. Fetch document
-      const { data: doc, error: fetchError } = await supabase
-        .from("documents")
-        .select("*")
-        .eq("id", docId)
-        .single();
-      
+      const {
+        data: doc,
+        error: fetchError
+      } = await supabase.from("documents").select("*").eq("id", docId).single();
       if (fetchError) throw fetchError;
-      
+
       // 2. Clear old data
       await supabase.from("document_chunks").delete().eq("document_id", docId);
       await supabase.from("document_tags").delete().eq("document_id", docId);
-      
+
       // 3. Reset status
-      await supabase
-        .from("documents")
-        .update({ status: "pending", error_message: null })
-        .eq("id", docId);
-      
+      await supabase.from("documents").update({
+        status: "pending",
+        error_message: null
+      }).eq("id", docId);
+
       // 4. Reprocess
-      const { error: processError } = await supabase.functions.invoke("process-bulk-document", {
+      const {
+        error: processError
+      } = await supabase.functions.invoke("process-bulk-document", {
         body: {
           documents_data: [{
             document_id: docId,
@@ -408,11 +379,12 @@ export const DocumentsTab = () => {
           }]
         }
       });
-      
       if (processError) throw processError;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({
+        queryKey: ["documents"]
+      });
       toast.success("Documento reprocessado com sucesso!");
     },
     onError: (error: any) => {
@@ -423,57 +395,63 @@ export const DocumentsTab = () => {
   // Generate documentation
   const generateDocsMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('generate-documentation');
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('generate-documentation');
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast.success(`Documentação gerada: ${data.version}`);
-      queryClient.invalidateQueries({ queryKey: ['documentation-versions'] });
+      queryClient.invalidateQueries({
+        queryKey: ['documentation-versions']
+      });
     },
     onError: (error: any) => {
       toast.error(`Erro ao gerar documentação: ${error.message}`);
     }
   });
-  
+
   // Handle duplicate - Discard new document
   const handleDiscardDuplicate = async () => {
     if (!duplicateInfo) return;
-    
     try {
       await supabase.from("documents").delete().eq("id", duplicateInfo.newDocId);
       toast.info("Documento descartado com sucesso");
       setDuplicateInfo(null);
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({
+        queryKey: ["documents"]
+      });
     } catch (error: any) {
       toast.error(`Erro ao descartar: ${error.message}`);
     }
   };
-  
+
   // Handle duplicate - Replace existing document
   const handleReplaceDuplicate = async () => {
     if (!duplicateInfo) return;
-    
     try {
       // 1. Delete old document and its related data
       await supabase.from("document_chunks").delete().eq("document_id", duplicateInfo.existingDocId);
       await supabase.from("document_tags").delete().eq("document_id", duplicateInfo.existingDocId);
       await supabase.from("document_versions").delete().eq("document_id", duplicateInfo.existingDocId);
       await supabase.from("documents").delete().eq("id", duplicateInfo.existingDocId);
-      
+
       // 2. Get new document data and reprocess
-      const { data: newDoc, error: fetchError } = await supabase
-        .from("documents")
-        .select("*")
-        .eq("id", duplicateInfo.newDocId)
-        .single();
-      
+      const {
+        data: newDoc,
+        error: fetchError
+      } = await supabase.from("documents").select("*").eq("id", duplicateInfo.newDocId).single();
       if (fetchError) throw fetchError;
-      
+
       // 3. Reset status and reprocess
-      await supabase.from("documents").update({ status: "pending" }).eq("id", duplicateInfo.newDocId);
-      
-      const { error: processError } = await supabase.functions.invoke("process-bulk-document", {
+      await supabase.from("documents").update({
+        status: "pending"
+      }).eq("id", duplicateInfo.newDocId);
+      const {
+        error: processError
+      } = await supabase.functions.invoke("process-bulk-document", {
         body: {
           documents_data: [{
             document_id: newDoc.id,
@@ -482,12 +460,12 @@ export const DocumentsTab = () => {
           }]
         }
       });
-      
       if (processError) throw processError;
-      
       toast.success("Documento substituído com sucesso!");
       setDuplicateInfo(null);
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({
+        queryKey: ["documents"]
+      });
     } catch (error: any) {
       toast.error(`Erro ao substituir: ${error.message}`);
     }
@@ -497,15 +475,10 @@ export const DocumentsTab = () => {
   const handleBulkReprocess = async () => {
     setIsBulkReprocessing(true);
     try {
-      const docsToReprocess = documents?.filter(d => 
-        selectedDocs.has(d.id) && 
-        (d.status === "failed" || d.status === "pending")
-      ) || [];
-      
+      const docsToReprocess = documents?.filter(d => selectedDocs.has(d.id) && (d.status === "failed" || d.status === "pending")) || [];
       for (const doc of docsToReprocess) {
         await reprocessMutation.mutateAsync(doc.id);
       }
-      
       toast.success(`${docsToReprocess.length} documento(s) reprocessado(s)`);
       setSelectedDocs(new Set());
     } catch (error: any) {
@@ -517,15 +490,11 @@ export const DocumentsTab = () => {
 
   // Reprocess ALL pending/failed documents
   const handleReprocessAllPendingFailed = async () => {
-    const pendingFailed = documents?.filter(d => 
-      d.status === "failed" || d.status === "pending"
-    ) || [];
-    
+    const pendingFailed = documents?.filter(d => d.status === "failed" || d.status === "pending") || [];
     if (pendingFailed.length === 0) {
       toast.info("Nenhum documento pendente ou falhado encontrado");
       return;
     }
-    
     setIsBulkReprocessing(true);
     try {
       for (const doc of pendingFailed) {
@@ -547,61 +516,69 @@ export const DocumentsTab = () => {
   };
 
   // Fetch last documentation version
-  const { data: lastDocVersion } = useQuery({
+  const {
+    data: lastDocVersion
+  } = useQuery({
     queryKey: ["documentation-versions"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("documentation_versions")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-      
+      const {
+        data,
+        error
+      } = await supabase.from("documentation_versions").select("*").order("created_at", {
+        ascending: false
+      }).limit(1).single();
       if (error && error.code !== 'PGRST116') throw error;
       return data;
     }
   });
 
   // Fetch tags for selected document
-  const { data: tags } = useQuery({
+  const {
+    data: tags
+  } = useQuery({
     queryKey: ["document-tags", selectedDoc?.id],
     enabled: !!selectedDoc,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("document_tags")
-        .select("*")
-        .eq("document_id", selectedDoc.id)
-        .order("tag_type", { ascending: true });
-      
+      const {
+        data,
+        error
+      } = await supabase.from("document_tags").select("*").eq("document_id", selectedDoc.id).order("tag_type", {
+        ascending: true
+      });
       if (error) throw error;
       return data;
     }
   });
 
   // Fetch tags for editing document
-  const { data: editingTags, refetch: refetchEditingTags } = useQuery({
+  const {
+    data: editingTags,
+    refetch: refetchEditingTags
+  } = useQuery({
     queryKey: ["document-tags-editing", editingTagsDoc?.id],
     enabled: !!editingTagsDoc,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("document_tags")
-        .select("*")
-        .eq("document_id", editingTagsDoc.id)
-        .order("tag_type", { ascending: true });
-      
+      const {
+        data,
+        error
+      } = await supabase.from("document_tags").select("*").eq("document_id", editingTagsDoc.id).order("tag_type", {
+        ascending: true
+      });
       if (error) throw error;
       return data;
     }
   });
 
   // Fetch all tags for quick access in table
-  const { data: allTags } = useQuery({
+  const {
+    data: allTags
+  } = useQuery({
     queryKey: ["all-document-tags"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("document_tags")
-        .select("*");
-      
+      const {
+        data,
+        error
+      } = await supabase.from("document_tags").select("*");
       if (error) throw error;
       return data;
     }
@@ -610,38 +587,47 @@ export const DocumentsTab = () => {
   // Helper: Get top parent tag for a document
   const getTopParentTag = useCallback((documentId: string) => {
     if (!allTags) return null;
-    
     const docTags = allTags.filter(t => t.document_id === documentId && t.tag_type === "parent");
     if (docTags.length === 0) return null;
-    
+
     // Return tag with highest confidence
     return docTags.sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
   }, [allTags]);
 
   // Fetch chunks for viewing
-  const { data: chunks, isLoading: chunksLoading } = useQuery({
+  const {
+    data: chunks,
+    isLoading: chunksLoading
+  } = useQuery({
     queryKey: ["document-chunks", viewChunksDoc?.id],
     enabled: !!viewChunksDoc,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("document_chunks")
-        .select("*")
-        .eq("document_id", viewChunksDoc.id)
-        .order("chunk_index", { ascending: true });
-      
+      const {
+        data,
+        error
+      } = await supabase.from("document_chunks").select("*").eq("document_id", viewChunksDoc.id).order("chunk_index", {
+        ascending: true
+      });
       if (error) throw error;
       return data;
     }
   });
 
   // RAG Metrics query
-  const { data: metrics } = useQuery({
+  const {
+    data: metrics
+  } = useQuery({
     queryKey: ["rag-quick-metrics"],
     queryFn: async () => {
-      const { data: docs } = await supabase.from("documents").select("status, target_chat");
-      const { count: chunks } = await supabase.from("document_chunks")
-        .select("*", { count: "exact", head: true });
-      
+      const {
+        data: docs
+      } = await supabase.from("documents").select("status, target_chat");
+      const {
+        count: chunks
+      } = await supabase.from("document_chunks").select("*", {
+        count: "exact",
+        head: true
+      });
       return {
         totalDocs: docs?.length || 0,
         totalChunks: chunks || 0,
@@ -649,15 +635,13 @@ export const DocumentsTab = () => {
         failed: docs?.filter(d => d.status === "failed").length || 0,
         health: docs?.filter(d => d.target_chat === "health").length || 0,
         study: docs?.filter(d => d.target_chat === "study").length || 0,
-        general: docs?.filter(d => d.target_chat === "general").length || 0,
+        general: docs?.filter(d => d.target_chat === "general").length || 0
       };
     }
   });
-
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const pdfFiles = files.filter(f => f.type === "application/pdf");
-    
     if (pdfFiles.length === 0) {
       toast.error("Por favor, selecione arquivo(s) PDF");
     } else {
@@ -665,24 +649,19 @@ export const DocumentsTab = () => {
       setUploadStatuses([]);
     }
   }, []);
-
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
   }, []);
-
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
   }, []);
-
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
     const files = Array.from(e.dataTransfer.files);
     const pdfFiles = files.filter(f => f.type === "application/pdf");
-    
     if (pdfFiles.length === 0) {
       toast.error("Por favor, arraste arquivo(s) PDF");
     } else {
@@ -698,15 +677,14 @@ export const DocumentsTab = () => {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const margin = 15;
       const maxWidth = pageWidth - margin * 2;
-      
+
       // Title
       pdf.setFontSize(16);
       pdf.text(doc.filename, margin, 20);
-      
+
       // Document text
       pdf.setFontSize(10);
       const lines = pdf.splitTextToSize(doc.original_text || doc.text_preview || "Sem conteúdo", maxWidth);
-      
       let y = 35;
       lines.forEach((line: string) => {
         if (y > 280) {
@@ -716,7 +694,6 @@ export const DocumentsTab = () => {
         pdf.text(line, margin, y);
         y += 5;
       });
-      
       pdf.save(`${doc.filename.replace('.pdf', '')}_exportado.pdf`);
       toast.success("PDF exportado com sucesso!");
     } catch (error: any) {
@@ -726,13 +703,20 @@ export const DocumentsTab = () => {
 
   // Add tag mutation
   const addTagMutation = useMutation({
-    mutationFn: async ({ documentId, tagName, tagType, parentTagId }: {
+    mutationFn: async ({
+      documentId,
+      tagName,
+      tagType,
+      parentTagId
+    }: {
       documentId: string;
       tagName: string;
       tagType: string;
       parentTagId?: string | null;
     }) => {
-      const { error } = await supabase.from("document_tags").insert({
+      const {
+        error
+      } = await supabase.from("document_tags").insert({
         document_id: documentId,
         tag_name: tagName,
         tag_type: tagType,
@@ -744,7 +728,9 @@ export const DocumentsTab = () => {
     },
     onSuccess: () => {
       refetchEditingTags();
-      queryClient.invalidateQueries({ queryKey: ["document-tags"] });
+      queryClient.invalidateQueries({
+        queryKey: ["document-tags"]
+      });
       toast.success("Tag adicionada");
     }
   });
@@ -759,7 +745,9 @@ export const DocumentsTab = () => {
     },
     onSuccess: () => {
       refetchEditingTags();
-      queryClient.invalidateQueries({ queryKey: ["document-tags"] });
+      queryClient.invalidateQueries({
+        queryKey: ["document-tags"]
+      });
       toast.success("Tag removida");
     }
   });
@@ -770,27 +758,24 @@ export const DocumentsTab = () => {
       toast.error("Nenhum documento selecionado");
       return;
     }
-
     setIsExporting(true);
     try {
       const zip = new JSZip();
       const docs = documents?.filter(d => selectedDocs.has(d.id)) || [];
-
       for (const doc of docs) {
         // Generate PDF for each document
         const pdf = new jsPDF();
         const pageWidth = pdf.internal.pageSize.getWidth();
         const margin = 15;
         const maxWidth = pageWidth - margin * 2;
-        
+
         // Title
         pdf.setFontSize(16);
         pdf.text(doc.filename, margin, 20);
-        
+
         // Document text
         pdf.setFontSize(10);
         const lines = pdf.splitTextToSize(doc.original_text || doc.text_preview || "Sem conteúdo", maxWidth);
-        
         let y = 35;
         lines.forEach((line: string) => {
           if (y > 280) {
@@ -800,21 +785,22 @@ export const DocumentsTab = () => {
           pdf.text(line, margin, y);
           y += 5;
         });
-        
+
         // Add to ZIP
         const pdfBlob = pdf.output('blob');
         zip.file(`${doc.filename.replace('.pdf', '')}_exportado.pdf`, pdfBlob);
       }
 
       // Generate and download ZIP
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipBlob = await zip.generateAsync({
+        type: 'blob'
+      });
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `documentos_exportados_${new Date().toISOString().split('T')[0]}.zip`;
       a.click();
       URL.revokeObjectURL(url);
-
       toast.success(`${docs.length} documento(s) exportados com sucesso!`);
       setSelectedDocs(new Set());
     } catch (error: any) {
@@ -827,28 +813,23 @@ export const DocumentsTab = () => {
   // Filtered and sorted documents
   const filteredDocuments = useMemo(() => {
     let filtered = documents || [];
-    
+
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(d => 
-        d.filename?.toLowerCase().includes(query) ||
-        d.original_text?.toLowerCase().includes(query) ||
-        d.text_preview?.toLowerCase().includes(query) ||
-        d.ai_summary?.toLowerCase().includes(query)
-      );
+      filtered = filtered.filter(d => d.filename?.toLowerCase().includes(query) || d.original_text?.toLowerCase().includes(query) || d.text_preview?.toLowerCase().includes(query) || d.ai_summary?.toLowerCase().includes(query));
     }
-    
+
     // Status filter
     if (statusFilter !== "all") {
       filtered = filtered.filter(d => d.status === statusFilter);
     }
-    
+
     // Chat filter
     if (chatFilter !== "all") {
       filtered = filtered.filter(d => d.target_chat?.toLowerCase() === chatFilter);
     }
-    
+
     // Readability filter
     if (readabilityFilter !== "all") {
       if (readabilityFilter === "high") {
@@ -861,48 +842,38 @@ export const DocumentsTab = () => {
         filtered = filtered.filter(d => d.readability_score === null);
       }
     }
-    
+
     // Sorting
     filtered = [...filtered].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;
-      
       if (sortField === "created_at") {
         const aVal = a.created_at;
         const bVal = b.created_at;
         return (new Date(aVal).getTime() - new Date(bVal).getTime()) * direction;
       }
-      
       if (sortField === "filename") {
         return (a.filename || "").localeCompare(b.filename || "") * direction;
       }
-      
       if (sortField === "total_chunks") {
         return ((a.total_chunks || 0) - (b.total_chunks || 0)) * direction;
       }
-      
       if (sortField === "status") {
         return (a.status || "").localeCompare(b.status || "") * direction;
       }
-      
       if (sortField === "target_chat") {
         return (a.target_chat || "").localeCompare(b.target_chat || "") * direction;
       }
-      
       if (sortField === "is_inserted") {
         return ((a.is_inserted ? 1 : 0) - (b.is_inserted ? 1 : 0)) * direction;
       }
-      
       if (sortField === "inserted_in_chat") {
         return (a.inserted_in_chat || "").localeCompare(b.inserted_in_chat || "") * direction;
       }
-      
       if (sortField === "readability_score") {
         return ((a.readability_score || 0) - (b.readability_score || 0)) * direction;
       }
-      
       return 0;
     });
-    
     return filtered;
   }, [documents, statusFilter, chatFilter, readabilityFilter, sortField, sortDirection, searchQuery]);
 
@@ -938,7 +909,6 @@ export const DocumentsTab = () => {
       setSelectedDocs(new Set(filteredDocuments?.map(d => d.id) || []));
     }
   }, [filteredDocuments, selectedDocs.size]);
-
   const toggleSort = (field: typeof sortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -948,63 +918,71 @@ export const DocumentsTab = () => {
     }
     setCurrentPage(1); // Reset pagination
   };
-
   const getStatusIcon = (status: FileUploadStatus['status']) => {
     switch (status) {
-      case 'completed': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case 'failed': return <XCircle className="h-4 w-4 text-destructive" />;
-      case 'waiting': return <Clock className="h-4 w-4 text-muted-foreground" />;
-      default: return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
+      case 'completed':
+        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      case 'failed':
+        return <XCircle className="h-4 w-4 text-destructive" />;
+      case 'waiting':
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
+      default:
+        return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
     }
   };
-
   const getStatusBadgeVariant = (status: FileUploadStatus['status']) => {
     switch (status) {
-      case 'completed': return 'default';
-      case 'failed': return 'destructive';
-      case 'processing': return 'secondary';
-      default: return 'outline';
+      case 'completed':
+        return 'default';
+      case 'failed':
+        return 'destructive';
+      case 'processing':
+        return 'secondary';
+      default:
+        return 'outline';
     }
   };
-
   const getChatBadgeColor = (chat: string | null) => {
     switch (chat?.toUpperCase()) {
-      case 'HEALTH': return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
-      case 'STUDY': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-      case 'GENERAL': return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
-      default: return '';
+      case 'HEALTH':
+        return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
+      case 'STUDY':
+        return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      case 'GENERAL':
+        return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
+      default:
+        return '';
     }
   };
-
   const parentTags = tags?.filter(t => t.tag_type === "parent") || [];
   const childTags = tags?.filter(t => t.tag_type === "child") || [];
-  
   const editingParentTags = editingTags?.filter(t => t.tag_type === "parent") || [];
   const editingChildTags = editingTags?.filter(t => t.tag_type === "child") || [];
-  
+
   // Manual insertion mutation
   const manualInsertMutation = useMutation({
-    mutationFn: async ({ docId, targetChat }: { docId: string; targetChat: string }) => {
+    mutationFn: async ({
+      docId,
+      targetChat
+    }: {
+      docId: string;
+      targetChat: string;
+    }) => {
       // 1. Atualizar documento
-      const { error } = await supabase
-        .from("documents")
-        .update({
-          is_inserted: true,
-          inserted_in_chat: targetChat,
-          inserted_at: new Date().toISOString(),
-          redirected_from: 'general'
-        })
-        .eq("id", docId);
-      
+      const {
+        error
+      } = await supabase.from("documents").update({
+        is_inserted: true,
+        inserted_in_chat: targetChat,
+        inserted_at: new Date().toISOString(),
+        redirected_from: 'general'
+      }).eq("id", docId);
       if (error) throw error;
-      
+
       // 2. Registrar log de roteamento
-      const { data: doc } = await supabase
-        .from("documents")
-        .select("filename, target_chat")
-        .eq("id", docId)
-        .single();
-        
+      const {
+        data: doc
+      } = await supabase.from("documents").select("filename, target_chat").eq("id", docId).single();
       await supabase.from("document_routing_log").insert({
         document_id: docId,
         document_name: doc?.filename || 'Documento',
@@ -1014,11 +992,16 @@ export const DocumentsTab = () => {
         session_id: `admin-${Date.now()}`,
         scope_changed: true,
         disclaimer_shown: true,
-        metadata: { manual_insertion: true, admin_action: true }
+        metadata: {
+          manual_insertion: true,
+          admin_action: true
+        }
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({
+        queryKey: ["documents"]
+      });
       toast.success("Documento inserido no chat com sucesso!");
       setInsertionModalDoc(null);
     },
@@ -1026,19 +1009,13 @@ export const DocumentsTab = () => {
       toast.error(`Erro ao inserir: ${error.message}`);
     }
   });
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div>
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold">Documentos RAG</h2>
           
           {/* RAG Info Button com círculo, ícone Lightbulb e pulsing dot */}
-          <button
-            onClick={() => setShowRagInfoModal(true)}
-            className="relative flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-amber-500/30 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all duration-300 group"
-            title="Resumo da Engenharia RAG"
-          >
+          <button onClick={() => setShowRagInfoModal(true)} className="relative flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-amber-500/30 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all duration-300 group" title="Resumo da Engenharia RAG">
             <Lightbulb className="h-5 w-5 text-amber-500 group-hover:text-amber-400 transition-colors" />
             
             {/* Green pulsing dot - posicionado na parte externa do círculo */}
@@ -1054,8 +1031,7 @@ export const DocumentsTab = () => {
       </div>
 
       {/* RAG Metrics Summary */}
-      {metrics && (
-        <Card className="p-6">
+      {metrics && <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">📊 Resumo RAG</h3>
           <div className="grid grid-cols-4 gap-4 mb-4">
             <div className="text-center p-4 bg-muted rounded-lg">
@@ -1067,7 +1043,7 @@ export const DocumentsTab = () => {
               <div className="text-sm text-muted-foreground mt-1">📦 Chunks</div>
             </div>
             <div className="text-center p-4 bg-muted rounded-lg">
-              <div className="text-3xl font-bold text-green-600">{metrics.totalDocs > 0 ? Math.round((metrics.completed / metrics.totalDocs) * 100) : 0}%</div>
+              <div className="text-3xl font-bold text-green-600">{metrics.totalDocs > 0 ? Math.round(metrics.completed / metrics.totalDocs * 100) : 0}%</div>
               <div className="text-sm text-muted-foreground mt-1">✅ Sucesso</div>
             </div>
             <div className="text-center p-4 bg-muted rounded-lg">
@@ -1092,8 +1068,7 @@ export const DocumentsTab = () => {
               </Badge>
             </div>
           </div>
-        </Card>
-      )}
+        </Card>}
 
       {/* Documentation Generation Section */}
       <Card className="p-6">
@@ -1104,29 +1079,20 @@ export const DocumentsTab = () => {
               Gerar/atualizar documentação técnica do sistema
             </p>
           </div>
-          <Button 
-            onClick={() => generateDocsMutation.mutate()}
-            disabled={generateDocsMutation.isPending}
-          >
-            {generateDocsMutation.isPending ? (
-              <>
+          <Button onClick={() => generateDocsMutation.mutate()} disabled={generateDocsMutation.isPending}>
+            {generateDocsMutation.isPending ? <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Gerando...
-              </>
-            ) : (
-              <>
+              </> : <>
                 <FileCode className="mr-2 h-4 w-4" />
                 Gerar Documentação
-              </>
-            )}
+              </>}
           </Button>
         </div>
         
-        {lastDocVersion && (
-          <div className="mt-4 text-sm text-muted-foreground">
+        {lastDocVersion && <div className="mt-4 text-sm text-muted-foreground">
             Última versão: {lastDocVersion.version} - {new Date(lastDocVersion.created_at).toLocaleDateString()}
-          </div>
-        )}
+          </div>}
       </Card>
 
       {/* Upload Section with Drag-and-Drop */}
@@ -1138,45 +1104,18 @@ export const DocumentsTab = () => {
             </label>
             
             {/* Drag and Drop Zone */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={cn(
-                "relative border-2 border-dashed rounded-lg p-12 text-center transition-colors",
-                isDragging 
-                  ? "border-primary bg-primary/5" 
-                  : "border-muted-foreground/25 hover:border-primary/50",
-                uploading && "opacity-50 pointer-events-none"
-              )}
-            >
+            <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} className={cn("relative border-2 border-dashed rounded-lg p-12 text-center transition-colors", isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50", uploading && "opacity-50 pointer-events-none")}>
               <div className="flex flex-col items-center gap-4">
-                <Upload className={cn(
-                  "h-12 w-12 transition-colors",
-                  isDragging ? "text-primary" : "text-muted-foreground"
-                )} />
+                <Upload className={cn("h-12 w-12 transition-colors", isDragging ? "text-primary" : "text-muted-foreground")} />
                 <div>
                   <p className="text-lg font-medium mb-1">
                     📄 Arraste arquivos PDF aqui
                   </p>
                   <p className="text-sm text-muted-foreground mb-4">ou</p>
-                  <Button 
-                    variant="outline" 
-                    size="lg"
-                    onClick={() => document.getElementById('file-input')?.click()}
-                    disabled={uploading}
-                  >
+                  <Button variant="outline" size="lg" onClick={() => document.getElementById('file-input')?.click()} disabled={uploading}>
                     Escolher Arquivos
                   </Button>
-                  <input
-                    id="file-input"
-                    type="file"
-                    accept=".pdf"
-                    multiple
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    disabled={uploading}
-                  />
+                  <input id="file-input" type="file" accept=".pdf" multiple onChange={handleFileSelect} className="hidden" disabled={uploading} />
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Aceita múltiplos PDFs • Auto-categorização via IA
@@ -1185,43 +1124,29 @@ export const DocumentsTab = () => {
             </div>
           </div>
 
-          {selectedFiles.length > 0 && (
-            <div className="space-y-2">
+          {selectedFiles.length > 0 && <div className="space-y-2">
               <p className="text-sm font-medium">{selectedFiles.length} arquivo(s) selecionado(s):</p>
-              {selectedFiles.map((file, idx) => (
-                <div key={idx} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+              {selectedFiles.map((file, idx) => <div key={idx} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                   <FileText className="h-4 w-4" />
                   <span className="text-sm flex-1">{file.name}</span>
                   <Badge variant="outline">{(file.size / 1024).toFixed(2)} KB</Badge>
-                </div>
-              ))}
-            </div>
-          )}
+                </div>)}
+            </div>}
 
-          <Button
-            onClick={() => uploadMutation.mutate()}
-            disabled={selectedFiles.length === 0 || uploading}
-            className="w-full"
-            size="lg"
-          >
-            {uploading ? (
-              <>
+          <Button onClick={() => uploadMutation.mutate()} disabled={selectedFiles.length === 0 || uploading} className="w-full" size="lg">
+            {uploading ? <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Processando {selectedFiles.length} documento(s)...
-              </>
-            ) : (
-              <>
+              </> : <>
                 <Upload className="mr-2 h-4 w-4" />
                 Enviar e Processar
-              </>
-            )}
+              </>}
           </Button>
         </div>
       </Card>
 
       {/* Real-time Upload Status Table */}
-      {uploadStatuses.length > 0 && (
-        <Card className="p-6">
+      {uploadStatuses.length > 0 && <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Status de Upload</h3>
           <Table>
             <TableHeader>
@@ -1234,8 +1159,7 @@ export const DocumentsTab = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {uploadStatuses.map((fileStatus) => (
-                <TableRow key={fileStatus.id}>
+              {uploadStatuses.map(fileStatus => <TableRow key={fileStatus.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       {getStatusIcon(fileStatus.status)}
@@ -1253,44 +1177,29 @@ export const DocumentsTab = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {fileStatus.status !== 'completed' && fileStatus.status !== 'failed' ? (
-                      <div className="space-y-1">
+                    {fileStatus.status !== 'completed' && fileStatus.status !== 'failed' ? <div className="space-y-1">
                         <Progress value={fileStatus.progress} className="h-2" />
                         <span className="text-xs text-muted-foreground">{fileStatus.progress}%</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
+                      </div> : <span className="text-xs text-muted-foreground">
                         {fileStatus.progress}%
-                      </span>
-                    )}
+                      </span>}
                   </TableCell>
                   <TableCell>
-                    {fileStatus.targetChat ? (
-                      <Badge variant="outline" className={getChatBadgeColor(fileStatus.targetChat)}>
+                    {fileStatus.targetChat ? <Badge variant="outline" className={getChatBadgeColor(fileStatus.targetChat)}>
                         {fileStatus.targetChat === 'health' && '🏥 HEALTH'}
                         {fileStatus.targetChat === 'study' && '📚 STUDY'}
                         {fileStatus.targetChat === 'general' && '📄 GENERAL'}
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
+                      </Badge> : <span className="text-xs text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
-                    <span className={cn(
-                      "text-xs",
-                      fileStatus.status === 'completed' ? "text-green-600" : 
-                      fileStatus.status === 'failed' ? "text-destructive" : 
-                      "text-muted-foreground"
-                    )}>
+                    <span className={cn("text-xs", fileStatus.status === 'completed' ? "text-green-600" : fileStatus.status === 'failed' ? "text-destructive" : "text-muted-foreground")}>
                       {fileStatus.details}
                     </span>
                   </TableCell>
-                </TableRow>
-              ))}
+                </TableRow>)}
             </TableBody>
           </Table>
-        </Card>
-      )}
+        </Card>}
 
       {/* Documents Table */}
       <Card className="p-6">
@@ -1302,12 +1211,7 @@ export const DocumentsTab = () => {
             {/* Search Bar */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, conteúdo ou resumo..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+              <Input placeholder="Buscar por nome, conteúdo ou resumo..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
             
             {/* Filters Row */}
@@ -1359,146 +1263,90 @@ export const DocumentsTab = () => {
                 </Select>
               </div>
               
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setStatusFilter("all");
-                  setChatFilter("all");
-                  setReadabilityFilter("all");
-                  setSearchQuery("");
-                  setSortField("created_at");
-                  setSortDirection("desc");
-                }}
-              >
+              <Button variant="outline" onClick={() => {
+              setStatusFilter("all");
+              setChatFilter("all");
+              setReadabilityFilter("all");
+              setSearchQuery("");
+              setSortField("created_at");
+              setSortDirection("desc");
+            }}>
                 🔄 Limpar Filtros
               </Button>
               
-              <Button 
-                variant="outline"
-                onClick={handleReprocessAllPendingFailed}
-                disabled={isBulkReprocessing}
-              >
-                {isBulkReprocessing ? (
-                  <>
+              <Button variant="outline" onClick={handleReprocessAllPendingFailed} disabled={isBulkReprocessing}>
+                {isBulkReprocessing ? <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Reprocessando...
-                  </>
-                ) : (
-                  <>
+                  </> : <>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Reprocessar Pendentes/Falhados
-                  </>
-                )}
+                  </>}
               </Button>
             </div>
           </div>
           
           {/* Bulk Actions Bar */}
-          {selectedDocs.size > 0 && (
-            <div className="flex items-center gap-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+          {selectedDocs.size > 0 && <div className="flex items-center gap-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
               <span className="text-sm font-medium">
                 {selectedDocs.size} documento(s) selecionado(s)
               </span>
-              <Button 
-                variant="default"
-                size="sm"
-                onClick={exportSelectedAsZip}
-                disabled={isExporting}
-              >
-                {isExporting ? (
-                  <>
+              <Button variant="default" size="sm" onClick={exportSelectedAsZip} disabled={isExporting}>
+                {isExporting ? <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Exportando...
-                  </>
-                ) : (
-                  <>
+                  </> : <>
                     <Package className="mr-2 h-4 w-4" />
                     Exportar ZIP
-                  </>
-                )}
+                  </>}
               </Button>
-              <Button 
-                variant="secondary"
-                size="sm"
-                onClick={handleBulkReprocess}
-                disabled={isBulkReprocessing}
-              >
-                {isBulkReprocessing ? (
-                  <>
+              <Button variant="secondary" size="sm" onClick={handleBulkReprocess} disabled={isBulkReprocessing}>
+                {isBulkReprocessing ? <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Reprocessando...
-                  </>
-                ) : (
-                  <>
+                  </> : <>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Reprocessar Selecionados
-                  </>
-                )}
+                  </>}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedDocs(new Set())}
-              >
+              <Button variant="outline" size="sm" onClick={() => setSelectedDocs(new Set())}>
                 Limpar Seleção
               </Button>
-            </div>
-          )}
+            </div>}
         
-        {isLoading ? (
-          <div className="flex justify-center py-8">
+        {isLoading ? <div className="flex justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-        ) : filteredDocuments && filteredDocuments.length > 0 ? (
-          <Table>
+          </div> : filteredDocuments && filteredDocuments.length > 0 ? <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[50px]">
-                  <Checkbox
-                    checked={selectedDocs.size === filteredDocuments.length && filteredDocuments.length > 0}
-                    onCheckedChange={selectAllFiltered}
-                  />
+                  <Checkbox checked={selectedDocs.size === filteredDocuments.length && filteredDocuments.length > 0} onCheckedChange={selectAllFiltered} />
                 </TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => toggleSort("filename")}
-                >
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("filename")}>
                   <div className="flex items-center gap-2">
                     Nome
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "filename" && "text-primary")} />
                   </div>
                 </TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => toggleSort("status")}
-                >
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("status")}>
                   <div className="flex items-center gap-2">
                     Status
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "status" && "text-primary")} />
                   </div>
                 </TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => toggleSort("target_chat")}
-                >
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("target_chat")}>
                   <div className="flex items-center gap-2">
                     Chat
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "target_chat" && "text-primary")} />
                   </div>
                 </TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => toggleSort("inserted_in_chat")}
-                >
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("inserted_in_chat")}>
                   <div className="flex items-center gap-2">
                     Chat Inserido
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "inserted_in_chat" && "text-primary")} />
                   </div>
                 </TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => toggleSort("is_inserted")}
-                >
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("is_inserted")}>
                   <div className="flex items-center gap-2">
                     Inserido
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "is_inserted" && "text-primary")} />
@@ -1506,19 +1354,13 @@ export const DocumentsTab = () => {
                 </TableHead>
                 <TableHead>TAG Principal</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => toggleSort("total_chunks")}
-                >
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("total_chunks")}>
                   <div className="flex items-center gap-2">
                     Chunks
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "total_chunks" && "text-primary")} />
                   </div>
                 </TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => toggleSort("readability_score")}
-                >
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("readability_score")}>
                   <div className="flex items-center gap-2">
                     Legibilidade
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "readability_score" && "text-primary")} />
@@ -1535,10 +1377,7 @@ export const DocumentsTab = () => {
                     </TooltipProvider>
                   </div>
                 </TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => toggleSort("created_at")}
-                >
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("created_at")}>
                   <div className="flex items-center gap-2">
                     Data
                     <ArrowUpDown className={cn("h-4 w-4", sortField === "created_at" && "text-primary")} />
@@ -1548,16 +1387,9 @@ export const DocumentsTab = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedDocuments.map((doc) => (
-                <TableRow 
-                  key={doc.id}
-                  className="hover:bg-muted/50"
-                >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      checked={selectedDocs.has(doc.id)}
-                      onCheckedChange={() => toggleDocSelection(doc.id)}
-                    />
+              {paginatedDocuments.map(doc => <TableRow key={doc.id} className="hover:bg-muted/50">
+                  <TableCell onClick={e => e.stopPropagation()}>
+                    <Checkbox checked={selectedDocs.has(doc.id)} onCheckedChange={() => toggleDocSelection(doc.id)} />
                   </TableCell>
                   <TableCell className="font-medium">
                     <Popover>
@@ -1586,199 +1418,113 @@ export const DocumentsTab = () => {
                         {/* Status atual */}
                         <div className="flex items-center gap-2 mb-4">
                           <Badge variant="outline">{doc.target_chat}</Badge>
-                          {doc.is_inserted && (
-                            <Badge className="bg-green-500">Inserido em {doc.inserted_in_chat}</Badge>
-                          )}
+                          {doc.is_inserted && <Badge className="bg-green-500">Inserido em {doc.inserted_in_chat}</Badge>}
                         </div>
                         
                         {/* Botões de ação - apenas se não estiver inserido */}
-                        {!doc.is_inserted && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => manualInsertMutation.mutate({ docId: doc.id, targetChat: 'health' })}
-                              className="flex items-center gap-2"
-                              disabled={manualInsertMutation.isPending}
-                            >
+                        {!doc.is_inserted && <div className="grid grid-cols-2 gap-2">
+                            <Button size="sm" variant="outline" onClick={() => manualInsertMutation.mutate({
+                        docId: doc.id,
+                        targetChat: 'health'
+                      })} className="flex items-center gap-2" disabled={manualInsertMutation.isPending}>
                               <Heart className="h-4 w-4 text-red-500" />
                               Health
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => manualInsertMutation.mutate({ docId: doc.id, targetChat: 'study' })}
-                              className="flex items-center gap-2"
-                              disabled={manualInsertMutation.isPending}
-                            >
+                            <Button size="sm" variant="outline" onClick={() => manualInsertMutation.mutate({
+                        docId: doc.id,
+                        targetChat: 'study'
+                      })} className="flex items-center gap-2" disabled={manualInsertMutation.isPending}>
                               <GraduationCap className="h-4 w-4 text-blue-500" />
                               Study
                             </Button>
-                          </div>
-                        )}
+                          </div>}
                         
                         {/* Link para detalhes completos */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full mt-2 text-xs"
-                          onClick={() => setSelectedDoc(doc)}
-                        >
-                          Ver detalhes completos →
-                        </Button>
+                        
                       </PopoverContent>
                     </Popover>
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
-                    <Badge variant={
-                      isStuck(doc) ? "destructive" :
-                      doc.status === "completed" ? "default" :
-                      doc.status === "failed" ? "destructive" :
-                      "secondary"
-                    }>
+                    <Badge variant={isStuck(doc) ? "destructive" : doc.status === "completed" ? "default" : doc.status === "failed" ? "destructive" : "secondary"}>
                       {isStuck(doc) ? "⚠️ TRAVADO" : doc.status}
                     </Badge>
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
                     <Badge variant="outline">{doc.target_chat || "pendente"}</Badge>
                   </TableCell>
-                  <TableCell onClick={(e) => !doc.is_inserted && e.stopPropagation()}>
-                    {doc.is_inserted && doc.inserted_in_chat ? (
-                      <Badge className={getChatBadgeColor(doc.inserted_in_chat)}>
+                  <TableCell onClick={e => !doc.is_inserted && e.stopPropagation()}>
+                    {doc.is_inserted && doc.inserted_in_chat ? <Badge className={getChatBadgeColor(doc.inserted_in_chat)}>
                         {doc.inserted_in_chat}
-                      </Badge>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setInsertionModalDoc(doc);
-                        }}
-                        className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 border-blue-500/30"
-                        title="Inserir em Chat"
-                      >
+                      </Badge> : <Button variant="outline" size="sm" onClick={e => {
+                  e.stopPropagation();
+                  setInsertionModalDoc(doc);
+                }} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 border-blue-500/30" title="Inserir em Chat">
                         <Plus className="h-4 w-4" />
-                      </Button>
-                    )}
+                      </Button>}
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)} className="text-center">
-                    {doc.is_inserted ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
-                    )}
+                    {doc.is_inserted ? <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" /> : <XCircle className="h-5 w-5 text-gray-400 mx-auto" />}
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setTagsModalDoc(doc);
-                      }}
-                      className="h-auto p-1"
-                    >
+                    <Button variant="ghost" size="sm" onClick={e => {
+                  e.stopPropagation();
+                  setTagsModalDoc(doc);
+                }} className="h-auto p-1">
                       {(() => {
-                        const topTag = getTopParentTag(doc.id);
-                        return topTag ? (
-                          <Badge variant="secondary" className="text-xs">
+                    const topTag = getTopParentTag(doc.id);
+                    return topTag ? <Badge variant="secondary" className="text-xs">
                             {topTag.tag_name}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        );
-                      })()}
+                          </Badge> : <span className="text-xs text-muted-foreground">—</span>;
+                  })()}
                     </Button>
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
-                    {doc.implementation_status && (
-                      <Badge variant={
-                        doc.implementation_status === "ready" ? "default" :
-                        doc.implementation_status === "needs_review" ? "secondary" :
-                        "outline"
-                      }>
+                    {doc.implementation_status && <Badge variant={doc.implementation_status === "ready" ? "default" : doc.implementation_status === "needs_review" ? "secondary" : "outline"}>
                         {doc.implementation_status}
-                      </Badge>
-                    )}
+                      </Badge>}
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>{doc.total_chunks}</TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
-                    {doc.readability_score !== null ? (
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          doc.readability_score >= 0.8 ? 'bg-green-500' :
-                          doc.readability_score >= 0.6 ? 'bg-blue-500' :
-                          doc.readability_score >= 0.4 ? 'bg-yellow-500' : 'bg-red-500'
-                        }`} />
-                        <span className={`font-medium ${
-                          doc.readability_score >= 0.8 ? 'text-green-500' :
-                          doc.readability_score >= 0.6 ? 'text-blue-500' :
-                          doc.readability_score >= 0.4 ? 'text-yellow-500' : 'text-red-500'
-                        }`}>
+                    {doc.readability_score !== null ? <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${doc.readability_score >= 0.8 ? 'bg-green-500' : doc.readability_score >= 0.6 ? 'bg-blue-500' : doc.readability_score >= 0.4 ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                        <span className={`font-medium ${doc.readability_score >= 0.8 ? 'text-green-500' : doc.readability_score >= 0.6 ? 'text-blue-500' : doc.readability_score >= 0.4 ? 'text-yellow-500' : 'text-red-500'}`}>
                           {Math.round(doc.readability_score * 100)}%
                         </span>
-                      </div>
-                    ) : (
-                      <Badge variant="outline" className="text-xs">
+                      </div> : <Badge variant="outline" className="text-xs">
                         {doc.is_readable ? "✓ Legível" : "✗ Ilegível"}
-                      </Badge>
-                    )}
+                      </Badge>}
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          downloadAsPDF(doc);
-                        }}
-                        title="Download PDF"
-                      >
+                      <Button variant="ghost" size="sm" onClick={e => {
+                    e.stopPropagation();
+                    downloadAsPDF(doc);
+                  }} title="Download PDF">
                         <Download className="h-4 w-4" />
                       </Button>
-                      {(doc.status === "failed" || doc.status === "pending") && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            reprocessMutation.mutate(doc.id);
-                          }}
-                          disabled={reprocessMutation.isPending}
-                          title="Reprocessar"
-                        >
+                      {(doc.status === "failed" || doc.status === "pending") && <Button variant="ghost" size="sm" onClick={e => {
+                    e.stopPropagation();
+                    reprocessMutation.mutate(doc.id);
+                  }} disabled={reprocessMutation.isPending} title="Reprocessar">
                           <RefreshCw className={cn("h-4 w-4", reprocessMutation.isPending && "animate-spin")} />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteMutation.mutate(doc.id);
-                        }}
-                        title="Deletar"
-                      >
+                        </Button>}
+                      <Button variant="ghost" size="sm" onClick={e => {
+                    e.stopPropagation();
+                    deleteMutation.mutate(doc.id);
+                  }} title="Deletar">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
-                </TableRow>
-              ))}
+                </TableRow>)}
             </TableBody>
-          </Table>
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
+          </Table> : <div className="text-center py-8 text-muted-foreground">
             Nenhum documento encontrado
-          </div>
-        )}
+          </div>}
         
         {/* Pagination Controls */}
-        {filteredDocuments && filteredDocuments.length > 0 && (
-          <div className="mt-6 space-y-4">
+        {filteredDocuments && filteredDocuments.length > 0 && <div className="mt-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <p className="text-sm text-muted-foreground">
@@ -1787,13 +1533,10 @@ export const DocumentsTab = () => {
                 
                 <div className="flex items-center gap-2">
                   <Label className="text-sm">Por página:</Label>
-                  <Select 
-                    value={itemsPerPage.toString()} 
-                    onValueChange={(v) => {
-                      setItemsPerPage(Number(v));
-                      setCurrentPage(1);
-                    }}
-                  >
+                  <Select value={itemsPerPage.toString()} onValueChange={v => {
+                  setItemsPerPage(Number(v));
+                  setCurrentPage(1);
+                }}>
                     <SelectTrigger className="w-[80px]">
                       <SelectValue />
                     </SelectTrigger>
@@ -1807,93 +1550,57 @@ export const DocumentsTab = () => {
                 </div>
               </div>
               
-              {totalPages > 1 && (
-                <Pagination>
+              {totalPages > 1 && <Pagination>
                   <PaginationContent>
                     <PaginationItem>
-                      <PaginationPrevious 
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                      />
+                      <PaginationPrevious onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
                     </PaginationItem>
                     
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter(page => 
-                        page === 1 || 
-                        page === totalPages || 
-                        Math.abs(page - currentPage) <= 1
-                      )
-                      .map((page, idx, arr) => (
-                        <>
-                          {idx > 0 && arr[idx - 1] !== page - 1 && (
-                            <PaginationItem key={`ellipsis-${page}`}>
+                    {Array.from({
+                  length: totalPages
+                }, (_, i) => i + 1).filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1).map((page, idx, arr) => <>
+                          {idx > 0 && arr[idx - 1] !== page - 1 && <PaginationItem key={`ellipsis-${page}`}>
                               <PaginationEllipsis />
-                            </PaginationItem>
-                          )}
+                            </PaginationItem>}
                           <PaginationItem key={page}>
-                            <PaginationLink
-                              onClick={() => setCurrentPage(page)}
-                              isActive={currentPage === page}
-                              className="cursor-pointer"
-                            >
+                            <PaginationLink onClick={() => setCurrentPage(page)} isActive={currentPage === page} className="cursor-pointer">
                               {page}
                             </PaginationLink>
                           </PaginationItem>
-                        </>
-                      ))}
+                        </>)}
                     
                     <PaginationItem>
-                      <PaginationNext 
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                      />
+                      <PaginationNext onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"} />
                     </PaginationItem>
                   </PaginationContent>
-                </Pagination>
-              )}
+                </Pagination>}
             </div>
-          </div>
-        )}
+          </div>}
         </div>
       </Card>
 
       {/* Document Details */}
-      {selectedDoc && (
-        <Card className="p-6">
+      {selectedDoc && <Card className="p-6">
           <div className="space-y-4">
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="text-lg font-semibold">{selectedDoc.filename}</h3>
                 <div className="flex gap-2 mt-1">
                   <Badge variant="outline">{selectedDoc.target_chat || "não categorizado"}</Badge>
-                  {selectedDoc.implementation_status && (
-                    <Badge variant={
-                      selectedDoc.implementation_status === "ready" ? "default" :
-                      selectedDoc.implementation_status === "needs_review" ? "secondary" :
-                      "outline"
-                    }>
+                  {selectedDoc.implementation_status && <Badge variant={selectedDoc.implementation_status === "ready" ? "default" : selectedDoc.implementation_status === "needs_review" ? "secondary" : "outline"}>
                       {selectedDoc.implementation_status}
-                    </Badge>
-                  )}
+                    </Badge>}
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
                   {selectedDoc.total_words} palavras • {selectedDoc.total_chunks} chunks
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setViewChunksDoc(selectedDoc)}
-                >
+                <Button variant="outline" size="sm" onClick={() => setViewChunksDoc(selectedDoc)}>
                   <Boxes className="h-4 w-4 mr-2" />
                   Ver Chunks
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setEditingTagsDoc(selectedDoc)}
-                >
+                <Button variant="outline" size="sm" onClick={() => setEditingTagsDoc(selectedDoc)}>
                   <Edit className="h-4 w-4 mr-2" />
                   Editar Tags
                 </Button>
@@ -1903,43 +1610,31 @@ export const DocumentsTab = () => {
               </div>
             </div>
 
-            {selectedDoc.ai_summary && (
-              <div>
+            {selectedDoc.ai_summary && <div>
                 <h4 className="font-medium mb-2">Resumo (Auto-gerado)</h4>
                 <p className="text-sm text-muted-foreground">{selectedDoc.ai_summary}</p>
-              </div>
-            )}
+              </div>}
 
-            {parentTags.length > 0 && (
-              <div>
+            {parentTags.length > 0 && <div>
                 <h4 className="font-medium mb-2">Tags</h4>
                 <div className="space-y-2">
-                  {parentTags.map((parent) => (
-                    <div key={parent.id}>
+                  {parentTags.map(parent => <div key={parent.id}>
                       <Badge className="mb-1">{parent.tag_name}</Badge>
                       <div className="ml-4 flex flex-wrap gap-1">
-                        {childTags
-                          .filter(c => c.parent_tag_id === parent.id)
-                          .map(child => (
-                            <Badge key={child.id} variant="outline" className="text-xs">
+                        {childTags.filter(c => c.parent_tag_id === parent.id).map(child => <Badge key={child.id} variant="outline" className="text-xs">
                               {child.tag_name}
-                            </Badge>
-                          ))}
+                            </Badge>)}
                       </div>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
-              </div>
-            )}
+              </div>}
 
-            {selectedDoc.text_preview && (
-              <div>
+            {selectedDoc.text_preview && <div>
                 <h4 className="font-medium mb-2">Preview</h4>
                 <p className="text-sm text-muted-foreground font-mono bg-muted p-3 rounded">
                   {selectedDoc.text_preview}...
                 </p>
-              </div>
-            )}
+              </div>}
 
             {/* Similar Documents Section */}
             <div>
@@ -1948,19 +1643,7 @@ export const DocumentsTab = () => {
                 Baseado em tags compartilhadas e conteúdo semântico
               </p>
               <div className="space-y-2">
-                {documents
-                  ?.filter(d => 
-                    d.id !== selectedDoc.id && 
-                    d.status === "completed" &&
-                    d.target_chat === selectedDoc.target_chat
-                  )
-                  .slice(0, 5)
-                  .map(doc => (
-                    <div 
-                      key={doc.id}
-                      className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => setSelectedDoc(doc)}
-                    >
+                {documents?.filter(d => d.id !== selectedDoc.id && d.status === "completed" && d.target_chat === selectedDoc.target_chat).slice(0, 5).map(doc => <div key={doc.id} className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors" onClick={() => setSelectedDoc(doc)}>
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <p className="text-sm font-medium">{doc.filename}</p>
@@ -1974,26 +1657,17 @@ export const DocumentsTab = () => {
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                {documents?.filter(d => 
-                  d.id !== selectedDoc.id && 
-                  d.status === "completed" &&
-                  d.target_chat === selectedDoc.target_chat
-                ).length === 0 && (
-                  <p className="text-sm text-muted-foreground italic">
+                    </div>)}
+                {documents?.filter(d => d.id !== selectedDoc.id && d.status === "completed" && d.target_chat === selectedDoc.target_chat).length === 0 && <p className="text-sm text-muted-foreground italic">
                     Nenhum documento similar encontrado
-                  </p>
-                )}
+                  </p>}
               </div>
             </div>
           </div>
-        </Card>
-      )}
+        </Card>}
 
       {/* Tag Editing Dialog */}
-      {editingTagsDoc && (
-        <Dialog open={!!editingTagsDoc} onOpenChange={(open) => !open && setEditingTagsDoc(null)}>
+      {editingTagsDoc && <Dialog open={!!editingTagsDoc} onOpenChange={open => !open && setEditingTagsDoc(null)}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Editar Tags - {editingTagsDoc.filename}</DialogTitle>
@@ -2004,49 +1678,35 @@ export const DocumentsTab = () => {
               <div>
                 <h4 className="font-semibold mb-3">📂 CATEGORIAS PRINCIPAIS</h4>
                 <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30 min-h-[60px]">
-                  {editingParentTags.map((tag) => (
-                    <Badge key={tag.id} className="flex items-center gap-2 px-3 py-1">
+                  {editingParentTags.map(tag => <Badge key={tag.id} className="flex items-center gap-2 px-3 py-1">
                       {tag.tag_name}
-                      <button
-                        onClick={() => removeTagMutation.mutate(tag.id)}
-                        className="hover:text-destructive"
-                      >
+                      <button onClick={() => removeTagMutation.mutate(tag.id)} className="hover:text-destructive">
                         <X className="h-3 w-3" />
                       </button>
-                    </Badge>
-                  ))}
+                    </Badge>)}
                 </div>
                 
                 <div className="flex gap-2 mt-2">
-                  <Input
-                    placeholder="Nova categoria"
-                    value={newParentTag}
-                    onChange={(e) => setNewParentTag(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && newParentTag.trim()) {
-                        addTagMutation.mutate({
-                          documentId: editingTagsDoc.id,
-                          tagName: newParentTag.trim(),
-                          tagType: "parent"
-                        });
-                        setNewParentTag("");
-                      }
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      if (newParentTag.trim()) {
-                        addTagMutation.mutate({
-                          documentId: editingTagsDoc.id,
-                          tagName: newParentTag.trim(),
-                          tagType: "parent"
-                        });
-                        setNewParentTag("");
-                      }
-                    }}
-                    disabled={!newParentTag.trim()}
-                  >
+                  <Input placeholder="Nova categoria" value={newParentTag} onChange={e => setNewParentTag(e.target.value)} onKeyPress={e => {
+                if (e.key === 'Enter' && newParentTag.trim()) {
+                  addTagMutation.mutate({
+                    documentId: editingTagsDoc.id,
+                    tagName: newParentTag.trim(),
+                    tagType: "parent"
+                  });
+                  setNewParentTag("");
+                }
+              }} />
+                  <Button size="sm" onClick={() => {
+                if (newParentTag.trim()) {
+                  addTagMutation.mutate({
+                    documentId: editingTagsDoc.id,
+                    tagName: newParentTag.trim(),
+                    tagType: "parent"
+                  });
+                  setNewParentTag("");
+                }
+              }} disabled={!newParentTag.trim()}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -2055,118 +1715,84 @@ export const DocumentsTab = () => {
               {/* Child Tags Section */}
               <div>
                 <h4 className="font-semibold mb-3">🏷️ TAGS (por categoria)</h4>
-                {editingParentTags.length === 0 ? (
-                  <p className="text-sm text-muted-foreground italic">
+                {editingParentTags.length === 0 ? <p className="text-sm text-muted-foreground italic">
                     Adicione categorias principais primeiro
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {editingParentTags.map((parent) => (
-                      <div key={parent.id} className="border rounded-lg p-3">
+                  </p> : <div className="space-y-4">
+                    {editingParentTags.map(parent => <div key={parent.id} className="border rounded-lg p-3">
                         <div className="font-medium text-sm mb-2">{parent.tag_name}:</div>
                         <div className="flex flex-wrap gap-2 mb-2 min-h-[40px]">
-                          {editingChildTags
-                            .filter(c => c.parent_tag_id === parent.id)
-                            .map(child => (
-                              <Badge key={child.id} variant="outline" className="flex items-center gap-2 text-xs px-2 py-1">
+                          {editingChildTags.filter(c => c.parent_tag_id === parent.id).map(child => <Badge key={child.id} variant="outline" className="flex items-center gap-2 text-xs px-2 py-1">
                                 {child.tag_name}
-                                <button
-                                  onClick={() => removeTagMutation.mutate(child.id)}
-                                  className="hover:text-destructive"
-                                >
+                                <button onClick={() => removeTagMutation.mutate(child.id)} className="hover:text-destructive">
                                   <X className="h-3 w-3" />
                                 </button>
-                              </Badge>
-                            ))}
+                              </Badge>)}
                         </div>
                         <div className="flex gap-2">
-                          <Input
-                            placeholder="Nova tag"
-                            value={selectedParentForChild === parent.id ? newChildTag : ""}
-                            onFocus={() => setSelectedParentForChild(parent.id)}
-                            onChange={(e) => setNewChildTag(e.target.value)}
-                            onKeyPress={(e) => {
-                              if (e.key === 'Enter' && newChildTag.trim()) {
-                                addTagMutation.mutate({
-                                  documentId: editingTagsDoc.id,
-                                  tagName: newChildTag.trim(),
-                                  tagType: "child",
-                                  parentTagId: parent.id
-                                });
-                                setNewChildTag("");
-                              }
-                            }}
-                            className="text-sm"
-                          />
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              if (newChildTag.trim() && selectedParentForChild === parent.id) {
-                                addTagMutation.mutate({
-                                  documentId: editingTagsDoc.id,
-                                  tagName: newChildTag.trim(),
-                                  tagType: "child",
-                                  parentTagId: parent.id
-                                });
-                                setNewChildTag("");
-                              }
-                            }}
-                            disabled={!newChildTag.trim() || selectedParentForChild !== parent.id}
-                          >
+                          <Input placeholder="Nova tag" value={selectedParentForChild === parent.id ? newChildTag : ""} onFocus={() => setSelectedParentForChild(parent.id)} onChange={e => setNewChildTag(e.target.value)} onKeyPress={e => {
+                    if (e.key === 'Enter' && newChildTag.trim()) {
+                      addTagMutation.mutate({
+                        documentId: editingTagsDoc.id,
+                        tagName: newChildTag.trim(),
+                        tagType: "child",
+                        parentTagId: parent.id
+                      });
+                      setNewChildTag("");
+                    }
+                  }} className="text-sm" />
+                          <Button size="sm" onClick={() => {
+                    if (newChildTag.trim() && selectedParentForChild === parent.id) {
+                      addTagMutation.mutate({
+                        documentId: editingTagsDoc.id,
+                        tagName: newChildTag.trim(),
+                        tagType: "child",
+                        parentTagId: parent.id
+                      });
+                      setNewChildTag("");
+                    }
+                  }} disabled={!newChildTag.trim() || selectedParentForChild !== parent.id}>
                             <Plus className="h-4 w-4" />
                           </Button>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      </div>)}
+                  </div>}
               </div>
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => {
-                setEditingTagsDoc(null);
-                setNewParentTag("");
-                setNewChildTag("");
-                setSelectedParentForChild(null);
-              }}>
+            setEditingTagsDoc(null);
+            setNewParentTag("");
+            setNewChildTag("");
+            setSelectedParentForChild(null);
+          }}>
                 Fechar
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
-      )}
+        </Dialog>}
 
       {/* Chunk Visualization Dialog */}
-      {viewChunksDoc && (
-        <Dialog open={!!viewChunksDoc} onOpenChange={(open) => !open && setViewChunksDoc(null)}>
+      {viewChunksDoc && <Dialog open={!!viewChunksDoc} onOpenChange={open => !open && setViewChunksDoc(null)}>
           <DialogContent className="max-w-4xl max-h-[80vh]">
             <DialogHeader>
               <DialogTitle>Chunks do Documento - {viewChunksDoc.filename}</DialogTitle>
             </DialogHeader>
             
-            {chunksLoading ? (
-              <div className="flex justify-center py-8">
+            {chunksLoading ? <div className="flex justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin" />
-              </div>
-            ) : chunks && chunks.length > 0 ? (
-              <ScrollArea className="h-[60vh] pr-4">
+              </div> : chunks && chunks.length > 0 ? <ScrollArea className="h-[60vh] pr-4">
                 <div className="space-y-4">
-                  {chunks.map((chunk, idx) => (
-                    <Card key={chunk.id} className="p-4">
+                  {chunks.map((chunk, idx) => <Card key={chunk.id} className="p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">Chunk #{chunk.chunk_index + 1}</Badge>
                           <Badge variant="secondary">{chunk.word_count} palavras</Badge>
-                          {chunk.embedding ? (
-                            <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                          {chunk.embedding ? <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
                               ✓ Embedding
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive">
+                            </Badge> : <Badge variant="destructive">
                               ✗ Sem Embedding
-                            </Badge>
-                          )}
+                            </Badge>}
                         </div>
                       </div>
                       
@@ -2175,20 +1801,14 @@ export const DocumentsTab = () => {
                         {chunk.content.length > 300 && "..."}
                       </div>
                       
-                      {chunk.metadata && typeof chunk.metadata === 'object' && Object.keys(chunk.metadata).length > 0 && (
-                        <div className="mt-2 text-xs text-muted-foreground">
+                      {chunk.metadata && typeof chunk.metadata === 'object' && Object.keys(chunk.metadata).length > 0 && <div className="mt-2 text-xs text-muted-foreground">
                           <span className="font-medium">Metadata:</span> {JSON.stringify(chunk.metadata, null, 2)}
-                        </div>
-                      )}
-                    </Card>
-                  ))}
+                        </div>}
+                    </Card>)}
                 </div>
-              </ScrollArea>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
+              </ScrollArea> : <div className="text-center py-8 text-muted-foreground">
                 Nenhum chunk encontrado para este documento
-              </div>
-            )}
+              </div>}
             
             <DialogFooter>
               <Button variant="outline" onClick={() => setViewChunksDoc(null)}>
@@ -2196,12 +1816,10 @@ export const DocumentsTab = () => {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
-      )}
+        </Dialog>}
       
       {/* Duplicate Detection Modal */}
-      {duplicateInfo && (
-        <Dialog open={!!duplicateInfo} onOpenChange={() => setDuplicateInfo(null)}>
+      {duplicateInfo && <Dialog open={!!duplicateInfo} onOpenChange={() => setDuplicateInfo(null)}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -2220,26 +1838,17 @@ export const DocumentsTab = () => {
               </p>
             </div>
             <DialogFooter className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={handleDiscardDuplicate}
-                className="flex-1"
-              >
+              <Button variant="outline" onClick={handleDiscardDuplicate} className="flex-1">
                 <X className="h-4 w-4 mr-2" />
                 Descartar Novo
               </Button>
-              <Button 
-                variant="destructive" 
-                onClick={handleReplaceDuplicate}
-                className="flex-1"
-              >
+              <Button variant="destructive" onClick={handleReplaceDuplicate} className="flex-1">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Substituir Existente
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
-      )}
+        </Dialog>}
 
       {/* RAG Engineering Info Modal */}
       <Dialog open={showRagInfoModal} onOpenChange={setShowRagInfoModal}>
@@ -2346,7 +1955,7 @@ export const DocumentsTab = () => {
                 <svg viewBox="0 0 800 600" className="w-full h-auto">
                   {/* ETL Phase */}
                   <g>
-                    <rect x="50" y="50" width="150" height="200" rx="8" fill="hsl(var(--primary))" opacity="0.1" stroke="hsl(var(--primary))" strokeWidth="2"/>
+                    <rect x="50" y="50" width="150" height="200" rx="8" fill="hsl(var(--primary))" opacity="0.1" stroke="hsl(var(--primary))" strokeWidth="2" />
                     <text x="125" y="80" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="16" fontWeight="bold">📥 Fase 1: ETL</text>
                     
                     <text x="125" y="110" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">PDF Upload</text>
@@ -2359,21 +1968,21 @@ export const DocumentsTab = () => {
                   </g>
                   
                   {/* Arrow to Database */}
-                  <path d="M 200 150 L 280 300" stroke="hsl(var(--primary))" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)"/>
+                  <path d="M 200 150 L 280 300" stroke="hsl(var(--primary))" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
                   
                   {/* Database */}
                   <g>
-                    <ellipse cx="350" cy="350" rx="80" ry="40" fill="hsl(var(--secondary))" opacity="0.2" stroke="hsl(var(--secondary))" strokeWidth="2"/>
+                    <ellipse cx="350" cy="350" rx="80" ry="40" fill="hsl(var(--secondary))" opacity="0.2" stroke="hsl(var(--secondary))" strokeWidth="2" />
                     <text x="350" y="340" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="bold">pgvector</text>
                     <text x="350" y="360" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Postgres DB</text>
                   </g>
                   
                   {/* Arrow to Retrieval */}
-                  <path d="M 430 350 L 550 200" stroke="hsl(var(--primary))" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)"/>
+                  <path d="M 430 350 L 550 200" stroke="hsl(var(--primary))" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
                   
                   {/* Retrieval Phase */}
                   <g>
-                    <rect x="550" y="50" width="200" height="200" rx="8" fill="hsl(var(--accent))" opacity="0.1" stroke="hsl(var(--accent))" strokeWidth="2"/>
+                    <rect x="550" y="50" width="200" height="200" rx="8" fill="hsl(var(--accent))" opacity="0.1" stroke="hsl(var(--accent))" strokeWidth="2" />
                     <text x="650" y="80" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="16" fontWeight="bold">🔍 Fase 2: Retrieval</text>
                     
                     <text x="650" y="110" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Query</text>
@@ -2418,7 +2027,7 @@ export const DocumentsTab = () => {
       </Dialog>
 
       {/* Tags Modal */}
-      <Dialog open={!!tagsModalDoc} onOpenChange={(open) => !open && setTagsModalDoc(null)}>
+      <Dialog open={!!tagsModalDoc} onOpenChange={open => !open && setTagsModalDoc(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>🏷️ Tags de "{tagsModalDoc?.filename}"</DialogTitle>
@@ -2426,15 +2035,11 @@ export const DocumentsTab = () => {
           
           <ScrollArea className="h-96">
             {(() => {
-              const docTags = allTags?.filter(t => t.document_id === tagsModalDoc?.id) || [];
-              const parents = docTags.filter(t => t.tag_type === "parent");
-              const children = docTags.filter(t => t.tag_type === "child");
-              
-              return (
-                <div className="space-y-4">
-                  {parents.length > 0 ? (
-                    parents.map(parent => (
-                      <div key={parent.id} className="border rounded-lg p-4">
+            const docTags = allTags?.filter(t => t.document_id === tagsModalDoc?.id) || [];
+            const parents = docTags.filter(t => t.tag_type === "parent");
+            const children = docTags.filter(t => t.tag_type === "child");
+            return <div className="space-y-4">
+                  {parents.length > 0 ? parents.map(parent => <div key={parent.id} className="border rounded-lg p-4">
                         <div className="flex items-center gap-2 mb-2">
                           <Badge className="text-sm">{parent.tag_name}</Badge>
                           <span className="text-xs text-muted-foreground">
@@ -2442,20 +2047,13 @@ export const DocumentsTab = () => {
                           </span>
                         </div>
                         <div className="ml-4 flex flex-wrap gap-1">
-                          {children.filter(c => c.parent_tag_id === parent.id).map(child => (
-                            <Badge key={child.id} variant="outline" className="text-xs">
+                          {children.filter(c => c.parent_tag_id === parent.id).map(child => <Badge key={child.id} variant="outline" className="text-xs">
                               {child.tag_name} ({Math.round((child.confidence || 0) * 100)}%)
-                            </Badge>
-                          ))}
+                            </Badge>)}
                         </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground">Nenhuma tag encontrada</p>
-                  )}
-                </div>
-              );
-            })()}
+                      </div>) : <p className="text-center text-muted-foreground">Nenhuma tag encontrada</p>}
+                </div>;
+          })()}
           </ScrollArea>
           
           <DialogFooter>
@@ -2465,7 +2063,7 @@ export const DocumentsTab = () => {
       </Dialog>
       
       {/* Modal de Inserção Manual */}
-      <Dialog open={!!insertionModalDoc} onOpenChange={(open) => !open && setInsertionModalDoc(null)}>
+      <Dialog open={!!insertionModalDoc} onOpenChange={open => !open && setInsertionModalDoc(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Inserir Documento em Chat</DialogTitle>
@@ -2478,29 +2076,19 @@ export const DocumentsTab = () => {
             <p className="text-sm">Escolha em qual chat este documento será inserido:</p>
             
             <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                className="h-20 flex-col gap-2 border-purple-500/30 hover:border-purple-500 hover:bg-purple-500/10"
-                onClick={() => manualInsertMutation.mutate({
-                  docId: insertionModalDoc?.id,
-                  targetChat: 'health'
-                })}
-                disabled={manualInsertMutation.isPending}
-              >
+              <Button variant="outline" className="h-20 flex-col gap-2 border-purple-500/30 hover:border-purple-500 hover:bg-purple-500/10" onClick={() => manualInsertMutation.mutate({
+              docId: insertionModalDoc?.id,
+              targetChat: 'health'
+            })} disabled={manualInsertMutation.isPending}>
                 <span className="text-2xl">🏥</span>
                 <span className="font-medium">Health</span>
                 <span className="text-xs text-muted-foreground">Saúde</span>
               </Button>
               
-              <Button
-                variant="outline"
-                className="h-20 flex-col gap-2 border-blue-500/30 hover:border-blue-500 hover:bg-blue-500/10"
-                onClick={() => manualInsertMutation.mutate({
-                  docId: insertionModalDoc?.id,
-                  targetChat: 'study'
-                })}
-                disabled={manualInsertMutation.isPending}
-              >
+              <Button variant="outline" className="h-20 flex-col gap-2 border-blue-500/30 hover:border-blue-500 hover:bg-blue-500/10" onClick={() => manualInsertMutation.mutate({
+              docId: insertionModalDoc?.id,
+              targetChat: 'study'
+            })} disabled={manualInsertMutation.isPending}>
                 <span className="text-2xl">📚</span>
                 <span className="font-medium">Study</span>
                 <span className="text-xs text-muted-foreground">Estudo</span>
@@ -2508,17 +2096,12 @@ export const DocumentsTab = () => {
             </div>
             
             <div className="border-t pt-4">
-              <Button
-                variant="ghost"
-                className="w-full text-muted-foreground"
-                onClick={() => setInsertionModalDoc(null)}
-              >
+              <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setInsertionModalDoc(null)}>
                 Manter como General (não inserir)
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
+    </div>;
 };
