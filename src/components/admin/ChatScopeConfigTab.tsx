@@ -394,7 +394,7 @@ export function ChatScopeConfigTab() {
             <select
               value={testingChat}
               onChange={(e) => setTestingChat(e.target.value as "study" | "health")}
-              className="border rounded-md px-3 py-2"
+              className="border rounded-md px-3 py-2 text-black dark:text-white"
             >
               <option value="study">Study</option>
               <option value="health">Health</option>
