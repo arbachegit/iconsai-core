@@ -36,7 +36,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown } from "lucide-react";
+import { exportData, type ExportFormat } from "@/lib/export-utils";
 
 interface Tag {
   id: string;
@@ -245,6 +252,49 @@ export const TagsManagementTab = () => {
     );
   }
 
+  const handleExport = async (format: ExportFormat) => {
+    const exportColumns = [
+      { key: 'tag_name', label: 'Nome da Tag' },
+      { key: 'tag_type', label: 'Tipo' },
+      { key: 'parent', label: 'Tag Pai' },
+      { key: 'confidence', label: 'Confiança' },
+      { key: 'source', label: 'Fonte' },
+    ];
+
+    const exportableData = parentTags.flatMap(parent => {
+      const childrenData = (childTagsMap[parent.id] || []).map(child => ({
+        tag_name: child.tag_name,
+        tag_type: child.tag_type,
+        parent: parent.tag_name,
+        confidence: child.confidence?.toFixed(2) || 'N/A',
+        source: child.source || 'N/A',
+      }));
+
+      return [
+        {
+          tag_name: parent.tag_name,
+          tag_type: parent.tag_type,
+          parent: '-',
+          confidence: parent.confidence?.toFixed(2) || 'N/A',
+          source: parent.source || 'N/A',
+        },
+        ...childrenData,
+      ];
+    });
+
+    try {
+      await exportData({
+        filename: 'tags',
+        data: exportableData,
+        format,
+        columns: exportColumns,
+      });
+      toast.success(`Dados exportados em formato ${format.toUpperCase()}`);
+    } catch (error) {
+      toast.error("Erro ao exportar dados");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -257,10 +307,34 @@ export const TagsManagementTab = () => {
             CRUD completo para tags hierárquicas do sistema RAG
           </p>
         </div>
-        <Button onClick={() => openCreateDialog(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Criar Tag Pai
-        </Button>
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <FileText className="h-4 w-4 mr-2" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('json')}>
+                <FileJson className="h-4 w-4 mr-2" /> JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <FileDown className="h-4 w-4 mr-2" /> PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button onClick={() => openCreateDialog(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Criar Tag Pai
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

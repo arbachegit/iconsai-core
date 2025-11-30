@@ -6,8 +6,15 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { exportData, type ExportFormat } from "@/lib/export-utils";
 
 export const ConversationsTab = () => {
   const [conversations, setConversations] = useState<any[]>([]);
@@ -60,19 +67,76 @@ export const ConversationsTab = () => {
     return matchesSearch && matchesType;
   });
 
-  // Pagination
   const totalPages = Math.ceil(filteredConversations.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedConversations = filteredConversations.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleExport = async (format: ExportFormat) => {
+    const exportColumns = [
+      { key: 'session_id', label: 'Session ID' },
+      { key: 'title', label: 'Título' },
+      { key: 'chat_type', label: 'Tipo de Chat' },
+      { key: 'created_at', label: 'Data de Criação' },
+      { key: 'sentiment_label', label: 'Sentimento' },
+      { key: 'sentiment_score', label: 'Score' },
+    ];
+
+    const exportableData = filteredConversations.map(conv => ({
+      session_id: conv.session_id,
+      title: conv.title,
+      chat_type: conv.chat_type || 'N/A',
+      created_at: new Date(conv.created_at).toLocaleString('pt-BR'),
+      sentiment_label: conv.sentiment_label || 'N/A',
+      sentiment_score: conv.sentiment_score?.toFixed(2) || 'N/A',
+    }));
+
+    try {
+      await exportData({
+        filename: 'conversas',
+        data: exportableData,
+        format,
+        columns: exportColumns,
+      });
+      toast.success(`Dados exportados em formato ${format.toUpperCase()}`);
+    } catch (error) {
+      toast.error("Erro ao exportar dados");
+    }
+  };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Conversas Salvas</CardTitle>
-          <CardDescription>
-            Visualize e gerencie o histórico de conversas dos usuários
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Conversas Salvas</CardTitle>
+              <CardDescription>
+                Visualize e gerencie o histórico de conversas dos usuários
+              </CardDescription>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleExport('csv')}>
+                  <FileText className="h-4 w-4 mr-2" /> CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('json')}>
+                  <FileJson className="h-4 w-4 mr-2" /> JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                  <FileDown className="h-4 w-4 mr-2" /> PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4 mb-6">

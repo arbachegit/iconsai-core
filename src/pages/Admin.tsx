@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { DashboardTab } from "@/components/admin/DashboardTab";
+import { NotificationsPanel } from "@/components/admin/NotificationsPanel";
 import { ChatConfigTab } from "@/components/admin/ChatConfigTab";
 import { TooltipsTab } from "@/components/admin/TooltipsTab";
 import { GmailTab } from "@/components/admin/GmailTab";
@@ -112,9 +113,16 @@ const Admin = () => {
     <div className="min-h-screen flex bg-background">
       <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
       
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto">
-          {renderTab()}
+      <main className="flex-1 overflow-y-auto">
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+          <div className="flex items-center justify-end px-8 py-4">
+            <NotificationsPanel />
+          </div>
+        </div>
+        <div className="p-8">
+          <div className="max-w-7xl mx-auto">
+            {renderTab()}
+          </div>
         </div>
       </main>
     </div>
