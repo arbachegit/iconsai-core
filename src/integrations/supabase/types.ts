@@ -326,6 +326,8 @@ export type Database = {
           log_message: string
           metadata: Json | null
           previous_hash: string | null
+          snapshot_id: string | null
+          storage_reference_id: string | null
           version_number: number
         }
         Insert: {
@@ -337,6 +339,8 @@ export type Database = {
           log_message: string
           metadata?: Json | null
           previous_hash?: string | null
+          snapshot_id?: string | null
+          storage_reference_id?: string | null
           version_number?: number
         }
         Update: {
@@ -348,6 +352,8 @@ export type Database = {
           log_message?: string
           metadata?: Json | null
           previous_hash?: string | null
+          snapshot_id?: string | null
+          storage_reference_id?: string | null
           version_number?: number
         }
         Relationships: [

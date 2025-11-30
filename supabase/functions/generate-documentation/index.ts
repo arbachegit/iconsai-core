@@ -34,7 +34,20 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Parse body for version info (from Minor/Major releases)
+    let requestData: { version?: string; release_notes?: string; tags?: string[] } = {};
+    if (req.method === 'POST') {
+      try {
+        requestData = await req.json();
+      } catch {
+        // Se não tiver body, continua normalmente
+      }
+    }
+
     console.log('🔍 Starting documentation generation...');
+    if (requestData.version) {
+      console.log(`📌 Version: ${requestData.version}`);
+    }
 
     // 1. Extract Database Schema via RPC function
     console.log('📊 Extracting database schema...');
@@ -191,14 +204,64 @@ Deno.serve(async (req) => {
       ]
     };
 
-    // 5. Register version in database
+    // 5. Generate automatic changelog (for Minor/Major releases)
+    console.log('📝 Generating changelog...');
+    let changelogContent = '';
+    
+    // Buscar histórico desde última versão Minor/Major
+    const { data: versionHistory } = await supabaseClient
+      .from('version_control')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(20);
+    
+    if (versionHistory && versionHistory.length > 0) {
+      changelogContent = `# 📋 Changelog KnowYOU\n\n`;
+      changelogContent += `Gerado em: ${new Date().toLocaleString('pt-BR')}\n\n`;
+      changelogContent += `---\n\n`;
+      
+      // Se temos release notes customizadas, usar
+      if (requestData.release_notes) {
+        changelogContent += `## ${requestData.version || 'Versão Atual'}\n\n`;
+        changelogContent += `**Data:** ${new Date().toLocaleString('pt-BR')}\n\n`;
+        
+        if (requestData.tags && requestData.tags.length > 0) {
+          changelogContent += `**Tags:** ${requestData.tags.join(', ')}\n\n`;
+        }
+        
+        changelogContent += `### Release Notes\n\n${requestData.release_notes}\n\n`;
+        changelogContent += `---\n\n`;
+      }
+      
+      // Adicionar histórico detalhado
+      versionHistory.forEach((record: any) => {
+        changelogContent += `## Versão ${record.current_version}\n`;
+        changelogContent += `**Data:** ${new Date(record.timestamp).toLocaleString('pt-BR')}\n\n`;
+        changelogContent += `**Tipo:** ${record.trigger_type}\n\n`;
+        changelogContent += `**Mensagem:** ${record.log_message}\n\n`;
+        
+        // Incluir tags se existirem
+        if (record.associated_data?.tags && record.associated_data.tags.length > 0) {
+          changelogContent += `**Tags:** ${record.associated_data.tags.join(', ')}\n\n`;
+        }
+        
+        // Incluir release notes se existirem
+        if (record.associated_data?.release_notes) {
+          changelogContent += `**Release Notes:** ${record.associated_data.release_notes}\n\n`;
+        }
+        
+        changelogContent += `---\n\n`;
+      });
+    }
+
+    // 6. Register version in database
     console.log('💾 Registering documentation version...');
-    const version = `v${new Date().toISOString().split('T')[0]}`;
+    const version = requestData.version || `v${new Date().toISOString().split('T')[0]}`;
     const { error: versionError } = await supabaseClient
       .from('documentation_versions')
       .insert({
         version,
-        author: 'Auto-generated',
+        author: requestData.release_notes ? 'Manual Release' : 'Auto-generated',
         changes: [
           { type: 'database', count: tables.length },
           { type: 'backend', count: backendDocs.length },
@@ -223,6 +286,7 @@ Deno.serve(async (req) => {
           backend: backendDoc,
           frontend: frontendDoc
         },
+        changelog: changelogContent,
         stats: {
           tables: tables.length,
           edge_functions: backendDocs.length,
