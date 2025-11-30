@@ -27,7 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export const VersionControlTab = () => {
-  const [versionDialog, setVersionDialog] = useState<"minor" | "major" | null>(null);
+  const [versionDialog, setVersionDialog] = useState<"minor" | "major" | "code_change" | null>(null);
   const [rollbackDialog, setRollbackDialog] = useState<{ open: boolean; versionId: string | null; version: string | null }>({
     open: false,
     versionId: null,
@@ -57,7 +57,7 @@ export const VersionControlTab = () => {
   // Increment version mutation
   const incrementVersion = useMutation({
     mutationFn: async ({ action, message, notes, versionTags }: { 
-      action: "minor" | "major"; 
+      action: "minor" | "major" | "code_change"; 
       message: string;
       notes: string;
       versionTags: string[];
@@ -94,7 +94,7 @@ export const VersionControlTab = () => {
     },
   });
 
-  const handleVersionUpdate = (action: "minor" | "major") => {
+  const handleVersionUpdate = (action: "minor" | "major" | "code_change") => {
     if (!logMessage.trim()) {
       toast.error("Por favor, descreva a mudança");
       return;
@@ -187,7 +187,9 @@ export const VersionControlTab = () => {
       AUTO_PATCH: { variant: "secondary" as const, label: "Auto Patch" },
       MANUAL_MINOR: { variant: "default" as const, label: "Minor" },
       MANUAL_MAJOR: { variant: "destructive" as const, label: "Major" },
+      CODE_CHANGE: { variant: "outline" as const, label: "Code Change" },
       INITIAL: { variant: "outline" as const, label: "Inicial" },
+      ROLLBACK: { variant: "outline" as const, label: "Rollback" },
     };
     const config = variants[type as keyof typeof variants] || variants.INITIAL;
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -241,6 +243,15 @@ export const VersionControlTab = () => {
           </div>
 
           <div className="flex items-center justify-center gap-4 pt-4">
+            <Button
+              onClick={() => setVersionDialog("code_change")}
+              variant="outline"
+              className="gap-2"
+              size="lg"
+            >
+              <GitBranch className="h-4 w-4" />
+              Mudanças de Código
+            </Button>
             <Button
               onClick={() => setVersionDialog("minor")}
               className="gap-2 bg-gradient-primary"
@@ -369,9 +380,15 @@ export const VersionControlTab = () => {
 
         <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-2 text-sm">
           <p className="flex items-center gap-2">
-            <Badge variant="secondary">Patch</Badge>
+            <Badge variant="secondary">Auto Patch</Badge>
             <span className="text-muted-foreground">
               Automático após upload RAG (Z+1)
+            </span>
+          </p>
+          <p className="flex items-center gap-2">
+            <Badge variant="outline">Code Change</Badge>
+            <span className="text-muted-foreground">
+              Manual - mudanças de código (frontend, Edge Functions, i18n) (Z+1)
             </span>
           </p>
           <p className="flex items-center gap-2">
@@ -397,10 +414,16 @@ export const VersionControlTab = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {versionDialog === "minor" ? "Atualização Minor" : "Lançamento Major"}
+              {versionDialog === "code_change" 
+                ? "Registrar Mudanças de Código"
+                : versionDialog === "minor" 
+                ? "Atualização Minor" 
+                : "Lançamento Major"}
             </DialogTitle>
             <DialogDescription>
-              {versionDialog === "minor"
+              {versionDialog === "code_change"
+                ? "Registre mudanças no código (frontend, Edge Functions, i18n). Isso incrementará o patch automaticamente."
+                : versionDialog === "minor"
                 ? "Agrupe as mudanças recentes em uma nova release. Isso incrementará o segundo número da versão."
                 : "Lance uma nova versão de produção estável. Isso incrementará o primeiro número da versão."}
             </DialogDescription>
@@ -411,7 +434,9 @@ export const VersionControlTab = () => {
               <Input
                 id="log-message"
                 placeholder={
-                  versionDialog === "minor"
+                  versionDialog === "code_change"
+                    ? "ex: Implementação de UX/UI: botão copiar, mini player flutuante, design tokens"
+                    : versionDialog === "minor"
                     ? "ex: Melhorias no sistema RAG e interface admin"
                     : "ex: Lançamento oficial da plataforma KnowYOU v1.0"
                 }
