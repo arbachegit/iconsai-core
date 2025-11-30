@@ -69,7 +69,6 @@ export default function ChatStudy() {
   const [waitingCountdown, setWaitingCountdown] = useState(5);
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -78,9 +77,6 @@ export default function ChatStudy() {
   const inputRef = useRef<string>("");
   const prefixTextRef = useRef<string>("");
   const [audioStates, setAudioStates] = useState<{[key: number]: { isPlaying: boolean; currentTime: number; duration: number }}>({});
-  const mountTimeRef = useRef(Date.now());
-  const previousMessagesLength = useRef(messages.length);
-  const INIT_PERIOD = 1000; // 1 segundo de período de inicialização
   const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
   const [audioVisibility, setAudioVisibility] = useState<{[key: number]: boolean}>({});
   const audioMessageRefs = useRef<{[key: number]: HTMLDivElement | null}>({});
@@ -90,15 +86,6 @@ export default function ChatStudy() {
     requestLocation();
   }, []);
 
-  // Capturar o viewport do ScrollArea após mount
-  useEffect(() => {
-    if (scrollRef.current) {
-      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        scrollViewportRef.current = viewport as HTMLDivElement;
-      }
-    }
-  }, []);
 
   // Sync inputRef with input state
   useEffect(() => {
@@ -151,45 +138,23 @@ export default function ChatStudy() {
     return () => clearInterval(interval);
   }, [isImageMode]);
 
-  // Helper function to scroll to bottom
+  // Helper function to scroll to bottom using the sentinel element
   const scrollToBottom = () => {
-    if (scrollViewportRef.current) {
-      requestAnimationFrame(() => {
-        if (scrollViewportRef.current) {
-          scrollViewportRef.current.scrollTo({
-            top: scrollViewportRef.current.scrollHeight,
-            behavior: 'smooth'
-          });
-        }
-      });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
     }
   };
 
-  // Auto-scroll to latest message - SOLUÇÃO DEFINITIVA
+  // Auto-scroll to latest message - solução definitiva usando messagesEndRef
   useEffect(() => {
-    // Ignorar scrolls durante o período de inicialização
-    const timeSinceMount = Date.now() - mountTimeRef.current;
-    if (timeSinceMount < INIT_PERIOD) {
-      previousMessagesLength.current = messages.length;
-      return;
-    }
-    
-    // Scroll quando há nova mensagem OU quando está carregando (streaming)
-    const shouldScroll = messages.length > previousMessagesLength.current || isLoading;
-    
-    if (shouldScroll && scrollViewportRef.current) {
-      requestAnimationFrame(() => {
-        if (scrollViewportRef.current) {
-          scrollViewportRef.current.scrollTo({
-            top: scrollViewportRef.current.scrollHeight,
-            behavior: 'smooth'
-          });
-        }
-      });
-    }
-    
-    previousMessagesLength.current = messages.length;
-  }, [messages, isLoading]);
+    const timeoutId = setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [messages, isLoading, isGeneratingAudio, isGeneratingImage]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,8 +167,10 @@ export default function ChatStudy() {
         sendMessage(input);
         setInput("");
       }
-      // Scroll imediato após enviar
-      setTimeout(scrollToBottom, 100);
+      // Scroll múltiplo para garantir que vá até a última mensagem
+      setTimeout(scrollToBottom, 50);
+      setTimeout(scrollToBottom, 200);
+      setTimeout(scrollToBottom, 500);
     }
   };
 
@@ -213,8 +180,10 @@ export default function ChatStudy() {
     } else {
       sendMessage(suggestion);
     }
-    // Scroll imediato após clicar em sugestão
-    setTimeout(scrollToBottom, 100);
+    // Scroll múltiplo após clicar em sugestão
+    setTimeout(scrollToBottom, 50);
+    setTimeout(scrollToBottom, 200);
+    setTimeout(scrollToBottom, 500);
   };
 
   const toggleImageMode = () => {
