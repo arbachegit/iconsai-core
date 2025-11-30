@@ -15,7 +15,7 @@ import {
   Mail, Youtube, Music, Image, BarChart3, Brain, Languages,
   LogOut, Tags, ArrowRight, ArrowUp, ChevronDown, ChevronLeft,
   ChevronRight, X, Home, Baby, Users, GraduationCap, Rocket,
-  Bot, Sparkles, Lightbulb, Crown, Cat, Snowflake, Skull
+  Bot, Sparkles, Lightbulb, Crown, Cat, Snowflake, Skull, ArrowUpDown, Filter
 } from 'lucide-react';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
 import { MermaidZoomModal } from '@/components/MermaidZoomModal';
@@ -28,6 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
@@ -379,6 +380,14 @@ const Documentation = () => {
     title: '',
   });
 
+  // UI Reference filters and sorting
+  const [iconCategoryFilter, setIconCategoryFilter] = useState<string>("all");
+  const [animCategoryFilter, setAnimCategoryFilter] = useState<string>("all");
+  const [iconSortField, setIconSortField] = useState<"name" | "category" | "origin">("name");
+  const [iconSortDirection, setIconSortDirection] = useState<"asc" | "desc">("asc");
+  const [animSortField, setAnimSortField] = useState<"className" | "category" | "origin">("className");
+  const [animSortDirection, setAnimSortDirection] = useState<"asc" | "desc">("asc");
+
   // Fetch changelog versions
   const { data: versions } = useQuery({
     queryKey: ["documentation-versions"],
@@ -518,6 +527,63 @@ const Documentation = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchResults]);
+
+  // Toggle functions for sorting
+  const toggleIconSort = (field: typeof iconSortField) => {
+    if (iconSortField === field) {
+      setIconSortDirection(iconSortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setIconSortField(field);
+      setIconSortDirection("asc");
+    }
+  };
+
+  const toggleAnimSort = (field: typeof animSortField) => {
+    if (animSortField === field) {
+      setAnimSortDirection(animSortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setAnimSortField(field);
+      setAnimSortDirection("asc");
+    }
+  };
+
+  // Memoized filtered and sorted data
+  const iconCategories = [...new Set(ICONS_DATA.map(i => i.category))].sort();
+  const animCategories = [...new Set(ANIMATIONS_DATA.map(a => a.category))].sort();
+
+  const filteredIcons = (() => {
+    let filtered = [...ICONS_DATA];
+    
+    if (iconCategoryFilter !== "all") {
+      filtered = filtered.filter(i => i.category === iconCategoryFilter);
+    }
+    
+    const direction = iconSortDirection === "asc" ? 1 : -1;
+    filtered.sort((a, b) => {
+      const aVal = a[iconSortField] || "";
+      const bVal = b[iconSortField] || "";
+      return aVal.localeCompare(bVal) * direction;
+    });
+    
+    return filtered;
+  })();
+
+  const filteredAnimations = (() => {
+    let filtered = [...ANIMATIONS_DATA];
+    
+    if (animCategoryFilter !== "all") {
+      filtered = filtered.filter(a => a.category === animCategoryFilter);
+    }
+    
+    const direction = animSortDirection === "asc" ? 1 : -1;
+    filtered.sort((a, b) => {
+      const aVal = a[animSortField] || "";
+      const bVal = b[animSortField] || "";
+      return aVal.localeCompare(bVal) * direction;
+    });
+    
+    return filtered;
+  })();
 
   const exportToPDF = async () => {
     setIsExporting(true);
@@ -1625,19 +1691,88 @@ await supabase.functions.invoke("process-bulk-document", {
                 </p>
               </div>
 
+              {/* Filter UI */}
+              <div className="flex flex-wrap items-center gap-4 pb-4 border-b">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Filtrar por categoria:</span>
+                  <Select value={iconCategoryFilter} onValueChange={setIconCategoryFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Todas categorias" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas ({ICONS_DATA.length})</SelectItem>
+                      {iconCategories.map(cat => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat} ({ICONS_DATA.filter(i => i.category === cat).length})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {iconCategoryFilter !== "all" && (
+                  <Button variant="ghost" size="sm" onClick={() => setIconCategoryFilter("all")}>
+                    <X className="h-4 w-4 mr-1" />
+                    Limpar filtro
+                  </Button>
+                )}
+                
+                <span className="text-sm text-muted-foreground ml-auto">
+                  Exibindo {filteredIcons.length} de {ICONS_DATA.length} ícones
+                </span>
+              </div>
+
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-24">Visualização</TableHead>
-                      <TableHead className="min-w-[180px]">Nome Técnico</TableHead>
+                      <TableHead 
+                        className="min-w-[180px] cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleIconSort("name")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Nome Técnico
+                          <ArrowUpDown className={cn(
+                            "h-4 w-4",
+                            iconSortField === "name" ? "text-primary" : "text-muted-foreground"
+                          )} />
+                          {iconSortField === "name" && (
+                            <span className="text-xs text-muted-foreground">
+                              ({iconSortDirection === "asc" ? "A-Z" : "Z-A"})
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
                       <TableHead>Descrição/Uso</TableHead>
-                      <TableHead className="w-32">Categoria</TableHead>
-                      <TableHead className="w-40">Origem</TableHead>
+                      <TableHead 
+                        className="w-32 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleIconSort("category")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Categoria
+                          <ArrowUpDown className={cn(
+                            "h-4 w-4",
+                            iconSortField === "category" ? "text-primary" : "text-muted-foreground"
+                          )} />
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="w-40 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleIconSort("origin")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Origem
+                          <ArrowUpDown className={cn(
+                            "h-4 w-4",
+                            iconSortField === "origin" ? "text-primary" : "text-muted-foreground"
+                          )} />
+                        </div>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {ICONS_DATA.map((iconData, index) => {
+                    {filteredIcons.map((iconData, index) => {
                       const IconComponent = iconData.component;
                       return (
                         <TableRow key={`${iconData.name}-${index}`}>
@@ -1694,19 +1829,88 @@ await supabase.functions.invoke("process-bulk-document", {
                 </p>
               </div>
 
+              {/* Filter UI */}
+              <div className="flex flex-wrap items-center gap-4 pb-4 border-b">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Filtrar por categoria:</span>
+                  <Select value={animCategoryFilter} onValueChange={setAnimCategoryFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Todas categorias" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas ({ANIMATIONS_DATA.length})</SelectItem>
+                      {animCategories.map(cat => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat} ({ANIMATIONS_DATA.filter(a => a.category === cat).length})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {animCategoryFilter !== "all" && (
+                  <Button variant="ghost" size="sm" onClick={() => setAnimCategoryFilter("all")}>
+                    <X className="h-4 w-4 mr-1" />
+                    Limpar filtro
+                  </Button>
+                )}
+                
+                <span className="text-sm text-muted-foreground ml-auto">
+                  Exibindo {filteredAnimations.length} de {ANIMATIONS_DATA.length} animações
+                </span>
+              </div>
+
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-32">Preview</TableHead>
-                      <TableHead className="min-w-[200px]">Nome Técnico</TableHead>
+                      <TableHead 
+                        className="min-w-[200px] cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleAnimSort("className")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Nome Técnico
+                          <ArrowUpDown className={cn(
+                            "h-4 w-4",
+                            animSortField === "className" ? "text-primary" : "text-muted-foreground"
+                          )} />
+                          {animSortField === "className" && (
+                            <span className="text-xs text-muted-foreground">
+                              ({animSortDirection === "asc" ? "A-Z" : "Z-A"})
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
                       <TableHead>Descrição/Uso</TableHead>
-                      <TableHead className="w-32">Categoria</TableHead>
-                      <TableHead className="w-48">Origem</TableHead>
+                      <TableHead 
+                        className="w-32 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleAnimSort("category")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Categoria
+                          <ArrowUpDown className={cn(
+                            "h-4 w-4",
+                            animSortField === "category" ? "text-primary" : "text-muted-foreground"
+                          )} />
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="w-48 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleAnimSort("origin")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Origem
+                          <ArrowUpDown className={cn(
+                            "h-4 w-4",
+                            animSortField === "origin" ? "text-primary" : "text-muted-foreground"
+                          )} />
+                        </div>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {ANIMATIONS_DATA.map((animData, index) => (
+                    {filteredAnimations.map((animData, index) => (
                       <TableRow key={`${animData.className}-${index}`}>
                         <TableCell>
                           <div className="flex items-center justify-center">
