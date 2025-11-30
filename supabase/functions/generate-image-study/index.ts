@@ -47,7 +47,11 @@ serve(async (req) => {
     if (!containsStudyKeyword) {
       console.log("❌ Prompt rejeitado (fora do escopo IA/KnowRISK):", prompt);
       return new Response(
-        JSON.stringify({ error: "Apenas imagens relacionadas à IA, KnowRISK ou ACC são permitidas neste chat" }),
+        JSON.stringify({ 
+          error: "guardrail_violation",
+          rejected_term: prompt.trim(),
+          scope: "study"
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

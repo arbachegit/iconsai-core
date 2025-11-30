@@ -320,7 +320,28 @@ export function useChatStudy() {
           body: { prompt: prompt.trim() },
         });
 
-        if (error) throw error;
+        // Verificar se é erro de guardrail
+        if (error || data?.error === "guardrail_violation") {
+          const rejectedTerm = data?.rejected_term || prompt;
+          
+          // Adicionar mensagem do assistente explicando a restrição
+          const guardrailMessage: Message = {
+            role: "assistant",
+            content: `Sou especializado em ajudar a estudar sobre a KnowRISK, KnowYOU, ACC e o conteúdo deste website. Não posso ajudar com "${rejectedTerm}", mas posso responder sobre esses tópicos. Como posso ajudá-lo?`,
+            timestamp: new Date(),
+          };
+
+          const updatedMessages = [...messages, guardrailMessage];
+          setMessages(updatedMessages);
+          saveHistory(updatedMessages);
+          
+          setIsGeneratingImage(false);
+          return;
+        }
+
+        if (!data?.imageUrl) {
+          throw new Error("Nenhuma imagem foi gerada");
+        }
 
         const imageMessage: Message = {
           role: "assistant",

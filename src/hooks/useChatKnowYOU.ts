@@ -454,7 +454,24 @@ export function useChatKnowYOU() {
           })
         );
 
-        if (error) throw error;
+        // Verificar se é erro de guardrail
+        if (error || data?.error === "guardrail_violation") {
+          const rejectedTerm = data?.rejected_term || prompt;
+          
+          // Adicionar mensagem do assistente explicando a restrição
+          const guardrailMessage: Message = {
+            role: "assistant",
+            content: `Sou especializado em auxiliar profissionais de saúde. Não posso criar imagens sobre "${rejectedTerm}", mas posso gerar ilustrações sobre saúde, medicina, anatomia e bem-estar. Como posso ajudá-lo?`,
+            timestamp: new Date(),
+          };
+
+          const updatedMessages = [...messages, guardrailMessage];
+          setMessages(updatedMessages);
+          saveHistory(updatedMessages);
+          
+          setIsGeneratingImage(false);
+          return;
+        }
 
         if (!data?.imageUrl) {
           throw new Error("Nenhuma imagem foi gerada");
@@ -478,25 +495,16 @@ export function useChatKnowYOU() {
         });
       } catch (error: any) {
         console.error("Erro ao gerar imagem:", error);
-        
-        // Verificar se é erro de guardrail (validação de saúde)
-        const errorMessage = error?.message || error?.error || "";
-        const isGuardrailError = errorMessage.includes("saúde são permitidas") || 
-                                  errorMessage.includes("health") ||
-                                  error?.status === 400;
-        
         toast({
           title: t("chat.imageRejected"),
-          description: isGuardrailError 
-            ? t("chat.imageGuardrailHealth")
-            : error.message || t("chat.imageGenerationError"),
+          description: error.message || t("chat.imageGenerationError"),
           variant: "destructive",
         });
       } finally {
         setIsGeneratingImage(false);
       }
     },
-    [messages, isGeneratingImage, toast, saveHistory]
+    [messages, isGeneratingImage, toast, saveHistory, t]
   );
 
   const transcribeAudio = useCallback(async (audioBlob: Blob): Promise<string> => {
