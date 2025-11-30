@@ -454,9 +454,10 @@ export function useChatKnowYOU() {
           })
         );
 
-        // Verificar se é erro de guardrail
-        if (error || data?.error === "guardrail_violation") {
-          const rejectedTerm = data?.rejected_term || prompt;
+        // Verificar se é erro de guardrail (pode vir em data ou error)
+        const errorData = error?.context || data;
+        if (errorData?.error === "guardrail_violation" || data?.error === "guardrail_violation") {
+          const rejectedTerm = errorData?.rejected_term || data?.rejected_term || prompt;
           
           // Adicionar mensagem do assistente explicando a restrição
           const guardrailMessage: Message = {
@@ -472,6 +473,8 @@ export function useChatKnowYOU() {
           setIsGeneratingImage(false);
           return;
         }
+
+        if (error) throw error;
 
         if (!data?.imageUrl) {
           throw new Error("Nenhuma imagem foi gerada");
