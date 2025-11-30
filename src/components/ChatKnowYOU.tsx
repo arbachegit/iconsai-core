@@ -126,6 +126,7 @@ export default function ChatKnowYOU() {
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<string>("");
+  const prefixTextRef = useRef<string>("");
   const [audioStates, setAudioStates] = useState<{[key: number]: { isPlaying: boolean; currentTime: number; duration: number }}>({});
   const mountTimeRef = useRef(Date.now());
   const previousMessagesLength = useRef(messages.length);
@@ -267,25 +268,29 @@ export default function ChatKnowYOU() {
         const SILENCE_TIMEOUT = 5000; // 5 segundos
 
         recognition.onstart = () => {
+          prefixTextRef.current = input; // Salvar texto que existia antes
           setIsRecording(true);
           setIsTranscribing(true);
           setVoiceStatus('listening');
         };
 
         recognition.onresult = (event: any) => {
-          let interimTranscript = '';
-          let finalTranscript = inputRef.current; // Use ref to avoid stale closure
-
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              finalTranscript += transcript + ' ';
-            } else {
-              interimTranscript += transcript;
+          let fullTranscript = '';
+          
+          // Reconstruir TODO o texto a partir de TODOS os resultados
+          // NÃO usar inputRef.current aqui para evitar duplicação!
+          for (let i = 0; i < event.results.length; i++) {
+            const result = event.results[i];
+            fullTranscript += result[0].transcript;
+            if (result.isFinal) {
+              fullTranscript += ' ';
             }
           }
-
-          setInput(finalTranscript + interimTranscript);
+          
+          // Concatenar com texto que existia ANTES da gravação (modo append)
+          const prefix = prefixTextRef.current;
+          const separator = prefix && !prefix.endsWith(' ') ? ' ' : '';
+          setInput(prefix + separator + fullTranscript.trim());
         };
 
         recognition.onspeechend = () => {
@@ -361,6 +366,7 @@ export default function ChatKnowYOU() {
             clearInterval(countdownIntervalRef.current);
             countdownIntervalRef.current = null;
           }
+          prefixTextRef.current = ""; // Limpar para próxima gravação
           setIsRecording(false);
           setIsTranscribing(false);
           setVoiceStatus('idle');
@@ -384,6 +390,7 @@ export default function ChatKnowYOU() {
 
   const startRecordingWithWhisper = async () => {
     try {
+      prefixTextRef.current = input; // Salvar texto existente
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -445,8 +452,11 @@ export default function ChatKnowYOU() {
         setVoiceStatus('processing');
         try {
           const transcribedText = await transcribeAudio(audioBlob);
-          // MODO ANEXO: não sobrescrever texto existente
-          setInput(prev => prev + (prev ? ' ' : '') + transcribedText);
+          // MODO ANEXO: concatenar com texto pré-existente
+          const prefix = prefixTextRef.current;
+          const separator = prefix && !prefix.endsWith(' ') ? ' ' : '';
+          setInput(prefix + separator + transcribedText.trim());
+          prefixTextRef.current = ""; // Limpar após uso
         } catch (error) {
           console.error('Error transcribing audio:', error);
           toast({
