@@ -1,8 +1,9 @@
-import { Play, Square, Download, Copy } from "lucide-react";
+import { Play, Square, Download, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 interface AudioControlsProps {
   audioUrl?: string;
@@ -33,6 +34,7 @@ export function AudioControls({
 }: AudioControlsProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -46,11 +48,15 @@ export function AudioControls({
     if (messageContent) {
       try {
         await navigator.clipboard.writeText(messageContent);
+        setCopied(true);
         toast({
           title: t("chat.copied"),
           duration: 2000,
         });
         if (onCopy) onCopy();
+        
+        // Reset após 2 segundos
+        setTimeout(() => setCopied(false), 2000);
       } catch (error) {
         toast({
           title: t("chat.copyFailed"),
@@ -114,10 +120,16 @@ export function AudioControls({
             size="sm"
             variant="ghost"
             onClick={handleCopy}
-            className="h-7 w-7 p-0"
+            className={`h-7 w-7 p-0 transition-all duration-200 ${
+              copied ? "text-green-500 scale-110" : ""
+            }`}
             title={t("chat.copy")}
           >
-            <Copy className="h-3.5 w-3.5" />
+            {copied ? (
+              <Check className="h-3.5 w-3.5 animate-scale-in" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
           </Button>
         )}
 
