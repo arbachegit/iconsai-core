@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface DocumentAttachButtonProps {
   onAttach: (documentId: string, documentName: string) => void;
@@ -14,6 +15,7 @@ interface DocumentAttachButtonProps {
 }
 
 export function DocumentAttachButton({ onAttach, disabled }: DocumentAttachButtonProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   const { data: documents, isLoading } = useQuery({
@@ -52,12 +54,13 @@ export function DocumentAttachButton({ onAttach, disabled }: DocumentAttachButto
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>📎 Anexar Documento de Saúde</DialogTitle>
+          <DialogTitle>{t('documentAttach.title')}</DialogTitle>
         </DialogHeader>
         
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-sm text-muted-foreground">{t('documentAttach.loading')}</span>
           </div>
         ) : (
           <ScrollArea className="h-[400px] pr-4">
@@ -84,11 +87,11 @@ export function DocumentAttachButton({ onAttach, disabled }: DocumentAttachButto
                         )}
                         <div className="flex items-center gap-2 mt-2">
                           <Badge variant="secondary" className="text-xs">
-                            {doc.total_chunks || 0} chunks
+                            {doc.total_chunks || 0} {t('documentAttach.chunks')}
                           </Badge>
                           {doc.is_readable && (
                             <Badge variant="outline" className="text-xs">
-                              ✓ Legível
+                              {t('documentAttach.readable')}
                             </Badge>
                           )}
                         </div>
@@ -99,8 +102,8 @@ export function DocumentAttachButton({ onAttach, disabled }: DocumentAttachButto
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Nenhum documento de saúde disponível</p>
-                  <p className="text-sm mt-1">Faça upload de documentos no painel admin</p>
+                  <p>{t('documentAttach.noDocuments')}</p>
+                  <p className="text-sm mt-1">{t('documentAttach.noDocumentsDesc')}</p>
                 </div>
               )}
             </div>

@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Heart, GraduationCap, Settings } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface DocumentRoutingModalProps {
   open: boolean;
@@ -20,6 +21,8 @@ export function DocumentRoutingModal({
   document,
   onRedirect,
 }: DocumentRoutingModalProps) {
+  const { t } = useTranslation();
+  
   if (!document) return null;
 
   const handleRedirect = (category: 'health' | 'study' | 'general') => {
@@ -32,17 +35,17 @@ export function DocumentRoutingModal({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            📄 Documento Requer Definição de Destino
+            {t('documentRouting.title')}
           </DialogTitle>
           <DialogDescription>
-            O documento "{document.filename}" foi classificado como General. Escolha onde aplicá-lo para ativar os guardrails apropriados:
+            {t('documentRouting.description', { filename: document.filename })}
           </DialogDescription>
         </DialogHeader>
         
         {/* Display suggested tags */}
         {document.suggestedTags.length > 0 && (
           <div className="my-4">
-            <p className="text-sm text-muted-foreground mb-2">Tags sugeridas:</p>
+            <p className="text-sm text-muted-foreground mb-2">{t('documentRouting.suggestedTags')}</p>
             <div className="flex flex-wrap gap-2">
               {document.suggestedTags.map((tag) => (
                 <Badge key={tag} variant="secondary">
@@ -61,9 +64,9 @@ export function DocumentRoutingModal({
             className="flex flex-col items-center gap-2 h-auto py-4"
           >
             <Heart className="h-6 w-6 text-red-500" />
-            <span className="text-sm font-semibold">Health</span>
+            <span className="text-sm font-semibold">{t('documentRouting.health')}</span>
             <span className="text-xs text-muted-foreground text-center">
-              Saúde e medicina
+              {t('documentRouting.healthDesc')}
             </span>
           </Button>
           
@@ -73,9 +76,9 @@ export function DocumentRoutingModal({
             className="flex flex-col items-center gap-2 h-auto py-4"
           >
             <GraduationCap className="h-6 w-6 text-blue-500" />
-            <span className="text-sm font-semibold">Study</span>
+            <span className="text-sm font-semibold">{t('documentRouting.study')}</span>
             <span className="text-xs text-muted-foreground text-center">
-              KnowRISK e ACC
+              {t('documentRouting.studyDesc')}
             </span>
           </Button>
           
@@ -85,9 +88,9 @@ export function DocumentRoutingModal({
             className="flex flex-col items-center gap-2 h-auto py-4"
           >
             <Settings className="h-6 w-6 text-gray-500" />
-            <span className="text-sm font-semibold">General</span>
+            <span className="text-sm font-semibold">{t('documentRouting.general')}</span>
             <span className="text-xs text-muted-foreground text-center">
-              Manter como está
+              {t('documentRouting.generalDesc')}
             </span>
           </Button>
         </div>

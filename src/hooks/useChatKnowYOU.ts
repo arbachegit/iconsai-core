@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "./useAdminSettings";
 import { useChatAnalytics } from "./useChatAnalytics";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 
 interface Message {
   role: "user" | "assistant";
@@ -17,6 +18,7 @@ interface Message {
 const STORAGE_KEY = "knowyou_chat_history";
 
 export function useChatKnowYOU() {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
@@ -396,7 +398,7 @@ export function useChatKnowYOU() {
         setIsLoading(false);
       }
     },
-    [messages, isLoading, toast, saveHistory, settings, sessionId, updateSession]
+    [messages, isLoading, toast, saveHistory, settings, sessionId, updateSession, attachedDocumentId, analyzeSentiment]
   );
 
   const clearHistory = useCallback(() => {
@@ -520,22 +522,22 @@ export function useChatKnowYOU() {
     setActiveDisclaimer({
       documentName,
       category: "health",
-      message: `Este chat foi ampliado com o documento "${documentName}". As informações são EDUCACIONAIS. Consulte um profissional de saúde para orientação personalizada.`,
+      message: t('documentAttach.disclaimerMessage', { documentName }),
     });
     toast({
-      title: "Documento anexado",
-      description: `"${documentName}" foi anexado ao contexto do chat.`,
+      title: t('documentAttach.attached', { documentName }),
+      description: t('documentAttach.disclaimerMessage', { documentName }),
     });
-  }, [toast]);
+  }, [toast, t]);
 
   const detachDocument = useCallback(() => {
     setAttachedDocumentId(null);
     setActiveDisclaimer(null);
     toast({
-      title: "Documento removido",
-      description: "O contexto do chat foi restaurado ao padrão.",
+      title: t('documentAttach.detached'),
+      description: t('documentAttach.removeButton'),
     });
-  }, [toast]);
+  }, [toast, t]);
 
   return {
     messages,

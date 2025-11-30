@@ -197,5 +197,29 @@
   },
   "floatingButton": {
     "tooltip": "Talk to KnowYOU"
+  },
+  "documentAttach": {
+    "title": "📎 Attach Health Document",
+    "loading": "Loading...",
+    "noDocuments": "No health documents available",
+    "noDocumentsDesc": "Upload documents in the admin panel",
+    "chunks": "chunks",
+    "readable": "✓ Readable",
+    "attached": "Document attached: {{documentName}}",
+    "detached": "Document removed",
+    "disclaimerTitle": "⚠️ Disclaimer - New Content Added",
+    "disclaimerMessage": "The document \"{{documentName}}\" has been attached to this conversation's context. Responses now include specific information from this document. Click X to remove.",
+    "removeButton": "Remove document"
+  },
+  "documentRouting": {
+    "title": "📄 Document Requires Destination Definition",
+    "description": "The document \"{{filename}}\" was classified as General. Choose where to apply it to activate appropriate guardrails:",
+    "suggestedTags": "Suggested tags:",
+    "health": "Health",
+    "healthDesc": "Health and medicine",
+    "study": "Study",
+    "studyDesc": "KnowRISK and ACC",
+    "general": "General",
+    "generalDesc": "Keep as is"
   }
 }
