@@ -378,7 +378,7 @@ export function ChatScopeConfigTab() {
                       
                       {lowConfParents.length > 0 && (
                         <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                          <p className="text-xs text-muted-foreground mb-2">
+                          <p className="text-xs text-foreground mb-2">
                             ⚠️ Não incluídas (confidence {'<'} 70%):
                           </p>
                           <div className="flex flex-wrap gap-1.5">
