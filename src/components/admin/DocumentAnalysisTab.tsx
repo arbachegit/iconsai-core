@@ -17,7 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { FileText, ChevronDown, Loader2, Tag } from "lucide-react";
+import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Document {
@@ -46,6 +46,8 @@ export const DocumentAnalysisTab = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Fetch documents
   const { data: documents, isLoading: docsLoading } = useQuery({
@@ -90,6 +92,11 @@ export const DocumentAnalysisTab = () => {
     const matchesSearch = doc.filename.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesChat && matchesStatus && matchesSearch;
   }) || [];
+
+  // Pagination
+  const totalPages = Math.ceil(filteredDocs.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedDocs = filteredDocs.slice(startIndex, startIndex + itemsPerPage);
 
   const toggleExpanded = (docId: string) => {
     setExpandedDocs((prev) => {
@@ -201,12 +208,12 @@ export const DocumentAnalysisTab = () => {
 
       {/* Documents List */}
       <div className="space-y-4">
-        {filteredDocs.length === 0 ? (
+        {paginatedDocs.length === 0 ? (
           <Card className="p-8 text-center text-muted-foreground">
             Nenhum documento encontrado
           </Card>
         ) : (
-          filteredDocs.map((doc) => {
+          paginatedDocs.map((doc) => {
             const docTags = tagsByDocument[doc.id] || [];
             const parentTags = getParentTags(docTags);
 
@@ -326,6 +333,37 @@ export const DocumentAnalysisTab = () => {
               </Collapsible>
             );
           })
+        )}
+
+        {/* Pagination Controls */}
+        {filteredDocs.length > 0 && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Itens por página:</span>
+              <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
+                <SelectTrigger className="w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredDocs.length)} de {filteredDocs.length}
+              </span>
+              <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>

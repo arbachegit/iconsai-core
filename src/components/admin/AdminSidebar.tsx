@@ -58,7 +58,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       icon: Zap,
       items: [
         { id: "dashboard" as TabType, label: "Dashboard", icon: LayoutDashboard },
-        { id: "documents" as TabType, label: "Documentos", icon: FileText },
+        { id: "documents" as TabType, label: "RAG Documentos", icon: FileText },
       ]
     },
     {
