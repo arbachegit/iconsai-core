@@ -13,7 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    const { query, targetChat, matchThreshold = 0.7, matchCount = 5 } = await req.json();
+    const startTime = Date.now();
+    const { query, targetChat, matchThreshold = 0.7, matchCount = 5, sessionId } = await req.json();
     
     console.log(`Searching documents for query: "${query}" (target: ${targetChat})`);
     
@@ -62,11 +63,37 @@ serve(async (req) => {
     
     console.log(`Found ${results?.length || 0} matching chunks`);
     
+    // Calcular latência e top score
+    const latencyMs = Date.now() - startTime;
+    const topScore = results && results.length > 0 ? results[0].similarity : null;
+    
+    // Logar analytics de forma assíncrona (não bloqueia resposta)
+    supabase.from("rag_analytics").insert({
+      query: query,
+      target_chat: targetChat || null,
+      latency_ms: latencyMs,
+      success_status: !error && (results?.length > 0),
+      results_count: results?.length || 0,
+      top_similarity_score: topScore,
+      match_threshold: matchThreshold,
+      session_id: sessionId || null,
+      metadata: {
+        match_count_requested: matchCount
+      }
+    }).then(
+      () => console.log("Analytics logged"),
+      (err: Error) => console.error("Analytics logging failed:", err)
+    );
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
         results: results || [],
-        count: results?.length || 0
+        count: results?.length || 0,
+        analytics: {
+          latency_ms: latencyMs,
+          top_score: topScore
+        }
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
