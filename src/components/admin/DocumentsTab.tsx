@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -187,6 +187,38 @@ export const DocumentsTab = () => {
     }
   });
 
+  // Generate documentation
+  const generateDocsMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('generate-documentation');
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Documentação gerada: ${data.version}`);
+      queryClient.invalidateQueries({ queryKey: ['documentation-versions'] });
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao gerar documentação: ${error.message}`);
+    }
+  });
+
+  // Fetch last documentation version
+  const { data: lastDocVersion } = useQuery({
+    queryKey: ["documentation-versions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("documentation_versions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    }
+  });
+
   // Fetch tags for selected document
   const { data: tags } = useQuery({
     queryKey: ["document-tags", selectedDoc?.id],
@@ -225,6 +257,40 @@ export const DocumentsTab = () => {
           Gerencie documentos para o sistema de Recuperação Aumentada por Geração
         </p>
       </div>
+
+      {/* Documentation Generation Section */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold">Documentação Automática</h3>
+            <p className="text-sm text-muted-foreground">
+              Gerar/atualizar documentação técnica do sistema
+            </p>
+          </div>
+          <Button 
+            onClick={() => generateDocsMutation.mutate()}
+            disabled={generateDocsMutation.isPending}
+          >
+            {generateDocsMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Gerando...
+              </>
+            ) : (
+              <>
+                <FileCode className="mr-2 h-4 w-4" />
+                Gerar Documentação
+              </>
+            )}
+          </Button>
+        </div>
+        
+        {lastDocVersion && (
+          <div className="mt-4 text-sm text-muted-foreground">
+            Última versão: {lastDocVersion.version} - {new Date(lastDocVersion.created_at).toLocaleDateString()}
+          </div>
+        )}
+      </Card>
 
       {/* Upload Section */}
       <Card className="p-6">
