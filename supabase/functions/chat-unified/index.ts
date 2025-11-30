@@ -279,13 +279,16 @@ serve(async (req) => {
           body: { 
             query: userQuery,
             targetChat: finalChatType,
+            matchThreshold: 0.35,
             matchCount: 3
           }
         });
 
         if (searchResults?.results && searchResults.results.length > 0) {
-          console.log(`Found ${searchResults.results.length} relevant chunks from RAG`);
+          console.log(`RAG found ${searchResults.results.length} chunks for chat=${finalChatType}, top score: ${searchResults.analytics?.top_score?.toFixed(3) || 'N/A'}`);
           ragContext = `\n\n📚 CONTEXTO RELEVANTE DOS DOCUMENTOS:\n\n${searchResults.results.map((r: any) => r.content).join("\n\n---\n\n")}\n\n`;
+        } else {
+          console.log(`RAG returned 0 results for query="${userQuery}" in chat=${finalChatType}`);
         }
       } catch (error) {
         console.error("RAG search error:", error);
