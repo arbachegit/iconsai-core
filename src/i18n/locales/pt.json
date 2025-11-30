@@ -169,6 +169,7 @@
     "typing": "Digitando...",
     "transcribing": "Transcrevendo...",
     "listening": "Ouvindo... (fale naturalmente)",
+    "waiting": "Em Espera...",
     "processing": "Processando...",
     "voiceTimeout": "O ditado encerra após 5 segundos de silêncio",
     "generatingImage": "Gerando imagem...",
