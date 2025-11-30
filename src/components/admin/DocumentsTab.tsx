@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -13,9 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import jsPDF from "jspdf";
+import JSZip from "jszip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Configure PDF.js worker with local bundle
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -45,12 +48,20 @@ export const DocumentsTab = () => {
   const [chatFilter, setChatFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<"created_at" | "filename" | "total_chunks">("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Tag editing states
   const [editingTagsDoc, setEditingTagsDoc] = useState<any>(null);
   const [newParentTag, setNewParentTag] = useState("");
   const [newChildTag, setNewChildTag] = useState("");
   const [selectedParentForChild, setSelectedParentForChild] = useState<string | null>(null);
+  
+  // Chunk visualization states
+  const [viewChunksDoc, setViewChunksDoc] = useState<any>(null);
+  
+  // Bulk export states
+  const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
+  const [isExporting, setIsExporting] = useState(false);
   
   const queryClient = useQueryClient();
 
@@ -417,6 +428,22 @@ export const DocumentsTab = () => {
     }
   });
 
+  // Fetch chunks for viewing
+  const { data: chunks, isLoading: chunksLoading } = useQuery({
+    queryKey: ["document-chunks", viewChunksDoc?.id],
+    enabled: !!viewChunksDoc,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("document_chunks")
+        .select("*")
+        .eq("document_id", viewChunksDoc.id)
+        .order("chunk_index", { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
   // RAG Metrics query
   const { data: metrics } = useQuery({
     queryKey: ["rag-quick-metrics"],
@@ -547,9 +574,80 @@ export const DocumentsTab = () => {
     }
   });
 
+  // Export selected documents as ZIP
+  const exportSelectedAsZip = useCallback(async () => {
+    if (selectedDocs.size === 0) {
+      toast.error("Nenhum documento selecionado");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const zip = new JSZip();
+      const docs = documents?.filter(d => selectedDocs.has(d.id)) || [];
+
+      for (const doc of docs) {
+        // Generate PDF for each document
+        const pdf = new jsPDF();
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const margin = 15;
+        const maxWidth = pageWidth - margin * 2;
+        
+        // Title
+        pdf.setFontSize(16);
+        pdf.text(doc.filename, margin, 20);
+        
+        // Document text
+        pdf.setFontSize(10);
+        const lines = pdf.splitTextToSize(doc.original_text || doc.text_preview || "Sem conteúdo", maxWidth);
+        
+        let y = 35;
+        lines.forEach((line: string) => {
+          if (y > 280) {
+            pdf.addPage();
+            y = 20;
+          }
+          pdf.text(line, margin, y);
+          y += 5;
+        });
+        
+        // Add to ZIP
+        const pdfBlob = pdf.output('blob');
+        zip.file(`${doc.filename.replace('.pdf', '')}_exportado.pdf`, pdfBlob);
+      }
+
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `documentos_exportados_${new Date().toISOString().split('T')[0]}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success(`${docs.length} documento(s) exportados com sucesso!`);
+      setSelectedDocs(new Set());
+    } catch (error: any) {
+      toast.error(`Erro ao exportar: ${error.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [selectedDocs, documents]);
+
   // Filtered and sorted documents
   const filteredDocuments = useMemo(() => {
     let filtered = documents || [];
+    
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(d => 
+        d.filename?.toLowerCase().includes(query) ||
+        d.original_text?.toLowerCase().includes(query) ||
+        d.text_preview?.toLowerCase().includes(query) ||
+        d.ai_summary?.toLowerCase().includes(query)
+      );
+    }
     
     // Status filter
     if (statusFilter !== "all") {
@@ -583,7 +681,29 @@ export const DocumentsTab = () => {
     });
     
     return filtered;
-  }, [documents, statusFilter, chatFilter, sortField, sortDirection]);
+  }, [documents, statusFilter, chatFilter, sortField, sortDirection, searchQuery]);
+
+  // Toggle document selection
+  const toggleDocSelection = useCallback((docId: string) => {
+    setSelectedDocs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(docId)) {
+        newSet.delete(docId);
+      } else {
+        newSet.add(docId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Select all filtered documents
+  const selectAllFiltered = useCallback(() => {
+    if (selectedDocs.size === filteredDocuments?.length) {
+      setSelectedDocs(new Set());
+    } else {
+      setSelectedDocs(new Set(filteredDocuments?.map(d => d.id) || []));
+    }
+  }, [filteredDocuments, selectedDocs.size]);
 
   const toggleSort = (field: typeof sortField) => {
     if (sortField === field) {
@@ -880,51 +1000,100 @@ export const DocumentsTab = () => {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Documentos</h3>
           
-          {/* Filters */}
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
-              <Label className="text-sm font-medium mb-2 block">Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="completed">Completo</SelectItem>
-                  <SelectItem value="failed">Falha</SelectItem>
-                  <SelectItem value="processing">Processando</SelectItem>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Search and Filters */}
+          <div className="space-y-4">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, conteúdo ou resumo..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
             </div>
             
-            <div className="flex-1">
-              <Label className="text-sm font-medium mb-2 block">Chat Destino</Label>
-              <Select value={chatFilter} onValueChange={setChatFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="health">Health</SelectItem>
-                  <SelectItem value="study">Study</SelectItem>
-                  <SelectItem value="general">General</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Filters Row */}
+            <div className="flex gap-4 items-end">
+              <div className="flex-1">
+                <Label className="text-sm font-medium mb-2 block">Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="completed">Completo</SelectItem>
+                    <SelectItem value="failed">Falha</SelectItem>
+                    <SelectItem value="processing">Processando</SelectItem>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex-1">
+                <Label className="text-sm font-medium mb-2 block">Chat Destino</Label>
+                <Select value={chatFilter} onValueChange={setChatFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="health">Health</SelectItem>
+                    <SelectItem value="study">Study</SelectItem>
+                    <SelectItem value="general">General</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setStatusFilter("all");
+                  setChatFilter("all");
+                  setSearchQuery("");
+                  setSortField("created_at");
+                  setSortDirection("desc");
+                }}
+              >
+                🔄 Limpar Filtros
+              </Button>
             </div>
-            
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setStatusFilter("all");
-                setChatFilter("all");
-                setSortField("created_at");
-                setSortDirection("desc");
-              }}
-            >
-              🔄 Limpar Filtros
-            </Button>
           </div>
+          
+          {/* Bulk Actions Bar */}
+          {selectedDocs.size > 0 && (
+            <div className="flex items-center gap-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+              <span className="text-sm font-medium">
+                {selectedDocs.size} documento(s) selecionado(s)
+              </span>
+              <Button 
+                variant="default"
+                size="sm"
+                onClick={exportSelectedAsZip}
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Exportando...
+                  </>
+                ) : (
+                  <>
+                    <Package className="mr-2 h-4 w-4" />
+                    Exportar ZIP
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedDocs(new Set())}
+              >
+                Limpar Seleção
+              </Button>
+            </div>
+          )}
         
         {isLoading ? (
           <div className="flex justify-center py-8">
@@ -934,6 +1103,12 @@ export const DocumentsTab = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={selectedDocs.size === filteredDocuments.length && filteredDocuments.length > 0}
+                    onCheckedChange={selectAllFiltered}
+                  />
+                </TableHead>
                 <TableHead 
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => toggleSort("filename")}
@@ -946,7 +1121,7 @@ export const DocumentsTab = () => {
                 <TableHead>Status</TableHead>
                 <TableHead>Chat</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead 
+                <TableHead
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => toggleSort("total_chunks")}
                 >
@@ -971,11 +1146,21 @@ export const DocumentsTab = () => {
               {filteredDocuments.map((doc) => (
                 <TableRow 
                   key={doc.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => setSelectedDoc(doc)}
+                  className="hover:bg-muted/50"
                 >
-                  <TableCell className="font-medium">{doc.filename}</TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedDocs.has(doc.id)}
+                      onCheckedChange={() => toggleDocSelection(doc.id)}
+                    />
+                  </TableCell>
+                  <TableCell 
+                    className="font-medium cursor-pointer"
+                    onClick={() => setSelectedDoc(doc)}
+                  >
+                    {doc.filename}
+                  </TableCell>
+                  <TableCell onClick={() => setSelectedDoc(doc)}>
                     <Badge variant={
                       doc.status === "completed" ? "default" :
                       doc.status === "failed" ? "destructive" :
@@ -984,10 +1169,10 @@ export const DocumentsTab = () => {
                       {doc.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={() => setSelectedDoc(doc)}>
                     <Badge variant="outline">{doc.target_chat || "pendente"}</Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={() => setSelectedDoc(doc)}>
                     {doc.implementation_status && (
                       <Badge variant={
                         doc.implementation_status === "ready" ? "default" :
@@ -998,8 +1183,8 @@ export const DocumentsTab = () => {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell>{doc.total_chunks}</TableCell>
-                  <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell onClick={() => setSelectedDoc(doc)}>{doc.total_chunks}</TableCell>
+                  <TableCell onClick={() => setSelectedDoc(doc)}>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button
@@ -1076,6 +1261,14 @@ export const DocumentsTab = () => {
                 </p>
               </div>
               <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setViewChunksDoc(selectedDoc)}
+                >
+                  <Boxes className="h-4 w-4 mr-2" />
+                  Ver Chunks
+                </Button>
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -1270,6 +1463,68 @@ export const DocumentsTab = () => {
                 setNewChildTag("");
                 setSelectedParentForChild(null);
               }}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Chunk Visualization Dialog */}
+      {viewChunksDoc && (
+        <Dialog open={!!viewChunksDoc} onOpenChange={(open) => !open && setViewChunksDoc(null)}>
+          <DialogContent className="max-w-4xl max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle>Chunks do Documento - {viewChunksDoc.filename}</DialogTitle>
+            </DialogHeader>
+            
+            {chunksLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : chunks && chunks.length > 0 ? (
+              <ScrollArea className="h-[60vh] pr-4">
+                <div className="space-y-4">
+                  {chunks.map((chunk, idx) => (
+                    <Card key={chunk.id} className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">Chunk #{chunk.chunk_index + 1}</Badge>
+                          <Badge variant="secondary">{chunk.word_count} palavras</Badge>
+                          {chunk.embedding ? (
+                            <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                              ✓ Embedding
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive">
+                              ✗ Sem Embedding
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="text-sm bg-muted p-3 rounded font-mono max-h-[200px] overflow-y-auto">
+                        {chunk.content.substring(0, 300)}
+                        {chunk.content.length > 300 && "..."}
+                      </div>
+                      
+                      {chunk.metadata && typeof chunk.metadata === 'object' && Object.keys(chunk.metadata).length > 0 && (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          <span className="font-medium">Metadata:</span> {JSON.stringify(chunk.metadata, null, 2)}
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum chunk encontrado para este documento
+              </div>
+            )}
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewChunksDoc(null)}>
                 Fechar
               </Button>
             </DialogFooter>
