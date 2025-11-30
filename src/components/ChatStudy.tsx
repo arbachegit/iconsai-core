@@ -12,6 +12,7 @@ import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 import { useTranslation } from "react-i18next";
 import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
+import { cn } from "@/lib/utils";
 
 // Sugestões de estudo sobre KnowRisk/KnowYOU/ACC
 const STUDY_SUGGESTIONS = [
@@ -407,17 +408,23 @@ export default function ChatStudy() {
         <div className="px-4 pb-2 space-y-2">
           {/* Show disclaimer if provided by backend */}
           <div className="flex gap-2 overflow-x-auto">
-            {displayedSuggestions.map((suggestion, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                size="sm"
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="text-xs whitespace-nowrap"
-              >
-                {suggestion}
-              </Button>
-            ))}
+            {displayedSuggestions.map((suggestion, index) => {
+              const isNew = suggestion.startsWith('🆕 NOVO:') || suggestion.toLowerCase().includes('novo:');
+              return (
+                <Button
+                  key={index}
+                  variant={isNew ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className={cn(
+                    "text-xs whitespace-nowrap",
+                    isNew && "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-none animate-pulse shadow-lg"
+                  )}
+                >
+                  {suggestion.replace('🆕 NOVO:', '').trim()}
+                </Button>
+              );
+            })}
           </div>
         </div>
       )}

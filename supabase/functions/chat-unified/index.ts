@@ -92,7 +92,8 @@ ${ragContext}
 
 **${document ? '5' : ragContext ? '4' : '3'}. Geração de Sugestões:**
 ${document 
-  ? `- A PRIMEIRA sugestão DEVE introduzir o novo material: "${document.filename}"
+  ? `- A PRIMEIRA sugestão DEVE começar com "🆕 NOVO:" seguido de uma pergunta sobre "${document.filename}"
+- Exemplo: "🆕 NOVO: O que este documento diz sobre [tema principal]?"
 - As demais sugestões devem explorar EXCLUSIVAMENTE o conteúdo do documento
 - Inclua o disclaimer nas sugestões se for a primeira resposta com este documento`
   : 'Gere sugestões contextuais relacionadas ao tema discutido.'
