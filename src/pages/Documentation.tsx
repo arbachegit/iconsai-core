@@ -34,12 +34,12 @@ import { cn } from '@/lib/utils';
 
 // Sections data structure
 const sections = [
-  { id: 'menu-principal', title: '🏠 Menu Principal', icon: FileText },
-  { id: 'database', title: '🗄️ Database', icon: Database },
-  { id: 'backend', title: '⚡ Backend', icon: Server },
-  { id: 'frontend', title: '🖥️ Frontend', icon: Code },
-  { id: 'ui-reference', title: '🎨 Referência UI', icon: Palette },
-  { id: 'changelog', title: '📋 Changelog', icon: History },
+  { id: 'menu-principal', title: 'Menu Principal', icon: FileText },
+  { id: 'database', title: 'Database', icon: Database },
+  { id: 'backend', title: 'Backend', icon: Server },
+  { id: 'frontend', title: 'Frontend', icon: Code },
+  { id: 'ui-reference', title: 'Referência UI', icon: Palette },
+  { id: 'changelog', title: 'Changelog', icon: History },
 ];
 
 // Icons reference data
