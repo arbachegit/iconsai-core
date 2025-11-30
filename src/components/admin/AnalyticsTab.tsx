@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Download, FileText, FileSpreadsheet, FileJson, FileDown, Loader2, MessageSquare } from "lucide-react";
+import { TrendingUp, Download, FileText, FileSpreadsheet, FileJson, FileDown, Loader2, MessageSquare, Clock, Smile, TrendingDown } from "lucide-react";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
   LineChart,
@@ -24,7 +24,6 @@ import {
 } from "recharts";
 import { format, subDays, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { MessageSquare, Clock, TrendingUp, Smile, TrendingDown, Download } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useRef } from "react";
