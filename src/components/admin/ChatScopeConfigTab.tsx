@@ -251,7 +251,7 @@ export function ChatScopeConfigTab() {
                   ) : (
                     <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5" />
                   )}
-                  <p className="text-sm">{issue.message}</p>
+                  <p className="text-sm text-black dark:text-white">{issue.message}</p>
                 </div>
               ))}
             </div>
