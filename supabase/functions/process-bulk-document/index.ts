@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createHash } from "https://deno.land/std@0.177.0/node/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,13 @@ interface DocumentInput {
   document_id: string;
   full_text: string;
   title: string;
+}
+
+// 0. GERAÇÃO DE HASH SHA256
+function generateContentHash(text: string): string {
+  const hash = createHash("sha256");
+  hash.update(text);
+  return hash.digest("hex").toString();
 }
 
 // 1. VALIDAÇÃO DE SANIDADE
@@ -136,6 +144,30 @@ serve(async (req) => {
       try {
         console.log(`Processing document ${doc.document_id}: ${doc.title}`);
         
+        // 0. GERAR HASH SHA256 DO CONTEÚDO
+        const contentHash = generateContentHash(doc.full_text);
+        console.log(`Generated content hash for ${doc.document_id}: ${contentHash.substring(0, 16)}...`);
+        
+        // Verificar se já existe documento com o mesmo hash
+        const { data: existingDoc } = await supabase
+          .from("documents")
+          .select("id, filename")
+          .eq("content_hash", contentHash)
+          .neq("id", doc.document_id)
+          .single();
+        
+        if (existingDoc) {
+          console.log(`⚠️ Duplicate detected: ${doc.title} matches existing ${existingDoc.filename}`);
+          results.push({
+            document_id: doc.document_id,
+            status: "duplicate",
+            error: `Conteúdo duplicado do documento: ${existingDoc.filename}`,
+            existing_doc_id: existingDoc.id,
+            existing_filename: existingDoc.filename
+          } as any);
+          continue;
+        }
+        
         // 1. VALIDAÇÃO
         const validation = validateTextSanity(doc.full_text);
         if (!validation.valid) {
@@ -149,8 +181,11 @@ serve(async (req) => {
           continue;
         }
         
-        // Update status to processing
-        await supabase.from("documents").update({ status: "processing" }).eq("id", doc.document_id);
+        // Update status to processing e salvar hash
+        await supabase.from("documents").update({ 
+          status: "processing",
+          content_hash: contentHash
+        }).eq("id", doc.document_id);
         
         // 2. AUTO-CATEGORIZAÇÃO
         const targetChat = await classifyTargetChat(doc.full_text, lovableKey);
@@ -230,6 +265,21 @@ serve(async (req) => {
           total_chunks: chunks.length,
           total_words: doc.full_text.split(/\s+/).length
         }).eq("id", doc.document_id);
+        
+        // Criar entrada inicial em document_versions
+        await supabase.from("document_versions").insert({
+          document_id: doc.document_id,
+          version_number: 1,
+          current_hash: contentHash,
+          change_type: "INITIAL",
+          log_message: `Documento "${doc.title}" ingerido inicialmente`,
+          metadata: {
+            target_chat: targetChat,
+            total_chunks: chunks.length,
+            total_words: doc.full_text.split(/\s+/).length,
+            implementation_status: metadata.implementation_status
+          }
+        });
         
         results.push({ document_id: doc.document_id, status: "completed" });
         console.log(`Document ${doc.document_id} processed successfully as ${targetChat}`);

@@ -63,6 +63,14 @@ export const DocumentsTab = () => {
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
   
+  // Duplicate detection states
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    newFileName: string;
+    existingFileName: string;
+    existingDocId: string;
+    newDocId: string;
+  } | null>(null);
+  
   const queryClient = useQueryClient();
 
   // Fetch documents
@@ -270,11 +278,30 @@ export const DocumentsTab = () => {
         }
         
         // Send to bulk processing
-        const { error: processError } = await supabase.functions.invoke("process-bulk-document", {
+        const { data: processResult, error: processError } = await supabase.functions.invoke("process-bulk-document", {
           body: { documents_data: documentsData }
         });
         
         if (processError) throw processError;
+        
+        // Check for duplicates in results
+        if (processResult?.results) {
+          const duplicates = processResult.results.filter((r: any) => r.status === "duplicate");
+          if (duplicates.length > 0) {
+            const dup = duplicates[0];
+            const newDoc = documentsData.find(d => d.document_id === dup.document_id);
+            if (newDoc) {
+              setDuplicateInfo({
+                newFileName: newDoc.title,
+                existingFileName: dup.existing_filename || "Documento existente",
+                existingDocId: dup.existing_doc_id,
+                newDocId: dup.document_id
+              });
+              toast.warning("Documento duplicado detectado!");
+              return; // Stop processing to show modal
+            }
+          }
+        }
         
         // Start polling for each document
         documentsData.forEach((doc, idx) => {
@@ -379,6 +406,63 @@ export const DocumentsTab = () => {
       toast.error(`Erro ao gerar documentação: ${error.message}`);
     }
   });
+  
+  // Handle duplicate - Discard new document
+  const handleDiscardDuplicate = async () => {
+    if (!duplicateInfo) return;
+    
+    try {
+      await supabase.from("documents").delete().eq("id", duplicateInfo.newDocId);
+      toast.info("Documento descartado com sucesso");
+      setDuplicateInfo(null);
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    } catch (error: any) {
+      toast.error(`Erro ao descartar: ${error.message}`);
+    }
+  };
+  
+  // Handle duplicate - Replace existing document
+  const handleReplaceDuplicate = async () => {
+    if (!duplicateInfo) return;
+    
+    try {
+      // 1. Delete old document and its related data
+      await supabase.from("document_chunks").delete().eq("document_id", duplicateInfo.existingDocId);
+      await supabase.from("document_tags").delete().eq("document_id", duplicateInfo.existingDocId);
+      await supabase.from("document_versions").delete().eq("document_id", duplicateInfo.existingDocId);
+      await supabase.from("documents").delete().eq("id", duplicateInfo.existingDocId);
+      
+      // 2. Get new document data and reprocess
+      const { data: newDoc, error: fetchError } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("id", duplicateInfo.newDocId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // 3. Reset status and reprocess
+      await supabase.from("documents").update({ status: "pending" }).eq("id", duplicateInfo.newDocId);
+      
+      const { error: processError } = await supabase.functions.invoke("process-bulk-document", {
+        body: {
+          documents_data: [{
+            document_id: newDoc.id,
+            full_text: newDoc.original_text,
+            title: newDoc.filename
+          }]
+        }
+      });
+      
+      if (processError) throw processError;
+      
+      toast.success("Documento substituído com sucesso!");
+      setDuplicateInfo(null);
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    } catch (error: any) {
+      toast.error(`Erro ao substituir: ${error.message}`);
+    }
+  };
 
   // Fetch last documentation version
   const { data: lastDocVersion } = useQuery({
@@ -1526,6 +1610,48 @@ export const DocumentsTab = () => {
             <DialogFooter>
               <Button variant="outline" onClick={() => setViewChunksDoc(null)}>
                 Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {/* Duplicate Detection Modal */}
+      {duplicateInfo && (
+        <Dialog open={!!duplicateInfo} onOpenChange={() => setDuplicateInfo(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                ⚠️ Documento Duplicado Detectado
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm">
+                O arquivo <strong className="text-primary">{duplicateInfo.newFileName}</strong> possui conteúdo idêntico ao documento existente:
+              </p>
+              <div className="p-3 bg-muted rounded-lg border border-border">
+                <p className="font-semibold text-sm">{duplicateInfo.existingFileName}</p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                O que deseja fazer?
+              </p>
+            </div>
+            <DialogFooter className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handleDiscardDuplicate}
+                className="flex-1"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Descartar Novo
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleReplaceDuplicate}
+                className="flex-1"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Substituir Existente
               </Button>
             </DialogFooter>
           </DialogContent>

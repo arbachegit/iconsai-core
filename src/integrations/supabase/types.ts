@@ -316,6 +316,50 @@ export type Database = {
           },
         ]
       }
+      document_versions: {
+        Row: {
+          change_type: string
+          created_at: string | null
+          current_hash: string
+          document_id: string | null
+          id: string
+          log_message: string
+          metadata: Json | null
+          previous_hash: string | null
+          version_number: number
+        }
+        Insert: {
+          change_type: string
+          created_at?: string | null
+          current_hash: string
+          document_id?: string | null
+          id?: string
+          log_message: string
+          metadata?: Json | null
+          previous_hash?: string | null
+          version_number?: number
+        }
+        Update: {
+          change_type?: string
+          created_at?: string | null
+          current_hash?: string
+          document_id?: string | null
+          id?: string
+          log_message?: string
+          metadata?: Json | null
+          previous_hash?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documentation_versions: {
         Row: {
           author: string | null
@@ -346,6 +390,7 @@ export type Database = {
       documents: {
         Row: {
           ai_summary: string | null
+          content_hash: string | null
           created_at: string | null
           error_message: string | null
           filename: string
@@ -363,6 +408,7 @@ export type Database = {
         }
         Insert: {
           ai_summary?: string | null
+          content_hash?: string | null
           created_at?: string | null
           error_message?: string | null
           filename: string
@@ -380,6 +426,7 @@ export type Database = {
         }
         Update: {
           ai_summary?: string | null
+          content_hash?: string | null
           created_at?: string | null
           error_message?: string | null
           filename?: string
@@ -484,6 +531,48 @@ export type Database = {
           prompt_key?: string
           section_id?: string
           success?: boolean
+        }
+        Relationships: []
+      }
+      rag_analytics: {
+        Row: {
+          created_at: string | null
+          id: string
+          latency_ms: number
+          match_threshold: number | null
+          metadata: Json | null
+          query: string
+          results_count: number | null
+          session_id: string | null
+          success_status: boolean
+          target_chat: string | null
+          top_similarity_score: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          latency_ms: number
+          match_threshold?: number | null
+          metadata?: Json | null
+          query: string
+          results_count?: number | null
+          session_id?: string | null
+          success_status: boolean
+          target_chat?: string | null
+          top_similarity_score?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          latency_ms?: number
+          match_threshold?: number | null
+          metadata?: Json | null
+          query?: string
+          results_count?: number | null
+          session_id?: string | null
+          success_status?: boolean
+          target_chat?: string | null
+          top_similarity_score?: number | null
         }
         Relationships: []
       }
