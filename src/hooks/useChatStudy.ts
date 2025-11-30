@@ -3,6 +3,7 @@ import { extractSuggestions, removeSuggestionsFromText } from "@/lib/chat-stream
 import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 
 interface Message {
   role: "user" | "assistant";
@@ -320,23 +321,32 @@ export function useChatStudy() {
           body: { prompt: prompt.trim() },
         });
 
-        // Verificar se é erro de guardrail - quando status é 400, a resposta vem em error.context
-        if (error?.context?.error === "guardrail_violation") {
-          const rejectedTerm = error.context.rejected_term || prompt;
-          
-          // Adicionar mensagem do assistente explicando a restrição
-          const guardrailMessage: Message = {
-            role: "assistant",
-            content: `Sou especializado em ajudar a estudar sobre a KnowRISK, KnowYOU, ACC e o conteúdo deste website. Não posso ajudar com "${rejectedTerm}", mas posso responder sobre esses tópicos. Como posso ajudá-lo?`,
-            timestamp: new Date(),
-          };
+        // Verificar se é erro de guardrail vindo de Edge Function (HTTP 400)
+        if (error instanceof FunctionsHttpError) {
+          try {
+            const errorData = await error.context.json();
 
-          const updatedMessages = [...messages, guardrailMessage];
-          setMessages(updatedMessages);
-          saveHistory(updatedMessages);
-          
-          setIsGeneratingImage(false);
-          return;
+            if (errorData?.error === "guardrail_violation") {
+              const rejectedTerm = errorData.rejected_term || prompt;
+
+              const guardrailMessage: Message = {
+                role: "assistant",
+                content:
+                  `Sou especializado em ajudar a estudar sobre a KnowRISK, KnowYOU, ACC e o conteúdo deste website. ` +
+                  `Não posso ajudar com "${rejectedTerm}", mas posso responder sobre esses tópicos. Como posso ajudá-lo?`,
+                timestamp: new Date(),
+              };
+
+              const updatedMessages = [...messages, guardrailMessage];
+              setMessages(updatedMessages);
+              saveHistory(updatedMessages);
+
+              setIsGeneratingImage(false);
+              return;
+            }
+          } catch (parseError) {
+            console.error("Erro ao interpretar resposta de guardrail:", parseError);
+          }
         }
 
         if (error) throw error;
