@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 
 // Configure PDF.js worker with local bundle
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -71,6 +72,9 @@ export const DocumentsTab = () => {
     existingDocId: string;
     newDocId: string;
   } | null>(null);
+  
+  // RAG Info Modal state
+  const [showRagInfoModal, setShowRagInfoModal] = useState(false);
   
   const queryClient = useQueryClient();
 
@@ -888,8 +892,25 @@ export const DocumentsTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-2">Documentos RAG</h2>
-        <p className="text-muted-foreground">
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold">Documentos RAG</h2>
+          
+          {/* RAG Info Button com círculo, ícone Lightbulb e pulsing dot */}
+          <button
+            onClick={() => setShowRagInfoModal(true)}
+            className="relative flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-amber-500/30 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all duration-300 group"
+            title="Resumo da Engenharia RAG"
+          >
+            <Lightbulb className="h-5 w-5 text-amber-500 group-hover:text-amber-400 transition-colors" />
+            
+            {/* Green pulsing dot - posicionado na parte externa do círculo */}
+            <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+            </span>
+          </button>
+        </div>
+        <p className="text-muted-foreground mt-2">
           Gerencie documentos para o sistema de Recuperação Aumentada por Geração
         </p>
       </div>
@@ -1795,6 +1816,182 @@ export const DocumentsTab = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* RAG Engineering Info Modal */}
+      <Dialog open={showRagInfoModal} onOpenChange={setShowRagInfoModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <Lightbulb className="h-6 w-6 text-amber-500" />
+              Resumo da Engenharia RAG Implementada e Siglas
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 text-sm">
+            {/* Introdução */}
+            <p className="text-muted-foreground leading-relaxed">
+              O sistema de <strong>Geração Aumentada por Recuperação (RAG, Retrieval-Augmented Generation)</strong> foi construído como uma <em>Biblioteca Digital Inteligente e Auto-organizada</em> com foco em estabilidade e qualidade de dados.
+            </p>
+            
+            {/* Fase 1 */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold flex items-center gap-2 text-primary">
+                <span className="bg-primary/10 p-1 rounded">📥</span>
+                Fase 1: Ingestão de Dados de Alta Qualidade (ETL - Extract, Transform, Load)
+              </h3>
+              <p className="text-muted-foreground">
+                A fase de ingestão garante a qualidade dos dados antes da indexação, usando inteligência e automação.
+              </p>
+              
+              <div className="grid gap-4 pl-4 border-l-2 border-primary/30">
+                <div>
+                  <h4 className="font-medium text-amber-500">🛡️ Prevenção de Corrupção</h4>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    A extração do texto de PDFs é feita no <strong>Frontend (navegador)</strong> usando <code className="bg-muted px-1 rounded">pdfjs-dist</code>, uma prática de segurança crucial para evitar a corrupção de caracteres.
+                  </p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-blue-500">🤖 Validação Inteligente</h4>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    O sistema usa o <strong>SLM (Small Language Model - KnowYOU)</strong> para classificar automaticamente o contexto (<Badge variant="outline" className="text-xs">HEALTH</Badge>, <Badge variant="outline" className="text-xs">STUDY</Badge> - as suas IAs inseridas no sistema) e verifica a legibilidade do documento antes de prosseguir.
+                  </p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-green-500">✂️ Chunking Otimizado</h4>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    O texto é fragmentado em partes de <strong>750 palavras</strong> com <strong>180 palavras de sobreposição</strong>, otimizando a recuperação do contexto.
+                  </p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-purple-500">🔢 Indexação Vetorial</h4>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    Cada fragmento é convertido em um vetor (<strong>Embedding</strong>) e indexado no Postgres com a extensão <code className="bg-muted px-1 rounded">pgvector</code> para busca semântica.
+                  </p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-red-500">🔄 Estabilidade Ativa (Cleanup)</h4>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    Um <strong>Cron Job</strong> (agendador de tarefas) verifica documentos travados no status 'processing' e os reclassifica como 'pending' automaticamente, permitindo o reprocessamento e garantindo a estabilidade.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Fase 2 */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold flex items-center gap-2 text-primary">
+                <span className="bg-primary/10 p-1 rounded">🔍</span>
+                Fase 2: Recuperação Segura e Fundamentada (Retrieval)
+              </h3>
+              <p className="text-muted-foreground">
+                A fase de busca é projetada para precisão e rastreabilidade.
+              </p>
+              
+              <div className="grid gap-4 pl-4 border-l-2 border-primary/30">
+                <div>
+                  <h4 className="font-medium text-cyan-500">🔗 Busca Híbrida</h4>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    A pesquisa é feita combinando <strong>similaridade vetorial</strong> (buscando significado) com filtros por <strong>Metadados</strong> (<code className="bg-muted px-1 rounded">target_chat</code> e <code className="bg-muted px-1 rounded">Tags</code>) para garantir que a resposta venha apenas do contexto relevante (ex: apenas documentos de 'Health' para o Chat Health).
+                  </p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-emerald-500">📚 Geração Fundamentada</h4>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    O <strong>LLM (Gemini 3.0)</strong> e/ou o <strong>SLM (KnowYOU)</strong> são forçados a usar os chunks de contexto recuperados para fundamentar a resposta, prevenindo "alucinações" e garantindo a precisão.
+                  </p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-orange-500">📊 Observabilidade</h4>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    O sistema registra logs de <strong>Latência</strong> e <strong>Taxa de Sucesso</strong> das buscas para o Dashboard de <strong>RAG (Retrieval-Augmented Generation) Analytics</strong>.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Infográfico */}
+            <div className="mt-6 p-4 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg border">
+              <h4 className="font-semibold mb-3 text-center">📈 Fluxo RAG - Infográfico</h4>
+              <div className="bg-card p-4 rounded-lg">
+                <svg viewBox="0 0 800 600" className="w-full h-auto">
+                  {/* ETL Phase */}
+                  <g>
+                    <rect x="50" y="50" width="150" height="200" rx="8" fill="hsl(var(--primary))" opacity="0.1" stroke="hsl(var(--primary))" strokeWidth="2"/>
+                    <text x="125" y="80" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="16" fontWeight="bold">📥 Fase 1: ETL</text>
+                    
+                    <text x="125" y="110" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">PDF Upload</text>
+                    <text x="125" y="130" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">↓</text>
+                    <text x="125" y="150" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">pdfjs-dist</text>
+                    <text x="125" y="170" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">↓</text>
+                    <text x="125" y="190" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Validação SLM</text>
+                    <text x="125" y="210" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">↓</text>
+                    <text x="125" y="230" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Chunking</text>
+                  </g>
+                  
+                  {/* Arrow to Database */}
+                  <path d="M 200 150 L 280 300" stroke="hsl(var(--primary))" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)"/>
+                  
+                  {/* Database */}
+                  <g>
+                    <ellipse cx="350" cy="350" rx="80" ry="40" fill="hsl(var(--secondary))" opacity="0.2" stroke="hsl(var(--secondary))" strokeWidth="2"/>
+                    <text x="350" y="340" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="bold">pgvector</text>
+                    <text x="350" y="360" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Postgres DB</text>
+                  </g>
+                  
+                  {/* Arrow to Retrieval */}
+                  <path d="M 430 350 L 550 200" stroke="hsl(var(--primary))" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)"/>
+                  
+                  {/* Retrieval Phase */}
+                  <g>
+                    <rect x="550" y="50" width="200" height="200" rx="8" fill="hsl(var(--accent))" opacity="0.1" stroke="hsl(var(--accent))" strokeWidth="2"/>
+                    <text x="650" y="80" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="16" fontWeight="bold">🔍 Fase 2: Retrieval</text>
+                    
+                    <text x="650" y="110" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Query</text>
+                    <text x="650" y="130" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">↓</text>
+                    <text x="650" y="150" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Busca Híbrida</text>
+                    <text x="650" y="170" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">↓</text>
+                    <text x="650" y="190" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Top-K Chunks</text>
+                    <text x="650" y="210" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">↓</text>
+                    <text x="650" y="230" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">LLM/SLM</text>
+                  </g>
+                  
+                  {/* Arrow definitions */}
+                  <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                      <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" />
+                    </marker>
+                  </defs>
+                </svg>
+              </div>
+            </div>
+            
+            {/* Glossário de Siglas */}
+            <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+              <h4 className="font-semibold mb-2">📖 Glossário de Siglas</h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div><strong>RAG</strong> - Retrieval-Augmented Generation</div>
+                <div><strong>ETL</strong> - Extract, Transform, Load</div>
+                <div><strong>LLM</strong> - Large Language Model</div>
+                <div><strong>SLM</strong> - Small Language Model</div>
+                <div><strong>Embedding</strong> - Representação vetorial de texto</div>
+                <div><strong>Chunk</strong> - Fragmento de documento</div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRagInfoModal(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
