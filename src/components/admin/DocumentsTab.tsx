@@ -1577,13 +1577,24 @@ export const DocumentsTab = () => {
                   <TableCell onClick={() => setSelectedDoc(doc)}>
                     <Badge variant="outline">{doc.target_chat || "pendente"}</Badge>
                   </TableCell>
-                  <TableCell onClick={() => setSelectedDoc(doc)}>
-                    {doc.inserted_in_chat ? (
+                  <TableCell onClick={(e) => !doc.is_inserted && e.stopPropagation()}>
+                    {doc.is_inserted && doc.inserted_in_chat ? (
                       <Badge className={getChatBadgeColor(doc.inserted_in_chat)}>
                         {doc.inserted_in_chat}
                       </Badge>
                     ) : (
-                      <span className="text-muted-foreground text-sm">—</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setInsertionModalDoc(doc);
+                        }}
+                        className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 border-blue-500/30"
+                        title="Inserir em Chat"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
                     )}
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)} className="text-center">
@@ -1675,20 +1686,6 @@ export const DocumentsTab = () => {
                           title="Reprocessar"
                         >
                           <RefreshCw className={cn("h-4 w-4", reprocessMutation.isPending && "animate-spin")} />
-                        </Button>
-                      )}
-                      {doc.target_chat === 'general' && !doc.is_inserted && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setInsertionModalDoc(doc);
-                          }}
-                          title="Inserir em Chat"
-                          className="text-blue-500 hover:text-blue-600"
-                        >
-                          <Plus className="h-4 w-4" />
                         </Button>
                       )}
                       <Button

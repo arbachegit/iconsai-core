@@ -15,6 +15,7 @@ import { AlertTriangle } from "lucide-react";
 import { DocumentAttachButton } from "./DocumentAttachButton";
 import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
+import { cn } from "@/lib/utils";
 
 // 30 sugestões de saúde para rotação
 const HEALTH_SUGGESTIONS = [
@@ -489,17 +490,23 @@ export default function ChatKnowYOU() {
             💡 {isImageMode ? t('chat.imageSuggestions') : t('chat.suggestions')}
           </p>
           <div className="flex flex-wrap gap-2 suggestions-slider">
-            {displayedSuggestions.map((suggestion, idx) => (
-              <Button
-                key={`${suggestion}-${idx}`}
-                variant="outline"
-                size="sm"
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="text-xs hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                {suggestion}
-              </Button>
-            ))}
+            {displayedSuggestions.map((suggestion, idx) => {
+              const isNew = suggestion.startsWith('🆕 NOVO:') || suggestion.toLowerCase().includes('novo:');
+              return (
+                <Button
+                  key={`${suggestion}-${idx}`}
+                  variant={isNew ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className={cn(
+                    "text-xs hover:bg-primary hover:text-primary-foreground transition-colors",
+                    isNew && "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-none animate-pulse shadow-lg"
+                  )}
+                >
+                  {suggestion.replace('🆕 NOVO:', '').trim()}
+                </Button>
+              );
+            })}
           </div>
         </div>
       )}
