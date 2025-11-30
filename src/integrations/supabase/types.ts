@@ -298,6 +298,56 @@ export type Database = {
           },
         ]
       }
+      document_routing_log: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          disclaimer_shown: boolean | null
+          document_id: string | null
+          document_name: string
+          final_category: string
+          id: string
+          metadata: Json | null
+          original_category: string
+          scope_changed: boolean | null
+          session_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          disclaimer_shown?: boolean | null
+          document_id?: string | null
+          document_name: string
+          final_category: string
+          id?: string
+          metadata?: Json | null
+          original_category: string
+          scope_changed?: boolean | null
+          session_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          disclaimer_shown?: boolean | null
+          document_id?: string | null
+          document_name?: string
+          final_category?: string
+          id?: string
+          metadata?: Json | null
+          original_category?: string
+          scope_changed?: boolean | null
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_routing_log_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_tags: {
         Row: {
           confidence: number | null
