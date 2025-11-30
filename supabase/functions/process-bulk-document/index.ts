@@ -371,7 +371,21 @@ serve(async (req) => {
           },
         });
 
-        console.log("✅ AUTO_PATCH e documentação disparados com sucesso");
+        // 3. Atualizar chat configs com tags dos documentos
+        for (const targetChat of targetChats) {
+          await fetch(`${supabaseUrl}/functions/v1/update-chat-config`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({
+              chatType: targetChat,
+            }),
+          });
+        }
+
+        console.log("✅ AUTO_PATCH, documentação e chat configs atualizados com sucesso");
       } catch (triggerError) {
         console.error("⚠️ Erro ao disparar AUTO_PATCH/documentação:", triggerError);
         // Não falhar o processo principal por causa deste erro

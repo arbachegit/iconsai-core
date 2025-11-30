@@ -25,6 +25,12 @@ interface ChatConfig {
   last_document_added: string | null;
   health_status: "ok" | "warning" | "error";
   health_issues: any[];
+  document_tags_data: Array<{
+    tag_name: string;
+    tag_type: "parent" | "child";
+    avg_confidence: number;
+    count: number;
+  }>;
   created_at: string;
   updated_at: string;
 }
@@ -309,7 +315,7 @@ export function ChatScopeConfigTab() {
 
           {/* Scope Topics */}
           <div>
-            <Label className="text-sm font-medium">Escopo Permitido</Label>
+            <Label className="text-sm font-medium">Escopo Permitido (Auto-Gerado)</Label>
             <div className="flex flex-wrap gap-2 mt-2">
               {config.scope_topics.map((topic, idx) => (
                 <Badge key={idx} variant="secondary">
@@ -318,6 +324,136 @@ export function ChatScopeConfigTab() {
               ))}
             </div>
           </div>
+
+          {/* Tags Extraídas dos Documentos */}
+          {config.document_tags_data && config.document_tags_data.length > 0 && (
+            <Card className="border-2 border-primary/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  🏷️ Tags Extraídas dos Documentos
+                  <Badge variant="outline" className="ml-auto">
+                    {config.total_documents} documentos
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Parent Tags */}
+                {(() => {
+                  const parentTags = config.document_tags_data.filter(t => t.tag_type === "parent");
+                  const highConfParents = parentTags.filter(t => t.avg_confidence >= 0.7);
+                  const lowConfParents = parentTags.filter(t => t.avg_confidence < 0.7);
+                  
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-semibold">📁 Tags Parent ({parentTags.length})</Label>
+                        {lowConfParents.length > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            ⚠️ {lowConfParents.length} com baixa confiança
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {highConfParents.length > 0 && (
+                        <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                          <p className="text-xs text-muted-foreground mb-2">
+                            ✅ Incluídas no escopo (confidence ≥ 70%):
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {highConfParents.map((tag, idx) => (
+                              <Badge 
+                                key={idx} 
+                                variant="default"
+                                className="text-xs"
+                              >
+                                {tag.tag_name} {(tag.avg_confidence * 100).toFixed(0)}%
+                                {tag.count > 1 && (
+                                  <span className="ml-1 opacity-70">×{tag.count}</span>
+                                )}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {lowConfParents.length > 0 && (
+                        <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                          <p className="text-xs text-muted-foreground mb-2">
+                            ⚠️ Não incluídas (confidence {'<'} 70%):
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {lowConfParents.map((tag, idx) => (
+                              <Badge 
+                                key={idx} 
+                                variant="outline"
+                                className="text-xs opacity-60"
+                              >
+                                {tag.tag_name} {(tag.avg_confidence * 100).toFixed(0)}%
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                <Separator />
+
+                {/* Child Tags */}
+                {(() => {
+                  const childTags = config.document_tags_data.filter(t => t.tag_type === "child");
+                  
+                  if (childTags.length === 0) return null;
+                  
+                  return (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">📄 Tags Child ({childTags.length})</Label>
+                      <div className="p-3 bg-muted/50 rounded-lg max-h-32 overflow-y-auto">
+                        <div className="flex flex-wrap gap-1.5">
+                          {childTags.slice(0, 20).map((tag, idx) => (
+                            <Badge 
+                              key={idx} 
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {tag.tag_name}
+                            </Badge>
+                          ))}
+                          {childTags.length > 20 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{childTags.length - 20} mais...
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Statistics */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                  <span>
+                    🔄 Última atualização: {new Date(config.updated_at).toLocaleString('pt-BR')}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      toast({
+                        title: "Atualizando tags...",
+                        description: "Recalculando escopo com base nos documentos",
+                      });
+                      updateConfig(config.chat_type, config);
+                    }}
+                    className="h-7 text-xs"
+                  >
+                    ↻ Forçar Atualização
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Rejection Message */}
           {isEditing ? (
