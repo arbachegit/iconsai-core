@@ -1,4 +1,4 @@
-import { Play, Square, Download, Copy, Check } from "lucide-react";
+import { Play, Square, Download, Copy, Check, Calendar, Clock, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useTranslation } from "react-i18next";
@@ -136,7 +136,8 @@ export function AudioControls({
         {/* Data */}
         {timestamp && (
           <span className="text-xs text-muted-foreground flex items-center gap-1">
-            📅 {timestamp.toLocaleDateString("pt-BR", {
+            <Calendar className="h-3 w-3" />
+            {timestamp.toLocaleDateString("pt-BR", {
               day: "2-digit",
               month: "2-digit",
               year: "numeric",
@@ -147,7 +148,8 @@ export function AudioControls({
         {/* Hora */}
         {timestamp && (
           <span className="text-xs text-muted-foreground flex items-center gap-1">
-            🕐 {timestamp.toLocaleTimeString("pt-BR", {
+            <Clock className="h-3 w-3" />
+            {timestamp.toLocaleTimeString("pt-BR", {
               hour: "2-digit",
               minute: "2-digit",
             })}
@@ -157,7 +159,8 @@ export function AudioControls({
         {/* Localização */}
         {location && (
           <span className="text-xs text-muted-foreground flex items-center gap-1">
-            📍 {location}
+            <MapPin className="h-3 w-3" />
+            {location}
           </span>
         )}
       </div>
