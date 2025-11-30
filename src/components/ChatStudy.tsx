@@ -73,7 +73,41 @@ export default function ChatStudy() {
   const previousMessagesLength = useRef(messages.length);
   const INIT_PERIOD = 1000; // 1 segundo de período de inicialização
   const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
+  const [audioVisibility, setAudioVisibility] = useState<{[key: number]: boolean}>({});
   const audioMessageRefs = useRef<{[key: number]: HTMLDivElement | null}>({});
+
+  // IntersectionObserver para detectar quando mensagem de áudio sai do viewport
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const idx = Number(entry.target.getAttribute('data-audio-index'));
+          if (!isNaN(idx)) {
+            setAudioVisibility(prev => ({ ...prev, [idx]: entry.isIntersecting }));
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    Object.entries(audioMessageRefs.current).forEach(([idx, el]) => {
+      if (el) {
+        el.setAttribute('data-audio-index', idx);
+        observer.observe(el);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [messages]);
+
+  // Mostrar FloatingPlayer quando áudio tocando E não visível
+  useEffect(() => {
+    if (currentlyPlayingIndex !== null && !audioVisibility[currentlyPlayingIndex]) {
+      setShowFloatingPlayer(true);
+    } else {
+      setShowFloatingPlayer(false);
+    }
+  }, [currentlyPlayingIndex, audioVisibility]);
 
   // Rotação de sugestões a cada 10 segundos
   useEffect(() => {
@@ -381,14 +415,28 @@ export default function ChatStudy() {
                   />
                 )}
 
-                {message.role === "assistant" && message.audioUrl && (
-                  <AudioControls
-                    audioUrl={message.audioUrl}
-                    isPlaying={currentlyPlayingIndex === index}
-                    onPlay={() => handleAudioPlay(index)}
-                    onStop={handleAudioStop}
-                    onDownload={() => handleDownloadAudio(message.audioUrl!, index)}
-                  />
+                {message.role === "assistant" && (
+                  <>
+                    <span className="text-xs opacity-70 block mt-2">
+                      {message.timestamp.toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    {message.audioUrl && (
+                      <AudioControls
+                        audioUrl={message.audioUrl}
+                        isPlaying={currentlyPlayingIndex === index}
+                        currentTime={audioStates[index]?.currentTime}
+                        duration={audioStates[index]?.duration}
+                        timestamp={message.timestamp}
+                        messageContent={message.content}
+                        onPlay={() => handleAudioPlay(index)}
+                        onStop={handleAudioStop}
+                        onDownload={() => handleDownloadAudio(message.audioUrl!, index)}
+                      />
+                    )}
+                  </>
                 )}
               </div>
             </div>
