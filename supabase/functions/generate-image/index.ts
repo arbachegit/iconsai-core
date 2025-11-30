@@ -70,7 +70,11 @@ serve(async (req) => {
     if (!containsHealthKeyword) {
       console.log("❌ Prompt rejeitado (sem keywords de saúde):", prompt);
       return new Response(
-        JSON.stringify({ error: "Apenas imagens relacionadas à área da saúde são permitidas" }),
+        JSON.stringify({ 
+          error: "guardrail_violation",
+          rejected_term: prompt.trim(),
+          scope: "health"
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
