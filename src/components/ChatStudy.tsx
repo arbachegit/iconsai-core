@@ -583,11 +583,11 @@ export default function ChatStudy() {
             </div>
           ))}
           
-          {(isLoading || isGeneratingAudio || isGeneratingImage) && (
-            <div className="flex justify-start">
-              <TypingIndicator />
-            </div>
-          )}
+              {(isLoading || isGeneratingAudio || isGeneratingImage) && (
+                <div className="flex justify-start">
+                  <TypingIndicator isDrawing={isGeneratingImage} />
+                </div>
+              )}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
