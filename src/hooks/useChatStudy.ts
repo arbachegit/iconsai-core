@@ -108,7 +108,7 @@ export function useChatStudy() {
         sentiment_label: sentiment?.label,
         sentiment_score: sentiment?.score,
         chat_type: "study",
-      });
+      }, { onConflict: 'session_id' });
 
       if (error) throw error;
     } catch (error) {
