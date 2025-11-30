@@ -384,12 +384,13 @@ export default function ChatKnowYOU() {
               <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
                 <AlertTitle className="flex items-center justify-between">
-                  ⚠️ Disclamer - Conteúdo Novo Adicionado
+                  {t('documentAttach.disclaimerTitle')}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={detachDocument}
                     className="h-6 w-6 p-0"
+                    title={t('documentAttach.removeButton')}
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -415,7 +416,7 @@ export default function ChatKnowYOU() {
                   {msg.imageUrl && (
                     <img
                       src={msg.imageUrl}
-                      alt="Imagem gerada"
+                      alt={t('chat.generatingImage')}
                       className="max-w-full rounded-lg mb-2"
                     />
                   )}

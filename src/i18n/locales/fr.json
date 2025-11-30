@@ -197,5 +197,29 @@
   },
   "floatingButton": {
     "tooltip": "Parler avec KnowYOU"
+  },
+  "documentAttach": {
+    "title": "📎 Joindre un Document de Santé",
+    "loading": "Chargement...",
+    "noDocuments": "Aucun document de santé disponible",
+    "noDocumentsDesc": "Téléchargez des documents dans le panneau d'administration",
+    "chunks": "morceaux",
+    "readable": "✓ Lisible",
+    "attached": "Document joint: {{documentName}}",
+    "detached": "Document supprimé",
+    "disclaimerTitle": "⚠️ Avertissement - Nouveau Contenu Ajouté",
+    "disclaimerMessage": "Le document \"{{documentName}}\" a été joint au contexte de cette conversation. Les réponses incluent maintenant des informations spécifiques de ce document. Cliquez sur X pour supprimer.",
+    "removeButton": "Supprimer le document"
+  },
+  "documentRouting": {
+    "title": "📄 Le Document Nécessite une Définition de Destination",
+    "description": "Le document \"{{filename}}\" a été classé comme Général. Choisissez où l'appliquer pour activer les garde-fous appropriés:",
+    "suggestedTags": "Tags suggérés:",
+    "health": "Santé",
+    "healthDesc": "Santé et médecine",
+    "study": "Étude",
+    "studyDesc": "KnowRISK et ACC",
+    "general": "Général",
+    "generalDesc": "Garder tel quel"
   }
 }
