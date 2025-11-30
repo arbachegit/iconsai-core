@@ -19,80 +19,48 @@ import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
 // 30 sugestões de saúde para rotação
-const HEALTH_SUGGESTIONS = [
-  "O que é telemedicina?",
-  "Como prevenir doenças cardíacas?",
-  "Quais especialidades o Hospital Moinhos de Vento oferece?",
-  "Como funciona a robótica cirúrgica?",
-  "O que são doenças crônicas?",
-  "Como manter uma alimentação saudável?",
-  "Quais exames preventivos fazer anualmente?",
-  "O que é diabetes tipo 2?",
-  "Como controlar a pressão arterial?",
-  "O que faz um cardiologista?",
-  "Como prevenir o câncer?",
-  "O que é saúde mental?",
-  "Como funciona a fisioterapia?",
-  "Quais sintomas indicam AVC?",
-  "O que é medicina preventiva?",
-  "Como melhorar a qualidade do sono?",
-  "O que são exames de imagem?",
-  "Como funciona a vacinação?",
-  "O que é obesidade mórbida?",
-  "Como tratar ansiedade?",
-  "O que faz um endocrinologista?",
-  "Como prevenir osteoporose?",
-  "O que é check-up médico?",
-  "Como funciona a nutrição clínica?",
-  "Quais benefícios da atividade física?",
-  "O que é colesterol alto?",
-  "Como identificar depressão?",
-  "O que são doenças autoimunes?",
-  "Como funciona o transplante de órgãos?",
-  "Qual a importância da hidratação?"
-];
+const HEALTH_SUGGESTIONS = ["O que é telemedicina?", "Como prevenir doenças cardíacas?", "Quais especialidades o Hospital Moinhos de Vento oferece?", "Como funciona a robótica cirúrgica?", "O que são doenças crônicas?", "Como manter uma alimentação saudável?", "Quais exames preventivos fazer anualmente?", "O que é diabetes tipo 2?", "Como controlar a pressão arterial?", "O que faz um cardiologista?", "Como prevenir o câncer?", "O que é saúde mental?", "Como funciona a fisioterapia?", "Quais sintomas indicam AVC?", "O que é medicina preventiva?", "Como melhorar a qualidade do sono?", "O que são exames de imagem?", "Como funciona a vacinação?", "O que é obesidade mórbida?", "Como tratar ansiedade?", "O que faz um endocrinologista?", "Como prevenir osteoporose?", "O que é check-up médico?", "Como funciona a nutrição clínica?", "Quais benefícios da atividade física?", "O que é colesterol alto?", "Como identificar depressão?", "O que são doenças autoimunes?", "Como funciona o transplante de órgãos?", "Qual a importância da hidratação?"];
 
 // Sugestões específicas para modo de geração de imagem
-const IMAGE_SUGGESTIONS = [
-  "Anatomia do coração humano",
-  "Sistema respiratório",
-  "Processo de cicatrização",
-  "Estrutura de um neurônio",
-  "Aparelho digestivo",
-  "Sistema circulatório",
-  "Esqueleto humano",
-  "Sistema nervoso central"
-];
-
-const SentimentIndicator = ({ sentiment }: { sentiment: { label: string; score: number } | null }) => {
+const IMAGE_SUGGESTIONS = ["Anatomia do coração humano", "Sistema respiratório", "Processo de cicatrização", "Estrutura de um neurônio", "Aparelho digestivo", "Sistema circulatório", "Esqueleto humano", "Sistema nervoso central"];
+const SentimentIndicator = ({
+  sentiment
+}: {
+  sentiment: {
+    label: string;
+    score: number;
+  } | null;
+}) => {
   if (!sentiment) return null;
-  
   const emoji = {
     positive: "😊",
     neutral: "😐",
-    negative: "😟",
+    negative: "😟"
   };
   const color = {
     positive: "text-green-500",
     neutral: "text-yellow-500",
-    negative: "text-red-500",
+    negative: "text-red-500"
   };
-  
-  return (
-    <div className={`flex items-center gap-2 px-3 py-1 rounded-full bg-background/50 backdrop-blur-sm ${color[sentiment.label as keyof typeof color]}`}>
+  return <div className={`flex items-center gap-2 px-3 py-1 rounded-full bg-background/50 backdrop-blur-sm ${color[sentiment.label as keyof typeof color]}`}>
       <span className="text-lg">{emoji[sentiment.label as keyof typeof emoji]}</span>
       <span className="text-xs font-medium">{(sentiment.score * 100).toFixed(0)}%</span>
-    </div>
-  );
+    </div>;
 };
-
 export default function ChatKnowYOU() {
-  const { t } = useTranslation();
-  const { toast } = useToast();
-  const { location, requestLocation } = useGeolocation();
-  const { 
-    messages, 
-    isLoading, 
+  const {
+    t
+  } = useTranslation();
+  const {
+    toast
+  } = useToast();
+  const {
+    location,
+    requestLocation
+  } = useGeolocation();
+  const {
+    messages,
+    isLoading,
     isGeneratingAudio,
     isGeneratingImage,
     currentlyPlayingIndex,
@@ -100,14 +68,14 @@ export default function ChatKnowYOU() {
     currentSentiment,
     activeDisclaimer,
     attachedDocumentId,
-    sendMessage, 
+    sendMessage,
     clearHistory,
     playAudio,
     stopAudio,
     generateImage,
     transcribeAudio,
     attachDocument,
-    detachDocument,
+    detachDocument
   } = useChatKnowYOU();
   const [input, setInput] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
@@ -128,13 +96,23 @@ export default function ChatKnowYOU() {
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<string>("");
   const prefixTextRef = useRef<string>("");
-  const [audioStates, setAudioStates] = useState<{[key: number]: { isPlaying: boolean; currentTime: number; duration: number }}>({});
+  const [audioStates, setAudioStates] = useState<{
+    [key: number]: {
+      isPlaying: boolean;
+      currentTime: number;
+      duration: number;
+    };
+  }>({});
   const mountTimeRef = useRef(Date.now());
   const previousMessagesLength = useRef(messages.length);
   const INIT_PERIOD = 1000; // 1 segundo de período de inicialização
   const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
-  const [audioVisibility, setAudioVisibility] = useState<{[key: number]: boolean}>({});
-  const audioMessageRefs = useRef<{[key: number]: HTMLDivElement | null}>({});
+  const [audioVisibility, setAudioVisibility] = useState<{
+    [key: number]: boolean;
+  }>({});
+  const audioMessageRefs = useRef<{
+    [key: number]: HTMLDivElement | null;
+  }>({});
 
   // Request location on mount
   useEffect(() => {
@@ -158,25 +136,25 @@ export default function ChatKnowYOU() {
 
   // IntersectionObserver para detectar quando mensagem de áudio sai do viewport
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const idx = Number(entry.target.getAttribute('data-audio-index'));
-          if (!isNaN(idx)) {
-            setAudioVisibility(prev => ({ ...prev, [idx]: entry.isIntersecting }));
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const idx = Number(entry.target.getAttribute('data-audio-index'));
+        if (!isNaN(idx)) {
+          setAudioVisibility(prev => ({
+            ...prev,
+            [idx]: entry.isIntersecting
+          }));
+        }
+      });
+    }, {
+      threshold: 0.1
+    });
     Object.entries(audioMessageRefs.current).forEach(([idx, el]) => {
       if (el) {
         el.setAttribute('data-audio-index', idx);
         observer.observe(el);
       }
     });
-
     return () => observer.disconnect();
   }, [messages]);
 
@@ -197,7 +175,6 @@ export default function ChatKnowYOU() {
       const shuffled = [...sourceList].sort(() => Math.random() - 0.5);
       setDisplayedSuggestions(shuffled.slice(0, 4));
     };
-    
     rotateSuggestions();
     const interval = setInterval(rotateSuggestions, 10000);
     return () => clearInterval(interval);
@@ -225,10 +202,9 @@ export default function ChatKnowYOU() {
       previousMessagesLength.current = messages.length;
       return;
     }
-    
+
     // Scroll quando há nova mensagem OU quando está carregando (streaming)
     const shouldScroll = messages.length > previousMessagesLength.current || isLoading;
-    
     if (shouldScroll && scrollViewportRef.current) {
       requestAnimationFrame(() => {
         if (scrollViewportRef.current) {
@@ -239,10 +215,8 @@ export default function ChatKnowYOU() {
         }
       });
     }
-    
     previousMessagesLength.current = messages.length;
   }, [messages, isLoading]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
@@ -258,7 +232,6 @@ export default function ChatKnowYOU() {
       setTimeout(scrollToBottom, 100);
     }
   };
-
   const handleSuggestionClick = (suggestion: string) => {
     if (isImageMode) {
       generateImage(suggestion);
@@ -268,20 +241,16 @@ export default function ChatKnowYOU() {
     // Scroll imediato após clicar em sugestão
     setTimeout(scrollToBottom, 100);
   };
-
   const toggleImageMode = () => {
     setIsImageMode(!isImageMode);
     setInput("");
   };
-
   const handleAudioPlay = (index: number) => {
     playAudio(index);
   };
-
   const handleAudioStop = () => {
     stopAudio();
   };
-
   const handleDownloadAudio = (audioUrl: string, index: number) => {
     const link = document.createElement("a");
     link.href = audioUrl;
@@ -290,18 +259,15 @@ export default function ChatKnowYOU() {
     link.click();
     document.body.removeChild(link);
   };
-
   const startRecording = async () => {
     try {
       // Tentar usar Web Speech API para transcrição em tempo real
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
         recognition.lang = 'pt-BR';
         recognition.continuous = true;
         recognition.interimResults = true;
-        
         let silenceTimeout: NodeJS.Timeout | null = null;
         const SILENCE_TIMEOUT = 5000; // 5 segundos
 
@@ -311,10 +277,9 @@ export default function ChatKnowYOU() {
           setIsTranscribing(true);
           setVoiceStatus('listening');
         };
-
         recognition.onresult = (event: any) => {
           let fullTranscript = '';
-          
+
           // Reconstruir TODO o texto a partir de TODOS os resultados
           // NÃO usar inputRef.current aqui para evitar duplicação!
           for (let i = 0; i < event.results.length; i++) {
@@ -324,21 +289,19 @@ export default function ChatKnowYOU() {
               fullTranscript += ' ';
             }
           }
-          
+
           // Concatenar com texto que existia ANTES da gravação (modo append)
           const prefix = prefixTextRef.current;
           const separator = prefix && !prefix.endsWith(' ') ? ' ' : '';
           setInput(prefix + separator + fullTranscript.trim());
         };
-
         recognition.onspeechend = () => {
           // Clear any existing timers
           if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
           if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
-          
           setVoiceStatus('waiting');
           setWaitingCountdown(5);
-          
+
           // Countdown interval - store in ref
           countdownIntervalRef.current = setInterval(() => {
             setWaitingCountdown(prev => {
@@ -356,7 +319,6 @@ export default function ChatKnowYOU() {
             recognition.stop();
           }, SILENCE_TIMEOUT);
         };
-
         recognition.onspeechstart = () => {
           // Clear BOTH timeout and interval when speech resumes
           if (silenceTimeoutRef.current) {
@@ -370,7 +332,6 @@ export default function ChatKnowYOU() {
           setVoiceStatus('listening');
           setWaitingCountdown(5); // Reset countdown
         };
-
         recognition.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error);
           // Cleanup all timers
@@ -385,15 +346,14 @@ export default function ChatKnowYOU() {
           setIsRecording(false);
           setIsTranscribing(false);
           setVoiceStatus('idle');
-          
+
           // Fallback para gravação com Whisper se Web Speech API falhar
           toast({
             title: t('chat.speechNotAvailable'),
-            description: t('chat.speechFallback'),
+            description: t('chat.speechFallback')
           });
           startRecordingWithWhisper();
         };
-
         recognition.onend = () => {
           // Cleanup all timers
           if (silenceTimeoutRef.current) {
@@ -409,7 +369,6 @@ export default function ChatKnowYOU() {
           setIsTranscribing(false);
           setVoiceStatus('idle');
         };
-
         mediaRecorderRef.current = recognition as any;
         recognition.start();
       } else {
@@ -421,15 +380,16 @@ export default function ChatKnowYOU() {
       toast({
         title: t('chat.micError'),
         description: t('chat.micPermissions'),
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const startRecordingWithWhisper = async () => {
     try {
       prefixTextRef.current = input; // Salvar texto existente
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true
+      });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -440,18 +400,15 @@ export default function ChatKnowYOU() {
       const microphone = audioContext.createMediaStreamSource(stream);
       microphone.connect(analyser);
       analyser.fftSize = 2048;
-      
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       let silenceStart: number | null = null;
       let animationFrameId: number;
-
       const checkSilence = () => {
         if (!isRecording) return;
-        
         analyser.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        
-        if (average < 10) { // Silence threshold
+        if (average < 10) {
+          // Silence threshold
           if (!silenceStart) {
             silenceStart = Date.now();
             setVoiceStatus('waiting');
@@ -469,22 +426,20 @@ export default function ChatKnowYOU() {
           setVoiceStatus('listening');
           setWaitingCountdown(5);
         }
-        
         animationFrameId = requestAnimationFrame(checkSilence);
       };
-
-      mediaRecorder.ondataavailable = (event) => {
+      mediaRecorder.ondataavailable = event => {
         audioChunksRef.current.push(event.data);
       };
-
       mediaRecorder.onstop = async () => {
         cancelAnimationFrame(animationFrameId);
         audioContext.close();
-        
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: 'audio/webm'
+        });
         audioChunksRef.current = [];
         stream.getTracks().forEach(track => track.stop());
-        
+
         // Transcribe audio using Whisper API
         setIsTranscribing(true);
         setVoiceStatus('processing');
@@ -500,14 +455,13 @@ export default function ChatKnowYOU() {
           toast({
             title: t('chat.transcriptionError'),
             description: t('chat.transcriptionRetry'),
-            variant: "destructive",
+            variant: "destructive"
           });
         } finally {
           setIsTranscribing(false);
           setVoiceStatus('idle');
         }
       };
-
       mediaRecorder.start();
       setIsRecording(true);
       setVoiceStatus('listening');
@@ -517,11 +471,10 @@ export default function ChatKnowYOU() {
       toast({
         title: t('chat.micError'),
         description: t('chat.micPermissions'),
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       // Check if it's Web Speech API or MediaRecorder
@@ -557,16 +510,13 @@ export default function ChatKnowYOU() {
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     };
   }, []);
-
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsTyping(input.length > 0);
     }, 300);
     return () => clearTimeout(timer);
   }, [input]);
-
-  return (
-    <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border-2 border-primary/40 shadow-[0_0_15px_rgba(139,92,246,0.2),0_0_30px_rgba(139,92,246,0.1)] animate-fade-in">
+  return <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border-2 border-primary/40 shadow-[0_0_15px_rgba(139,92,246,0.2),0_0_30px_rgba(139,92,246,0.1)] animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b-2 border-primary/30">
         <div className="flex items-center gap-3">
@@ -585,27 +535,18 @@ export default function ChatKnowYOU() {
         </div>
         <div className="flex items-center gap-2">
           <SentimentIndicator sentiment={currentSentiment} />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearHistory}
-            className="text-xs"
-          >
+          <Button variant="ghost" size="sm" onClick={clearHistory} className="text-xs">
             {t('chat.clear')}
           </Button>
         </div>
       </div>
 
       {/* Messages Area */}
-      <ScrollArea 
-        className="h-[500px] p-6 border-2 border-[hsl(var(--chat-container-border))] bg-[hsl(var(--chat-container-bg))] shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3)]"
-        style={{
-          transform: 'translateZ(-10px)',
-          backfaceVisibility: 'hidden'
-        }}
-        ref={scrollRef}>
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
+      <ScrollArea className="h-[500px] p-6 border-2 border-[hsl(var(--chat-container-border))] bg-[hsl(var(--chat-container-bg))] shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3)]" style={{
+      transform: 'translateZ(-10px)',
+      backfaceVisibility: 'hidden'
+    }} ref={scrollRef}>
+        {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
               <span className="text-4xl font-bold text-primary-foreground">K</span>
             </div>
@@ -613,92 +554,46 @@ export default function ChatKnowYOU() {
             <p className="text-muted-foreground max-w-md">
               {t('chat.greetingDesc')}
             </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
+          </div> : <div className="space-y-4">
             {/* Disclaimer when document is attached */}
-            {activeDisclaimer && (
-              <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+            {activeDisclaimer && <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
                 <AlertTitle className="flex items-center justify-between">
                   {t('documentAttach.disclaimerTitle')}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={detachDocument}
-                    className="h-6 w-6 p-0"
-                    title={t('documentAttach.removeButton')}
-                  >
+                  <Button variant="ghost" size="sm" onClick={detachDocument} className="h-6 w-6 p-0" title={t('documentAttach.removeButton')}>
                     <X className="h-3 w-3" />
                   </Button>
                 </AlertTitle>
                 <AlertDescription>
                   {activeDisclaimer.message}
                 </AlertDescription>
-              </Alert>
-            )}
+              </Alert>}
             
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                ref={(el) => {
-                  if (msg.role === "assistant" && msg.audioUrl) {
-                    audioMessageRefs.current[idx] = el;
-                  }
-                }}
-              >
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                    msg.role === "user"
-                      ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground"
-                      : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground"
-                  }`}
-                >
-                  {msg.imageUrl && (
-                    <img
-                      src={msg.imageUrl}
-                      alt={t('chat.generatingImage')}
-                      className="max-w-full rounded-lg mb-2"
-                    />
-                  )}
+            {messages.map((msg, idx) => <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`} ref={el => {
+          if (msg.role === "assistant" && msg.audioUrl) {
+            audioMessageRefs.current[idx] = el;
+          }
+        }}>
+                <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground" : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground"}`}>
+                  {msg.imageUrl && <img src={msg.imageUrl} alt={t('chat.generatingImage')} className="max-w-full rounded-lg mb-2" />}
                   <div className="flex items-start gap-2">
                     <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1" />
                   </div>
                   
-                  {msg.role === "assistant" && (
-                    <AudioControls
-                      audioUrl={msg.audioUrl}
-                      isPlaying={currentlyPlayingIndex === idx}
-                      currentTime={audioStates[idx]?.currentTime}
-                      duration={audioStates[idx]?.duration}
-                      timestamp={msg.timestamp}
-                      location={location || undefined}
-                      messageContent={msg.content}
-                      onPlay={() => handleAudioPlay(idx)}
-                      onStop={handleAudioStop}
-                      onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined}
-                    />
-                  )}
+                  {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} isPlaying={currentlyPlayingIndex === idx} currentTime={audioStates[idx]?.currentTime} duration={audioStates[idx]?.duration} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} />}
                 </div>
-              </div>
-            ))}
-              {(isLoading || isGeneratingAudio || isGeneratingImage) && (
-                <div className="flex justify-start">
+              </div>)}
+              {(isLoading || isGeneratingAudio || isGeneratingImage) && <div className="flex justify-start">
                   <TypingIndicator isDrawing={isGeneratingImage} />
-                </div>
-              )}
+                </div>}
             <div ref={messagesEndRef} />
-          </div>
-        )}
+          </div>}
       </ScrollArea>
 
       {/* Suggestions com slider */}
-      {displayedSuggestions.length > 0 && !isLoading && (
-        <div className="px-6 py-4 bg-muted/50 border-t border-border/50">
+      {displayedSuggestions.length > 0 && !isLoading && <div className="px-6 py-4 bg-muted/50 border-t border-border/50">
           {/* Disclaimer when document attached */}
-          {activeDisclaimer && (
-            <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+          {activeDisclaimer && <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
@@ -710,138 +605,75 @@ export default function ChatKnowYOU() {
                   </p>
                 </div>
               </div>
-            </div>
-          )}
+            </div>}
           
-          <p className="text-xs font-medium text-muted-foreground mb-2">
-            💡 {isImageMode ? t('chat.imageSuggestions') : t('chat.suggestions')}
-          </p>
+          
           <div className="flex flex-wrap gap-2 suggestions-slider">
             {displayedSuggestions.map((suggestion, idx) => {
-              const isNew = suggestion.startsWith('🆕 NOVO:') || suggestion.toLowerCase().includes('novo:');
-              return (
-              <Button
-                key={`${suggestion}-${idx}`}
-                variant={isNew ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleSuggestionClick(suggestion)}
-                className={cn(
-                  "text-xs rounded-full border-2 border-primary/50 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors",
-                  isNew && "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-none animate-pulse shadow-lg"
-                )}
-              >
+          const isNew = suggestion.startsWith('🆕 NOVO:') || suggestion.toLowerCase().includes('novo:');
+          return <Button key={`${suggestion}-${idx}`} variant={isNew ? "default" : "outline"} size="sm" onClick={() => handleSuggestionClick(suggestion)} className={cn("text-xs rounded-full border-2 border-primary/50 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors", isNew && "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-none animate-pulse shadow-lg")}>
                   {suggestion.replace('🆕 NOVO:', '').trim()}
-                </Button>
-              );
-            })}
+                </Button>;
+        })}
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* Input Area */}
       <form onSubmit={handleSubmit} className="p-6 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
         {/* Indicador de voz ativo */}
-        {isRecording && (
-          <div className="flex items-center gap-2 text-xs mb-2">
-            <div className={`w-2 h-2 rounded-full ${
-              voiceStatus === 'waiting' 
-                ? 'bg-amber-500' 
-                : voiceStatus === 'processing' 
-                ? 'bg-blue-500' 
-                : 'bg-red-500'
-            } animate-pulse`} />
-            <span className={
-              voiceStatus === 'waiting' 
-                ? 'text-amber-500' 
-                : 'text-muted-foreground'
-            }>
+        {isRecording && <div className="flex items-center gap-2 text-xs mb-2">
+            <div className={`w-2 h-2 rounded-full ${voiceStatus === 'waiting' ? 'bg-amber-500' : voiceStatus === 'processing' ? 'bg-blue-500' : 'bg-red-500'} animate-pulse`} />
+            <span className={voiceStatus === 'waiting' ? 'text-amber-500' : 'text-muted-foreground'}>
               {voiceStatus === 'listening' && t('chat.listening')}
               {voiceStatus === 'waiting' && `${t('chat.waiting')} (${waitingCountdown}s)`}
               {voiceStatus === 'processing' && t('chat.processing')}
             </span>
-          </div>
-        )}
+          </div>}
         
-        {isTyping && (
-          <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
+        {isTyping && <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
             <div className="flex gap-1">
-              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
-              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
-              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
+            animationDelay: "0ms"
+          }} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
+            animationDelay: "150ms"
+          }} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
+            animationDelay: "300ms"
+          }} />
             </div>
             {t('chat.typing')}
-          </div>
-        )}
+          </div>}
           <div className="flex gap-2 items-end">
-            <DocumentAttachButton 
-              onAttach={attachDocument}
-              disabled={isLoading || isGeneratingAudio || isGeneratingImage}
-            />
-            <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-            placeholder={
-              isTranscribing ? t('chat.transcribing') :
-              isImageMode ? t('chat.placeholderImage') : 
-              t('chat.placeholderHealth')
-            }
-            onFocus={(e) => {
-              if (isImageMode) {
-                e.target.placeholder = t('chat.imageLimitHealth');
-              }
-            }}
-            onBlur={(e) => {
-              if (isImageMode) {
-                e.target.placeholder = t('chat.placeholderImage');
-              }
-            }}
-            className="min-h-[140px] resize-none flex-1 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]"
-            style={{
-              transform: 'translateZ(-8px)',
-              backfaceVisibility: 'hidden'
-            }}
-            disabled={isLoading || isTranscribing}
-          />
+            <DocumentAttachButton onAttach={attachDocument} disabled={isLoading || isGeneratingAudio || isGeneratingImage} />
+            <Textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit(e);
+          }
+        }} placeholder={isTranscribing ? t('chat.transcribing') : isImageMode ? t('chat.placeholderImage') : t('chat.placeholderHealth')} onFocus={e => {
+          if (isImageMode) {
+            e.target.placeholder = t('chat.imageLimitHealth');
+          }
+        }} onBlur={e => {
+          if (isImageMode) {
+            e.target.placeholder = t('chat.placeholderImage');
+          }
+        }} className="min-h-[140px] resize-none flex-1 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]" style={{
+          transform: 'translateZ(-8px)',
+          backfaceVisibility: 'hidden'
+        }} disabled={isLoading || isTranscribing} />
           
           <div className="flex flex-col gap-2">
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={isRecording ? stopRecording : startRecording}
-              className={`shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500" : ""}`}
-            >
+            <Button type="button" size="icon" variant="ghost" onClick={isRecording ? stopRecording : startRecording} className={`shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500" : ""}`}>
               {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </Button>
             
-            <Button
-              type="submit"
-              size="icon"
-              disabled={isLoading || !input.trim()}
-              className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
+            <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
             
-            <Button
-              type="button"
-              size="icon"
-              variant={isImageMode ? "default" : "ghost"}
-              onClick={toggleImageMode}
-              disabled={isGeneratingImage}
-              title="Desenhar"
-              className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow"
-            >
+            <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} title="Desenhar" className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
               <ImagePlus className="w-4 h-4" />
             </Button>
           </div>
@@ -852,19 +684,12 @@ export default function ChatKnowYOU() {
       </form>
       
       {/* Floating Audio Player */}
-      <FloatingAudioPlayer
-        isVisible={showFloatingPlayer && currentlyPlayingIndex !== null}
-        currentTime={audioStates[currentlyPlayingIndex ?? -1]?.currentTime ?? 0}
-        duration={audioStates[currentlyPlayingIndex ?? -1]?.duration ?? 0}
-        onStop={() => {
-          stopAudio();
-          setShowFloatingPlayer(false);
-        }}
-        onClose={() => {
-          stopAudio();
-          setShowFloatingPlayer(false);
-        }}
-      />
-    </div>
-  );
+      <FloatingAudioPlayer isVisible={showFloatingPlayer && currentlyPlayingIndex !== null} currentTime={audioStates[currentlyPlayingIndex ?? -1]?.currentTime ?? 0} duration={audioStates[currentlyPlayingIndex ?? -1]?.duration ?? 0} onStop={() => {
+      stopAudio();
+      setShowFloatingPlayer(false);
+    }} onClose={() => {
+      stopAudio();
+      setShowFloatingPlayer(false);
+    }} />
+    </div>;
 }
