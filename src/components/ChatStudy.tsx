@@ -69,6 +69,7 @@ export default function ChatStudy() {
   const [waitingCountdown, setWaitingCountdown] = useState(5);
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -87,6 +88,16 @@ export default function ChatStudy() {
   // Request location on mount
   useEffect(() => {
     requestLocation();
+  }, []);
+
+  // Capturar o viewport do ScrollArea após mount
+  useEffect(() => {
+    if (scrollRef.current) {
+      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        scrollViewportRef.current = viewport as HTMLDivElement;
+      }
+    }
   }, []);
 
   // Sync inputRef with input state
@@ -140,22 +151,45 @@ export default function ChatStudy() {
     return () => clearInterval(interval);
   }, [isImageMode]);
 
-  // Auto-scroll to latest message - only for NEW messages, not initial load
+  // Helper function to scroll to bottom
+  const scrollToBottom = () => {
+    if (scrollViewportRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollViewportRef.current) {
+          scrollViewportRef.current.scrollTo({
+            top: scrollViewportRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
+    }
+  };
+
+  // Auto-scroll to latest message - SOLUÇÃO DEFINITIVA
   useEffect(() => {
-    // Ignorar scrolls durante o período de inicialização (1 segundo)
+    // Ignorar scrolls durante o período de inicialização
     const timeSinceMount = Date.now() - mountTimeRef.current;
     if (timeSinceMount < INIT_PERIOD) {
       previousMessagesLength.current = messages.length;
-      return; // Skip scroll during initialization
+      return;
     }
     
-    // Only scroll if messages actually increased (new message sent)
-    if (messages.length > previousMessagesLength.current && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    // Scroll quando há nova mensagem OU quando está carregando (streaming)
+    const shouldScroll = messages.length > previousMessagesLength.current || isLoading;
+    
+    if (shouldScroll && scrollViewportRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollViewportRef.current) {
+          scrollViewportRef.current.scrollTo({
+            top: scrollViewportRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
     }
     
     previousMessagesLength.current = messages.length;
-  }, [messages, isLoading, INIT_PERIOD]);
+  }, [messages, isLoading]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,6 +202,8 @@ export default function ChatStudy() {
         sendMessage(input);
         setInput("");
       }
+      // Scroll imediato após enviar
+      setTimeout(scrollToBottom, 100);
     }
   };
 
@@ -177,6 +213,8 @@ export default function ChatStudy() {
     } else {
       sendMessage(suggestion);
     }
+    // Scroll imediato após clicar em sugestão
+    setTimeout(scrollToBottom, 100);
   };
 
   const toggleImageMode = () => {
