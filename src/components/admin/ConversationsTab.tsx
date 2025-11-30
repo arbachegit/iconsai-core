@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Trash2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, ChevronDown, MessageSquare } from "lucide-react";
+import { Trash2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, ChevronDown, MessageSquare, User, Bot } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -22,7 +22,6 @@ export const ConversationsTab = () => {
   const [conversations, setConversations] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [chatTypeFilter, setChatTypeFilter] = useState<"all" | "health" | "study">("all");
-  const [selectedConversation, setSelectedConversation] = useState<any | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
@@ -249,20 +248,52 @@ export const ConversationsTab = () => {
                                 </span>
                               </div>
                             </div>
-                          </div>
-                          
-                          {/* Botão para ver mensagens */}
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full"
-                            onClick={() => setSelectedConversation(conv)}
-                          >
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            Ver Mensagens ({conv.messages?.length || 0})
-                          </Button>
+                    </div>
+                    
+                    {/* Conversa Completa Inline */}
+                    <div className="border rounded-lg">
+                      <div className="p-3 bg-muted/50 border-b flex items-center justify-between">
+                        <h4 className="text-sm font-semibold flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4" />
+                          Conversa Completa
+                        </h4>
+                        <span className="text-xs text-muted-foreground">
+                          {conv.messages?.length || 0} mensagens
+                        </span>
+                      </div>
+                      
+                      <ScrollArea className="h-[300px] p-3">
+                        <div className="space-y-3">
+                          {conv.messages?.map((msg: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className={`p-3 rounded-lg ${
+                                msg.role === 'user' 
+                                  ? 'bg-primary/10 ml-8' 
+                                  : 'bg-secondary/10 mr-8'
+                              }`}
+                            >
+                              <p className="text-xs font-medium mb-1 flex items-center gap-2">
+                                {msg.role === 'user' ? (
+                                  <>
+                                    <User className="h-3 w-3" />
+                                    Usuário
+                                  </>
+                                ) : (
+                                  <>
+                                    <Bot className="h-3 w-3" />
+                                    Assistente
+                                  </>
+                                )}
+                              </p>
+                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            </div>
+                          ))}
                         </div>
-                      </CollapsibleContent>
+                      </ScrollArea>
+                    </div>
+                  </div>
+                </CollapsibleContent>
                     </Collapsible>
                   </CardContent>
                 </Card>
@@ -298,38 +329,6 @@ export const ConversationsTab = () => {
               </Button>
             </div>
           </div>
-
-          {selectedConversation && (
-            <div className="mt-6 p-4 border rounded-lg">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-lg">{selectedConversation.title}</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedConversation(null)}
-                >
-                  Fechar
-                </Button>
-              </div>
-              <ScrollArea className="h-[300px]">
-                <div className="space-y-3">
-                  {selectedConversation.messages?.map((msg: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className={`p-3 rounded-lg ${
-                        msg.role === 'user' ? 'bg-primary/10' : 'bg-secondary/10'
-                      }`}
-                    >
-                      <p className="text-xs font-medium mb-1">
-                        {msg.role === 'user' ? 'Usuário' : 'Assistente'}
-                      </p>
-                      <p className="text-sm">{msg.content}</p>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
