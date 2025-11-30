@@ -14,9 +14,11 @@ import {
   BookOpen,
   Database,
   GitBranch,
+  Tags,
+  Search,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -38,6 +40,8 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
     { id: "conversations" as TabType, label: "Conversas", icon: MessagesSquare },
     { id: "documents" as TabType, label: "Documentos", icon: FileText },
     { id: "rag-metrics" as TabType, label: "Métricas RAG", icon: Database },
+    { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
+    { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
     { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
     { id: "images" as TabType, label: "Imagens", icon: Image },
     { id: "youtube" as TabType, label: "YouTube", icon: Youtube },

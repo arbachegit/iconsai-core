@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GitBranch, Rocket, RefreshCw, Clock } from "lucide-react";
+import { GitBranch, Rocket, RefreshCw, Clock, Download, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -27,7 +27,13 @@ import { Label } from "@/components/ui/label";
 
 export const VersionControlTab = () => {
   const [versionDialog, setVersionDialog] = useState<"minor" | "major" | null>(null);
+  const [rollbackDialog, setRollbackDialog] = useState<{ open: boolean; versionId: string | null; version: string | null }>({
+    open: false,
+    versionId: null,
+    version: null,
+  });
   const [logMessage, setLogMessage] = useState("");
+  const [rollbackMessage, setRollbackMessage] = useState("");
   const queryClient = useQueryClient();
 
   // Fetch version history
@@ -81,6 +87,70 @@ export const VersionControlTab = () => {
       return;
     }
     incrementVersion.mutate({ action, message: logMessage });
+  };
+
+  // Rollback mutation
+  const rollbackMutation = useMutation({
+    mutationFn: async ({ versionId, message }: { versionId: string; message: string }) => {
+      const { data, error } = await supabase.functions.invoke("version-control", {
+        body: {
+          action: "rollback",
+          target_version_id: versionId,
+          log_message: message,
+        },
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Rollback realizado: ${data.rolled_back_to} → ${data.new_version}`);
+      queryClient.invalidateQueries({ queryKey: ["version-control"] });
+      setRollbackDialog({ open: false, versionId: null, version: null });
+      setRollbackMessage("");
+    },
+    onError: (error) => {
+      toast.error(`Erro no rollback: ${error.message}`);
+    },
+  });
+
+  // Export changelog mutation
+  const exportChangelog = useMutation({
+    mutationFn: async (format: "markdown" | "json") => {
+      const { data, error } = await supabase.functions.invoke("version-control", {
+        body: {
+          action: "export_changelog",
+          format,
+        },
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      const blob = new Blob([data.content], { type: data.format === "json" ? "application/json" : "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `changelog-knowyou.${data.format === "json" ? "json" : "md"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Changelog exportado (${data.format})`);
+    },
+    onError: (error) => {
+      toast.error(`Erro ao exportar: ${error.message}`);
+    },
+  });
+
+  const handleRollback = () => {
+    if (!rollbackMessage.trim()) {
+      toast.error("Por favor, descreva a razão do rollback");
+      return;
+    }
+    if (!rollbackDialog.versionId) return;
+    rollbackMutation.mutate({ versionId: rollbackDialog.versionId, message: rollbackMessage });
   };
 
   const getTriggerTypeBadge = (type: string) => {
@@ -159,6 +229,16 @@ export const VersionControlTab = () => {
               <Rocket className="h-4 w-4" />
               Produção (Major)
             </Button>
+            <Button
+              onClick={() => exportChangelog.mutate("markdown")}
+              variant="outline"
+              className="gap-2"
+              size="lg"
+              disabled={exportChangelog.isPending}
+            >
+              <Download className="h-4 w-4" />
+              Exportar Changelog
+            </Button>
           </div>
         </div>
       </Card>
@@ -214,17 +294,18 @@ export const VersionControlTab = () => {
                 <TableHead>Versão</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Mensagem</TableHead>
+                <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {history.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     Nenhum histórico disponível
                   </TableCell>
                 </TableRow>
               ) : (
-                history.map((record: any) => (
+                history.map((record: any, index: number) => (
                   <TableRow key={record.id}>
                     <TableCell className="font-mono text-sm">
                       {new Date(record.timestamp).toLocaleString("pt-BR")}
@@ -233,6 +314,22 @@ export const VersionControlTab = () => {
                     <TableCell>{getTriggerTypeBadge(record.trigger_type)}</TableCell>
                     <TableCell className="max-w-md truncate">
                       {record.log_message}
+                    </TableCell>
+                    <TableCell>
+                      {index > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setRollbackDialog({ 
+                            open: true, 
+                            versionId: record.id, 
+                            version: record.current_version 
+                          })}
+                          title="Rollback para esta versão"
+                        >
+                          <Undo2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -327,6 +424,74 @@ export const VersionControlTab = () => {
                 </>
               ) : (
                 `Confirmar ${versionDialog === "minor" ? "Minor" : "Major"}`
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rollback Dialog */}
+      <Dialog
+        open={rollbackDialog.open}
+        onOpenChange={(open) => !open && setRollbackDialog({ open: false, versionId: null, version: null })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rollback para Versão {rollbackDialog.version}</DialogTitle>
+            <DialogDescription>
+              Restaurar o estado do sistema para uma versão anterior. Isso criará uma nova entrada no histórico.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <p className="text-sm font-medium text-yellow-600">⚠️ Atenção</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                O rollback não desfaz alterações no banco de dados. Ele apenas restaura os dados 
+                associados à versão selecionada e cria uma nova entrada no histórico.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="rollback-message">Motivo do Rollback</Label>
+              <Input
+                id="rollback-message"
+                placeholder="ex: Reverter mudanças problemáticas no sistema RAG"
+                value={rollbackMessage}
+                onChange={(e) => setRollbackMessage(e.target.value)}
+                className="mt-2"
+              />
+            </div>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium mb-1">Versão atual:</p>
+              <p className="text-2xl font-bold text-gradient">{currentVersion}</p>
+              <p className="text-sm font-medium mt-3 mb-1">Restaurar para:</p>
+              <p className="text-2xl font-bold text-gradient">{rollbackDialog.version}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRollbackDialog({ open: false, versionId: null, version: null });
+                setRollbackMessage("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleRollback}
+              disabled={!rollbackMessage.trim() || rollbackMutation.isPending}
+              variant="destructive"
+            >
+              {rollbackMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Realizando Rollback...
+                </>
+              ) : (
+                <>
+                  <Undo2 className="h-4 w-4 mr-2" />
+                  Confirmar Rollback
+                </>
               )}
             </Button>
           </DialogFooter>

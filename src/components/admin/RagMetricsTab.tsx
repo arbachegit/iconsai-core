@@ -449,26 +449,128 @@ export const RagMetricsTab = () => {
           )}
         </Card>
 
-        {/* Latency Evolution */}
+      {/* Latency Evolution */}
         <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">⏱️ Evolução da Latência</h3>
+          <h3 className="text-lg font-semibold mb-4">⚡ Evolução de Latência</h3>
           {latencyOverTime.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={latencyOverTime}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 11 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="avg_latency" stroke="hsl(var(--primary))" name="Latência (ms)" strokeWidth={2} />
+                <Line type="monotone" dataKey="avg_latency" stroke="hsl(var(--primary))" strokeWidth={2} name="Latência Média (ms)" />
               </LineChart>
             </ResponsiveContainer>
           ) : (
             <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-              Dados insuficientes para gráfico temporal
+              Dados insuficientes para análise temporal
             </div>
           )}
         </Card>
       </div>
+
+      {/* Embedding Quality Analysis */}
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          🔬 Análise de Qualidade de Embeddings
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="p-4 bg-muted/50 rounded-lg text-center">
+            <p className="text-sm text-muted-foreground mb-2">Chunks Válidos</p>
+            <div className="flex items-center justify-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <p className="text-3xl font-bold text-green-500">
+                {chunkDetails?.filter(c => c.word_count > 0).length || 0}
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {chunkDetails?.length ? 
+                Math.round((chunkDetails.filter(c => c.word_count > 0).length / chunkDetails.length) * 100) 
+                : 0}% do total
+            </p>
+          </div>
+          <div className="p-4 bg-muted/50 rounded-lg text-center">
+            <p className="text-sm text-muted-foreground mb-2">Palavras Médias/Chunk</p>
+            <div className="flex items-center justify-center gap-2">
+              <FileText className="h-4 w-4 text-secondary" />
+              <p className="text-3xl font-bold text-secondary">{avgWordsPerChunk}</p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">palavras por chunk</p>
+          </div>
+          <div className="p-4 bg-muted/50 rounded-lg text-center">
+            <p className="text-sm text-muted-foreground mb-2">Chunks Problemáticos</p>
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-3xl font-bold text-destructive">
+                {chunkDetails?.filter(c => c.word_count < 50).length || 0}
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">&lt; 50 palavras</p>
+          </div>
+        </div>
+
+        {/* Quality Distribution */}
+        {chunkDetails && chunkDetails.length > 0 && (
+          <div className="space-y-4">
+            <h4 className="font-semibold text-sm">Distribuição de Qualidade por Palavras</h4>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-sm font-medium text-destructive mb-1">Muito Baixa (&lt;50)</p>
+                <p className="text-2xl font-bold">
+                  {chunkDetails.filter(c => c.word_count < 50).length}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {Math.round((chunkDetails.filter(c => c.word_count < 50).length / chunkDetails.length) * 100)}%
+                </p>
+              </div>
+              <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <p className="text-sm font-medium text-yellow-600 mb-1">Baixa (50-200)</p>
+                <p className="text-2xl font-bold">
+                  {chunkDetails.filter(c => c.word_count >= 50 && c.word_count < 200).length}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {Math.round((chunkDetails.filter(c => c.word_count >= 50 && c.word_count < 200).length / chunkDetails.length) * 100)}%
+                </p>
+              </div>
+              <div className="p-3 bg-secondary/10 border border-secondary/20 rounded-lg">
+                <p className="text-sm font-medium text-secondary mb-1">Boa (200-800)</p>
+                <p className="text-2xl font-bold">
+                  {chunkDetails.filter(c => c.word_count >= 200 && c.word_count < 800).length}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {Math.round((chunkDetails.filter(c => c.word_count >= 200 && c.word_count < 800).length / chunkDetails.length) * 100)}%
+                </p>
+              </div>
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <p className="text-sm font-medium text-green-600 mb-1">Excelente (800+)</p>
+                <p className="text-2xl font-bold">
+                  {chunkDetails.filter(c => c.word_count >= 800).length}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {Math.round((chunkDetails.filter(c => c.word_count >= 800).length / chunkDetails.length) * 100)}%
+                </p>
+              </div>
+            </div>
+
+            {/* Alerts for problematic chunks */}
+            {chunkDetails.filter(c => c.word_count < 50).length > 0 && (
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="font-semibold text-sm text-destructive mb-2">⚠️ Alerta de Qualidade</p>
+                <p className="text-sm text-muted-foreground">
+                  {chunkDetails.filter(c => c.word_count < 50).length} chunks com menos de 50 palavras 
+                  podem impactar a qualidade das respostas. Considere revisar os documentos originais.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
     </div>
   );
 };
