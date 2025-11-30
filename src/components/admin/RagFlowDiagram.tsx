@@ -381,7 +381,7 @@ export const RagFlowDiagram = () => {
               "3. Validação Unicode",
               "4. Análise SLM Legibilidade",
               "5. Chunking (1500 palavras)",
-              "6. OpenAI Embeddings"
+              "6. KY AI Embeddings"
             ]}
             tooltip="Fase de extração, transformação e carregamento. PDFs são processados, validados e convertidos em chunks com embeddings vetoriais usando KY AI text-embedding-3-small."
             onMouseEnter={handleTooltipShow}
