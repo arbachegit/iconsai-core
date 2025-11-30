@@ -454,10 +454,9 @@ export function useChatKnowYOU() {
           })
         );
 
-        // Verificar se é erro de guardrail (pode vir em data ou error)
-        const errorData = error?.context || data;
-        if (errorData?.error === "guardrail_violation" || data?.error === "guardrail_violation") {
-          const rejectedTerm = errorData?.rejected_term || data?.rejected_term || prompt;
+        // Verificar se é erro de guardrail - quando status é 400, a resposta vem em error.context
+        if (error?.context?.error === "guardrail_violation") {
+          const rejectedTerm = error.context.rejected_term || prompt;
           
           // Adicionar mensagem do assistente explicando a restrição
           const guardrailMessage: Message = {
