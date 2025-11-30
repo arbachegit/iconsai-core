@@ -191,6 +191,10 @@ serve(async (req) => {
         const targetChat = await classifyTargetChat(doc.full_text, lovableKey);
         console.log(`Document ${doc.document_id} classified as: ${targetChat}`);
         
+        // ✨ AUTO-INSERÇÃO para Health/Study
+        const isAutoInserted = targetChat === 'health' || targetChat === 'study';
+        console.log(`Auto-insertion for ${doc.document_id}: ${isAutoInserted ? `YES (${targetChat})` : 'NO (general)'}`);
+        
         // 3. ENRIQUECIMENTO
         const metadata = await generateMetadata(doc.full_text, lovableKey);
         console.log(`Metadata generated for ${doc.document_id}`);
@@ -263,7 +267,11 @@ serve(async (req) => {
           ai_summary: metadata.summary,
           implementation_status: metadata.implementation_status,
           total_chunks: chunks.length,
-          total_words: doc.full_text.split(/\s+/).length
+          total_words: doc.full_text.split(/\s+/).length,
+          // ✨ Campos de inserção automática
+          is_inserted: isAutoInserted,
+          inserted_in_chat: isAutoInserted ? targetChat : null,
+          inserted_at: isAutoInserted ? new Date().toISOString() : null
         }).eq("id", doc.document_id);
         
         // Criar entrada inicial em document_versions
@@ -278,6 +286,23 @@ serve(async (req) => {
             total_chunks: chunks.length,
             total_words: doc.full_text.split(/\s+/).length,
             implementation_status: metadata.implementation_status
+          }
+        });
+        
+        // ✨ Registrar log de roteamento
+        await supabase.from("document_routing_log").insert({
+          document_id: doc.document_id,
+          document_name: doc.title,
+          original_category: targetChat,
+          final_category: targetChat,
+          action_type: isAutoInserted ? 'auto_expanded' : 'kept_general',
+          session_id: `bulk-${Date.now()}`,
+          scope_changed: isAutoInserted,
+          disclaimer_shown: isAutoInserted,
+          metadata: {
+            auto_inserted: isAutoInserted,
+            total_chunks: chunks.length,
+            timestamp: new Date().toISOString()
           }
         });
         

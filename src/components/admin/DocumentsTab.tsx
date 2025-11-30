@@ -58,7 +58,9 @@ export const DocumentsTab = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [chatFilter, setChatFilter] = useState<string>("all");
   const [readabilityFilter, setReadabilityFilter] = useState<string>("all");
-  const [sortField, setSortField] = useState<"created_at" | "filename" | "total_chunks">("created_at");
+  const [sortField, setSortField] = useState<
+    "created_at" | "filename" | "total_chunks" | "status" | "target_chat" | "is_inserted" | "inserted_in_chat" | "readability_score"
+  >("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -93,6 +95,9 @@ export const DocumentsTab = () => {
   
   // Tags modal state
   const [tagsModalDoc, setTagsModalDoc] = useState<any>(null);
+  
+  // Manual insertion modal state
+  const [insertionModalDoc, setInsertionModalDoc] = useState<any>(null);
   
   const queryClient = useQueryClient();
 
@@ -874,6 +879,26 @@ export const DocumentsTab = () => {
         return ((a.total_chunks || 0) - (b.total_chunks || 0)) * direction;
       }
       
+      if (sortField === "status") {
+        return (a.status || "").localeCompare(b.status || "") * direction;
+      }
+      
+      if (sortField === "target_chat") {
+        return (a.target_chat || "").localeCompare(b.target_chat || "") * direction;
+      }
+      
+      if (sortField === "is_inserted") {
+        return ((a.is_inserted ? 1 : 0) - (b.is_inserted ? 1 : 0)) * direction;
+      }
+      
+      if (sortField === "inserted_in_chat") {
+        return (a.inserted_in_chat || "").localeCompare(b.inserted_in_chat || "") * direction;
+      }
+      
+      if (sortField === "readability_score") {
+        return ((a.readability_score || 0) - (b.readability_score || 0)) * direction;
+      }
+      
       return 0;
     });
     
@@ -920,6 +945,7 @@ export const DocumentsTab = () => {
       setSortField(field);
       setSortDirection("desc");
     }
+    setCurrentPage(1); // Reset pagination
   };
 
   const getStatusIcon = (status: FileUploadStatus['status']) => {
@@ -954,6 +980,51 @@ export const DocumentsTab = () => {
   
   const editingParentTags = editingTags?.filter(t => t.tag_type === "parent") || [];
   const editingChildTags = editingTags?.filter(t => t.tag_type === "child") || [];
+  
+  // Manual insertion mutation
+  const manualInsertMutation = useMutation({
+    mutationFn: async ({ docId, targetChat }: { docId: string; targetChat: string }) => {
+      // 1. Atualizar documento
+      const { error } = await supabase
+        .from("documents")
+        .update({
+          is_inserted: true,
+          inserted_in_chat: targetChat,
+          inserted_at: new Date().toISOString(),
+          redirected_from: 'general'
+        })
+        .eq("id", docId);
+      
+      if (error) throw error;
+      
+      // 2. Registrar log de roteamento
+      const { data: doc } = await supabase
+        .from("documents")
+        .select("filename, target_chat")
+        .eq("id", docId)
+        .single();
+        
+      await supabase.from("document_routing_log").insert({
+        document_id: docId,
+        document_name: doc?.filename || 'Documento',
+        original_category: doc?.target_chat || 'general',
+        final_category: targetChat,
+        action_type: 'manual_redirect',
+        session_id: `admin-${Date.now()}`,
+        scope_changed: true,
+        disclaimer_shown: true,
+        metadata: { manual_insertion: true, admin_action: true }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      toast.success("Documento inserido no chat com sucesso!");
+      setInsertionModalDoc(null);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao inserir: ${error.message}`);
+    }
+  });
 
   return (
     <div className="space-y-6">
@@ -1393,13 +1464,45 @@ export const DocumentsTab = () => {
                 >
                   <div className="flex items-center gap-2">
                     Nome
-                    <ArrowUpDown className="h-4 w-4" />
+                    <ArrowUpDown className={cn("h-4 w-4", sortField === "filename" && "text-primary")} />
                   </div>
                 </TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Chat</TableHead>
-                <TableHead>Chat Inserido</TableHead>
-                <TableHead>Inserido</TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggleSort("status")}
+                >
+                  <div className="flex items-center gap-2">
+                    Status
+                    <ArrowUpDown className={cn("h-4 w-4", sortField === "status" && "text-primary")} />
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggleSort("target_chat")}
+                >
+                  <div className="flex items-center gap-2">
+                    Chat
+                    <ArrowUpDown className={cn("h-4 w-4", sortField === "target_chat" && "text-primary")} />
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggleSort("inserted_in_chat")}
+                >
+                  <div className="flex items-center gap-2">
+                    Chat Inserido
+                    <ArrowUpDown className={cn("h-4 w-4", sortField === "inserted_in_chat" && "text-primary")} />
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggleSort("is_inserted")}
+                >
+                  <div className="flex items-center gap-2">
+                    Inserido
+                    <ArrowUpDown className={cn("h-4 w-4", sortField === "is_inserted" && "text-primary")} />
+                  </div>
+                </TableHead>
                 <TableHead>TAG Principal</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead
@@ -1408,12 +1511,16 @@ export const DocumentsTab = () => {
                 >
                   <div className="flex items-center gap-2">
                     Chunks
-                    <ArrowUpDown className="h-4 w-4" />
+                    <ArrowUpDown className={cn("h-4 w-4", sortField === "total_chunks" && "text-primary")} />
                   </div>
                 </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-1">
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggleSort("readability_score")}
+                >
+                  <div className="flex items-center gap-2">
                     Legibilidade
+                    <ArrowUpDown className={cn("h-4 w-4", sortField === "readability_score" && "text-primary")} />
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -1433,7 +1540,7 @@ export const DocumentsTab = () => {
                 >
                   <div className="flex items-center gap-2">
                     Data
-                    <ArrowUpDown className="h-4 w-4" />
+                    <ArrowUpDown className={cn("h-4 w-4", sortField === "created_at" && "text-primary")} />
                   </div>
                 </TableHead>
                 <TableHead>Ações</TableHead>
@@ -1568,6 +1675,20 @@ export const DocumentsTab = () => {
                           title="Reprocessar"
                         >
                           <RefreshCw className={cn("h-4 w-4", reprocessMutation.isPending && "animate-spin")} />
+                        </Button>
+                      )}
+                      {doc.target_chat === 'general' && !doc.is_inserted && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setInsertionModalDoc(doc);
+                          }}
+                          title="Inserir em Chat"
+                          className="text-blue-500 hover:text-blue-600"
+                        >
+                          <Plus className="h-4 w-4" />
                         </Button>
                       )}
                       <Button
@@ -2278,6 +2399,62 @@ export const DocumentsTab = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setTagsModalDoc(null)}>Fechar</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Modal de Inserção Manual */}
+      <Dialog open={!!insertionModalDoc} onOpenChange={(open) => !open && setInsertionModalDoc(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Inserir Documento em Chat</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              "{insertionModalDoc?.filename}" está categorizado como <Badge>General</Badge>
+            </p>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <p className="text-sm">Escolha em qual chat este documento será inserido:</p>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                className="h-20 flex-col gap-2 border-purple-500/30 hover:border-purple-500 hover:bg-purple-500/10"
+                onClick={() => manualInsertMutation.mutate({
+                  docId: insertionModalDoc?.id,
+                  targetChat: 'health'
+                })}
+                disabled={manualInsertMutation.isPending}
+              >
+                <span className="text-2xl">🏥</span>
+                <span className="font-medium">Health</span>
+                <span className="text-xs text-muted-foreground">Saúde</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="h-20 flex-col gap-2 border-blue-500/30 hover:border-blue-500 hover:bg-blue-500/10"
+                onClick={() => manualInsertMutation.mutate({
+                  docId: insertionModalDoc?.id,
+                  targetChat: 'study'
+                })}
+                disabled={manualInsertMutation.isPending}
+              >
+                <span className="text-2xl">📚</span>
+                <span className="font-medium">Study</span>
+                <span className="text-xs text-muted-foreground">Estudo</span>
+              </Button>
+            </div>
+            
+            <div className="border-t pt-4">
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={() => setInsertionModalDoc(null)}
+              >
+                Manter como General (não inserir)
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
