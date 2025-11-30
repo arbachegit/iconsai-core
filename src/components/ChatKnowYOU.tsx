@@ -542,7 +542,7 @@ export default function ChatKnowYOU() {
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="h-[500px] p-6 border-2 border-[hsl(var(--chat-container-border))] bg-[hsl(var(--chat-container-bg))] shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3)]" style={{
+      <ScrollArea className="h-[500px] p-6 border-2 border-cyan-400/60 bg-[hsl(var(--chat-container-bg))] shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" style={{
       transform: 'translateZ(-10px)',
       backfaceVisibility: 'hidden'
     }} ref={scrollRef}>
