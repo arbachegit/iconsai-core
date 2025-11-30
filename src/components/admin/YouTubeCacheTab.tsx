@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Youtube, Trash2, RefreshCw, Clock, Database } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 
 const QUOTA_EXCEEDED_KEY = 'youtube_quota_exceeded';
 const VIDEOS_CACHE_KEY = 'youtube_videos_cache';
@@ -183,11 +184,19 @@ export const YouTubeCacheTab = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Youtube className="h-5 w-5 text-[#FF0000]" />
-            Gerenciamento de Cache do YouTube
-          </CardTitle>
-          <CardDescription>
+          <AdminTitleWithInfo
+            title="Gerenciamento de Cache do YouTube"
+            level="h2"
+            icon={Youtube}
+            tooltipText="Gerencie cache de vídeos"
+            infoContent={
+              <>
+                <p>Controle o cache local de vídeos do YouTube.</p>
+                <p className="mt-2">Pré-carregue vídeos, limpe cache expirado e monitore quota da API.</p>
+              </>
+            }
+          />
+          <CardDescription className="mt-2">
             Gerencie o cache local de vídeos e controle de quota da API do YouTube
           </CardDescription>
         </CardHeader>

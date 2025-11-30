@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle } from "lucide-react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
   Tooltip,
   TooltipContent,
@@ -365,10 +366,18 @@ export const TagsManagementTab = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Tags className="h-6 w-6" />
-            Gerenciamento de Tags
-          </h2>
+          <AdminTitleWithInfo
+            title="Gerenciamento de Tags"
+            level="h2"
+            icon={Tags}
+            tooltipText="CRUD completo de tags"
+            infoContent={
+              <>
+                <p>Gerencie tags hierárquicas do sistema RAG.</p>
+                <p className="mt-2">Crie, edite, delete e unifique tags parent/child para categorização de documentos.</p>
+              </>
+            }
+          />
           <p className="text-muted-foreground mt-1">
             CRUD completo para tags hierárquicas do sistema RAG
           </p>

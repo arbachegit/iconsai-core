@@ -1,0 +1,94 @@
+import { ReactNode, useState } from "react";
+import { Lightbulb, type LucideIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+interface AdminTitleWithInfoProps {
+  title: string;
+  level: "h1" | "h2" | "h3";
+  tooltipText: string;
+  infoContent: ReactNode;
+  icon?: LucideIcon;
+  className?: string;
+}
+
+export const AdminTitleWithInfo = ({
+  title,
+  level,
+  tooltipText,
+  infoContent,
+  icon: Icon,
+  className
+}: AdminTitleWithInfoProps) => {
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  const HeadingTag = level;
+  
+  const headingClasses = {
+    h1: "text-3xl font-bold",
+    h2: "text-2xl font-bold",
+    h3: "text-lg font-semibold"
+  };
+
+  const iconSizes = {
+    h1: "h-8 w-8",
+    h2: "h-6 w-6",
+    h3: "h-5 w-5"
+  };
+
+  return (
+    <div className={cn("flex items-center gap-3", className)}>
+      {Icon && <Icon className={cn(iconSizes[level], "text-primary")} />}
+      
+      <HeadingTag className={headingClasses[level]}>
+        {title}
+      </HeadingTag>
+
+      <TooltipProvider>
+        <Tooltip>
+          <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+            <PopoverTrigger asChild>
+              <TooltipTrigger asChild>
+                <button 
+                  className="relative w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  aria-label={tooltipText}
+                >
+                  <Lightbulb className="w-4 h-4 text-primary" />
+                  <div className="absolute -top-1 -right-1 pointer-events-none">
+                    <div className="relative">
+                      <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                      <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+                    </div>
+                  </div>
+                </button>
+              </TooltipTrigger>
+            </PopoverTrigger>
+            
+            <TooltipContent side="right" sideOffset={5}>
+              <p className="text-sm max-w-[250px]">{tooltipText}</p>
+            </TooltipContent>
+
+            <PopoverContent 
+              className="w-80 bg-card/95 backdrop-blur-sm border-primary/20" 
+              side="right"
+              align="start"
+            >
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <Lightbulb className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2">Sobre esta seção</h4>
+                    <div className="text-sm text-muted-foreground leading-relaxed">
+                      {infoContent}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
+};

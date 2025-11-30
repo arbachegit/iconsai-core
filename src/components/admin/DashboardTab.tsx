@@ -1,9 +1,10 @@
 import { Card } from "@/components/ui/card";
 import { useChatAnalytics } from "@/hooks/useChatAnalytics";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
-import { MessageSquare, Volume2, CheckCircle, XCircle, Mail, Search, FileText } from "lucide-react";
+import { MessageSquare, Volume2, CheckCircle, XCircle, Mail, Search, FileText, LayoutDashboard, Settings } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
   AreaChart,
   Area,
@@ -99,7 +100,19 @@ export const DashboardTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <AdminTitleWithInfo
+          title="Dashboard"
+          level="h1"
+          icon={LayoutDashboard}
+          tooltipText="Visão geral do sistema KnowYOU"
+          infoContent={
+            <>
+              <p>Painel central com métricas em tempo real do sistema.</p>
+              <p className="mt-2">Mostra conversas totais, documentos processados, mensagens trocadas e buscas RAG.</p>
+              <p className="mt-2">Ideal para monitoramento rápido da saúde do sistema.</p>
+            </>
+          }
+        />
         <p className="text-muted-foreground mt-2">
           Visão geral do sistema KnowYOU
         </p>

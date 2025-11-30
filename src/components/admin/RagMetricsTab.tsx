@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Database, FileText, Search, CheckCircle2, Loader2, Clock, TrendingUp, Download, FileSpreadsheet, FileJson, FileDown } from "lucide-react";
+import { Database, FileText, Search, CheckCircle2, Loader2, Clock, TrendingUp, Download, FileSpreadsheet, FileJson, FileDown, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -254,7 +255,18 @@ export const RagMetricsTab = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold mb-2">📊 Métricas RAG</h2>
+          <AdminTitleWithInfo
+            title="Métricas RAG"
+            level="h2"
+            icon={BarChart3}
+            tooltipText="Estatísticas do sistema RAG"
+            infoContent={
+              <>
+                <p>Analise o desempenho do sistema de Recuperação Aumentada por Geração.</p>
+                <p className="mt-2">Visualize taxa de sucesso, distribuição de chunks, qualidade de embeddings e performance de busca.</p>
+              </>
+            }
+          />
           <p className="text-muted-foreground">
             Estatísticas detalhadas do sistema de Recuperação Aumentada por Geração
           </p>

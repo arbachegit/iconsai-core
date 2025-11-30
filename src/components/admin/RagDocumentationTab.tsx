@@ -18,6 +18,7 @@ import {
   Download,
   ExternalLink
 } from "lucide-react";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 
 export const RagDocumentationTab = () => {
   const [activeSection, setActiveSection] = useState<string>("overview");
