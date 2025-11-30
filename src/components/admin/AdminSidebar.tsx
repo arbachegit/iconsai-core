@@ -105,53 +105,55 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
   ];
 
   return (
-    <aside className="w-64 bg-card border-r border-primary/20 flex flex-col h-screen">
-      <div className="p-6 border-b border-primary/20">
-        <h1 className="text-xl font-bold text-gradient">Admin Panel</h1>
-        <p className="text-sm text-muted-foreground mt-1">KnowYOU</p>
-      </div>
+    <>
+      <aside className="w-64 bg-card border-r border-primary/20 flex flex-col h-screen">
+        <div className="p-6 border-b border-primary/20">
+          <h1 className="text-xl font-bold text-gradient">Admin Panel</h1>
+          <p className="text-sm text-muted-foreground mt-1">KnowYOU</p>
+        </div>
 
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {menuCategories.map((category, index) => (
-          <div key={category.id}>
-            {index > 0 && <Separator className="my-2 bg-primary/10" />}
-            
-            <Collapsible 
-              open={openSections.includes(category.id)}
-              onOpenChange={() => toggleSection(category.id)}
-            >
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-primary transition-colors">
-                <div className="flex items-center gap-2">
-                  <category.icon className="w-3 h-3" />
-                  {category.label}
-                </div>
-                <ChevronDown className={`w-3 h-3 transition-transform ${openSections.includes(category.id) ? 'rotate-180' : ''}`} />
-              </CollapsibleTrigger>
+        <nav className="flex-1 p-4 pb-44 space-y-1 overflow-y-auto">
+          {menuCategories.map((category, index) => (
+            <div key={category.id}>
+              {index > 0 && <Separator className="my-2 bg-primary/10" />}
               
-              <CollapsibleContent className="space-y-1 mt-1">
-                {category.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeTab === item.id;
+              <Collapsible 
+                open={openSections.includes(category.id)}
+                onOpenChange={() => toggleSection(category.id)}
+              >
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-primary transition-colors">
+                  <div className="flex items-center gap-2">
+                    <category.icon className="w-3 h-3" />
+                    {category.label}
+                  </div>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${openSections.includes(category.id) ? 'rotate-180' : ''}`} />
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent className="space-y-1 mt-1">
+                  {category.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeTab === item.id;
 
-                  return (
-                    <Button
-                      key={item.id}
-                      variant={isActive ? "default" : "ghost"}
-                      className={`w-full justify-start gap-3 ${isActive ? "bg-gradient-primary" : ""}`}
-                      onClick={() => onTabChange(item.id)}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {item.label}
-                    </Button>
-                  );
-                })}
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
-        ))}
-      </nav>
+                    return (
+                      <Button
+                        key={item.id}
+                        variant={isActive ? "default" : "ghost"}
+                        className={`w-full justify-start gap-3 ${isActive ? "bg-gradient-primary" : ""}`}
+                        onClick={() => onTabChange(item.id)}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {item.label}
+                      </Button>
+                    );
+                  })}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          ))}
+        </nav>
+      </aside>
 
-      <div className="p-4 border-t border-primary/20 bg-card space-y-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+      <div className="fixed bottom-0 left-0 w-64 p-4 border-t border-primary/20 bg-card space-y-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20">
         <Button
           variant="ghost"
           className="w-full justify-start gap-3"
@@ -179,6 +181,6 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
           Sair
         </Button>
       </div>
-    </aside>
+    </>
   );
 };
