@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Trash2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, ChevronDown, MessageSquare, User, Bot } from "lucide-react";
+import { Trash2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, ChevronDown, MessageSquare, User, Bot, BookOpen, Heart, Smile, Frown, Meh } from "lucide-react";
 import { toast } from "sonner";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,8 +115,19 @@ export const ConversationsTab = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Conversas Salvas</CardTitle>
-              <CardDescription>
+              <AdminTitleWithInfo
+                title="Conversas Salvas"
+                level="h2"
+                icon={MessageSquare}
+                tooltipText="Histórico de conversas"
+                infoContent={
+                  <>
+                    <p>Visualize e gerencie todas as conversas salvas.</p>
+                    <p className="mt-2">Filtre por tipo de chat, exporte dados e analise sentimentos.</p>
+                  </>
+                }
+              />
+              <CardDescription className="mt-2">
                 Visualize e gerencie o histórico de conversas dos usuários
               </CardDescription>
             </div>
@@ -167,8 +179,8 @@ export const ConversationsTab = () => {
 
           <div className="space-y-4">
             {paginatedConversations.map((conv) => {
-              const sentimentEmoji = conv.sentiment_label === 'positive' ? '😊' : 
-                                     conv.sentiment_label === 'negative' ? '😟' : '😐';
+              const SentimentIcon = conv.sentiment_label === 'positive' ? Smile : 
+                                     conv.sentiment_label === 'negative' ? Frown : Meh;
               
               return (
                 <Card key={conv.id}>
@@ -186,8 +198,12 @@ export const ConversationsTab = () => {
                               {new Date(conv.created_at).toLocaleString('pt-BR')}
                             </p>
                           </div>
-                          <Badge variant={(conv.chat_type || 'health') === 'study' ? 'default' : 'secondary'}>
-                            {(conv.chat_type || 'health') === 'study' ? '📚 Estudo' : '🏥 Saúde'}
+                          <Badge variant={(conv.chat_type || 'health') === 'study' ? 'default' : 'secondary'} className="flex items-center gap-1">
+                            {(conv.chat_type || 'health') === 'study' ? (
+                              <><BookOpen className="h-3 w-3" /> Estudo</>
+                            ) : (
+                              <><Heart className="h-3 w-3" /> Saúde</>
+                            )}
                           </Badge>
                         </div>
                         
@@ -236,7 +252,7 @@ export const ConversationsTab = () => {
                             <div className="p-3 bg-muted/30 rounded-lg">
                               <p className="text-xs text-muted-foreground mb-1">Sentimento</p>
                               <div className="flex items-center gap-2">
-                                <span>{sentimentEmoji}</span>
+                                <SentimentIcon className="h-4 w-4" />
                                 <span className="capitalize text-sm">{conv.sentiment_label || 'N/A'}</span>
                               </div>
                             </div>

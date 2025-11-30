@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 
 const SECTIONS = [
   { id: 'software', name: 'Software - A Primeira Revolução' },
@@ -126,8 +127,19 @@ export const ImageCacheTab = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Gerenciamento de Imagens das Seções</CardTitle>
-          <CardDescription>
+          <AdminTitleWithInfo
+            title="Gerenciamento de Imagens das Seções"
+            level="h2"
+            icon={ImageIcon}
+            tooltipText="Gerencie imagens contextuais"
+            infoContent={
+              <>
+                <p>Gere e gerencie imagens para cada seção do landing page.</p>
+                <p className="mt-2">Regenere imagens ou remova do cache quando necessário.</p>
+              </>
+            }
+          />
+          <CardDescription className="mt-2">
             Gere e gerencie as imagens contextuais para cada seção do landing page
           </CardDescription>
         </CardHeader>

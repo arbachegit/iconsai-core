@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, FileText, ArrowRight, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Loader2, FileText, ArrowRight, CheckCircle2, XCircle, AlertCircle, ClipboardList } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 
 export const DocumentRoutingLogsTab = () => {
   const { data: routingLogs, isLoading } = useQuery({
@@ -59,8 +60,19 @@ export const DocumentRoutingLogsTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-2">📋 Logs de Roteamento de Documentos</h2>
-        <p className="text-muted-foreground">
+        <AdminTitleWithInfo
+          title="Logs de Roteamento de Documentos"
+          level="h2"
+          icon={ClipboardList}
+          tooltipText="Histórico de roteamento"
+          infoContent={
+            <>
+              <p>Acompanhe como documentos foram direcionados entre categorias.</p>
+              <p className="mt-2">Visualize Health, Study e General com ações, mudanças de escopo e disclaimers.</p>
+            </>
+          }
+        />
+        <p className="text-muted-foreground mb-2">
           Histórico completo de como documentos foram direcionados entre as categorias Health, Study e General.
         </p>
       </div>

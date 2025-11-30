@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Edit2, Save, X } from "lucide-react";
+import { Edit2, Save, X, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 
 interface TooltipContent {
   id: string;
@@ -76,7 +77,18 @@ export const TooltipsTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Gestão de Tooltips</h1>
+        <AdminTitleWithInfo
+          title="Gestão de Tooltips"
+          level="h1"
+          icon={FileText}
+          tooltipText="Edite conteúdo dos tooltips"
+          infoContent={
+            <>
+              <p>Gerencie o conteúdo exibido em cada tooltip das seções do landing page.</p>
+              <p className="mt-2">Edite títulos e descrições para melhorar a experiência do usuário.</p>
+            </>
+          }
+        />
         <p className="text-muted-foreground mt-2">
           Edite o conteúdo dos tooltips de cada seção
         </p>

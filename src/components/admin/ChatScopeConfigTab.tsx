@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search } from "lucide-react";
+import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 interface ChatConfig {
   id: string;
   chat_type: "study" | "health";
@@ -274,7 +275,8 @@ export function ChatScopeConfigTab() {
           {config.document_tags_data && config.document_tags_data.length > 0 && <Card className="border-2 border-primary/20">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  🏷️ Tags Extraídas dos Documentos
+                  <TagIcon className="h-4 w-4" />
+                  Tags Extraídas dos Documentos
                   <Badge variant="outline" className="ml-auto">
                     {config.total_documents} documentos
                   </Badge>
@@ -288,15 +290,20 @@ export function ChatScopeConfigTab() {
               const lowConfParents = parentTags.filter(t => t.avg_confidence < 0.7);
               return <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm font-semibold">📁 Tags Parent ({parentTags.length})</Label>
-                        {lowConfParents.length > 0 && <Badge variant="outline" className="text-xs">
-                            ⚠️ {lowConfParents.length} com baixa confiança
+                        <Label className="text-sm font-semibold flex items-center gap-2">
+                          <BookOpen className="h-4 w-4" />
+                          Tags Parent ({parentTags.length})
+                        </Label>
+                        {lowConfParents.length > 0 && <Badge variant="outline" className="text-xs flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {lowConfParents.length} com baixa confiança
                           </Badge>}
                       </div>
                       
                       {highConfParents.length > 0 && <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
-                          <p className="text-xs mb-2 text-primary-foreground">
-                            ✅ Incluídas no escopo (confidence ≥ 70%):
+                          <p className="text-xs mb-2 text-primary-foreground flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Incluídas no escopo (confidence ≥ 70%):
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {highConfParents.map((tag, idx) => <Badge key={idx} variant="default" className="text-xs">
@@ -307,8 +314,9 @@ export function ChatScopeConfigTab() {
                         </div>}
                       
                       {lowConfParents.length > 0 && <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                          <p className="text-xs mb-2 text-primary-foreground">
-                            ⚠️ Não incluídas (confidence {'<'} 70%):
+                          <p className="text-xs mb-2 text-primary-foreground flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Não incluídas (confidence {'<'} 70%):
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {lowConfParents.map((tag, idx) => <Badge key={idx} variant="outline" className="text-xs opacity-60 text-primary-foreground">
@@ -326,7 +334,10 @@ export function ChatScopeConfigTab() {
               const childTags = config.document_tags_data.filter(t => t.tag_type === "child");
               if (childTags.length === 0) return null;
               return <div className="space-y-2">
-                      <Label className="text-sm font-semibold">📄 Tags Child ({childTags.length})</Label>
+                      <Label className="text-sm font-semibold flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Tags Child ({childTags.length})
+                      </Label>
                       <div className="p-3 bg-muted/50 rounded-lg max-h-32 overflow-y-auto">
                         <div className="flex flex-wrap gap-1.5">
                           {childTags.slice(0, 20).map((tag, idx) => <Badge key={idx} variant="secondary" className="text-xs">
@@ -342,8 +353,9 @@ export function ChatScopeConfigTab() {
 
                 {/* Statistics */}
                 <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-                  <span>
-                    🔄 Última atualização: {new Date(config.updated_at).toLocaleString('pt-BR')}
+                  <span className="flex items-center gap-1">
+                    <RefreshCw className="h-3 w-3" />
+                    Última atualização: {new Date(config.updated_at).toLocaleString('pt-BR')}
                   </span>
                   <Button variant="ghost" size="sm" onClick={() => {
                 toast({
@@ -351,8 +363,9 @@ export function ChatScopeConfigTab() {
                   description: "Recalculando escopo com base nos documentos"
                 });
                 updateConfig(config.chat_type, config);
-              }} className="h-7 text-xs">
-                    ↻ Forçar Atualização
+              }} className="h-7 text-xs flex items-center gap-1">
+                    <RefreshCw className="h-3 w-3" />
+                    Forçar Atualização
                   </Button>
                 </div>
               </CardContent>
@@ -386,7 +399,18 @@ export function ChatScopeConfigTab() {
   }
   return <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Configurações de Chat & Delimitações</h2>
+        <AdminTitleWithInfo
+          title="Configurações de Chat & Delimitações"
+          level="h2"
+          icon={MessageSquare}
+          tooltipText="Delimitações e configurações RAG"
+          infoContent={
+            <>
+              <p>Gerencie limites e configurações dos assistentes de IA.</p>
+              <p className="mt-2">Configure escopo permitido, thresholds RAG, mensagens de rejeição e teste buscas em tempo real.</p>
+            </>
+          }
+        />
         <p className="text-muted-foreground mt-1">
           Gerencie as delimitações e configurações RAG de cada assistente
         </p>

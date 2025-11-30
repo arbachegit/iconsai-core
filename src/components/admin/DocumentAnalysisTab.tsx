@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle } from "lucide-react";
+import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle, Heart, BookOpen, Package, Check, AlertTriangle, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/tooltip";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { toast } from "sonner";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 
 interface Document {
   id: string;
@@ -205,10 +206,18 @@ export const DocumentAnalysisTab = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <FileText className="h-6 w-6" />
-            Análise de Documentos
-          </h2>
+          <AdminTitleWithInfo
+            title="Análise de Documentos"
+            level="h2"
+            icon={FileText}
+            tooltipText="Visualização detalhada de documentos"
+            infoContent={
+              <>
+                <p>Explore documentos processados com análise completa de tags e categorizações.</p>
+                <p className="mt-2">Veja resumos AI, hierarquia de tags, métricas de confiança e status de implementação.</p>
+              </>
+            }
+          />
           <p className="text-muted-foreground mt-1">
             Visualização detalhada de documentos e suas categorizações
           </p>
@@ -312,14 +321,24 @@ export const DocumentAnalysisTab = () => {
                         <div className="flex-1">
                           <div className="font-semibold text-lg mb-2">{doc.filename}</div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant={getChatBadgeVariant(doc.target_chat)}>
-                              {doc.target_chat === "health" ? "🏥 Saúde" : doc.target_chat === "study" ? "📚 Estudo" : "📄 Geral"}
-                            </Badge>
+                          <Badge variant={getChatBadgeVariant(doc.target_chat)} className="flex items-center gap-1">
+                            {doc.target_chat === "health" ? (
+                              <><Heart className="h-3 w-3" /> Saúde</>
+                            ) : doc.target_chat === "study" ? (
+                              <><BookOpen className="h-3 w-3" /> Estudo</>
+                            ) : (
+                              <><FileText className="h-3 w-3" /> Geral</>
+                            )}
+                          </Badge>
                             {doc.implementation_status && (
-                              <Badge variant={getStatusBadgeVariant(doc.implementation_status)}>
-                                {doc.implementation_status === "ready" ? "✓ Pronto" : 
-                                 doc.implementation_status === "needs_review" ? "⚠ Precisa Revisão" : 
-                                 "✗ Incompleto"}
+                              <Badge variant={getStatusBadgeVariant(doc.implementation_status)} className="flex items-center gap-1">
+                                {doc.implementation_status === "ready" ? (
+                                  <><Check className="h-3 w-3" /> Pronto</>
+                                ) : doc.implementation_status === "needs_review" ? (
+                                  <><AlertTriangle className="h-3 w-3" /> Precisa Revisão</>
+                                ) : (
+                                  <><X className="h-3 w-3" /> Incompleto</>
+                                )}
                               </Badge>
                             )}
                             <Badge variant="outline">
@@ -370,7 +389,10 @@ export const DocumentAnalysisTab = () => {
                       {/* AI Summary */}
                       {doc.ai_summary && (
                         <div className="p-4 bg-muted/50 rounded-lg">
-                          <h4 className="font-semibold mb-2">📝 Resumo AI</h4>
+                          <h4 className="font-semibold mb-2 flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            Resumo AI
+                          </h4>
                           <p className="text-sm text-muted-foreground">{doc.ai_summary}</p>
                         </div>
                       )}
@@ -384,9 +406,10 @@ export const DocumentAnalysisTab = () => {
                               Classificação do Documento
                             </h4>
                             {/* Contexto/Caixa destacado */}
-                            <Badge variant="default" className="text-sm px-3 py-1">
-                              📦 {doc.target_chat === "health" ? "Caixa: Saúde" : 
-                                   doc.target_chat === "study" ? "Caixa: Estudo" : "Caixa: Geral"}
+                            <Badge variant="default" className="text-sm px-3 py-1 flex items-center gap-1">
+                              <Package className="h-3 w-3" />
+                              {doc.target_chat === "health" ? "Caixa: Saúde" : 
+                               doc.target_chat === "study" ? "Caixa: Estudo" : "Caixa: Geral"}
                             </Badge>
                           </div>
                           

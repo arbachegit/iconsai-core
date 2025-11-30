@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Search, Database, FileText, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Search, Database, FileText, AlertCircle, CheckCircle2, Clock, Key, Settings as SettingsIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 
 export const RagDiagnosticsTab = () => {
   const { toast } = useToast();
@@ -115,7 +116,18 @@ export const RagDiagnosticsTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight text-gradient">Diagnóstico RAG</h2>
+        <AdminTitleWithInfo
+          title="Diagnóstico RAG"
+          level="h2"
+          icon={Search}
+          tooltipText="Painel de testes RAG"
+          infoContent={
+            <>
+              <p>Teste e valide o sistema RAG em tempo real.</p>
+              <p className="mt-2">Execute queries, visualize resultados e analise performance de busca.</p>
+            </>
+          }
+        />
         <p className="text-muted-foreground mt-2">
           Painel de diagnóstico e teste do sistema RAG (Retrieval-Augmented Generation)
         </p>
@@ -262,9 +274,14 @@ export const RagDiagnosticsTab = () => {
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold">Resultados ({testResults.results?.length || 0} chunks)</h4>
                 <div className="flex items-center gap-2">
-                  <Badge variant={testResults.search_type === 'vector' ? 'default' : 'secondary'}>
-                    {testResults.search_type === 'vector' ? '🔍 Vector' : 
-                     testResults.search_type === 'keyword' ? '🔑 Keyword' : '📝 Full-text'}
+                  <Badge variant={testResults.search_type === 'vector' ? 'default' : 'secondary'} className="flex items-center gap-1">
+                    {testResults.search_type === 'vector' ? (
+                      <><Search className="h-3 w-3" /> Vector</>
+                    ) : testResults.search_type === 'keyword' ? (
+                      <><Key className="h-3 w-3" /> Keyword</>
+                    ) : (
+                      <><FileText className="h-3 w-3" /> Full-text</>
+                    )}
                   </Badge>
                   <span className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />

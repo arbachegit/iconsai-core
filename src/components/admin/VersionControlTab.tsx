@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GitBranch, Rocket, RefreshCw, Clock, Download, Undo2, Tag, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
   Table,
   TableBody,
@@ -211,7 +212,18 @@ export const VersionControlTab = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-gradient">Controle de Versão</h2>
+          <AdminTitleWithInfo
+            title="Controle de Versão"
+            level="h2"
+            icon={GitBranch}
+            tooltipText="Sistema de versionamento"
+            infoContent={
+              <>
+                <p>Gerencie versões automáticas e manuais do sistema.</p>
+                <p className="mt-2">Incremente patches, minor releases ou major versions. Exporte changelog e faça rollback quando necessário.</p>
+              </>
+            }
+          />
           <p className="text-muted-foreground mt-1">
             Sistema de versionamento automático e manual
           </p>

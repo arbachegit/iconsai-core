@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Send } from "lucide-react";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 
 export const GmailTab = () => {
   const { settings, updateSettings } = useAdminSettings();
@@ -43,7 +44,18 @@ export const GmailTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Configuração Gmail</h1>
+        <AdminTitleWithInfo
+          title="Configuração Gmail"
+          level="h1"
+          icon={Mail}
+          tooltipText="Configure notificações por email"
+          infoContent={
+            <>
+              <p>Configure email para receber alertas do sistema.</p>
+              <p className="mt-2">Notificações são enviadas para novas conversas e eventos importantes.</p>
+            </>
+          }
+        />
         <p className="text-muted-foreground mt-2">
           Configure as notificações por email
         </p>

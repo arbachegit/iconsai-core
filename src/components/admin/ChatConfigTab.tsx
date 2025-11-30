@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { useToast } from "@/hooks/use-toast";
-import { Volume2, Play, Loader2, Bell } from "lucide-react";
+import { Volume2, Play, Loader2, Bell, Settings as SettingsIcon } from "lucide-react";
 import { useState } from "react";
+import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 
 export const ChatConfigTab = () => {
   const { settings, updateSettings, isLoading } = useAdminSettings();
@@ -82,14 +83,37 @@ export const ChatConfigTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Configurações do Chat</h1>
+        <AdminTitleWithInfo
+          title="Configurações do Chat"
+          level="h1"
+          icon={SettingsIcon}
+          tooltipText="Configure o comportamento do chat"
+          infoContent={
+            <>
+              <p>Gerencie configurações de áudio e alertas do chat.</p>
+              <p className="mt-2">Controle geração de áudio, autoplay e notificações de sentimento negativo.</p>
+            </>
+          }
+        />
         <p className="text-muted-foreground mt-2">
           Gerencie o comportamento do chat e do áudio
         </p>
       </div>
 
       <Card className="p-6 bg-card/50 backdrop-blur-sm border-primary/20">
-        <h2 className="text-xl font-bold text-foreground mb-6">Controles de Áudio</h2>
+        <AdminTitleWithInfo
+          title="Controles de Áudio"
+          level="h2"
+          icon={Volume2}
+          tooltipText="Configurações de áudio do chat"
+          infoContent={
+            <>
+              <p>Configure geração e reprodução de áudio.</p>
+              <p className="mt-2">Ative síntese de voz com ElevenLabs e autoplay de respostas.</p>
+            </>
+          }
+          className="mb-6"
+        />
 
         <div className="space-y-6">
           <div className="flex items-center justify-between p-4 rounded-lg bg-background/50">
@@ -134,7 +158,19 @@ export const ChatConfigTab = () => {
       </Card>
 
       <Card className="p-6 bg-card/50 backdrop-blur-sm border-primary/20">
-        <h2 className="text-xl font-bold text-foreground mb-6">Alertas de Sentimento</h2>
+        <AdminTitleWithInfo
+          title="Alertas de Sentimento"
+          level="h2"
+          icon={Bell}
+          tooltipText="Alertas de conversas negativas"
+          infoContent={
+            <>
+              <p>Receba notificações de conversas com sentimento negativo.</p>
+              <p className="mt-2">Configure email e threshold para detecção automática.</p>
+            </>
+          }
+          className="mb-6"
+        />
         
         <div className="space-y-6">
           <div className="flex items-center justify-between p-4 rounded-lg bg-background/50">
