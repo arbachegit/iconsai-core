@@ -14,7 +14,7 @@ serve(async (req) => {
 
   try {
     const startTime = Date.now();
-    const { query, targetChat, matchThreshold = 0.7, matchCount = 5, sessionId } = await req.json();
+    const { query, targetChat, matchThreshold = 0.7, matchCount = 5, sessionId, useHybridSearch = false } = await req.json();
     
     console.log(`Searching documents for query: "${query}" (target: ${targetChat})`);
     
@@ -49,19 +49,90 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Search for similar chunks
-    const { data: results, error } = await supabase.rpc("search_documents", {
-      query_embedding: queryEmbedding,
-      target_chat_filter: targetChat,
-      match_threshold: matchThreshold,
-      match_count: matchCount
-    });
+    let results;
+    let error;
     
-    if (error) {
-      console.error("Search error:", error);
-      throw error;
+    if (useHybridSearch) {
+      // Hybrid Search: Combine vector similarity + tag matching
+      console.log("Using hybrid search (vector + tags)");
+      
+      // 1. Get vector search results
+      const vectorResults = await supabase.rpc("search_documents", {
+        query_embedding: queryEmbedding,
+        target_chat_filter: targetChat,
+        match_threshold: matchThreshold,
+        match_count: matchCount * 2 // Get more results for filtering
+      });
+      
+      if (vectorResults.error) {
+        console.error("Vector search error:", vectorResults.error);
+        throw vectorResults.error;
+      }
+      
+      // 2. Extract document IDs from vector results
+      const docIds = [...new Set(vectorResults.data?.map((r: any) => r.document_id) || [])];
+      
+      // 3. Fetch tags for these documents
+      const { data: docTags } = await supabase
+        .from("document_tags")
+        .select("document_id, tag_name, confidence")
+        .in("document_id", docIds);
+      
+      // 4. Simple keyword matching for tag scoring
+      const queryWords = query.toLowerCase().split(/\s+/);
+      const tagScores: Record<string, number> = {};
+      
+      docTags?.forEach((tag: any) => {
+        const tagWords = tag.tag_name.toLowerCase().split(/\s+/);
+        const matchCount = queryWords.filter((qw: string) => 
+          tagWords.some((tw: string) => tw.includes(qw) || qw.includes(tw))
+        ).length;
+        
+        if (matchCount > 0) {
+          const score = (matchCount / queryWords.length) * (tag.confidence || 0.5);
+          tagScores[tag.document_id] = (tagScores[tag.document_id] || 0) + score;
+        }
+      });
+      
+      // 5. Combine scores: α × vector_similarity + β × tag_score
+      const alpha = 0.7; // Weight for vector similarity
+      const beta = 0.3;  // Weight for tag matching
+      
+      results = vectorResults.data?.map((r: any) => {
+        const vectorScore = r.similarity;
+        const tagScore = tagScores[r.document_id] || 0;
+        const hybridScore = (alpha * vectorScore) + (beta * tagScore);
+        
+        return {
+          ...r,
+          similarity: hybridScore,
+          vector_score: vectorScore,
+          tag_score: tagScore
+        };
+      })
+      .sort((a: any, b: any) => b.similarity - a.similarity)
+      .slice(0, matchCount);
+      
+      console.log(`Hybrid search: ${results?.length || 0} results (combined vector + tags)`);
+    } else {
+      // Standard vector search
+      const searchResults = await supabase.rpc("search_documents", {
+        query_embedding: queryEmbedding,
+        target_chat_filter: targetChat,
+        match_threshold: matchThreshold,
+        match_count: matchCount
+      });
+      
+      results = searchResults.data;
+      error = searchResults.error;
+      
+      if (error) {
+        console.error("Search error:", error);
+        throw error;
+      }
+      
+      console.log(`Found ${results?.length || 0} matching chunks`);
     }
-    
-    console.log(`Found ${results?.length || 0} matching chunks`);
     
     // Calcular latência e top score
     const latencyMs = Date.now() - startTime;

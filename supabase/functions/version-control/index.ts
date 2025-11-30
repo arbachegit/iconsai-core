@@ -41,13 +41,121 @@ serve(async (req) => {
       );
     }
 
-    // POST - Incrementa versão
+    // POST - Incrementa versão, Rollback ou Exporta Changelog
     if (req.method === "POST") {
-      const { action, log_message, associated_data } = await req.json();
+      const { action, log_message, associated_data, target_version_id, format } = await req.json();
 
+      // Rollback to specific version
+      if (action === "rollback") {
+        if (!target_version_id) {
+          return new Response(
+            JSON.stringify({ error: "target_version_id required for rollback" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Fetch target version
+        const { data: targetVersion, error: fetchError } = await supabase
+          .from("version_control")
+          .select("*")
+          .eq("id", target_version_id)
+          .single();
+
+        if (fetchError || !targetVersion) {
+          return new Response(
+            JSON.stringify({ error: "Target version not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Get current version for comparison
+        const { data: currentRecord } = await supabase
+          .from("version_control")
+          .select("*")
+          .order("timestamp", { ascending: false })
+          .limit(1)
+          .single();
+
+        const currentVersion = currentRecord?.current_version || "0.0.0";
+        const [cMajor, cMinor, cPatch] = currentVersion.split(".").map(Number);
+
+        // Create rollback entry
+        const rollbackVersion = `${cMajor}.${cMinor}.${cPatch + 1}`;
+        const { data: rollbackRecord, error: insertError } = await supabase
+          .from("version_control")
+          .insert({
+            current_version: rollbackVersion,
+            log_message: `Rollback para versão ${targetVersion.current_version}: ${log_message || "Restauração manual"}`,
+            trigger_type: "ROLLBACK",
+            associated_data: targetVersion.associated_data || {},
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          return new Response(
+            JSON.stringify({ error: insertError.message }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: "rollback",
+            rolled_back_to: targetVersion.current_version,
+            new_version: rollbackVersion,
+            record: rollbackRecord,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Export Changelog
+      if (action === "export_changelog") {
+        const exportFormat = format || "markdown";
+
+        const { data: history } = await supabase
+          .from("version_control")
+          .select("*")
+          .order("timestamp", { ascending: false });
+
+        let output: string;
+
+        if (exportFormat === "json") {
+          output = JSON.stringify(history, null, 2);
+        } else {
+          // Markdown format
+          output = "# Changelog KnowYOU\n\n";
+          output += `Gerado em: ${new Date().toLocaleString("pt-BR")}\n\n`;
+          output += "---\n\n";
+
+          history?.forEach((record: any) => {
+            output += `## Versão ${record.current_version}\n`;
+            output += `**Data:** ${new Date(record.timestamp).toLocaleString("pt-BR")}\n\n`;
+            output += `**Tipo:** ${record.trigger_type}\n\n`;
+            output += `**Mensagem:** ${record.log_message}\n\n`;
+            if (record.associated_data && Object.keys(record.associated_data).length > 0) {
+              output += `**Dados Associados:** \`${JSON.stringify(record.associated_data)}\`\n\n`;
+            }
+            output += "---\n\n";
+          });
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            format: exportFormat,
+            content: output,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Regular version increment
       if (!["patch", "minor", "major"].includes(action)) {
         return new Response(
-          JSON.stringify({ error: "Invalid action. Must be: patch, minor, or major" }),
+          JSON.stringify({ error: "Invalid action. Must be: patch, minor, major, rollback, or export_changelog" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -105,6 +213,41 @@ serve(async (req) => {
           JSON.stringify({ error: insertError.message }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      // Send email notification for Major releases
+      if (action === "major") {
+        try {
+          const { data: adminSettings } = await supabase
+            .from("admin_settings")
+            .select("gmail_notification_email")
+            .limit(1)
+            .maybeSingle();
+
+          const emailTo = adminSettings?.gmail_notification_email;
+
+          if (emailTo) {
+            await supabase.functions.invoke("send-email", {
+              body: {
+                to: emailTo,
+                subject: `🚀 Nova Versão Major Lançada: ${newVersion}`,
+                html: `
+                  <h1>Nova Versão Major da Plataforma KnowYOU</h1>
+                  <p><strong>Versão:</strong> ${newVersion}</p>
+                  <p><strong>Versão Anterior:</strong> ${currentVersion}</p>
+                  <p><strong>Data:</strong> ${new Date().toLocaleString("pt-BR")}</p>
+                  <p><strong>Mensagem:</strong> ${log_message || "Lançamento de produção"}</p>
+                  <hr />
+                  <p>Esta é uma notificação automática de lançamento major.</p>
+                `,
+              },
+            });
+            console.log(`Email notification sent to: ${emailTo}`);
+          }
+        } catch (emailError) {
+          console.error("Email notification failed:", emailError);
+          // Don't fail the version update if email fails
+        }
       }
 
       return new Response(

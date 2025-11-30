@@ -1495,6 +1495,53 @@ export const DocumentsTab = () => {
                 </p>
               </div>
             )}
+
+            {/* Similar Documents Section */}
+            <div>
+              <h4 className="font-medium mb-2">📊 Documentos Similares</h4>
+              <p className="text-xs text-muted-foreground mb-3">
+                Baseado em tags compartilhadas e conteúdo semântico
+              </p>
+              <div className="space-y-2">
+                {documents
+                  ?.filter(d => 
+                    d.id !== selectedDoc.id && 
+                    d.status === "completed" &&
+                    d.target_chat === selectedDoc.target_chat
+                  )
+                  .slice(0, 5)
+                  .map(doc => (
+                    <div 
+                      key={doc.id}
+                      className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() => setSelectedDoc(doc)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{doc.filename}</p>
+                          <div className="flex gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs">
+                              {doc.total_chunks} chunks
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {doc.target_chat}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                {documents?.filter(d => 
+                  d.id !== selectedDoc.id && 
+                  d.status === "completed" &&
+                  d.target_chat === selectedDoc.target_chat
+                ).length === 0 && (
+                  <p className="text-sm text-muted-foreground italic">
+                    Nenhum documento similar encontrado
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </Card>
       )}
