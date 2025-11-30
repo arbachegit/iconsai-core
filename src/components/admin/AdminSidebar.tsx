@@ -1,5 +1,8 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -16,6 +19,12 @@ import {
   GitBranch,
   Tags,
   Search,
+  ChevronDown,
+  Zap,
+  MessageCircle,
+  Brain,
+  Palette,
+  Settings,
 } from "lucide-react";
 
 type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis";
@@ -27,26 +36,70 @@ interface AdminSidebarProps {
 
 export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
   const navigate = useNavigate();
+  const [openSections, setOpenSections] = useState<string[]>(["quick-access"]);
 
   const handleLogout = () => {
     localStorage.removeItem("admin_authenticated");
     navigate("/admin/login");
   };
 
-  const menuItems = [
-    { id: "dashboard" as TabType, label: "Dashboard", icon: LayoutDashboard },
-    { id: "chat" as TabType, label: "Chat Config", icon: MessageSquare },
-    { id: "tooltips" as TabType, label: "Tooltips", icon: FileText },
-    { id: "conversations" as TabType, label: "Conversas", icon: MessagesSquare },
-    { id: "documents" as TabType, label: "Documentos", icon: FileText },
-    { id: "rag-metrics" as TabType, label: "Métricas RAG", icon: Database },
-    { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
-    { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
-    { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
-    { id: "images" as TabType, label: "Imagens", icon: Image },
-    { id: "youtube" as TabType, label: "YouTube", icon: Youtube },
-    { id: "gmail" as TabType, label: "Gmail", icon: Mail },
-    { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
+  const toggleSection = (sectionId: string) => {
+    setOpenSections(prev => 
+      prev.includes(sectionId) 
+        ? prev.filter(id => id !== sectionId)
+        : [...prev, sectionId]
+    );
+  };
+
+  const menuCategories = [
+    {
+      id: "quick-access",
+      label: "Acesso Rápido",
+      icon: Zap,
+      items: [
+        { id: "dashboard" as TabType, label: "Dashboard", icon: LayoutDashboard },
+        { id: "documents" as TabType, label: "Documentos", icon: FileText },
+      ]
+    },
+    {
+      id: "chat",
+      label: "Chat & Conversas",
+      icon: MessageCircle,
+      items: [
+        { id: "chat" as TabType, label: "Chat Config", icon: MessageSquare },
+        { id: "conversations" as TabType, label: "Conversas", icon: MessagesSquare },
+        { id: "tooltips" as TabType, label: "Tooltips", icon: FileText },
+      ]
+    },
+    {
+      id: "rag",
+      label: "RAG & Análise",
+      icon: Brain,
+      items: [
+        { id: "rag-metrics" as TabType, label: "Métricas RAG", icon: Database },
+        { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
+        { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
+      ]
+    },
+    {
+      id: "media",
+      label: "Mídia & Cache",
+      icon: Palette,
+      items: [
+        { id: "images" as TabType, label: "Imagens", icon: Image },
+        { id: "youtube" as TabType, label: "YouTube", icon: Youtube },
+      ]
+    },
+    {
+      id: "system",
+      label: "Sistema",
+      icon: Settings,
+      items: [
+        { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
+        { id: "gmail" as TabType, label: "Gmail", icon: Mail },
+        { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
+      ]
+    }
   ];
 
   return (
@@ -56,28 +109,47 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         <p className="text-sm text-muted-foreground mt-1">KnowYOU</p>
       </div>
 
-      <nav className="flex-1 p-4 space-y-2">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-
-          return (
-            <Button
-              key={item.id}
-              variant={isActive ? "default" : "ghost"}
-              className={`w-full justify-start gap-3 ${
-                isActive ? "bg-gradient-primary" : ""
-              }`}
-              onClick={() => onTabChange(item.id)}
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        {menuCategories.map((category, index) => (
+          <div key={category.id}>
+            {index > 0 && <Separator className="my-2 bg-primary/10" />}
+            
+            <Collapsible 
+              open={openSections.includes(category.id)}
+              onOpenChange={() => toggleSection(category.id)}
             >
-              <Icon className="w-4 h-4" />
-              {item.label}
-            </Button>
-          );
-        })}
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-primary transition-colors">
+                <div className="flex items-center gap-2">
+                  <category.icon className="w-3 h-3" />
+                  {category.label}
+                </div>
+                <ChevronDown className={`w-3 h-3 transition-transform ${openSections.includes(category.id) ? 'rotate-180' : ''}`} />
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent className="space-y-1 mt-1">
+                {category.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+
+                  return (
+                    <Button
+                      key={item.id}
+                      variant={isActive ? "default" : "ghost"}
+                      className={`w-full justify-start gap-3 ${isActive ? "bg-gradient-primary" : ""}`}
+                      onClick={() => onTabChange(item.id)}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {item.label}
+                    </Button>
+                  );
+                })}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        ))}
       </nav>
 
-      <div className="p-4 border-t border-primary/20 space-y-2">
+      <div className="sticky bottom-0 p-4 border-t border-primary/20 bg-card space-y-2">
         <Button
           variant="ghost"
           className="w-full justify-start gap-3"
@@ -89,11 +161,11 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
 
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3"
+          className="w-full justify-start gap-3 text-primary hover:text-primary"
           onClick={() => navigate("/")}
         >
           <ArrowLeft className="w-4 h-4" />
-          Voltar ao Site
+          Voltar ao APP
         </Button>
 
         <Button
