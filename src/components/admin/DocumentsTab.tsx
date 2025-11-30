@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -21,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Pagination,
   PaginationContent,
@@ -1558,11 +1559,75 @@ export const DocumentsTab = () => {
                       onCheckedChange={() => toggleDocSelection(doc.id)}
                     />
                   </TableCell>
-                  <TableCell 
-                    className="font-medium cursor-pointer"
-                    onClick={() => setSelectedDoc(doc)}
-                  >
-                    {doc.filename}
+                  <TableCell className="font-medium">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <span className="cursor-pointer text-primary hover:underline">
+                          {doc.filename}
+                        </span>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-96 p-4" side="right">
+                        {/* Header */}
+                        <div className="flex items-center gap-2 mb-3">
+                          <FileText className="h-5 w-5 text-primary" />
+                          <h4 className="font-semibold text-sm truncate">{doc.filename}</h4>
+                        </div>
+                        
+                        {/* Resumo AI */}
+                        <div className="mb-4">
+                          <p className="text-xs font-medium text-muted-foreground mb-1">Resumo</p>
+                          <ScrollArea className="h-32">
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {doc.ai_summary || "Resumo não disponível"}
+                            </p>
+                          </ScrollArea>
+                        </div>
+                        
+                        {/* Status atual */}
+                        <div className="flex items-center gap-2 mb-4">
+                          <Badge variant="outline">{doc.target_chat}</Badge>
+                          {doc.is_inserted && (
+                            <Badge className="bg-green-500">Inserido em {doc.inserted_in_chat}</Badge>
+                          )}
+                        </div>
+                        
+                        {/* Botões de ação - apenas se não estiver inserido */}
+                        {!doc.is_inserted && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => manualInsertMutation.mutate({ docId: doc.id, targetChat: 'health' })}
+                              className="flex items-center gap-2"
+                              disabled={manualInsertMutation.isPending}
+                            >
+                              <Heart className="h-4 w-4 text-red-500" />
+                              Health
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => manualInsertMutation.mutate({ docId: doc.id, targetChat: 'study' })}
+                              className="flex items-center gap-2"
+                              disabled={manualInsertMutation.isPending}
+                            >
+                              <GraduationCap className="h-4 w-4 text-blue-500" />
+                              Study
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {/* Link para detalhes completos */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full mt-2 text-xs"
+                          onClick={() => setSelectedDoc(doc)}
+                        >
+                          Ver detalhes completos →
+                        </Button>
+                      </PopoverContent>
+                    </Popover>
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
                     <Badge variant={
