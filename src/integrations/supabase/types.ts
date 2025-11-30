@@ -565,6 +565,36 @@ export type Database = {
         }
         Relationships: []
       }
+      version_control: {
+        Row: {
+          associated_data: Json | null
+          created_at: string | null
+          current_version: string
+          id: string
+          log_message: string
+          timestamp: string
+          trigger_type: string
+        }
+        Insert: {
+          associated_data?: Json | null
+          created_at?: string | null
+          current_version?: string
+          id?: string
+          log_message: string
+          timestamp?: string
+          trigger_type: string
+        }
+        Update: {
+          associated_data?: Json | null
+          created_at?: string | null
+          current_version?: string
+          id?: string
+          log_message?: string
+          timestamp?: string
+          trigger_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

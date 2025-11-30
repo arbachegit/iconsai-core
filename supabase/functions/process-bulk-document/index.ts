@@ -250,6 +250,59 @@ serve(async (req) => {
       }
     }
     
+    // TRIGGER AUTO_PATCH após processamento bem-sucedido
+    const successCount = results.filter(r => r.status === "completed").length;
+    if (successCount > 0) {
+      console.log(`✅ ${successCount} documento(s) processado(s). Disparando AUTO_PATCH e documentação...`);
+      
+      try {
+        // Buscar target_chats dos documentos processados
+        const completedDocIds = results
+          .filter(r => r.status === "completed")
+          .map(r => r.document_id);
+        
+        const { data: processedDocs } = await supabase
+          .from("documents")
+          .select("target_chat")
+          .in("id", completedDocIds);
+        
+        const targetChats = [...new Set(
+          (processedDocs || []).map((doc: any) => doc.target_chat)
+        )];
+
+        // 1. Incrementar versão (AUTO_PATCH)
+        await fetch(`${supabaseUrl}/functions/v1/version-control`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({
+            action: "patch",
+            log_message: `Documentação atualizada: ${successCount} arquivo(s) processado(s)`,
+            associated_data: {
+              files_processed: successCount,
+              target_chats: targetChats,
+              timestamp: new Date().toISOString(),
+            },
+          }),
+        });
+
+        // 2. Gerar documentação automaticamente
+        await fetch(`${supabaseUrl}/functions/v1/generate-documentation`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${supabaseKey}`,
+          },
+        });
+
+        console.log("✅ AUTO_PATCH e documentação disparados com sucesso");
+      } catch (triggerError) {
+        console.error("⚠️ Erro ao disparar AUTO_PATCH/documentação:", triggerError);
+        // Não falhar o processo principal por causa deste erro
+      }
+    }
+    
     return new Response(
       JSON.stringify({ success: true, results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

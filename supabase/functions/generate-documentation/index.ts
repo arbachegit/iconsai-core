@@ -36,67 +36,59 @@ Deno.serve(async (req) => {
 
     console.log('🔍 Starting documentation generation...');
 
-    // 1. Extract Database Schema
+    // 1. Extract Database Schema via direct queries
     console.log('📊 Extracting database schema...');
-    const { data: tables, error: tablesError } = await supabaseClient.rpc('execute', {
-      query: `
-        SELECT 
-          t.table_name,
-          json_agg(
-            json_build_object(
-              'column_name', c.column_name,
-              'data_type', c.data_type,
-              'is_nullable', c.is_nullable,
-              'column_default', c.column_default
-            ) ORDER BY c.ordinal_position
-          ) as columns,
-          EXISTS(
-            SELECT 1 FROM pg_tables pt 
-            WHERE pt.schemaname = 'public' 
-            AND pt.tablename = t.table_name 
-            AND pt.rowsecurity = true
-          ) as rls_enabled
-        FROM information_schema.tables t
-        LEFT JOIN information_schema.columns c 
-          ON t.table_name = c.table_name 
-          AND t.table_schema = c.table_schema
-        WHERE t.table_schema = 'public'
-        AND t.table_type = 'BASE TABLE'
-        GROUP BY t.table_name
-        ORDER BY t.table_name;
-      `
-    });
+    
+    // Fetch tables
+    const { data: tablesData, error: tablesError } = await supabaseClient
+      .from('information_schema.tables')
+      .select('table_name')
+      .eq('table_schema', 'public')
+      .eq('table_type', 'BASE TABLE')
+      .order('table_name');
 
-    // Get RLS policies for each table
-    const { data: policies } = await supabaseClient.rpc('execute', {
-      query: `
-        SELECT 
-          tablename as table_name,
-          policyname as policy_name,
-          cmd as command,
-          permissive,
-          qual::text as using_expression,
-          with_check::text as with_check_expression
-        FROM pg_policies
-        WHERE schemaname = 'public'
-        ORDER BY tablename, policyname;
-      `
-    });
+    if (tablesError) throw tablesError;
 
-    // Get database functions
-    const { data: dbFunctions } = await supabaseClient.rpc('execute', {
-      query: `
-        SELECT 
-          p.proname as function_name,
-          pg_get_function_result(p.oid) as return_type,
-          pg_get_function_arguments(p.oid) as arguments,
-          d.description
-        FROM pg_proc p
-        LEFT JOIN pg_description d ON p.oid = d.objoid
-        WHERE p.pronamespace = 'public'::regnamespace
-        ORDER BY p.proname;
-      `
-    });
+    const tables: TableInfo[] = [];
+    
+    for (const table of tablesData || []) {
+      // Fetch columns for this table
+      const { data: columnsData } = await supabaseClient
+        .from('information_schema.columns')
+        .select('column_name, data_type, is_nullable, column_default')
+        .eq('table_schema', 'public')
+        .eq('table_name', table.table_name)
+        .order('ordinal_position');
+
+      // Check RLS status
+      const { data: rlsData } = await supabaseClient
+        .from('pg_tables')
+        .select('rowsecurity')
+        .eq('schemaname', 'public')
+        .eq('tablename', table.table_name)
+        .single();
+
+      // Fetch policies
+      const { data: policiesData } = await supabaseClient
+        .from('pg_policies')
+        .select('policyname, cmd, permissive, qual, with_check')
+        .eq('schemaname', 'public')
+        .eq('tablename', table.table_name)
+        .order('policyname');
+
+      tables.push({
+        table_name: table.table_name,
+        columns: columnsData || [],
+        rls_enabled: rlsData?.rowsecurity || false,
+        policies: (policiesData || []).map(p => ({
+          policy_name: p.policyname,
+          command: p.cmd,
+          permissive: p.permissive,
+          using_expression: p.qual,
+          with_check_expression: p.with_check,
+        })),
+      });
+    }
 
     // 2. Extract Edge Functions metadata
     console.log('⚡ Extracting edge functions...');
@@ -105,21 +97,28 @@ Deno.serve(async (req) => {
       'text-to-speech', 'send-email', 'youtube-videos', 'analyze-sentiment',
       'sentiment-alert', 'generate-history-image', 'voice-to-text',
       'process-document-with-text', 'suggest-document-tags',
-      'generate-document-summary', 'search-documents', 'process-bulk-document'
+      'generate-document-summary', 'search-documents', 'process-bulk-document',
+      'version-control', 'generate-documentation'
     ];
 
     const backendDocs = edgeFunctions.map(fn => ({
       name: fn,
       description: getEdgeFunctionDescription(fn),
       auth_required: ['text-to-speech', 'send-email'].includes(fn),
-      file: `backend/${fn}.json`
+      category: categorizeFunction(fn),
     }));
 
-    // 3. Generate Mermaid Diagram
+    // 3. Generate Enhanced Mermaid Diagram
     const mermaidDiagram = `graph TB
     subgraph Admin["🔐 Admin Panel"]
         BTN[Gerar Documentação]
         DOCS[DocumentsTab]
+        VER[VersionControlTab]
+    end
+    
+    subgraph Version["🏷️ Controle de Versão"]
+        VC[version-control]
+        VER_TBL[(version_control)]
     end
     
     subgraph RAG["📚 RAG System"]
@@ -143,12 +142,16 @@ Deno.serve(async (req) => {
     end
     
     BTN --> DOCS
+    VER --> VC
+    VC --> VER_TBL
     PDF --> EXTRACT
     EXTRACT --> BULK
     BULK --> EMBED
     EMBED --> CHUNKS
     BULK --> DOCS_TBL
     BULK --> TAGS_TBL
+    BULK -.AUTO_PATCH.-> VC
+    BULK -.trigger.-> BTN
     STUDY --> SEARCH
     HEALTH --> SEARCH
     SEARCH --> CHUNKS
@@ -163,7 +166,8 @@ Deno.serve(async (req) => {
       sections: [
         { id: "database", title: "🗄️ Database", description: "Schema, tables, policies, and functions" },
         { id: "backend", title: "⚡ Backend", description: "Edge Functions and serverless logic" },
-        { id: "frontend", title: "🖥️ Frontend", description: "Components, hooks, and UI" }
+        { id: "frontend", title: "🖥️ Frontend", description: "Components, hooks, and UI" },
+        { id: "version", title: "🏷️ Version Control", description: "Automatic versioning and changelog" }
       ],
       mermaid_diagram: mermaidDiagram
     };
@@ -171,30 +175,35 @@ Deno.serve(async (req) => {
     const databaseDoc = {
       title: "Database Schema",
       generated_at: new Date().toISOString(),
-      tables: (tables || []).map((table: any) => ({
-        name: table.table_name,
-        columns: table.columns,
-        rls_enabled: table.rls_enabled,
-        policies: (policies || []).filter((p: any) => p.table_name === table.table_name)
-      })),
-      functions: dbFunctions || []
+      tables: tables,
+      total_tables: tables.length,
     };
 
     const backendDoc = {
       title: "Backend Edge Functions",
       generated_at: new Date().toISOString(),
       functions: backendDocs,
-      total_functions: backendDocs.length
+      total_functions: backendDocs.length,
+      categories: {
+        chat: backendDocs.filter(f => f.category === 'chat').length,
+        rag: backendDocs.filter(f => f.category === 'rag').length,
+        media: backendDocs.filter(f => f.category === 'media').length,
+        analytics: backendDocs.filter(f => f.category === 'analytics').length,
+        system: backendDocs.filter(f => f.category === 'system').length,
+      }
     };
 
     const frontendDoc = {
       title: "Frontend Components",
       generated_at: new Date().toISOString(),
       components: [
-        { name: "ChatKnowYOU", category: "Chat", description: "Health assistant chat" },
-        { name: "ChatStudy", category: "Chat", description: "Study assistant chat" },
-        { name: "DocumentsTab", category: "Admin", description: "RAG documents management" },
-        { name: "AIHistoryPanel", category: "Educational", description: "AI history timeline" }
+        { name: "ChatKnowYOU", category: "Chat", description: "Health assistant chat with RAG" },
+        { name: "ChatStudy", category: "Chat", description: "Study assistant for company knowledge" },
+        { name: "DocumentsTab", category: "Admin", description: "RAG documents management with bulk operations" },
+        { name: "VersionControlTab", category: "Admin", description: "Version control and changelog" },
+        { name: "RagMetricsTab", category: "Admin", description: "RAG analytics and metrics" },
+        { name: "AIHistoryPanel", category: "Educational", description: "AI history timeline with audio" },
+        { name: "DraggablePreviewPanel", category: "UI", description: "Draggable tooltip preview system" }
       ]
     };
 
@@ -207,9 +216,9 @@ Deno.serve(async (req) => {
         version,
         author: 'Auto-generated',
         changes: [
-          { type: 'database', count: (tables || []).length },
+          { type: 'database', count: tables.length },
           { type: 'backend', count: backendDocs.length },
-          { type: 'frontend', count: 4 }
+          { type: 'frontend', count: 7 }
         ]
       });
 
@@ -230,12 +239,11 @@ Deno.serve(async (req) => {
           backend: backendDoc,
           frontend: frontendDoc
         },
-        files_to_create: [
-          'src/documentation/index.json',
-          'src/documentation/database/schema.json',
-          'src/documentation/backend/index.json',
-          'src/documentation/frontend/components.json'
-        ]
+        stats: {
+          tables: tables.length,
+          edge_functions: backendDocs.length,
+          components: 7
+        }
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -264,16 +272,26 @@ function getEdgeFunctionDescription(name: string): string {
     'generate-section-image': 'Section-specific image generation',
     'text-to-speech': 'ElevenLabs voice synthesis',
     'send-email': 'Resend email integration',
-    'youtube-videos': 'YouTube API video fetching',
+    'youtube-videos': 'YouTube API video fetching with caching',
     'analyze-sentiment': 'Message sentiment analysis',
     'sentiment-alert': 'Sentiment threshold alerts',
     'generate-history-image': 'AI history timeline images',
     'voice-to-text': 'OpenAI Whisper transcription',
-    'process-document-with-text': 'Document text processing',
-    'suggest-document-tags': 'AI tag generation',
+    'process-document-with-text': 'Document text processing and validation',
+    'suggest-document-tags': 'AI hierarchical tag generation',
     'generate-document-summary': 'AI document summarization',
-    'search-documents': 'RAG semantic search',
-    'process-bulk-document': 'Bulk document processing with auto-categorization'
+    'search-documents': 'RAG semantic search with pgvector',
+    'process-bulk-document': 'Bulk document processing with auto-categorization',
+    'version-control': 'Automatic version management (patch/minor/major)',
+    'generate-documentation': 'Auto-generate technical documentation'
   };
   return descriptions[name] || 'No description available';
+}
+
+function categorizeFunction(name: string): string {
+  if (['chat', 'chat-study'].includes(name)) return 'chat';
+  if (['process-bulk-document', 'search-documents', 'process-document-with-text', 'suggest-document-tags', 'generate-document-summary'].includes(name)) return 'rag';
+  if (['generate-image', 'generate-section-image', 'generate-history-image', 'text-to-speech', 'voice-to-text', 'youtube-videos'].includes(name)) return 'media';
+  if (['analyze-sentiment', 'sentiment-alert'].includes(name)) return 'analytics';
+  return 'system';
 }
