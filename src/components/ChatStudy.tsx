@@ -10,6 +10,8 @@ import { MarkdownContent } from "./MarkdownContent";
 import { TypingIndicator } from "./TypingIndicator";
 import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 import { useTranslation } from "react-i18next";
+import { CopyButton } from "./CopyButton";
+import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 
 // Sugestões de estudo sobre KnowRisk/KnowYOU/ACC
 const STUDY_SUGGESTIONS = [
@@ -69,6 +71,8 @@ export default function ChatStudy() {
   const mountTimeRef = useRef(Date.now());
   const previousMessagesLength = useRef(messages.length);
   const INIT_PERIOD = 1000; // 1 segundo de período de inicialização
+  const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
+  const audioMessageRefs = useRef<{[key: number]: HTMLDivElement | null}>({});
 
   // Rotação de sugestões a cada 10 segundos
   useEffect(() => {
@@ -337,7 +341,7 @@ export default function ChatStudy() {
 
       {/* Messages */}
       <ScrollArea 
-        className="flex-1 p-4 border-2 border-cyan-400/60 bg-background/30 rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" 
+        className="flex-1 p-4 border-2 border-[hsl(var(--chat-container-border))] bg-[hsl(var(--chat-container-bg))] rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3)]" 
         style={{
           transform: 'translateZ(-10px)',
           backfaceVisibility: 'hidden'
@@ -350,15 +354,23 @@ export default function ChatStudy() {
               className={`flex ${
                 message.role === "user" ? "justify-end" : "justify-start"
               }`}
+              ref={(el) => {
+                if (message.role === "assistant" && message.audioUrl) {
+                  audioMessageRefs.current[index] = el;
+                }
+              }}
             >
               <div
                 className={`max-w-[80%] rounded-lg p-3 ${
                   message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
+                    ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground"
+                    : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground"
                 }`}
               >
-                <MarkdownContent content={message.content} className="text-sm" />
+                <div className="flex items-start gap-2">
+                  <MarkdownContent content={message.content} className="text-sm flex-1" />
+                  {message.role === "assistant" && <CopyButton content={message.content} />}
+                </div>
                 
                 {message.imageUrl && (
                   <img
@@ -481,6 +493,21 @@ export default function ChatStudy() {
           </div>
         </div>
       </form>
+      
+      {/* Floating Audio Player */}
+      <FloatingAudioPlayer
+        isVisible={showFloatingPlayer && currentlyPlayingIndex !== null}
+        currentTime={audioStates[currentlyPlayingIndex ?? -1]?.currentTime ?? 0}
+        duration={audioStates[currentlyPlayingIndex ?? -1]?.duration ?? 0}
+        onStop={() => {
+          stopAudio();
+          setShowFloatingPlayer(false);
+        }}
+        onClose={() => {
+          stopAudio();
+          setShowFloatingPlayer(false);
+        }}
+      />
     </div>
   );
 }

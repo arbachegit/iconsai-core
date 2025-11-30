@@ -176,7 +176,13 @@
     "micError": "Erro ao ativar microfone",
     "micPermissions": "Verifique as permissões do navegador.",
     "transcriptionError": "Erro na transcrição",
-    "transcriptionRetry": "Não foi possível transcrever o áudio. Tente novamente."
+    "transcriptionRetry": "Não foi possível transcrever o áudio. Tente novamente.",
+    "copied": "Texto copiado!",
+    "copyFailed": "Falha ao copiar",
+    "miniPlayer": {
+      "stop": "Parar",
+      "close": "Fechar"
+    }
   },
   "audio": {
     "play": "Play",

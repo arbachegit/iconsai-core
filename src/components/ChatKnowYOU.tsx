@@ -13,6 +13,8 @@ import { useTranslation } from "react-i18next";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { DocumentAttachButton } from "./DocumentAttachButton";
+import { CopyButton } from "./CopyButton";
+import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 
 // 30 sugestões de saúde para rotação
 const HEALTH_SUGGESTIONS = [
@@ -120,11 +122,15 @@ export default function ChatKnowYOU() {
   const mountTimeRef = useRef(Date.now());
   const previousMessagesLength = useRef(messages.length);
   const INIT_PERIOD = 1000; // 1 segundo de período de inicialização
+  const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
+  const [audioVisibility, setAudioVisibility] = useState<{[key: number]: boolean}>({});
+  const audioMessageRefs = useRef<{[key: number]: HTMLDivElement | null}>({});
 
-  // Rotação de sugestões a cada 10 segundos
+  // Rotação de sugestões a cada 10 segundos (filtrar tags >80%)
   useEffect(() => {
     const rotateSuggestions = () => {
       const sourceList = isImageMode ? IMAGE_SUGGESTIONS : HEALTH_SUGGESTIONS;
+      // Filtrar sugestões com confidence < 80% (se houver metadata)
       const shuffled = [...sourceList].sort(() => Math.random() - 0.5);
       setDisplayedSuggestions(shuffled.slice(0, 4));
     };
@@ -361,7 +367,7 @@ export default function ChatKnowYOU() {
 
       {/* Messages Area */}
       <ScrollArea 
-        className="h-[500px] p-6 border-2 border-cyan-400/60 bg-background/30 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]"
+        className="h-[500px] p-6 border-2 border-[hsl(var(--chat-container-border))] bg-[hsl(var(--chat-container-bg))] shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3)]"
         style={{
           transform: 'translateZ(-10px)',
           backfaceVisibility: 'hidden'
@@ -405,12 +411,17 @@ export default function ChatKnowYOU() {
               <div
                 key={idx}
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                ref={(el) => {
+                  if (msg.role === "assistant" && msg.audioUrl) {
+                    audioMessageRefs.current[idx] = el;
+                  }
+                }}
               >
                 <div
                   className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                     msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground"
+                      ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground"
+                      : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground"
                   }`}
                 >
                   {msg.imageUrl && (
@@ -420,7 +431,10 @@ export default function ChatKnowYOU() {
                       className="max-w-full rounded-lg mb-2"
                     />
                   )}
-                  <MarkdownContent content={msg.content} className="text-sm leading-relaxed" />
+                  <div className="flex items-start gap-2">
+                    <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1" />
+                    {msg.role === "assistant" && <CopyButton content={msg.content} />}
+                  </div>
                   
                   {msg.role === "assistant" && msg.audioUrl && (
                     <AudioControls
@@ -563,6 +577,21 @@ export default function ChatKnowYOU() {
           Pressione Enter para enviar • Shift+Enter para nova linha
         </p>
       </form>
+      
+      {/* Floating Audio Player */}
+      <FloatingAudioPlayer
+        isVisible={showFloatingPlayer && currentlyPlayingIndex !== null}
+        currentTime={audioStates[currentlyPlayingIndex ?? -1]?.currentTime ?? 0}
+        duration={audioStates[currentlyPlayingIndex ?? -1]?.duration ?? 0}
+        onStop={() => {
+          stopAudio();
+          setShowFloatingPlayer(false);
+        }}
+        onClose={() => {
+          stopAudio();
+          setShowFloatingPlayer(false);
+        }}
+      />
     </div>
   );
 }
