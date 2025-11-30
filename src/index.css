@@ -56,6 +56,14 @@ All colors MUST be HSL.
     
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    /* Chat containers design system */
+    --chat-container-bg: 225 50% 15%;
+    --chat-container-border: 225 40% 25%;
+    --chat-saved-bg: 225 45% 18%;
+    --chat-saved-border: 225 35% 28%;
+    --chat-message-user-bg: 191 100% 50%;
+    --chat-message-ai-bg: 225 40% 20%;
   }
 }
 
