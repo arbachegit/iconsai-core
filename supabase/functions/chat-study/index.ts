@@ -35,14 +35,21 @@ serve(async (req) => {
           body: { 
             query: userQuery,
             targetChat: "study",
-            matchThreshold: 0.35,
-            matchCount: 3
+            matchThreshold: 0.15,
+            matchCount: 5
           }
         });
 
         if (searchResults?.results && searchResults.results.length > 0) {
           console.log(`RAG found ${searchResults.results.length} chunks for study chat, top score: ${searchResults.analytics?.top_score?.toFixed(3) || 'N/A'}`);
-          ragContext = `\n\n📚 CONTEXTO RELEVANTE DOS DOCUMENTOS:\n\n${searchResults.results.map((r: any) => r.content).join("\n\n---\n\n")}\n\nUse este contexto para responder de forma precisa. Se não houver informação relevante, responda com conhecimento geral.\n\n`;
+          ragContext = `\n\n📚 CONTEXTO RELEVANTE DOS DOCUMENTOS DE ESTUDO:
+
+${searchResults.results.map((r: any) => r.content).join("\n\n---\n\n")}
+
+⚠️ CRÍTICO: O contexto acima vem dos DOCUMENTOS DE ESTUDO oficiais.
+Você DEVE PRIORIZAR este contexto para responder. Se a pergunta está relacionada 
+a qualquer tópico mencionado no contexto acima, responda usando essas informações.
+Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceitos e eventos importantes.\n\n`;
         } else {
           console.log(`RAG returned 0 results for query="${userQuery}" in study chat`);
         }
@@ -85,15 +92,22 @@ ESCOPO PRINCIPAL:
    - **Bom Prompt**: A arte de comunicação eficaz com IA
    - **Chat KnowYOU**: Sistema de chat interativo sobre saúde
 
-REGRAS:
+REGRAS DE RESPOSTA:
 
-1. Você APENAS responde sobre:
+1. **🔴 PRIORIDADE MÁXIMA - CONTEXTO RAG**: 
+   Se houver "CONTEXTO RELEVANTE DOS DOCUMENTOS DE ESTUDO" acima, você DEVE usar 
+   essas informações para responder, MESMO QUE o tema pareça fora do escopo tradicional.
+   Os documentos de estudo contêm conteúdo oficial válido sobre história da IA, 
+   pessoas importantes (ex: John McCarthy, Alan Turing), conceitos técnicos, 
+   conferências históricas, e eventos relevantes.
+
+2. **Escopo secundário (apenas se NÃO houver contexto RAG relevante)**:
    - O que é KnowRISK, KnowYOU e ACC
    - Conteúdo das seções do website
-   - História da IA apresentada no site
-   - Localização de informações no website
+   - Navegação do website
 
-2. Se perguntarem sobre outros temas, responda:
+3. **Rejeição (apenas se NÃO houver contexto RAG)**:
+   Se não houver contexto RAG relevante e o tema estiver fora do escopo, responda:
    "Sou especializado em ajudar a estudar sobre a KnowRISK, KnowYOU, ACC e o conteúdo deste website. Não posso ajudar com [tema], mas posso responder sobre esses tópicos. Como posso ajudá-lo?"
 
 3. SUGESTÕES CONTEXTUAIS:
