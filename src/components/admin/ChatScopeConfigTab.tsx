@@ -399,18 +399,10 @@ export function ChatScopeConfigTab() {
   }
   return <div className="space-y-6">
       <div>
-        <AdminTitleWithInfo
-          title="Configurações de Chat & Delimitações"
-          level="h2"
-          icon={MessageSquare}
-          tooltipText="Delimitações e configurações RAG"
-          infoContent={
-            <>
+        <AdminTitleWithInfo title="Configurações de Chat & Delimitações" level="h2" icon={MessageSquare} tooltipText="Delimitações e configurações RAG" infoContent={<>
               <p>Gerencie limites e configurações dos assistentes de IA.</p>
               <p className="mt-2">Configure escopo permitido, thresholds RAG, mensagens de rejeição e teste buscas em tempo real.</p>
-            </>
-          }
-        />
+            </>} />
         <p className="text-muted-foreground mt-1">
           Gerencie as delimitações e configurações RAG de cada assistente
         </p>
@@ -450,7 +442,7 @@ export function ChatScopeConfigTab() {
 
               {testResults.results && testResults.results.length > 0 ? <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
                   <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
-                  <p className="text-sm">RAG retornaria contexto para esta query</p>
+                  <p className="text-sm text-primary-foreground">RAG retornaria contexto para esta query</p>
                 </div> : <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950 rounded-lg">
                   <XCircle className="h-4 w-4 text-red-500 mt-0.5" />
                   <p className="text-sm">Nenhum contexto encontrado - chat responderia sem RAG</p>
