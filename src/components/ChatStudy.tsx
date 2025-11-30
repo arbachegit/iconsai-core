@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
+import { useGeolocation } from "@/hooks/useGeolocation";
 
 // Sugestões de estudo sobre KnowRisk/KnowYOU/ACC
 const STUDY_SUGGESTIONS = [
@@ -43,6 +44,7 @@ const IMAGE_SUGGESTIONS = [
 export default function ChatStudy() {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { location, requestLocation } = useGeolocation();
   const { 
     messages, 
     isLoading, 
@@ -75,6 +77,11 @@ export default function ChatStudy() {
   const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
   const [audioVisibility, setAudioVisibility] = useState<{[key: number]: boolean}>({});
   const audioMessageRefs = useRef<{[key: number]: HTMLDivElement | null}>({});
+
+  // Request location on mount
+  useEffect(() => {
+    requestLocation();
+  }, []);
 
   // IntersectionObserver para detectar quando mensagem de áudio sai do viewport
   useEffect(() => {
@@ -430,6 +437,7 @@ export default function ChatStudy() {
                         currentTime={audioStates[index]?.currentTime}
                         duration={audioStates[index]?.duration}
                         timestamp={message.timestamp}
+                        location={location || undefined}
                         messageContent={message.content}
                         onPlay={() => handleAudioPlay(index)}
                         onStop={handleAudioStop}
