@@ -569,7 +569,7 @@ export default function ChatKnowYOU() {
                 </AlertDescription>
               </Alert>}
             
-            {messages.map((msg, idx) => <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`} ref={el => {
+            {messages.map((msg, idx) => <div key={idx} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`} ref={el => {
           if (msg.role === "assistant" && msg.audioUrl) {
             audioMessageRefs.current[idx] = el;
           }
@@ -583,7 +583,7 @@ export default function ChatKnowYOU() {
                   {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} isPlaying={currentlyPlayingIndex === idx} currentTime={audioStates[idx]?.currentTime} duration={audioStates[idx]?.duration} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} />}
                 </div>
               </div>)}
-              {(isLoading || isGeneratingAudio || isGeneratingImage) && <div className="flex justify-start">
+              {(isLoading || isGeneratingAudio || isGeneratingImage) && <div className="flex justify-end">
                   <TypingIndicator isDrawing={isGeneratingImage} />
                 </div>}
             <div ref={messagesEndRef} />
