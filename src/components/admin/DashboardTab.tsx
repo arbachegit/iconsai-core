@@ -183,32 +183,36 @@ export const DashboardTab = () => {
 
         <Card className="p-6 bg-card/50 backdrop-blur-sm border-primary/20">
           <h3 className="text-lg font-semibold mb-4">Distribuição de Documentos</h3>
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
                 data={docStatusData}
                 cx="50%"
                 cy="50%"
                 labelLine={true}
-                label={({ cx, cy, midAngle, innerRadius, outerRadius, name, value }) => {
+                label={({ cx, cy, midAngle, innerRadius, outerRadius, name, value, index }) => {
                   const RADIAN = Math.PI / 180;
-                  const radius = outerRadius + 25;
+                  const radius = outerRadius + 40;
                   const x = cx + radius * Math.cos(-midAngle * RADIAN);
                   const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  
+                  // Ajuste vertical para evitar sobreposição
+                  const verticalOffset = index % 2 === 0 ? -5 : 5;
+                  
                   return (
                     <text
                       x={x}
-                      y={y}
+                      y={y + verticalOffset}
                       fill="currentColor"
                       textAnchor={x > cx ? 'start' : 'end'}
                       dominantBaseline="central"
-                      className="text-xs"
+                      className="text-xs font-medium"
                     >
                       {`${name}: ${value}`}
                     </text>
                   );
                 }}
-                outerRadius={60}
+                outerRadius={55}
                 fill="#8884d8"
                 dataKey="value"
               >
