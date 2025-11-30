@@ -404,8 +404,25 @@ export const RagMetricsTab = () => {
                 data={statusData}
                 cx="50%"
                 cy="50%"
-                labelLine={false}
-                label={({ name, value }) => `${name}: ${value}`}
+                labelLine={true}
+                label={({ cx, cy, midAngle, innerRadius, outerRadius, name, value }) => {
+                  const RADIAN = Math.PI / 180;
+                  const radius = outerRadius + 30;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  return (
+                    <text
+                      x={x}
+                      y={y}
+                      fill="currentColor"
+                      textAnchor={x > cx ? 'start' : 'end'}
+                      dominantBaseline="central"
+                      className="text-xs"
+                    >
+                      {`${name}: ${value}`}
+                    </text>
+                  );
+                }}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
