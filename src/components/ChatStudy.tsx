@@ -611,16 +611,16 @@ export default function ChatStudy() {
             {displayedSuggestions.map((suggestion, index) => {
               const isNew = suggestion.startsWith('🆕 NOVO:') || suggestion.toLowerCase().includes('novo:');
               return (
-                <Button
-                  key={index}
-                  variant={isNew ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className={cn(
-                    "text-xs whitespace-nowrap",
-                    isNew && "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-none animate-pulse shadow-lg"
-                  )}
-                >
+              <Button
+                key={index}
+                variant={isNew ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleSuggestionClick(suggestion)}
+                className={cn(
+                  "text-xs whitespace-nowrap rounded-full border-2 border-primary/50 hover:border-primary",
+                  isNew && "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-none animate-pulse shadow-lg"
+                )}
+              >
                   {suggestion.replace('🆕 NOVO:', '').trim()}
                 </Button>
               );
