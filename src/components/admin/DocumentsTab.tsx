@@ -91,6 +91,9 @@ export const DocumentsTab = () => {
   // RAG Info Modal state
   const [showRagInfoModal, setShowRagInfoModal] = useState(false);
   
+  // Tags modal state
+  const [tagsModalDoc, setTagsModalDoc] = useState<any>(null);
+  
   const queryClient = useQueryClient();
 
   // Fetch documents
@@ -584,6 +587,30 @@ export const DocumentsTab = () => {
       return data;
     }
   });
+
+  // Fetch all tags for quick access in table
+  const { data: allTags } = useQuery({
+    queryKey: ["all-document-tags"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("document_tags")
+        .select("*");
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Helper: Get top parent tag for a document
+  const getTopParentTag = useCallback((documentId: string) => {
+    if (!allTags) return null;
+    
+    const docTags = allTags.filter(t => t.document_id === documentId && t.tag_type === "parent");
+    if (docTags.length === 0) return null;
+    
+    // Return tag with highest confidence
+    return docTags.sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
+  }, [allTags]);
 
   // Fetch chunks for viewing
   const { data: chunks, isLoading: chunksLoading } = useQuery({
@@ -1371,6 +1398,9 @@ export const DocumentsTab = () => {
                 </TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Chat</TableHead>
+                <TableHead>Chat Inserido</TableHead>
+                <TableHead>Inserido</TableHead>
+                <TableHead>TAG Principal</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead
                   className="cursor-pointer hover:bg-muted/50"
@@ -1439,6 +1469,44 @@ export const DocumentsTab = () => {
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
                     <Badge variant="outline">{doc.target_chat || "pendente"}</Badge>
+                  </TableCell>
+                  <TableCell onClick={() => setSelectedDoc(doc)}>
+                    {doc.inserted_in_chat ? (
+                      <Badge className={getChatBadgeColor(doc.inserted_in_chat)}>
+                        {doc.inserted_in_chat}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell onClick={() => setSelectedDoc(doc)} className="text-center">
+                    {doc.is_inserted ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
+                    )}
+                  </TableCell>
+                  <TableCell onClick={() => setSelectedDoc(doc)}>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTagsModalDoc(doc);
+                      }}
+                      className="h-auto p-1"
+                    >
+                      {(() => {
+                        const topTag = getTopParentTag(doc.id);
+                        return topTag ? (
+                          <Badge variant="secondary" className="text-xs">
+                            {topTag.tag_name}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        );
+                      })()}
+                    </Button>
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
                     {doc.implementation_status && (
@@ -2162,6 +2230,53 @@ export const DocumentsTab = () => {
             <Button variant="outline" onClick={() => setShowRagInfoModal(false)}>
               Fechar
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tags Modal */}
+      <Dialog open={!!tagsModalDoc} onOpenChange={(open) => !open && setTagsModalDoc(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>🏷️ Tags de "{tagsModalDoc?.filename}"</DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="h-96">
+            {(() => {
+              const docTags = allTags?.filter(t => t.document_id === tagsModalDoc?.id) || [];
+              const parents = docTags.filter(t => t.tag_type === "parent");
+              const children = docTags.filter(t => t.tag_type === "child");
+              
+              return (
+                <div className="space-y-4">
+                  {parents.length > 0 ? (
+                    parents.map(parent => (
+                      <div key={parent.id} className="border rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="text-sm">{parent.tag_name}</Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {Math.round((parent.confidence || 0) * 100)}% confiança
+                          </span>
+                        </div>
+                        <div className="ml-4 flex flex-wrap gap-1">
+                          {children.filter(c => c.parent_tag_id === parent.id).map(child => (
+                            <Badge key={child.id} variant="outline" className="text-xs">
+                              {child.tag_name} ({Math.round((child.confidence || 0) * 100)}%)
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground">Nenhuma tag encontrada</p>
+                  )}
+                </div>
+              );
+            })()}
+          </ScrollArea>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTagsModalDoc(null)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -40,8 +40,7 @@ export function useChatKnowYOU() {
     return `chat_${dateStr}_${timestamp}`;
   });
   const [activeDisclaimer, setActiveDisclaimer] = useState<{
-    documentName: string;
-    category: string;
+    title: string;
     message: string;
   } | null>(null);
   const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
@@ -520,13 +519,12 @@ export function useChatKnowYOU() {
   const attachDocument = useCallback((documentId: string, documentName: string) => {
     setAttachedDocumentId(documentId);
     setActiveDisclaimer({
-      documentName,
-      category: "health",
+      title: t('documentAttach.disclaimerTitle'),
       message: t('documentAttach.disclaimerMessage', { documentName }),
     });
     toast({
-      title: t('documentAttach.attached', { documentName }),
-      description: t('documentAttach.disclaimerMessage', { documentName }),
+      title: t('documentAttach.attached'),
+      description: t('documentAttach.attachedDesc', { documentName }),
     });
   }, [toast, t]);
 
@@ -534,8 +532,8 @@ export function useChatKnowYOU() {
     setAttachedDocumentId(null);
     setActiveDisclaimer(null);
     toast({
-      title: t('documentAttach.detached'),
-      description: t('documentAttach.removeButton'),
+      title: t('documentAttach.removed'),
+      description: t('documentAttach.removedDesc'),
     });
   }, [toast, t]);
 
