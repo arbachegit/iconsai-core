@@ -1016,15 +1016,24 @@ export const DocumentsTab = () => {
           <h2 className="text-2xl font-bold">Documentos RAG</h2>
           
           {/* RAG Info Button com círculo, ícone Lightbulb e pulsing dot */}
-          <button onClick={() => setShowRagInfoModal(true)} className="relative flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-amber-500/30 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all duration-300 group" title="Resumo da Engenharia RAG">
-            <Lightbulb className="h-5 w-5 text-amber-500 group-hover:text-amber-400 transition-colors" />
-            
-            {/* Green pulsing dot - posicionado na parte externa do círculo */}
-            <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            </span>
-          </button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => setShowRagInfoModal(true)} className="relative flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-amber-500/30 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all duration-300 group">
+                  <Lightbulb className="h-5 w-5 text-amber-500 group-hover:text-amber-400 transition-colors" />
+                  
+                  {/* Green pulsing dot - posicionado na parte externa do círculo */}
+                  <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Resumo da Engenharia RAG</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         <p className="text-muted-foreground mt-2">
           Gerencie documentos para o sistema de Recuperação Aumentada por Geração
