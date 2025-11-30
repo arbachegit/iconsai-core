@@ -728,16 +728,16 @@ export default function ChatKnowYOU() {
             {displayedSuggestions.map((suggestion, idx) => {
               const isNew = suggestion.startsWith('🆕 NOVO:') || suggestion.toLowerCase().includes('novo:');
               return (
-                <Button
-                  key={`${suggestion}-${idx}`}
-                  variant={isNew ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className={cn(
-                    "text-xs hover:bg-primary hover:text-primary-foreground transition-colors",
-                    isNew && "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-none animate-pulse shadow-lg"
-                  )}
-                >
+              <Button
+                key={`${suggestion}-${idx}`}
+                variant={isNew ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleSuggestionClick(suggestion)}
+                className={cn(
+                  "text-xs rounded-full border-2 border-primary/50 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors",
+                  isNew && "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-none animate-pulse shadow-lg"
+                )}
+              >
                   {suggestion.replace('🆕 NOVO:', '').trim()}
                 </Button>
               );
