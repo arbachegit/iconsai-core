@@ -24,7 +24,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown } from "lucide-react";
+import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { toast } from "sonner";
 
@@ -321,7 +328,40 @@ export const DocumentAnalysisTab = () => {
                             <Badge variant="outline">
                               {doc.total_words || 0} palavras
                             </Badge>
+                            {(() => {
+                              const avgConfidence = parentTags.length > 0 
+                                ? parentTags.reduce((sum, t) => sum + (t.confidence || 0), 0) / parentTags.length 
+                                : 0;
+                              return avgConfidence > 0 ? (
+                                <Badge 
+                                  variant={avgConfidence >= 0.8 ? "default" : avgConfidence >= 0.6 ? "secondary" : "destructive"}
+                                  className="flex items-center gap-1"
+                                >
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    avgConfidence >= 0.8 ? 'bg-green-500' : avgConfidence >= 0.6 ? 'bg-yellow-500' : 'bg-red-500'
+                                  }`} />
+                                  Confiança: {Math.round(avgConfidence * 100)}%
+                                </Badge>
+                              ) : null;
+                            })()}
                           </div>
+
+                          {/* Preview de Tags no Header */}
+                          {parentTags.length > 0 && (
+                            <div className="flex items-center gap-1 mt-2 flex-wrap">
+                              <Tag className="h-3 w-3 text-muted-foreground" />
+                              {parentTags.slice(0, 3).map((tag) => (
+                                <Badge key={tag.id} variant="outline" className="text-xs">
+                                  {tag.tag_name}
+                                </Badge>
+                              ))}
+                              {parentTags.length > 3 && (
+                                <span className="text-xs text-muted-foreground">
+                                  +{parentTags.length - 3} mais
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -335,29 +375,73 @@ export const DocumentAnalysisTab = () => {
                         </div>
                       )}
 
-                      {/* Tags Hierarchy */}
+                      {/* Card de Classificação Completa */}
                       {parentTags.length > 0 && (
-                        <div className="p-4 bg-muted/50 rounded-lg">
-                          <h4 className="font-semibold mb-3 flex items-center gap-2">
-                            <Tag className="h-4 w-4" />
-                            Tags Hierárquicas
-                          </h4>
+                        <div className="p-4 bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg border border-primary/20">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-semibold flex items-center gap-2">
+                              <Tag className="h-4 w-4" />
+                              Classificação do Documento
+                            </h4>
+                            {/* Contexto/Caixa destacado */}
+                            <Badge variant="default" className="text-sm px-3 py-1">
+                              📦 {doc.target_chat === "health" ? "Caixa: Saúde" : 
+                                   doc.target_chat === "study" ? "Caixa: Estudo" : "Caixa: Geral"}
+                            </Badge>
+                          </div>
+                          
+                          {/* Tags com Confiança Visual */}
                           <div className="space-y-3">
                             {parentTags.map((parent) => {
                               const children = getChildTags(docTags, parent.id);
                               return (
-                                <div key={parent.id} className="border-l-2 border-primary/30 pl-3">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Badge variant="default">{parent.tag_name}</Badge>
-                                    <span className="text-xs text-muted-foreground">
+                                <div key={parent.id} className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                                  <div className="flex-shrink-0 min-w-[140px]">
+                                    <Badge variant="default" className="mb-1">{parent.tag_name}</Badge>
+                                    <span className="text-xs text-muted-foreground block">
                                       ({parent.tag_type})
                                     </span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {Math.round((parent.confidence || 0) * 100)}%
-                                    </Badge>
                                   </div>
+                                  
+                                  {/* Barra de Confiança Visual com Tooltip */}
+                                  <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                                    <Progress value={(parent.confidence || 0) * 100} className="h-2 flex-1" />
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="flex items-center gap-1 cursor-help">
+                                            <div className={`w-3 h-3 rounded-full ${
+                                              (parent.confidence || 0) >= 0.9 ? 'bg-green-500' :
+                                              (parent.confidence || 0) >= 0.7 ? 'bg-blue-500' :
+                                              (parent.confidence || 0) >= 0.5 ? 'bg-yellow-500' : 'bg-red-500'
+                                            }`} />
+                                            <span className={`text-sm font-semibold ${
+                                              (parent.confidence || 0) >= 0.9 ? 'text-green-500' :
+                                              (parent.confidence || 0) >= 0.7 ? 'text-blue-500' :
+                                              (parent.confidence || 0) >= 0.5 ? 'text-yellow-500' : 'text-red-500'
+                                            }`}>
+                                              {Math.round((parent.confidence || 0) * 100)}%
+                                            </span>
+                                            <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-[300px]">
+                                          <p className="font-semibold">Grau de Confiança da Classificação</p>
+                                          <p className="text-sm mt-1">Indica a certeza da IA ao classificar este documento:</p>
+                                          <ul className="text-sm mt-2 space-y-1">
+                                            <li className="text-green-500">🟢 90-100%: Alta confiança</li>
+                                            <li className="text-blue-500">🔵 70-89%: Boa confiança</li>
+                                            <li className="text-yellow-500">🟡 50-69%: Moderada</li>
+                                            <li className="text-red-500">🔴 &lt;50%: Baixa confiança</li>
+                                          </ul>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </div>
+                                  
+                                  {/* Tags filhas */}
                                   {children.length > 0 && (
-                                    <div className="flex items-center gap-2 flex-wrap ml-4">
+                                    <div className="flex gap-1 flex-wrap">
                                       {children.map((child) => (
                                         <Badge key={child.id} variant="secondary" className="text-xs">
                                           {child.tag_name}
