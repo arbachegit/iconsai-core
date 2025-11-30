@@ -59,7 +59,7 @@ All colors MUST be HSL.
 
     /* Chat containers design system */
     --chat-container-bg: 225 45% 14%;
-    --chat-container-border: 225 35% 22%;
+    --chat-container-border: 225 55% 42%;
     --chat-saved-bg: 225 40% 20%;
     --chat-saved-border: 225 30% 32%;
     --chat-message-user-bg: 191 100% 45%;
