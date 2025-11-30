@@ -71,12 +71,13 @@ serve(async (req) => {
       console.log("❌ Prompt rejeitado (sem keywords de saúde):", prompt);
       return new Response(
         JSON.stringify({ 
+          success: false,
           error: "guardrail_violation",
           rejected_term: prompt.trim(),
           scope: "health"
         }),
         {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );

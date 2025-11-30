@@ -6,7 +6,7 @@ import { useAdminSettings } from "./useAdminSettings";
 import { useChatAnalytics } from "./useChatAnalytics";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
-import { FunctionsHttpError } from "@supabase/supabase-js";
+
 
 interface Message {
   role: "user" | "assistant";
@@ -449,41 +449,31 @@ export function useChatKnowYOU() {
       setIsGeneratingImage(true);
 
       try {
-        const { data, error } = await import("@/integrations/supabase/client").then((m) =>
-          m.supabase.functions.invoke("generate-image", {
-            body: { prompt },
-          })
-        );
-
-        // Verificar se é erro de guardrail vindo de Edge Function (HTTP 400)
-        if (error instanceof FunctionsHttpError) {
-          try {
-            const errorData = await error.context.json();
-
-            if (errorData?.error === "guardrail_violation") {
-              const rejectedTerm = errorData.rejected_term || prompt;
-
-              const guardrailMessage: Message = {
-                role: "assistant",
-                content:
-                  `Sou especializado em auxiliar profissionais de saúde. ` +
-                  `Não posso criar imagens sobre "${rejectedTerm}", mas posso gerar ilustrações sobre saúde, medicina, anatomia e bem-estar. Como posso ajudá-lo?`,
-                timestamp: new Date(),
-              };
-
-              const updatedMessages = [...messages, guardrailMessage];
-              setMessages(updatedMessages);
-              saveHistory(updatedMessages);
-
-              setIsGeneratingImage(false);
-              return;
-            }
-          } catch (parseError) {
-            console.error("Erro ao interpretar resposta de guardrail:", parseError);
-          }
-        }
+        const { data, error } = await supabase.functions.invoke("generate-image", {
+          body: { prompt },
+        });
 
         if (error) throw error;
+
+        // Tratamento de guardrail vindo da Edge Function (status 200)
+        if (data?.error === "guardrail_violation") {
+          const rejectedTerm = data.rejected_term || prompt;
+
+          const guardrailMessage: Message = {
+            role: "assistant",
+            content:
+              `Sou especializado em auxiliar profissionais de saúde. ` +
+              `Não posso criar imagens sobre "${rejectedTerm}", mas posso gerar ilustrações sobre saúde, medicina, anatomia e bem-estar. Como posso ajudá-lo?`,
+            timestamp: new Date(),
+          };
+
+          const updatedMessages = [...messages, guardrailMessage];
+          setMessages(updatedMessages);
+          saveHistory(updatedMessages);
+
+          setIsGeneratingImage(false);
+          return;
+        }
 
         if (!data?.imageUrl) {
           throw new Error("Nenhuma imagem foi gerada");

@@ -48,11 +48,12 @@ serve(async (req) => {
       console.log("❌ Prompt rejeitado (fora do escopo IA/KnowRISK):", prompt);
       return new Response(
         JSON.stringify({ 
+          success: false,
           error: "guardrail_violation",
           rejected_term: prompt.trim(),
           scope: "study"
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
