@@ -482,7 +482,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
           </div>
 
           <ScrollArea className="flex-1 min-h-0">
-            <div className="space-y-8 pr-4">
+            <div className="space-y-4 pr-4">
               {timelineData.map((event) => {
                 const Icon = event.icon;
                 const eraConfig = TIMELINE_EVENTS.find(e => e.id === event.id);
@@ -491,33 +491,33 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                     key={event.id}
                     ref={(el) => (eventRefs.current[event.id] = el)}
                     className={cn(
-                      "relative pl-16 border-l-2 transition-all duration-500",
+                      "relative pl-12 border-l-2 transition-all duration-500 pb-3",
                       currentEventId === event.id
-                        ? "border-primary bg-primary/5 scale-[1.02]"
+                        ? "border-primary bg-primary/5 scale-[1.01]"
                         : "border-primary/30"
                     )}
                   >
                     <div
-                      className="absolute -left-7 top-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg bg-primary"
+                      className="absolute -left-6 top-0 w-9 h-9 rounded-full flex items-center justify-center shadow-lg bg-primary"
                     >
-                      <Icon className="w-5 h-5 text-primary-foreground" />
+                      <Icon className="w-4 h-4 text-primary-foreground" />
                     </div>
 
-                    <div className="flex gap-6">
+                    <div className="flex gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-xs font-mono text-muted-foreground">{event.date}</span>
                         </div>
-                        <h3 className="text-xl font-bold text-primary mb-2">
+                        <h3 className="text-lg font-bold text-primary mb-1.5">
                           {event.title}
                         </h3>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
+                        <p className="text-sm text-muted-foreground leading-snug">
                           {event.description}
                         </p>
                       </div>
 
                       {/* Imagem do evento */}
-                      <div className="w-64 flex-shrink-0">
+                      <div className="w-48 flex-shrink-0">
                         <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-muted/50 border border-border">
                           {loadingImages ? (
                             <Skeleton className="w-full h-full" />
@@ -530,7 +530,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <Icon className="w-16 h-16 text-muted-foreground/50" />
+                              <Icon className="w-12 h-12 text-muted-foreground/50" />
                             </div>
                           )}
                         </div>
