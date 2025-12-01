@@ -589,14 +589,21 @@ export const TooltipsTab = () => {
                 </h3>
               </div>
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-2 border-blue-400/60 hover:bg-blue-500/20"
                 onClick={() => editingId === tooltip.id ? handleCancel() : handleEdit(tooltip)}
               >
                 {editingId === tooltip.id ? (
-                  <ChevronUp className="w-4 h-4" />
+                  <>
+                    <ChevronUp className="w-4 h-4" />
+                    Fechar
+                  </>
                 ) : (
-                  <Edit2 className="w-4 h-4" />
+                  <>
+                    <Edit2 className="w-4 h-4" />
+                    Editar
+                  </>
                 )}
               </Button>
             </div>
