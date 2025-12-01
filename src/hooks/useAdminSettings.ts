@@ -10,6 +10,7 @@ interface AdminSettings {
   alert_email: string | null;
   alert_enabled: boolean | null;
   alert_threshold: number | null;
+  vimeo_history_url: string | null;
 }
 
 export const useAdminSettings = () => {

@@ -56,6 +56,7 @@ export type Database = {
           gmail_notification_email: string | null
           id: string
           updated_at: string | null
+          vimeo_history_url: string | null
         }
         Insert: {
           alert_email?: string | null
@@ -68,6 +69,7 @@ export type Database = {
           gmail_notification_email?: string | null
           id?: string
           updated_at?: string | null
+          vimeo_history_url?: string | null
         }
         Update: {
           alert_email?: string | null
@@ -80,6 +82,7 @@ export type Database = {
           gmail_notification_email?: string | null
           id?: string
           updated_at?: string | null
+          vimeo_history_url?: string | null
         }
         Relationships: []
       }
