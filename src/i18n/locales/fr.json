@@ -257,6 +257,7 @@
     "pause": "Pause",
     "stop": "Arrêter",
     "download": "Télécharger",
+    "downloadImage": "Télécharger l'image",
     "copy": "Copier",
     "notAvailable": "Audio non disponible",
     "playError": "Erreur lors de la lecture de l'audio"

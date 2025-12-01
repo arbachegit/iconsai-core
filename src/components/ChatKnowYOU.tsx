@@ -245,20 +245,7 @@ export default function ChatKnowYOU() {
     setIsImageMode(!isImageMode);
     setInput("");
   };
-  const handleAudioPlay = (index: number) => {
-    playAudio(index);
-  };
-  const handleAudioStop = () => {
-    stopAudio();
-  };
-  const handleDownloadAudio = (audioUrl: string, index: number) => {
-    const link = document.createElement("a");
-    link.href = audioUrl;
-    link.download = `knowyou-saude-${index}.mp3`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  
   const startRecording = async () => {
     try {
       // Tentar usar Web Speech API para transcrição em tempo real
@@ -510,6 +497,32 @@ export default function ChatKnowYOU() {
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     };
   }, []);
+
+  const handleAudioPlay = (index: number) => {
+    playAudio(index);
+  };
+
+  const handleAudioStop = () => {
+    stopAudio();
+  };
+
+  const handleDownloadAudio = (audioUrl: string, messageIndex: number) => {
+    const link = document.createElement("a");
+    link.href = audioUrl;
+    link.download = `knowyou-saude-audio-${messageIndex}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadImage = (imageUrl: string, messageIndex: number) => {
+    const link = document.createElement("a");
+    link.href = imageUrl;
+    link.download = `knowyou-saude-imagem-${messageIndex}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsTyping(input.length > 0);
@@ -580,7 +593,7 @@ export default function ChatKnowYOU() {
                     <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1" />
                   </div>
                   
-                  {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} isPlaying={currentlyPlayingIndex === idx} currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0} duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} />}
+                  {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} imageUrl={msg.imageUrl} isPlaying={currentlyPlayingIndex === idx} currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0} duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} onDownloadImage={msg.imageUrl ? () => handleDownloadImage(msg.imageUrl!, idx) : undefined} />}
                 </div>
               </div>)}
               {(isLoading || isGeneratingAudio || isGeneratingImage) && <div className="flex justify-start">
