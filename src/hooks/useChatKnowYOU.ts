@@ -50,6 +50,17 @@ export function useChatKnowYOU() {
   const { toast } = useToast();
   const { settings } = useAdminSettings();
   const { createSession, updateSession } = useChatAnalytics();
+  const [audioProgress, setAudioProgress] = useState<{
+    currentTime: number;
+    duration: number;
+  }>({ currentTime: 0, duration: 0 });
+
+  // Configurar callback de progresso do áudio
+  useEffect(() => {
+    audioPlayerRef.current.setOnProgress((currentTime, duration) => {
+      setAudioProgress({ currentTime, duration });
+    });
+  }, []);
 
   // Carregar histórico do localStorage
   useEffect(() => {
@@ -582,6 +593,7 @@ export function useChatKnowYOU() {
     currentSentiment,
     activeDisclaimer,
     attachedDocumentId,
+    audioProgress,
     sendMessage,
     clearHistory,
     playAudio,
