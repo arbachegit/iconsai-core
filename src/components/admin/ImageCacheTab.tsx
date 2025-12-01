@@ -240,6 +240,29 @@ export const ImageCacheTab = () => {
     }
   });
 
+  const migrateAllImagesMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('migrate-all-images');
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Migração de todas as imagens concluída",
+        description: `${data.migrated} imagens migradas com sucesso. ${data.failed} falharam. ${data.skipped} já estavam migradas.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['generated-images'] });
+      queryClient.invalidateQueries({ queryKey: ['section-images-admin'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro na migração",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
   const getSectionImage = (sectionId: string) => {
     return existingImages?.find(img => img.section_id === sectionId);
   };
@@ -259,7 +282,7 @@ export const ImageCacheTab = () => {
 
   return (
     <div className="space-y-6">
-      {/* Migration Alert */}
+      {/* Migration Alert - Timeline */}
       <Card className="border-blue-500/50 bg-blue-500/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-blue-400">
@@ -289,6 +312,48 @@ export const ImageCacheTab = () => {
           <p className="mt-2 text-sm text-muted-foreground">
             Esta operação irá converter todas as 19 imagens da timeline para WebP e armazená-las no Supabase Storage.
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Migration Alert - All Images */}
+      <Card className="border-purple-500/50 bg-purple-500/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-purple-400">
+            <ImageIcon className="h-5 w-5" />
+            Otimização de Todas as Imagens
+          </CardTitle>
+          <CardDescription>
+            Migre TODAS as imagens de seções e tooltips para WebP no Storage
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="p-4 bg-purple-500/5 rounded-lg border border-purple-500/20">
+              <p className="text-sm font-semibold mb-2">Esta migração processa:</p>
+              <ul className="text-sm space-y-1 ml-4">
+                <li>• 8 imagens de seções do landing page</li>
+                <li>• Todas as imagens de tooltips existentes</li>
+                <li>• Ignora imagens da timeline (já migradas acima)</li>
+                <li>• Economia total prevista: ~50 MB no banco</li>
+              </ul>
+            </div>
+            
+            <Button
+              onClick={() => migrateAllImagesMutation.mutate()}
+              disabled={migrateAllImagesMutation.isPending}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              {migrateAllImagesMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Migrando Todas...
+                </>
+              ) : (
+                'Migrar Seções + Tooltips'
+              )}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

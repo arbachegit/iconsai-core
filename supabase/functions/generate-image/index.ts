@@ -166,8 +166,52 @@ serve(async (req) => {
       );
     }
 
+    // Convert Base64 to binary
+    const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, '');
+    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    
+    console.log(`Binary size: ${binaryData.length} bytes`);
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.7.1');
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+    // Generate unique filename based on timestamp
+    const fileName = `chat-image-${Date.now()}.webp`;
+    
+    // Upload to Storage as WebP
+    const { data: uploadData, error: uploadError } = await supabaseClient
+      .storage
+      .from('content-images')
+      .upload(fileName, binaryData, {
+        contentType: 'image/webp',
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      // Fallback to Base64 if storage fails
+      return new Response(
+        JSON.stringify({ imageUrl }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Get public URL
+    const { data: publicUrlData } = supabaseClient
+      .storage
+      .from('content-images')
+      .getPublicUrl(fileName);
+
+    const publicUrl = publicUrlData.publicUrl;
+    console.log('Image uploaded to Storage:', publicUrl);
+
     return new Response(
-      JSON.stringify({ imageUrl }),
+      JSON.stringify({ imageUrl: publicUrl }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
