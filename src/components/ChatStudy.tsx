@@ -477,7 +477,16 @@ export default function ChatStudy() {
   const handleDownloadAudio = (audioUrl: string, index: number) => {
     const link = document.createElement("a");
     link.href = audioUrl;
-    link.download = `knowyou-audio-${index}.mp3`;
+    link.download = `knowyou-study-audio-${index}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadImage = (imageUrl: string, index: number) => {
+    const link = document.createElement("a");
+    link.href = imageUrl;
+    link.download = `knowyou-estudo-imagem-${index}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -574,6 +583,7 @@ export default function ChatStudy() {
                 {message.role === "assistant" && (
                   <AudioControls
                     audioUrl={message.audioUrl}
+                    imageUrl={message.imageUrl}
                     isPlaying={currentlyPlayingIndex === index}
                     currentTime={audioStates[index]?.currentTime}
                     duration={audioStates[index]?.duration}
@@ -583,6 +593,7 @@ export default function ChatStudy() {
                     onPlay={() => handleAudioPlay(index)}
                     onStop={handleAudioStop}
                     onDownload={() => message.audioUrl && handleDownloadAudio(message.audioUrl, index)}
+                    onDownloadImage={message.imageUrl ? () => handleDownloadImage(message.imageUrl!, index) : undefined}
                   />
                 )}
               </div>

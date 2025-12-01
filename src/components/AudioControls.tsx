@@ -7,6 +7,7 @@ import { useState } from "react";
 
 interface AudioControlsProps {
   audioUrl?: string;
+  imageUrl?: string;
   isPlaying: boolean;
   currentTime?: number;
   duration?: number;
@@ -16,11 +17,13 @@ interface AudioControlsProps {
   onPlay: () => void;
   onStop: () => void;
   onDownload?: () => void;
+  onDownloadImage?: () => void;
   onCopy?: () => void;
 }
 
 export function AudioControls({
   audioUrl,
+  imageUrl,
   isPlaying,
   currentTime = 0,
   duration = 0,
@@ -30,6 +33,7 @@ export function AudioControls({
   onPlay,
   onStop,
   onDownload,
+  onDownloadImage,
   onCopy,
 }: AudioControlsProps) {
   const { t } = useTranslation();
@@ -43,6 +47,7 @@ export function AudioControls({
   };
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const hasImage = !!imageUrl;
 
   const handleCopy = async () => {
     if (messageContent) {
@@ -70,44 +75,48 @@ export function AudioControls({
     <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-border/30">
       {/* Layout 100% horizontal: [Play] [Stop] [Download] [Copy] | [Data] [Hora] [Local] */}
       <div className="flex items-center gap-2 flex-wrap">
-      {/* Play - SEMPRE aparece */}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={onPlay}
-          className="h-7 w-7 p-0"
-          title={t("chat.play")}
-          disabled={isPlaying}
-        >
-          <Play className="h-3.5 w-3.5" />
-        </Button>
+      {/* Play - Ocultar se tiver imagem */}
+        {!hasImage && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onPlay}
+            className="h-7 w-7 p-0"
+            title={t("chat.play")}
+            disabled={isPlaying}
+          >
+            <Play className="h-3.5 w-3.5" />
+          </Button>
+        )}
 
-        {/* Stop - SEMPRE aparece */}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={onStop}
-          className="h-7 w-7 p-0"
-          title={t("chat.stop")}
-          disabled={!isPlaying}
-        >
-          <Square className="h-3.5 w-3.5" />
-        </Button>
+        {/* Stop - Ocultar se tiver imagem */}
+        {!hasImage && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onStop}
+            className="h-7 w-7 p-0"
+            title={t("chat.stop")}
+            disabled={!isPlaying}
+          >
+            <Square className="h-3.5 w-3.5" />
+          </Button>
+        )}
 
-        {/* Download - SEMPRE aparece (desabilitado se não houver áudio) */}
+        {/* Download - SEMPRE aparece (se tiver imagem: baixa imagem, senão: baixa áudio) */}
         <Button
           size="sm"
           variant="ghost"
-          onClick={onDownload}
+          onClick={hasImage ? onDownloadImage : onDownload}
           className="h-7 w-7 p-0"
-          title={t("chat.download")}
-          disabled={!audioUrl}
+          title={hasImage ? t("chat.downloadImage") : t("chat.download")}
+          disabled={hasImage ? !imageUrl : !audioUrl}
         >
           <Download className="h-3.5 w-3.5" />
         </Button>
 
-        {/* Copy - SEMPRE aparece */}
-        {messageContent && (
+        {/* Copy - Ocultar se tiver imagem */}
+        {!hasImage && messageContent && (
           <Button
             size="sm"
             variant="ghost"
@@ -160,8 +169,8 @@ export function AudioControls({
         )}
       </div>
 
-      {/* Progress bar (linha abaixo quando tocando) */}
-      {isPlaying && audioUrl && duration > 0 && (
+      {/* Progress bar (linha abaixo quando tocando) - só mostrar se não for imagem */}
+      {!hasImage && isPlaying && audioUrl && duration > 0 && (
         <div className="flex items-center gap-2 mt-1">
           <Progress value={progress} className="h-1 flex-1" />
           <span className="text-xs text-muted-foreground whitespace-nowrap">
