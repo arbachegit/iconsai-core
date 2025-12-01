@@ -193,15 +193,7 @@ const HeroSection = () => {
             {t("hero.description")}
           </p>
 
-          {/* Indicador "Comece por aqui" */}
-          <div className="flex flex-col items-center gap-1 pt-2 pb-1">
-            <span className="text-sm font-medium text-primary/80">
-              Comece por aqui
-            </span>
-            <ChevronDown className="w-5 h-5 text-primary animate-bounce" />
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -222,28 +214,38 @@ const HeroSection = () => {
               </Tooltip>
             </TooltipProvider>
             
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="relative border-primary/50 hover:border-transparent hover:bg-gradient-primary bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] animate-color-pulse"
-                    onClick={() => setIsHistoryOpen(true)}
-                  >
-                    <span className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-accent opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
-                    <span className="relative flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 animate-pulse" />
-                      {t("hero.ctaHistory")}
-                      <ArrowRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[220px] bg-background/95 border-primary/30 text-center duration-300">
-                  <p>{t("hero.ctaHistoryTooltip")}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <div className="flex flex-col items-center">
+              {/* Indicador "Comece por aqui" - posicionado diretamente acima do botão */}
+              <div className="flex flex-col items-center gap-0 mb-1">
+                <span className="text-sm font-medium text-primary/80">
+                  Comece por aqui
+                </span>
+                <ChevronDown className="w-5 h-5 text-primary animate-bounce" />
+              </div>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="relative border-primary/50 hover:border-transparent hover:bg-gradient-primary bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] animate-color-pulse"
+                      onClick={() => setIsHistoryOpen(true)}
+                    >
+                      <span className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-accent opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+                      <span className="relative flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 animate-pulse" />
+                        {t("hero.ctaHistory")}
+                        <ArrowRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[220px] bg-background/95 border-primary/30 text-center duration-300">
+                    <p>{t("hero.ctaHistoryTooltip")}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
 
           {/* Citação Introdutória */}
