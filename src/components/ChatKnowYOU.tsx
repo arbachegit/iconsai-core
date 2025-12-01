@@ -68,6 +68,7 @@ export default function ChatKnowYOU() {
     currentSentiment,
     activeDisclaimer,
     attachedDocumentId,
+    audioProgress,
     sendMessage,
     clearHistory,
     playAudio,
@@ -96,13 +97,6 @@ export default function ChatKnowYOU() {
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<string>("");
   const prefixTextRef = useRef<string>("");
-  const [audioStates, setAudioStates] = useState<{
-    [key: number]: {
-      isPlaying: boolean;
-      currentTime: number;
-      duration: number;
-    };
-  }>({});
   const mountTimeRef = useRef(Date.now());
   const previousMessagesLength = useRef(messages.length);
   const INIT_PERIOD = 1000; // 1 segundo de período de inicialização
@@ -586,7 +580,7 @@ export default function ChatKnowYOU() {
                     <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1" />
                   </div>
                   
-                  {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} isPlaying={currentlyPlayingIndex === idx} currentTime={audioStates[idx]?.currentTime} duration={audioStates[idx]?.duration} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} />}
+                  {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} isPlaying={currentlyPlayingIndex === idx} currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0} duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} />}
                 </div>
               </div>)}
               {(isLoading || isGeneratingAudio || isGeneratingImage) && <div className="flex justify-start">
@@ -690,7 +684,7 @@ export default function ChatKnowYOU() {
       </form>
       
       {/* Floating Audio Player */}
-      <FloatingAudioPlayer isVisible={showFloatingPlayer && currentlyPlayingIndex !== null} currentTime={audioStates[currentlyPlayingIndex ?? -1]?.currentTime ?? 0} duration={audioStates[currentlyPlayingIndex ?? -1]?.duration ?? 0} onStop={() => {
+      <FloatingAudioPlayer isVisible={showFloatingPlayer && currentlyPlayingIndex !== null} currentTime={audioProgress.currentTime} duration={audioProgress.duration} onStop={() => {
       stopAudio();
       setShowFloatingPlayer(false);
     }} onClose={() => {
