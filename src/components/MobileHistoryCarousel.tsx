@@ -103,10 +103,10 @@ export const MobileHistoryCarousel = ({
                         <Icon className="w-6 h-6 text-primary-foreground" />
                       </div>
                       <div className="flex-1">
-                        {/* Badge com data em fonte Typewriter - 4x maior */}
+                        {/* Badge com data em fonte Typewriter - 2x maior com máxima visibilidade */}
                         <Badge 
                           variant="outline" 
-                          className="mb-3 font-mono text-xl tracking-widest px-5 py-2 border-primary/50 bg-primary/5 text-primary font-bold"
+                          className="mb-4 font-mono text-4xl tracking-widest px-8 py-3 border-2 border-primary bg-primary/20 text-primary font-extrabold shadow-lg"
                         >
                           {event.date}
                         </Badge>
