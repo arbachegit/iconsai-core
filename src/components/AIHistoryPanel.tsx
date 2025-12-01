@@ -17,6 +17,17 @@ import jsPDF from 'jspdf';
 import { useQuery } from "@tanstack/react-query";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 
+// Tipagem TypeScript para Vimeo Player API
+declare global {
+  interface Window {
+    Vimeo?: {
+      Player: new (element: HTMLElement) => {
+        on: (event: string, callback: () => void) => void;
+      };
+    };
+  }
+}
+
 interface AIHistoryPanelProps {
   onClose: () => void;
 }
@@ -65,6 +76,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const [visibleBadges, setVisibleBadges] = useState<Set<string>>(new Set());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const eventRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const timelineRef = useRef<HTMLDivElement | null>(null);
   
   const vimeoUrl = settings?.vimeo_history_url;
   
@@ -273,6 +285,38 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
     return () => window.removeEventListener('stopAllAudio', handleStopAll);
   }, []);
   
+  // Vimeo Player API - Auto-scroll para timeline quando vídeo terminar
+  useEffect(() => {
+    if (!vimeoUrl) return;
+    
+    // Carregar script do Vimeo Player API se não existir
+    if (!document.querySelector('script[src*="player.vimeo.com/api"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://player.vimeo.com/api/player.js';
+      script.async = true;
+      document.body.appendChild(script);
+      
+      script.onload = () => initVimeoPlayer();
+    } else {
+      initVimeoPlayer();
+    }
+    
+    function initVimeoPlayer() {
+      const iframe = document.getElementById('vimeo-player');
+      if (iframe && window.Vimeo) {
+        const player = new window.Vimeo.Player(iframe);
+        
+        player.on('ended', () => {
+          // Auto-scroll para a timeline quando vídeo terminar
+          timelineRef.current?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        });
+      }
+    }
+  }, [vimeoUrl]);
+  
   // Função para pular para um evento específico
   const handleJumpToEvent = (eventId: string) => {
     setCurrentEventId(eventId);
@@ -379,8 +423,9 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
             
             {/* Vimeo Video */}
             {vimeoUrl && (
-              <div className="mb-4 rounded-lg overflow-hidden border border-primary/20 aspect-video flex-shrink-0">
+              <div className="mb-4 rounded-lg overflow-hidden border border-primary/20 aspect-video flex-shrink-0 max-h-[200px]">
                 <iframe
+                  id="vimeo-player"
                   src={vimeoUrl}
                   className="w-full h-full"
                   frameBorder="0"
@@ -444,13 +489,15 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
               )}
             </div>
 
-            <MobileHistoryCarousel 
-              events={timelineData}
-              currentEventId={currentEventId}
-              eventImages={eventImages}
-              loadingImages={loadingImages}
-              onEventSelect={handleJumpToEvent}
-            />
+            <div ref={timelineRef}>
+              <MobileHistoryCarousel 
+                events={timelineData}
+                currentEventId={currentEventId}
+                eventImages={eventImages}
+                loadingImages={loadingImages}
+                onEventSelect={handleJumpToEvent}
+              />
+            </div>
           </div>
         </DrawerContent>
       </Drawer>
@@ -496,8 +543,9 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
           
           {/* Vimeo Video */}
           {vimeoUrl && (
-            <div className="mb-4 rounded-lg overflow-hidden border border-primary/20 aspect-video flex-shrink-0">
+            <div className="mb-4 rounded-lg overflow-hidden border border-primary/20 aspect-video flex-shrink-0 max-h-[280px]">
               <iframe
+                id="vimeo-player"
                 src={vimeoUrl}
                 className="w-full h-full"
                 frameBorder="0"
@@ -594,7 +642,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
             </div>
           </div>
 
-          <ScrollArea className="flex-1 min-h-0">
+          <ScrollArea ref={timelineRef} className="flex-1 min-h-0">
             <div className="space-y-3 pr-4 ml-8">
               {timelineData.map((event) => {
                 const Icon = event.icon;
