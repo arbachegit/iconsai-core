@@ -580,10 +580,10 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                     <div className="flex gap-3">
                     <div className="flex-1">
                       {/* Badge com data em fonte Typewriter - 2x maior com máxima visibilidade */}
-                      <Badge 
-                        variant="outline" 
-                        className={cn(
-                          "mb-4 font-mono !text-5xl tracking-widest !px-10 !py-4 border-2 border-primary bg-primary/40 !text-white font-extrabold shadow-lg transition-all duration-700",
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "mb-4 font-mono text-xs tracking-widest px-2.5 py-1 border-2 border-primary bg-primary/40 !text-white font-extrabold shadow-lg transition-all duration-700",
                           visibleBadges.has(event.id) 
                             ? "opacity-100 translate-y-0" 
                             : "opacity-0 translate-y-4"
