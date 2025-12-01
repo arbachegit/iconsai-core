@@ -107,6 +107,10 @@
         "title": "Talos, o Gigante de Bronze",
         "description": "O que é: Um autômato de bronze, feito por Hefesto, destinado a proteger a ilha de Creta.\n\nImpacto na IA: Talos é o primeiro conceito filosófico de uma máquina autônoma. Embora mítico, ele estabelece a ideia humana de criar um ser artificial com propósito específico (segurança/vigilância) e que opera sem intervenção humana constante. Isso lança a semente para a Robótica e os Sistemas de Agentes Autônomos, precursores dos bots e da IA operacional moderna."
       },
+      "telegraphy-cards": {
+        "title": "Telegrafia e Cartões Perfurados",
+        "description": "Telegrafia: A forma mais antiga de telegrafia (telégrafo óptico de Claude Chappe) surgiu no final do Século XVIII (c. 1790). O telégrafo elétrico, revolucionário para comunicação e codificação de dados, foi desenvolvido por Samuel Morse e Alfred Vail a partir de 1837.\n\nCartões Perfurados: Usados pela primeira vez no Tear de Jacquard (1801) para automatizar padrões de tecelagem. Herman Hollerith popularizou seu uso para processamento e armazenamento de dados no censo dos EUA de 1890.\n\nImpacto na IA: Estabeleceram os fundamentos da codificação de informação e do processamento automatizado de dados, precursores diretos da computação moderna."
+      },
       "turing-machine": {
         "title": "Máquina de Turing",
         "description": "Alan Turing estabelece a fundação teórica da computação, descrevendo o modelo abstrato de um computador universal capaz de resolver qualquer problema computável."

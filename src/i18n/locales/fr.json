@@ -105,7 +105,11 @@
       "title": "La Chronologie Définitive: De Talos à la Fièvre de l'IA",
       "talos": {
         "title": "Talos, le Géant de Bronze",
-        "description": "Concept initial d'automate (machine autonome) et système de protection automatisé dans la mythologie grecque. L'idée de quelque chose de non-vivant qui agit de manière autonome."
+        "description": "Ce que c'est : Un automate en bronze, créé par Héphaïstos, destiné à protéger l'île de Crète.\n\nImpact sur l'IA : Talos est le premier concept philosophique d'une machine autonome. Bien que mythique, il établit l'idée humaine de créer un être artificiel avec un objectif spécifique (sécurité/surveillance) qui fonctionne sans intervention humaine constante. Cela pose les bases de la Robotique et des Systèmes d'Agents Autonomes, précurseurs des bots et de l'IA opérationnelle moderne."
+      },
+      "telegraphy-cards": {
+        "title": "Télégraphie et Cartes Perforées",
+        "description": "Télégraphie : La forme la plus ancienne de télégraphie (le télégraphe optique de Claude Chappe) est apparue à la fin du XVIIIe siècle (c. 1790). Le télégraphe électrique, révolutionnaire pour la communication et l'encodage des données, a été développé par Samuel Morse et Alfred Vail à partir de 1837.\n\nCartes Perforées : Utilisées pour la première fois dans le Métier Jacquard (1801) pour automatiser les motifs de tissage. Herman Hollerith a popularisé leur utilisation pour le traitement et le stockage de données lors du recensement américain de 1890.\n\nImpact sur l'IA : Ont établi les fondements de l'encodage de l'information et du traitement automatisé des données, précurseurs directs de l'informatique moderne."
       },
       "turing-machine": {
         "title": "Machine de Turing",
