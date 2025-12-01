@@ -118,10 +118,18 @@ export const DigitalExclusionSection = () => {
                 <CollapsibleTrigger asChild>
                   <Button 
                     variant="outline" 
-                    className="group bg-primary/30 border-2 border-primary hover:bg-primary/50 hover:border-primary hover:shadow-lg hover:shadow-primary/40 transition-all duration-300"
+                    className="relative group bg-primary/30 border-2 border-primary hover:bg-primary/50 hover:border-primary hover:shadow-lg hover:shadow-primary/40 transition-all duration-300"
                   >
                     <span className="mr-2 font-semibold">{t('digitalExclusion.expandText')}</span>
                     <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                    
+                    {/* Bolinha verde pulsante - lado direito superior externo */}
+                    <div className="absolute -top-1 -right-1 z-20">
+                      <div className="relative">
+                        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/50" />
+                        <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+                      </div>
+                    </div>
                   </Button>
                 </CollapsibleTrigger>
               </div>
