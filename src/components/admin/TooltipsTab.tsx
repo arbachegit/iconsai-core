@@ -585,10 +585,33 @@ export const TooltipsTab = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {tooltips
-              ?.filter(tooltip => tooltip.section_id.startsWith("history-"))
-              .sort((a, b) => a.section_id.localeCompare(b.section_id))
-              .map((historyEvent) => (
+            {(() => {
+              // Define chronological order matching AIHistoryPanel modal
+              const HISTORY_CHRONOLOGICAL_ORDER = [
+                'history-talos',
+                'history-telegraph',
+                'history-turing-machine',
+                'history-enigma',
+                'history-turing-test',
+                'history-arpanet',
+                'history-tcpip',
+                'history-www',
+                'history-web2',
+                'history-watson',
+                'history-openai',
+                'history-gpt3',
+                'history-chatgpt',
+                'history-current'
+              ];
+
+              return tooltips
+                ?.filter(tooltip => tooltip.section_id.startsWith("history-"))
+                .sort((a, b) => {
+                  const indexA = HISTORY_CHRONOLOGICAL_ORDER.indexOf(a.section_id);
+                  const indexB = HISTORY_CHRONOLOGICAL_ORDER.indexOf(b.section_id);
+                  return indexA - indexB;
+                })
+                .map((historyEvent) => (
                 <Card
                   key={historyEvent.id}
                   className="p-6 bg-card/50 backdrop-blur-sm border-primary/20"
@@ -695,7 +718,7 @@ export const TooltipsTab = () => {
                     </CollapsibleContent>
                   </Collapsible>
                 </Card>
-              ))}
+              ))})()}
           </div>
         </CardContent>
       </Card>
