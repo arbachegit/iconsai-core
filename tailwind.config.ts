@@ -70,10 +70,21 @@ export default {
             height: "0",
           },
         },
+        "color-pulse": {
+          "0%, 100%": {
+            opacity: "1",
+            boxShadow: "0 0 0 rgba(139, 92, 246, 0)",
+          },
+          "50%": {
+            opacity: "0.85",
+            boxShadow: "0 0 30px rgba(139, 92, 246, 0.5)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "color-pulse": "color-pulse 2s ease-in-out infinite",
       },
     },
   },

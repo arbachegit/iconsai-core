@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AIHistoryPanel } from "./AIHistoryPanel";
 import { useTranslation } from "react-i18next";
@@ -193,7 +193,15 @@ const HeroSection = () => {
             {t("hero.description")}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+          {/* Indicador "Comece por aqui" */}
+          <div className="flex flex-col items-center gap-1 pt-2 pb-1">
+            <span className="text-sm font-medium text-primary/80">
+              Comece por aqui
+            </span>
+            <ChevronDown className="w-5 h-5 text-primary animate-bounce" />
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -220,7 +228,7 @@ const HeroSection = () => {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="relative border-primary/50 hover:border-transparent hover:bg-gradient-primary bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)]"
+                    className="relative border-primary/50 hover:border-transparent hover:bg-gradient-primary bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] animate-color-pulse"
                     onClick={() => setIsHistoryOpen(true)}
                   >
                     <span className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-accent opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
