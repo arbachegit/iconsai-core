@@ -74,15 +74,12 @@ export function AudioControls({
         <Button
           size="sm"
           variant="ghost"
-          onClick={isPlaying ? onStop : onPlay}
+          onClick={onPlay}
           className="h-7 w-7 p-0"
-          title={isPlaying ? t("chat.stop") : t("chat.play")}
+          title={t("chat.play")}
+          disabled={isPlaying}
         >
-          {isPlaying ? (
-            <Square className="h-3.5 w-3.5" />
-          ) : (
-            <Play className="h-3.5 w-3.5" />
-          )}
+          <Play className="h-3.5 w-3.5" />
         </Button>
 
         {/* Stop - SEMPRE aparece */}
