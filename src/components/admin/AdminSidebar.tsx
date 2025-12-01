@@ -91,8 +91,8 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       label: "Mídia e Conteúdo",
       icon: Palette,
       items: [
-        { id: "content-management" as TabType, label: "Conteúdo Principal", icon: FileText },
-        { id: "tooltips" as TabType, label: "Tooltips", icon: MessageCircle },
+        { id: "content-management" as TabType, label: "Tooltips", icon: FileText },
+        { id: "tooltips" as TabType, label: "Conteúdo Principal", icon: MessageCircle },
         { id: "images" as TabType, label: "Cache de Imagens", icon: Image },
         { id: "youtube" as TabType, label: "YouTube Preload", icon: Youtube },
       ]
