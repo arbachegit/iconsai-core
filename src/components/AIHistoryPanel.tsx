@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Play, StopCircle, Download, FileDown, Shield, Radio, Cpu, KeyRound, MessageCircle, Network, GitBranch, Globe, Users, Brain, Sparkles, FileText, MessageSquare, Rocket, ChevronDown, LucideIcon } from "lucide-react";
+import { X, Play, StopCircle, Download, FileDown, Shield, Radio, Cpu, KeyRound, MessageCircle, Network, GitBranch, Globe, Users, Brain, Sparkles, FileText, MessageSquare, Rocket, ChevronDown, LucideIcon, Type } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -74,6 +74,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const [duration, setDuration] = useState(0);
   const [currentEventId, setCurrentEventId] = useState("talos");
   const [visibleBadges, setVisibleBadges] = useState<Set<string>>(new Set());
+  const [fontSize, setFontSize] = useState<'normal' | 'large' | 'xlarge'>('normal');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const eventRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const timelineRef = useRef<HTMLDivElement | null>(null);
@@ -338,6 +339,14 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
     }
   };
 
+  const cycleFontSize = () => {
+    setFontSize(prev => {
+      if (prev === 'normal') return 'large';
+      if (prev === 'large') return 'xlarge';
+      return 'normal';
+    });
+  };
+
   // Auto-scroll sincronizado com áudio
   useEffect(() => {
     if (!isPlaying) return;
@@ -484,6 +493,10 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                 <Button onClick={exportTimelineToPDF} size="sm" variant="outline">
                   <FileDown className="w-4 h-4 mr-1" />
                   PDF
+                </Button>
+                <Button onClick={cycleFontSize} size="sm" variant="outline" title="Aumentar tamanho da fonte">
+                  <Type className="w-4 h-4 mr-1" />
+                  {fontSize === 'normal' ? 'A' : fontSize === 'large' ? 'A+' : 'A++'}
                 </Button>
               </div>
               {duration > 0 && (
@@ -640,6 +653,15 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                   <FileDown className="w-4 h-4 mr-2" />
                   PDF
                 </Button>
+                <Button
+                  onClick={cycleFontSize}
+                  size="sm"
+                  variant="outline"
+                  title="Aumentar tamanho da fonte"
+                >
+                  <Type className="w-4 h-4 mr-2" />
+                  {fontSize === 'normal' ? 'A' : fontSize === 'large' ? 'A+' : 'A++'}
+                </Button>
               </div>
               {duration > 0 && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -701,10 +723,20 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                         >
                           {event.date}
                         </Badge>
-                        <h3 className="text-lg font-bold text-primary mb-1">
+                        <h3 className={cn(
+                          "font-bold text-primary mb-1",
+                          fontSize === 'normal' && "text-lg",
+                          fontSize === 'large' && "text-xl",
+                          fontSize === 'xlarge' && "text-2xl"
+                        )}>
                           {event.title}
                         </h3>
-                        <p className="text-sm text-muted-foreground leading-snug">
+                        <p className={cn(
+                          "text-muted-foreground leading-snug",
+                          fontSize === 'normal' && "text-sm",
+                          fontSize === 'large' && "text-base",
+                          fontSize === 'xlarge' && "text-lg"
+                        )}>
                           {event.description}
                         </p>
                       </div>
