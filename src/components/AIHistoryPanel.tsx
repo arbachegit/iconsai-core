@@ -379,15 +379,14 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
             
             {/* Vimeo Video */}
             {vimeoUrl && (
-              <div className="mb-4 rounded-lg overflow-hidden border border-primary/20">
+              <div className="mb-4 rounded-lg overflow-hidden border border-primary/20 relative w-full" style={{ paddingBottom: '56.25%' }}>
                 <iframe
                   src={vimeoUrl}
-                  width="100%"
-                  height="250"
+                  className="absolute top-0 left-0 w-full h-full"
                   frameBorder="0"
-                  allow="autoplay; fullscreen; picture-in-picture"
+                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
                   allowFullScreen
-                  className="w-full"
+                  title="A história da IA"
                 />
               </div>
             )}
@@ -497,15 +496,14 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
           
           {/* Vimeo Video */}
           {vimeoUrl && (
-            <div className="mb-4 rounded-lg overflow-hidden border border-primary/20">
+            <div className="mb-4 rounded-lg overflow-hidden border border-primary/20 relative w-full" style={{ paddingBottom: '56.25%' }}>
               <iframe
                 src={vimeoUrl}
-                width="100%"
-                height="300"
+                className="absolute top-0 left-0 w-full h-full"
                 frameBorder="0"
-                allow="autoplay; fullscreen; picture-in-picture"
+                allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
                 allowFullScreen
-                className="w-full"
+                title="A história da IA"
               />
             </div>
           )}
