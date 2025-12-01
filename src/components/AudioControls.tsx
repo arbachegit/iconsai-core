@@ -1,4 +1,4 @@
-import { Play, Square, Download, Copy, Check, Calendar, Clock, MapPin } from "lucide-react";
+import { Play, Square, Download, Copy, Check, Calendar, Clock, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useTranslation } from "react-i18next";
@@ -84,10 +84,14 @@ export function AudioControls({
             variant="ghost"
             onClick={onPlay}
             className="h-7 w-7 p-0"
-            title={t("chat.play")}
+            title={isGeneratingAudio ? t("audio.generating") : t("audio.play")}
             disabled={isPlaying || isGeneratingAudio}
           >
-            <Play className="h-3.5 w-3.5" />
+            {isGeneratingAudio ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Play className="h-3.5 w-3.5" />
+            )}
           </Button>
         )}
 

@@ -255,6 +255,7 @@
     "play": "Reproduzir",
     "pause": "Pausar",
     "stop": "Parar",
+    "generating": "Gerando áudio...",
     "download": "Baixar",
     "downloadImage": "Baixar imagem",
     "copy": "Copiar",
