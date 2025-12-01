@@ -47,46 +47,20 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY não está configurada");
     }
 
-    // Prompts específicos para cada evento da história da IA
     const eraPrompts: Record<string, string> = {
-      // Idade do Bronze - Talos
-      talos: "Ilustração artística do mito grego de Talos, o gigante de bronze. Estilo art déco em tons sépia e dourado, gigante mecânico protetor com engrenagens visíveis, arte clássica grega, ultra alta resolução, formato webp, sem texto",
-      
-      // Fundação Teórica - Máquina de Turing 1936
-      'turing-machine': "Diagrama conceitual vintage da Máquina de Turing de 1936, fita infinita, cabeça de leitura/escrita, esquema teórico em estilo blueprint técnico dos anos 1930, tons azuis e pretos, ultra alta resolução, formato webp, sem texto",
-      
-      // Segunda Guerra - Quebra do Código Enigma
-      enigma: "Máquina Enigma alemã em Bletchley Park, ambiente de guerra vintage anos 1940, sala de operações secreta, tubos de vácuo, máquinas de calcular, estilo fotográfico documental em preto e branco com tons sépia, ultra alta resolução, formato webp, sem texto",
-      
-      // Filosofia da IA - Teste de Turing 1950
-      'turing-test': "Ilustração conceitual do Teste de Turing 1950, humano conversando com máquina através de terminal vintage, sala de computação anos 50, estilo retrofuturista com tons azuis e verdes, ultra alta resolução, formato webp, sem texto",
-      
-      // Internet - ARPANET 1969
-      arpanet: "Primeiro nó ARPANET na UCLA 1969, computador mainframe IMP com luzes piscando, cabos conectados, sala de computadores vintage, estilo documental fotográfico dos anos 60, tons verdes e cinzas, ultra alta resolução, formato webp, sem texto",
-      
-      // Protocolos - TCP/IP 1974
-      tcpip: "Diagrama técnico vintage de rede TCP/IP 1974, nós interconectados, pacotes de dados fluindo, estilo esquemático blueprint com tons azuis e verdes tecnológicos, ultra alta resolução, formato webp, sem texto",
-      
-      // Web - World Wide Web 1989
-      www: "Tim Berners-Lee e o primeiro navegador web no CERN 1989, computador NeXT, interface de hipertexto, sala de laboratório científico, estilo documental anos 80, tons neutros e azuis, ultra alta resolução, formato webp, sem texto",
-      
-      // Social - Facebook/Orkut 2004
-      social: "Interface vintage Web 2.0 ano 2004, perfis sociais, ícones estilizados do Facebook e Orkut, telas de computador CRT, estilo nostálgico digital dos anos 2000, tons azuis e brancos, ultra alta resolução, formato webp, sem texto",
-      
-      // Watson - IBM 2011
-      watson: "IBM Watson vencendo Jeopardy! 2011, supercomputador com logo Watson, painéis de dados em tempo real, palco de TV game show, iluminação dramática azul tecnológica, estilo fotojornalístico moderno, ultra alta resolução, formato webp, sem texto",
-      
-      // OpenAI - Fundação 2015
-      openai: "Logo e conceito visual da OpenAI 2015, neural networks abstratas, partículas de dados fluindo, gradientes cyan e roxo neon, estilo futurista minimalista clean tech, ultra alta resolução, formato webp, sem texto",
-      
-      // GPT-3 - Lançamento 2020
-      gpt3: "Interface do GPT-3 Playground 2020, terminal de código com texto gerado por IA, partículas de linguagem natural fluindo, estilo tech moderno com gradientes verdes e azuis, ultra alta resolução, formato webp, sem texto",
-      
-      // ChatGPT - Febre da IA 2022
-      chatgpt: "Interface moderna do ChatGPT 2022, conversação humano-IA fluindo naturalmente, bolhas de chat elegantes, gradientes suaves cyan e roxo, estilo minimalista contemporâneo, ultra alta resolução, formato webp, sem texto",
-      
-      // Atualidade - Web 3.0, Veo, LLMs
-      current: "Colagem futurista 2024 com logos Gemini, GPT-4, Claude, Veo, neural networks complexas, dados fluindo em tempo real, hologramas de IA, gradientes vibrantes multi-coloridos, estilo cyberpunk elegante, ultra alta resolução, formato webp, sem texto"
+      talos: "Gigante de bronze grego mitológico, estilo art déco sépia dourado, webp sem texto",
+      'turing-machine': "Máquina de Turing 1936, diagrama blueprint técnico vintage azul preto, webp sem texto",
+      enigma: "Máquina Enigma Bletchley Park 1940s, preto branco sépia documental, webp sem texto",
+      'turing-test': "Teste de Turing 1950, humano e terminal vintage retrofuturista azul verde, webp sem texto",
+      arpanet: "ARPANET UCLA 1969, mainframe IMP vintage verde cinza, webp sem texto",
+      tcpip: "Rede TCP/IP 1974, diagrama blueprint tecnológico azul verde, webp sem texto",
+      www: "Tim Berners-Lee CERN 1989, navegador NeXT anos 80 azul neutro, webp sem texto",
+      social: "Web 2.0 Facebook Orkut 2004, interface CRT nostálgica azul branco, webp sem texto",
+      watson: "IBM Watson Jeopardy 2011, supercomputador palco TV azul moderno, webp sem texto",
+      openai: "OpenAI 2015, neural networks cyan roxo neon futurista minimalista, webp sem texto",
+      gpt3: "GPT-3 Playground 2020, terminal código IA verde azul tech moderno, webp sem texto",
+      chatgpt: "ChatGPT 2022, chat interface cyan roxo minimalista contemporâneo, webp sem texto",
+      current: "IA 2024 Gemini GPT-4 Claude Veo neural networks cyberpunk multi-colorido, webp sem texto"
     };
 
     const prompt = eraPrompts[eraId];
