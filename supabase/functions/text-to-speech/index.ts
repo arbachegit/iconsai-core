@@ -5,6 +5,87 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Mapa de siglas e termos técnicos para pronúncias fonéticas em português
+const PHONETIC_MAP: Record<string, string> = {
+  // Siglas de IA - soletradas
+  "RAG": "érre-á-jê",
+  "LLM": "éle-éle-ême",
+  "SLM": "ésse-éle-ême",
+  "GPT": "jê-pê-tê",
+  "AI": "á-i",
+  "IA": "í-á",
+  "NLP": "éne-éle-pê",
+  "ML": "éme-éle",
+  "DL": "dê-éle",
+  "API": "á-pê-í",
+  "SDK": "ésse-dê-cá",
+  "LLMs": "éle-éle-êmes",
+  "SLMs": "ésse-éle-êmes",
+  "APIs": "á-pê-ís",
+  
+  // Termos técnicos - pronúncia em português
+  "chunks": "tchânks",
+  "chunk": "tchânk",
+  "embedding": "embéding",
+  "embeddings": "embédings",
+  "token": "tôken",
+  "tokens": "tôkens",
+  "prompt": "prômpt",
+  "prompts": "prômpits",
+  "fine-tuning": "fáin túning",
+  "fine tuning": "fáin túning",
+  "dataset": "déita sét",
+  "datasets": "déita séts",
+  "pipeline": "páip láin",
+  "pipelines": "páip láins",
+  "framework": "fréim uórk",
+  "frameworks": "fréim uórks",
+  "benchmark": "bêntch márk",
+  "benchmarks": "bêntch márks",
+  "chatbot": "tchét bót",
+  "chatbots": "tchét bóts",
+  "multimodal": "múlti módal",
+  "transformer": "trans fórmer",
+  "transformers": "trans fórmers",
+  "vector": "vétor",
+  "vectors": "vétores",
+  "retrieval": "retriéval",
+  "augmented": "ógmentéd",
+  "generation": "djenereíchon",
+  
+  // Empresas e produtos
+  "OpenAI": "Ópen á-i",
+  "ChatGPT": "Tchét jê-pê-tê",
+  "Gemini": "Jêmini",
+  "Claude": "Clód",
+  "Llama": "Lhâma",
+  "BERT": "Bért",
+  "GPT-4": "jê-pê-tê quatro",
+  "GPT-5": "jê-pê-tê cinco",
+  
+  // Termos KnowRISK específicos
+  "KnowRISK": "Nôu Rísk",
+  "KnowYOU": "Nôu Iú",
+  "ACC": "á-cê-cê",
+};
+
+// Função para normalizar texto com pronúncias fonéticas
+function normalizeTextForTTS(text: string): string {
+  let normalizedText = text;
+  
+  // Ordenar por tamanho (maior primeiro) para evitar substituições parciais
+  const sortedTerms = Object.keys(PHONETIC_MAP).sort((a, b) => b.length - a.length);
+  
+  for (const term of sortedTerms) {
+    // Usar regex com word boundaries para substituir apenas palavras completas
+    // Case insensitive para capturar variações
+    const regex = new RegExp(`\\b${term}\\b`, 'gi');
+    normalizedText = normalizedText.replace(regex, PHONETIC_MAP[term]);
+  }
+  
+  return normalizedText;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -25,6 +106,9 @@ serve(async (req) => {
 
     // Sanitize input: remove potentially harmful characters
     const sanitizedText = text.trim().replace(/[<>]/g, "");
+    
+    // Normalizar texto para pronúncia correta de siglas e termos técnicos
+    const normalizedText = normalizeTextForTTS(sanitizedText);
 
     const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
     const VOICE_ID = Deno.env.get("ELEVENLABS_VOICE_ID_FERNANDO");
@@ -33,7 +117,8 @@ serve(async (req) => {
       throw new Error("Credenciais ElevenLabs não configuradas");
     }
 
-    console.log("Gerando áudio para texto:", sanitizedText.substring(0, 100));
+    console.log("Texto original:", sanitizedText.substring(0, 100));
+    console.log("Texto normalizado para TTS:", normalizedText.substring(0, 100));
 
     // Gerar áudio com ElevenLabs usando modelo Turbo v2.5 para baixa latência
     const response = await fetch(
@@ -45,7 +130,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text: sanitizedText,
+          text: normalizedText,
           model_id: "eleven_turbo_v2_5",
           voice_settings: {
             stability: 0.5,
