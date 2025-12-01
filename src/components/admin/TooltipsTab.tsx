@@ -16,6 +16,7 @@ import { format } from "date-fns";
 interface TooltipContent {
   id: string;
   section_id: string;
+  header: string | null;
   title: string;
   content: string;
   audio_url: string | null;
@@ -45,7 +46,7 @@ export const TooltipsTab = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ title: "", content: "" });
+  const [editForm, setEditForm] = useState({ header: "", title: "", content: "" });
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [selectedSection, setSelectedSection] = useState<string>("");
   const [editorForm, setEditorForm] = useState({ 
@@ -151,7 +152,11 @@ export const TooltipsTab = () => {
 
   const handleEdit = (tooltip: TooltipContent) => {
     setEditingId(tooltip.id);
-    setEditForm({ title: tooltip.title, content: tooltip.content });
+    setEditForm({ 
+      header: tooltip.header || "", 
+      title: tooltip.title, 
+      content: tooltip.content 
+    });
   };
 
   const handleSave = async (id: string) => {
@@ -159,6 +164,7 @@ export const TooltipsTab = () => {
       const { error } = await supabase
         .from("tooltip_contents")
         .update({
+          header: editForm.header,
           title: editForm.title,
           content: editForm.content,
         })
@@ -184,7 +190,7 @@ export const TooltipsTab = () => {
 
   const handleCancel = () => {
     setEditingId(null);
-    setEditForm({ title: "", content: "" });
+    setEditForm({ header: "", title: "", content: "" });
   };
 
   const handleSectionChange = (sectionId: string) => {
@@ -572,80 +578,97 @@ export const TooltipsTab = () => {
             key={tooltip.id}
             className="p-6 bg-card/50 backdrop-blur-sm border-primary/20"
           >
-            {editingId === tooltip.id ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Seção: {tooltip.section_id}
-                  </label>
+            {/* Cabeçalho sempre visível */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <div className="text-xs text-muted-foreground mb-1">
+                  {tooltip.section_id}
                 </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Título
-                  </label>
-                  <Input
-                    value={editForm.title}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, title: e.target.value })
-                    }
-                    className="bg-background/50"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Conteúdo
-                  </label>
-                  <Textarea
-                    value={editForm.content}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, content: e.target.value })
-                    }
-                    rows={6}
-                    className="bg-background/50 resize-none"
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => handleSave(tooltip.id)}
-                    className="gap-2"
-                  >
-                    <Save className="w-4 h-4" />
-                    Salvar
-                  </Button>
-                  <Button variant="ghost" onClick={handleCancel} className="gap-2">
-                    <X className="w-4 h-4" />
-                    Cancelar
-                  </Button>
-                </div>
+                <h3 className="text-xl font-bold text-foreground">
+                  {tooltip.title}
+                </h3>
               </div>
-            ) : (
-              <div>
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">
-                      {tooltip.section_id}
-                    </div>
-                    <h3 className="text-xl font-bold text-foreground">
-                      {tooltip.title}
-                    </h3>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEdit(tooltip)}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => editingId === tooltip.id ? handleCancel() : handleEdit(tooltip)}
+              >
+                {editingId === tooltip.id ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <Edit2 className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
 
-                <p className="text-muted-foreground line-clamp-3">
-                  {tooltip.content}
-                </p>
-              </div>
+            {/* Conteúdo (visualização) */}
+            {editingId !== tooltip.id && (
+              <p className="text-muted-foreground line-clamp-3">
+                {tooltip.content}
+              </p>
             )}
+
+            {/* Modo de Edição Colapsável */}
+            <Collapsible open={editingId === tooltip.id}>
+              <CollapsibleContent className="animate-accordion-down">
+                <div className="space-y-4 mt-4 pt-4 border-t border-primary/20">
+                  {/* Campo Header */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      HEADER
+                    </Label>
+                    <Input
+                      value={editForm.header}
+                      onChange={(e) => setEditForm({ ...editForm, header: e.target.value })}
+                      placeholder="Header do tooltip (opcional)"
+                      className="bg-background/50 border-2 border-blue-400/60 focus:border-blue-500"
+                    />
+                  </div>
+
+                  {/* Campo Título */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      TÍTULO
+                    </Label>
+                    <Input
+                      value={editForm.title}
+                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                      placeholder="Título do tooltip"
+                      className="bg-background/50 border-2 border-blue-400/60 focus:border-blue-500"
+                    />
+                  </div>
+
+                  {/* Campo Conteúdo */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">
+                      CONTEÚDO
+                    </Label>
+                    <Textarea
+                      value={editForm.content}
+                      onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                      rows={6}
+                      placeholder="Conteúdo do tooltip"
+                      className="bg-background/50 border-2 border-blue-400/60 focus:border-blue-500 resize-none"
+                    />
+                  </div>
+
+                  {/* Botões de Ação */}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleSave(tooltip.id)}
+                      className="gap-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      Salvar
+                    </Button>
+                    <Button variant="ghost" onClick={handleCancel} className="gap-2">
+                      <X className="w-4 h-4" />
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </Card>
         ))}
       </div>
