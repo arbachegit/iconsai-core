@@ -379,10 +379,10 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
             
             {/* Vimeo Video */}
             {vimeoUrl && (
-              <div className="mb-4 rounded-lg overflow-hidden border border-primary/20 relative w-full" style={{ paddingBottom: '56.25%' }}>
+              <div className="mb-4 rounded-lg overflow-hidden border border-primary/20 aspect-video flex-shrink-0">
                 <iframe
                   src={vimeoUrl}
-                  className="absolute top-0 left-0 w-full h-full"
+                  className="w-full h-full"
                   frameBorder="0"
                   allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
                   allowFullScreen
@@ -496,10 +496,10 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
           
           {/* Vimeo Video */}
           {vimeoUrl && (
-            <div className="mb-4 rounded-lg overflow-hidden border border-primary/20 relative w-full" style={{ paddingBottom: '56.25%' }}>
+            <div className="mb-4 rounded-lg overflow-hidden border border-primary/20 aspect-video flex-shrink-0">
               <iframe
                 src={vimeoUrl}
-                className="absolute top-0 left-0 w-full h-full"
+                className="w-full h-full"
                 frameBorder="0"
                 allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
                 allowFullScreen
