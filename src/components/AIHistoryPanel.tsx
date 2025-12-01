@@ -505,13 +505,15 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
 
                     <div className="flex gap-3">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-[10px] font-mono text-muted-foreground">{event.date}</span>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-bold font-mono text-primary bg-primary/10 px-2 py-0.5 rounded">
+                            {event.date}
+                          </span>
                         </div>
-                        <h3 className="text-base font-bold text-primary mb-1">
+                        <h3 className="text-lg font-bold text-primary mb-1">
                           {event.title}
                         </h3>
-                        <p className="text-xs text-muted-foreground leading-snug">
+                        <p className="text-sm text-muted-foreground leading-snug">
                           {event.description}
                         </p>
                       </div>
