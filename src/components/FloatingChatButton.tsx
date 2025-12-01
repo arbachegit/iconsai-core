@@ -29,8 +29,19 @@ export const FloatingChatButton = () => {
           <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
           <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 via-secondary/30 to-accent/30 blur-xl" />
           
+          {/* Tooltip animado - slide da direita para esquerda */}
+          <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 pointer-events-none">
+            <div className="bg-gradient-to-r from-primary to-secondary text-primary-foreground px-4 py-2 rounded-lg whitespace-nowrap font-medium shadow-lg">
+              {t('floatingButton.tooltip')}
+            </div>
+            {/* Seta apontando para o botão */}
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full">
+              <div className="border-8 border-transparent border-l-secondary" />
+            </div>
+          </div>
+
           {/* Icon */}
-          <MessageCircle className="w-10 h-10 relative z-10 text-primary-foreground" />
+          <MessageCircle className="w-12 h-12 relative z-10 text-primary-foreground" />
           
           {/* Green pulsating dot with sequential frequency waves */}
           <div className="absolute -top-1 -right-1 z-20 w-8 h-8 flex items-center justify-center">
