@@ -38,7 +38,7 @@ const TIMELINE_EVENTS = [
 export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const [position, setPosition] = useState({ x: window.innerWidth / 2 - 400, y: 50 });
+  const [position, setPosition] = useState({ x: window.innerWidth / 2 - 550, y: 50 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isPlaying, setIsPlaying] = useState(false);
@@ -389,7 +389,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
       />
       
       <Card
-        className="fixed z-50 w-[800px] h-[80vh] overflow-hidden bg-background/95 backdrop-blur-md border-primary/20 shadow-2xl animate-scale-in"
+        className="fixed z-50 w-[1100px] h-[85vh] overflow-hidden bg-background/95 backdrop-blur-md border-primary/20 shadow-2xl animate-scale-in"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
@@ -491,14 +491,14 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                     key={event.id}
                     ref={(el) => (eventRefs.current[event.id] = el)}
                     className={cn(
-                      "relative pl-10 border-l-2 transition-all duration-500",
+                      "relative pl-16 border-l-2 transition-all duration-500",
                       currentEventId === event.id
                         ? "border-primary bg-primary/5 scale-[1.02]"
                         : "border-primary/30"
                     )}
                   >
                     <div
-                      className="absolute -left-5 top-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg bg-primary"
+                      className="absolute -left-7 top-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg bg-primary"
                     >
                       <Icon className="w-5 h-5 text-primary-foreground" />
                     </div>
