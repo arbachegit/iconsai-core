@@ -58,6 +58,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentEventId, setCurrentEventId] = useState("talos");
+  const [visibleBadges, setVisibleBadges] = useState<Set<string>>(new Set());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const eventRefs = useRef<Record<string, HTMLDivElement | null>>({});
   
@@ -224,6 +225,32 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
       }
     };
   }, []);
+
+  // Intersection Observer para detectar badges na tela (apenas desktop)
+  useEffect(() => {
+    if (isMobile) return; // Não usar no mobile
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const eventId = entry.target.getAttribute('data-event-id');
+            if (eventId) {
+              setVisibleBadges(prev => new Set([...prev, eventId]));
+            }
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+
+    // Observar todos os eventos
+    Object.values(eventRefs.current).forEach(ref => {
+      if (ref) observer.observe(ref);
+    });
+
+    return () => observer.disconnect();
+  }, [timelineData, isMobile]);
 
   // Listen for global stop audio event
   useEffect(() => {
@@ -511,6 +538,22 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
             )}
           </div>
 
+          {/* Indicador de progresso da timeline */}
+          <div className="px-4 py-3 border-t border-border/50 bg-muted/30 flex-shrink-0">
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-muted-foreground">Progresso da Timeline</span>
+              <span className="font-mono text-primary font-bold">
+                {visibleBadges.size} / {timelineData.length} eventos
+              </span>
+            </div>
+            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500 ease-out"
+                style={{ width: `${(visibleBadges.size / timelineData.length) * 100}%` }}
+              />
+            </div>
+          </div>
+
           <ScrollArea className="flex-1 min-h-0">
             <div className="space-y-3 pr-4 ml-8">
               {timelineData.map((event) => {
@@ -519,6 +562,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                   <div
                     key={event.id}
                     ref={(el) => (eventRefs.current[event.id] = el)}
+                    data-event-id={event.id}
                     className={cn(
                       "relative pl-10 border-l-2 transition-all duration-500 pb-2",
                       currentEventId === event.id
@@ -534,10 +578,15 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
 
                     <div className="flex gap-3">
                     <div className="flex-1">
-                      {/* Badge com data em fonte Typewriter */}
+                      {/* Badge com data em fonte Typewriter - 4x maior com animação */}
                       <Badge 
                         variant="outline" 
-                        className="mb-2 font-mono text-xs tracking-wider border-primary/50 bg-primary/5 text-primary"
+                        className={cn(
+                          "mb-3 font-mono text-xl tracking-widest px-5 py-2 border-primary/50 bg-primary/5 text-primary font-bold transition-all duration-700",
+                          visibleBadges.has(event.id) 
+                            ? "opacity-100 translate-y-0" 
+                            : "opacity-0 translate-y-4"
+                        )}
                       >
                         {event.date}
                       </Badge>
