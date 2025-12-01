@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, ChevronDown } from "lucide-react";
+import { ArrowRight, Sparkles, ChevronDown, Heart } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AIHistoryPanel } from "./AIHistoryPanel";
 import { useTranslation } from "react-i18next";
@@ -193,35 +193,43 @@ const HeroSection = () => {
             {t("hero.description")}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="lg"
-                    className="bg-gradient-primary hover:!bg-transparent hover:![background-image:linear-gradient(to_right,hsl(191_100%_50%/0.1),hsl(270_64%_58%/0.1),hsl(150_100%_50%/0.1))] hover:border hover:border-primary/50 hover:text-white transition-all duration-300 glow-effect hover:!shadow-none group"
-                    onClick={() =>
-                      document.querySelector("#knowyou")?.scrollIntoView({ behavior: "smooth" })
-                    }
-                  >
-                    {t("hero.ctaHealth")}
-                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[200px] bg-background/95 border-primary/30 text-center duration-300">
-                  <p>{t("hero.ctaHealthTooltip")}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+            <div className="self-center">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="lg"
+                      className="bg-gradient-primary hover:!bg-transparent hover:![background-image:linear-gradient(to_right,hsl(191_100%_50%/0.1),hsl(270_64%_58%/0.1),hsl(150_100%_50%/0.1))] hover:border hover:border-primary/50 hover:text-white transition-all duration-300 glow-effect hover:!shadow-none group"
+                      onClick={() =>
+                        document.querySelector("#knowyou")?.scrollIntoView({ behavior: "smooth" })
+                      }
+                    >
+                      <Heart className="mr-2 h-4 w-4" />
+                      {t("hero.ctaHealth")}
+                      <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[200px] bg-background/95 border-primary/30 text-center duration-300">
+                    <p>{t("hero.ctaHealthTooltip")}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             
-            <div className="flex flex-col items-center">
-              {/* Indicador "Comece por aqui" - posicionado diretamente acima do botão */}
-              <div className="flex flex-col items-center gap-0 mb-1">
+            <div className="flex flex-col items-center relative">
+              {/* Indicador "Comece por aqui" - animação sincronizada */}
+              <div className="flex flex-col items-center gap-0 mb-1 animate-bounce">
                 <span className="text-sm font-medium text-primary/80">
                   Comece por aqui
                 </span>
-                <ChevronDown className="w-5 h-5 text-primary animate-bounce" />
+                <ChevronDown className="w-5 h-5 text-primary" />
               </div>
+              
+              {/* Ondas expansivas atrás do botão */}
+              <span className="absolute inset-0 rounded-md border-2 border-primary/50 animate-expanding-waves pointer-events-none" />
+              <span className="absolute inset-0 rounded-md border-2 border-primary/30 animate-expanding-waves pointer-events-none" style={{ animationDelay: '0.5s' }} />
+              <span className="absolute inset-0 rounded-md border-2 border-primary/20 animate-expanding-waves pointer-events-none" style={{ animationDelay: '1s' }} />
               
               <TooltipProvider>
                 <Tooltip>
@@ -229,7 +237,7 @@ const HeroSection = () => {
                     <Button
                       size="lg"
                       variant="outline"
-                      className="relative border-primary/50 hover:border-transparent hover:bg-gradient-primary bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] animate-color-pulse"
+                      className="relative border-primary/50 hover:border-transparent hover:bg-gradient-primary bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 backdrop-blur-sm overflow-hidden group transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)]"
                       onClick={() => setIsHistoryOpen(true)}
                     >
                       <span className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-accent opacity-0 group-hover:opacity-20 transition-opacity duration-300" />

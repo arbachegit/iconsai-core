@@ -80,11 +80,26 @@ export default {
             boxShadow: "0 0 30px rgba(139, 92, 246, 0.5)",
           },
         },
+        "expanding-waves": {
+          "0%": {
+            transform: "scale(1)",
+            opacity: "0.6",
+          },
+          "50%": {
+            transform: "scale(1.05)",
+            opacity: "0.3",
+          },
+          "100%": {
+            transform: "scale(1.1)",
+            opacity: "0",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "color-pulse": "color-pulse 2s ease-in-out infinite",
+        "expanding-waves": "expanding-waves 2s ease-out infinite",
       },
     },
   },
