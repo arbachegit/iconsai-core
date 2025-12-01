@@ -258,14 +258,6 @@ export function useChatKnowYOU() {
                   return updated;
                 });
 
-                // Auto-play do áudio se habilitado
-                if (settings?.auto_play_audio) {
-                  const messageIndex = messages.length;
-                  setCurrentlyPlayingIndex(messageIndex);
-                  await audioPlayerRef.current.playAudioFromUrl(audioUrl);
-                  setCurrentlyPlayingIndex(null);
-                }
-
                 // Update analytics with audio play
                 updateSession({
                   session_id: sessionId,
@@ -340,14 +332,6 @@ export function useChatKnowYOU() {
               saveHistory(updated);
               return updated;
             });
-
-            // Auto-play do áudio se habilitado
-            if (settings?.auto_play_audio) {
-              const messageIndex = messages.length;
-              setCurrentlyPlayingIndex(messageIndex);
-              await audioPlayerRef.current.playAudioFromUrl(audioUrl);
-              setCurrentlyPlayingIndex(null);
-            }
 
             // Update analytics with audio play
             updateSession({
