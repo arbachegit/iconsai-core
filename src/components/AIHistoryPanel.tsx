@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Play, StopCircle, Download, FileDown, Shield, Radio, Cpu, KeyRound, MessageCircle, Network, GitBranch, Globe, Users, Brain, Sparkles, FileText, MessageSquare, Rocket, LucideIcon } from "lucide-react";
+import { X, Play, StopCircle, Download, FileDown, Shield, Radio, Cpu, KeyRound, MessageCircle, Network, GitBranch, Globe, Users, Brain, Sparkles, FileText, MessageSquare, Rocket, ChevronDown, LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -423,17 +423,27 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
             
             {/* Vimeo Video */}
             {vimeoUrl && (
-              <div className="mb-4 rounded-lg overflow-hidden border border-primary/20 aspect-video flex-shrink-0 max-h-[200px]">
-                <iframe
-                  id="vimeo-player"
-                  src={vimeoUrl}
-                  className="w-full h-full"
-                  frameBorder="0"
-                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
-                  allowFullScreen
-                  title="A história da IA"
-                />
-              </div>
+              <>
+                <div className="mb-2 rounded-lg overflow-hidden border border-primary/20 aspect-video flex-shrink-0">
+                  <iframe
+                    id="vimeo-player"
+                    src={vimeoUrl}
+                    className="w-full h-full"
+                    frameBorder="0"
+                    allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+                    allowFullScreen
+                    title="A história da IA"
+                  />
+                </div>
+                
+                {/* Indicador visual de scroll - Mobile */}
+                <div className="flex flex-col items-center mb-2 text-muted-foreground animate-bounce">
+                  <span className="text-xs font-medium">
+                    Deslize para ver a Timeline
+                  </span>
+                  <ChevronDown className="w-5 h-5 mt-1" />
+                </div>
+              </>
             )}
             
             {/* Badge Navigation */}
@@ -516,7 +526,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
       />
       
       <Card
-        className="fixed z-50 w-[1100px] h-[85vh] overflow-hidden bg-background/95 backdrop-blur-md border-primary/20 shadow-2xl animate-scale-in"
+        className="fixed z-50 w-[1100px] h-[85vh] overflow-y-auto bg-background/95 backdrop-blur-md border-primary/20 shadow-2xl animate-scale-in"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
@@ -524,126 +534,144 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
         }}
         onMouseDown={handleMouseDown}
       >
-        <div className="relative p-6 h-full flex flex-col">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="absolute top-4 right-4 z-10"
-          >
-            <X className="w-5 h-5" />
-          </Button>
-
-          <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-            {t('aiHistory.timeline.title')}
-          </h2>
-
-          {/* Separator */}
-          <Separator className="my-4 bg-primary/30" />
-          
-          {/* Vimeo Video */}
-          {vimeoUrl && (
-            <div className="mb-4 rounded-lg overflow-hidden border border-primary/20 aspect-video flex-shrink-0 max-h-[280px]">
-              <iframe
-                id="vimeo-player"
-                src={vimeoUrl}
-                className="w-full h-full"
-                frameBorder="0"
-                allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
-                allowFullScreen
-                title="A história da IA"
-              />
+        <div className="relative">
+          {/* Header - Sticky */}
+          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-primary/20">
+            <div className="flex items-center justify-between p-6 pb-3">
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+                  {t('aiHistory.timeline.title')}
+                </h2>
+                <Separator className="mt-2 bg-primary/30" />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="ml-4 hover:bg-destructive/20 hover:text-destructive"
+              >
+                <X className="w-5 h-5" />
+              </Button>
             </div>
-          )}
-
-          {/* Badge Navigation */}
-          <div className="flex items-center justify-center gap-2 mb-4 flex-wrap flex-shrink-0">
-            {timelineData.map((event) => {
-              const Icon = event.icon;
-              return (
-                <Badge
-                  key={event.id}
-                  variant={currentEventId === event.id ? "default" : "outline"}
-                  className="cursor-pointer whitespace-nowrap flex items-center gap-1"
-                  onClick={() => handleJumpToEvent(event.id)}
-                >
-                  <Icon className="w-3 h-3" />
-                  <span className="text-xs">{event.date}</span>
-                </Badge>
-              );
-            })}
           </div>
 
-          {/* Audio Controls */}
-          <div className="mb-4 p-4 rounded-lg bg-muted/50 border border-border flex-shrink-0">
-             <div className="flex items-center gap-3 mb-2">
-              <Button
-                onClick={handlePlayAudio}
-                disabled={isPlaying}
-                size="sm"
-                variant="outline"
-              >
-                <Play className="w-4 h-4 mr-2" />
-                {t('audio.play')}
-              </Button>
-              <Button
-                onClick={handleStopAudio}
-                disabled={!isPlaying}
-                size="sm"
-                variant="outline"
-              >
-                <StopCircle className="w-4 h-4 mr-2" />
-                {t('audio.stop')}
-              </Button>
-              <Button
-                onClick={handleDownloadAudio}
-                disabled={!audioRef.current}
-                size="sm"
-                variant="outline"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                {t('audio.download')}
-              </Button>
-              <Button
-                onClick={exportTimelineToPDF}
-                size="sm"
-                variant="outline"
-              >
-                <FileDown className="w-4 h-4 mr-2" />
-                PDF
-              </Button>
-            </div>
-            {duration > 0 && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all duration-300"
-                    style={{ width: `${(currentTime / duration) * 100}%` }}
+          {/* Video Section - Ocupa tela inicial */}
+          <div className="min-h-[60vh] flex flex-col px-6 pt-4">
+            {vimeoUrl && (
+              <>
+                <div className="flex-1 rounded-lg overflow-hidden border border-primary/20 min-h-[50vh]">
+                  <iframe
+                    id="vimeo-player"
+                    src={vimeoUrl}
+                    className="w-full h-full"
+                    frameBorder="0"
+                    allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+                    allowFullScreen
+                    title="A história da IA"
                   />
                 </div>
-                <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
-              </div>
+                
+                {/* Indicador visual de scroll */}
+                <div className="flex flex-col items-center mt-6 mb-4 text-muted-foreground animate-bounce">
+                  <span className="text-sm font-medium">
+                    Role para ver a Timeline
+                  </span>
+                  <ChevronDown className="w-6 h-6 mt-1" />
+                </div>
+              </>
             )}
           </div>
 
-          {/* Indicador de progresso da timeline */}
-          <div className="px-4 py-3 border-t border-border/50 bg-muted/30 flex-shrink-0">
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span className="text-muted-foreground">Progresso da Timeline</span>
-              <span className="font-mono text-primary font-bold">
-                {visibleBadges.size} / {timelineData.length} eventos
-              </span>
+          {/* Timeline Section - Aparece ao rolar */}
+          <div ref={timelineRef} className="px-6 pb-6 space-y-4">
+            {/* Badge Navigation */}
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              {timelineData.map((event) => {
+                const Icon = event.icon;
+                return (
+                  <Badge
+                    key={event.id}
+                    variant={currentEventId === event.id ? "default" : "outline"}
+                    className="cursor-pointer whitespace-nowrap flex items-center gap-1"
+                    onClick={() => handleJumpToEvent(event.id)}
+                  >
+                    <Icon className="w-3 h-3" />
+                    <span className="text-xs">{event.date}</span>
+                  </Badge>
+                );
+              })}
             </div>
-            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500 ease-out"
-                style={{ width: `${(visibleBadges.size / timelineData.length) * 100}%` }}
-              />
-            </div>
-          </div>
 
-          <ScrollArea ref={timelineRef} className="flex-1 min-h-0">
-            <div className="space-y-3 pr-4 ml-8">
+            {/* Audio Controls */}
+            <div className="p-4 rounded-lg bg-muted/50 border border-border">
+              <div className="flex items-center gap-3 mb-2">
+                <Button
+                  onClick={handlePlayAudio}
+                  disabled={isPlaying}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  {t('audio.play')}
+                </Button>
+                <Button
+                  onClick={handleStopAudio}
+                  disabled={!isPlaying}
+                  size="sm"
+                  variant="outline"
+                >
+                  <StopCircle className="w-4 h-4 mr-2" />
+                  {t('audio.stop')}
+                </Button>
+                <Button
+                  onClick={handleDownloadAudio}
+                  disabled={!audioRef.current}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {t('audio.download')}
+                </Button>
+                <Button
+                  onClick={exportTimelineToPDF}
+                  size="sm"
+                  variant="outline"
+                >
+                  <FileDown className="w-4 h-4 mr-2" />
+                  PDF
+                </Button>
+              </div>
+              {duration > 0 && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-300"
+                      style={{ width: `${(currentTime / duration) * 100}%` }}
+                    />
+                  </div>
+                  <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Indicador de progresso da timeline */}
+            <div className="px-4 py-3 border-t border-border/50 bg-muted/30 rounded-lg">
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Progresso da Timeline</span>
+                <span className="font-mono text-primary font-bold">
+                  {visibleBadges.size} / {timelineData.length} eventos
+                </span>
+              </div>
+              <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500 ease-out"
+                  style={{ width: `${(visibleBadges.size / timelineData.length) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Timeline Events */}
+            <div className="space-y-3 ml-8">
               {timelineData.map((event) => {
                 const Icon = event.icon;
                 return (
@@ -665,17 +693,17 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                     </div>
 
                     <div className="flex gap-3">
-                    <div className="flex-1">
-                      {/* Badge com data em fonte Typewriter - 2x maior com máxima visibilidade */}
-                      <Badge 
-                        variant="outline" 
-                        className="mb-4 font-mono text-xs tracking-widest px-2.5 py-1 border-2 border-primary bg-primary/40 !text-white font-extrabold shadow-lg"
-                      >
-                        {event.date}
-                      </Badge>
-                      <h3 className="text-lg font-bold text-primary mb-1">
-                        {event.title}
-                      </h3>
+                      <div className="flex-1">
+                        {/* Badge com data em fonte Typewriter - 2x maior com máxima visibilidade */}
+                        <Badge 
+                          variant="outline" 
+                          className="mb-4 font-mono text-xs tracking-widest px-2.5 py-1 border-2 border-primary bg-primary/40 !text-white font-extrabold shadow-lg"
+                        >
+                          {event.date}
+                        </Badge>
+                        <h3 className="text-lg font-bold text-primary mb-1">
+                          {event.title}
+                        </h3>
                         <p className="text-sm text-muted-foreground leading-snug">
                           {event.description}
                         </p>
@@ -705,7 +733,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                 );
               })}
             </div>
-          </ScrollArea>
+          </div>
         </div>
       </Card>
     </>
