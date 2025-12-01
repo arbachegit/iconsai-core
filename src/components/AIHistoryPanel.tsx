@@ -582,7 +582,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                       <Badge 
                         variant="outline" 
                         className={cn(
-                          "mb-4 font-mono text-4xl tracking-widest px-8 py-3 border-2 border-primary bg-primary/20 text-primary font-extrabold shadow-lg transition-all duration-700",
+                          "mb-4 font-mono !text-5xl tracking-widest !px-10 !py-4 border-2 border-primary bg-primary/40 !text-white font-extrabold shadow-lg transition-all duration-700",
                           visibleBadges.has(event.id) 
                             ? "opacity-100 translate-y-0" 
                             : "opacity-0 translate-y-4"
