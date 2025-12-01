@@ -194,28 +194,26 @@ const HeroSection = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-            <div className="self-center">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="lg"
-                      className="bg-gradient-primary hover:!bg-transparent hover:![background-image:linear-gradient(to_right,hsl(191_100%_50%/0.1),hsl(270_64%_58%/0.1),hsl(150_100%_50%/0.1))] hover:border hover:border-primary/50 hover:text-white transition-all duration-300 glow-effect hover:!shadow-none group"
-                      onClick={() =>
-                        document.querySelector("#knowyou")?.scrollIntoView({ behavior: "smooth" })
-                      }
-                    >
-                      <Heart className="mr-2 h-4 w-4" />
-                      {t("hero.ctaHealth")}
-                      <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[200px] bg-background/95 border-primary/30 text-center duration-300">
-                    <p>{t("hero.ctaHealthTooltip")}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="lg"
+                    className="bg-gradient-primary hover:!bg-transparent hover:![background-image:linear-gradient(to_right,hsl(191_100%_50%/0.1),hsl(270_64%_58%/0.1),hsl(150_100%_50%/0.1))] hover:border hover:border-primary/50 hover:text-white transition-all duration-300 glow-effect hover:!shadow-none group"
+                    onClick={() =>
+                      document.querySelector("#knowyou")?.scrollIntoView({ behavior: "smooth" })
+                    }
+                  >
+                    <Heart className="mr-2 h-4 w-4" />
+                    {t("hero.ctaHealth")}
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[200px] bg-background/95 border-primary/30 text-center duration-300">
+                  <p>{t("hero.ctaHealthTooltip")}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             
             <div className="flex flex-col items-center relative">
               {/* Indicador "Comece por aqui" - animação sincronizada */}
