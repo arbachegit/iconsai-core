@@ -1,6 +1,7 @@
-import { HelpCircle } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 import { useState } from "react";
 import { DraggablePreviewPanel } from "./DraggablePreviewPanel";
+import { Badge } from "@/components/ui/badge";
 
 interface TooltipIconProps {
   sectionId: string;
@@ -13,12 +14,19 @@ export const TooltipIcon = ({ sectionId }: TooltipIconProps) => {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="relative ml-2 w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/30 flex items-center justify-center transition-all hover:scale-110 group"
+        className="relative ml-2 group"
         aria-label="Abrir informações"
       >
-        <HelpCircle className="w-4 h-4 text-primary" />
+        {/* Badge com Lightbulb + "saiba mais" */}
+        <Badge 
+          variant="outline" 
+          className="font-mono text-xs tracking-widest px-2.5 py-1 border-2 border-primary bg-primary/40 text-white font-semibold transition-all duration-300 group-hover:bg-cyan-500 group-hover:border-cyan-500 group-hover:text-white flex items-center gap-1.5"
+        >
+          <Lightbulb className="w-3.5 h-3.5 transition-colors duration-300" />
+          saiba mais
+        </Badge>
         
-        {/* Green pulsating dot - positioned externally */}
+        {/* Bolinha verde pulsante - posicionada externamente tangenciando o badge */}
         <div className="absolute -top-1 -right-1 z-20">
           <div className="relative">
             <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/50" />
