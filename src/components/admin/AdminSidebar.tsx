@@ -94,7 +94,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         { id: "content-management" as TabType, label: "Seções Landing Page", icon: FileText },
         { id: "tooltips" as TabType, label: "Tooltips", icon: MessageCircle },
         { id: "images" as TabType, label: "Cache de Imagens", icon: Image },
-        { id: "youtube" as TabType, label: "YouTube Preload", icon: Youtube },
+        { id: "youtube" as TabType, label: "Inserir Vídeos", icon: Youtube },
       ]
     },
     {
