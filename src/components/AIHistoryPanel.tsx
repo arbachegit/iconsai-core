@@ -424,7 +424,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
             {/* Vimeo Video */}
             {vimeoUrl && (
               <>
-                <div className="mb-2 rounded-lg overflow-hidden border border-primary/20 h-[40vh]">
+                <div className="mb-2 rounded-lg overflow-hidden border border-primary/20 aspect-video">
                   <iframe
                     id="vimeo-player"
                     src={vimeoUrl}
@@ -556,10 +556,10 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
           </div>
 
           {/* Video Section - Ocupa tela inicial */}
-          <div className="flex flex-col px-6 pt-4">
+          <div className="flex flex-col items-center px-6 pt-4">
             {vimeoUrl && (
               <>
-                <div className="rounded-lg overflow-hidden border border-primary/20 h-[55vh]">
+                <div className="w-full max-w-4xl rounded-lg overflow-hidden border border-primary/20 aspect-video">
                   <iframe
                     id="vimeo-player"
                     src={vimeoUrl}
