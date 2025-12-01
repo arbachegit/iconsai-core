@@ -57,8 +57,6 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [eventImages, setEventImages] = useState<Record<string, string>>({});
-  const [loadingImages, setLoadingImages] = useState(true);
   const [currentEventId, setCurrentEventId] = useState("talos");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const eventRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -190,37 +188,31 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
     endTime: (idx + 1) * 20
   }));
 
-  // Carregar imagens dos eventos (executar apenas UMA VEZ)
-  useEffect(() => {
-    const loadImages = async () => {
-      if (!dbEvents || dbEvents.length === 0) return;
+  // Buscar imagens diretamente do banco (1 query em vez de 14 Edge Function calls)
+  const { data: cachedImages, isLoading: loadingImages } = useQuery({
+    queryKey: ['timeline-history-images'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('generated_images')
+        .select('section_id, image_url')
+        .like('section_id', 'history-%');
       
-      setLoadingImages(true);
+      if (error) throw error;
+      
+      // Converter para Record<eventId, imageUrl>
       const images: Record<string, string> = {};
+      data?.forEach(img => {
+        const eventId = img.section_id.replace('history-', '');
+        images[eventId] = img.image_url;
+      });
+      
+      return images;
+    },
+    staleTime: 1000 * 60 * 10, // Cache por 10 minutos
+  });
 
-      for (const event of dbEvents) {
-        const eventId = getEventId(event.section_id);
-        try {
-          const { data, error } = await supabase.functions.invoke('generate-history-image', {
-            body: { eraId: eventId }
-          });
-
-          if (error) throw error;
-          if (data?.imageUrl) {
-            images[eventId] = data.imageUrl;
-            console.log(`Evento ${eventId}: ${data.fromCache ? 'cache' : 'gerado'}`);
-          }
-        } catch (error) {
-          console.error(`Erro ao carregar imagem do evento ${eventId}:`, error);
-        }
-      }
-
-      setEventImages(images);
-      setLoadingImages(false);
-    };
-
-    loadImages();
-  }, [dbEvents]); // Rodar quando dbEvents carregar
+  // Derivar eventImages do cache
+  const eventImages = cachedImages || {};
   
   // Cleanup audio on component unmount
   useEffect(() => {
