@@ -31,7 +31,7 @@ export function FloatingAudioPlayer({
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="fixed bottom-24 right-4 z-50 bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-4 flex items-center gap-3 animate-in slide-in-from-bottom min-w-[280px]">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-4 flex items-center gap-3 animate-in slide-in-from-bottom min-w-[300px]">
       <div className="flex-1 flex flex-col gap-2">
         <Progress value={progress} className="h-1" />
         <span className="text-xs text-muted-foreground">
