@@ -474,8 +474,8 @@ export function ChatScopeConfigTab() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Volume2 className="h-5 w-5" />
-            📚 Biblioteca de Pronúncias
+            <BookOpen className="h-5 w-5" />
+            Biblioteca de Pronúncias
           </CardTitle>
           <CardDescription>
             Configure pronúncias fonéticas para TTS de cada chat
