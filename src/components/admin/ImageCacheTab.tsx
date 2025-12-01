@@ -45,6 +45,7 @@ export const ImageCacheTab = () => {
   const [isSectionsOpen, setIsSectionsOpen] = useState(true);
   const [isTimelineOpen, setIsTimelineOpen] = useState(true);
   const [isTooltipsOpen, setIsTooltipsOpen] = useState(true);
+  const [optimizingImage, setOptimizingImage] = useState<string | null>(null);
 
   const { data: existingImages } = useQuery({
     queryKey: ['section-images-admin'],
@@ -273,6 +274,71 @@ export const ImageCacheTab = () => {
         description: error.message,
         variant: "destructive",
       });
+    }
+  });
+
+  const optimizeImageMutation = useMutation({
+    mutationFn: async ({ sectionId, bucket }: { sectionId: string; bucket: 'timeline-images' | 'content-images' }) => {
+      const { data: image } = await supabase
+        .from('generated_images')
+        .select('image_url')
+        .eq('section_id', sectionId)
+        .single();
+
+      if (!image?.image_url || !image.image_url.startsWith('data:image')) {
+        throw new Error('Imagem já está otimizada ou não existe');
+      }
+
+      const base64Data = image.image_url.replace(/^data:image\/\w+;base64,/, '');
+      const binaryStr = atob(base64Data);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+
+      const fileName = `${sectionId}.webp`;
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, bytes, {
+          contentType: 'image/webp',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from('generated_images')
+        .update({ 
+          image_url: publicUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('section_id', sectionId);
+
+      if (updateError) throw updateError;
+
+      return publicUrl;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Imagem otimizada",
+        description: "Imagem convertida para WebP e salva no Storage.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['section-images-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['timeline-images-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['tooltip-images-admin'] });
+      setOptimizingImage(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro na otimização",
+        description: error.message,
+        variant: "destructive",
+      });
+      setOptimizingImage(null);
     }
   });
 
@@ -526,6 +592,30 @@ export const ImageCacheTab = () => {
                             )}
                             <p><span className="font-medium">Status:</span> {getImageAuditInfo(existingImage.image_url).status}</p>
                           </div>
+                          {!getImageAuditInfo(existingImage.image_url).isOptimized && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                setOptimizingImage(section.id);
+                                optimizeImageMutation.mutate({ 
+                                  sectionId: section.id, 
+                                  bucket: 'content-images' 
+                                });
+                              }}
+                              disabled={optimizingImage === section.id}
+                              className="mt-2 w-full"
+                            >
+                              {optimizingImage === section.id ? (
+                                <>
+                                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                  Otimizando...
+                                </>
+                              ) : (
+                                '⚡ Otimizar para WebP'
+                              )}
+                            </Button>
+                          )}
                         </div>
 
                         <div className="flex gap-2">
@@ -657,6 +747,30 @@ export const ImageCacheTab = () => {
                             )}
                             <p><span className="font-medium">Status:</span> {getImageAuditInfo(existingImage.image_url).status}</p>
                           </div>
+                          {!getImageAuditInfo(existingImage.image_url).isOptimized && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                setOptimizingImage(`history-${event.id}`);
+                                optimizeImageMutation.mutate({ 
+                                  sectionId: `history-${event.id}`, 
+                                  bucket: 'timeline-images' 
+                                });
+                              }}
+                              disabled={optimizingImage === `history-${event.id}`}
+                              className="mt-2 w-full"
+                            >
+                              {optimizingImage === `history-${event.id}` ? (
+                                <>
+                                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                  Otimizando...
+                                </>
+                              ) : (
+                                '⚡ Otimizar para WebP'
+                              )}
+                            </Button>
+                          )}
                         </div>
 
                         <div className="flex gap-2">
@@ -788,6 +902,30 @@ export const ImageCacheTab = () => {
                                 )}
                                 <p><span className="font-medium">Status:</span> {getImageAuditInfo(existingImage.image_url).status}</p>
                               </div>
+                              {!getImageAuditInfo(existingImage.image_url).isOptimized && (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    setOptimizingImage(`tooltip-${section.id}`);
+                                    optimizeImageMutation.mutate({ 
+                                      sectionId: `tooltip-${section.id}`, 
+                                      bucket: 'content-images' 
+                                    });
+                                  }}
+                                  disabled={optimizingImage === `tooltip-${section.id}`}
+                                  className="mt-2 w-full"
+                                >
+                                  {optimizingImage === `tooltip-${section.id}` ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                      Otimizando...
+                                    </>
+                                  ) : (
+                                    '⚡ Otimizar para WebP'
+                                  )}
+                                </Button>
+                              )}
                             </div>
 
                             <div className="flex gap-2">
