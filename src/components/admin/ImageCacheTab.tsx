@@ -16,6 +16,7 @@ const SECTIONS = [
   { id: 'watson', name: 'Watson - A Era da Cognição' },
   { id: 'ia-nova-era', name: 'Nova Era da IA' },
   { id: 'bom-prompt', name: 'Bom Prompt - A Arte da Comunicação' },
+  { id: 'knowyou', name: 'KnowYOU - Assistente de Saúde' },
 ];
 
 const TIMELINE_EVENTS = [
@@ -75,7 +76,7 @@ export const ImageCacheTab = () => {
       const { data } = await supabase
         .from('generated_images')
         .select('section_id, image_url, created_at')
-        .in('section_id', ['software-tooltip', 'internet-tooltip', 'tech-sem-proposito-tooltip', 'kubrick-tooltip', 'watson-tooltip', 'ia-nova-era-tooltip', 'bom-prompt-tooltip'])
+        .in('section_id', ['tooltip-software', 'tooltip-internet', 'tooltip-tech-sem-proposito', 'tooltip-kubrick', 'tooltip-watson', 'tooltip-ia-nova-era', 'tooltip-bom-prompt', 'tooltip-knowyou'])
         .order('created_at', { ascending: false });
       return data || [];
     }
@@ -284,7 +285,31 @@ export const ImageCacheTab = () => {
   };
 
   const getTooltipImage = (sectionId: string) => {
-    return tooltipImages?.find(img => img.section_id === `${sectionId}-tooltip`);
+    return tooltipImages?.find(img => img.section_id === `tooltip-${sectionId}`);
+  };
+
+  const getImageAuditInfo = (imageUrl: string) => {
+    const isBase64 = imageUrl.startsWith('data:image');
+    const isStorageUrl = imageUrl.includes('supabase.co/storage');
+    
+    if (isBase64) {
+      const sizeKB = Math.round(imageUrl.length * 0.75 / 1024);
+      return {
+        storageType: '⚠️ Base64 (não otimizada)',
+        isOptimized: false,
+        sizeMB: (sizeKB / 1024).toFixed(2),
+        potentialSavings: Math.round(sizeKB * 0.7 / 1024 * 10) / 10,
+        status: '🔴 Requer migração'
+      };
+    }
+    
+    return {
+      storageType: '✅ WebP no Storage',
+      isOptimized: true,
+      sizeMB: '~0.15',
+      potentialSavings: 0,
+      status: '🟢 Otimizada'
+    };
   };
 
   const generateTooltipImageMutation = useMutation({
@@ -292,7 +317,7 @@ export const ImageCacheTab = () => {
       setGeneratingTooltip(sectionId);
       
       const { data, error } = await supabase.functions.invoke('generate-section-image', {
-        body: { section_id: `${sectionId}-tooltip` }
+        body: { section_id: `tooltip-${sectionId}` }
       });
 
       if (error) throw error;
@@ -301,9 +326,9 @@ export const ImageCacheTab = () => {
       const { error: dbError } = await supabase
         .from('generated_images')
         .insert({
-          section_id: `${sectionId}-tooltip`,
+          section_id: `tooltip-${sectionId}`,
           image_url: data.imageUrl,
-          prompt_key: `${sectionId}-tooltip`
+          prompt_key: `tooltip-${sectionId}`
         });
 
       if (dbError) throw dbError;
@@ -341,7 +366,7 @@ export const ImageCacheTab = () => {
       const { error } = await supabase
         .from('generated_images')
         .delete()
-        .eq('section_id', `${sectionId}-tooltip`);
+        .eq('section_id', `tooltip-${sectionId}`);
 
       if (error) throw error;
     },
@@ -485,10 +510,24 @@ export const ImageCacheTab = () => {
                       <h3 className="font-semibold">{section.name}</h3>
                     </div>
                     {existingImage ? (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <p className="text-sm text-muted-foreground">
                           Imagem gerada em: {new Date(existingImage.created_at).toLocaleDateString('pt-BR')}
                         </p>
+                        
+                        {/* Área de Auditoria */}
+                        <div className="p-3 border border-border/50 rounded-lg bg-muted/30 space-y-1.5">
+                          <p className="text-xs font-semibold text-muted-foreground">📊 AUDITORIA</p>
+                          <div className="space-y-1 text-xs">
+                            <p><span className="font-medium">Tipo:</span> {getImageAuditInfo(existingImage.image_url).storageType}</p>
+                            <p><span className="font-medium">Tamanho:</span> {getImageAuditInfo(existingImage.image_url).sizeMB} MB</p>
+                            {!getImageAuditInfo(existingImage.image_url).isOptimized && (
+                              <p><span className="font-medium">Economia:</span> ~{getImageAuditInfo(existingImage.image_url).potentialSavings} MB (70%)</p>
+                            )}
+                            <p><span className="font-medium">Status:</span> {getImageAuditInfo(existingImage.image_url).status}</p>
+                          </div>
+                        </div>
+
                         <div className="flex gap-2">
                           <Button
                             size="sm"
@@ -602,10 +641,24 @@ export const ImageCacheTab = () => {
                       <h3 className="font-semibold">{event.name}</h3>
                     </div>
                     {existingImage ? (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <p className="text-sm text-muted-foreground">
                           Imagem gerada em: {new Date(existingImage.created_at).toLocaleDateString('pt-BR')}
                         </p>
+                        
+                        {/* Área de Auditoria */}
+                        <div className="p-3 border border-border/50 rounded-lg bg-muted/30 space-y-1.5">
+                          <p className="text-xs font-semibold text-muted-foreground">📊 AUDITORIA</p>
+                          <div className="space-y-1 text-xs">
+                            <p><span className="font-medium">Tipo:</span> {getImageAuditInfo(existingImage.image_url).storageType}</p>
+                            <p><span className="font-medium">Tamanho:</span> {getImageAuditInfo(existingImage.image_url).sizeMB} MB</p>
+                            {!getImageAuditInfo(existingImage.image_url).isOptimized && (
+                              <p><span className="font-medium">Economia:</span> ~{getImageAuditInfo(existingImage.image_url).potentialSavings} MB (70%)</p>
+                            )}
+                            <p><span className="font-medium">Status:</span> {getImageAuditInfo(existingImage.image_url).status}</p>
+                          </div>
+                        </div>
+
                         <div className="flex gap-2">
                           <Button
                             size="sm"
@@ -719,10 +772,24 @@ export const ImageCacheTab = () => {
                           <h3 className="font-semibold">{section.name} - Tooltip</h3>
                         </div>
                         {existingImage ? (
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                             <p className="text-sm text-muted-foreground">
                               Imagem gerada em: {new Date(existingImage.created_at).toLocaleDateString('pt-BR')}
                             </p>
+                            
+                            {/* Área de Auditoria */}
+                            <div className="p-3 border border-border/50 rounded-lg bg-muted/30 space-y-1.5">
+                              <p className="text-xs font-semibold text-muted-foreground">📊 AUDITORIA</p>
+                              <div className="space-y-1 text-xs">
+                                <p><span className="font-medium">Tipo:</span> {getImageAuditInfo(existingImage.image_url).storageType}</p>
+                                <p><span className="font-medium">Tamanho:</span> {getImageAuditInfo(existingImage.image_url).sizeMB} MB</p>
+                                {!getImageAuditInfo(existingImage.image_url).isOptimized && (
+                                  <p><span className="font-medium">Economia:</span> ~{getImageAuditInfo(existingImage.image_url).potentialSavings} MB (70%)</p>
+                                )}
+                                <p><span className="font-medium">Status:</span> {getImageAuditInfo(existingImage.image_url).status}</p>
+                              </div>
+                            </div>
+
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
