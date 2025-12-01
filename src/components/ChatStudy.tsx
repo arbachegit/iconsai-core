@@ -585,6 +585,7 @@ export default function ChatStudy() {
                     audioUrl={message.audioUrl}
                     imageUrl={message.imageUrl}
                     isPlaying={currentlyPlayingIndex === index}
+                    isGeneratingAudio={isGeneratingAudio}
                     currentTime={audioStates[index]?.currentTime}
                     duration={audioStates[index]?.duration}
                     timestamp={message.timestamp}

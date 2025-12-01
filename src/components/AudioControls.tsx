@@ -9,6 +9,7 @@ interface AudioControlsProps {
   audioUrl?: string;
   imageUrl?: string;
   isPlaying: boolean;
+  isGeneratingAudio?: boolean;
   currentTime?: number;
   duration?: number;
   timestamp?: Date;
@@ -25,6 +26,7 @@ export function AudioControls({
   audioUrl,
   imageUrl,
   isPlaying,
+  isGeneratingAudio = false,
   currentTime = 0,
   duration = 0,
   timestamp,
@@ -83,7 +85,7 @@ export function AudioControls({
             onClick={onPlay}
             className="h-7 w-7 p-0"
             title={t("chat.play")}
-            disabled={isPlaying}
+            disabled={isPlaying || isGeneratingAudio}
           >
             <Play className="h-3.5 w-3.5" />
           </Button>
