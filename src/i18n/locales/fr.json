@@ -101,6 +101,61 @@
   "aiHistory": {
     "title": "L'Histoire de l'Intelligence Artificielle",
     "close": "Fermer",
+    "timeline": {
+      "title": "La Chronologie Définitive: De Talos à la Fièvre de l'IA",
+      "talos": {
+        "title": "Talos, le Géant de Bronze",
+        "description": "Concept initial d'automate (machine autonome) et système de protection automatisé dans la mythologie grecque. L'idée de quelque chose de non-vivant qui agit de manière autonome."
+      },
+      "turing-machine": {
+        "title": "Machine de Turing",
+        "description": "Alan Turing établit les fondements théoriques de l'informatique, décrivant le modèle abstrait d'un ordinateur universel capable de résoudre tout problème calculable."
+      },
+      "enigma": {
+        "title": "Déchiffrage du Code Enigma",
+        "description": "Alan Turing utilise des machines précurseurs des ordinateurs numériques (Bombes) pour déchiffrer le cryptage allemand, reliant les machines logiques à la sécurité de l'information."
+      },
+      "turing-test": {
+        "title": "Test de Turing",
+        "description": "Alan Turing propose le 'Jeu de l'imitation', qui devient l'objectif philosophique de l'Intelligence Artificielle: créer des machines capables de converser comme des humains."
+      },
+      "arpanet": {
+        "title": "ARPANET - Première Connexion",
+        "description": "L'embryon d'Internet, utilisant la commutation de paquets pour créer un réseau décentralisé et résistant aux pannes. Premier message envoyé entre ordinateurs."
+      },
+      "tcpip": {
+        "title": "Concept de TCP/IP",
+        "description": "Vinton Cerf et Robert Kahn établissent le protocole TCP/IP, le langage fondamental qui permet la communication globale entre réseaux hétérogènes."
+      },
+      "www": {
+        "title": "World Wide Web (WWW)",
+        "description": "Tim Berners-Lee propose le système hypertexte (liens), rendant Internet accessible et navigable au grand public via des navigateurs web."
+      },
+      "social": {
+        "title": "Facebook et Orkut - Web 2.0",
+        "description": "Début du Web 2.0, axé sur l'interaction sociale et le contenu généré par les utilisateurs. Les réseaux sociaux transforment notre façon de communiquer en ligne."
+      },
+      "watson": {
+        "title": "IBM Watson gagne Jeopardy!",
+        "description": "Le superordinateur Watson d'IBM bat des champions humains à Jeopardy!, démontrant la capacité de l'IA à traiter le langage naturel et les connaissances complexes en temps réel."
+      },
+      "openai": {
+        "title": "Fondation d'OpenAI",
+        "description": "Organisation créée dans le but de garantir que l'Intelligence Artificielle Générale (AGI) profite à toute l'humanité, en privilégiant la sécurité et l'éthique."
+      },
+      "gpt3": {
+        "title": "Lancement de GPT-3",
+        "description": "Le modèle de langage génère des textes impossibles à distinguer de textes écrits par des humains. Révolutionne le traitement du langage naturel et stimule la recherche sur les Large Language Models."
+      },
+      "chatgpt": {
+        "title": "Lancement de ChatGPT",
+        "description": "L'interface de chat GPT-3.5 devient un phénomène viral. Marque le début de la 'Fièvre de l'IA', faisant de l'IA générative un outil de consommation de masse."
+      },
+      "current": {
+        "title": "Web 3.0, Veo et LLMs",
+        "description": "Consolidation de l'IA générative (LLMs comme Gemini et GPT-4), outils de création vidéo comme Veo et expansion de l'Internet des Objets. L'IA devient une partie essentielle de l'infrastructure Internet."
+      }
+    },
     "eras": {
       "dream": {
         "title": "Le Rêve (Avant 1950)",

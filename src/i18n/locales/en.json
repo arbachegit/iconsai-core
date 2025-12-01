@@ -101,6 +101,61 @@
   "aiHistory": {
     "title": "The History of Artificial Intelligence",
     "close": "Close",
+    "timeline": {
+      "title": "The Definitive Timeline: From Talos to the AI Fever",
+      "talos": {
+        "title": "Talos, the Bronze Giant",
+        "description": "Initial concept of automaton (autonomous machine) and automated protection system in Greek mythology. The idea of something non-living that acts autonomously."
+      },
+      "turing-machine": {
+        "title": "Turing Machine",
+        "description": "Alan Turing establishes the theoretical foundation of computing, describing the abstract model of a universal computer capable of solving any computable problem."
+      },
+      "enigma": {
+        "title": "Breaking the Enigma Code",
+        "description": "Alan Turing uses precursor machines to digital computers (Bombes) to decipher German encryption, linking logical machines to information security."
+      },
+      "turing-test": {
+        "title": "Turing Test",
+        "description": "Alan Turing proposes the 'Imitation Game', which becomes the philosophical goal of Artificial Intelligence: creating machines that can converse like humans."
+      },
+      "arpanet": {
+        "title": "ARPANET - First Connection",
+        "description": "The embryo of the Internet, using packet switching to create a decentralized and fault-resistant network. First message sent between computers."
+      },
+      "tcpip": {
+        "title": "TCP/IP Concept",
+        "description": "Vinton Cerf and Robert Kahn establish the TCP/IP protocol, the fundamental language that enables global communication between heterogeneous networks."
+      },
+      "www": {
+        "title": "World Wide Web (WWW)",
+        "description": "Tim Berners-Lee proposes the hypertext system (links), making the Internet accessible and navigable to the general public through web browsers."
+      },
+      "social": {
+        "title": "Facebook and Orkut - Web 2.0",
+        "description": "Beginning of Web 2.0, focused on social interaction and user-generated content. Social networks transform how we communicate online."
+      },
+      "watson": {
+        "title": "IBM Watson wins Jeopardy!",
+        "description": "IBM's Watson supercomputer defeats human champions on Jeopardy!, demonstrating AI's ability to process Natural Language and complex knowledge in real-time."
+      },
+      "openai": {
+        "title": "OpenAI Foundation",
+        "description": "Organization created with the goal of ensuring that Artificial General Intelligence (AGI) benefits all of humanity, prioritizing safety and ethics."
+      },
+      "gpt3": {
+        "title": "GPT-3 Launch",
+        "description": "The language model generates texts indistinguishable from human-written texts. Revolutionizes natural language processing and drives research in Large Language Models."
+      },
+      "chatgpt": {
+        "title": "ChatGPT Launch",
+        "description": "The GPT-3.5 chat interface becomes a viral phenomenon. Marks the beginning of the 'AI Fever', making generative AI a mass consumer tool."
+      },
+      "current": {
+        "title": "Web 3.0, Veo and LLMs",
+        "description": "Consolidation of Generative AI (LLMs like Gemini and GPT-4), video creation tools like Veo, and the expansion of the Internet of Things. AI becomes an essential part of Internet infrastructure."
+      }
+    },
     "eras": {
       "dream": {
         "title": "The Dream (Before 1950)",

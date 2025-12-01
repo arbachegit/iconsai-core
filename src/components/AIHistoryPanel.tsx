@@ -1,90 +1,38 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Play, StopCircle, Download, Clock, Baby, Users, GraduationCap, Rocket, Bot, Sparkles, Snowflake, Skull, Crown, Home, Cat, Palette, Lightbulb } from "lucide-react";
+import { X, Play, StopCircle, Download, FileDown, Shield, Cpu, KeyRound, MessageCircle, Network, GitBranch, Globe, Users, Brain, Sparkles, FileText, MessageSquare, Rocket } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHistoryCarousel } from "./MobileHistoryCarousel";
 import { cn } from "@/lib/utils";
 import { generateAudioUrl } from "@/lib/audio-player";
 import { useTranslation } from "react-i18next";
+import jsPDF from 'jspdf';
 
 interface AIHistoryPanelProps {
   onClose: () => void;
 }
 
-// Estrutura de dados das eras (constante estática fora do componente) - será usado apenas como base
-const ERAS_DATA = [
-  {
-    id: 'dream',
-    title: 'O Sonho (Antes de 1950)',
-    subtitle: 'Onde tudo era ficção científica e desejo humano.',
-    icon: Clock,
-    colorFrom: 'amber-500',
-    colorTo: 'orange-500',
-    items: [
-      { icon: Sparkles, text: 'Antiguidade: Mitos gregos já falavam de autômatos e estátuas que ganhavam vida (como Talos, o gigante de bronze).' },
-      { icon: Sparkles, text: '1843 - A "Avó" da Programação: Ada Lovelace escreve o primeiro algoritmo para uma máquina.' },
-      { icon: Bot, text: '1920 - Nasce a palavra "Robô": Uma peça de teatro tcheca (R.U.R.) usa o termo pela primeira vez.' }
-    ]
-  },
-  {
-    id: 'birth',
-    title: 'O Nascimento (Anos 50)',
-    subtitle: 'Onde a IA ganha nome e dá os primeiros passos.',
-    icon: Baby,
-    colorFrom: 'blue-500',
-    colorTo: 'cyan-500',
-    items: [
-      { icon: Lightbulb, text: '1950 - O Teste de Turing: Alan Turing lança a pergunta: "Máquinas podem pensar?"' },
-      { icon: Sparkles, text: '1956 - O Batismo: Conferência de Dartmouth cunha oficialmente o termo "Inteligência Artificial".' },
-      { icon: Bot, text: '1957 - Perceptron: Frank Rosenblatt cria uma máquina que tenta imitar um neurônio.' }
-    ]
-  },
-  {
-    id: 'childhood',
-    title: 'A Infância e Adolescência (Anos 60 a 80)',
-    subtitle: 'Altos e baixos, rebeldia e filmes de Hollywood.',
-    icon: Users,
-    colorFrom: 'purple-500',
-    colorTo: 'pink-500',
-    items: [
-      { icon: Bot, text: '1966 - ELIZA, a "Psicóloga": O primeiro chatbot da história!' },
-      { icon: Snowflake, text: 'Anos 70 - O Inverno da IA: As promessas eram grandes demais e a tecnologia não entregava.' },
-      { icon: Sparkles, text: 'Anos 80 - O Retorno: A IA volta com os "Sistemas Especialistas".' },
-      { icon: Skull, text: 'O Exterminador do Futuro (1984): O cinema cria a imagem da IA como vilã.' }
-    ]
-  },
-  {
-    id: 'adulthood',
-    title: 'A Fase Adulta (Anos 90 e 2000)',
-    subtitle: 'A IA começa a ganhar dos humanos e a entrar na nossa casa.',
-    icon: GraduationCap,
-    colorFrom: 'green-500',
-    colorTo: 'emerald-500',
-    items: [
-      { icon: Crown, text: '1997 - Xeque-mate: O computador Deep Blue (IBM) vence Garry Kasparov no xadrez.' },
-      { icon: Home, text: '2002 - Roomba: A IA entra na sua sala... para aspirar pó.' },
-      { icon: Bot, text: '2011 - "Ei, Siri": Começamos a falar com nossos telefones.' }
-    ]
-  },
-  {
-    id: 'revolution',
-    title: 'A Revolução Generativa (2010s até Hoje)',
-    subtitle: 'A IA deixa de apenas analisar e começa a CRIAR.',
-    icon: Rocket,
-    colorFrom: 'cyan-500',
-    colorTo: 'blue-600',
-    items: [
-      { icon: Cat, text: '2012 - O "Big Bang" do Deep Learning: Redes neurais aprendem a identificar gatos no YouTube sozinhas.' },
-      { icon: Crown, text: '2016 - AlphaGo: A IA vence o campeão mundial de Go com jogadas "criativas".' },
-      { icon: Sparkles, text: '2017 - O Transformer: O Google publica um artigo que muda tudo.' },
-      { icon: Palette, text: '2022/2023 - A Era do ChatGPT e Gemini: A IA "sai da jaula".' }
-    ]
-  }
+// Nova estrutura de dados: 13 eventos históricos
+const TIMELINE_EVENTS = [
+  { id: 'talos', date: 'c. 3000 a.C. - 1200 a.C.', icon: Shield, era: 'bronze' },
+  { id: 'turing-machine', date: '1936', icon: Cpu, era: 'compute' },
+  { id: 'enigma', date: '1940-1945', icon: KeyRound, era: 'war' },
+  { id: 'turing-test', date: '1950', icon: MessageCircle, era: 'philosophy' },
+  { id: 'arpanet', date: '1969', icon: Network, era: 'internet' },
+  { id: 'tcpip', date: '1974', icon: GitBranch, era: 'protocol' },
+  { id: 'www', date: '1989', icon: Globe, era: 'web' },
+  { id: 'social', date: '2004', icon: Users, era: 'social' },
+  { id: 'watson', date: '2011', icon: Brain, era: 'watson' },
+  { id: 'openai', date: '2015', icon: Sparkles, era: 'openai' },
+  { id: 'gpt3', date: '2020', icon: FileText, era: 'gpt' },
+  { id: 'chatgpt', date: '2022', icon: MessageSquare, era: 'chatgpt' },
+  { id: 'current', date: 'Atualidade', icon: Rocket, era: 'current' }
 ];
 
 export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
@@ -96,121 +44,23 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [eraImages, setEraImages] = useState<Record<string, string>>({});
+  const [eventImages, setEventImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState(true);
-  const [currentEraId, setCurrentEraId] = useState("dream");
+  const [currentEventId, setCurrentEventId] = useState("talos");
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const eraRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const eventRefs = useRef<Record<string, HTMLDivElement | null>>({});
   
-  // Traduções das eras
-  const erasData = [
-    {
-      id: 'dream',
-      title: t('aiHistory.eras.dream.title'),
-      subtitle: t('aiHistory.eras.dream.subtitle'),
-      icon: Clock,
-      colorFrom: 'amber-500',
-      colorTo: 'orange-500',
-      items: (t('aiHistory.eras.dream.items', { returnObjects: true }) as string[]).map((text, idx) => ({
-        icon: [Sparkles, Sparkles, Bot][idx],
-        text
-      }))
-    },
-    {
-      id: 'birth',
-      title: t('aiHistory.eras.birth.title'),
-      subtitle: t('aiHistory.eras.birth.subtitle'),
-      icon: Baby,
-      colorFrom: 'blue-500',
-      colorTo: 'cyan-500',
-      items: (t('aiHistory.eras.birth.items', { returnObjects: true }) as string[]).map((text, idx) => ({
-        icon: [Lightbulb, Sparkles, Bot][idx],
-        text
-      }))
-    },
-    {
-      id: 'childhood',
-      title: t('aiHistory.eras.childhood.title'),
-      subtitle: t('aiHistory.eras.childhood.subtitle'),
-      icon: Users,
-      colorFrom: 'purple-500',
-      colorTo: 'pink-500',
-      items: (t('aiHistory.eras.childhood.items', { returnObjects: true }) as string[]).map((text, idx) => ({
-        icon: [Bot, Snowflake, Sparkles, Skull][idx],
-        text
-      }))
-    },
-    {
-      id: 'adulthood',
-      title: t('aiHistory.eras.adulthood.title'),
-      subtitle: t('aiHistory.eras.adulthood.subtitle'),
-      icon: GraduationCap,
-      colorFrom: 'green-500',
-      colorTo: 'emerald-500',
-      items: (t('aiHistory.eras.adulthood.items', { returnObjects: true }) as string[]).map((text, idx) => ({
-        icon: [Crown, Home, Bot][idx],
-        text
-      }))
-    },
-    {
-      id: 'revolution',
-      title: t('aiHistory.eras.revolution.title'),
-      subtitle: t('aiHistory.eras.revolution.subtitle'),
-      icon: Rocket,
-      colorFrom: 'cyan-500',
-      colorTo: 'blue-600',
-      items: (t('aiHistory.eras.revolution.items', { returnObjects: true }) as string[]).map((text, idx) => ({
-        icon: [Cat, Crown, Sparkles, Palette][idx],
-        text
-      }))
-    }
-  ];
+  // Traduções dos eventos da linha do tempo
+  const timelineData = TIMELINE_EVENTS.map(event => ({
+    ...event,
+    title: t(`aiHistory.timeline.${event.id}.title`),
+    description: t(`aiHistory.timeline.${event.id}.description`)
+  }));
 
-  const fullText = `O Sonho (Antes de 1950). Onde tudo era ficção científica e desejo humano.
-
-Antiguidade: Mitos gregos já falavam de autômatos e estátuas que ganhavam vida (como Talos, o gigante de bronze). A ideia de "algo não-vivo que pensa" é mais velha que andar para frente!
-
-1843 - A "Avó" da Programação: Ada Lovelace escreve o primeiro algoritmo para uma máquina. Ela já imaginava que computadores poderiam fazer mais do que apenas contas matemáticas.
-
-1920 - Nasce a palavra "Robô": Uma peça de teatro tcheca (R.U.R.) usa o termo pela primeira vez. Spoiler: na peça, eles não eram muito amigáveis.
-
-O Nascimento (Anos 50). Onde a IA ganha nome e dá os primeiros passos.
-
-1950 - O Teste de Turing: Alan Turing lança a pergunta de um milhão de dólares: "Máquinas podem pensar?". Ele cria o famoso Teste de Turing para ver se um computador consegue enganar um humano numa conversa.
-
-1956 - O Batismo: Numa conferência de verão em Dartmouth (EUA), cientistas cunham oficialmente o termo "Inteligência Artificial". É o certidão de nascimento oficial da área!
-
-1957 - Perceptron: Frank Rosenblatt cria uma máquina que tenta imitar um neurônio. O New York Times diz que ela, em breve, será capaz de "falar, ouvir, escrever e ter consciência". (Eles erraram a previsão em "apenas" uns 60 anos...)
-
-A Infância e Adolescência (Anos 60 a 80). Altos e baixos, rebeldia e filmes de Hollywood.
-
-1966 - ELIZA, a "Psicóloga": O primeiro chatbot da história! Ela repetia o que você dizia em forma de pergunta. Ex: "Estou triste" -> "Por que você está triste?". Simples, mas enganou muita gente.
-
-Anos 70 - O Inverno da IA: As promessas eram grandes demais e a tecnologia não entregava. O financiamento secou. A IA ficou "de castigo" no canto da sala.
-
-Anos 80 - O Retorno: A IA volta com os "Sistemas Especialistas". Computadores que sabiam MUITO sobre uma única coisa (tipo diagnosticar uma doença específica), mas não sabiam nada sobre o resto do mundo.
-
-O Exterminador do Futuro (1984): O cinema ajuda a criar a imagem da IA como vilã. A cultura pop fica obcecada (e com medo) da Skynet.
-
-A Fase Adulta (Anos 90 e 2000). A IA começa a ganhar dos humanos e a entrar na nossa casa.
-
-1997 - Xeque-mate: O computador Deep Blue (IBM) vence o campeão mundial de xadrez, Garry Kasparov. O mundo fica chocado: "As máquinas sabem pensar melhor que nós?" (Em xadrez, sim).
-
-2002 - Roomba: A IA entra na sua sala... para aspirar pó. É a primeira vez que muita gente tem um robô autônomo em casa.
-
-2011 - "Ei, Siri": A Apple lança a Siri. Começamos a falar com nossos telefones, e (às vezes) eles entendem o que queremos.
-
-A Revolução Generativa (2010s até Hoje). A IA deixa de apenas analisar e começa a CRIAR.
-
-2012 - O "Big Bang" do Deep Learning: Redes neurais aprendem a identificar gatos no YouTube sozinhas. A capacidade de processamento de imagens explode.
-
-2016 - AlphaGo: A IA vence o campeão mundial de Go (um jogo muito mais complexo que xadrez). A máquina fez jogadas "criativas" que nenhum humano jamais pensou.
-
-2017 - O Transformer: O Google publica um artigo ("Attention Is All You Need") que muda tudo. Nasce a arquitetura que permitiria o surgimento do GPT.
-
-2022/2023 - A Era do ChatGPT e Gemini: A IA "sai da jaula". Agora ela escreve poemas, cria imagens, programa códigos e conversa sobre o sentido da vida. Deixamos de ter apenas uma "calculadora turbinada" para ter uma co-piloto criativa.
-
-Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensinando regras lógicas, e acabamos criando modelos que aprendem lendo a internet inteira. Onde vamos parar? Essa é a próxima página da história que estamos escrevendo agora!`;
+  // Texto completo para áudio (concatenação de todos os eventos)
+  const fullText = timelineData.map(event => 
+    `${event.date} - ${event.title}. ${event.description}`
+  ).join('\n\n');
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
@@ -298,43 +148,41 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Timestamps de cada era no áudio (em segundos)
-  const eraTimestamps = [
-    { id: 'dream', startTime: 0, endTime: 45 },
-    { id: 'birth', startTime: 45, endTime: 90 },
-    { id: 'childhood', startTime: 90, endTime: 150 },
-    { id: 'adulthood', startTime: 150, endTime: 200 },
-    { id: 'revolution', startTime: 200, endTime: 280 }
-  ];
+  // Timestamps de cada evento no áudio (distribuídos uniformemente)
+  const eventTimestamps = TIMELINE_EVENTS.map((event, idx) => ({
+    id: event.id,
+    startTime: idx * 20, // ~20 segundos por evento
+    endTime: (idx + 1) * 20
+  }));
 
-  // Carregar imagens das eras (executar apenas UMA VEZ)
+  // Carregar imagens dos eventos (executar apenas UMA VEZ)
   useEffect(() => {
     const loadImages = async () => {
       setLoadingImages(true);
       const images: Record<string, string> = {};
 
-      for (const era of erasData) {
+      for (const event of TIMELINE_EVENTS) {
         try {
           const { data, error } = await supabase.functions.invoke('generate-history-image', {
-            body: { eraId: era.id }
+            body: { eraId: event.id }
           });
 
           if (error) throw error;
           if (data?.imageUrl) {
-            images[era.id] = data.imageUrl;
-            console.log(`Era ${era.id}: ${data.fromCache ? 'cache' : 'gerado'}`);
+            images[event.id] = data.imageUrl;
+            console.log(`Evento ${event.id}: ${data.fromCache ? 'cache' : 'gerado'}`);
           }
         } catch (error) {
-          console.error(`Erro ao carregar imagem da era ${era.id}:`, error);
+          console.error(`Erro ao carregar imagem do evento ${event.id}:`, error);
         }
       }
 
-      setEraImages(images);
+      setEventImages(images);
       setLoadingImages(false);
     };
 
     loadImages();
-  }, [erasData]); // Rodar quando erasData mudar
+  }, []); // Rodar apenas uma vez
   
   // Cleanup audio on component unmount
   useEffect(() => {
@@ -362,23 +210,23 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
     return () => window.removeEventListener('stopAllAudio', handleStopAll);
   }, []);
   
-  // Função para pular para uma era específica
-  const handleJumpToEra = (eraId: string) => {
-    setCurrentEraId(eraId);
+  // Função para pular para um evento específico
+  const handleJumpToEvent = (eventId: string) => {
+    setCurrentEventId(eventId);
     
-    // Scroll para a era (desktop)
-    if (!isMobile && eraRefs.current[eraId]) {
-      eraRefs.current[eraId]?.scrollIntoView({
+    // Scroll para o evento (desktop)
+    if (!isMobile && eventRefs.current[eventId]) {
+      eventRefs.current[eventId]?.scrollIntoView({
         behavior: 'smooth',
         block: 'center'
       });
     }
     
-    // Se áudio existir, pula para o timestamp da era
+    // Se áudio existir, pula para o timestamp do evento
     if (audioRef.current) {
-      const eraTimestamp = eraTimestamps.find(e => e.id === eraId);
-      if (eraTimestamp) {
-        audioRef.current.currentTime = eraTimestamp.startTime;
+      const eventTimestamp = eventTimestamps.find(e => e.id === eventId);
+      if (eventTimestamp) {
+        audioRef.current.currentTime = eventTimestamp.startTime;
       }
     }
   };
@@ -387,23 +235,66 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
   useEffect(() => {
     if (!isPlaying) return;
 
-    const currentEra = eraTimestamps.find(
-      (era) => currentTime >= era.startTime && currentTime < era.endTime
+    const currentEvent = eventTimestamps.find(
+      (event) => currentTime >= event.startTime && currentTime < event.endTime
     );
 
-    if (currentEra && currentEra.id !== currentEraId) {
-      setCurrentEraId(currentEra.id);
+    if (currentEvent && currentEvent.id !== currentEventId) {
+      setCurrentEventId(currentEvent.id);
       
       // Desktop: scroll suave para a seção
-      if (!isMobile && eraRefs.current[currentEra.id]) {
-        eraRefs.current[currentEra.id]?.scrollIntoView({
+      if (!isMobile && eventRefs.current[currentEvent.id]) {
+        eventRefs.current[currentEvent.id]?.scrollIntoView({
           behavior: 'smooth',
           block: 'center'
         });
       }
-      // Mobile: o carousel já sincroniza via props currentEraId
+      // Mobile: o carousel já sincroniza via props currentEventId
     }
-  }, [currentTime, isPlaying, isMobile, currentEraId]);
+  }, [currentTime, isPlaying, isMobile, currentEventId]);
+  
+  // Exportar para PDF
+  const exportTimelineToPDF = () => {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    
+    // Título
+    pdf.setFontSize(20);
+    pdf.text(t('aiHistory.title'), 20, 20);
+    
+    // Subtítulo
+    pdf.setFontSize(12);
+    pdf.text('De Talos à Febre da IA', 20, 30);
+    
+    let yPosition = 45;
+    
+    timelineData.forEach((event, idx) => {
+      // Nova página se necessário
+      if (yPosition > 270) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+      
+      // Data
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(event.date, 20, yPosition);
+      
+      // Título
+      pdf.setFontSize(12);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(event.title, 20, yPosition + 6);
+      
+      // Descrição
+      pdf.setFontSize(9);
+      pdf.setTextColor(60, 60, 60);
+      const splitText = pdf.splitTextToSize(event.description, 170);
+      pdf.text(splitText, 20, yPosition + 12);
+      
+      yPosition += 20 + (splitText.length * 4);
+    });
+    
+    pdf.save('linha-do-tempo-ia.pdf');
+  };
 
   // Renderização mobile
   if (isMobile) {
@@ -413,16 +304,36 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
           <div className="p-4 space-y-4 h-full flex flex-col">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-                {t('aiHistory.title')}
+                {t('aiHistory.timeline.title')}
               </h2>
               <Button variant="ghost" size="icon" onClick={onClose}>
                 <X className="w-5 h-5" />
               </Button>
             </div>
+            
+            {/* Badge Navigation */}
+            <ScrollArea className="w-full">
+              <div className="flex gap-2 pb-2">
+                {TIMELINE_EVENTS.map((event) => {
+                  const Icon = event.icon;
+                  return (
+                    <Badge
+                      key={event.id}
+                      variant={currentEventId === event.id ? "default" : "outline"}
+                      className="cursor-pointer whitespace-nowrap flex items-center gap-1 shrink-0"
+                      onClick={() => handleJumpToEvent(event.id)}
+                    >
+                      <Icon className="w-3 h-3" />
+                      {event.date}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </ScrollArea>
 
             {/* Audio Controls */}
             <div className="p-3 rounded-lg bg-muted/50 border border-border">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <Button onClick={handlePlayAudio} disabled={isPlaying} size="sm" variant="outline">
                   <Play className="w-4 h-4 mr-1" />
                   {t('audio.play')}
@@ -434,6 +345,10 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
                 <Button onClick={handleDownloadAudio} disabled={!audioRef.current} size="sm" variant="outline">
                   <Download className="w-4 h-4 mr-1" />
                   {t('audio.download')}
+                </Button>
+                <Button onClick={exportTimelineToPDF} size="sm" variant="outline">
+                  <FileDown className="w-4 h-4 mr-1" />
+                  PDF
                 </Button>
               </div>
               {duration > 0 && (
@@ -449,12 +364,12 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
               )}
             </div>
 
-            <MobileHistoryCarousel
-              eras={erasData}
-              currentEraId={currentEraId}
-              eraImages={eraImages}
+            <MobileHistoryCarousel 
+              events={timelineData}
+              currentEventId={currentEventId}
+              eventImages={eventImages}
               loadingImages={loadingImages}
-              onEraSelect={handleJumpToEra}
+              onEventSelect={handleJumpToEvent}
             />
           </div>
         </DrawerContent>
@@ -493,24 +408,23 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
           </Button>
 
           <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-            {t('aiHistory.title')}
+            {t('aiHistory.timeline.title')}
           </h2>
 
-          {/* Era Navigation */}
+          {/* Badge Navigation */}
           <div className="flex items-center justify-center gap-2 mb-4 flex-wrap flex-shrink-0">
-            {erasData.map((era) => {
-              const Icon = era.icon;
+            {TIMELINE_EVENTS.map((event) => {
+              const Icon = event.icon;
               return (
-                <Button
-                  key={era.id}
-                  variant={currentEraId === era.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleJumpToEra(era.id)}
-                  className="flex items-center gap-2"
+                <Badge
+                  key={event.id}
+                  variant={currentEventId === event.id ? "default" : "outline"}
+                  className="cursor-pointer whitespace-nowrap flex items-center gap-1"
+                  onClick={() => handleJumpToEvent(event.id)}
                 >
-                  <Icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{era.title.split('(')[0].trim()}</span>
-                </Button>
+                  <Icon className="w-3 h-3" />
+                  <span className="text-xs">{event.date}</span>
+                </Badge>
               );
             })}
           </div>
@@ -545,6 +459,14 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
                 <Download className="w-4 h-4 mr-2" />
                 {t('audio.download')}
               </Button>
+              <Button
+                onClick={exportTimelineToPDF}
+                size="sm"
+                variant="outline"
+              >
+                <FileDown className="w-4 h-4 mr-2" />
+                PDF
+              </Button>
             </div>
             {duration > 0 && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -561,61 +483,48 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
 
           <ScrollArea className="flex-1 min-h-0">
             <div className="space-y-8 pr-4">
-              {erasData.map((era) => {
-                const Icon = era.icon;
+              {timelineData.map((event) => {
+                const Icon = event.icon;
+                const eraConfig = TIMELINE_EVENTS.find(e => e.id === event.id);
                 return (
                   <div
-                    key={era.id}
-                    ref={(el) => (eraRefs.current[era.id] = el)}
+                    key={event.id}
+                    ref={(el) => (eventRefs.current[event.id] = el)}
                     className={cn(
                       "relative pl-10 border-l-2 transition-all duration-500",
-                      currentEraId === era.id
-                        ? `border-${era.colorFrom} bg-${era.colorFrom}/5 scale-[1.02]`
-                        : `border-${era.colorFrom}/30`
+                      currentEventId === event.id
+                        ? "border-primary bg-primary/5 scale-[1.02]"
+                        : "border-primary/30"
                     )}
                   >
                     <div
-                      className="absolute -left-5 top-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg"
-                      style={{
-                        background: `linear-gradient(to bottom right, hsl(var(--${era.colorFrom})), hsl(var(--${era.colorTo})))`,
-                      }}
+                      className="absolute -left-5 top-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg bg-primary"
                     >
-                      <Icon className="w-5 h-5 text-white" />
+                      <Icon className="w-5 h-5 text-primary-foreground" />
                     </div>
 
                     <div className="flex gap-6">
                       <div className="flex-1">
-                        <h3
-                          className="text-xl font-bold bg-clip-text text-transparent"
-                          style={{
-                            backgroundImage: `linear-gradient(to right, hsl(var(--${era.colorFrom})), hsl(var(--${era.colorTo})))`,
-                          }}
-                        >
-                          {era.title}
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-mono text-muted-foreground">{event.date}</span>
+                        </div>
+                        <h3 className="text-xl font-bold text-primary mb-2">
+                          {event.title}
                         </h3>
-                        <p className="text-sm text-muted-foreground italic mb-4">{era.subtitle}</p>
-                        <ul className="space-y-3 text-sm">
-                          {era.items.map((item, idx) => {
-                            const ItemIcon = item.icon;
-                            return (
-                              <li key={idx} className="flex gap-3">
-                                <ItemIcon className={`w-4 h-4 text-${era.colorFrom} flex-shrink-0 mt-0.5`} />
-                                <div>{item.text}</div>
-                              </li>
-                            );
-                          })}
-                        </ul>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {event.description}
+                        </p>
                       </div>
 
-                      {/* Imagem da era */}
+                      {/* Imagem do evento */}
                       <div className="w-64 flex-shrink-0">
                         <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-muted/50 border border-border">
                           {loadingImages ? (
                             <Skeleton className="w-full h-full" />
-                          ) : eraImages[era.id] ? (
+                          ) : eventImages[event.id] ? (
                             <img
-                              src={eraImages[era.id]}
-                              alt={era.title}
+                              src={eventImages[event.id]}
+                              alt={event.title}
                               className="w-full h-full object-cover"
                               loading="lazy"
                             />
@@ -630,21 +539,6 @@ Resumo da Ópera: Começamos querendo imitar o cérebro, passamos décadas ensin
                   </div>
                 );
               })}
-
-              {/* Conclusão */}
-              <div className="p-4 rounded-lg bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 border border-primary/20">
-                <div className="flex items-start gap-3">
-                  <Lightbulb className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="font-semibold text-primary mb-1">Resumo da Ópera:</p>
-                    <p className="text-sm text-muted-foreground">
-                      Começamos querendo imitar o cérebro, passamos décadas ensinando regras lógicas, 
-                      e acabamos criando modelos que aprendem lendo a internet inteira. Onde vamos parar? 
-                      Essa é a próxima página da história que estamos escrevendo agora!
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
           </ScrollArea>
         </div>
