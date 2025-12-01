@@ -20,9 +20,9 @@ export const TooltipIcon = ({ sectionId }: TooltipIconProps) => {
         {/* Badge com Lightbulb + "saiba mais" */}
         <Badge 
           variant="outline" 
-          className="font-mono text-xs tracking-widest px-2.5 py-1 border-2 border-primary bg-primary/40 text-white font-semibold transition-all duration-300 group-hover:bg-cyan-500 group-hover:border-cyan-500 group-hover:text-white flex items-center gap-1.5"
+          className="font-mono text-xs tracking-widest px-2.5 py-1 border-2 border-primary bg-primary/40 !text-white font-extrabold shadow-lg transition-all duration-300 group-hover:bg-cyan-500 group-hover:border-cyan-500 group-hover:text-white flex items-center gap-1.5"
         >
-          <Lightbulb className="w-3.5 h-3.5 transition-colors duration-300" />
+          <Lightbulb className="w-3.5 h-3.5 transition-all duration-300 group-hover:rotate-12" />
           saiba mais
         </Badge>
         
