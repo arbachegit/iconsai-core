@@ -210,6 +210,36 @@ export const ImageCacheTab = () => {
     }
   });
 
+  const [isMigrating, setIsMigrating] = useState(false);
+
+  const migrateTimelineImagesMutation = useMutation({
+    mutationFn: async () => {
+      setIsMigrating(true);
+      const { data, error } = await supabase.functions.invoke('migrate-timeline-images', {
+        body: {}
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      setIsMigrating(false);
+      toast({
+        title: "Migração concluída",
+        description: `${data.migrated} imagens migradas para WebP no Storage. ${data.failed} falhas.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['timeline-images'] });
+    },
+    onError: (error: Error) => {
+      setIsMigrating(false);
+      toast({
+        title: "Erro na migração",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
   const getSectionImage = (sectionId: string) => {
     return existingImages?.find(img => img.section_id === sectionId);
   };
@@ -229,6 +259,39 @@ export const ImageCacheTab = () => {
 
   return (
     <div className="space-y-6">
+      {/* Migration Alert */}
+      <Card className="border-blue-500/50 bg-blue-500/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-blue-400">
+            <ImageIcon className="h-5 w-5" />
+            Otimização de Imagens da Timeline
+          </CardTitle>
+          <CardDescription>
+            Migre as imagens Base64 (~43 MB) para WebP otimizado no Storage (~1-2 MB total)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={() => migrateTimelineImagesMutation.mutate()}
+            disabled={isMigrating}
+            variant="outline"
+            className="w-full sm:w-auto"
+          >
+            {isMigrating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Migrando...
+              </>
+            ) : (
+              'Executar Migração para WebP + Storage'
+            )}
+          </Button>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Esta operação irá converter todas as 19 imagens da timeline para WebP e armazená-las no Supabase Storage.
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <AdminTitleWithInfo

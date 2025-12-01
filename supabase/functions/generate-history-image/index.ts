@@ -127,47 +127,79 @@ serve(async (req) => {
     }));
     
     // Try multiple possible response structures
-    let imageUrl;
+    let base64Image;
     
     // Structure 1: choices[0].message.images[0].image_url.url
     if (data.choices?.[0]?.message?.images?.[0]?.image_url?.url) {
-      imageUrl = data.choices[0].message.images[0].image_url.url;
+      base64Image = data.choices[0].message.images[0].image_url.url;
       console.log("Found image at: choices[0].message.images[0].image_url.url");
     }
     // Structure 2: choices[0].message.content (might be base64)
     else if (data.choices?.[0]?.message?.content) {
-      imageUrl = data.choices[0].message.content;
+      base64Image = data.choices[0].message.content;
       console.log("Found image at: choices[0].message.content");
     }
     // Structure 3: Direct image field
     else if (data.image) {
-      imageUrl = data.image;
+      base64Image = data.image;
       console.log("Found image at: data.image");
     }
 
-    if (!imageUrl) {
+    if (!base64Image) {
       console.error("Full response data:", JSON.stringify(data, null, 2));
       throw new Error("Nenhuma imagem gerada na resposta. Estrutura de resposta não reconhecida.");
     }
     
-    console.log("Image URL length:", imageUrl.length);
+    console.log("Base64 image length:", base64Image.length);
     
-    // Save to cache
+    // Convert Base64 to binary
+    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
+    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    
+    console.log("Binary data size:", binaryData.length, "bytes");
+    
+    // Upload to Storage as WebP
+    const fileName = `${cacheKey}.webp`;
+    const { data: uploadData, error: uploadError } = await supabaseClient
+      .storage
+      .from('timeline-images')
+      .upload(fileName, binaryData, {
+        contentType: 'image/webp',
+        upsert: true
+      });
+    
+    if (uploadError) {
+      console.error("Erro ao fazer upload para Storage:", uploadError);
+      throw new Error(`Falha ao salvar imagem no Storage: ${uploadError.message}`);
+    }
+    
+    console.log("Upload bem-sucedido:", uploadData);
+    
+    // Get public URL
+    const { data: publicUrlData } = supabaseClient
+      .storage
+      .from('timeline-images')
+      .getPublicUrl(fileName);
+    
+    const publicUrl = publicUrlData.publicUrl;
+    console.log("URL pública gerada:", publicUrl);
+    
+    // Save URL to cache (not Base64)
     await supabaseClient
       .from('generated_images')
       .upsert({
         section_id: cacheKey,
         prompt_key: eraId,
-        image_url: imageUrl,
+        image_url: publicUrl,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'section_id'
       });
     
-    console.log(`Imagem gerada e cacheada para era: ${eraId}`);
+    console.log(`Imagem WebP salva no Storage e cacheada para era: ${eraId}`);
 
     return new Response(
-      JSON.stringify({ imageUrl, fromCache: false }),
+      JSON.stringify({ imageUrl: publicUrl, fromCache: false }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
