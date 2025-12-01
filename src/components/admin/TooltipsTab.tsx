@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Edit2, Save, X, FileText, ChevronDown, Edit3 } from "lucide-react";
+import { Edit2, Save, X, FileText, ChevronDown, Edit3, ChevronUp, Download, Upload, Eye, EyeOff, History, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format } from "date-fns";
 
 interface TooltipContent {
   id: string;
@@ -28,6 +30,17 @@ interface SectionContent {
   content: string;
 }
 
+interface SectionVersion {
+  id: string;
+  section_id: string;
+  header: string | null;
+  title: string;
+  content: string;
+  version_number: number;
+  change_description: string | null;
+  created_at: string;
+}
+
 export const TooltipsTab = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -40,6 +53,9 @@ export const TooltipsTab = () => {
     title: "", 
     content: "" 
   });
+  const [showPreview, setShowPreview] = useState(false);
+  const [showVersions, setShowVersions] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: tooltips, refetch } = useQuery({
     queryKey: ["all-tooltips"],
@@ -66,6 +82,23 @@ export const TooltipsTab = () => {
     },
   });
 
+  const { data: versions = [] } = useQuery({
+    queryKey: ["section-versions", selectedSection],
+    queryFn: async () => {
+      if (!selectedSection) return [];
+      
+      const { data, error } = await supabase
+        .from("section_content_versions")
+        .select("*")
+        .eq("section_id", selectedSection)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as SectionVersion[];
+    },
+    enabled: !!selectedSection,
+  });
+
   const saveSectionMutation = useMutation({
     mutationFn: async (data: { section_id: string; header: string; title: string; content: string }) => {
       const { error } = await supabase
@@ -78,9 +111,30 @@ export const TooltipsTab = () => {
         })
         .eq("section_id", data.section_id);
       if (error) throw error;
+
+      // Create version entry
+      const { data: lastVersion } = await supabase
+        .from("section_content_versions")
+        .select("version_number")
+        .eq("section_id", data.section_id)
+        .order("version_number", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      await supabase
+        .from("section_content_versions")
+        .insert({
+          section_id: data.section_id,
+          header: data.header,
+          title: data.title,
+          content: data.content,
+          version_number: (lastVersion?.version_number || 0) + 1,
+          change_description: "Atualização manual via admin"
+        });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["section-contents"] });
+      queryClient.invalidateQueries({ queryKey: ["section-versions"] });
       toast({
         title: "Salvo com sucesso",
         description: "Conteúdo da seção foi atualizado.",
@@ -169,6 +223,100 @@ export const TooltipsTab = () => {
     setEditorForm({ header: "", title: "", content: "" });
   };
 
+  const handleExport = async () => {
+    const { data, error } = await supabase
+      .from("section_contents")
+      .select("*");
+
+    if (error) {
+      toast({
+        title: "Erro ao exportar",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `section-contents-${format(new Date(), "yyyy-MM-dd-HHmm")}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Exportação concluída",
+      description: "Arquivo JSON baixado com sucesso.",
+    });
+  };
+
+  const handleImport = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const importedData = JSON.parse(text) as SectionContent[];
+
+      for (const section of importedData) {
+        await supabase
+          .from("section_contents")
+          .update({
+            header: section.header,
+            title: section.title,
+            content: section.content,
+          })
+          .eq("section_id", section.section_id);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["section-contents"] });
+      toast({
+        title: "Importação concluída",
+        description: `${importedData.length} seções foram atualizadas.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao importar",
+        description: "Arquivo JSON inválido.",
+        variant: "destructive",
+      });
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRestoreVersion = async (version: SectionVersion) => {
+    await supabase
+      .from("section_contents")
+      .update({
+        header: version.header,
+        title: version.title,
+        content: version.content,
+      })
+      .eq("section_id", version.section_id);
+
+    queryClient.invalidateQueries({ queryKey: ["section-contents"] });
+    setSelectedSection(version.section_id);
+    setEditorForm({
+      header: version.header || "",
+      title: version.title,
+      content: version.content,
+    });
+    
+    toast({
+      title: "Versão restaurada",
+      description: `Versão ${version.version_number} foi restaurada.`,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -215,13 +363,32 @@ export const TooltipsTab = () => {
         <CollapsibleContent className="animate-accordion-down">
           <Card className="mt-4 p-6 bg-card/50 backdrop-blur-sm border-primary/20">
             <div className="space-y-6">
+              {/* Import/Export Buttons */}
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={handleExport}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar JSON
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleImport}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar JSON
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
+
               {/* Seletor de Seção */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
+                <Label htmlFor="section-select" className="text-sm font-medium text-muted-foreground">
                   SEÇÃO
-                </label>
+                </Label>
                 <Select value={selectedSection} onValueChange={handleSectionChange}>
-                  <SelectTrigger className="bg-background/50">
+                  <SelectTrigger id="section-select" className="bg-background/50">
                     <SelectValue placeholder="Selecione uma seção para editar" />
                   </SelectTrigger>
                   <SelectContent className="bg-background z-50">
@@ -236,11 +403,12 @@ export const TooltipsTab = () => {
 
               {/* Header Section */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
+                <Label htmlFor="editor-header" className="text-sm font-medium text-muted-foreground">
                   HEADER
-                </label>
+                </Label>
                 <Card className="p-4 bg-background/50">
                   <Input
+                    id="editor-header"
                     value={editorForm.header}
                     onChange={(e) =>
                       setEditorForm({ ...editorForm, header: e.target.value })
@@ -254,10 +422,11 @@ export const TooltipsTab = () => {
 
               {/* Título Section */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
+                <Label htmlFor="editor-title" className="text-sm font-medium text-muted-foreground">
                   TÍTULO
-                </label>
+                </Label>
                 <Input
+                  id="editor-title"
                   value={editorForm.title}
                   onChange={(e) =>
                     setEditorForm({ ...editorForm, title: e.target.value })
@@ -270,10 +439,31 @@ export const TooltipsTab = () => {
 
               {/* Conteúdo Section */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  CONTEÚDO
-                </label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="editor-content" className="text-sm font-medium text-muted-foreground">
+                    CONTEÚDO
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPreview(!showPreview)}
+                    disabled={!selectedSection}
+                  >
+                    {showPreview ? (
+                      <>
+                        <EyeOff className="h-4 w-4 mr-2" />
+                        Ocultar Preview
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver Preview
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <Textarea
+                  id="editor-content"
                   value={editorForm.content}
                   onChange={(e) =>
                     setEditorForm({ ...editorForm, content: e.target.value })
@@ -284,6 +474,73 @@ export const TooltipsTab = () => {
                   disabled={!selectedSection}
                 />
               </div>
+
+              {/* Preview */}
+              {showPreview && editorForm.content && (
+                <Card className="p-6 bg-muted/50">
+                  <h4 className="text-sm font-semibold mb-4 text-muted-foreground">Preview em Tempo Real</h4>
+                  <div className="space-y-4">
+                    {editorForm.header && (
+                      <div className="inline-block px-4 py-1 bg-primary/10 rounded-full border border-primary/20">
+                        <span className="text-sm text-primary font-medium">{editorForm.header}</span>
+                      </div>
+                    )}
+                    {editorForm.title && (
+                      <h2 className="text-3xl md:text-4xl font-bold">{editorForm.title}</h2>
+                    )}
+                    <div className="prose prose-invert max-w-none text-muted-foreground">
+                      <p className="whitespace-pre-wrap">{editorForm.content}</p>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* Version History */}
+              {selectedSection && versions.length > 0 && (
+                <Collapsible open={showVersions} onOpenChange={setShowVersions}>
+                  <Card className="p-4 bg-muted/30">
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-full justify-between">
+                        <div className="flex items-center gap-2">
+                          <History className="h-4 w-4" />
+                          <span>Histórico de Versões ({versions.length})</span>
+                        </div>
+                        {showVersions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-4 space-y-2">
+                      {versions.map((version) => (
+                        <div
+                          key={version.id}
+                          className="flex items-center justify-between p-3 bg-background rounded-lg border"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">v{version.version_number}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {format(new Date(version.created_at), "dd/MM/yyyy HH:mm")}
+                              </span>
+                            </div>
+                            {version.change_description && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {version.change_description}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRestoreVersion(version)}
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            Restaurar
+                          </Button>
+                        </div>
+                      ))}
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              )}
 
               {/* Action Buttons */}
               <div className="flex gap-2">

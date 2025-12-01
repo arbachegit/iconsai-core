@@ -755,6 +755,42 @@ export type Database = {
         }
         Relationships: []
       }
+      section_content_versions: {
+        Row: {
+          change_description: string | null
+          content: string
+          created_at: string | null
+          created_by: string | null
+          header: string | null
+          id: string
+          section_id: string
+          title: string
+          version_number: number
+        }
+        Insert: {
+          change_description?: string | null
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          header?: string | null
+          id?: string
+          section_id: string
+          title: string
+          version_number?: number
+        }
+        Update: {
+          change_description?: string | null
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          header?: string | null
+          id?: string
+          section_id?: string
+          title?: string
+          version_number?: number
+        }
+        Relationships: []
+      }
       section_contents: {
         Row: {
           content: string
