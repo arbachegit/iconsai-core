@@ -98,18 +98,16 @@ export function AudioControls({
         </Button>
 
         {/* Download - SEMPRE aparece (desabilitado se não houver áudio) */}
-        {onDownload && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onDownload}
-            className="h-7 w-7 p-0"
-            title={t("chat.download")}
-            disabled={!audioUrl}
-          >
-            <Download className="h-3.5 w-3.5" />
-          </Button>
-        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onDownload}
+          className="h-7 w-7 p-0"
+          title={t("chat.download")}
+          disabled={!audioUrl}
+        >
+          <Download className="h-3.5 w-3.5" />
+        </Button>
 
         {/* Copy - SEMPRE aparece */}
         {messageContent && (

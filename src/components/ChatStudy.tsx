@@ -576,7 +576,7 @@ export default function ChatStudy() {
                     messageContent={message.content}
                     onPlay={() => handleAudioPlay(index)}
                     onStop={handleAudioStop}
-                    onDownload={message.audioUrl ? () => handleDownloadAudio(message.audioUrl!, index) : undefined}
+                    onDownload={() => message.audioUrl && handleDownloadAudio(message.audioUrl, index)}
                   />
                 )}
               </div>
