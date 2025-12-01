@@ -25,20 +25,29 @@ interface Era {
   }>;
 }
 
+interface Event {
+  id: string;
+  date: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  era: string;
+}
+
 interface MobileHistoryCarouselProps {
-  eras: Era[];
-  currentEraId: string;
-  eraImages: Record<string, string>;
+  events: Event[];
+  currentEventId: string;
+  eventImages: Record<string, string>;
   loadingImages: boolean;
-  onEraSelect?: (eraId: string) => void;
+  onEventSelect?: (eventId: string) => void;
 }
 
 export const MobileHistoryCarousel = ({
-  eras,
-  currentEraId,
-  eraImages,
+  events,
+  currentEventId,
+  eventImages,
   loadingImages,
-  onEraSelect,
+  onEventSelect,
 }: MobileHistoryCarouselProps) => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -51,33 +60,33 @@ export const MobileHistoryCarousel = ({
     });
   }, [api]);
 
-  // Auto-scroll quando o currentEraId muda
+  // Auto-scroll quando o currentEventId muda
   useEffect(() => {
     if (!api) return;
-    const eraIndex = eras.findIndex((era) => era.id === currentEraId);
-    if (eraIndex !== -1 && eraIndex !== current) {
-      api.scrollTo(eraIndex);
+    const eventIndex = events.findIndex((event) => event.id === currentEventId);
+    if (eventIndex !== -1 && eventIndex !== current) {
+      api.scrollTo(eventIndex);
     }
-  }, [currentEraId, api, eras, current]);
+  }, [currentEventId, api, events, current]);
 
   return (
     <div className="w-full h-full flex flex-col">
       <Carousel setApi={setApi} className="w-full flex-1">
         <CarouselContent>
-          {eras.map((era) => {
-            const Icon = era.icon;
+          {events.map((event) => {
+            const Icon = event.icon;
             return (
-              <CarouselItem key={era.id}>
+              <CarouselItem key={event.id}>
                 <Card className="border-none bg-transparent">
                   <div className="p-6 space-y-4">
-                    {/* Imagem da era */}
+                    {/* Imagem do evento */}
                     <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-muted/50">
                       {loadingImages ? (
                         <Skeleton className="w-full h-full" />
-                      ) : eraImages[era.id] ? (
+                      ) : eventImages[event.id] ? (
                         <img
-                          src={eraImages[era.id]}
-                          alt={era.title}
+                          src={eventImages[event.id]}
+                          alt={event.title}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -87,41 +96,21 @@ export const MobileHistoryCarousel = ({
                       )}
                     </div>
 
-                    {/* Ícone e título */}
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
-                        style={{
-                          background: `linear-gradient(to bottom right, hsl(var(--${era.colorFrom})), hsl(var(--${era.colorTo})))`,
-                        }}
-                      >
-                        <Icon className="w-6 h-6 text-white" />
+                    {/* Ícone, data e título */}
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg bg-primary shrink-0">
+                        <Icon className="w-6 h-6 text-primary-foreground" />
                       </div>
-                      <div>
-                        <h3
-                          className="text-lg font-bold bg-clip-text text-transparent"
-                          style={{
-                            backgroundImage: `linear-gradient(to right, hsl(var(--${era.colorFrom})), hsl(var(--${era.colorTo})))`,
-                          }}
-                        >
-                          {era.title}
+                      <div className="flex-1">
+                        <div className="text-xs font-mono text-muted-foreground mb-1">{event.date}</div>
+                        <h3 className="text-lg font-bold text-primary mb-2">
+                          {event.title}
                         </h3>
-                        <p className="text-xs text-muted-foreground italic">{era.subtitle}</p>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {event.description}
+                        </p>
                       </div>
                     </div>
-
-                    {/* Items da era */}
-                    <ul className="space-y-3 text-sm">
-                      {era.items.map((item, idx) => {
-                        const ItemIcon = item.icon;
-                        return (
-                          <li key={idx} className="flex gap-3">
-                            <ItemIcon className={`w-4 h-4 flex-shrink-0 mt-0.5 text-${era.colorFrom}`} />
-                            <div>{item.text}</div>
-                          </li>
-                        );
-                      })}
-                    </ul>
                   </div>
                 </Card>
               </CarouselItem>
@@ -134,14 +123,14 @@ export const MobileHistoryCarousel = ({
 
       {/* Dot indicators com ícones */}
       <div className="flex justify-center gap-2 py-4">
-        {eras.map((era, index) => {
-          const Icon = era.icon;
+        {events.map((event, index) => {
+          const Icon = event.icon;
           return (
             <button
-              key={era.id}
+              key={event.id}
               onClick={() => {
                 api?.scrollTo(index);
-                onEraSelect?.(era.id);
+                onEventSelect?.(event.id);
               }}
               className={cn(
                 "rounded-full transition-all flex items-center justify-center",
@@ -149,7 +138,7 @@ export const MobileHistoryCarousel = ({
                   ? "w-8 h-8 bg-primary" 
                   : "w-6 h-6 bg-muted-foreground/30 hover:bg-muted-foreground/50"
               )}
-              aria-label={`Ir para ${era.title}`}
+              aria-label={`Ir para ${event.title}`}
             >
               {index === current && <Icon className="w-4 h-4 text-primary-foreground" />}
             </button>
