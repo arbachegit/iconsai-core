@@ -826,6 +826,7 @@ export type Database = {
           audio_url: string | null
           content: string
           created_at: string | null
+          display_order: number | null
           header: string | null
           id: string
           is_active: boolean | null
@@ -837,6 +838,7 @@ export type Database = {
           audio_url?: string | null
           content: string
           created_at?: string | null
+          display_order?: number | null
           header?: string | null
           id?: string
           is_active?: boolean | null
@@ -848,6 +850,7 @@ export type Database = {
           audio_url?: string | null
           content?: string
           created_at?: string | null
+          display_order?: number | null
           header?: string | null
           id?: string
           is_active?: boolean | null

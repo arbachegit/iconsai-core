@@ -6,12 +6,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Edit2, Save, X, FileText, ChevronDown, Edit3, ChevronUp, Download, Upload, Eye, EyeOff, History, RotateCcw } from "lucide-react";
+import { Edit2, Save, X, FileText, ChevronDown, Edit3, ChevronUp, Download, Upload, Eye, EyeOff, History, RotateCcw, GripVertical, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface TooltipContent {
   id: string;
@@ -21,6 +25,7 @@ interface TooltipContent {
   content: string;
   audio_url: string | null;
   is_active: boolean;
+  display_order: number;
 }
 
 interface SectionContent {
@@ -49,10 +54,10 @@ export const TooltipsTab = () => {
   const [editForm, setEditForm] = useState({ header: "", title: "", content: "" });
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [selectedSection, setSelectedSection] = useState<string>("");
-  const [editorForm, setEditorForm] = useState({ 
-    header: "", 
-    title: "", 
-    content: "" 
+  const [editorForm, setEditorForm] = useState({
+    header: "",
+    title: "",
+    content: ""
   });
   const [showPreview, setShowPreview] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
@@ -100,51 +105,122 @@ export const TooltipsTab = () => {
     enabled: !!selectedSection,
   });
 
-  const saveSectionMutation = useMutation({
-    mutationFn: async (data: { section_id: string; header: string; title: string; content: string }) => {
-      const { error } = await supabase
-        .from("section_contents")
-        .update({ 
-          header: data.header, 
-          title: data.title, 
-          content: data.content, 
-          updated_at: new Date().toISOString() 
-        })
-        .eq("section_id", data.section_id);
+  const saveMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<TooltipContent> }) => {
+      const { data, error } = await supabase
+        .from("tooltip_contents")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+
       if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-tooltips"] });
+      toast({
+        title: "Sucesso!",
+        description: "Tooltip atualizado com sucesso.",
+      });
+      setEditingId(null);
+    },
+    onError: (error) => {
+      console.error("Erro ao salvar:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar tooltip.",
+        variant: "destructive",
+      });
+    },
+  });
 
-      // Create version entry
-      const { data: lastVersion } = await supabase
-        .from("section_content_versions")
-        .select("version_number")
-        .eq("section_id", data.section_id)
-        .order("version_number", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+  const saveSectionMutation = useMutation({
+    mutationFn: async ({ sectionId, updates }: { sectionId: string; updates: Partial<SectionContent> }) => {
+      const { data: existingContent, error: fetchError } = await supabase
+        .from("section_contents")
+        .select("*")
+        .eq("section_id", sectionId)
+        .single();
 
-      await supabase
-        .from("section_content_versions")
-        .insert({
-          section_id: data.section_id,
-          header: data.header,
-          title: data.title,
-          content: data.content,
-          version_number: (lastVersion?.version_number || 0) + 1,
-          change_description: "Atualização manual via admin"
-        });
+      if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+
+      let result;
+      if (existingContent) {
+        const { data, error } = await supabase
+          .from("section_contents")
+          .update(updates)
+          .eq("section_id", sectionId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        result = data;
+
+        const { data: lastVersion } = await supabase
+          .from("section_content_versions")
+          .select("version_number")
+          .eq("section_id", sectionId)
+          .order("version_number", { ascending: false })
+          .limit(1)
+          .single();
+
+        const nextVersion = (lastVersion?.version_number || 0) + 1;
+
+        await supabase
+          .from("section_content_versions")
+          .insert({
+            section_id: sectionId,
+            header: updates.header || "",
+            title: updates.title || "",
+            content: updates.content || "",
+            version_number: nextVersion,
+            change_description: `Versão ${nextVersion} atualizada`
+          });
+      } else {
+        const insertData: any = {
+          section_id: sectionId,
+          header: updates.header || "",
+          title: updates.title || "",
+          content: updates.content || ""
+        };
+        
+        const { data, error } = await supabase
+          .from("section_contents")
+          .insert(insertData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        result = data;
+
+        await supabase
+          .from("section_content_versions")
+          .insert({
+            section_id: sectionId,
+            header: updates.header || "",
+            title: updates.title || "",
+            content: updates.content || "",
+            version_number: 1,
+            change_description: "Versão inicial criada"
+          });
+      }
+
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["section-contents"] });
-      queryClient.invalidateQueries({ queryKey: ["section-versions"] });
+      queryClient.invalidateQueries({ queryKey: ["section-versions", selectedSection] });
       toast({
-        title: "Salvo com sucesso",
-        description: "Conteúdo da seção foi atualizado.",
+        title: "Sucesso!",
+        description: "Conteúdo da seção atualizado com sucesso.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Erro ao salvar seção:", error);
       toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível atualizar o conteúdo da seção.",
+        title: "Erro",
+        description: "Erro ao atualizar conteúdo da seção.",
         variant: "destructive",
       });
     },
@@ -152,40 +228,18 @@ export const TooltipsTab = () => {
 
   const handleEdit = (tooltip: TooltipContent) => {
     setEditingId(tooltip.id);
-    setEditForm({ 
-      header: tooltip.header || "", 
-      title: tooltip.title, 
-      content: tooltip.content 
+    setEditForm({
+      header: tooltip.header || "",
+      title: tooltip.title,
+      content: tooltip.content,
     });
   };
 
-  const handleSave = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from("tooltip_contents")
-        .update({
-          header: editForm.header,
-          title: editForm.title,
-          content: editForm.content,
-        })
-        .eq("id", id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Salvo com sucesso",
-        description: "O tooltip foi atualizado.",
-      });
-
-      setEditingId(null);
-      refetch();
-    } catch (error) {
-      toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível atualizar o tooltip.",
-        variant: "destructive",
-      });
-    }
+  const handleSave = (id: string) => {
+    saveMutation.mutate({
+      id,
+      updates: editForm,
+    });
   };
 
   const handleCancel = () => {
@@ -195,31 +249,23 @@ export const TooltipsTab = () => {
 
   const handleSectionChange = (sectionId: string) => {
     setSelectedSection(sectionId);
-    const section = sectionContents?.find(s => s.section_id === sectionId);
-    if (section) {
+    const content = sectionContents?.find(sc => sc.section_id === sectionId);
+    if (content) {
       setEditorForm({
-        header: section.header || "",
-        title: section.title,
-        content: section.content,
+        header: content.header || "",
+        title: content.title,
+        content: content.content
       });
+    } else {
+      setEditorForm({ header: "", title: "", content: "" });
     }
   };
 
-  const handleEditorSave = async () => {
-    if (!selectedSection) {
-      toast({
-        title: "Erro",
-        description: "Selecione uma seção para editar",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    await saveSectionMutation.mutateAsync({
-      section_id: selectedSection,
-      header: editorForm.header,
-      title: editorForm.title,
-      content: editorForm.content,
+  const handleEditorSave = () => {
+    if (!selectedSection) return;
+    saveSectionMutation.mutate({
+      sectionId: selectedSection,
+      updates: editorForm
     });
   };
 
@@ -229,67 +275,56 @@ export const TooltipsTab = () => {
     setEditorForm({ header: "", title: "", content: "" });
   };
 
-  const handleExport = async () => {
-    const { data, error } = await supabase
-      .from("section_contents")
-      .select("*");
+  const handleExport = () => {
+    if (!selectedSection) return;
+    const content = sectionContents?.find(sc => sc.section_id === selectedSection);
+    if (!content) return;
 
-    if (error) {
-      toast({
-        title: "Erro ao exportar",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
+    const exportData = {
+      section_id: content.section_id,
+      header: content.header,
+      title: content.title,
+      content: content.content
+    };
 
-    const jsonStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `section-contents-${format(new Date(), "yyyy-MM-dd-HHmm")}.json`;
+    link.download = `section-${content.section_id}.json`;
     link.click();
     URL.revokeObjectURL(url);
-
-    toast({
-      title: "Exportação concluída",
-      description: "Arquivo JSON baixado com sucesso.",
-    });
   };
 
   const handleImport = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
     try {
       const text = await file.text();
-      const importedData = JSON.parse(text) as SectionContent[];
+      const data = JSON.parse(text);
 
-      for (const section of importedData) {
-        await supabase
-          .from("section_contents")
-          .update({
-            header: section.header,
-            title: section.title,
-            content: section.content,
-          })
-          .eq("section_id", section.section_id);
-      }
+      setSelectedSection(data.section_id);
+      setEditorForm({
+        header: data.header || "",
+        title: data.title || "",
+        content: data.content || ""
+      });
 
-      queryClient.invalidateQueries({ queryKey: ["section-contents"] });
       toast({
-        title: "Importação concluída",
-        description: `${importedData.length} seções foram atualizadas.`,
+        title: "Sucesso!",
+        description: "Conteúdo importado com sucesso. Clique em Salvar para confirmar.",
       });
     } catch (error) {
+      console.error("Erro ao importar:", error);
       toast({
-        title: "Erro ao importar",
-        description: "Arquivo JSON inválido.",
+        title: "Erro",
+        description: "Erro ao importar arquivo JSON.",
         variant: "destructive",
       });
     }
@@ -299,280 +334,228 @@ export const TooltipsTab = () => {
     }
   };
 
-  const handleRestoreVersion = async (version: SectionVersion) => {
-    await supabase
-      .from("section_contents")
-      .update({
-        header: version.header,
-        title: version.title,
-        content: version.content,
-      })
-      .eq("section_id", version.section_id);
-
-    queryClient.invalidateQueries({ queryKey: ["section-contents"] });
-    setSelectedSection(version.section_id);
+  const handleRestoreVersion = (version: SectionVersion) => {
     setEditorForm({
       header: version.header || "",
       title: version.title,
-      content: version.content,
+      content: version.content
     });
-    
     toast({
       title: "Versão restaurada",
-      description: `Versão ${version.version_number} foi restaurada.`,
+      description: `Versão ${version.version_number} carregada no editor. Clique em Salvar para confirmar.`,
     });
   };
 
+  const SECTION_OPTIONS = [
+    { value: "software", label: "Software - A Primeira Revolução" },
+    { value: "internet", label: "Internet - A Era da Conectividade" },
+    { value: "tech-sem-proposito", label: "Tech Sem Propósito - O Hype Tecnológico" },
+    { value: "kubrick", label: "Kubrick - A Profecia de 1969" },
+    { value: "watson", label: "Watson - O Despertar do Propósito" },
+    { value: "ia-nova-era", label: "Nova Era da IA - A Era Generativa" },
+    { value: "bom-prompt", label: "Bom Prompt - A Arte do Bom Prompt" },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div>
-        <AdminTitleWithInfo
-          title="Gestão de Tooltips"
-          level="h1"
-          icon={FileText}
-          tooltipText="Edite conteúdo dos tooltips"
-          infoContent={
-            <>
-              <p>Gerencie o conteúdo exibido em cada tooltip das seções do landing page.</p>
-              <p className="mt-2">Edite títulos e descrições para melhorar a experiência do usuário.</p>
-            </>
-          }
-        />
-        <p className="text-muted-foreground mt-2">
-          Edite o conteúdo dos tooltips de cada seção
-        </p>
-      </div>
+    <div className="space-y-8">
+      <AdminTitleWithInfo
+        title="Gestão de Tooltips e Conteúdo"
+        level="h1"
+        icon={Edit3}
+        tooltipText="Sistema de gerenciamento de conteúdo"
+        infoContent={
+          <>
+            <p>Gerencie tooltips, conteúdo de seções e histórico de versões.</p>
+          </>
+        }
+      />
 
-      {/* Editor de Conteúdo Colapsável */}
-      <Collapsible 
-        open={isEditorOpen} 
-        onOpenChange={setIsEditorOpen}
-        className="mb-6"
-      >
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="outline"
-            className="w-full justify-between bg-primary/30 border-2 border-primary hover:bg-primary/50 hover:shadow-lg hover:shadow-primary/40 transition-all duration-300"
-          >
-            <span className="flex items-center gap-2">
-              <Edit3 className="w-5 h-5" />
-              Editor de Conteúdo
-            </span>
-            <ChevronDown 
-              className={`w-5 h-5 transition-transform duration-300 ${
-                isEditorOpen ? "rotate-180" : ""
-              }`}
-            />
-          </Button>
-        </CollapsibleTrigger>
-
-        <CollapsibleContent className="animate-accordion-down">
-          <Card className="mt-4 p-6 bg-card/50 backdrop-blur-sm border-primary/20">
-            <div className="space-y-6">
-              {/* Import/Export Buttons */}
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={handleExport}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar JSON
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleImport}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Importar JSON
-                </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
+      {/* Editor de Conteúdo das Seções */}
+      <Collapsible open={isEditorOpen} onOpenChange={setIsEditorOpen}>
+        <Card className="bg-card/50 backdrop-blur-sm border-primary/20">
+          <CardHeader>
+            <CollapsibleTrigger className="w-full flex items-center justify-between hover:opacity-80 transition-opacity">
+              <div className="flex items-center gap-2">
+                <Edit2 className="h-5 w-5 text-primary" />
+                <CardTitle>Editor de Conteúdo</CardTitle>
               </div>
-
-              {/* Seletor de Seção */}
-              <div className="space-y-2">
-                <Label htmlFor="section-select" className="text-sm font-medium text-muted-foreground">
-                  SEÇÃO
-                </Label>
+              <ChevronDown className={`h-5 w-5 transition-transform ${isEditorOpen ? 'rotate-180' : ''}`} />
+            </CollapsibleTrigger>
+            <CardDescription>
+              Edite o conteúdo principal das seções do site
+            </CardDescription>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-6">
+              {/* Seletor de Seção + Botões */}
+              <div className="flex gap-3">
                 <Select value={selectedSection} onValueChange={handleSectionChange}>
-                  <SelectTrigger id="section-select" className="bg-background/50">
-                    <SelectValue placeholder="Selecione uma seção para editar" />
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Selecione uma seção" />
                   </SelectTrigger>
-                  <SelectContent className="bg-background z-50">
-                    {sectionContents?.map((section) => (
-                      <SelectItem key={section.section_id} value={section.section_id}>
-                        {section.title}
+                  <SelectContent>
+                    {SECTION_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Header Section */}
-              <div className="space-y-2">
-                <Label htmlFor="editor-header" className="text-sm font-medium text-muted-foreground">
-                  HEADER
-                </Label>
-                <Card className="p-4 bg-background/50">
-                  <Input
-                    id="editor-header"
-                    value={editorForm.header}
-                    onChange={(e) =>
-                      setEditorForm({ ...editorForm, header: e.target.value })
-                    }
-                    placeholder="Informações gerais sobre a seção (opcional)"
-                    className="bg-background/50"
-                    disabled={!selectedSection}
-                  />
-                </Card>
-              </div>
-
-              {/* Título Section */}
-              <div className="space-y-2">
-                <Label htmlFor="editor-title" className="text-sm font-medium text-muted-foreground">
-                  TÍTULO
-                </Label>
-                <Input
-                  id="editor-title"
-                  value={editorForm.title}
-                  onChange={(e) =>
-                    setEditorForm({ ...editorForm, title: e.target.value })
-                  }
-                  placeholder="Título principal da seção"
-                  className="bg-background/50"
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleExport}
                   disabled={!selectedSection}
-                />
-              </div>
-
-              {/* Conteúdo Section */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="editor-content" className="text-sm font-medium text-muted-foreground">
-                    CONTEÚDO
-                  </Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowPreview(!showPreview)}
-                    disabled={!selectedSection}
-                  >
-                    {showPreview ? (
-                      <>
-                        <EyeOff className="h-4 w-4 mr-2" />
-                        Ocultar Preview
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="h-4 w-4 mr-2" />
-                        Ver Preview
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <Textarea
-                  id="editor-content"
-                  value={editorForm.content}
-                  onChange={(e) =>
-                    setEditorForm({ ...editorForm, content: e.target.value })
-                  }
-                  placeholder="Conteúdo completo da seção"
-                  rows={8}
-                  className="bg-background/50 resize-none"
+                  title="Exportar conteúdo"
+                >
+                  <Download className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleImport}
+                  title="Importar conteúdo"
+                >
+                  <Upload className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowVersions(!showVersions)}
                   disabled={!selectedSection}
-                />
+                  title="Ver histórico de versões"
+                >
+                  <History className={`w-4 h-4 ${showVersions ? 'text-primary' : ''}`} />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowPreview(!showPreview)}
+                  title={showPreview ? "Ocultar preview" : "Mostrar preview"}
+                >
+                  {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
               </div>
 
-              {/* Preview */}
-              {showPreview && editorForm.content && (
-                <Card className="p-6 bg-muted/50">
-                  <h4 className="text-sm font-semibold mb-4 text-muted-foreground">Preview em Tempo Real</h4>
-                  <div className="space-y-4">
-                    {editorForm.header && (
-                      <div className="inline-block px-4 py-1 bg-primary/10 rounded-full border border-primary/20">
-                        <span className="text-sm text-primary font-medium">{editorForm.header}</span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+
+              {/* Histórico de Versões */}
+              {showVersions && selectedSection && versions.length > 0 && (
+                <Card className="bg-muted/30 border-primary/20">
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <History className="w-4 h-4" />
+                      Histórico de Versões
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[200px]">
+                      <div className="space-y-2">
+                        {versions.map((version) => (
+                          <div
+                            key={version.id}
+                            className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border hover:border-primary/40 transition-colors"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium">Versão {version.version_number}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {format(new Date(version.created_at), "dd/MM/yyyy HH:mm")}
+                              </div>
+                              {version.change_description && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {version.change_description}
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRestoreVersion(version)}
+                              className="gap-2"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              Restaurar
+                            </Button>
+                          </div>
+                        ))}
                       </div>
-                    )}
-                    {editorForm.title && (
-                      <h2 className="text-3xl md:text-4xl font-bold">{editorForm.title}</h2>
-                    )}
-                    <div className="prose prose-invert max-w-none text-muted-foreground">
-                      <p className="whitespace-pre-wrap">{editorForm.content}</p>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
+
+              {selectedSection && (
+                <>
+                  {/* Formulário de Edição */}
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Header (opcional)</Label>
+                      <Input
+                        value={editorForm.header}
+                        onChange={(e) => setEditorForm({ ...editorForm, header: e.target.value })}
+                        placeholder="Header da seção"
+                      />
+                    </div>
+                    <div>
+                      <Label>Título</Label>
+                      <Input
+                        value={editorForm.title}
+                        onChange={(e) => setEditorForm({ ...editorForm, title: e.target.value })}
+                        placeholder="Título da seção"
+                      />
+                    </div>
+                    <div>
+                      <Label>Conteúdo</Label>
+                      <Textarea
+                        value={editorForm.content}
+                        onChange={(e) => setEditorForm({ ...editorForm, content: e.target.value })}
+                        placeholder="Conteúdo da seção"
+                        rows={8}
+                      />
                     </div>
                   </div>
-                </Card>
-              )}
 
-              {/* Version History */}
-              {selectedSection && versions.length > 0 && (
-                <Collapsible open={showVersions} onOpenChange={setShowVersions}>
-                  <Card className="p-4 bg-muted/30">
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm" className="w-full justify-between">
-                        <div className="flex items-center gap-2">
-                          <History className="h-4 w-4" />
-                          <span>Histórico de Versões ({versions.length})</span>
-                        </div>
-                        {showVersions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-4 space-y-2">
-                      {versions.map((version) => (
-                        <div
-                          key={version.id}
-                          className="flex items-center justify-between p-3 bg-background rounded-lg border"
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold">v{version.version_number}</span>
-                              <span className="text-sm text-muted-foreground">
-                                {format(new Date(version.created_at), "dd/MM/yyyy HH:mm")}
-                              </span>
-                            </div>
-                            {version.change_description && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {version.change_description}
-                              </p>
-                            )}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRestoreVersion(version)}
-                          >
-                            <RotateCcw className="h-4 w-4 mr-2" />
-                            Restaurar
-                          </Button>
-                        </div>
-                      ))}
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              )}
+                  {/* Preview */}
+                  {showPreview && (
+                    <Card className="bg-muted/30 border-primary/20">
+                      <CardHeader>
+                        <CardTitle className="text-sm">Preview</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {editorForm.header && (
+                          <p className="text-sm text-muted-foreground mb-2">{editorForm.header}</p>
+                        )}
+                        <h3 className="text-xl font-bold mb-3">{editorForm.title}</h3>
+                        <p className="text-muted-foreground whitespace-pre-wrap">{editorForm.content}</p>
+                      </CardContent>
+                    </Card>
+                  )}
 
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleEditorSave}
-                  className="gap-2"
-                  disabled={!selectedSection || saveSectionMutation.isPending}
-                >
-                  <Save className="w-4 h-4" />
-                  {saveSectionMutation.isPending ? "Salvando..." : "Salvar"}
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={handleEditorCancel} 
-                  className="gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  Cancelar
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </CollapsibleContent>
+                  {/* Botões de Ação */}
+                  <div className="flex gap-2">
+                    <Button onClick={handleEditorSave} disabled={saveSectionMutation.isPending}>
+                      <Save className="w-4 h-4 mr-2" />
+                      Salvar
+                    </Button>
+                    <Button variant="ghost" onClick={handleEditorCancel}>
+                      <X className="w-4 h-4 mr-2" />
+                      Cancelar
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
       </Collapsible>
 
-      {/* NOVA SEÇÃO: Explorar História da IA (14 eventos) */}
+      {/* História da IA com Preview + Drag-and-Drop */}
       <Card className="bg-card/50 backdrop-blur-sm border-primary/20">
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -584,147 +567,12 @@ export const TooltipsTab = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {(() => {
-              // Define chronological order matching AIHistoryPanel modal
-              const HISTORY_CHRONOLOGICAL_ORDER = [
-                'history-talos',
-                'history-telegraph',
-                'history-turing-machine',
-                'history-enigma',
-                'history-turing-test',
-                'history-arpanet',
-                'history-tcpip',
-                'history-www',
-                'history-web2',
-                'history-watson',
-                'history-openai',
-                'history-gpt3',
-                'history-chatgpt',
-                'history-current'
-              ];
-
-              return tooltips
-                ?.filter(tooltip => tooltip.section_id.startsWith("history-"))
-                .sort((a, b) => {
-                  const indexA = HISTORY_CHRONOLOGICAL_ORDER.indexOf(a.section_id);
-                  const indexB = HISTORY_CHRONOLOGICAL_ORDER.indexOf(b.section_id);
-                  return indexA - indexB;
-                })
-                .map((historyEvent) => (
-                <Card
-                  key={historyEvent.id}
-                  className="p-6 bg-card/50 backdrop-blur-sm border-primary/20"
-                >
-                  {/* Cabeçalho sempre visível */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="text-xs text-muted-foreground mb-1">
-                        {historyEvent.section_id}
-                      </div>
-                      <h3 className="text-xl font-bold text-foreground">
-                        {historyEvent.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {historyEvent.header}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-2 border-blue-400/60 hover:bg-blue-500/20"
-                      onClick={() => editingId === historyEvent.id ? handleCancel() : handleEdit(historyEvent)}
-                    >
-                      {editingId === historyEvent.id ? (
-                        <>
-                          <ChevronUp className="w-4 h-4" />
-                          Fechar
-                        </>
-                      ) : (
-                        <>
-                          <Edit2 className="w-4 h-4" />
-                          Editar
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  {/* Conteúdo (visualização) */}
-                  {editingId !== historyEvent.id && (
-                    <p className="text-muted-foreground line-clamp-3">
-                      {historyEvent.content}
-                    </p>
-                  )}
-
-                  {/* Modo de Edição Colapsável */}
-                  <Collapsible open={editingId === historyEvent.id}>
-                    <CollapsibleContent className="animate-accordion-down">
-                      <div className="space-y-4 mt-4 pt-4 border-t border-primary/20">
-                        {/* Campo ANO */}
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium text-muted-foreground">
-                            ANO
-                          </Label>
-                          <Input
-                            value={editForm.header}
-                            onChange={(e) => setEditForm({ ...editForm, header: e.target.value })}
-                            placeholder="Ano ou período (ex: c. 3000 a.C.)"
-                            className="bg-blue-50/10 border-2 border-blue-400/60 focus:border-blue-500"
-                          />
-                        </div>
-
-                        {/* Campo TÍTULO */}
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium text-muted-foreground">
-                            TÍTULO
-                          </Label>
-                          <Input
-                            value={editForm.title}
-                            onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                            placeholder="Título do evento histórico"
-                            className="bg-blue-50/10 border-2 border-blue-400/60 focus:border-blue-500"
-                          />
-                        </div>
-
-                        {/* Campo CONTEÚDO */}
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium text-muted-foreground">
-                            CONTEÚDO
-                          </Label>
-                          <Textarea
-                            value={editForm.content}
-                            onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
-                            rows={6}
-                            placeholder="Descrição do evento e seu impacto na IA"
-                            className="bg-blue-50/10 border-2 border-blue-400/60 focus:border-blue-500 resize-none"
-                          />
-                        </div>
-
-                        {/* Botões de Ação */}
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => handleSave(historyEvent.id)}
-                            className="gap-2"
-                          >
-                            <Save className="w-4 h-4" />
-                            Salvar
-                          </Button>
-                          <Button variant="ghost" onClick={handleCancel} className="gap-2">
-                            <X className="w-4 h-4" />
-                            Cancelar
-                          </Button>
-                        </div>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </Card>
-              ))})()}
-          </div>
+          <TimelineHistoryManager tooltips={tooltips} queryClient={queryClient} />
         </CardContent>
       </Card>
 
-      {/* SEÇÃO ORIGINAL: Tooltips das Seções (NÃO MODIFICADA) */}
-      <div className="space-y-4 mt-6">
+      {/* Tooltips das Seções (Originais) */}
+      <div className="space-y-4">
         <AdminTitleWithInfo
           title="Tooltips das Seções"
           level="h2"
@@ -744,7 +592,6 @@ export const TooltipsTab = () => {
             key={tooltip.id}
             className="p-6 bg-card/50 backdrop-blur-sm border-primary/20"
           >
-            {/* Cabeçalho sempre visível */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <div className="text-xs text-muted-foreground mb-1">
@@ -774,18 +621,15 @@ export const TooltipsTab = () => {
               </Button>
             </div>
 
-            {/* Conteúdo (visualização) */}
             {editingId !== tooltip.id && (
               <p className="text-muted-foreground line-clamp-3">
                 {tooltip.content}
               </p>
             )}
 
-            {/* Modo de Edição Colapsável */}
             <Collapsible open={editingId === tooltip.id}>
               <CollapsibleContent className="animate-accordion-down">
                 <div className="space-y-4 mt-4 pt-4 border-t border-primary/20">
-                  {/* Campo Header */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">
                       HEADER
@@ -798,7 +642,6 @@ export const TooltipsTab = () => {
                     />
                   </div>
 
-                  {/* Campo Título */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">
                       TÍTULO
@@ -811,7 +654,6 @@ export const TooltipsTab = () => {
                     />
                   </div>
 
-                  {/* Campo Conteúdo */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">
                       CONTEÚDO
@@ -825,7 +667,6 @@ export const TooltipsTab = () => {
                     />
                   </div>
 
-                  {/* Botões de Ação */}
                   <div className="flex gap-2">
                     <Button
                       onClick={() => handleSave(tooltip.id)}
@@ -848,3 +689,305 @@ export const TooltipsTab = () => {
     </div>
   );
 };
+
+// Timeline History Manager Component with Preview + Drag-and-Drop
+const TimelineHistoryManager = ({ tooltips, queryClient }: { tooltips: TooltipContent[] | undefined, queryClient: any }) => {
+  const [localOrder, setLocalOrder] = useState<TooltipContent[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
+  const { toast } = useToast();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Initialize local order from database
+  const historyEvents = tooltips
+    ?.filter(tooltip => tooltip.section_id.startsWith("history-"))
+    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0)) || [];
+
+  if (localOrder.length === 0 && historyEvents.length > 0) {
+    setLocalOrder(historyEvents);
+  }
+
+  const updateOrderMutation = useMutation({
+    mutationFn: async (orderedItems: TooltipContent[]) => {
+      for (let i = 0; i < orderedItems.length; i++) {
+        const { error } = await supabase
+          .from('tooltip_contents')
+          .update({ display_order: i + 1 })
+          .eq('id', orderedItems[i].id);
+        
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-tooltips'] });
+      toast({ title: 'Ordem salva com sucesso!' });
+      setHasChanges(false);
+    },
+    onError: (error) => {
+      console.error('Erro ao salvar ordem:', error);
+      toast({ title: 'Erro ao salvar ordem dos eventos', variant: 'destructive' });
+    }
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      setLocalOrder((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+        setHasChanges(true);
+        return newOrder;
+      });
+    }
+  };
+
+  const handleSaveOrder = () => {
+    updateOrderMutation.mutate(localOrder);
+  };
+
+  const scrollToCard = (sectionId: string) => {
+    const element = document.querySelector(`[data-section-id="${sectionId}"]`);
+    element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Timeline Preview */}
+      <div className="p-4 rounded-lg bg-muted/30 border border-primary/20">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">Preview da Timeline</span>
+          </div>
+          <span className="text-xs text-muted-foreground">14 eventos</span>
+        </div>
+        
+        <ScrollArea className="w-full">
+          <div className="flex items-center gap-3 pb-2 min-w-max">
+            {localOrder.map((event, idx) => {
+              const date = event.section_id.includes('talos') ? 'c.3000' : 
+                          event.section_id.includes('telegraph') ? '1790' :
+                          event.section_id.includes('turing-machine') ? '1936' :
+                          event.section_id.includes('enigma') ? '1940' :
+                          event.section_id.includes('turing-test') ? '1950' :
+                          event.section_id.includes('arpanet') ? '1969' :
+                          event.section_id.includes('tcpip') ? '1974' :
+                          event.section_id.includes('www') ? '1989' :
+                          event.section_id.includes('web2') ? '2004' :
+                          event.section_id.includes('watson') ? '2011' :
+                          event.section_id.includes('openai') ? '2015' :
+                          event.section_id.includes('gpt3') ? '2020' :
+                          event.section_id.includes('chatgpt') ? '2022' : '2024';
+              
+              const abbr = event.title.slice(0, 4);
+              
+              return (
+                <div key={event.id} className="flex flex-col items-center group cursor-pointer" onClick={() => scrollToCard(event.section_id)}>
+                  <div className="relative">
+                    <div className="w-3 h-3 rounded-full bg-primary/60 group-hover:bg-primary group-hover:scale-125 transition-all" />
+                    {idx < localOrder.length - 1 && (
+                      <div className="absolute top-1/2 left-full w-8 h-[2px] bg-primary/30" />
+                    )}
+                  </div>
+                  <span className="text-[9px] text-muted-foreground mt-1 whitespace-nowrap">{date}</span>
+                  <span className="text-[8px] text-muted-foreground/70 font-mono">{abbr}</span>
+                </div>
+              );
+            })}
+            <div className="ml-2 text-primary/50">→</div>
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* Drag-and-Drop Cards */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <GripVertical className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">Reorganizar Eventos (Arraste para reordenar)</span>
+          </div>
+          <Button 
+            onClick={handleSaveOrder} 
+            disabled={!hasChanges || updateOrderMutation.isPending}
+            size="sm"
+            className="gap-2"
+          >
+            <Save className="w-4 h-4" />
+            Salvar Ordem
+          </Button>
+        </div>
+
+        <DndContext 
+          sensors={sensors} 
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext 
+            items={localOrder.map(e => e.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {localOrder.map((event, idx) => (
+                <SortableHistoryCard 
+                  key={event.id} 
+                  event={event} 
+                  index={idx}
+                  queryClient={queryClient}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </div>
+    </div>
+  );
+};
+
+// Sortable History Card Component
+const SortableHistoryCard = ({ event, index, queryClient }: { event: TooltipContent, index: number, queryClient: any }) => {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ header: "", title: "", content: "" });
+  const { toast } = useToast();
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: event.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const saveMutation = useMutation({
+    mutationFn: async (updates: { header?: string; title: string; content: string }) => {
+      const { error } = await supabase
+        .from('tooltip_contents')
+        .update(updates)
+        .eq('id', event.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-tooltips'] });
+      toast({ title: 'Tooltip atualizado com sucesso!' });
+      setEditingId(null);
+    },
+    onError: (error) => {
+      console.error('Erro ao atualizar tooltip:', error);
+      toast({ title: 'Erro ao atualizar tooltip', variant: 'destructive' });
+    }
+  });
+
+  const handleEdit = () => {
+    setEditingId(event.id);
+    setEditForm({
+      header: event.header || "",
+      title: event.title,
+      content: event.content
+    });
+  };
+
+  const handleSave = () => {
+    saveMutation.mutate(editForm);
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+  };
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      data-section-id={event.section_id}
+      className="p-4 bg-card/50 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-all"
+    >
+      <div className="flex items-start gap-3">
+        <div 
+          {...attributes} 
+          {...listeners}
+          className="flex items-center gap-2 cursor-grab active:cursor-grabbing shrink-0"
+        >
+          <GripVertical className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm">
+            {index + 1}
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1 flex-1">
+              <div className="text-xs text-muted-foreground font-mono">{event.section_id}</div>
+              <h4 className="font-semibold text-foreground">{event.title}</h4>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEdit}
+              className="shrink-0 border-blue-400/60 text-blue-400 hover:bg-blue-400/10"
+            >
+              <Pencil className="w-4 h-4 mr-2" />
+              Editar
+            </Button>
+          </div>
+
+          <Collapsible open={editingId === event.id}>
+            <CollapsibleContent className="space-y-3">
+              <div>
+                <Label className="text-xs">Header (opcional)</Label>
+                <Input
+                  value={editForm.header}
+                  onChange={(e) => setEditForm({ ...editForm, header: e.target.value })}
+                  placeholder="Header do tooltip"
+                  className="border-blue-400/60 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Título</Label>
+                <Input
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  placeholder="Título do evento"
+                  className="border-blue-400/60 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Conteúdo</Label>
+                <Textarea
+                  value={editForm.content}
+                  onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                  placeholder="Descrição do evento"
+                  rows={4}
+                  className="border-blue-400/60 focus:border-blue-500"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSave} disabled={saveMutation.isPending} size="sm">
+                  Salvar
+                </Button>
+                <Button onClick={handleCancel} variant="outline" size="sm">
+                  Cancelar
+                </Button>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+export default TooltipsTab;

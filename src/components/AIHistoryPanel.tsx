@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Play, StopCircle, Download, FileDown, Shield, Radio, Cpu, KeyRound, MessageCircle, Network, GitBranch, Globe, Users, Brain, Sparkles, FileText, MessageSquare, Rocket } from "lucide-react";
+import { X, Play, StopCircle, Download, FileDown, Shield, Radio, Cpu, KeyRound, MessageCircle, Network, GitBranch, Globe, Users, Brain, Sparkles, FileText, MessageSquare, Rocket, LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,28 +13,40 @@ import { cn } from "@/lib/utils";
 import { generateAudioUrl } from "@/lib/audio-player";
 import { useTranslation } from "react-i18next";
 import jsPDF from 'jspdf';
+import { useQuery } from "@tanstack/react-query";
 
 interface AIHistoryPanelProps {
   onClose: () => void;
 }
 
-// Nova estrutura de dados: 14 eventos históricos
-const TIMELINE_EVENTS = [
-  { id: 'talos', date: 'c. 3000 a.C. - 1200 a.C.', icon: Shield, era: 'bronze' },
-  { id: 'telegraphy-cards', date: '1790-1890', icon: Radio, era: 'early-computing' },
-  { id: 'turing-machine', date: '1936', icon: Cpu, era: 'compute' },
-  { id: 'enigma', date: '1940-1945', icon: KeyRound, era: 'war' },
-  { id: 'turing-test', date: '1950', icon: MessageCircle, era: 'philosophy' },
-  { id: 'arpanet', date: '1969', icon: Network, era: 'internet' },
-  { id: 'tcpip', date: '1974', icon: GitBranch, era: 'protocol' },
-  { id: 'www', date: '1989', icon: Globe, era: 'web' },
-  { id: 'social', date: '2004', icon: Users, era: 'social' },
-  { id: 'watson', date: '2011', icon: Brain, era: 'watson' },
-  { id: 'openai', date: '2015', icon: Sparkles, era: 'openai' },
-  { id: 'gpt3', date: '2020', icon: FileText, era: 'gpt' },
-  { id: 'chatgpt', date: '2022', icon: MessageSquare, era: 'chatgpt' },
-  { id: 'current', date: 'Atualidade', icon: Rocket, era: 'current' }
-];
+interface TimelineEvent {
+  id: string;
+  section_id: string;
+  title: string;
+  content: string;
+  display_order: number;
+}
+
+// Icon mapping for historical events
+const ICON_MAP: Record<string, LucideIcon> = {
+  'history-talos': Shield,
+  'history-telegraph': Radio,
+  'history-turing-machine': Cpu,
+  'history-enigma': KeyRound,
+  'history-turing-test': MessageCircle,
+  'history-arpanet': Network,
+  'history-tcpip': GitBranch,
+  'history-www': Globe,
+  'history-web2': Users,
+  'history-watson': Brain,
+  'history-openai': Sparkles,
+  'history-gpt3': FileText,
+  'history-chatgpt': MessageSquare,
+  'history-current': Rocket
+};
+
+// Extract event ID from section_id (e.g., 'history-talos' -> 'talos')
+const getEventId = (sectionId: string) => sectionId.replace('history-', '');
 
 export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const { t } = useTranslation();
@@ -51,12 +63,34 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const eventRefs = useRef<Record<string, HTMLDivElement | null>>({});
   
-  // Traduções dos eventos da linha do tempo
-  const timelineData = TIMELINE_EVENTS.map(event => ({
-    ...event,
-    title: t(`aiHistory.timeline.${event.id}.title`),
-    description: t(`aiHistory.timeline.${event.id}.description`)
-  }));
+  // Fetch timeline events from database ordered by display_order
+  const { data: dbEvents, isLoading: loadingEvents } = useQuery({
+    queryKey: ['timeline-history-events'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tooltip_contents')
+        .select('*')
+        .like('section_id', 'history-%')
+        .order('display_order', { ascending: true });
+      
+      if (error) throw error;
+      return data as TimelineEvent[];
+    }
+  });
+
+  // Map database events to timeline format with icons
+  const timelineData = (dbEvents || []).map(event => {
+    const eventId = getEventId(event.section_id);
+    return {
+      id: eventId,
+      section_id: event.section_id,
+      date: event.title.match(/\d{4}|\d{3,4}\s*a\.C\.|Atualidade/)?.[0] || '',
+      title: event.title,
+      description: event.content,
+      icon: ICON_MAP[event.section_id] || Rocket,
+      era: eventId
+    };
+  });
 
   // Texto completo para áudio (concatenação de todos os eventos)
   const fullText = timelineData.map(event => 
@@ -150,7 +184,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   };
 
   // Timestamps de cada evento no áudio (distribuídos uniformemente)
-  const eventTimestamps = TIMELINE_EVENTS.map((event, idx) => ({
+  const eventTimestamps = timelineData.map((event, idx) => ({
     id: event.id,
     startTime: idx * 20, // ~20 segundos por evento
     endTime: (idx + 1) * 20
@@ -159,22 +193,25 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   // Carregar imagens dos eventos (executar apenas UMA VEZ)
   useEffect(() => {
     const loadImages = async () => {
+      if (!dbEvents || dbEvents.length === 0) return;
+      
       setLoadingImages(true);
       const images: Record<string, string> = {};
 
-      for (const event of TIMELINE_EVENTS) {
+      for (const event of dbEvents) {
+        const eventId = getEventId(event.section_id);
         try {
           const { data, error } = await supabase.functions.invoke('generate-history-image', {
-            body: { eraId: event.id }
+            body: { eraId: eventId }
           });
 
           if (error) throw error;
           if (data?.imageUrl) {
-            images[event.id] = data.imageUrl;
-            console.log(`Evento ${event.id}: ${data.fromCache ? 'cache' : 'gerado'}`);
+            images[eventId] = data.imageUrl;
+            console.log(`Evento ${eventId}: ${data.fromCache ? 'cache' : 'gerado'}`);
           }
         } catch (error) {
-          console.error(`Erro ao carregar imagem do evento ${event.id}:`, error);
+          console.error(`Erro ao carregar imagem do evento ${eventId}:`, error);
         }
       }
 
@@ -183,7 +220,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
     };
 
     loadImages();
-  }, []); // Rodar apenas uma vez
+  }, [dbEvents]); // Rodar quando dbEvents carregar
   
   // Cleanup audio on component unmount
   useEffect(() => {
@@ -315,7 +352,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
             {/* Badge Navigation */}
             <ScrollArea className="w-full">
               <div className="flex gap-2 pb-2">
-                {TIMELINE_EVENTS.map((event) => {
+                {timelineData.map((event) => {
                   const Icon = event.icon;
                   return (
                     <Badge
@@ -414,7 +451,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
 
           {/* Badge Navigation */}
           <div className="flex items-center justify-center gap-2 mb-4 flex-wrap flex-shrink-0">
-            {TIMELINE_EVENTS.map((event) => {
+            {timelineData.map((event) => {
               const Icon = event.icon;
               return (
                 <Badge
@@ -486,7 +523,6 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
             <div className="space-y-3 pr-4 ml-8">
               {timelineData.map((event) => {
                 const Icon = event.icon;
-                const eraConfig = TIMELINE_EVENTS.find(e => e.id === event.id);
                 return (
                   <div
                     key={event.id}
