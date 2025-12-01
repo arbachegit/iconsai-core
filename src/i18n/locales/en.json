@@ -256,6 +256,7 @@
     "play": "Play",
     "pause": "Pause",
     "stop": "Stop",
+    "generating": "Generating audio...",
     "download": "Download",
     "downloadImage": "Download image",
     "copy": "Copy",
