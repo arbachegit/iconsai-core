@@ -2,10 +2,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Youtube, Trash2, RefreshCw, Clock, Database } from "lucide-react";
+import { Loader2, Youtube, Trash2, RefreshCw, Clock, Database, Video, Save, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
+import { useAdminSettings } from "@/hooks/useAdminSettings";
+import { AIHistoryPanel } from "@/components/AIHistoryPanel";
 
 const QUOTA_EXCEEDED_KEY = 'youtube_quota_exceeded';
 const VIDEOS_CACHE_KEY = 'youtube_videos_cache';
@@ -21,9 +25,13 @@ const categories = [
 
 export const YouTubeCacheTab = () => {
   const { toast } = useToast();
+  const { settings, updateSettings } = useAdminSettings();
   const [isPreloading, setIsPreloading] = useState(false);
   const [cacheStats, setCacheStats] = useState<any>(null);
   const [cacheMetrics, setCacheMetrics] = useState<any>(null);
+  const [vimeoUrl, setVimeoUrl] = useState(settings?.vimeo_history_url || "");
+  const [showHistoryPreview, setShowHistoryPreview] = useState(false);
+  const [isSavingVimeo, setIsSavingVimeo] = useState(false);
 
   const getCacheStatistics = () => {
     const stats: any = {
@@ -175,9 +183,31 @@ export const YouTubeCacheTab = () => {
     });
   };
 
+  const saveVimeoUrl = async () => {
+    setIsSavingVimeo(true);
+    try {
+      await updateSettings({ vimeo_history_url: vimeoUrl });
+      toast({
+        title: "URL do Vimeo salva",
+        description: "A URL do vídeo foi atualizada com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar a URL do Vimeo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingVimeo(false);
+    }
+  };
+
   // Load stats on mount
   useState(() => {
     getCacheStatistics();
+    if (settings?.vimeo_history_url) {
+      setVimeoUrl(settings.vimeo_history_url);
+    }
   });
 
   return (
@@ -406,6 +436,84 @@ export const YouTubeCacheTab = () => {
           </Card>
         </CardContent>
       </Card>
+
+      {/* Vimeo Section */}
+      <Card>
+        <CardHeader>
+          <AdminTitleWithInfo
+            title="Vimeo - Explorar a História da IA"
+            level="h2"
+            icon={Video}
+            tooltipText="Configure o vídeo do Vimeo exibido na timeline histórica da IA"
+            infoContent={
+              <>
+                <p>Configure a URL do vídeo Vimeo que aparece no modal "Explorar a História da IA".</p>
+                <p className="mt-2">Use a URL do embed do Vimeo (ex: https://player.vimeo.com/video/123456789)</p>
+                <p className="mt-2">Para encontrar a URL: Vimeo → Seu vídeo → Compartilhar → Embed</p>
+              </>
+            }
+          />
+          <CardDescription className="mt-2">
+            Vídeo exibido entre o título e a navegação dos eventos históricos
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Campo URL do Vimeo */}
+          <div className="space-y-2">
+            <Label htmlFor="vimeo-url">URL do Vídeo Vimeo (embed)</Label>
+            <Input 
+              id="vimeo-url"
+              placeholder="https://player.vimeo.com/video/123456789"
+              value={vimeoUrl}
+              onChange={(e) => setVimeoUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Cole a URL do embed do Vimeo. Encontre em: Vimeo → Compartilhar → Embed
+            </p>
+          </div>
+          
+          {/* Preview do vídeo */}
+          {vimeoUrl && (
+            <div className="rounded-lg overflow-hidden border border-primary/20">
+              <iframe 
+                src={vimeoUrl} 
+                width="100%" 
+                height="300"
+                frameBorder="0"
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )}
+          
+          {/* Botões */}
+          <div className="flex gap-3">
+            <Button onClick={saveVimeoUrl} disabled={isSavingVimeo || !vimeoUrl}>
+              {isSavingVimeo ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Salvar URL do Vimeo
+                </>
+              )}
+            </Button>
+            
+            <Button variant="outline" onClick={() => setShowHistoryPreview(true)}>
+              <Play className="w-4 h-4 mr-2" />
+              Explorar a História da IA
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Preview Modal */}
+      {showHistoryPreview && (
+        <AIHistoryPanel onClose={() => setShowHistoryPreview(false)} />
+      )}
     </div>
   );
 };

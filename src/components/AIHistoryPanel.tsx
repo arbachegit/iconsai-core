@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHistoryCarousel } from "./MobileHistoryCarousel";
@@ -14,6 +15,7 @@ import { generateAudioUrl } from "@/lib/audio-player";
 import { useTranslation } from "react-i18next";
 import jsPDF from 'jspdf';
 import { useQuery } from "@tanstack/react-query";
+import { useAdminSettings } from "@/hooks/useAdminSettings";
 
 interface AIHistoryPanelProps {
   onClose: () => void;
@@ -52,6 +54,7 @@ const getEventId = (sectionId: string) => sectionId.replace('history-', '');
 export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const { settings } = useAdminSettings();
   const [position, setPosition] = useState({ x: window.innerWidth / 2 - 550, y: 50 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -62,6 +65,8 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const [visibleBadges, setVisibleBadges] = useState<Set<string>>(new Set());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const eventRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  
+  const vimeoUrl = settings?.vimeo_history_url;
   
   // Fetch timeline events from database ordered by display_order
   const { data: dbEvents, isLoading: loadingEvents } = useQuery({
@@ -369,6 +374,24 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
               </Button>
             </div>
             
+            {/* Separator */}
+            <Separator className="my-4 bg-primary/30" />
+            
+            {/* Vimeo Video */}
+            {vimeoUrl && (
+              <div className="mb-4 rounded-lg overflow-hidden border border-primary/20">
+                <iframe
+                  src={vimeoUrl}
+                  width="100%"
+                  height="250"
+                  frameBorder="0"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                  className="w-full"
+                />
+              </div>
+            )}
+            
             {/* Badge Navigation */}
             <ScrollArea className="w-full">
               <div className="flex gap-2 pb-2">
@@ -468,6 +491,24 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
           <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
             {t('aiHistory.timeline.title')}
           </h2>
+
+          {/* Separator */}
+          <Separator className="my-4 bg-primary/30" />
+          
+          {/* Vimeo Video */}
+          {vimeoUrl && (
+            <div className="mb-4 rounded-lg overflow-hidden border border-primary/20">
+              <iframe
+                src={vimeoUrl}
+                width="100%"
+                height="300"
+                frameBorder="0"
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowFullScreen
+                className="w-full"
+              />
+            </div>
+          )}
 
           {/* Badge Navigation */}
           <div className="flex items-center justify-center gap-2 mb-4 flex-wrap flex-shrink-0">
