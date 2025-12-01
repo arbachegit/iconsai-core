@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Play, StopCircle, Download, FileDown, Shield, Cpu, KeyRound, MessageCircle, Network, GitBranch, Globe, Users, Brain, Sparkles, FileText, MessageSquare, Rocket } from "lucide-react";
+import { X, Play, StopCircle, Download, FileDown, Shield, Radio, Cpu, KeyRound, MessageCircle, Network, GitBranch, Globe, Users, Brain, Sparkles, FileText, MessageSquare, Rocket } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,9 +18,10 @@ interface AIHistoryPanelProps {
   onClose: () => void;
 }
 
-// Nova estrutura de dados: 13 eventos históricos
+// Nova estrutura de dados: 14 eventos históricos
 const TIMELINE_EVENTS = [
   { id: 'talos', date: 'c. 3000 a.C. - 1200 a.C.', icon: Shield, era: 'bronze' },
+  { id: 'telegraphy-cards', date: '1790-1890', icon: Radio, era: 'early-computing' },
   { id: 'turing-machine', date: '1936', icon: Cpu, era: 'compute' },
   { id: 'enigma', date: '1940-1945', icon: KeyRound, era: 'war' },
   { id: 'turing-test', date: '1950', icon: MessageCircle, era: 'philosophy' },

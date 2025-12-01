@@ -105,7 +105,11 @@
       "title": "The Definitive Timeline: From Talos to the AI Fever",
       "talos": {
         "title": "Talos, the Bronze Giant",
-        "description": "Initial concept of automaton (autonomous machine) and automated protection system in Greek mythology. The idea of something non-living that acts autonomously."
+        "description": "What it is: A bronze automaton, made by Hephaestus, designed to protect the island of Crete.\n\nImpact on AI: Talos is the first philosophical concept of an autonomous machine. Although mythical, it establishes the human idea of creating an artificial being with a specific purpose (security/surveillance) that operates without constant human intervention. This plants the seed for Robotics and Autonomous Agent Systems, precursors of bots and modern operational AI."
+      },
+      "telegraphy-cards": {
+        "title": "Telegraphy and Punched Cards",
+        "description": "Telegraphy: The earliest form of telegraphy (Claude Chappe's optical telegraph) emerged in the late 18th century (c. 1790). The electric telegraph, revolutionary for communication and data encoding, was developed by Samuel Morse and Alfred Vail from 1837.\n\nPunched Cards: First used in the Jacquard Loom (1801) to automate weaving patterns. Herman Hollerith popularized their use for data processing and storage in the 1890 US census.\n\nImpact on AI: Established the foundations of information encoding and automated data processing, direct precursors of modern computing."
       },
       "turing-machine": {
         "title": "Turing Machine",
