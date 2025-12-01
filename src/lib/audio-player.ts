@@ -3,6 +3,7 @@ export class AudioStreamPlayer {
   private audioQueue: ArrayBuffer[] = [];
   private isPlaying = false;
   private currentSource: AudioBufferSourceNode | null = null;
+  private resolvePlayback: (() => void) | null = null;
 
   constructor() {
     // Initialize on user interaction
@@ -12,16 +13,21 @@ export class AudioStreamPlayer {
   }
 
   async playAudioFromUrl(url: string): Promise<void> {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Falha ao carregar áudio");
+    return new Promise(async (resolve, reject) => {
+      this.resolvePlayback = resolve;
+      
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Falha ao carregar áudio");
 
-      const arrayBuffer = await response.arrayBuffer();
-      await this.playAudioBuffer(arrayBuffer);
-    } catch (error) {
-      console.error("Erro ao reproduzir áudio:", error);
-      throw error;
-    }
+        const arrayBuffer = await response.arrayBuffer();
+        await this.playAudioBuffer(arrayBuffer);
+      } catch (error) {
+        console.error("Erro ao reproduzir áudio:", error);
+        this.resolvePlayback = null;
+        reject(error);
+      }
+    });
   }
 
   private async playAudioBuffer(arrayBuffer: ArrayBuffer): Promise<void> {
@@ -39,6 +45,10 @@ export class AudioStreamPlayer {
   private async processQueue(): Promise<void> {
     if (this.audioQueue.length === 0) {
       this.isPlaying = false;
+      if (this.resolvePlayback) {
+        this.resolvePlayback();
+        this.resolvePlayback = null;
+      }
       return;
     }
 
@@ -79,6 +89,11 @@ export class AudioStreamPlayer {
     }
     this.audioQueue = [];
     this.isPlaying = false;
+    
+    if (this.resolvePlayback) {
+      this.resolvePlayback();
+      this.resolvePlayback = null;
+    }
   }
 
   isCurrentlyPlaying(): boolean {
