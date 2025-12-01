@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw } from "lucide-react";
+import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw, Volume2, Plus, Trash2, Code } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 interface ChatConfig {
   id: string;
   chat_type: "study" | "health";
@@ -31,6 +33,7 @@ interface ChatConfig {
     avg_confidence: number;
     count: number;
   }>;
+  phonetic_map: Record<string, string>;
   created_at: string;
   updated_at: string;
 }
@@ -45,6 +48,12 @@ export function ChatScopeConfigTab() {
   const [testQuery, setTestQuery] = useState("");
   const [testResults, setTestResults] = useState<any>(null);
   const [testingChat, setTestingChat] = useState<"study" | "health">("study");
+  const [phoneticStudyOpen, setPhoneticStudyOpen] = useState(false);
+  const [phoneticHealthOpen, setPhoneticHealthOpen] = useState(false);
+  const [showJsonDialog, setShowJsonDialog] = useState<"study" | "health" | null>(null);
+  const [newTerm, setNewTerm] = useState("");
+  const [newPronunciation, setNewPronunciation] = useState("");
+  const [addingTermFor, setAddingTermFor] = useState<"study" | "health" | null>(null);
   useEffect(() => {
     fetchConfigs();
   }, []);
@@ -460,6 +469,242 @@ export function ChatScopeConfigTab() {
             </div>}
         </CardContent>
       </Card>
+
+      {/* Biblioteca de Pronúncias */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Volume2 className="h-5 w-5" />
+            📚 Biblioteca de Pronúncias
+          </CardTitle>
+          <CardDescription>
+            Configure pronúncias fonéticas para TTS de cada chat
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Study Pronunciation Section */}
+          <Collapsible open={phoneticStudyOpen} onOpenChange={setPhoneticStudyOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Study ({Object.keys(studyConfig?.phonetic_map || {}).length} termos)
+                </span>
+                <span>{phoneticStudyOpen ? "▼" : "▶"}</span>
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4 space-y-3">
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowJsonDialog("study")}
+                  className="flex-1"
+                >
+                  <Code className="h-4 w-4 mr-2" />
+                  Expandir JSON
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setAddingTermFor("study")}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Termo
+                </Button>
+              </div>
+
+              {studyConfig?.phonetic_map && Object.keys(studyConfig.phonetic_map).length > 0 ? (
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="max-h-64 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted sticky top-0">
+                        <tr>
+                          <th className="text-left p-2 font-medium">Termo</th>
+                          <th className="text-left p-2 font-medium">Pronúncia</th>
+                          <th className="w-12"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(studyConfig.phonetic_map).map(([term, pronunciation]) => (
+                          <tr key={term} className="border-t">
+                            <td className="p-2 font-mono text-xs">{term}</td>
+                            <td className="p-2">{pronunciation}</td>
+                            <td className="p-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  const updated = { ...studyConfig.phonetic_map };
+                                  delete updated[term];
+                                  updateConfig("study", { phonetic_map: updated });
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhum termo configurado
+                </p>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Health Pronunciation Section */}
+          <Collapsible open={phoneticHealthOpen} onOpenChange={setPhoneticHealthOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <Heart className="h-4 w-4" />
+                  Health ({Object.keys(healthConfig?.phonetic_map || {}).length} termos)
+                </span>
+                <span>{phoneticHealthOpen ? "▼" : "▶"}</span>
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4 space-y-3">
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowJsonDialog("health")}
+                  className="flex-1"
+                >
+                  <Code className="h-4 w-4 mr-2" />
+                  Expandir JSON
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setAddingTermFor("health")}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Termo
+                </Button>
+              </div>
+
+              {healthConfig?.phonetic_map && Object.keys(healthConfig.phonetic_map).length > 0 ? (
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="max-h-64 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted sticky top-0">
+                        <tr>
+                          <th className="text-left p-2 font-medium">Termo</th>
+                          <th className="text-left p-2 font-medium">Pronúncia</th>
+                          <th className="w-12"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(healthConfig.phonetic_map).map(([term, pronunciation]) => (
+                          <tr key={term} className="border-t">
+                            <td className="p-2 font-mono text-xs">{term}</td>
+                            <td className="p-2">{pronunciation}</td>
+                            <td className="p-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  const updated = { ...healthConfig.phonetic_map };
+                                  delete updated[term];
+                                  updateConfig("health", { phonetic_map: updated });
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhum termo configurado
+                </p>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      </Card>
+
+      {/* JSON Dialog */}
+      <Dialog open={showJsonDialog !== null} onOpenChange={() => setShowJsonDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              JSON - {showJsonDialog === "study" ? "Study" : "Health"}
+            </DialogTitle>
+            <DialogDescription>
+              Visualização em formato JSON do mapa fonético
+            </DialogDescription>
+          </DialogHeader>
+          <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto">
+            {JSON.stringify(
+              showJsonDialog === "study" ? studyConfig?.phonetic_map : healthConfig?.phonetic_map,
+              null,
+              2
+            )}
+          </pre>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Term Dialog */}
+      <Dialog open={addingTermFor !== null} onOpenChange={() => setAddingTermFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar Novo Termo</DialogTitle>
+            <DialogDescription>
+              {addingTermFor === "study" ? "Study" : "Health"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Termo</Label>
+              <Input
+                placeholder="Ex: LLM"
+                value={newTerm}
+                onChange={(e) => setNewTerm(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Pronúncia Fonética</Label>
+              <Input
+                placeholder="Ex: éle-éle-ême"
+                value={newPronunciation}
+                onChange={(e) => setNewPronunciation(e.target.value)}
+              />
+            </div>
+            <Button
+              onClick={() => {
+                if (!newTerm.trim() || !newPronunciation.trim()) {
+                  toast({
+                    title: "Campos obrigatórios",
+                    description: "Preencha termo e pronúncia",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                const config = addingTermFor === "study" ? studyConfig : healthConfig;
+                if (config) {
+                  const updated = { ...config.phonetic_map, [newTerm]: newPronunciation };
+                  updateConfig(addingTermFor!, { phonetic_map: updated });
+                  setNewTerm("");
+                  setNewPronunciation("");
+                  setAddingTermFor(null);
+                }
+              }}
+              className="w-full"
+            >
+              Adicionar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Separator />
 

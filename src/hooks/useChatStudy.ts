@@ -242,7 +242,7 @@ export function useChatStudy() {
         // Gerar áudio para a resposta
         try {
           setIsGeneratingAudio(true);
-          const audioUrl = await generateAudioUrl(assistantContent);
+          const audioUrl = await generateAudioUrl(assistantContent, "study");
           
           setMessages((prev) => {
             const updated = [...prev];
@@ -292,7 +292,7 @@ export function useChatStudy() {
     if (!audioUrlToPlay) {
       try {
         setIsGeneratingAudio(true);
-        const generatedUrl = await generateAudioUrl(message.content);
+        const generatedUrl = await generateAudioUrl(message.content, "study");
         
         // Atualizar a mensagem com o novo audioUrl
         setMessages((prev) => {
