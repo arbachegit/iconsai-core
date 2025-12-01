@@ -88,7 +88,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
     },
     {
       id: "media",
-      label: "Mídia e Conteúdo",
+      label: "Mídia & Conteúdo",
       icon: Palette,
       items: [
         { id: "content-management" as TabType, label: "Seções Landing Page", icon: FileText },

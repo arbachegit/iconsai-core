@@ -22,6 +22,7 @@ interface AIHistoryPanelProps {
 interface TimelineEvent {
   id: string;
   section_id: string;
+  header: string | null;
   title: string;
   content: string;
   display_order: number;
@@ -83,7 +84,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
     return {
       id: eventId,
       section_id: event.section_id,
-      date: event.title.match(/\d{4}|\d{3,4}\s*a\.C\.|Atualidade/)?.[0] || '',
+      date: event.header || '',
       title: event.title,
       description: event.content,
       icon: ICON_MAP[event.section_id] || Rocket,

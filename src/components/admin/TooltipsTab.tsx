@@ -235,12 +235,12 @@ export const TooltipsTab = () => {
                 <div className="space-y-4 mt-4 pt-4 border-t border-primary/20">
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-muted-foreground">
-                      HEADER
+                      ANO/DATA (obrigatório) *
                     </Label>
                     <Input
                       value={editForm.header}
                       onChange={(e) => setEditForm({ ...editForm, header: e.target.value })}
-                      placeholder="Header do tooltip (opcional)"
+                      placeholder="Data do evento (obrigatório)"
                       className="bg-background/50 border-2 border-blue-400/60 focus:border-blue-500"
                     />
                   </div>
@@ -554,11 +554,11 @@ const SortableHistoryCard = ({ event, index, queryClient }: { event: TooltipCont
           <Collapsible open={editingId === event.id}>
             <CollapsibleContent className="space-y-3">
               <div>
-                <Label className="text-xs">Header (opcional)</Label>
+                <Label className="text-xs">ANO/DATA (obrigatório) *</Label>
                 <Input
                   value={editForm.header}
                   onChange={(e) => setEditForm({ ...editForm, header: e.target.value })}
-                  placeholder="Header do tooltip"
+                  placeholder="Data do evento (obrigatório)"
                   className="border-blue-400/60 focus:border-blue-500"
                 />
               </div>
