@@ -158,6 +158,12 @@ export default function ChatStudy() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Parar gravação explicitamente ao enviar mensagem
+    if (isRecording) {
+      stopRecording();
+    }
+    
     if (input.trim() && !isLoading) {
       if (isImageMode) {
         generateImage(input);
