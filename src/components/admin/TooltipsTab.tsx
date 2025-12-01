@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -572,8 +572,151 @@ export const TooltipsTab = () => {
         </CollapsibleContent>
       </Collapsible>
 
+      {/* NOVA SEÇÃO: Explorar História da IA (14 eventos) */}
+      <Card className="bg-card/50 backdrop-blur-sm border-primary/20">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <History className="h-5 w-5 text-primary" />
+            <CardTitle>Explorar História da IA</CardTitle>
+          </div>
+          <CardDescription>
+            Gerencie os 14 eventos da timeline de evolução da IA
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {tooltips
+              ?.filter(tooltip => tooltip.section_id.startsWith("history-"))
+              .sort((a, b) => a.section_id.localeCompare(b.section_id))
+              .map((historyEvent) => (
+                <Card
+                  key={historyEvent.id}
+                  className="p-6 bg-card/50 backdrop-blur-sm border-primary/20"
+                >
+                  {/* Cabeçalho sempre visível */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        {historyEvent.section_id}
+                      </div>
+                      <h3 className="text-xl font-bold text-foreground">
+                        {historyEvent.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {historyEvent.header}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-2 border-blue-400/60 hover:bg-blue-500/20"
+                      onClick={() => editingId === historyEvent.id ? handleCancel() : handleEdit(historyEvent)}
+                    >
+                      {editingId === historyEvent.id ? (
+                        <>
+                          <ChevronUp className="w-4 h-4" />
+                          Fechar
+                        </>
+                      ) : (
+                        <>
+                          <Edit2 className="w-4 h-4" />
+                          Editar
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Conteúdo (visualização) */}
+                  {editingId !== historyEvent.id && (
+                    <p className="text-muted-foreground line-clamp-3">
+                      {historyEvent.content}
+                    </p>
+                  )}
+
+                  {/* Modo de Edição Colapsável */}
+                  <Collapsible open={editingId === historyEvent.id}>
+                    <CollapsibleContent className="animate-accordion-down">
+                      <div className="space-y-4 mt-4 pt-4 border-t border-primary/20">
+                        {/* Campo ANO */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">
+                            ANO
+                          </Label>
+                          <Input
+                            value={editForm.header}
+                            onChange={(e) => setEditForm({ ...editForm, header: e.target.value })}
+                            placeholder="Ano ou período (ex: c. 3000 a.C.)"
+                            className="bg-blue-50/10 border-2 border-blue-400/60 focus:border-blue-500"
+                          />
+                        </div>
+
+                        {/* Campo TÍTULO */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">
+                            TÍTULO
+                          </Label>
+                          <Input
+                            value={editForm.title}
+                            onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                            placeholder="Título do evento histórico"
+                            className="bg-blue-50/10 border-2 border-blue-400/60 focus:border-blue-500"
+                          />
+                        </div>
+
+                        {/* Campo CONTEÚDO */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-muted-foreground">
+                            CONTEÚDO
+                          </Label>
+                          <Textarea
+                            value={editForm.content}
+                            onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                            rows={6}
+                            placeholder="Descrição do evento e seu impacto na IA"
+                            className="bg-blue-50/10 border-2 border-blue-400/60 focus:border-blue-500 resize-none"
+                          />
+                        </div>
+
+                        {/* Botões de Ação */}
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleSave(historyEvent.id)}
+                            className="gap-2"
+                          >
+                            <Save className="w-4 h-4" />
+                            Salvar
+                          </Button>
+                          <Button variant="ghost" onClick={handleCancel} className="gap-2">
+                            <X className="w-4 h-4" />
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </Card>
+              ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* SEÇÃO ORIGINAL: Tooltips das Seções (NÃO MODIFICADA) */}
+      <div className="space-y-4 mt-6">
+        <AdminTitleWithInfo
+          title="Tooltips das Seções"
+          level="h2"
+          icon={FileText}
+          tooltipText="Edite os tooltips informativos"
+          infoContent={
+            <>
+              <p>Gerencie os tooltips que aparecem nas seções do site.</p>
+            </>
+          }
+        />
+      </div>
+
       <div className="grid gap-4">
-        {tooltips?.map((tooltip) => (
+        {tooltips?.filter(tooltip => !tooltip.section_id.startsWith("history-")).map((tooltip) => (
           <Card
             key={tooltip.id}
             className="p-6 bg-card/50 backdrop-blur-sm border-primary/20"
