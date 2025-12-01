@@ -50,19 +50,19 @@ serve(async (req) => {
     console.log(`Iniciando geração de imagem para: ${eraId}`);
 
     const eraPrompts: Record<string, string> = {
-      talos: "Gigante de bronze grego mitológico, estilo art déco sépia dourado, webp sem texto",
-      'turing-machine': "Máquina de Turing 1936, diagrama blueprint técnico vintage azul preto, webp sem texto",
-      enigma: "Máquina Enigma Bletchley Park 1940s, preto branco sépia documental, webp sem texto",
-      'turing-test': "Teste de Turing 1950, humano e terminal vintage retrofuturista azul verde, webp sem texto",
-      arpanet: "ARPANET UCLA 1969, mainframe IMP vintage verde cinza, webp sem texto",
-      tcpip: "Rede TCP/IP 1974, diagrama blueprint tecnológico azul verde, webp sem texto",
-      www: "Tim Berners-Lee CERN 1989, navegador NeXT anos 80 azul neutro, webp sem texto",
-      social: "Web 2.0 Facebook Orkut 2004, interface CRT nostálgica azul branco, webp sem texto",
-      watson: "IBM Watson Jeopardy 2011, supercomputador palco TV azul moderno, webp sem texto",
-      openai: "OpenAI 2015, neural networks cyan roxo neon futurista minimalista, webp sem texto",
-      gpt3: "GPT-3 Playground 2020, terminal código IA verde azul tech moderno, webp sem texto",
-      chatgpt: "ChatGPT 2022, chat interface cyan roxo minimalista contemporâneo, webp sem texto",
-      current: "IA 2024 Gemini GPT-4 Claude Veo neural networks cyberpunk multi-colorido, webp sem texto"
+      talos: "Estátua colossal de bronze de Talos, autômato mitológico grego protetor de Creta, pose heroica com engrenagens visíveis no peito, estilo art déco dourado e sépia, iluminação dramática, fundo mediterrâneo antigo, webp sem texto",
+      'turing-machine': "Diagrama conceitual da Máquina de Turing de 1936, fita infinita com símbolos binários 0 e 1, cabeça de leitura e escrita mecânica, estilo blueprint técnico vintage em tons azuis e pretos, linhas precisas de engenharia, webp sem texto",
+      enigma: "Máquina Enigma alemã sobre mesa de madeira em Bletchley Park, rotores e fiação visíveis, ambiente de sala de operações secreta anos 1940, estilo fotográfico documental preto e branco com tons sépia, iluminação de lâmpada de época, webp sem texto",
+      'turing-test': "Alan Turing observando tela de terminal vintage anos 1950, sala de computação com máquinas de tubo de vácuo ao fundo, conceito do Jogo da Imitação, estilo retrofuturista com tons azuis e verdes, atmosfera científica, webp sem texto",
+      arpanet: "Primeiro computador IMP da ARPANET na UCLA em 1969, mainframe com luzes indicadoras piscando, cabos de rede conectados, pesquisadores de jaleco branco ao fundo, estilo documental fotográfico anos 60, tons de verde e cinza, webp sem texto",
+      tcpip: "Diagrama de rede TCP/IP mostrando pacotes de dados fluindo entre múltiplos nós interconectados, estilo blueprint tecnológico com gradientes azuis e verdes, linhas de conexão dinâmicas, visualização de protocolo de camadas, webp sem texto",
+      www: "Tim Berners-Lee no CERN em 1989 frente ao computador NeXT, primeira página web visível no monitor CRT, laboratório científico com equipamentos dos anos 80, estilo documental de época, tons neutros e azuis, webp sem texto",
+      social: "Interfaces vintage de Facebook e Orkut em 2004 exibidas em monitores CRT, telas com perfis sociais e ícones de comunidades, estilo nostálgico digital dos anos 2000, predominância de tons azuis e brancos, atmosfera de início da Web 2.0, webp sem texto",
+      watson: "IBM Watson no palco do programa Jeopardy! em 2011, painéis luminosos azuis do supercomputador, avatares digitais de competidores humanos ao lado, telão com perguntas do quiz, iluminação dramática de estúdio de TV, tons azuis tecnológicos, webp sem texto",
+      openai: "Conceito visual abstrato da fundação OpenAI em 2015, redes neurais artificiais fluindo em padrões orgânicos, gradientes vibrantes de cyan e roxo neon, partículas de dados luminosas, estilo futurista minimalista e científico, webp sem texto",
+      gpt3: "Interface do GPT-3 Playground em 2020, terminal de código com texto gerado por IA em tempo real, partículas representando linguagem natural flutuante, gradientes tecnológicos verdes e azuis, estilo moderno de desenvolvimento tech, webp sem texto",
+      chatgpt: "Interface moderna e limpa do ChatGPT em 2022, bolhas de mensagens elegantes em conversação, representação de diálogo humano-IA fluido, gradientes suaves de cyan e roxo, design minimalista contemporâneo de aplicativo, webp sem texto",
+      current: "Colagem futurista 2024 com símbolos visuais de Gemini, GPT-4, Claude e Veo Sora, redes neurais complexas entrelaçadas, hologramas de inteligência artificial, gradientes vibrantes multi-coloridos estilo cyberpunk, partículas de dados luminosas, webp sem texto"
     };
 
     const normalizedEraId = String(eraId).trim();
