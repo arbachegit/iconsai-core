@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Clock, Baby, Users, GraduationCap, Rocket, Bot, Sparkles, Snowflake, Skull, Crown, Home, Cat, Lightbulb } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Carousel,
   CarouselContent,
@@ -102,7 +103,13 @@ export const MobileHistoryCarousel = ({
                         <Icon className="w-6 h-6 text-primary-foreground" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-xs font-mono text-muted-foreground mb-1">{event.date}</div>
+                        {/* Badge com data em fonte Typewriter */}
+                        <Badge 
+                          variant="outline" 
+                          className="mb-2 font-mono text-xs tracking-wider border-primary/50 bg-primary/5 text-primary"
+                        >
+                          {event.date}
+                        </Badge>
                         <h3 className="text-lg font-bold text-primary mb-2">
                           {event.title}
                         </h3>
