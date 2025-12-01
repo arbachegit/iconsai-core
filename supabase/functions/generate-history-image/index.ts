@@ -47,6 +47,8 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY não está configurada");
     }
 
+    console.log(`Iniciando geração de imagem para: ${eraId}`);
+
     const eraPrompts: Record<string, string> = {
       talos: "Gigante de bronze grego mitológico, estilo art déco sépia dourado, webp sem texto",
       'turing-machine': "Máquina de Turing 1936, diagrama blueprint técnico vintage azul preto, webp sem texto",
