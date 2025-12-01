@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Edit2, Save, X, FileText } from "lucide-react";
+import { Edit2, Save, X, FileText, ChevronDown, Edit3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface TooltipContent {
   id: string;
@@ -22,6 +23,12 @@ export const TooltipsTab = () => {
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ title: "", content: "" });
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editorForm, setEditorForm] = useState({ 
+    header: "", 
+    title: "", 
+    content: "" 
+  });
 
   const { data: tooltips, refetch } = useQuery({
     queryKey: ["all-tooltips"],
@@ -74,6 +81,20 @@ export const TooltipsTab = () => {
     setEditForm({ title: "", content: "" });
   };
 
+  const handleEditorSave = () => {
+    // Placeholder para futura implementação
+    toast({
+      title: "Editor salvo",
+      description: "Conteúdo do editor foi salvo com sucesso.",
+    });
+    setIsEditorOpen(false);
+  };
+
+  const handleEditorCancel = () => {
+    setIsEditorOpen(false);
+    setEditorForm({ header: "", title: "", content: "" });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -93,6 +114,103 @@ export const TooltipsTab = () => {
           Edite o conteúdo dos tooltips de cada seção
         </p>
       </div>
+
+      {/* Editor de Conteúdo Colapsável */}
+      <Collapsible 
+        open={isEditorOpen} 
+        onOpenChange={setIsEditorOpen}
+        className="mb-6"
+      >
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-full justify-between bg-primary/30 border-2 border-primary hover:bg-primary/50 hover:shadow-lg hover:shadow-primary/40 transition-all duration-300"
+          >
+            <span className="flex items-center gap-2">
+              <Edit3 className="w-5 h-5" />
+              Editor de Conteúdo
+            </span>
+            <ChevronDown 
+              className={`w-5 h-5 transition-transform duration-300 ${
+                isEditorOpen ? "rotate-180" : ""
+              }`}
+            />
+          </Button>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent className="animate-accordion-down">
+          <Card className="mt-4 p-6 bg-card/50 backdrop-blur-sm border-primary/20">
+            <div className="space-y-6">
+              {/* Header Section */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  HEADER
+                </label>
+                <Card className="p-4 bg-background/50">
+                  <Input
+                    value={editorForm.header}
+                    onChange={(e) =>
+                      setEditorForm({ ...editorForm, header: e.target.value })
+                    }
+                    placeholder="Informações gerais sobre o editor"
+                    className="bg-background/50"
+                  />
+                </Card>
+              </div>
+
+              {/* Título Section */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  TÍTULO
+                </label>
+                <Input
+                  value={editorForm.title}
+                  onChange={(e) =>
+                    setEditorForm({ ...editorForm, title: e.target.value })
+                  }
+                  placeholder="Campo editável para título"
+                  className="bg-background/50"
+                />
+              </div>
+
+              {/* Conteúdo Section */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  CONTEÚDO
+                </label>
+                <Textarea
+                  value={editorForm.content}
+                  onChange={(e) =>
+                    setEditorForm({ ...editorForm, content: e.target.value })
+                  }
+                  placeholder="Textarea para conteúdo principal"
+                  rows={8}
+                  className="bg-background/50 resize-none"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleEditorSave}
+                  className="gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Salvar
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  onClick={handleEditorCancel} 
+                  className="gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
 
       <div className="grid gap-4">
         {tooltips?.map((tooltip) => (
