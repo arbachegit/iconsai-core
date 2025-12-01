@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Image as ImageIcon, ChevronUp, ChevronDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 
 const SECTIONS = [
   { id: 'software', name: 'Software - A Primeira Revolução' },
@@ -40,10 +40,10 @@ export const ImageCacheTab = () => {
   const queryClient = useQueryClient();
   const [generatingSection, setGeneratingSection] = useState<string | null>(null);
   const [generatingTimeline, setGeneratingTimeline] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [timelinePage, setTimelinePage] = useState(1);
-  const [timelineItemsPerPage, setTimelineItemsPerPage] = useState(10);
+  const [generatingTooltip, setGeneratingTooltip] = useState<string | null>(null);
+  const [isSectionsOpen, setIsSectionsOpen] = useState(true);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(true);
+  const [isTooltipsOpen, setIsTooltipsOpen] = useState(true);
 
   const { data: existingImages } = useQuery({
     queryKey: ['section-images-admin'],
@@ -64,6 +64,18 @@ export const ImageCacheTab = () => {
         .from('generated_images')
         .select('section_id, image_url, created_at')
         .like('section_id', 'history-%')
+        .order('created_at', { ascending: false });
+      return data || [];
+    }
+  });
+
+  const { data: tooltipImages } = useQuery({
+    queryKey: ['tooltip-images-admin'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('generated_images')
+        .select('section_id, image_url, created_at')
+        .in('section_id', ['software-tooltip', 'internet-tooltip', 'tech-sem-proposito-tooltip', 'kubrick-tooltip', 'watson-tooltip', 'ia-nova-era-tooltip', 'bom-prompt-tooltip'])
         .order('created_at', { ascending: false });
       return data || [];
     }
@@ -271,14 +283,83 @@ export const ImageCacheTab = () => {
     return timelineImages?.find(img => img.section_id === `history-${eraId}`);
   };
 
-  // Pagination
-  const totalPages = Math.ceil(SECTIONS.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedSections = SECTIONS.slice(startIndex, startIndex + itemsPerPage);
+  const getTooltipImage = (sectionId: string) => {
+    return tooltipImages?.find(img => img.section_id === `${sectionId}-tooltip`);
+  };
 
-  const timelineTotalPages = Math.ceil(TIMELINE_EVENTS.length / timelineItemsPerPage);
-  const timelineStartIndex = (timelinePage - 1) * timelineItemsPerPage;
-  const paginatedTimelineEvents = TIMELINE_EVENTS.slice(timelineStartIndex, timelineStartIndex + timelineItemsPerPage);
+  const generateTooltipImageMutation = useMutation({
+    mutationFn: async (sectionId: string) => {
+      setGeneratingTooltip(sectionId);
+      
+      const { data, error } = await supabase.functions.invoke('generate-section-image', {
+        body: { section_id: `${sectionId}-tooltip` }
+      });
+
+      if (error) throw error;
+      if (!data?.imageUrl) throw new Error('Nenhuma imagem retornada');
+
+      const { error: dbError } = await supabase
+        .from('generated_images')
+        .insert({
+          section_id: `${sectionId}-tooltip`,
+          image_url: data.imageUrl,
+          prompt_key: `${sectionId}-tooltip`
+        });
+
+      if (dbError) throw dbError;
+
+      return data.imageUrl;
+    },
+    onSuccess: (_, sectionId) => {
+      toast({
+        title: "Imagem gerada com sucesso",
+        description: `Imagem do tooltip ${sectionId} foi gerada e salva.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['tooltip-images-admin'] });
+      setGeneratingTooltip(null);
+    },
+    onError: (error: any) => {
+      let errorMessage = 'Erro ao gerar imagem';
+      
+      if (error.message?.includes('402')) {
+        errorMessage = 'Créditos insuficientes. Adicione créditos ao workspace.';
+      } else if (error.message?.includes('429')) {
+        errorMessage = 'Limite de requisições excedido. Tente novamente em alguns minutos.';
+      }
+
+      toast({
+        title: "Erro",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setGeneratingTooltip(null);
+    }
+  });
+
+  const deleteTooltipImageMutation = useMutation({
+    mutationFn: async (sectionId: string) => {
+      const { error } = await supabase
+        .from('generated_images')
+        .delete()
+        .eq('section_id', `${sectionId}-tooltip`);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Cache limpo",
+        description: "Imagem removida do cache.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['tooltip-images-admin'] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao limpar cache",
+        variant: "destructive",
+      });
+    }
+  });
 
   return (
     <div className="space-y-6">
@@ -359,24 +440,39 @@ export const ImageCacheTab = () => {
 
       <Card>
         <CardHeader>
-          <AdminTitleWithInfo
-            title="Gerenciamento de Imagens das Seções"
-            level="h2"
-            icon={ImageIcon}
-            tooltipText="Gerencie imagens contextuais"
-            infoContent={
-              <>
-                <p>Gere e gerencie imagens para cada seção do landing page.</p>
-                <p className="mt-2">Regenere imagens ou remova do cache quando necessário.</p>
-              </>
-            }
-          />
-          <CardDescription className="mt-2">
-            Gere e gerencie as imagens contextuais para cada seção do landing page
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <AdminTitleWithInfo
+                title="Gerenciamento de Imagens das Seções"
+                level="h2"
+                icon={ImageIcon}
+                tooltipText="Gerencie imagens contextuais"
+                infoContent={
+                  <>
+                    <p>Gere e gerencie imagens para cada seção do landing page.</p>
+                    <p className="mt-2">Regenere imagens ou remova do cache quando necessário.</p>
+                  </>
+                }
+              />
+              <CardDescription className="mt-2">
+                Gere e gerencie as imagens contextuais para cada seção do landing page
+              </CardDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsSectionsOpen(!isSectionsOpen)}
+              className="gap-2"
+            >
+              {isSectionsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {isSectionsOpen ? "Colapsar" : "Expandir"}
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {paginatedSections.map((section) => {
+        <Collapsible open={isSectionsOpen}>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              {SECTIONS.map((section) => {
             const existingImage = getSectionImage(section.id);
             const isGenerating = generatingSection === section.id;
 
@@ -453,59 +549,47 @@ export const ImageCacheTab = () => {
               </Card>
             );
           })}
-
-          {/* Pagination Controls */}
-          <div className="flex items-center justify-between mt-6 pt-4 border-t">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Itens por página:</span>
-              <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
-                <SelectTrigger className="w-[80px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, SECTIONS.length)} de {SECTIONS.length}
-              </span>
-              <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
 
       {/* Timeline History Images */}
       <Card>
         <CardHeader>
-          <AdminTitleWithInfo
-            title="Imagens da Timeline Histórica"
-            level="h2"
-            icon={ImageIcon}
-            tooltipText="Gerencie imagens da timeline de IA"
-            infoContent={
-              <>
-                <p>Gere e gerencie imagens para eventos da timeline histórica da IA.</p>
-                <p className="mt-2">Forçar regeneração criará uma nova imagem mesmo se já existir no cache.</p>
-              </>
-            }
-          />
-          <CardDescription className="mt-2">
-            Gere e gerencie as imagens para cada evento da linha do tempo da história da IA
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <AdminTitleWithInfo
+                title="Imagens da Timeline Histórica"
+                level="h2"
+                icon={ImageIcon}
+                tooltipText="Gerencie imagens da timeline de IA"
+                infoContent={
+                  <>
+                    <p>Gere e gerencie imagens para eventos da timeline histórica da IA.</p>
+                    <p className="mt-2">Forçar regeneração criará uma nova imagem mesmo se já existir no cache.</p>
+                  </>
+                }
+              />
+              <CardDescription className="mt-2">
+                Gere e gerencie as imagens para cada evento da linha do tempo da história da IA
+              </CardDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsTimelineOpen(!isTimelineOpen)}
+              className="gap-2"
+            >
+              {isTimelineOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {isTimelineOpen ? "Colapsar" : "Expandir"}
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {paginatedTimelineEvents.map((event) => {
+        <Collapsible open={isTimelineOpen}>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              {TIMELINE_EVENTS.map((event) => {
             const existingImage = getTimelineImage(event.id);
             const isGenerating = generatingTimeline === event.id;
 
@@ -582,36 +666,126 @@ export const ImageCacheTab = () => {
               </Card>
             );
           })}
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
 
-          {/* Timeline Pagination Controls */}
-          <div className="flex items-center justify-between mt-6 pt-4 border-t">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Itens por página:</span>
-              <Select value={timelineItemsPerPage.toString()} onValueChange={(v) => { setTimelineItemsPerPage(Number(v)); setTimelinePage(1); }}>
-                <SelectTrigger className="w-[80px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                </SelectContent>
-              </Select>
+      {/* Tooltip Images */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <AdminTitleWithInfo
+                title="Gerenciamento de Imagens dos Tooltips"
+                level="h2"
+                icon={ImageIcon}
+                tooltipText="Gerencie imagens dos tooltips"
+                infoContent={
+                  <>
+                    <p>Gere e gerencie imagens para os tooltips de cada seção.</p>
+                    <p className="mt-2">Regenere imagens ou remova do cache quando necessário.</p>
+                  </>
+                }
+              />
+              <CardDescription className="mt-2">
+                Gere e gerencie as imagens contextuais para os tooltips das seções
+              </CardDescription>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {timelineStartIndex + 1}-{Math.min(timelineStartIndex + timelineItemsPerPage, TIMELINE_EVENTS.length)} de {TIMELINE_EVENTS.length}
-              </span>
-              <Button variant="outline" size="sm" disabled={timelinePage === 1} onClick={() => setTimelinePage(p => p - 1)}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" disabled={timelinePage === timelineTotalPages} onClick={() => setTimelinePage(p => p + 1)}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsTooltipsOpen(!isTooltipsOpen)}
+              className="gap-2"
+            >
+              {isTooltipsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {isTooltipsOpen ? "Colapsar" : "Expandir"}
+            </Button>
           </div>
-        </CardContent>
+        </CardHeader>
+        <Collapsible open={isTooltipsOpen}>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              {SECTIONS.map((section) => {
+                const existingImage = getTooltipImage(section.id);
+                const isGenerating = generatingTooltip === section.id;
+
+                return (
+                  <Card key={section.id} className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <ImageIcon className="h-4 w-4" />
+                          <h3 className="font-semibold">{section.name} - Tooltip</h3>
+                        </div>
+                        {existingImage ? (
+                          <div className="space-y-2">
+                            <p className="text-sm text-muted-foreground">
+                              Imagem gerada em: {new Date(existingImage.created_at).toLocaleDateString('pt-BR')}
+                            </p>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => generateTooltipImageMutation.mutate(section.id)}
+                                disabled={isGenerating}
+                              >
+                                {isGenerating ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Gerando...
+                                  </>
+                                ) : (
+                                  'Regerar'
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => deleteTooltipImageMutation.mutate(section.id)}
+                              >
+                                Remover
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              Nenhuma imagem gerada ainda
+                            </p>
+                            <Button
+                              size="sm"
+                              onClick={() => generateTooltipImageMutation.mutate(section.id)}
+                              disabled={isGenerating}
+                            >
+                              {isGenerating ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Gerando...
+                                </>
+                              ) : (
+                                'Gerar Imagem'
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      {existingImage && (
+                        <div className="w-24 h-24 rounded-lg overflow-hidden border">
+                          <img
+                            src={existingImage.image_url}
+                            alt={`${section.name} - Tooltip`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
     </div>
   );
