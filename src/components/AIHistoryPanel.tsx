@@ -533,15 +533,17 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                     </div>
 
                     <div className="flex gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-bold font-mono text-primary bg-primary/10 px-2 py-0.5 rounded">
-                            {event.date}
-                          </span>
-                        </div>
-                        <h3 className="text-lg font-bold text-primary mb-1">
-                          {event.title}
-                        </h3>
+                    <div className="flex-1">
+                      {/* Badge com data em fonte Typewriter */}
+                      <Badge 
+                        variant="outline" 
+                        className="mb-2 font-mono text-xs tracking-wider border-primary/50 bg-primary/5 text-primary"
+                      >
+                        {event.date}
+                      </Badge>
+                      <h3 className="text-lg font-bold text-primary mb-1">
+                        {event.title}
+                      </h3>
                         <p className="text-sm text-muted-foreground leading-snug">
                           {event.description}
                         </p>
