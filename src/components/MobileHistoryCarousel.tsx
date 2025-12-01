@@ -106,7 +106,7 @@ export const MobileHistoryCarousel = ({
                         {/* Badge com data em fonte Typewriter - 2x maior com máxima visibilidade */}
                         <Badge 
                           variant="outline" 
-                          className="mb-4 font-mono text-4xl tracking-widest px-8 py-3 border-2 border-primary bg-primary/20 text-primary font-extrabold shadow-lg"
+                          className="mb-4 font-mono !text-5xl tracking-widest !px-10 !py-4 border-2 border-primary bg-primary/40 !text-white font-extrabold shadow-lg"
                         >
                           {event.date}
                         </Badge>
