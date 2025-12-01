@@ -13,6 +13,16 @@ const SECTION_PROMPTS: Record<string, string> = {
   'watson': 'IBM Watson vencendo no Jeopardy 2011: computador azul IBM em palco de game show, luzes brilhantes, inteligência artificial cognitiva processando linguagem natural. Ultra high resolution. Sem texto.',
   'ia-nova-era': 'Era moderna da IA generativa 2022-presente: interface de chat com IA, assistentes virtuais conversacionais, ChatGPT, comunicação natural humano-máquina, democratização da inteligência artificial. Ultra high resolution. Sem texto.',
   'bom-prompt': 'Arte conceitual de comunicação efetiva: pessoa digitando prompt perfeito, palavras formando conexão com IA, clareza e especificidade visual, a arte de fazer boas perguntas. Ultra high resolution. Sem texto.',
+  
+  // Tooltips
+  'tooltip-software': 'Ícone visual representando o nascimento da computação: silhueta de mainframe vintage com cartões perfurados, tons de sépia e dourado, estilo minimalista retro. Ultra high resolution. Sem texto.',
+  'tooltip-internet': 'Ícone visual da era da conectividade: rede global de nós interconectados, fibras ópticas em azul elétrico, globo digital minimalista. Ultra high resolution. Sem texto.',
+  'tooltip-tech-sem-proposito': 'Ícone crítico do hype tech: símbolo de NFT e metaverso desbotado, realidade virtual vazia, tons escuros e cinzentos. Ultra high resolution. Sem texto.',
+  'tooltip-kubrick': 'Ícone do olho HAL 9000: lente vermelha circular minimalista em fundo preto, estilo cinematográfico icônico. Ultra high resolution. Sem texto.',
+  'tooltip-watson': 'Ícone do IBM Watson: representação minimalista do supercomputador azul IBM, símbolo de IA cognitiva. Ultra high resolution. Sem texto.',
+  'tooltip-ia-nova-era': 'Ícone da IA generativa moderna: interface de chat minimalista, balão de diálogo com símbolo de IA, tons modernos em azul e roxo. Ultra high resolution. Sem texto.',
+  'tooltip-bom-prompt': 'Ícone da arte do prompt: teclado estilizado com palavras fluindo para símbolo de IA, comunicação visual clara. Ultra high resolution. Sem texto.',
+  'tooltip-knowyou': 'Ícone do KnowYOU AI: representação minimalista de assistente de saúde digital, cruz médica integrada com símbolo de IA, tons de verde e azul saúde. Ultra high resolution. Sem texto.',
 };
 
 serve(async (req) => {
