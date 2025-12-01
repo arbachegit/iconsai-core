@@ -65,10 +65,10 @@ serve(async (req) => {
       current: "IA 2024 Gemini GPT-4 Claude Veo neural networks cyberpunk multi-colorido, webp sem texto"
     };
 
-    const prompt = eraPrompts[eraId];
-    if (!prompt) {
-      throw new Error(`Era ID inválido: ${eraId}`);
-    }
+    const normalizedEraId = String(eraId).trim();
+    const prompt = eraPrompts[normalizedEraId] ?? `Ilustração da era histórica ${normalizedEraId} na evolução da IA e da Internet, estilo futurista minimalista, webp sem texto`;
+
+    console.log(`Usando prompt para era: ${normalizedEraId}`);
 
     console.log(`Gerando imagem para era: ${eraId}`);
 
