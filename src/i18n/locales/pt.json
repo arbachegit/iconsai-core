@@ -105,7 +105,7 @@
       "title": "Linha do Tempo Definitiva: De Talos à Febre da IA",
       "talos": {
         "title": "Talos, o Gigante de Bronze",
-        "description": "Conceito inicial de autômato (máquina autônoma) e sistema de proteção automatizado na mitologia grega. A ideia de algo não-vivo que age autonomamente."
+        "description": "O que é: Um autômato de bronze, feito por Hefesto, destinado a proteger a ilha de Creta.\n\nImpacto na IA: Talos é o primeiro conceito filosófico de uma máquina autônoma. Embora mítico, ele estabelece a ideia humana de criar um ser artificial com propósito específico (segurança/vigilância) e que opera sem intervenção humana constante. Isso lança a semente para a Robótica e os Sistemas de Agentes Autônomos, precursores dos bots e da IA operacional moderna."
       },
       "turing-machine": {
         "title": "Máquina de Turing",
