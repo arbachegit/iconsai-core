@@ -246,7 +246,7 @@ export function useChatKnowYOU() {
             if (settings?.chat_audio_enabled) {
               setIsGeneratingAudio(true);
               try {
-                const audioUrl = await generateAudioUrl(cleanedResponse);
+                const audioUrl = await generateAudioUrl(cleanedResponse, "health");
                 
                 setMessages((prev) => {
                   const updated = prev.map((m, i) =>
@@ -329,7 +329,7 @@ export function useChatKnowYOU() {
         if (settings?.chat_audio_enabled) {
           setIsGeneratingAudio(true);
           try {
-            const audioUrl = await generateAudioUrl(cleanedResponse);
+            const audioUrl = await generateAudioUrl(cleanedResponse, "health");
             
             setMessages((prev) => {
               const updated = prev.map((m, i) =>
@@ -423,7 +423,7 @@ export function useChatKnowYOU() {
     if (!audioUrlToPlay) {
       try {
         setIsGeneratingAudio(true);
-        const generatedUrl = await generateAudioUrl(message.content);
+        const generatedUrl = await generateAudioUrl(message.content, "health");
         
         // Atualizar a mensagem com o novo audioUrl
         setMessages((prev) => {

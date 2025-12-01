@@ -157,6 +157,7 @@ export type Database = {
           last_document_added: string | null
           match_count: number | null
           match_threshold: number | null
+          phonetic_map: Json | null
           rag_priority_instruction: string | null
           rejection_message: string | null
           scope_topics: string[] | null
@@ -175,6 +176,7 @@ export type Database = {
           last_document_added?: string | null
           match_count?: number | null
           match_threshold?: number | null
+          phonetic_map?: Json | null
           rag_priority_instruction?: string | null
           rejection_message?: string | null
           scope_topics?: string[] | null
@@ -193,6 +195,7 @@ export type Database = {
           last_document_added?: string | null
           match_count?: number | null
           match_threshold?: number | null
+          phonetic_map?: Json | null
           rag_priority_instruction?: string | null
           rejection_message?: string | null
           scope_topics?: string[] | null
