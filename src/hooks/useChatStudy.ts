@@ -57,7 +57,12 @@ export function useChatStudy() {
   // Salvar histórico no localStorage
   const saveHistory = useCallback((msgs: Message[]) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs));
+      // Limpar blob URLs antes de salvar (elas expiram após reload)
+      const messagesForStorage = msgs.map(m => ({
+        ...m,
+        audioUrl: m.audioUrl && !m.audioUrl.startsWith('blob:') ? m.audioUrl : undefined,
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messagesForStorage));
     } catch (error) {
       console.error("Erro ao salvar histórico:", error);
     }
@@ -288,13 +293,12 @@ export function useChatStudy() {
 
     let audioUrlToPlay = message.audioUrl;
 
-    // Se não tem audioUrl, gerar sob demanda
-    if (!audioUrlToPlay) {
+    // Se não tem audioUrl OU é uma blob URL (que pode ter expirado), regenerar
+    if (!audioUrlToPlay || audioUrlToPlay.startsWith('blob:')) {
       try {
         setIsGeneratingAudio(true);
         const generatedUrl = await generateAudioUrl(message.content, "study");
         
-        // Atualizar a mensagem com o novo audioUrl
         setMessages((prev) => {
           const updated = [...prev];
           if (updated[messageIndex]) {
@@ -324,9 +328,17 @@ export function useChatStudy() {
       await audioPlayerRef.current.playAudioFromUrl(audioUrlToPlay);
     } catch (error) {
       console.error("Erro ao reproduzir áudio:", error);
+      // Se falhou mesmo após regenerar, limpar URL e permitir nova tentativa
+      setMessages((prev) => {
+        const updated = [...prev];
+        if (updated[messageIndex]) {
+          updated[messageIndex] = { ...updated[messageIndex], audioUrl: undefined };
+        }
+        return updated;
+      });
       toast({
         title: "Erro",
-        description: "Não foi possível reproduzir o áudio.",
+        description: "Não foi possível reproduzir o áudio. Tente novamente.",
         variant: "destructive",
       });
     } finally {
