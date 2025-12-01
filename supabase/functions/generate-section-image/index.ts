@@ -106,8 +106,61 @@ serve(async (req) => {
 
     console.log('Image generated successfully for section:', section_id);
 
+    // Convert Base64 to binary
+    const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, '');
+    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    
+    console.log(`Binary size: ${binaryData.length} bytes`);
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.7.1');
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+    // Upload to Storage as WebP
+    const fileName = `${section_id}.webp`;
+    const { data: uploadData, error: uploadError } = await supabaseClient
+      .storage
+      .from('content-images')
+      .upload(fileName, binaryData, {
+        contentType: 'image/webp',
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      return new Response(
+        JSON.stringify({ error: 'Erro ao salvar imagem no Storage' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get public URL
+    const { data: publicUrlData } = supabaseClient
+      .storage
+      .from('content-images')
+      .getPublicUrl(fileName);
+
+    const publicUrl = publicUrlData.publicUrl;
+    console.log('Image uploaded to Storage:', publicUrl);
+
+    // Save URL to database
+    const { error: dbError } = await supabaseClient
+      .from('generated_images')
+      .upsert({
+        section_id,
+        prompt_key: section_id,
+        image_url: publicUrl,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'section_id' });
+
+    if (dbError) {
+      console.error('Database error:', dbError);
+    }
+
     return new Response(
-      JSON.stringify({ imageUrl }),
+      JSON.stringify({ imageUrl: publicUrl }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

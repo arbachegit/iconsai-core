@@ -29,7 +29,7 @@ import {
   TestTube,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -72,7 +72,6 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         { id: "chat-scope-config" as TabType, label: "Delimitações", icon: Settings },
         { id: "conversations" as TabType, label: "Conversas", icon: MessagesSquare },
         { id: "rag-diagnostics" as TabType, label: "Diagnóstico RAG", icon: TestTube },
-        { id: "tooltips" as TabType, label: "Tooltips", icon: FileText },
       ]
     },
     {
@@ -89,11 +88,13 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
     },
     {
       id: "media",
-      label: "Mídia & Cache",
+      label: "Mídia e Conteúdo",
       icon: Palette,
       items: [
-        { id: "images" as TabType, label: "Imagens", icon: Image },
-        { id: "youtube" as TabType, label: "YouTube", icon: Youtube },
+        { id: "content-management" as TabType, label: "Conteúdo Principal", icon: FileText },
+        { id: "tooltips" as TabType, label: "Tooltips", icon: MessageCircle },
+        { id: "images" as TabType, label: "Cache de Imagens", icon: Image },
+        { id: "youtube" as TabType, label: "YouTube Preload", icon: Youtube },
       ]
     },
     {
