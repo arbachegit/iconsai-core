@@ -81,7 +81,7 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
       return Object.entries(counts)
         .map(([text, clickCount]) => ({ text, clickCount }))
         .sort((a, b) => b.clickCount - a.clickCount)
-        .slice(0, 5);
+        .slice(0, 10);
     },
     staleTime: 60000,
   });
