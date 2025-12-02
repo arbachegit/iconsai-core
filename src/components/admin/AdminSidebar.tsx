@@ -170,7 +170,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
 
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3 text-primary hover:text-primary"
+          className="w-full justify-start gap-3 text-primary hover:!text-black"
           onClick={() => navigate("/")}
         >
           <ArrowLeft className="w-4 h-4" />
