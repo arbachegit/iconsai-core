@@ -188,9 +188,17 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
        SUBSTITUIÇÕES OBRIGATÓRIAS (memorize esta tabela):
        á/à/ã/â → a | é/ê → e | í → i | ó/ô/õ → o | ú → u | ç → c | ñ → n
        
-       - NUNCA use emojis dentro dos nós - causa erro de parsing
-       - NUNCA use acentos dentro dos nós - causa erro de parsing
-       - APENAS caracteres ASCII básicos (a-z, A-Z, 0-9, espaços, hífens)
+        - NUNCA use emojis dentro dos nós - causa erro de parsing
+        - NUNCA use acentos dentro dos nós - causa erro de parsing
+        - NUNCA use parênteses () dentro de [] ou {} - causa erro de parsing (use hífen)
+        - NUNCA use interrogação ? no final de labels de nó
+        - APENAS caracteres ASCII básicos (a-z, A-Z, 0-9, espaços, hífens)
+        
+        ❌ ERRADO - PARÊNTESES: A[Decisao de Internacao (Medico)] 
+        ✅ CORRETO: A[Decisao de Internacao - Medico]
+        
+        ❌ ERRADO - INTERROGAÇÃO: D{Disponibilidade de Leito?}
+        ✅ CORRETO: D{Disponibilidade de Leito}
        
        ❌ ERRADO (VAI CAUSAR ERRO):
        A[Decisão de Internação] --> B{Solicitação}
