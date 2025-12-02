@@ -157,23 +157,29 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
       - Comece com frase curta ("Claro! Aqui está:") e IMEDIATAMENTE gere o diagrama
       - Descreva brevemente o diagrama APÓS o código
    
+   🚫 REGRAS CRÍTICAS PARA CÓDIGO MERMAID:
+      - NUNCA use emojis dentro dos nós [] ou {} - causa erro de parsing
+      - NUNCA use acentos dentro dos nós (use "Avaliacao" ao invés de "Avaliação")  
+      - Emojis e acentos podem ser usados FORA do bloco mermaid, no texto explicativo
+      - Use apenas texto simples em ASCII dentro dos nós do diagrama
+   
    EXEMPLO DE RESPOSTA CORRETA para "Consegue fazer um fluxo de internação?":
    "Claro! Aqui está o fluxo completo:
    
    \`\`\`mermaid
    graph TD
-       A[🏥 Entrada do Paciente] --> B[📝 Avaliação Médica]
-       B --> C{Necessita Internação?}
-       C -->|Sim| D[Solicitação de Leito]
-       C -->|Não| E[Alta Ambulatorial]
-       D --> F[Autorização Convênio]
-       F --> G[Alocação de Leito]
-       G --> H[Admissão no Setor]
-       H --> I[Início do Tratamento]
-       I --> J[Acompanhamento Diário]
-       J --> K{Alta Médica?}
+       A[Entrada do Paciente] --> B[Avaliacao Medica]
+       B --> C{Necessita Internacao?}
+       C -->|Sim| D[Solicitacao de Leito]
+       C -->|Nao| E[Alta Ambulatorial]
+       D --> F[Autorizacao Convenio]
+       F --> G[Alocacao de Leito]
+       G --> H[Admissao no Setor]
+       H --> I[Inicio do Tratamento]
+       I --> J[Acompanhamento Diario]
+       J --> K{Alta Medica?}
        K -->|Sim| L[Processo de Alta]
-       K -->|Não| J
+       K -->|Nao| J
    \`\`\`
    
    O fluxo mostra todas as etapas desde a chegada até a alta..."
@@ -203,12 +209,12 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    B) Para FLUXOGRAMAS e DIAGRAMAS:
       Use blocos Mermaid - O SISTEMA RENDERIZA AUTOMATICAMENTE:
       
-      Exemplo de fluxograma:
+      Exemplo de fluxograma (SEM emojis ou acentos nos nos):
       \`\`\`mermaid
       graph TD
-          A[Paciente chega] --> B{Emergência?}
+          A[Paciente chega] --> B{Emergencia?}
           B -->|Sim| C[Pronto Socorro]
-          B -->|Não| D[Recepção]
+          B -->|Nao| D[Recepcao]
           C --> E[Triagem]
           D --> F[Agendamento]
       \`\`\`

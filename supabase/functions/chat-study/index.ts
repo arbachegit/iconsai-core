@@ -182,16 +182,22 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
       - Comece com frase curta ("Claro! Aqui está:") e IMEDIATAMENTE gere o diagrama
       - Descreva brevemente o diagrama APÓS o código
    
+   🚫 REGRAS CRÍTICAS PARA CÓDIGO MERMAID:
+      - NUNCA use emojis dentro dos nós [] ou {} - causa erro de parsing
+      - NUNCA use acentos dentro dos nós (use "Avaliacao" ao invés de "Avaliação")
+      - Emojis e acentos podem ser usados FORA do bloco mermaid, no texto explicativo
+      - Use apenas texto simples em ASCII dentro dos nós do diagrama
+   
    EXEMPLO DE RESPOSTA CORRETA para "Consegue fazer um fluxograma de IA?":
    "Claro! Aqui está o fluxo:
    
    \`\`\`mermaid
    graph TD
-       A[📥 Input de Dados] --> B[🔄 Pré-processamento]
+       A[Input de Dados] --> B[Pre-processamento]
        B --> C{Tipo de Modelo?}
        C -->|Supervisionado| D[Treinamento com Labels]
-       C -->|Não-supervisionado| E[Clustering]
-       D --> F[Validação]
+       C -->|Nao-supervisionado| E[Clustering]
+       D --> F[Validacao]
        E --> F
        F --> G[Deploy]
    \`\`\`
@@ -223,14 +229,14 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    B) Para FLUXOGRAMAS e DIAGRAMAS:
       Use blocos Mermaid - O SISTEMA RENDERIZA AUTOMATICAMENTE:
       
-      Exemplo de fluxograma:
+      Exemplo de fluxograma (SEM emojis ou acentos nos nos):
       \`\`\`mermaid
       graph TD
-          A[Input de Dados] --> B[Pré-processamento]
+          A[Input de Dados] --> B[Pre-processamento]
           B --> C{Tipo de Modelo?}
           C -->|Supervisionado| D[Treinamento com Labels]
-          C -->|Não-supervisionado| E[Clustering/Associação]
-          D --> F[Avaliação]
+          C -->|Nao-supervisionado| E[Clustering]
+          D --> F[Avaliacao]
           E --> F
           F --> G[Deploy]
       \`\`\`
