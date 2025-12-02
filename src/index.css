@@ -199,6 +199,24 @@ All colors MUST be HSL.
   --ring: 191 100% 40%;
 }
 
+/* Custom scrollbar for carousels */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.3);
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.5);
+}
+
 /* Print styles for Documentation PDF export */
 @media print {
   .docs-page {
