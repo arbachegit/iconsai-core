@@ -3,7 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatStudy } from "@/hooks/useChatStudy";
-import { Send, Loader2, ImagePlus, Mic, Square, X } from "lucide-react";
+import { Loader2, ImagePlus, Mic, Square, X, ArrowUp } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ChartTypeSelector, ChartType } from "./ChartTypeSelector";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
@@ -651,153 +657,183 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
         </div>
       </ScrollArea>
 
-      {/* Suggestions com badges dinâmicos */}
-      {(displayedSuggestions.length > 0 || newDocumentBadge || topSuggestions.length > 0) && (
-        <div className="px-4 pb-2 space-y-2">
-          <div className="flex flex-wrap gap-2 items-center">
-            {/* 1. Badge NOVO (sempre à esquerda) */}
-            {newDocumentBadge && currentTheme && (
-              <NewDocumentBadge
-                currentTheme={currentTheme}
-                onThemeClick={() => handleSuggestionClick(currentTheme, newDocumentBadge.documentIds[0])}
-              />
-            )}
-            
-            {/* 2. Sugestões complementares (documentos antigos) */}
-            {complementarySuggestions.slice(0, 3).map((suggestion, idx) => (
+      {/* Suggestions com badges dinâmicos - 2 linhas */}
+      {(displayedSuggestions.length > 0 || newDocumentBadge || topSuggestions.length > 0 || complementarySuggestions.length > 0) && (
+        <div className="px-4 py-2 space-y-1">
+          {/* Linha 1: Documentos Novos (≤3 dias) */}
+          {newDocumentBadge && newDocumentBadge.themes.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 items-center">
+              {newDocumentBadge.themes.slice(0, 5).map((theme, idx) => (
+                <NewDocumentBadge
+                  key={`new-${theme}-${idx}`}
+                  currentTheme={theme}
+                  onThemeClick={() => handleSuggestionClick(theme, newDocumentBadge.documentIds[idx])}
+                />
+              ))}
+            </div>
+          )}
+          
+          {/* Linha 2: Documentos Existentes (>3 dias) + Ranking */}
+          <div className="flex flex-wrap gap-1.5 items-center">
+            {/* Sugestões complementares (documentos antigos) - fonte reduzida */}
+            {complementarySuggestions.slice(0, 5).map((suggestion, idx) => (
               <Button
                 key={`comp-${suggestion}-${idx}`}
                 variant="outline"
                 size="sm"
                 onClick={() => handleSuggestionClick(suggestion)}
-                className="text-xs whitespace-nowrap rounded-full border-2 border-primary/50 hover:border-primary"
+                className="text-[10px] h-6 px-2 rounded-full border border-primary/40 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors"
               >
                 {suggestion}
               </Button>
             ))}
             
-            {/* 3. Sugestões do hook original (fallback) */}
+            {/* Fallback: sugestões padrão quando não há documentos */}
             {!newDocumentBadge && !complementarySuggestions.length && displayedSuggestions.slice(0, 4).map((suggestion, idx) => (
               <Button
                 key={`disp-${suggestion}-${idx}`}
                 variant="outline"
                 size="sm"
                 onClick={() => handleSuggestionClick(suggestion)}
-                className="text-xs whitespace-nowrap rounded-full border-2 border-primary/50 hover:border-primary"
+                className="text-[10px] h-6 px-2 rounded-full border border-primary/40 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors"
               >
                 {suggestion}
               </Button>
             ))}
             
-            {/* 4. Ranking (sempre à direita) */}
+            {/* Ranking - fonte reduzida */}
             <SuggestionRankingBadges
               rankings={topSuggestions}
               onRankingClick={(text) => handleSuggestionClick(text)}
+              className="text-[10px]"
             />
           </div>
         </div>
       )}
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t-2 border-primary/30 bg-muted/30 rounded-b-lg shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
-        {/* Indicador de voz ativo */}
-        {isRecording && (
-          <div className="flex items-center gap-2 text-xs mb-2">
-            <div className={`w-2 h-2 rounded-full ${
-              voiceStatus === 'waiting' 
-                ? 'bg-amber-500' 
-                : voiceStatus === 'processing' 
-                ? 'bg-blue-500' 
-                : 'bg-red-500'
-            } animate-pulse`} />
-            <span className={
-              voiceStatus === 'waiting' 
-                ? 'text-amber-500' 
-                : 'text-muted-foreground'
-            }>
-              {voiceStatus === 'listening' && t('chat.listening')}
-              {voiceStatus === 'waiting' && `${t('chat.waiting')} (${waitingCountdown}s)`}
-              {voiceStatus === 'processing' && t('chat.processing')}
-            </span>
-          </div>
-        )}
-        
-        <div className="flex gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={
-              isTranscribing ? t('chat.transcribing') :
-              isImageMode ? t('chat.placeholderImageStudy') : 
-              t('chat.placeholderStudy')
-            }
-            onFocus={(e) => {
-              if (isImageMode) {
-                e.target.placeholder = t('chat.imageLimitStudy');
-              }
-            }}
-            onBlur={(e) => {
-              if (isImageMode) {
-                e.target.placeholder = t('chat.placeholderImageStudy');
-              }
-            }}
-            className="min-h-[60px] flex-1 resize-none border-2 border-cyan-400/60 focus:border-primary/50 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]"
-            style={{
-              transform: 'translateZ(-8px)',
-              backfaceVisibility: 'hidden'
-            }}
-            disabled={isTranscribing}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-          />
+      <TooltipProvider delayDuration={200}>
+        <form onSubmit={handleSubmit} className="p-4 border-t-2 border-primary/30 bg-muted/30 rounded-b-lg shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
+          {/* Indicador de voz ativo */}
+          {isRecording && (
+            <div className="flex items-center gap-2 text-xs mb-2">
+              <div className={`w-2 h-2 rounded-full ${
+                voiceStatus === 'waiting' 
+                  ? 'bg-amber-500' 
+                  : voiceStatus === 'processing' 
+                  ? 'bg-blue-500' 
+                  : 'bg-red-500'
+              } animate-pulse`} />
+              <span className={
+                voiceStatus === 'waiting' 
+                  ? 'text-amber-500' 
+                  : 'text-muted-foreground'
+              }>
+                {voiceStatus === 'listening' && t('chat.listening')}
+                {voiceStatus === 'waiting' && `${t('chat.waiting')} (${waitingCountdown}s)`}
+                {voiceStatus === 'processing' && t('chat.processing')}
+              </span>
+            </div>
+          )}
           
-          <div className="flex flex-col gap-2">
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={isRecording ? stopRecording : startRecording}
-              className={`shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500" : ""}`}
-            >
-              {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-            </Button>
-            
-            <Button
-              type="submit"
-              size="icon"
-              disabled={isLoading || !input.trim()}
-              className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </Button>
-            
-            <Button
-              type="button"
-              size="icon"
-              variant={isImageMode ? "default" : "ghost"}
-              onClick={toggleImageMode}
-              disabled={isGeneratingImage}
-              className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow"
-            >
-              <ImagePlus className="w-4 h-4" />
-            </Button>
-            
-            <ChartTypeSelector
-              selectedType={selectedChartType}
-              onSelectType={setSelectedChartType}
-              disabled={isLoading || isImageMode}
+          {/* Container relativo para posicionar botões dentro */}
+          <div className="relative">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={
+                isTranscribing ? t('chat.transcribing') :
+                isImageMode ? t('chat.placeholderImageStudy') : 
+                t('chat.placeholderStudy')
+              }
+              onFocus={(e) => {
+                if (isImageMode) {
+                  e.target.placeholder = t('chat.imageLimitStudy');
+                }
+              }}
+              onBlur={(e) => {
+                if (isImageMode) {
+                  e.target.placeholder = t('chat.placeholderImageStudy');
+                }
+              }}
+              className="min-h-[80px] w-full resize-none pb-12 border-2 border-cyan-400/60 focus:border-primary/50 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]"
+              style={{
+                transform: 'translateZ(-8px)',
+                backfaceVisibility: 'hidden'
+              }}
+              disabled={isTranscribing}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
             />
+            
+            {/* Botões de funcionalidade - inferior esquerdo */}
+            <div className="absolute bottom-2 left-2 flex gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    className={`h-8 w-8 ${isRecording ? "text-red-500" : ""}`}
+                  >
+                    {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{isRecording ? "Parar gravação" : "Gravar áudio"}</TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant={isImageMode ? "default" : "ghost"}
+                    onClick={toggleImageMode}
+                    disabled={isGeneratingImage}
+                    className="h-8 w-8"
+                  >
+                    <ImagePlus className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Gerar imagem</TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <ChartTypeSelector
+                      selectedType={selectedChartType}
+                      onSelectType={setSelectedChartType}
+                      disabled={isLoading || isImageMode}
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top">Tipo de gráfico</TooltipContent>
+              </Tooltip>
+            </div>
+            
+            {/* Botão Submit - inferior direito, circular */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  type="submit" 
+                  size="icon" 
+                  className="absolute bottom-2 right-2 h-8 w-8 rounded-full"
+                  disabled={isLoading || !input.trim()}
+                >
+                  {isLoading ? <Square className="w-4 h-4" /> : <ArrowUp className="w-4 h-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{isLoading ? "Parar" : "Enviar"}</TooltipContent>
+            </Tooltip>
           </div>
-        </div>
-      </form>
+        </form>
+      </TooltipProvider>
       
       {/* Floating Audio Player */}
       <FloatingAudioPlayer
