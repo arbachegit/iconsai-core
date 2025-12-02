@@ -647,7 +647,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
       {/* Suggestions com badges dinâmicos */}
       {(displayedSuggestions.length > 0 || newDocumentBadge || topSuggestions.length > 0) && (
         <div className="px-4 pb-2 space-y-2">
-          <div className="flex gap-2 overflow-x-auto items-center">
+          <div className="flex flex-wrap gap-2 items-center">
             {/* 1. Badge NOVO (sempre à esquerda) */}
             {newDocumentBadge && currentTheme && (
               <NewDocumentBadge

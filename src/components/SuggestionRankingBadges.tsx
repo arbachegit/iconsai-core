@@ -22,12 +22,11 @@ export function SuggestionRankingBadges({
 
   return (
     <div className={cn(
-      "flex items-center gap-1",
-      "border-l border-border/50 pl-2 ml-auto",
+      "flex items-center gap-1 flex-wrap",
       className
     )}>
       <TrendingUp className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-      {rankings.slice(0, 3).map((item, idx) => (
+      {rankings.slice(0, 10).map((item, idx) => (
         <Button
           key={item.text}
           variant="ghost"
@@ -37,7 +36,7 @@ export function SuggestionRankingBadges({
           title={`${item.text} (${item.clickCount} cliques)`}
         >
           <span className="text-primary font-bold">#{idx + 1}</span>
-          <span className="ml-1 max-w-[60px] truncate text-muted-foreground">
+          <span className="ml-1 max-w-[80px] truncate text-muted-foreground">
             {item.text}
           </span>
         </Button>
