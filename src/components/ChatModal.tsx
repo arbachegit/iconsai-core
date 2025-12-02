@@ -27,6 +27,23 @@ export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
     });
   };
 
+  // Esc key handler
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscKey);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
