@@ -34,7 +34,7 @@ export function ChartTypeSelector({ selectedType, onSelectType, disabled }: Char
           size="icon"
           variant={selectedType ? "default" : "ghost"}
           disabled={disabled}
-          className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow relative"
+          className="h-8 w-8 relative"
           title={selectedType ? `Tipo: ${selectedConfig?.label}` : "Selecionar tipo de gráfico"}
         >
           <SelectedIcon className="w-4 h-4" />

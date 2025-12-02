@@ -801,7 +801,7 @@ export default function ChatKnowYOU() {
             }} disabled={isLoading || isTranscribing} />
             
             {/* Botões de funcionalidade - inferior esquerdo */}
-            <div className="absolute bottom-2 left-2 flex gap-1">
+            <div className="absolute bottom-2 left-2 flex gap-1 items-end">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button type="button" size="icon" variant="ghost" onClick={isRecording ? stopRecording : startRecording} className={`h-8 w-8 ${isRecording ? "text-red-500" : ""}`}>
@@ -822,13 +822,11 @@ export default function ChatKnowYOU() {
               
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div>
-                    <ChartTypeSelector
-                      selectedType={selectedChartType}
-                      onSelectType={setSelectedChartType}
-                      disabled={isLoading || isImageMode}
-                    />
-                  </div>
+                  <ChartTypeSelector
+                    selectedType={selectedChartType}
+                    onSelectType={setSelectedChartType}
+                    disabled={isLoading || isImageMode}
+                  />
                 </TooltipTrigger>
                 <TooltipContent side="top">Tipo de gráfico</TooltipContent>
               </Tooltip>
