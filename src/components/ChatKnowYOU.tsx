@@ -27,6 +27,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { useDocumentSuggestions } from "@/hooks/useDocumentSuggestions";
 import { TopicDrillDown } from "./TopicDrillDown";
 import { SuggestionRankingBadges } from "./SuggestionRankingBadges";
+import { CarouselRow } from "./CarouselRow";
 
 // 30 sugestões de saúde para rotação
 const HEALTH_SUGGESTIONS = ["O que é telemedicina?", "Como prevenir doenças cardíacas?", "Quais especialidades o Hospital Moinhos de Vento oferece?", "Como funciona a robótica cirúrgica?", "O que são doenças crônicas?", "Como manter uma alimentação saudável?", "Quais exames preventivos fazer anualmente?", "O que é diabetes tipo 2?", "Como controlar a pressão arterial?", "O que faz um cardiologista?", "Como prevenir o câncer?", "O que é saúde mental?", "Como funciona a fisioterapia?", "Quais sintomas indicam AVC?", "O que é medicina preventiva?", "Como melhorar a qualidade do sono?", "O que são exames de imagem?", "Como funciona a vacinação?", "O que é obesidade mórbida?", "Como tratar ansiedade?", "O que faz um endocrinologista?", "Como prevenir osteoporose?", "O que é check-up médico?", "Como funciona a nutrição clínica?", "Quais benefícios da atividade física?", "O que é colesterol alto?", "Como identificar depressão?", "O que são doenças autoimunes?", "Como funciona o transplante de órgãos?", "Qual a importância da hidratação?"];
@@ -640,7 +641,7 @@ export default function ChatKnowYOU() {
       {(displayedSuggestions.length > 0 || newDocumentBadge || topSuggestions.length > 0 || complementarySuggestions.length > 0) && !isLoading && (
         <div className="px-4 py-2 bg-muted/50 border-t border-border/50 space-y-1.5">
           {/* LINHA 1: Carrossel horizontal - Tópicos Novos OU primeira metade dos existentes */}
-          <div className="flex gap-1.5 items-center overflow-x-auto scrollbar-thin scrollbar-thumb-primary/30 scrollbar-track-transparent pb-1" style={{ scrollbarWidth: 'thin' }}>
+          <CarouselRow>
             {newDocumentBadge && newDocumentBadge.themes.length > 0 ? (
               // Há documentos novos - mostrar na Linha 1
               newDocumentBadge.themes.map((theme, idx) => (
@@ -688,10 +689,10 @@ export default function ChatKnowYOU() {
                 {suggestion}
               </Button>
             ))}
-          </div>
+          </CarouselRow>
           
           {/* LINHA 2: Carrossel horizontal - Tópicos Existentes + Ranking */}
-          <div className="flex gap-1.5 items-center overflow-x-auto scrollbar-thin scrollbar-thumb-primary/30 scrollbar-track-transparent pb-1" style={{ scrollbarWidth: 'thin' }}>
+          <CarouselRow>
             {newDocumentBadge && newDocumentBadge.themes.length > 0 ? (
               // Há documentos novos - mostrar existentes completos na Linha 2
               complementarySuggestions.map((suggestion, idx) => (
@@ -746,7 +747,7 @@ export default function ChatKnowYOU() {
               onRankingClick={(text) => handleSuggestionClick(text)}
               className="text-[10px]"
             />
-          </div>
+          </CarouselRow>
         </div>
       )}
 

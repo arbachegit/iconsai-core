@@ -24,6 +24,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { useDocumentSuggestions } from "@/hooks/useDocumentSuggestions";
 import { TopicDrillDown } from "./TopicDrillDown";
 import { SuggestionRankingBadges } from "./SuggestionRankingBadges";
+import { CarouselRow } from "./CarouselRow";
 
 interface ChatStudyProps {
   onClose?: () => void;
@@ -665,7 +666,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
       {(displayedSuggestions.length > 0 || newDocumentBadge || topSuggestions.length > 0 || complementarySuggestions.length > 0) && (
         <div className="px-4 py-2 bg-muted/50 border-t border-border/50 space-y-1.5">
           {/* LINHA 1: Carrossel horizontal - Tópicos Novos OU primeira metade dos existentes */}
-          <div className="flex gap-1.5 items-center overflow-x-auto scrollbar-thin scrollbar-thumb-primary/30 scrollbar-track-transparent pb-1" style={{ scrollbarWidth: 'thin' }}>
+          <CarouselRow>
             {newDocumentBadge && newDocumentBadge.themes.length > 0 ? (
               // Há documentos novos - mostrar na Linha 1
               newDocumentBadge.themes.map((theme, idx) => (
@@ -713,10 +714,10 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
                 {suggestion}
               </Button>
             ))}
-          </div>
+          </CarouselRow>
           
           {/* LINHA 2: Carrossel horizontal - Tópicos Existentes + Ranking */}
-          <div className="flex gap-1.5 items-center overflow-x-auto scrollbar-thin scrollbar-thumb-primary/30 scrollbar-track-transparent pb-1" style={{ scrollbarWidth: 'thin' }}>
+          <CarouselRow>
             {newDocumentBadge && newDocumentBadge.themes.length > 0 ? (
               // Há documentos novos - mostrar existentes completos na Linha 2
               complementarySuggestions.map((suggestion, idx) => (
@@ -771,7 +772,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
               onRankingClick={(text) => handleSuggestionClick(text)}
               className="text-[10px]"
             />
-          </div>
+          </CarouselRow>
         </div>
       )}
 
