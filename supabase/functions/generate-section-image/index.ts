@@ -154,7 +154,7 @@ serve(async (req) => {
       .from('content-images')
       .getPublicUrl(fileName);
 
-    const publicUrl = publicUrlData.publicUrl;
+    const publicUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
     console.log('Image uploaded to Storage:', publicUrl);
 
     // Save URL to database
