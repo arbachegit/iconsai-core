@@ -22,7 +22,7 @@ import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useDocumentSuggestions } from "@/hooks/useDocumentSuggestions";
-import { NewDocumentBadge } from "./NewDocumentBadge";
+import { TopicDrillDown } from "./TopicDrillDown";
 import { SuggestionRankingBadges } from "./SuggestionRankingBadges";
 
 interface ChatStudyProps {
@@ -82,6 +82,10 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     complementarySuggestions,
     topSuggestions,
     recordSuggestionClick,
+    getSubtopicsForTheme,
+    expandedTheme,
+    setExpandedTheme,
+    subtopicsCache,
   } = useDocumentSuggestions('study');
   
   const [input, setInput] = useState("");
@@ -657,39 +661,51 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
         </div>
       </ScrollArea>
 
-      {/* Suggestions com badges dinâmicos - 2 linhas */}
+      {/* Suggestions com badges dinâmicos - 2 linhas com drill-down */}
       {(displayedSuggestions.length > 0 || newDocumentBadge || topSuggestions.length > 0 || complementarySuggestions.length > 0) && (
         <div className="px-4 py-2 space-y-1">
-          {/* Linha 1: Documentos Novos (≤3 dias) */}
+          {/* Linha 1: Documentos Novos (≤3 dias) com drill-down */}
           {newDocumentBadge && newDocumentBadge.themes.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 items-center">
-              {newDocumentBadge.themes.slice(0, 5).map((theme, idx) => (
-                <NewDocumentBadge
+            <div className="flex flex-wrap gap-1.5 items-start">
+              {newDocumentBadge.themes.map((theme, idx) => (
+                <TopicDrillDown
                   key={`new-${theme}-${idx}`}
-                  currentTheme={theme}
-                  onThemeClick={() => handleSuggestionClick(theme, newDocumentBadge.documentIds[idx])}
+                  topic={theme}
+                  isNew={true}
+                  isExpanded={expandedTheme === theme}
+                  onToggle={() => setExpandedTheme(expandedTheme === theme ? null : theme)}
+                  onSubtopicClick={(subtopic) => {
+                    recordSuggestionClick(subtopic, newDocumentBadge.documentIds[idx]);
+                    sendMessage(subtopic);
+                  }}
+                  getSubtopics={getSubtopicsForTheme}
+                  cachedSubtopics={subtopicsCache[theme]}
                 />
               ))}
             </div>
           )}
           
           {/* Linha 2: Documentos Existentes (>3 dias) + Ranking */}
-          <div className="flex flex-wrap gap-1.5 items-center">
-            {/* Sugestões complementares (documentos antigos) - fonte reduzida */}
-            {complementarySuggestions.slice(0, 5).map((suggestion, idx) => (
-              <Button
+          <div className="flex flex-wrap gap-1.5 items-start">
+            {/* Sugestões complementares (documentos antigos) com drill-down */}
+            {complementarySuggestions.map((suggestion, idx) => (
+              <TopicDrillDown
                 key={`comp-${suggestion}-${idx}`}
-                variant="outline"
-                size="sm"
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="text-[10px] h-6 px-2 rounded-full border border-primary/40 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                {suggestion}
-              </Button>
+                topic={suggestion}
+                isNew={false}
+                isExpanded={expandedTheme === suggestion}
+                onToggle={() => setExpandedTheme(expandedTheme === suggestion ? null : suggestion)}
+                onSubtopicClick={(subtopic) => {
+                  recordSuggestionClick(subtopic);
+                  sendMessage(subtopic);
+                }}
+                getSubtopics={getSubtopicsForTheme}
+                cachedSubtopics={subtopicsCache[suggestion]}
+              />
             ))}
             
             {/* Fallback: sugestões padrão quando não há documentos */}
-            {!newDocumentBadge && !complementarySuggestions.length && displayedSuggestions.slice(0, 4).map((suggestion, idx) => (
+            {!newDocumentBadge && !complementarySuggestions.length && displayedSuggestions.slice(0, 6).map((suggestion, idx) => (
               <Button
                 key={`disp-${suggestion}-${idx}`}
                 variant="outline"
