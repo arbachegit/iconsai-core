@@ -1066,6 +1066,15 @@ O sistema utiliza um pipeline de 4 etapas:
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold">Documentos RAG</h2>
           
+          {/* Badge de contagem de documentos indexados */}
+          <Badge 
+            variant="secondary" 
+            className="bg-green-500/10 text-green-600 border-green-500/20"
+          >
+            <FileText className="h-3 w-3 mr-1" />
+            {documents?.filter(d => d.status === "completed").length || 0} indexados
+          </Badge>
+          
           {/* Popover RAG Info (não-modal) */}
           <Popover open={ragInfoPopoverOpen} onOpenChange={setRagInfoPopoverOpen}>
             <PopoverTrigger asChild>

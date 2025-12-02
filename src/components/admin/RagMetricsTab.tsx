@@ -1,8 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Database, FileText, Search, CheckCircle2, Loader2, Clock, TrendingUp, Download, FileSpreadsheet, FileJson, FileDown, BarChart3 } from "lucide-react";
+import { Database, FileText, Search, CheckCircle2, Loader2, Clock, TrendingUp, Download, FileSpreadsheet, FileJson, FileDown, BarChart3, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import ReactMarkdown from "react-markdown";
+import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
   DropdownMenu,
@@ -29,6 +33,60 @@ import {
 } from "recharts";
 
 export const RagMetricsTab = () => {
+  const [vectorStoreInfoOpen, setVectorStoreInfoOpen] = useState(false);
+  const { t, ready } = useTranslation();
+
+  // Generate Vector Store info content from i18n translations
+  const getVectorStoreInfoContent = () => {
+    if (!ready) {
+      return "Carregando informações sobre Vector Store...";
+    }
+    
+    const vs = t('admin.tooltips.vectorStore', { returnObjects: true }) as any;
+    
+    if (!vs || typeof vs !== 'object' || !vs.intro) {
+      console.error('Vector Store translations not loaded properly:', vs);
+      return "Erro ao carregar informações sobre Vector Store. Por favor, recarregue a página.";
+    }
+    
+    return `**Vector Store** ${vs.intro}
+
+---
+
+### ${vs.whatIs.title}
+${vs.whatIs.content}
+
+### ${vs.pgvector.title}
+${vs.pgvector.intro}
+
+* ${vs.pgvector.feature1}
+* ${vs.pgvector.feature2}
+* ${vs.pgvector.feature3}
+
+### ${vs.similarity.title}
+${vs.similarity.intro}
+
+| ${vs.similarity.metric} | ${vs.similarity.description} | ${vs.similarity.useCase} |
+| :--- | :--- | :--- |
+| **Cosseno** | ${vs.similarity.cosineDesc} | ${vs.similarity.cosineUse} |
+| **Euclidiana** | ${vs.similarity.euclideanDesc} | ${vs.similarity.euclideanUse} |
+| **Produto Interno** | ${vs.similarity.dotDesc} | ${vs.similarity.dotUse} |
+
+### ${vs.howItWorks.title}
+${vs.howItWorks.intro}
+
+1. ${vs.howItWorks.step1}
+2. ${vs.howItWorks.step2}
+3. ${vs.howItWorks.step3}
+4. ${vs.howItWorks.step4}
+
+### ${vs.glossary.title}
+* ${vs.glossary.vector}
+* ${vs.glossary.embedding}
+* ${vs.glossary.dimension}
+* ${vs.glossary.index}`;
+  };
+
   // Fetch documents metrics
   const { data: docsData, isLoading: docsLoading } = useQuery({
     queryKey: ["rag-metrics-docs"],
@@ -345,7 +403,86 @@ export const RagMetricsTab = () => {
 
       {/* Performance Metrics */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Métricas de Performance RAG</h3>
+        <div className="flex items-center gap-3 mb-4">
+          <h3 className="text-lg font-semibold">Métricas de Performance RAG</h3>
+          
+          {/* Tooltip Vector Store Info */}
+          <Popover open={vectorStoreInfoOpen} onOpenChange={setVectorStoreInfoOpen}>
+            <PopoverTrigger asChild>
+              <button className="relative w-8 h-8 rounded-full bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30 hover:from-purple-500/30 hover:to-indigo-500/30 transition-all duration-300 group flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-purple-500/50">
+                <Lightbulb className="h-4 w-4 text-purple-500 group-hover:text-purple-400 transition-colors" />
+                <div className="absolute -top-1 -right-1 pointer-events-none">
+                  <div className="relative">
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+                    <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+                  </div>
+                </div>
+              </button>
+            </PopoverTrigger>
+            
+            <PopoverContent 
+              className="w-[550px] max-h-[75vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-purple-500/20" 
+              side="right"
+              align="start"
+            >
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <Lightbulb className="h-5 w-5 text-purple-500 flex-shrink-0 mt-0.5" />
+                  <h3 className="text-base font-bold text-purple-500">Vector Store e pgvector</h3>
+                </div>
+                <ReactMarkdown
+                  components={{
+                    h3: ({ children }) => (
+                      <h3 className="text-sm font-bold mt-4 mb-2 text-foreground">
+                        {children}
+                      </h3>
+                    ),
+                    p: ({ children }) => (
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+                        {children}
+                      </p>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                        {children}
+                      </ul>
+                    ),
+                    li: ({ children }) => (
+                      <li className="text-sm text-muted-foreground">{children}</li>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-semibold text-foreground">{children}</strong>
+                    ),
+                    table: ({ children }) => (
+                      <div className="overflow-x-auto my-3">
+                        <table className="w-full border-collapse text-xs">
+                          {children}
+                        </table>
+                      </div>
+                    ),
+                    thead: ({ children }) => (
+                      <thead className="bg-muted/50">{children}</thead>
+                    ),
+                    th: ({ children }) => (
+                      <th className="border border-border px-2 py-1.5 text-left font-semibold">
+                        {children}
+                      </th>
+                    ),
+                    td: ({ children }) => (
+                      <td className="border border-border px-2 py-1.5">
+                        {children}
+                      </td>
+                    ),
+                    hr: () => <hr className="my-3 border-border" />,
+                  }}
+                >
+                  {getVectorStoreInfoContent()}
+                </ReactMarkdown>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 bg-muted/50 rounded-lg text-center">
             <p className="text-sm text-muted-foreground mb-2">Média de Chunks/Documento</p>
