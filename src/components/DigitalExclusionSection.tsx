@@ -15,11 +15,13 @@ export const DigitalExclusionSection = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [sectionImage, setSectionImage] = useState<string | null>(null);
   const audioPlayerRef = useRef<AudioStreamPlayer | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     fetchAudio();
+    fetchImage();
   }, []);
 
   const fetchAudio = async () => {
@@ -36,6 +38,25 @@ export const DigitalExclusionSection = () => {
       }
     } catch (error) {
       console.error('Error fetching audio:', error);
+    }
+  };
+
+  const fetchImage = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('generated_images')
+        .select('image_url')
+        .eq('section_id', 'digital-exclusion')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data?.image_url) {
+        setSectionImage(data.image_url);
+      }
+    } catch (error) {
+      console.error('Error fetching section image:', error);
     }
   };
 
@@ -67,12 +88,21 @@ export const DigitalExclusionSection = () => {
   };
 
   const handlePlayAudio = async () => {
+    let urlToPlay = audioUrl;
+    
     // Se não tem áudio ou é BLOB URL expirado, regenerar
     if (!audioUrl || audioUrl.startsWith('blob:')) {
       setIsLoadingAudio(true);
       try {
         const newAudioUrl = await generateAndSaveAudio();
         setAudioUrl(newAudioUrl);
+        urlToPlay = newAudioUrl;
+        
+        // Limpar referência de áudio antigo para forçar recriação
+        if (audioElementRef.current) {
+          audioElementRef.current.pause();
+          audioElementRef.current = null;
+        }
         
         // Atualizar no banco de dados
         const { error: updateError } = await supabase
@@ -103,7 +133,7 @@ export const DigitalExclusionSection = () => {
 
     try {
       if (!audioElementRef.current) {
-        const audio = new Audio(audioUrl);
+        const audio = new Audio(urlToPlay);
         audioElementRef.current = audio;
         
         audio.addEventListener('loadedmetadata', () => {
@@ -187,7 +217,7 @@ export const DigitalExclusionSection = () => {
 
               <CollapsibleContent className="mt-8 space-y-6 animate-accordion-down">
                 {/* Audio Controls */}
-                {audioUrl && (
+                <div>
                   <div className="border-t border-primary/20 pt-6 space-y-4">
                     <div className="flex items-center gap-2 justify-center flex-wrap">
                       <Button
@@ -243,7 +273,7 @@ export const DigitalExclusionSection = () => {
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
 
                 {/* Content Text */}
                 <div className="prose prose-invert max-w-none space-y-4 text-muted-foreground">
@@ -252,8 +282,16 @@ export const DigitalExclusionSection = () => {
                   </p>
 
                   <div className="my-8 flex justify-center">
-                    <div className="w-full max-w-md aspect-square rounded-lg bg-gradient-subtle flex items-center justify-center border border-primary/20">
-                      <div className="w-32 h-32 rounded-full bg-gradient-primary opacity-20 animate-pulse-slow" />
+                    <div className="w-full max-w-md aspect-square rounded-lg bg-gradient-subtle flex items-center justify-center border border-primary/20 overflow-hidden">
+                      {sectionImage ? (
+                        <img 
+                          src={sectionImage} 
+                          alt={t('digitalExclusion.title')}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-32 h-32 rounded-full bg-gradient-primary opacity-20 animate-pulse-slow" />
+                      )}
                     </div>
                   </div>
 
