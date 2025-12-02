@@ -224,6 +224,24 @@ serve(async (req) => {
       // Criar snapshot ID para versionamento
       const snapshotId = `snapshot_${newVersion}_${Date.now()}`;
       
+      // Prepare associated_data with file metadata for code changes
+      const associatedDataPayload: any = {
+        ...associated_data,
+        snapshot_id: snapshotId,
+        created_at: new Date().toISOString(),
+        tags: associated_data?.tags || [],
+        release_notes: associated_data?.release_notes || ""
+      };
+
+      // Add file metadata if provided (for code changes)
+      if (associated_data) {
+        if (associated_data.files_created) associatedDataPayload.files_created = associated_data.files_created;
+        if (associated_data.files_modified) associatedDataPayload.files_modified = associated_data.files_modified;
+        if (associated_data.files_deleted) associatedDataPayload.files_deleted = associated_data.files_deleted;
+        if (associated_data.change_summary) associatedDataPayload.change_summary = associated_data.change_summary;
+        if (associated_data.change_category) associatedDataPayload.change_category = associated_data.change_category;
+      }
+      
       // Inserir novo registro com snapshot metadata
       const { data: newRecord, error: insertError } = await supabase
         .from("version_control")
@@ -231,13 +249,7 @@ serve(async (req) => {
           current_version: newVersion,
           log_message: log_message || `Atualização ${action} automática`,
           trigger_type: triggerType,
-          associated_data: {
-            ...associated_data,
-            snapshot_id: snapshotId,
-            created_at: new Date().toISOString(),
-            tags: associated_data?.tags || [],
-            release_notes: associated_data?.release_notes || ""
-          },
+          associated_data: associatedDataPayload,
         })
         .select()
         .single();
