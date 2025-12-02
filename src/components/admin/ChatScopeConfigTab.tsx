@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw, Volume2, Plus, Trash2, Code } from "lucide-react";
+import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw, Volume2, Plus, Trash2, Code, Lightbulb } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import ReactMarkdown from "react-markdown";
 interface ChatConfig {
   id: string;
   chat_type: "study" | "health";
@@ -54,6 +56,52 @@ export function ChatScopeConfigTab() {
   const [newTerm, setNewTerm] = useState("");
   const [newPronunciation, setNewPronunciation] = useState("");
   const [addingTermFor, setAddingTermFor] = useState<"study" | "health" | null>(null);
+  const [phoneticsInfoOpen, setPhoneticsInfoOpen] = useState(false);
+
+  const TTS_INFO_CONTENT = `**TTS** é a sigla para **Text-to-Speech** (Texto para Fala). No contexto de Inteligência Artificial e fonética, refere-se à tecnologia que converte texto escrito em áudio falado de forma sintética, simulando a voz humana.
+
+Não se trata apenas de "ler" palavras, mas de compreender como essas palavras devem soar com base em regras linguísticas e modelos de aprendizado profundo (Deep Learning).
+
+Aqui está uma explicação detalhada de como funciona a intersecção entre TTS, Fonética e IA:
+
+---
+
+### 1. O Fluxo do Processo (Pipeline)
+Para uma IA transformar texto em fala, ela passa por etapas críticas onde a fonética é essencial:
+
+1.  **Normalização de Texto:** A IA converte números, abreviações e símbolos em palavras por extenso.
+    * *Exemplo:* "R$ 10,00" torna-se "dez reais".
+2.  **Conversão Grafema-para-Fonema (G2P):** É aqui que a mágica da fonética acontece. O sistema traduz a escrita (grafemas) para a representação sonora (fonemas).
+    * *Exemplo:* A palavra "casa" é convertida internamente para algo como \`/k/ /a/ /z/ /a/\`.
+3.  **Análise Prosódica:** A IA determina o ritmo, a entonação (pergunta vs. afirmação) e a ênfase (tonicidade).
+4.  **Síntese de Áudio:** O computador gera as ondas sonoras finais baseadas nessas instruções.
+
+### 2. O Papel da Fonética na IA
+A fonética no TTS moderno não é apenas um dicionário de pronúncia; é um sistema dinâmico de interpretação.
+
+* **Desambiguação de Homógrafos:** A IA precisa analisar o contexto para saber qual fonema usar em palavras que se escrevem igual mas soam diferentes.
+    * *Exemplo:* "Eu **colho** as flores" (som fechado /ô/) vs. "O **colho** está cheio" (som aberto /ó/).
+* **Coarticulação:** Na fala humana, o som de uma letra é influenciado pela letra vizinha. Um bom TTS usa IA para suavizar essas transições, evitando que a fala soe "robótica" ou picotada.
+* **Prosódia e Emoção:** Modelos neurais modernos (como os usados pela OpenAI ou ElevenLabs) analisam a semântica do texto para aplicar a emoção correta (tristeza, empolgação, dúvida) na fonética da frase.
+
+### 3. Evolução: TTS Paramétrico vs. TTS Neural
+
+| Característica | TTS Tradicional (Concatenativo) | TTS Neural (IA Moderna) |
+| :--- | :--- | :--- |
+| **Método** | "Cola" pedaços de áudios gravados. | Gera ondas sonoras do zero usando redes neurais. |
+| **Naturalidade** | Soa robótico, com falhas nas junções. | Quase indistinguível da voz humana (respiração, pausas). |
+| **Fonética** | Baseada estritamente em regras fixas. | Aprende padrões fonéticos complexos analisando milhares de horas de áudio. |
+| **Flexibilidade** | Difícil mudar o estilo da voz. | Pode clonar vozes ou mudar estilos facilmente. |
+
+### 4. Tecnologias Principais
+Hoje, os modelos de TTS mais avançados utilizam arquiteturas como:
+* **Tacotron 2:** Mapeia texto diretamente para espectrogramas (representações visuais do som).
+* **WaveNet / WaveGlow:** Geram as ondas de áudio cruas ponto a ponto, resultando em altíssima fidelidade.
+* **VALL-E / XTTS:** Modelos capazes de clonar a voz e a acústica do ambiente com apenas alguns segundos de áudio de referência.
+
+---
+
+**Você gostaria que eu explicasse como implementar um modelo de TTS simples em Python ou prefere saber sobre as melhores ferramentas de mercado atualmente?**`;
   useEffect(() => {
     fetchConfigs();
   }, []);
@@ -476,6 +524,68 @@ export function ChatScopeConfigTab() {
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
             Biblioteca de Pronúncias
+            
+            {/* Tooltip Informativo TTS */}
+            <Popover open={phoneticsInfoOpen} onOpenChange={setPhoneticsInfoOpen}>
+              <PopoverTrigger asChild>
+                <button 
+                  className="relative w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/50 ml-2"
+                  aria-label="Informações sobre TTS e Fonética"
+                >
+                  <Lightbulb className="w-4 h-4 text-primary" />
+                  <div className="absolute -top-1 -right-1 pointer-events-none">
+                    <div className="relative">
+                      <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                      <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+                    </div>
+                  </div>
+                </button>
+              </PopoverTrigger>
+              
+              <PopoverContent 
+                className="w-[500px] max-h-[70vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-primary/20" 
+                side="right"
+                align="start"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <Lightbulb className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-sm mb-3">TTS, Fonética e Inteligência Artificial</h4>
+                      <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
+                        <ReactMarkdown
+                          components={{
+                            p: ({ children }) => <p className="mb-2 last:mb-0 text-sm">{children}</p>,
+                            ul: ({ children }) => <ul className="list-disc pl-4 mb-2 text-sm">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 text-sm">{children}</ol>,
+                            li: ({ children }) => <li className="mb-1">{children}</li>,
+                            strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
+                            em: ({ children }) => <em className="italic">{children}</em>,
+                            code: ({ children }) => (
+                              <code className="bg-muted px-1 py-0.5 rounded text-xs">{children}</code>
+                            ),
+                            h3: ({ children }) => <h3 className="font-semibold text-sm mt-4 mb-2 text-foreground">{children}</h3>,
+                            hr: () => <hr className="my-3 border-primary/20" />,
+                            table: ({ children }) => (
+                              <div className="overflow-x-auto my-3">
+                                <table className="w-full text-xs border-collapse border border-border">{children}</table>
+                              </div>
+                            ),
+                            thead: ({ children }) => <thead className="bg-muted">{children}</thead>,
+                            tbody: ({ children }) => <tbody>{children}</tbody>,
+                            tr: ({ children }) => <tr className="border-b border-border">{children}</tr>,
+                            th: ({ children }) => <th className="p-2 text-left font-semibold border border-border">{children}</th>,
+                            td: ({ children }) => <td className="p-2 border border-border">{children}</td>,
+                          }}
+                        >
+                          {TTS_INFO_CONTENT}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </CardTitle>
           <CardDescription>
             Configure pronúncias fonéticas para TTS de cada chat
