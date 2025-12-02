@@ -30,9 +30,10 @@ import {
   TestTube,
   History,
   Network,
+  Activity,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "activity-logs" | "architecture";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "activity-logs" | "architecture" | "system-increments";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -110,6 +111,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         { id: "architecture" as TabType, label: "Arquitetura", icon: Network },
         { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
         { id: "activity-logs" as TabType, label: "Log de Atividades", icon: History },
+        { id: "system-increments" as TabType, label: "Incrementos Sistema", icon: Activity },
         { id: "gmail" as TabType, label: "Gmail", icon: Mail },
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
       ]

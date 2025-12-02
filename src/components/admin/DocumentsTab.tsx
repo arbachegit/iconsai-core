@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActivityLogger } from "@/hooks/useActivityLogger";
+import { useSystemIncrement } from "@/hooks/useSystemIncrement";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ interface FileUploadStatus {
 }
 export const DocumentsTab = () => {
   const { logActivity } = useActivityLogger();
+  const { logIncrement } = useSystemIncrement();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
@@ -409,6 +411,19 @@ O sistema utiliza um pipeline de 4 etapas:
       logActivity("Documento excluído", "DELETE", { 
         documentId: docId,
         filename: selectedDoc?.filename 
+      });
+      
+      // Log system increment
+      logIncrement({
+        operationType: "DELETE",
+        operationSource: "document_delete",
+        tablesAffected: ["documents", "document_chunks", "document_tags"],
+        summary: `Documento "${selectedDoc?.filename || docId}" excluído`,
+        details: {
+          document_id: docId,
+          filename: selectedDoc?.filename,
+          target_chat: selectedDoc?.target_chat
+        }
       });
       
       toast.success("Documento deletado");

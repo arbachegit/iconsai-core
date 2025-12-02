@@ -278,6 +278,28 @@ serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      
+      // Registrar incremento do sistema
+      try {
+        await supabase.from("system_increments").insert({
+          triggered_by_email: "system@knowrisk.io",
+          operation_type: "INSERT",
+          operation_source: "version_increment",
+          tables_affected: ["version_control"],
+          summary: `Nova versão ${newVersion} criada (${triggerType})`,
+          details: {
+            version: newVersion,
+            trigger_type: triggerType,
+            log_message: log_message,
+            previous_version: currentVersion,
+            timestamp: new Date().toISOString()
+          }
+        });
+        
+        console.log("✅ System increment logged");
+      } catch (incrementError) {
+        console.error("⚠️ Error logging system increment:", incrementError);
+      }
 
       // Generate documentation and send notifications for Minor/Major releases
       if (action === "minor" || action === "major") {

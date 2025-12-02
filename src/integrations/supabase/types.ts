@@ -836,6 +836,42 @@ export type Database = {
         }
         Relationships: []
       }
+      system_increments: {
+        Row: {
+          details: Json | null
+          id: string
+          operation_source: string
+          operation_type: string
+          summary: string
+          tables_affected: string[]
+          timestamp: string
+          triggered_by_email: string
+          triggered_by_user_id: string | null
+        }
+        Insert: {
+          details?: Json | null
+          id?: string
+          operation_source: string
+          operation_type: string
+          summary: string
+          tables_affected: string[]
+          timestamp?: string
+          triggered_by_email: string
+          triggered_by_user_id?: string | null
+        }
+        Update: {
+          details?: Json | null
+          id?: string
+          operation_source?: string
+          operation_type?: string
+          summary?: string
+          tables_affected?: string[]
+          timestamp?: string
+          triggered_by_email?: string
+          triggered_by_user_id?: string | null
+        }
+        Relationships: []
+      }
       tooltip_contents: {
         Row: {
           audio_url: string | null
