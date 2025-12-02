@@ -2,9 +2,24 @@ import { Music } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 const FEATURED_PODCASTS = [
-  { id: 1, episodeId: "2lORJJJIGECuG57sxtbmTx" },
-  { id: 2, episodeId: "7FbQynx7mlyn98zylx5dNg" },
-  { id: 3, episodeId: "0lHencLq7GVTeAihuY18JS" },
+  { 
+    id: 1, 
+    episodeId: "2lORJJJIGECuG57sxtbmTx", 
+    title: "T1E1 SAÚDE O Custo do Silêncio",
+    subtitle: "Foco em Justificativa Financeira e Simulação"
+  },
+  { 
+    id: 2, 
+    episodeId: "7FbQynx7mlyn98zylx5dNg", 
+    title: "T1E2 O Algoritmo da Dignidade",
+    subtitle: "Foco em Tecnologia e Impacto Social"
+  },
+  { 
+    id: 3, 
+    episodeId: "0lHencLq7GVTeAihuY18JS", 
+    title: "T1E3 Prevendo o Futuro",
+    subtitle: "Foco em Gestão de Risco e Tomada de Decisão"
+  },
 ];
 
 export const MediaCarousel = () => {
@@ -31,6 +46,14 @@ export const MediaCarousel = () => {
                   loading="lazy"
                   className="rounded-lg"
                 />
+                <div className="mt-4 text-center space-y-1">
+                  <h4 className="font-bold text-lg text-foreground">
+                    {podcast.title}
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    {podcast.subtitle}
+                  </p>
+                </div>
               </CardContent>
             </Card>
           ))}
