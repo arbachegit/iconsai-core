@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useTranslation } from "react-i18next";
 interface ChatConfig {
   id: string;
@@ -46,7 +47,8 @@ export function ChatScopeConfigTab() {
   
   const [studyConfig, setStudyConfig] = useState<ChatConfig | null>(null);
   const [healthConfig, setHealthConfig] = useState<ChatConfig | null>(null);
-  const [ragInfoPopoverOpen, setRagInfoPopoverOpen] = useState(false);
+  const [ragInfoStudyOpen, setRagInfoStudyOpen] = useState(false);
+  const [ragInfoHealthOpen, setRagInfoHealthOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingChat, setEditingChat] = useState<"study" | "health" | null>(null);
   const [testQuery, setTestQuery] = useState("");
@@ -323,7 +325,13 @@ ${tts.technologies.intro}
         return null;
     }
   };
-  const renderChatCard = (config: ChatConfig | null, title: string, icon: React.ReactNode) => {
+  const renderChatCard = (
+    config: ChatConfig | null, 
+    title: string, 
+    icon: React.ReactNode,
+    ragPopoverOpen: boolean,
+    setRagPopoverOpen: (open: boolean) => void
+  ) => {
     if (!config) return null;
     const isEditing = editingChat === config.chat_type;
     return <Card className="flex-1">
@@ -358,7 +366,7 @@ ${tts.technologies.intro}
               <Label className="text-sm font-medium">Configurações RAG</Label>
               
               {/* Tooltip RAG Info */}
-              <Popover open={ragInfoPopoverOpen} onOpenChange={setRagInfoPopoverOpen}>
+              <Popover open={ragPopoverOpen} onOpenChange={setRagPopoverOpen}>
                 <PopoverTrigger asChild>
                   <button className="relative w-7 h-7 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-amber-500/30 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all duration-300 group flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-amber-500/50">
                     <Lightbulb className="h-3.5 w-3.5 text-amber-500 group-hover:text-amber-400 transition-colors" />
@@ -381,8 +389,9 @@ ${tts.technologies.intro}
                       <Lightbulb className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                       <h3 className="text-base font-bold text-amber-500">RAG - Retrieval-Augmented Generation</h3>
                     </div>
-                    <ReactMarkdown
-                      components={{
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
                         h3: ({ children }) => (
                           <h3 className="text-sm font-bold mt-4 mb-2 text-foreground">
                             {children}
@@ -706,9 +715,10 @@ ${tts.technologies.intro}
                     <div>
                       <h4 className="font-semibold text-sm mb-3">TTS, Fonética e Inteligência Artificial</h4>
                       <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
-                        <ReactMarkdown
-                          components={{
-                            p: ({ children }) => <p className="mb-2 last:mb-0 text-sm">{children}</p>,
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    p: ({ children }) => <p className="mb-2 last:mb-0 text-sm">{children}</p>,
                             ul: ({ children }) => <ul className="list-disc pl-4 mb-2 text-sm">{children}</ul>,
                             ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 text-sm">{children}</ol>,
                             li: ({ children }) => <li className="mb-1">{children}</li>,
@@ -973,8 +983,8 @@ ${tts.technologies.intro}
 
       {/* Chat Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {renderChatCard(studyConfig, "Chat de Estudo", <FileText className="h-5 w-5" />)}
-        {renderChatCard(healthConfig, "Chat de Saúde", <MessageSquare className="h-5 w-5" />)}
+        {renderChatCard(studyConfig, "Chat de Estudo", <FileText className="h-5 w-5" />, ragInfoStudyOpen, setRagInfoStudyOpen)}
+        {renderChatCard(healthConfig, "Chat de Saúde", <MessageSquare className="h-5 w-5" />, ragInfoHealthOpen, setRagInfoHealthOpen)}
       </div>
     </div>;
 }
