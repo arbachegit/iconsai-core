@@ -1,5 +1,10 @@
 import { Music } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const FEATURED_PODCASTS = [
   { 
@@ -47,9 +52,24 @@ export const MediaCarousel = () => {
                   className="rounded-lg"
                 />
                 <div className="mt-4 text-center space-y-1">
-                  <h4 className="font-bold text-lg text-foreground">
-                    {podcast.title}
-                  </h4>
+                  <div className="flex items-center justify-center gap-2">
+                    <h4 className="font-bold text-lg text-foreground">
+                      {podcast.title}
+                    </h4>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="relative inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#1DB954]/20 border border-[#1DB954]/40 hover:bg-[#1DB954]/30 transition-colors cursor-pointer">
+                          <Music className="w-3 h-3 text-[#1DB954]" />
+                          {/* Expanding waves effect */}
+                          <span className="absolute inset-0 rounded-full bg-[#1DB954]/40 animate-ping" />
+                          <span className="absolute inset-0 rounded-full bg-[#1DB954]/20 animate-pulse" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-sm">{podcast.subtitle}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     {podcast.subtitle}
                   </p>
