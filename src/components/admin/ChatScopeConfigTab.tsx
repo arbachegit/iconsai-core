@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ReactMarkdown from "react-markdown";
+import { useTranslation } from "react-i18next";
 interface ChatConfig {
   id: string;
   chat_type: "study" | "health";
@@ -40,9 +41,9 @@ interface ChatConfig {
   updated_at: string;
 }
 export function ChatScopeConfigTab() {
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+  const { t } = useTranslation();
+  
   const [studyConfig, setStudyConfig] = useState<ChatConfig | null>(null);
   const [healthConfig, setHealthConfig] = useState<ChatConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,46 +59,49 @@ export function ChatScopeConfigTab() {
   const [addingTermFor, setAddingTermFor] = useState<"study" | "health" | null>(null);
   const [phoneticsInfoOpen, setPhoneticsInfoOpen] = useState(false);
 
-  const TTS_INFO_CONTENT = `**TTS** é a sigla para **Text-to-Speech** (Texto para Fala). No contexto de Inteligência Artificial e fonética, refere-se à tecnologia que converte texto escrito em áudio falado de forma sintética, simulando a voz humana.
+  // Generate TTS content from i18n translations
+  const getTTSInfoContent = () => {
+    const tts = t('admin.tooltips.tts', { returnObjects: true }) as any;
+    
+    return `**TTS** ${tts.intro}
 
-Não se trata apenas de "ler" palavras, mas de compreender como essas palavras devem soar com base em regras linguísticas e modelos de aprendizado profundo (Deep Learning).
-
-Aqui está uma explicação detalhada de como funciona a intersecção entre TTS, Fonética e IA:
+${tts.description}
 
 ---
 
-### 1. O Fluxo do Processo (Pipeline)
-Para uma IA transformar texto em fala, ela passa por etapas críticas onde a fonética é essencial:
+### ${tts.pipeline.title}
+${tts.pipeline.intro}
 
-1.  **Normalização de Texto:** A IA converte números, abreviações e símbolos em palavras por extenso.
-    * *Exemplo:* "R$ 10,00" torna-se "dez reais".
-2.  **Conversão Grafema-para-Fonema (G2P):** É aqui que a mágica da fonética acontece. O sistema traduz a escrita (grafemas) para a representação sonora (fonemas).
-    * *Exemplo:* A palavra "casa" é convertida internamente para algo como \`/k/ /a/ /z/ /a/\`.
-3.  **Análise Prosódica:** A IA determina o ritmo, a entonação (pergunta vs. afirmação) e a ênfase (tonicidade).
-4.  **Síntese de Áudio:** O computador gera as ondas sonoras finais baseadas nessas instruções.
+1.  ${tts.pipeline.step1}
+    * ${tts.pipeline.step1Example}
+2.  ${tts.pipeline.step2}
+    * ${tts.pipeline.step2Example}
+3.  ${tts.pipeline.step3}
+4.  ${tts.pipeline.step4}
 
-### 2. O Papel da Fonética na IA
-A fonética no TTS moderno não é apenas um dicionário de pronúncia; é um sistema dinâmico de interpretação.
+### ${tts.phoneticsRole.title}
+${tts.phoneticsRole.intro}
 
-* **Desambiguação de Homógrafos:** A IA precisa analisar o contexto para saber qual fonema usar em palavras que se escrevem igual mas soam diferentes.
-    * *Exemplo:* "Eu **colho** as flores" (som fechado /ô/) vs. "O **colho** está cheio" (som aberto /ó/).
-* **Coarticulação:** Na fala humana, o som de uma letra é influenciado pela letra vizinha. Um bom TTS usa IA para suavizar essas transições, evitando que a fala soe "robótica" ou picotada.
-* **Prosódia e Emoção:** Modelos neurais modernos (como os usados pela OpenAI ou ElevenLabs) analisam a semântica do texto para aplicar a emoção correta (tristeza, empolgação, dúvida) na fonética da frase.
+* ${tts.phoneticsRole.disambiguation}
+    * ${tts.phoneticsRole.disambiguationExample}
+* ${tts.phoneticsRole.coarticulation}
+* ${tts.phoneticsRole.prosody}
 
-### 3. Evolução: TTS Paramétrico vs. TTS Neural
+### ${tts.comparison.title}
 
-| Característica | TTS Tradicional (Concatenativo) | TTS Neural (IA Moderna) |
+| ${tts.comparison.characteristic} | ${tts.comparison.traditional} | ${tts.comparison.neural} |
 | :--- | :--- | :--- |
-| **Método** | "Cola" pedaços de áudios gravados. | Gera ondas sonoras do zero usando redes neurais. |
-| **Naturalidade** | Soa robótico, com falhas nas junções. | Quase indistinguível da voz humana (respiração, pausas). |
-| **Fonética** | Baseada estritamente em regras fixas. | Aprende padrões fonéticos complexos analisando milhares de horas de áudio. |
-| **Flexibilidade** | Difícil mudar o estilo da voz. | Pode clonar vozes ou mudar estilos facilmente. |
+| **${tts.comparison.method}** | ${tts.comparison.methodTraditional} | ${tts.comparison.methodNeural} |
+| **${tts.comparison.naturalness}** | ${tts.comparison.naturalnessTraditional} | ${tts.comparison.naturalnessNeural} |
+| **${tts.comparison.phonetics}** | ${tts.comparison.phoneticsTraditional} | ${tts.comparison.phoneticsNeural} |
+| **${tts.comparison.flexibility}** | ${tts.comparison.flexibilityTraditional} | ${tts.comparison.flexibilityNeural} |
 
-### 4. Tecnologias Principais
-Hoje, os modelos de TTS mais avançados utilizam arquiteturas como:
-* **Tacotron 2:** Mapeia texto diretamente para espectrogramas (representações visuais do som).
-* **WaveNet / WaveGlow:** Geram as ondas de áudio cruas ponto a ponto, resultando em altíssima fidelidade.
-* **VALL-E / XTTS:** Modelos capazes de clonar a voz e a acústica do ambiente com apenas alguns segundos de áudio de referência.`;
+### ${tts.technologies.title}
+${tts.technologies.intro}
+* ${tts.technologies.tacotron}
+* ${tts.technologies.wavenet}
+* ${tts.technologies.valle}`;
+  };
   useEffect(() => {
     fetchConfigs();
   }, []);
@@ -574,7 +578,7 @@ Hoje, os modelos de TTS mais avançados utilizam arquiteturas como:
                       td: ({ children }) => <td className="px-4 py-3 text-muted-foreground">{children}</td>,
                           }}
                         >
-                          {TTS_INFO_CONTENT}
+                          {getTTSInfoContent()}
                         </ReactMarkdown>
                       </div>
                     </div>

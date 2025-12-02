@@ -300,5 +300,110 @@
     "studyDesc": "KnowRISK e ACC",
     "general": "General",
     "generalDesc": "Manter como está"
+  },
+  "admin": {
+    "tooltips": {
+      "tts": {
+        "title": "TTS, Fonética e Inteligência Artificial",
+        "intro": "é a sigla para **Text-to-Speech** (Texto para Fala). No contexto de Inteligência Artificial e fonética, refere-se à tecnologia que converte texto escrito em áudio falado de forma sintética, simulando a voz humana.",
+        "description": "Não se trata apenas de \"ler\" palavras, mas de compreender como essas palavras devem soar com base em regras linguísticas e modelos de aprendizado profundo (Deep Learning).",
+        "pipeline": {
+          "title": "1. O Fluxo do Processo (Pipeline)",
+          "intro": "Para uma IA transformar texto em fala, ela passa por etapas críticas onde a fonética é essencial:",
+          "step1": "**Normalização de Texto:** A IA converte números, abreviações e símbolos em palavras por extenso.",
+          "step1Example": "*Exemplo:* \"R$ 10,00\" torna-se \"dez reais\".",
+          "step2": "**Conversão Grafema-para-Fonema (G2P):** É aqui que a mágica da fonética acontece. O sistema traduz a escrita (grafemas) para a representação sonora (fonemas).",
+          "step2Example": "*Exemplo:* A palavra \"casa\" é convertida internamente para algo como `/k/ /a/ /z/ /a/`.",
+          "step3": "**Análise Prosódica:** A IA determina o ritmo, a entonação (pergunta vs. afirmação) e a ênfase (tonicidade).",
+          "step4": "**Síntese de Áudio:** O computador gera as ondas sonoras finais baseadas nessas instruções."
+        },
+        "phoneticsRole": {
+          "title": "2. O Papel da Fonética na IA",
+          "intro": "A fonética no TTS moderno não é apenas um dicionário de pronúncia; é um sistema dinâmico de interpretação.",
+          "disambiguation": "**Desambiguação de Homógrafos:** A IA precisa analisar o contexto para saber qual fonema usar em palavras que se escrevem igual mas soam diferentes.",
+          "disambiguationExample": "*Exemplo:* \"Eu **colho** as flores\" (som fechado /ô/) vs. \"O **colho** está cheio\" (som aberto /ó/).",
+          "coarticulation": "**Coarticulação:** Na fala humana, o som de uma letra é influenciado pela letra vizinha. Um bom TTS usa IA para suavizar essas transições, evitando que a fala soe \"robótica\" ou picotada.",
+          "prosody": "**Prosódia e Emoção:** Modelos neurais modernos (como os usados pela OpenAI ou ElevenLabs) analisam a semântica do texto para aplicar a emoção correta (tristeza, empolgação, dúvida) na fonética da frase."
+        },
+        "comparison": {
+          "title": "3. Evolução: TTS Paramétrico vs. TTS Neural",
+          "characteristic": "Característica",
+          "traditional": "TTS Tradicional",
+          "neural": "TTS Neural",
+          "method": "Método",
+          "methodTraditional": "\"Cola\" pedaços de áudios gravados.",
+          "methodNeural": "Gera ondas sonoras do zero usando redes neurais.",
+          "naturalness": "Naturalidade",
+          "naturalnessTraditional": "Soa robótico, com falhas nas junções.",
+          "naturalnessNeural": "Quase indistinguível da voz humana.",
+          "phonetics": "Fonética",
+          "phoneticsTraditional": "Baseada estritamente em regras fixas.",
+          "phoneticsNeural": "Aprende padrões fonéticos complexos.",
+          "flexibility": "Flexibilidade",
+          "flexibilityTraditional": "Difícil mudar o estilo da voz.",
+          "flexibilityNeural": "Pode clonar vozes ou mudar estilos facilmente."
+        },
+        "technologies": {
+          "title": "4. Tecnologias Principais",
+          "intro": "Hoje, os modelos de TTS mais avançados utilizam arquiteturas como:",
+          "tacotron": "**Tacotron 2:** Mapeia texto diretamente para espectrogramas (representações visuais do som).",
+          "wavenet": "**WaveNet / WaveGlow:** Geram as ondas de áudio cruas ponto a ponto, resultando em altíssima fidelidade.",
+          "valle": "**VALL-E / XTTS:** Modelos capazes de clonar a voz e a acústica do ambiente com apenas alguns segundos de áudio de referência."
+        }
+      },
+      "rag": {
+        "title": "RAG: Retrieval-Augmented Generation",
+        "intro": "**RAG** é a sigla para **Retrieval-Augmented Generation** (Geração Aumentada por Recuperação). É uma arquitetura de IA que combina recuperação de informações com geração de texto, permitindo que modelos de linguagem respondam com base em documentos específicos.",
+        "whatIs": {
+          "title": "1. O que é RAG?",
+          "intro": "RAG é um paradigma híbrido que une dois mundos:",
+          "retrieval": "**Retrieval (Recuperação):** Um sistema de busca semântica encontra os documentos mais relevantes para a pergunta do usuário.",
+          "generation": "**Augmented Generation (Geração Aumentada):** O LLM recebe esses documentos como contexto adicional para fundamentar sua resposta.",
+          "result": "*Resultado:* Respostas precisas, atualizadas e fundamentadas em fontes verificáveis."
+        },
+        "comparison": {
+          "title": "2. Por que RAG é Superior ao LLM Puro?",
+          "aspect": "Aspecto",
+          "traditional": "LLM Tradicional",
+          "rag": "RAG",
+          "knowledge": "Conhecimento",
+          "knowledgeTraditional": "Limitado ao treinamento (data de corte)",
+          "knowledgeRag": "Atualizado dinamicamente com novos documentos",
+          "precision": "Precisão",
+          "precisionTraditional": "Pode \"alucinar\" informações",
+          "precisionRag": "Fundamentado em fontes verificáveis",
+          "traceability": "Rastreabilidade",
+          "traceabilityTraditional": "Impossível citar fontes",
+          "traceabilityRag": "Pode referenciar documentos específicos",
+          "customization": "Customização",
+          "customizationTraditional": "Requer fine-tuning caro",
+          "customizationRag": "Basta adicionar documentos ao índice"
+        },
+        "pipeline": {
+          "title": "3. O Pipeline RAG Implementado",
+          "intro": "O sistema utiliza um pipeline de 4 etapas:",
+          "step1": "**Ingestão (ETL):** Documentos são processados, validados e fragmentados em chunks otimizados.",
+          "step2": "**Indexação Vetorial:** Cada chunk é convertido em embedding e armazenado com pgvector.",
+          "step3": "**Busca Híbrida:** Combina similaridade semântica + filtros de metadados (tags, chat_type).",
+          "step4": "**Geração Fundamentada:** O LLM recebe os chunks relevantes como contexto obrigatório."
+        },
+        "technical": {
+          "title": "4. Componentes Técnicos",
+          "embeddings": "**Embeddings:** OpenAI text-embedding-3-small (1536 dimensões)",
+          "vectorStore": "**Vector Store:** PostgreSQL + pgvector (busca por similaridade cosseno)",
+          "chunking": "**Chunking:** 750 palavras com 180 de overlap",
+          "threshold": "**Threshold:** Similaridade mínima de 0.15 para inclusão no contexto"
+        },
+        "glossary": {
+          "title": "5. Glossário de Siglas",
+          "rag": "**RAG** - Retrieval-Augmented Generation",
+          "etl": "**ETL** - Extract, Transform, Load",
+          "llm": "**LLM** - Large Language Model",
+          "embedding": "**Embedding** - Representação vetorial de texto",
+          "chunk": "**Chunk** - Fragmento de documento indexado",
+          "pgvector": "**pgvector** - Extensão PostgreSQL para vetores"
+        }
+      }
+    }
   }
 }
