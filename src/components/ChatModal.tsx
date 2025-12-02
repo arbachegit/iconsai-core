@@ -48,7 +48,7 @@ export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
           onClick={(e) => e.stopPropagation()}
         >
           {/* Chat Content */}
-          <div className="p-4 h-[700px]">
+          <div className="p-3 h-[750px]">
             <ChatStudy onClose={handleClose} />
           </div>
         </div>
