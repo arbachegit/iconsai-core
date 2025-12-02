@@ -152,6 +152,22 @@ All colors MUST be HSL.
   }
 }
 
+/* Ranking badge entrance animation */
+@keyframes rankingSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-10px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.animate-ranking-badge {
+  animation: rankingSlideIn 0.4s ease-out forwards;
+}
+
 @layer base {
   * {
     @apply border-border;

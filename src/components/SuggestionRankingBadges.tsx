@@ -43,9 +43,16 @@ export function SuggestionRankingBadges({
                 variant="ghost"
                 size="sm"
                 onClick={() => onRankingClick(item.text)}
-                className="text-xs px-2 py-0.5 h-6 hover:bg-accent/50"
+                className={cn(
+                  "text-xs px-2 py-0.5 h-6 hover:bg-accent/50 opacity-0 animate-ranking-badge",
+                  idx === 0 && "bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/50 shadow-[0_0_8px_rgba(245,158,11,0.3)] hover:from-amber-500/30 hover:to-yellow-500/30"
+                )}
+                style={{ animationDelay: `${idx * 100}ms` }}
               >
-                <span className="text-primary font-bold">#{idx + 1}</span>
+                <span className={cn(
+                  "font-bold",
+                  idx === 0 ? "text-amber-400" : "text-primary"
+                )}>#{idx + 1}</span>
                 <span className="ml-1 max-w-[80px] truncate text-muted-foreground">
                   {item.text}
                 </span>
