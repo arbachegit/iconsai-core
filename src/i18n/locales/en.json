@@ -324,7 +324,7 @@
           "disambiguation": "**Homograph Disambiguation:** The AI needs to analyze context to know which phoneme to use for words spelled the same but pronounced differently.",
           "disambiguationExample": "*Example:* \"I will **read** the book\" (present) vs. \"I have **read** the book\" (past).",
           "coarticulation": "**Coarticulation:** In human speech, a letter's sound is influenced by neighboring letters. Good TTS uses AI to smooth these transitions, preventing speech from sounding \"robotic\" or choppy.",
-          "prosody": "**Prosody and Emotion:** Modern neural models (like those from OpenAI or ElevenLabs) analyze text semantics to apply correct emotion (sadness, excitement, doubt) in phrase phonetics."
+          "prosody": "**Prosody and Emotion:** Modern neural models (like those from KY AI or ElevenLabs) analyze text semantics to apply correct emotion (sadness, excitement, doubt) in phrase phonetics."
         },
         "comparison": {
           "title": "3. Evolution: Parametric vs. Neural TTS",
@@ -390,7 +390,7 @@
         },
         "technical": {
           "title": "4. Technical Components",
-          "embeddings": "**Embeddings:** OpenAI text-embedding-3-small (1536 dimensions)",
+          "embeddings": "**Embeddings:** KY AI text-embedding-3-small (1536 dimensions)",
           "vectorStore": "**Vector Store:** PostgreSQL + pgvector (cosine similarity search)",
           "chunking": "**Chunking:** 750 words with 180 overlap",
           "threshold": "**Threshold:** Minimum similarity of 0.15 for context inclusion"
@@ -582,8 +582,8 @@
         },
         "embedding": {
           "title": "Embedding Model",
-          "intro": "**text-embedding-3-small** is OpenAI's model used to transform text into 1536-dimensional numerical vectors, capturing semantic meaning.",
-          "specs": "### Technical Specifications\n\n- **Dimensions**: 1536 numerical values\n- **Max context**: 8,191 tokens (~6,000 words)\n- **Model**: text-embedding-3-small (OpenAI)\n- **Accuracy**: 62.3% on MTEB benchmark\n- **Cost**: $0.02 per 1M tokens",
+          "intro": "**text-embedding-3-small** is KY AI's model used to transform text into 1536-dimensional numerical vectors, capturing semantic meaning.",
+          "specs": "### Technical Specifications\n\n- **Dimensions**: 1536 numerical values\n- **Max context**: 8,191 tokens (~6,000 words)\n- **Model**: text-embedding-3-small (KY AI)\n- **Accuracy**: 62.3% on MTEB benchmark\n- **Cost**: $0.02 per 1M tokens",
           "comparison": "### Comparison with Other Models\n\n| Model | Dimensions | Accuracy | Cost (1M) | Use |\n|-------|------------|----------|-----------|-----|\n| text-embedding-3-small | 1536 | 62.3% | $0.02 | ✅ Ideal (cost/benefit) |\n| text-embedding-3-large | 3072 | 64.6% | $0.13 | Academic research |\n| ada-002 | 1536 | 61.0% | $0.10 | Legacy |",
           "how": "### How Does It Work?\n\n1. **Input**: Text \"type 2 diabetes\"\n2. **Processing**: Model transforms to vector [0.023, -0.156, 0.891, ...]\n3. **Storage**: pgvector saves in PostgreSQL\n4. **Search**: Calculates cosine similarity between query and chunks\n\n**Why Vectors?**\n- Capture **semantic meaning**, not just exact words\n- \"diabetes\" and \"high blood sugar\" have similar vectors\n- Enable concept search, not just keyword",
           "glossary": "### Glossary\n\n- **Embedding**: Vector representation of text\n- **Token**: Basic text unit (~0.75 word)\n- **pgvector**: PostgreSQL extension for vector search\n- **MTEB**: Standard benchmark for embeddings"

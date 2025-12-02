@@ -323,7 +323,7 @@
           "disambiguation": "**Desambiguação de Homógrafos:** A IA precisa analisar o contexto para saber qual fonema usar em palavras que se escrevem igual mas soam diferentes.",
           "disambiguationExample": "*Exemplo:* \"Eu **colho** as flores\" (som fechado /ô/) vs. \"O **colho** está cheio\" (som aberto /ó/).",
           "coarticulation": "**Coarticulação:** Na fala humana, o som de uma letra é influenciado pela letra vizinha. Um bom TTS usa IA para suavizar essas transições, evitando que a fala soe \"robótica\" ou picotada.",
-          "prosody": "**Prosódia e Emoção:** Modelos neurais modernos (como os usados pela OpenAI ou ElevenLabs) analisam a semântica do texto para aplicar a emoção correta (tristeza, empolgação, dúvida) na fonética da frase."
+          "prosody": "**Prosódia e Emoção:** Modelos neurais modernos (como os usados pelo KY AI ou ElevenLabs) analisam a semântica do texto para aplicar a emoção correta (tristeza, empolgação, dúvida) na fonética da frase."
         },
         "comparison": {
           "title": "3. Evolução: TTS Paramétrico vs. TTS Neural",
@@ -389,7 +389,7 @@
         },
         "technical": {
           "title": "4. Componentes Técnicos",
-          "embeddings": "**Embeddings:** OpenAI text-embedding-3-small (1536 dimensões)",
+          "embeddings": "**Embeddings:** KY AI text-embedding-3-small (1536 dimensões)",
           "vectorStore": "**Vector Store:** PostgreSQL + pgvector (busca por similaridade cosseno)",
           "chunking": "**Chunking:** 750 palavras com 180 de overlap",
           "threshold": "**Threshold:** Similaridade mínima de 0.15 para inclusão no contexto"
@@ -581,8 +581,8 @@
         },
         "embedding": {
           "title": "Modelo de Embedding",
-          "intro": "**text-embedding-3-small** é o modelo da OpenAI usado para transformar texto em vetores numéricos de 1536 dimensões, capturando significado semântico.",
-          "specs": "### Especificações Técnicas\n\n- **Dimensões**: 1536 valores numéricos\n- **Contexto máximo**: 8.191 tokens (~6.000 palavras)\n- **Modelo**: text-embedding-3-small (OpenAI)\n- **Precisão**: 62.3% no MTEB benchmark\n- **Custo**: $0.02 por 1M tokens",
+          "intro": "**text-embedding-3-small** é o modelo do KY AI usado para transformar texto em vetores numéricos de 1536 dimensões, capturando significado semântico.",
+          "specs": "### Especificações Técnicas\n\n- **Dimensões**: 1536 valores numéricos\n- **Contexto máximo**: 8.191 tokens (~6.000 palavras)\n- **Modelo**: text-embedding-3-small (KY AI)\n- **Precisão**: 62.3% no MTEB benchmark\n- **Custo**: $0.02 por 1M tokens",
           "comparison": "### Comparação com Outros Modelos\n\n| Modelo | Dimensões | Precisão | Custo (1M) | Uso |\n|--------|-----------|----------|------------|-----|\n| text-embedding-3-small | 1536 | 62.3% | $0.02 | ✅ Ideal (custo/benefício) |\n| text-embedding-3-large | 3072 | 64.6% | $0.13 | Pesquisa acadêmica |\n| ada-002 | 1536 | 61.0% | $0.10 | Legado |",
           "how": "### Como Funciona?\n\n1. **Input**: Texto \"diabetes tipo 2\"\n2. **Processamento**: Modelo transforma em vetor [0.023, -0.156, 0.891, ...]\n3. **Armazenamento**: pgvector salva no PostgreSQL\n4. **Busca**: Calcula similaridade de cosseno entre query e chunks\n\n**Por que Vetores?**\n- Capturam **significado semântico**, não apenas palavras exatas\n- \"diabetes\" e \"glicemia elevada\" têm vetores similares\n- Permitem busca por conceito, não só por keyword",
           "glossary": "### Glossário\n\n- **Embedding**: Representação vetorial de texto\n- **Token**: Unidade básica de texto (~0.75 palavra)\n- **pgvector**: Extensão PostgreSQL para busca vetorial\n- **MTEB**: Benchmark padrão para embeddings"
