@@ -189,6 +189,7 @@ export const VersionControlTab = () => {
       MANUAL_MINOR: { variant: "default" as const, label: "Minor" },
       MANUAL_MAJOR: { variant: "destructive" as const, label: "Major" },
       CODE_CHANGE: { variant: "outline" as const, label: "Code Change" },
+      DOC_UPDATE: { variant: "outline" as const, label: "Doc Update" },
       INITIAL: { variant: "outline" as const, label: "Inicial" },
       ROLLBACK: { variant: "outline" as const, label: "Rollback" },
     };
