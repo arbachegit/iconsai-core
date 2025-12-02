@@ -16,65 +16,125 @@ interface ContentPart {
   id?: string;
 }
 
+// Extrai JSON balanceado considerando chaves aninhadas
+const extractBalancedJson = (str: string, startIndex: number): string | null => {
+  let depth = 0;
+  let start = -1;
+  
+  for (let i = startIndex; i < str.length; i++) {
+    if (str[i] === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (str[i] === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        return str.slice(start, i + 1);
+      }
+    }
+  }
+  
+  return null;
+};
+
 // Parse content to extract charts and mermaid diagrams
 const parseContentWithCharts = (content: string): ContentPart[] => {
   const parts: ContentPart[] = [];
-  let remaining = content;
   let partIndex = 0;
-
-  // Pattern for CHART_DATA: {...}
-  const chartRegex = /CHART_DATA:\s*(\{[\s\S]*?\})(?:\n|$)/g;
   
-  // Pattern for ```mermaid ... ```
+  // Primeiro, processar CHART_DATA com balanceamento de chaves
+  const chartMarker = 'CHART_DATA:';
+  let processedContent = content;
+  const chartParts: { start: number; end: number; json: string }[] = [];
+  
+  let searchIndex = 0;
+  while (searchIndex < processedContent.length) {
+    const chartStart = processedContent.indexOf(chartMarker, searchIndex);
+    
+    if (chartStart === -1) break;
+    
+    // Encontrar início do JSON (após os espaços)
+    let jsonStart = chartStart + chartMarker.length;
+    while (jsonStart < processedContent.length && processedContent[jsonStart] === ' ') {
+      jsonStart++;
+    }
+    
+    // Extrair JSON balanceado
+    const jsonContent = extractBalancedJson(processedContent, jsonStart);
+    
+    if (jsonContent) {
+      chartParts.push({
+        start: chartStart,
+        end: jsonStart + jsonContent.length,
+        json: jsonContent
+      });
+      searchIndex = jsonStart + jsonContent.length;
+    } else {
+      searchIndex = chartStart + chartMarker.length;
+    }
+  }
+  
+  // Processar Mermaid com regex (funciona bem para blocos de código)
   const mermaidRegex = /```mermaid\n([\s\S]*?)```/g;
-
-  // Combined pattern to process in order of appearance
-  const combinedRegex = /(?:CHART_DATA:\s*(\{[\s\S]*?\})(?:\n|$)|```mermaid\n([\s\S]*?)```)/g;
-
+  const mermaidParts: { start: number; end: number; code: string }[] = [];
+  let mermaidMatch;
+  
+  while ((mermaidMatch = mermaidRegex.exec(processedContent)) !== null) {
+    mermaidParts.push({
+      start: mermaidMatch.index,
+      end: mermaidMatch.index + mermaidMatch[0].length,
+      code: mermaidMatch[1].trim()
+    });
+  }
+  
+  // Combinar e ordenar todas as partes especiais por posição
+  const allSpecialParts = [
+    ...chartParts.map(p => ({ ...p, type: 'chart' as const })),
+    ...mermaidParts.map(p => ({ ...p, type: 'mermaid' as const }))
+  ].sort((a, b) => a.start - b.start);
+  
+  // Construir array de partes final
   let lastIndex = 0;
-  let match;
-
-  while ((match = combinedRegex.exec(remaining)) !== null) {
-    // Add text before this match
-    if (match.index > lastIndex) {
-      const textBefore = remaining.slice(lastIndex, match.index).trim();
+  
+  for (const special of allSpecialParts) {
+    // Adicionar texto antes
+    if (special.start > lastIndex) {
+      const textBefore = processedContent.slice(lastIndex, special.start).trim();
       if (textBefore) {
         parts.push({ type: 'text', content: textBefore });
       }
     }
-
-    if (match[1]) {
-      // CHART_DATA match
-      parts.push({ 
-        type: 'chart', 
-        content: match[1],
+    
+    // Adicionar parte especial
+    if (special.type === 'chart') {
+      parts.push({
+        type: 'chart',
+        content: (special as typeof chartParts[0] & { type: 'chart' }).json,
         id: `chart-${partIndex++}`
       });
-    } else if (match[2]) {
-      // Mermaid match
-      parts.push({ 
-        type: 'mermaid', 
-        content: match[2].trim(),
+    } else {
+      parts.push({
+        type: 'mermaid',
+        content: (special as typeof mermaidParts[0] & { type: 'mermaid' }).code,
         id: `mermaid-${partIndex++}`
       });
     }
-
-    lastIndex = match.index + match[0].length;
+    
+    lastIndex = special.end;
   }
-
-  // Add remaining text
-  if (lastIndex < remaining.length) {
-    const remainingText = remaining.slice(lastIndex).trim();
+  
+  // Adicionar texto restante
+  if (lastIndex < processedContent.length) {
+    const remainingText = processedContent.slice(lastIndex).trim();
     if (remainingText) {
       parts.push({ type: 'text', content: remainingText });
     }
   }
-
-  // If no special content found, return original as text
+  
+  // Se não encontrou nada especial, retornar conteúdo original como texto
   if (parts.length === 0) {
     parts.push({ type: 'text', content: content });
   }
-
+  
   return parts;
 };
 
