@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Image as ImageIcon, ChevronUp, ChevronDown } from "lucide-react";
@@ -47,6 +48,7 @@ export const ImageCacheTab = () => {
   const [isTimelineOpen, setIsTimelineOpen] = useState(true);
   const [isTooltipsOpen, setIsTooltipsOpen] = useState(true);
   const [optimizingImage, setOptimizingImage] = useState<string | null>(null);
+  const [zoomImage, setZoomImage] = useState<{ url: string; title: string } | null>(null);
 
   const { data: existingImages } = useQuery({
     queryKey: ['section-images-admin'],
@@ -669,7 +671,10 @@ export const ImageCacheTab = () => {
                     )}
                   </div>
                   {existingImage && (
-                    <div className="w-24 h-24 rounded-lg overflow-hidden border">
+                    <div 
+                      className="w-24 h-24 rounded-lg overflow-hidden border cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                      onClick={() => setZoomImage({ url: existingImage.image_url, title: section.name })}
+                    >
                       <img
                         src={existingImage.image_url}
                         alt={section.name}
@@ -824,7 +829,10 @@ export const ImageCacheTab = () => {
                     )}
                   </div>
                   {existingImage && (
-                    <div className="w-24 h-24 rounded-lg overflow-hidden border">
+                    <div 
+                      className="w-24 h-24 rounded-lg overflow-hidden border cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                      onClick={() => setZoomImage({ url: existingImage.image_url, title: event.name })}
+                    >
                       <img
                         src={existingImage.image_url}
                         alt={event.name}
@@ -979,7 +987,10 @@ export const ImageCacheTab = () => {
                         )}
                       </div>
                       {existingImage && (
-                        <div className="w-24 h-24 rounded-lg overflow-hidden border">
+                        <div 
+                          className="w-24 h-24 rounded-lg overflow-hidden border cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                          onClick={() => setZoomImage({ url: existingImage.image_url, title: `${section.name} - Tooltip` })}
+                        >
                           <img
                             src={existingImage.image_url}
                             alt={`${section.name} - Tooltip`}
@@ -995,6 +1006,24 @@ export const ImageCacheTab = () => {
           </CollapsibleContent>
         </Collapsible>
       </Card>
+
+      {/* Modal de Zoom da Imagem */}
+      <Dialog open={!!zoomImage} onOpenChange={(open) => !open && setZoomImage(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>{zoomImage?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center overflow-auto">
+            {zoomImage && (
+              <img 
+                src={zoomImage.url} 
+                alt={zoomImage.title} 
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
