@@ -97,11 +97,7 @@ A fonética no TTS moderno não é apenas um dicionário de pronúncia; é um si
 Hoje, os modelos de TTS mais avançados utilizam arquiteturas como:
 * **Tacotron 2:** Mapeia texto diretamente para espectrogramas (representações visuais do som).
 * **WaveNet / WaveGlow:** Geram as ondas de áudio cruas ponto a ponto, resultando em altíssima fidelidade.
-* **VALL-E / XTTS:** Modelos capazes de clonar a voz e a acústica do ambiente com apenas alguns segundos de áudio de referência.
-
----
-
-**Você gostaria que eu explicasse como implementar um modelo de TTS simples em Python ou prefere saber sobre as melhores ferramentas de mercado atualmente?**`;
+* **VALL-E / XTTS:** Modelos capazes de clonar a voz e a acústica do ambiente com apenas alguns segundos de áudio de referência.`;
   useEffect(() => {
     fetchConfigs();
   }, []);
@@ -566,16 +562,16 @@ Hoje, os modelos de TTS mais avançados utilizam arquiteturas como:
                             ),
                             h3: ({ children }) => <h3 className="font-semibold text-sm mt-4 mb-2 text-foreground">{children}</h3>,
                             hr: () => <hr className="my-3 border-primary/20" />,
-                            table: ({ children }) => (
-                              <div className="overflow-x-auto my-3">
-                                <table className="w-full text-xs border-collapse border border-border">{children}</table>
-                              </div>
-                            ),
-                            thead: ({ children }) => <thead className="bg-muted">{children}</thead>,
-                            tbody: ({ children }) => <tbody>{children}</tbody>,
-                            tr: ({ children }) => <tr className="border-b border-border">{children}</tr>,
-                            th: ({ children }) => <th className="p-2 text-left font-semibold border border-border">{children}</th>,
-                            td: ({ children }) => <td className="p-2 border border-border">{children}</td>,
+                      table: ({ children }) => (
+                        <div className="overflow-x-auto my-4 rounded-lg bg-muted/30">
+                          <table className="w-full text-xs">{children}</table>
+                        </div>
+                      ),
+                      thead: ({ children }) => <thead className="border-b border-border/50">{children}</thead>,
+                      tbody: ({ children }) => <tbody className="divide-y divide-border/30">{children}</tbody>,
+                      tr: ({ children }) => <tr className="hover:bg-muted/50 transition-colors">{children}</tr>,
+                      th: ({ children }) => <th className="px-4 py-3 text-left font-semibold text-foreground/80 text-xs uppercase tracking-wider">{children}</th>,
+                      td: ({ children }) => <td className="px-4 py-3 text-muted-foreground">{children}</td>,
                           }}
                         >
                           {TTS_INFO_CONTENT}
