@@ -15,6 +15,27 @@ const VALID_DIAGRAM_STARTS = [
   'gitgraph', 'mindmap', 'timeline', 'quadrantchart', 'xychart'
 ];
 
+// Sanitize chart to remove problematic characters in node labels
+const sanitizeChart = (chart: string): string => {
+  let sanitized = chart;
+  
+  // Replace parentheses inside [] nodes with hyphens: [text (something)] → [text - something]
+  sanitized = sanitized.replace(/\[([^\]]*)\(([^\)]*)\)([^\]]*)\]/g, '[$1- $2$3]');
+  
+  // Replace parentheses inside {} nodes with hyphens: {text (something)} → {text - something}
+  sanitized = sanitized.replace(/\{([^\}]*)\(([^\)]*)\)([^\}]*)\}/g, '{$1- $2$3}');
+  
+  // Remove question marks at end of node labels: [text?] → [text]
+  sanitized = sanitized.replace(/\[([^\]]*)\?\]/g, '[$1]');
+  sanitized = sanitized.replace(/\{([^\}]*)\?\}/g, '{$1}');
+  
+  if (sanitized !== chart) {
+    console.log('[MermaidDiagram] Auto-sanitized chart: removed parentheses/question marks from nodes');
+  }
+  
+  return sanitized;
+};
+
 // Auto-fix chart if missing diagram type declaration
 const autoFixChart = (chart: string): string => {
   const trimmedChart = chart.trim();
@@ -34,6 +55,11 @@ const autoFixChart = (chart: string): string => {
   return `graph TD\n${trimmedChart}`;
 };
 
+// Apply all fixes to chart
+const processChart = (chart: string): string => {
+  return autoFixChart(sanitizeChart(chart));
+};
+
 export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +70,8 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
     if (containerRef.current) {
       setError(null);
       
-      // Apply auto-fix
-      const fixedChart = autoFixChart(chart);
+      // Apply all fixes (sanitize + auto-fix)
+      const fixedChart = processChart(chart);
       setFinalChart(fixedChart);
       
       mermaid.initialize({
