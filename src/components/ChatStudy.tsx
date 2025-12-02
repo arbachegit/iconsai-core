@@ -836,7 +836,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
             />
             
             {/* Botões de funcionalidade - inferior esquerdo */}
-            <div className="absolute bottom-2 left-2 flex gap-1">
+            <div className="absolute bottom-2 left-2 flex gap-1 items-end">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -870,13 +870,11 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
               
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div>
-                    <ChartTypeSelector
-                      selectedType={selectedChartType}
-                      onSelectType={setSelectedChartType}
-                      disabled={isLoading || isImageMode}
-                    />
-                  </div>
+                  <ChartTypeSelector
+                    selectedType={selectedChartType}
+                    onSelectType={setSelectedChartType}
+                    disabled={isLoading || isImageMode}
+                  />
                 </TooltipTrigger>
                 <TooltipContent side="top">Tipo de gráfico</TooltipContent>
               </Tooltip>

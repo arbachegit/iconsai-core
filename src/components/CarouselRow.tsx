@@ -11,12 +11,36 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [hiddenCount, setHiddenCount] = useState(0);
+  
+  // Drag-to-scroll states
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollStartLeft, setScrollStartLeft] = useState(0);
 
   const updateScrollState = useCallback(() => {
     if (!scrollRef.current) return;
     const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
     setCanScrollLeft(scrollLeft > 0);
     setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
+    
+    // Calculate hidden badges on the right
+    if (scrollWidth > clientWidth) {
+      const children = scrollRef.current.children;
+      const visibleEnd = scrollLeft + clientWidth;
+      let hiddenOnRight = 0;
+      
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i] as HTMLElement;
+        const childRight = child.offsetLeft + child.offsetWidth;
+        if (childRight > visibleEnd + 10) {
+          hiddenOnRight++;
+        }
+      }
+      setHiddenCount(hiddenOnRight);
+    } else {
+      setHiddenCount(0);
+    }
   }, []);
 
   useEffect(() => {
@@ -39,6 +63,30 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
       left: direction === 'left' ? -scrollAmount : scrollAmount,
       behavior: 'smooth'
     });
+  };
+
+  // Drag-to-scroll handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - scrollRef.current.offsetLeft);
+    setScrollStartLeft(scrollRef.current.scrollLeft);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    scrollRef.current.scrollLeft = scrollStartLeft - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    if (isDragging) setIsDragging(false);
   };
 
   return (
@@ -64,12 +112,24 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
       <div
         ref={scrollRef}
         className={cn(
-          "flex gap-1.5 items-center overflow-x-auto scrollbar-thin pb-1 px-2",
+          "flex gap-1.5 items-center overflow-x-auto scrollbar-thin pb-1 px-2 select-none",
+          isDragging ? "cursor-grabbing" : "cursor-grab",
           className
         )}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
       >
         {children}
       </div>
+
+      {/* Indicador de badges ocultos */}
+      {hiddenCount > 0 && canScrollRight && (
+        <div className="absolute right-9 top-1/2 -translate-y-1/2 z-15 bg-primary/90 text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md pointer-events-none">
+          +{hiddenCount}
+        </div>
+      )}
 
       {/* Fade na borda direita */}
       <div className={cn(
