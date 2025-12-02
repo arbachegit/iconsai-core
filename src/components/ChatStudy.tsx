@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatStudy } from "@/hooks/useChatStudy";
-import { Send, Loader2, ImagePlus, Mic, Square } from "lucide-react";
+import { Send, Loader2, ImagePlus, Mic, Square, X } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
@@ -14,7 +14,9 @@ import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { X } from "lucide-react";
+import { useDocumentSuggestions } from "@/hooks/useDocumentSuggestions";
+import { NewDocumentBadge } from "./NewDocumentBadge";
+import { SuggestionRankingBadges } from "./SuggestionRankingBadges";
 
 interface ChatStudyProps {
   onClose?: () => void;
@@ -65,6 +67,15 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     generateImage,
     transcribeAudio,
   } = useChatStudy();
+  
+  // Hook para sugestões dinâmicas baseadas em documentos
+  const {
+    newDocumentBadge,
+    currentTheme,
+    complementarySuggestions,
+    topSuggestions,
+    recordSuggestionClick,
+  } = useDocumentSuggestions('study');
   
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -185,7 +196,10 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     }
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
+  const handleSuggestionClick = (suggestion: string, documentId?: string) => {
+    // Registrar clique para ranking
+    recordSuggestionClick(suggestion, documentId);
+    
     if (isImageMode) {
       generateImage(suggestion);
     } else {
@@ -630,28 +644,49 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
         </div>
       </ScrollArea>
 
-      {/* Suggestions with optional disclaimer */}
-      {displayedSuggestions.length > 0 && (
+      {/* Suggestions com badges dinâmicos */}
+      {(displayedSuggestions.length > 0 || newDocumentBadge || topSuggestions.length > 0) && (
         <div className="px-4 pb-2 space-y-2">
-          {/* Show disclaimer if provided by backend */}
-          <div className="flex gap-2 overflow-x-auto">
-            {displayedSuggestions.map((suggestion, index) => {
-              const isNew = suggestion.startsWith('🆕 NOVO:') || suggestion.toLowerCase().includes('novo:');
-              return (
+          <div className="flex gap-2 overflow-x-auto items-center">
+            {/* 1. Badge NOVO (sempre à esquerda) */}
+            {newDocumentBadge && currentTheme && (
+              <NewDocumentBadge
+                currentTheme={currentTheme}
+                onThemeClick={() => handleSuggestionClick(currentTheme, newDocumentBadge.documentIds[0])}
+              />
+            )}
+            
+            {/* 2. Sugestões complementares (documentos antigos) */}
+            {complementarySuggestions.slice(0, 3).map((suggestion, idx) => (
               <Button
-                key={index}
-                variant={isNew ? "default" : "outline"}
+                key={`comp-${suggestion}-${idx}`}
+                variant="outline"
                 size="sm"
                 onClick={() => handleSuggestionClick(suggestion)}
-                className={cn(
-                  "text-xs whitespace-nowrap rounded-full border-2 border-primary/50 hover:border-primary",
-                  isNew && "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-none animate-pulse shadow-lg"
-                )}
+                className="text-xs whitespace-nowrap rounded-full border-2 border-primary/50 hover:border-primary"
               >
-                  {suggestion.replace('🆕 NOVO:', '').trim()}
-                </Button>
-              );
-            })}
+                {suggestion}
+              </Button>
+            ))}
+            
+            {/* 3. Sugestões do hook original (fallback) */}
+            {!newDocumentBadge && !complementarySuggestions.length && displayedSuggestions.slice(0, 4).map((suggestion, idx) => (
+              <Button
+                key={`disp-${suggestion}-${idx}`}
+                variant="outline"
+                size="sm"
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="text-xs whitespace-nowrap rounded-full border-2 border-primary/50 hover:border-primary"
+              >
+                {suggestion}
+              </Button>
+            ))}
+            
+            {/* 4. Ranking (sempre à direita) */}
+            <SuggestionRankingBadges
+              rankings={topSuggestions}
+              onRankingClick={(text) => handleSuggestionClick(text)}
+            />
           </div>
         </div>
       )}
