@@ -29,7 +29,7 @@ export function SuggestionRankingBadges({
   return (
     <TooltipProvider delayDuration={200}>
       <div className={cn(
-        "flex items-center gap-1 flex-wrap",
+        "flex items-center gap-1 shrink-0",
         className
       )}>
         {/* Separador visual */}
@@ -44,7 +44,7 @@ export function SuggestionRankingBadges({
                 size="sm"
                 onClick={() => onRankingClick(item.text)}
                 className={cn(
-                  "text-[10px] px-2 py-0.5 h-6 hover:bg-accent/50 rounded-full",
+                  "text-[10px] px-2 py-0.5 h-6 hover:bg-accent/50 rounded-full shrink-0",
                   idx === 0 && "bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/50 shadow-[0_0_8px_rgba(245,158,11,0.3)] hover:from-amber-500/30 hover:to-yellow-500/30"
                 )}
               >

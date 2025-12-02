@@ -17,7 +17,7 @@ export function NewDocumentBadge({ currentTheme, onThemeClick, className }: NewD
       variant="outline"
       size="sm"
       className={cn(
-        "text-[10px] h-6 px-2 rounded-full",
+        "text-[10px] h-6 px-2 rounded-full shrink-0",
         "border border-primary/50 hover:border-primary",
         "hover:bg-primary hover:text-primary-foreground",
         "transition-colors",
