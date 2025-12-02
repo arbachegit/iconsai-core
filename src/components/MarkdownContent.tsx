@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { ChatChartRenderer } from './ChatChartRenderer';
 import { MermaidDiagram } from './MermaidDiagram';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface MarkdownContentProps {
   content: string;
@@ -138,6 +139,150 @@ const parseContentWithCharts = (content: string): ContentPart[] => {
   return parts;
 };
 
+// Sortable Table Component inline
+interface SortConfig {
+  column: number;
+  direction: 'asc' | 'desc';
+}
+
+const SortableTableWrapper = ({ children }: { children: React.ReactNode }) => {
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const [tableData, setTableData] = useState<{ headers: string[]; rows: string[][] } | null>(null);
+
+  // Extract table data on mount
+  const extractTableData = useCallback((node: React.ReactNode): { headers: string[]; rows: string[][] } | null => {
+    const headers: string[] = [];
+    const rows: string[][] = [];
+
+    const processChildren = (children: React.ReactNode, isHeader = false, currentRow: string[] = []) => {
+      if (!children) return;
+
+      if (Array.isArray(children)) {
+        children.forEach(child => processChildren(child, isHeader, currentRow));
+        return;
+      }
+
+      if (typeof children === 'object' && children !== null && 'props' in children) {
+        const element = children as React.ReactElement;
+        const type = element.type;
+        const props = element.props;
+
+        if (type === 'thead') {
+          processChildren(props.children, true);
+        } else if (type === 'tbody') {
+          processChildren(props.children, false);
+        } else if (type === 'tr') {
+          const row: string[] = [];
+          processChildren(props.children, isHeader, row);
+          if (isHeader) {
+            headers.push(...row);
+          } else if (row.length > 0) {
+            rows.push(row);
+          }
+        } else if (type === 'th' || type === 'td') {
+          const text = extractText(props.children);
+          currentRow.push(text);
+        } else {
+          processChildren(props.children, isHeader, currentRow);
+        }
+      }
+    };
+
+    const extractText = (node: React.ReactNode): string => {
+      if (typeof node === 'string' || typeof node === 'number') return String(node);
+      if (Array.isArray(node)) return node.map(extractText).join('');
+      if (typeof node === 'object' && node !== null && 'props' in node) {
+        return extractText((node as React.ReactElement).props.children);
+      }
+      return '';
+    };
+
+    processChildren(node);
+    return headers.length > 0 ? { headers, rows } : null;
+  }, []);
+
+  const handleSort = useCallback((columnIndex: number) => {
+    setSortConfig(prev => {
+      if (prev?.column === columnIndex) {
+        return prev.direction === 'asc' 
+          ? { column: columnIndex, direction: 'desc' }
+          : null;
+      }
+      return { column: columnIndex, direction: 'asc' };
+    });
+  }, []);
+
+  const getSortIcon = (columnIndex: number) => {
+    if (sortConfig?.column !== columnIndex) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 inline" />;
+    }
+    return sortConfig.direction === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1 text-primary inline" />
+      : <ArrowDown className="h-3 w-3 ml-1 text-primary inline" />;
+  };
+
+  // Extract data once
+  useMemo(() => {
+    const data = extractTableData(children);
+    if (data) setTableData(data);
+  }, [children, extractTableData]);
+
+  // If we have table data, render sortable version
+  if (tableData) {
+    const sortedRows = sortConfig 
+      ? [...tableData.rows].sort((a, b) => {
+          const aVal = a[sortConfig.column] || '';
+          const bVal = b[sortConfig.column] || '';
+          const aNum = parseFloat(aVal.replace(/[^0-9.-]/g, ''));
+          const bNum = parseFloat(bVal.replace(/[^0-9.-]/g, ''));
+          if (!isNaN(aNum) && !isNaN(bNum)) {
+            return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
+          }
+          const comparison = aVal.localeCompare(bVal, 'pt-BR', { sensitivity: 'base' });
+          return sortConfig.direction === 'asc' ? comparison : -comparison;
+        })
+      : tableData.rows;
+
+    return (
+      <div className="overflow-x-auto my-2">
+        <table className="w-full border-collapse border border-border text-xs">
+          <thead className="bg-muted/50">
+            <tr className="border-b border-border">
+              {tableData.headers.map((header, idx) => (
+                <th
+                  key={idx}
+                  className="border border-border px-2 py-1 text-left font-semibold cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => handleSort(idx)}
+                >
+                  <span>{header}</span>
+                  {getSortIcon(idx)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sortedRows.map((row, rowIdx) => (
+              <tr key={rowIdx} className="border-b border-border">
+                {row.map((cell, cellIdx) => (
+                  <td key={cellIdx} className="border border-border px-2 py-1">{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {sortConfig && (
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Clique no cabeçalho para ordenar
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Fallback: render original children
+  return <div className="overflow-x-auto my-2">{children}</div>;
+};
+
 export const MarkdownContent = ({ content, className }: MarkdownContentProps) => {
   const parts = useMemo(() => parseContentWithCharts(content), [content]);
 
@@ -182,9 +327,7 @@ export const MarkdownContent = ({ content, className }: MarkdownContentProps) =>
                   <pre className="bg-muted p-2 rounded-lg overflow-x-auto text-xs my-2">{children}</pre>
                 ),
                 table: ({ children }) => (
-                  <div className="overflow-x-auto my-2">
-                    <table className="w-full border-collapse border border-border text-xs">{children}</table>
-                  </div>
+                  <SortableTableWrapper>{children}</SortableTableWrapper>
                 ),
                 thead: ({ children }) => (
                   <thead className="bg-muted/50">{children}</thead>
