@@ -66,7 +66,7 @@ export const MediaCarousel = () => {
                     </h4>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button className="relative inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#1DB954]/20 border border-[#1DB954]/40 hover:bg-[#1DB954]/30 transition-colors cursor-pointer">
+                        <button className="relative inline-flex items-center justify-center w-6 h-6 min-w-6 min-h-6 aspect-square flex-shrink-0 rounded-full bg-[#1DB954]/20 border border-[#1DB954]/40 hover:bg-[#1DB954]/30 transition-colors cursor-pointer">
                           <Music className="w-3 h-3 text-[#1DB954]" />
                           <span className="absolute inset-0 rounded-full bg-[#1DB954]/40 animate-ping" />
                           <span className="absolute inset-0 rounded-full bg-[#1DB954]/20 animate-pulse" />
