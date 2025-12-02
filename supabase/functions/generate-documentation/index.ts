@@ -34,8 +34,14 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Parse body for version info (from Minor/Major releases)
-    let requestData: { version?: string; release_notes?: string; tags?: string[] } = {};
+    // Parse body for version info and change descriptions
+    let requestData: { 
+      version?: string; 
+      release_notes?: string; 
+      tags?: string[];
+      log_message?: string;
+      changes?: Array<{ type: string; description: string }>;
+    } = {};
     if (req.method === 'POST') {
       try {
         requestData = await req.json();
@@ -271,6 +277,50 @@ Deno.serve(async (req) => {
 
     if (versionError) {
       console.error('Error saving version:', versionError);
+    }
+
+    // 7. Register in version_control for complete history tracking
+    console.log('📝 Registering in version_control...');
+    
+    // Get current version from version_control
+    const { data: currentVersionRecord } = await supabaseClient
+      .from('version_control')
+      .select('current_version')
+      .order('timestamp', { ascending: false })
+      .limit(1)
+      .single();
+
+    // Increment patch version
+    const currentVersion = currentVersionRecord?.current_version || '0.0.0';
+    const [major, minor, patch] = currentVersion.split('.').map(Number);
+    const newVersion = `${major}.${minor}.${patch + 1}`;
+
+    const { error: vcError } = await supabaseClient
+      .from('version_control')
+      .insert({
+        current_version: newVersion,
+        log_message: requestData.log_message || `Documentação atualizada para ${version}`,
+        trigger_type: 'DOC_UPDATE',
+        associated_data: {
+          documentation_version: version,
+          changes: requestData.changes || [
+            { type: 'documentation', description: 'Atualização automática da documentação técnica' }
+          ],
+          release_notes: requestData.release_notes || '',
+          tags: requestData.tags || [],
+          timestamp: new Date().toISOString(),
+          stats: {
+            tables: tables.length,
+            edge_functions: backendDocs.length,
+            components: 7
+          }
+        }
+      });
+
+    if (vcError) {
+      console.error('Error saving to version_control:', vcError);
+    } else {
+      console.log(`✅ Version control updated: ${currentVersion} → ${newVersion}`);
     }
 
     console.log('✅ Documentation generated successfully!');

@@ -409,12 +409,23 @@ const Documentation = () => {
   const handleRefreshDocumentation = async () => {
     setIsRefreshing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-documentation');
+      const { data, error } = await supabase.functions.invoke('generate-documentation', {
+        body: {
+          log_message: 'Atualização de documentação via painel admin',
+          changes: [
+            { 
+              type: 'documentation', 
+              description: 'Atualização da documentação técnica do sistema' 
+            }
+          ]
+        }
+      });
       
       if (error) throw error;
       
-      // Invalidate cache to fetch new version
+      // Invalidate both caches to fetch new versions
       await queryClient.invalidateQueries({ queryKey: ['documentation-versions'] });
+      await queryClient.invalidateQueries({ queryKey: ['version-control'] });
       
       toast.success(`Documentação atualizada para ${data.version}`);
     } catch (err) {
