@@ -174,6 +174,14 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
         
         ❌ ERRADO - INTERROGAÇÃO: D{Disponibilidade de Leito?}
         ✅ CORRETO: D{Disponibilidade de Leito}
+        
+        ❌ ERRADO - SUBGRAPH COM PARÊNTESES: subgraph Fase I: Preparacao (Offline)
+        ✅ CORRETO: subgraph Fase I - Preparacao Offline
+        
+        ❌ ERRADO - OPERADOR +: H + E --> I[Resultado]
+        ✅ CORRETO: 
+           H --> I[Resultado]
+           E --> I
        
        ❌ ERRADO (VAI CAUSAR ERRO):
        A[Decisão de Internação] --> B{Solicitação}

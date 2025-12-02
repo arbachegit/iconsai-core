@@ -61,6 +61,13 @@ const sanitizeChart = (chart: string): string => {
   sanitized = sanitized.replace(/\[([^\]]*)\|([^\]]*)\]/g, '[$1 ou $2]');
   sanitized = sanitized.replace(/\{([^\}]*)\|([^\}]*)\}/g, '{$1 ou $2}');
   
+  // 12. Replace parentheses in subgraph titles: subgraph Name (Text) → subgraph Name - Text
+  sanitized = sanitized.replace(/subgraph\s+([^\n(]*)\(([^)]*)\)/gi, 'subgraph $1- $2');
+  
+  // 13. Replace + operator between nodes (H + E --> causes parsing issues)
+  // Simplify by removing the + combination entirely
+  sanitized = sanitized.replace(/(\w+)\s*\+\s*(\w+)\s*(-->)/g, '$1 $3');
+  
   if (sanitized !== chart) {
     console.log('[MermaidDiagram] Auto-sanitized chart: removed problematic characters from nodes');
   }
