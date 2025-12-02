@@ -162,11 +162,12 @@ export const ImageCacheTab = () => {
       // Save to database
       const { error: dbError } = await supabase
         .from('generated_images')
-        .insert({
+        .upsert({
           section_id: sectionId,
           image_url: data.imageUrl,
-          prompt_key: sectionId
-        });
+          prompt_key: sectionId,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'prompt_key' });
 
       if (dbError) throw dbError;
 
@@ -392,11 +393,12 @@ export const ImageCacheTab = () => {
 
       const { error: dbError } = await supabase
         .from('generated_images')
-        .insert({
+        .upsert({
           section_id: `tooltip-${sectionId}`,
           image_url: data.imageUrl,
-          prompt_key: `tooltip-${sectionId}`
-        });
+          prompt_key: `tooltip-${sectionId}`,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'prompt_key' });
 
       if (dbError) throw dbError;
 
