@@ -100,13 +100,15 @@ serve(async (req) => {
     }
 
     // Input validation: limit text length to prevent abuse
-    const MAX_TEXT_LENGTH = 5000;
-    if (text.length > MAX_TEXT_LENGTH) {
-      throw new Error(`Texto muito longo. Máximo ${MAX_TEXT_LENGTH} caracteres.`);
-    }
+    // ElevenLabs Turbo v2.5 supports up to ~5000 characters per request
+    // Truncate silently instead of throwing error to maintain UX
+    const MAX_TEXT_LENGTH = 4500;
+    const truncatedText = text.length > MAX_TEXT_LENGTH 
+      ? text.substring(0, MAX_TEXT_LENGTH) + "..." 
+      : text;
 
     // Sanitize input: remove potentially harmful characters
-    const sanitizedText = text.trim().replace(/[<>]/g, "");
+    const sanitizedText = truncatedText.trim().replace(/[<>]/g, "");
     
     // Carregar mapa fonético do banco de dados
     let phoneticMap = DEFAULT_PHONETIC_MAP;
