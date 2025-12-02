@@ -500,7 +500,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   return (
     <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b-2 border-primary/30">
+      <div className="flex items-center justify-between px-4 py-2 border-b-2 border-primary/30">
         <div className="flex items-center gap-3">
           <div className="relative">
             <img src={knowriskLogo} alt="KnowRisk Logo" className="w-10 h-10" />
@@ -538,8 +538,16 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           </div>
         </div>
         
-        {/* Botões empilhados: Fechar acima, Limpar abaixo */}
-        <div className="flex flex-col gap-1">
+        {/* Botões lado a lado: Limpar à esquerda, Fechar à direita */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearHistory}
+            className="text-xs h-8"
+          >
+            {t('chat.clear')}
+          </Button>
           {onClose && (
             <Button
               variant="ghost"
@@ -551,14 +559,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
               <X className="w-4 h-4" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearHistory}
-            className="text-xs"
-          >
-            {t('chat.clear')}
-          </Button>
         </div>
       </div>
 
