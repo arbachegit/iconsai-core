@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
+import { useActivityLogger } from "@/hooks/useActivityLogger";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -27,9 +28,10 @@ import {
   Settings,
   Route,
   TestTube,
+  History,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "activity-logs";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -39,8 +41,10 @@ interface AdminSidebarProps {
 export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<string[]>(["quick-access"]);
+  const { logActivity } = useActivityLogger();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logActivity("Logout do painel admin", "LOGOUT");
     localStorage.removeItem("admin_authenticated");
     navigate("/admin/login");
   };
@@ -103,6 +107,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       icon: Settings,
       items: [
         { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
+        { id: "activity-logs" as TabType, label: "Log de Atividades", icon: History },
         { id: "gmail" as TabType, label: "Gmail", icon: Mail },
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
       ]
