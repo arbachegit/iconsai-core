@@ -704,6 +704,39 @@ export type Database = {
         }
         Relationships: []
       }
+      podcast_contents: {
+        Row: {
+          created_at: string | null
+          description: string
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          spotify_episode_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          spotify_episode_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          spotify_episode_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       rag_analytics: {
         Row: {
           created_at: string | null
