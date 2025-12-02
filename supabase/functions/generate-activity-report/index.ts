@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -96,21 +96,26 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log(`Enviando relatório para: ${recipientEmail}`);
     
-    const emailResult = await resend.emails.send({
+    const { data: emailData, error: emailError } = await resend.emails.send({
       from: "KnowYOU <noreply@resend.dev>", // Use your verified domain
       to: [recipientEmail],
       subject: `📊 Relatório de Atividades ${period.toUpperCase()} - KnowYOU`,
       html
     });
 
-    console.log("Email enviado com sucesso:", emailResult);
+    if (emailError) {
+      console.error("Erro ao enviar email:", emailError);
+      throw emailError;
+    }
+
+    console.log("Email enviado com sucesso:", emailData);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         stats, 
         recipient: recipientEmail,
-        emailId: emailResult.id 
+        emailId: emailData?.id 
       }),
       {
         status: 200,
