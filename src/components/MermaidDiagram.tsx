@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
-import { AlertTriangle, Code, Download, FileImage, FileType, FileText, MessageCircle, Mail, ChevronDown } from 'lucide-react';
+import { AlertTriangle, Code, Download, FileImage, FileType, FileText, MessageCircle, Mail, ChevronDown, Copy, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -8,6 +8,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 
@@ -172,6 +180,12 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
   const [error, setError] = useState<string | null>(null);
   const [showCode, setShowCode] = useState(false);
   const [finalChart, setFinalChart] = useState<string>('');
+  
+  // Preview modal state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<{ dataUrl: string; width: number; height: number } | null>(null);
+  const [pendingAction, setPendingAction] = useState<'whatsapp' | 'email' | null>(null);
+  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -305,58 +319,77 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
     }
   };
 
-  // Share to WhatsApp
-  const handleShareWhatsApp = async () => {
+  // Copy to clipboard
+  const handleCopyToClipboard = async () => {
     const result = await getSvgAsImageDataUrl(containerRef);
-    
-    if (result && navigator.share && navigator.canShare) {
-      const file = new File([result.blob], `${filename}.png`, { type: 'image/png' });
-      if (navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            title: 'Diagrama KnowYOU',
-            files: [file],
-          });
-          return;
-        } catch (err) {
-          if ((err as Error).name !== 'AbortError') {
-            console.error('Share failed:', err);
-          }
-        }
-      }
+    if (!result) {
+      toast.error('Diagrama não encontrado');
+      return;
     }
     
-    // Fallback: open WhatsApp with message
-    const text = encodeURIComponent('📊 Diagrama gerado por KnowYOU');
-    window.open(`https://wa.me/?text=${text}`, '_blank');
-    toast.info('Abra o WhatsApp para compartilhar');
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': result.blob })
+      ]);
+      toast.success('Diagrama copiado para a área de transferência!');
+    } catch (err) {
+      console.error('Clipboard write failed:', err);
+      toast.error('Navegador não suporta copiar imagens');
+    }
   };
 
-  // Share via Email
-  const handleShareEmail = async () => {
+  // Preview before sharing
+  const handlePreviewShare = async (action: 'whatsapp' | 'email') => {
     const result = await getSvgAsImageDataUrl(containerRef);
+    if (!result) {
+      toast.error('Erro ao gerar preview');
+      return;
+    }
+    setPreviewData({ dataUrl: result.dataUrl, width: result.width, height: result.height });
+    setPendingBlob(result.blob);
+    setPendingAction(action);
+    setPreviewOpen(true);
+  };
+
+  // Confirm share after preview
+  const handleConfirmShare = async () => {
+    setPreviewOpen(false);
     
-    if (result && navigator.share && navigator.canShare) {
-      const file = new File([result.blob], `${filename}.png`, { type: 'image/png' });
-      if (navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            title: 'Diagrama KnowYOU',
-            files: [file],
-          });
-          return;
-        } catch (err) {
-          if ((err as Error).name !== 'AbortError') {
-            console.error('Share failed:', err);
-          }
+    if (!pendingBlob || !previewData) return;
+    
+    const file = new File([pendingBlob], `${filename}.png`, { type: 'image/png' });
+    
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          title: 'Diagrama KnowYOU',
+          files: [file],
+        });
+        setPendingAction(null);
+        setPreviewData(null);
+        setPendingBlob(null);
+        return;
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Share failed:', err);
         }
       }
     }
     
-    // Fallback: mailto
-    const subject = encodeURIComponent('Diagrama - KnowYOU');
-    const body = encodeURIComponent('Segue o diagrama gerado pelo KnowYOU.');
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    // Fallback
+    if (pendingAction === 'whatsapp') {
+      const text = encodeURIComponent('📊 Diagrama gerado por KnowYOU');
+      window.open(`https://wa.me/?text=${text}`, '_blank');
+      toast.info('Abra o WhatsApp para compartilhar');
+    } else if (pendingAction === 'email') {
+      const subject = encodeURIComponent('Diagrama - KnowYOU');
+      const body = encodeURIComponent('Segue o diagrama gerado pelo KnowYOU.');
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    }
+    
+    setPendingAction(null);
+    setPreviewData(null);
+    setPendingBlob(null);
   };
 
   if (error) {
@@ -386,57 +419,116 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
   }
 
   return (
-    <div className="my-6 relative group">
-      <div ref={containerRef} className="mermaid-diagram" />
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-background/80 backdrop-blur-sm"
-            >
-              <Download className="h-4 w-4 mr-1" />
-              Baixar
-              <ChevronDown className="h-3 w-3 ml-1" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleDownloadPng}>
-              <FileImage className="h-4 w-4 mr-2" />
-              PNG
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDownloadSvg}>
-              <FileType className="h-4 w-4 mr-2" />
-              SVG
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDownloadPdf}>
-              <FileText className="h-4 w-4 mr-2" />
-              PDF
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleShareWhatsApp}
-          className="bg-background/80 backdrop-blur-sm"
-          title="Compartilhar no WhatsApp"
-        >
-          <MessageCircle className="h-4 w-4" />
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleShareEmail}
-          className="bg-background/80 backdrop-blur-sm"
-          title="Compartilhar por Email"
-        >
-          <Mail className="h-4 w-4" />
-        </Button>
+    <>
+      <div className="my-6 relative group">
+        <div ref={containerRef} className="mermaid-diagram" />
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-background/80 backdrop-blur-sm"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Baixar
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleDownloadPng}>
+                <FileImage className="h-4 w-4 mr-2" />
+                PNG
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDownloadSvg}>
+                <FileType className="h-4 w-4 mr-2" />
+                SVG
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDownloadPdf}>
+                <FileText className="h-4 w-4 mr-2" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyToClipboard}
+            className="bg-background/80 backdrop-blur-sm"
+            title="Copiar para área de transferência"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePreviewShare('whatsapp')}
+            className="bg-background/80 backdrop-blur-sm"
+            title="Compartilhar no WhatsApp"
+          >
+            <MessageCircle className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePreviewShare('email')}
+            className="bg-background/80 backdrop-blur-sm"
+            title="Compartilhar por Email"
+          >
+            <Mail className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
-    </div>
+
+      {/* Preview Modal */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Preview do Diagrama
+            </DialogTitle>
+            <DialogDescription>
+              Visualize como ficará o arquivo antes de compartilhar
+            </DialogDescription>
+          </DialogHeader>
+          
+          {previewData && (
+            <div className="space-y-4">
+              <div className="border border-border rounded-lg overflow-hidden bg-[#1a1a2e] p-4 max-h-[400px] overflow-auto">
+                <img 
+                  src={previewData.dataUrl} 
+                  alt="Preview" 
+                  className="max-w-full h-auto mx-auto"
+                />
+              </div>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <FileImage className="h-4 w-4" />
+                  PNG
+                </span>
+                <span>
+                  📐 {Math.round(previewData.width)} x {Math.round(previewData.height)}px
+                </span>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmShare}>
+              {pendingAction === 'whatsapp' && <MessageCircle className="h-4 w-4 mr-2" />}
+              {pendingAction === 'email' && <Mail className="h-4 w-4 mr-2" />}
+              Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };

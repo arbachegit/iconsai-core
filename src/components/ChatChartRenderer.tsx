@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -17,7 +17,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import html2canvas from 'html2canvas';
-import { Download, FileImage, FileText, MessageCircle, Mail, ChevronDown } from 'lucide-react';
+import { Download, FileImage, FileText, MessageCircle, Mail, ChevronDown, Copy, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -25,6 +25,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 
@@ -90,6 +98,12 @@ const getChartAsImage = async (chartRef: React.RefObject<HTMLDivElement>): Promi
 
 export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
+  
+  // Preview modal state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<{ dataUrl: string; width: number; height: number } | null>(null);
+  const [pendingAction, setPendingAction] = useState<'whatsapp' | 'email' | null>(null);
+  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
 
   const parsedData = useMemo(() => {
     try {
@@ -152,58 +166,77 @@ export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
     }
   };
 
-  // Share to WhatsApp
-  const handleShareWhatsApp = async () => {
+  // Copy to clipboard
+  const handleCopyToClipboard = async () => {
     const result = await getChartAsImage(chartRef);
-    
-    if (result && navigator.share && navigator.canShare) {
-      const file = new File([result.blob], `${filename}.png`, { type: 'image/png' });
-      if (navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            title: parsedData?.title || 'Gráfico KnowYOU',
-            files: [file],
-          });
-          return;
-        } catch (err) {
-          if ((err as Error).name !== 'AbortError') {
-            console.error('Share failed:', err);
-          }
-        }
-      }
+    if (!result) {
+      toast.error('Erro ao capturar gráfico');
+      return;
     }
     
-    // Fallback: open WhatsApp with message
-    const text = encodeURIComponent(`📊 ${parsedData?.title || 'Gráfico'} - Gerado por KnowYOU`);
-    window.open(`https://wa.me/?text=${text}`, '_blank');
-    toast.info('Abra o WhatsApp para compartilhar');
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': result.blob })
+      ]);
+      toast.success('Gráfico copiado para a área de transferência!');
+    } catch (err) {
+      console.error('Clipboard write failed:', err);
+      toast.error('Navegador não suporta copiar imagens');
+    }
   };
 
-  // Share via Email
-  const handleShareEmail = async () => {
+  // Preview before sharing
+  const handlePreviewShare = async (action: 'whatsapp' | 'email') => {
     const result = await getChartAsImage(chartRef);
+    if (!result) {
+      toast.error('Erro ao gerar preview');
+      return;
+    }
+    setPreviewData({ dataUrl: result.dataUrl, width: result.width, height: result.height });
+    setPendingBlob(result.blob);
+    setPendingAction(action);
+    setPreviewOpen(true);
+  };
+
+  // Confirm share after preview
+  const handleConfirmShare = async () => {
+    setPreviewOpen(false);
     
-    if (result && navigator.share && navigator.canShare) {
-      const file = new File([result.blob], `${filename}.png`, { type: 'image/png' });
-      if (navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            title: parsedData?.title || 'Gráfico KnowYOU',
-            files: [file],
-          });
-          return;
-        } catch (err) {
-          if ((err as Error).name !== 'AbortError') {
-            console.error('Share failed:', err);
-          }
+    if (!pendingBlob || !previewData) return;
+    
+    const file = new File([pendingBlob], `${filename}.png`, { type: 'image/png' });
+    
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          title: parsedData?.title || 'Gráfico KnowYOU',
+          files: [file],
+        });
+        setPendingAction(null);
+        setPreviewData(null);
+        setPendingBlob(null);
+        return;
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Share failed:', err);
         }
       }
     }
     
-    // Fallback: mailto
-    const subject = encodeURIComponent(`Gráfico: ${parsedData?.title || 'KnowYOU'}`);
-    const body = encodeURIComponent('Segue o gráfico gerado pelo KnowYOU.');
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    // Fallback
+    if (pendingAction === 'whatsapp') {
+      const text = encodeURIComponent(`📊 ${parsedData?.title || 'Gráfico'} - Gerado por KnowYOU`);
+      window.open(`https://wa.me/?text=${text}`, '_blank');
+      toast.info('Abra o WhatsApp para compartilhar');
+    } else if (pendingAction === 'email') {
+      const subject = encodeURIComponent(`Gráfico: ${parsedData?.title || 'KnowYOU'}`);
+      const body = encodeURIComponent('Segue o gráfico gerado pelo KnowYOU.');
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    }
+    
+    setPendingAction(null);
+    setPreviewData(null);
+    setPendingBlob(null);
   };
 
   if (!parsedData || !parsedData.data || parsedData.data.length === 0) {
@@ -365,58 +398,117 @@ export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
   };
 
   return (
-    <div className="my-4 p-4 bg-card/50 border border-border rounded-lg relative group">
-      {title && (
-        <h4 className="text-sm font-semibold text-foreground mb-3 text-center">{title}</h4>
-      )}
-      <div ref={chartRef}>
-        {renderChart()}
+    <>
+      <div className="my-4 p-4 bg-card/50 border border-border rounded-lg relative group">
+        {title && (
+          <h4 className="text-sm font-semibold text-foreground mb-3 text-center">{title}</h4>
+        )}
+        <div ref={chartRef}>
+          {renderChart()}
+        </div>
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-background/80 backdrop-blur-sm"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Baixar
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleDownloadPng}>
+                <FileImage className="h-4 w-4 mr-2" />
+                PNG
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDownloadPdf}>
+                <FileText className="h-4 w-4 mr-2" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyToClipboard}
+            className="bg-background/80 backdrop-blur-sm"
+            title="Copiar para área de transferência"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePreviewShare('whatsapp')}
+            className="bg-background/80 backdrop-blur-sm"
+            title="Compartilhar no WhatsApp"
+          >
+            <MessageCircle className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePreviewShare('email')}
+            className="bg-background/80 backdrop-blur-sm"
+            title="Compartilhar por Email"
+          >
+            <Mail className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-background/80 backdrop-blur-sm"
-            >
-              <Download className="h-4 w-4 mr-1" />
-              Baixar
-              <ChevronDown className="h-3 w-3 ml-1" />
+
+      {/* Preview Modal */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Preview do Gráfico
+            </DialogTitle>
+            <DialogDescription>
+              Visualize como ficará o arquivo antes de compartilhar
+            </DialogDescription>
+          </DialogHeader>
+          
+          {previewData && (
+            <div className="space-y-4">
+              <div className="border border-border rounded-lg overflow-hidden bg-[#1a1a2e] p-4 max-h-[400px] overflow-auto">
+                <img 
+                  src={previewData.dataUrl} 
+                  alt="Preview" 
+                  className="max-w-full h-auto mx-auto"
+                />
+              </div>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <FileImage className="h-4 w-4" />
+                  PNG
+                </span>
+                <span>
+                  📐 {Math.round(previewData.width)} x {Math.round(previewData.height)}px
+                </span>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+              Cancelar
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleDownloadPng}>
-              <FileImage className="h-4 w-4 mr-2" />
-              PNG
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDownloadPdf}>
-              <FileText className="h-4 w-4 mr-2" />
-              PDF
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleShareWhatsApp}
-          className="bg-background/80 backdrop-blur-sm"
-          title="Compartilhar no WhatsApp"
-        >
-          <MessageCircle className="h-4 w-4" />
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleShareEmail}
-          className="bg-background/80 backdrop-blur-sm"
-          title="Compartilhar por Email"
-        >
-          <Mail className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
+            <Button onClick={handleConfirmShare}>
+              {pendingAction === 'whatsapp' && <MessageCircle className="h-4 w-4 mr-2" />}
+              {pendingAction === 'email' && <Mail className="h-4 w-4 mr-2" />}
+              Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
