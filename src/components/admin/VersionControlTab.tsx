@@ -5,8 +5,9 @@ import { useActivityLogger } from "@/hooks/useActivityLogger";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GitBranch, Rocket, RefreshCw, Clock, Download, Undo2, Tag, FileText } from "lucide-react";
+import { GitBranch, Rocket, RefreshCw, Clock, Download, Undo2, Tag, FileText, FileCode } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
   Table,
@@ -208,17 +209,24 @@ export const VersionControlTab = () => {
   };
 
   const getTriggerTypeBadge = (type: string) => {
-    const variants = {
-      AUTO_PATCH: { variant: "secondary" as const, label: "Auto Patch" },
-      MANUAL_MINOR: { variant: "default" as const, label: "Minor" },
-      MANUAL_MAJOR: { variant: "destructive" as const, label: "Major" },
-      CODE_CHANGE: { variant: "outline" as const, label: "Code Change" },
-      DOC_UPDATE: { variant: "outline" as const, label: "Doc Update" },
-      INITIAL: { variant: "outline" as const, label: "Inicial" },
-      ROLLBACK: { variant: "outline" as const, label: "Rollback" },
+    const badges: Record<string, { color: string; label: string }> = {
+      MINOR_RELEASE: { color: "bg-blue-500", label: "Minor Release" },
+      MANUAL_MINOR: { color: "bg-blue-500", label: "Minor" },
+      MAJOR_RELEASE: { color: "bg-purple-500", label: "Major Release" },
+      MANUAL_MAJOR: { color: "bg-purple-500", label: "Major" },
+      AUTO_PATCH: { color: "bg-green-500", label: "Auto Patch" },
+      ROLLBACK: { color: "bg-red-500", label: "Rollback" },
+      CODE_CHANGE: { color: "bg-cyan-500", label: "Code Change" },
+      DOC_UPDATE: { color: "bg-gray-500", label: "Doc Update" },
+      INITIAL: { color: "bg-gray-500", label: "Inicial" },
     };
-    const config = variants[type as keyof typeof variants] || variants.INITIAL;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+
+    const badge = badges[type] || { color: "bg-gray-500", label: type };
+    return (
+      <Badge className={`${badge.color} text-white`}>
+        {badge.label}
+      </Badge>
+    );
   };
 
   if (isLoading) {
@@ -367,10 +375,10 @@ export const VersionControlTab = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Data/Hora</TableHead>
                 <TableHead>Versão</TableHead>
+                <TableHead>Data/Hora</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead>Mensagem</TableHead>
+                <TableHead>Descrição</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -384,13 +392,33 @@ export const VersionControlTab = () => {
               ) : (
                 history.map((record: any, index: number) => (
                   <TableRow key={record.id}>
+                    <TableCell className="font-mono font-bold">{record.current_version}</TableCell>
                     <TableCell className="font-mono text-sm">
-                      {new Date(record.timestamp).toLocaleString("pt-BR")}
+                      {format(new Date(record.timestamp), "dd/MM/yyyy HH:mm:ss")}
                     </TableCell>
-                    <TableCell className="font-bold">{record.current_version}</TableCell>
                     <TableCell>{getTriggerTypeBadge(record.trigger_type)}</TableCell>
-                    <TableCell className="max-w-md truncate">
-                      {record.log_message}
+                    <TableCell>
+                      <div className="max-w-md">
+                        <div className="truncate">{record.log_message}</div>
+                        {record.associated_data?.files_created?.length > 0 && (
+                          <div className="mt-1 text-xs text-green-600 dark:text-green-400">
+                            <FileCode className="h-3 w-3 inline mr-1" />
+                            Criados: {record.associated_data.files_created.join(", ")}
+                          </div>
+                        )}
+                        {record.associated_data?.files_modified?.length > 0 && (
+                          <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                            <FileCode className="h-3 w-3 inline mr-1" />
+                            Modificados: {record.associated_data.files_modified.join(", ")}
+                          </div>
+                        )}
+                        {record.associated_data?.files_deleted?.length > 0 && (
+                          <div className="mt-1 text-xs text-red-600 dark:text-red-400">
+                            <FileCode className="h-3 w-3 inline mr-1" />
+                            Deletados: {record.associated_data.files_deleted.join(", ")}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {index > 0 && (
