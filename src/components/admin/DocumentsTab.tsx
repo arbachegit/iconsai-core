@@ -1192,8 +1192,15 @@ O sistema utiliza um pipeline de 4 etapas:
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => setShowRagInfoModal(true)} className="relative flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors">
-                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                <button onClick={() => setShowRagInfoModal(true)} className="relative w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-purple-500/20 border border-primary/30 hover:from-primary/30 hover:to-purple-500/30 transition-all duration-300 group flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/50">
+                  <HelpCircle className="h-5 w-5 text-primary group-hover:text-primary/80 transition-colors" />
+                  {/* Bolinha verde pulsante */}
+                  <div className="absolute -top-1 -right-1 pointer-events-none">
+                    <div className="relative">
+                      <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                      <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+                    </div>
+                  </div>
                 </button>
               </TooltipTrigger>
               <TooltipContent>
