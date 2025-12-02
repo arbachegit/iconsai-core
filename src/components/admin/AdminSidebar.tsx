@@ -29,9 +29,10 @@ import {
   Route,
   TestTube,
   History,
+  Network,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "activity-logs";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "activity-logs" | "architecture";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -106,6 +107,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       label: "Sistema",
       icon: Settings,
       items: [
+        { id: "architecture" as TabType, label: "Arquitetura", icon: Network },
         { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
         { id: "activity-logs" as TabType, label: "Log de Atividades", icon: History },
         { id: "gmail" as TabType, label: "Gmail", icon: Mail },
