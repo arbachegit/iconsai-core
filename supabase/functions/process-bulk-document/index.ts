@@ -542,6 +542,36 @@ serve(async (req) => {
         }
 
         console.log("✅ AUTO_PATCH, documentação e chat configs atualizados com sucesso");
+        
+        // 4. Registrar incremento do sistema
+        try {
+          const completedDocIds = results.filter(r => r.status === "completed").map(r => r.document_id);
+          const { data: completedDocs } = await supabase
+            .from("documents")
+            .select("id, filename, target_chat, total_chunks")
+            .in("id", completedDocIds);
+          
+          const totalChunks = completedDocs?.reduce((sum: number, doc: any) => sum + (doc.total_chunks || 0), 0) || 0;
+          
+          await supabase.from("system_increments").insert({
+            triggered_by_email: "system@knowrisk.io",
+            operation_type: "BULK_INSERT",
+            operation_source: "document_upload",
+            tables_affected: ["documents", "document_chunks", "document_tags", "document_versions", "document_routing_log"],
+            summary: `${successCount} documento(s) processado(s) e inserido(s) no sistema`,
+            details: {
+              documents_processed: successCount,
+              total_chunks_created: totalChunks,
+              target_chats: targetChats,
+              document_ids: completedDocIds,
+              timestamp: new Date().toISOString()
+            }
+          });
+          
+          console.log("✅ System increment logged successfully");
+        } catch (incrementError) {
+          console.error("⚠️ Erro ao registrar incremento do sistema:", incrementError);
+        }
       } catch (triggerError) {
         console.error("⚠️ Erro ao disparar AUTO_PATCH/documentação:", triggerError);
         // Não falhar o processo principal por causa deste erro

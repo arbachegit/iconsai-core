@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useSystemIncrement } from "@/hooks/useSystemIncrement";
 
 interface SectionContent {
   id: string;
@@ -22,6 +23,7 @@ interface SectionContent {
 
 export const ContentManagementTab = () => {
   const { toast } = useToast();
+  const { logIncrement } = useSystemIncrement();
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ title: "", content: "", finalMessage: "" });
@@ -77,6 +79,14 @@ export const ContentManagementTab = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["section-contents"] });
       queryClient.invalidateQueries({ queryKey: ["section-versions"] });
+      const section = sections?.find(s => s.id === editingId);
+      logIncrement({
+        operationType: "UPDATE",
+        operationSource: "content_update",
+        tablesAffected: ["section_contents", "section_content_versions"],
+        summary: `Seção "${section?.section_id || editingId}" atualizada`,
+        details: { section_id: section?.section_id }
+      });
       toast({
         title: "Salvo com sucesso",
         description: "Conteúdo da seção foi atualizado.",
