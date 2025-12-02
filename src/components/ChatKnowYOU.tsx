@@ -700,7 +700,7 @@ export default function ChatKnowYOU() {
             {/* CENÁRIO 4: Nenhum documento - fallback 1ª metade */}
             {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length === 0 && displayedSuggestions.slice(0, Math.ceil(displayedSuggestions.length / 2)).map((suggestion, idx) => {
               const isDataBadge = suggestion.startsWith("📊");
-              return (
+              const buttonElement = (
                 <Button
                   key={`disp1-${suggestion}-${idx}`}
                   variant="outline"
@@ -715,6 +715,14 @@ export default function ChatKnowYOU() {
                   {suggestion}
                 </Button>
               );
+              return isDataBadge ? (
+                <Tooltip key={`tooltip1-${idx}`}>
+                  <TooltipTrigger asChild>{buttonElement}</TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[220px] text-center">
+                    <p className="text-xs">Clique para ver todos os dados numéricos encontrados nos documentos</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : buttonElement;
             })}
           </CarouselRow>
           
@@ -781,7 +789,7 @@ export default function ChatKnowYOU() {
             {/* CENÁRIO 4: Nenhum documento - fallback 2ª metade */}
             {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length === 0 && displayedSuggestions.slice(Math.ceil(displayedSuggestions.length / 2)).map((suggestion, idx) => {
               const isDataBadge = suggestion.startsWith("📊");
-              return (
+              const buttonElement = (
                 <Button
                   key={`disp2-${suggestion}-${idx}`}
                   variant="outline"
@@ -796,6 +804,14 @@ export default function ChatKnowYOU() {
                   {suggestion}
                 </Button>
               );
+              return isDataBadge ? (
+                <Tooltip key={`tooltip2-${idx}`}>
+                  <TooltipTrigger asChild>{buttonElement}</TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[220px] text-center">
+                    <p className="text-xs">Clique para ver todos os dados numéricos encontrados nos documentos</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : buttonElement;
             })}
           </CarouselRow>
         </div>
