@@ -17,6 +17,7 @@ const SECTIONS = [
   { id: 'ia-nova-era', name: 'Nova Era da IA' },
   { id: 'bom-prompt', name: 'Bom Prompt - A Arte da Comunicação' },
   { id: 'knowyou', name: 'KnowYOU - Assistente de Saúde' },
+  { id: 'digital-exclusion', name: '5,74 Bilhões - Exclusão Digital' },
 ];
 
 const TIMELINE_EVENTS = [
