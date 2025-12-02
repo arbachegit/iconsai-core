@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useActivityLogger } from "@/hooks/useActivityLogger";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,7 @@ interface FileUploadStatus {
   error?: string;
 }
 export const DocumentsTab = () => {
+  const { logActivity } = useActivityLogger();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
@@ -371,10 +373,17 @@ O sistema utiliza um pipeline de 4 etapas:
         setUploading(false);
       }
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["documents"]
       });
+      
+      // Log upload activity
+      logActivity("Upload de documentos", "DOCUMENT", { 
+        count: selectedFiles.length,
+        filenames: selectedFiles.map(f => f.name)
+      });
+      
       setSelectedFiles([]);
     },
     onError: (error: any) => {
@@ -391,10 +400,17 @@ O sistema utiliza um pipeline de 4 etapas:
       } = await supabase.from("documents").delete().eq("id", docId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (data, docId) => {
       queryClient.invalidateQueries({
         queryKey: ["documents"]
       });
+      
+      // Log deletion activity
+      logActivity("Documento excluído", "DELETE", { 
+        documentId: docId,
+        filename: selectedDoc?.filename 
+      });
+      
       toast.success("Documento deletado");
       setSelectedDoc(null);
     }
@@ -434,10 +450,16 @@ O sistema utiliza um pipeline de 4 etapas:
       });
       if (processError) throw processError;
     },
-    onSuccess: () => {
+    onSuccess: (data, docId) => {
       queryClient.invalidateQueries({
         queryKey: ["documents"]
       });
+      
+      // Log reprocess activity
+      logActivity("Documento reprocessado", "DOCUMENT", { 
+        documentId: docId 
+      });
+      
       toast.success("Documento reprocessado com sucesso!");
     },
     onError: (error: any) => {

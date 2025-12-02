@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,9 +21,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, Search, Calendar } from "lucide-react";
+import { Download, Search, Calendar, Mail, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 type ActivityLog = {
   id: string;
@@ -54,6 +57,7 @@ export default function UserActivityLogsTab() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [reportsOpen, setReportsOpen] = useState(true);
 
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ["user-activity-logs", searchText, categoryFilter, dateFrom, dateTo],
@@ -92,6 +96,27 @@ export default function UserActivityLogsTab() {
     },
   });
 
+  // Generate report mutation
+  const generateReportMutation = useMutation({
+    mutationFn: async (period: "daily" | "weekly" | "monthly") => {
+      const { data, error } = await supabase.functions.invoke("generate-activity-report", {
+        body: { period }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data, period) => {
+      toast.success(`Relatório ${period} enviado com sucesso para ${data.recipient}!`);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao gerar relatório: ${error.message}`);
+    }
+  });
+
+  const handleGenerateReport = (period: "daily" | "weekly" | "monthly") => {
+    generateReportMutation.mutate(period);
+  };
+
   const exportToCSV = () => {
     const headers = ["Data/Hora", "Usuário", "Ação", "Categoria"];
     const rows = logs.map(log => [
@@ -115,6 +140,90 @@ export default function UserActivityLogsTab() {
 
   return (
     <div className="space-y-6">
+      {/* Relatórios Automáticos */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-primary" />
+              <CardTitle>📊 Relatórios Automáticos</CardTitle>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setReportsOpen(!reportsOpen)}
+              className="gap-2"
+            >
+              {reportsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {reportsOpen ? "Colapsar" : "Expandir"}
+            </Button>
+          </div>
+        </CardHeader>
+        <Collapsible open={reportsOpen}>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Gere e envie relatórios de atividade por email usando a integração Gmail configurada.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Button
+                  onClick={() => handleGenerateReport("daily")}
+                  disabled={generateReportMutation.isPending}
+                  variant="outline"
+                  className="h-24 flex-col gap-2 border-blue-400/60 hover:bg-blue-500/20"
+                >
+                  {generateReportMutation.isPending ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <Mail className="w-6 h-6" />
+                  )}
+                  <span className="font-semibold">Enviar Relatório Diário</span>
+                  <span className="text-xs text-muted-foreground">Últimas 24 horas</span>
+                </Button>
+
+                <Button
+                  onClick={() => handleGenerateReport("weekly")}
+                  disabled={generateReportMutation.isPending}
+                  variant="outline"
+                  className="h-24 flex-col gap-2 border-purple-400/60 hover:bg-purple-500/20"
+                >
+                  {generateReportMutation.isPending ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <Mail className="w-6 h-6" />
+                  )}
+                  <span className="font-semibold">Enviar Relatório Semanal</span>
+                  <span className="text-xs text-muted-foreground">Últimos 7 dias</span>
+                </Button>
+
+                <Button
+                  onClick={() => handleGenerateReport("monthly")}
+                  disabled={generateReportMutation.isPending}
+                  variant="outline"
+                  className="h-24 flex-col gap-2 border-green-400/60 hover:bg-green-500/20"
+                >
+                  {generateReportMutation.isPending ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <Mail className="w-6 h-6" />
+                  )}
+                  <span className="font-semibold">Enviar Relatório Mensal</span>
+                  <span className="text-xs text-muted-foreground">Últimos 30 dias</span>
+                </Button>
+              </div>
+
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  📧 Os relatórios serão enviados para o email configurado em <strong>Chat & Conversas → Gmail API</strong>
+                </p>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
+      {/* Log de Atividades */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">

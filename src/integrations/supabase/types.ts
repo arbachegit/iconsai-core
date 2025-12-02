@@ -52,11 +52,14 @@ export type Database = {
           auto_play_audio: boolean | null
           chat_audio_enabled: boolean | null
           created_at: string | null
+          daily_report_enabled: boolean | null
           gmail_api_configured: boolean | null
           gmail_notification_email: string | null
           id: string
+          monthly_report_enabled: boolean | null
           updated_at: string | null
           vimeo_history_url: string | null
+          weekly_report_enabled: boolean | null
         }
         Insert: {
           alert_email?: string | null
@@ -65,11 +68,14 @@ export type Database = {
           auto_play_audio?: boolean | null
           chat_audio_enabled?: boolean | null
           created_at?: string | null
+          daily_report_enabled?: boolean | null
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
+          monthly_report_enabled?: boolean | null
           updated_at?: string | null
           vimeo_history_url?: string | null
+          weekly_report_enabled?: boolean | null
         }
         Update: {
           alert_email?: string | null
@@ -78,11 +84,14 @@ export type Database = {
           auto_play_audio?: boolean | null
           chat_audio_enabled?: boolean | null
           created_at?: string | null
+          daily_report_enabled?: boolean | null
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
+          monthly_report_enabled?: boolean | null
           updated_at?: string | null
           vimeo_history_url?: string | null
+          weekly_report_enabled?: boolean | null
         }
         Relationships: []
       }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useActivityLogger } from "@/hooks/useActivityLogger";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export const VersionControlTab = () => {
+  const { logActivity } = useActivityLogger();
   const [versionDialog, setVersionDialog] = useState<"minor" | "major" | "code_change" | null>(null);
   const [rollbackDialog, setRollbackDialog] = useState<{ open: boolean; versionId: string | null; version: string | null }>({
     open: false,
@@ -80,10 +82,19 @@ export const VersionControlTab = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, { action, message }) => {
       toast.success(
         `Versão atualizada: ${data.previous_version} → ${data.new_version}`
       );
+      
+      // Log version increment
+      logActivity(`Versão incrementada (${action})`, "VERSION", { 
+        previousVersion: data.previous_version,
+        newVersion: data.new_version,
+        action,
+        message 
+      });
+      
       queryClient.invalidateQueries({ queryKey: ["version-control"] });
       setVersionDialog(null);
       setLogMessage("");
@@ -135,6 +146,13 @@ export const VersionControlTab = () => {
     },
     onSuccess: (data) => {
       toast.success(`Rollback realizado: ${data.rolled_back_to} → ${data.new_version}`);
+      
+      // Log rollback
+      logActivity("Rollback de versão", "VERSION", { 
+        rolledBackTo: data.rolled_back_to,
+        newVersion: data.new_version 
+      });
+      
       queryClient.invalidateQueries({ queryKey: ["version-control"] });
       setRollbackDialog({ open: false, versionId: null, version: null });
       setRollbackMessage("");
@@ -157,7 +175,7 @@ export const VersionControlTab = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, format) => {
       const blob = new Blob([data.content], { type: data.format === "json" ? "application/json" : "text/markdown" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -167,6 +185,12 @@ export const VersionControlTab = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      
+      // Log changelog export
+      logActivity("Changelog exportado", "EXPORT", { 
+        format: data.format 
+      });
+      
       toast.success(`Changelog exportado (${data.format})`);
     },
     onError: (error) => {
