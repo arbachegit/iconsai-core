@@ -210,6 +210,12 @@ O sistema utiliza um pipeline de 4 etapas:
           totalChunks: data.total_chunks,
           details: `Processado com sucesso em ${data.total_chunks} chunks`
         } : s));
+        
+        // Auto-limpar após 5 segundos e atualizar lista
+        queryClient.invalidateQueries({ queryKey: ["documents"] });
+        setTimeout(() => {
+          setUploadStatuses(prev => prev.filter(s => s.id !== fileId));
+        }, 5000);
       } else if (data?.status === 'failed') {
         clearInterval(poll);
         setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
@@ -218,6 +224,11 @@ O sistema utiliza um pipeline de 4 etapas:
           progress: 100,
           details: `Falha: ${data.error_message || 'Erro desconhecido'}`
         } : s));
+        
+        // Auto-limpar falhas após 10 segundos
+        setTimeout(() => {
+          setUploadStatuses(prev => prev.filter(s => s.id !== fileId));
+        }, 10000);
       } else {
         // Still processing
         setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
@@ -360,11 +371,11 @@ O sistema utiliza um pipeline de 4 etapas:
           }
         }
 
-        // Start polling for each document
-        documentsData.forEach((doc, idx) => {
-          const fileId = uploadStatuses.find(s => s.documentId === doc.document_id)?.id;
-          if (fileId) {
-            pollDocumentStatus(doc.document_id, fileId);
+        // Start polling for each document - usar initialStatuses diretamente
+        documentsData.forEach((doc) => {
+          const fileStatus = initialStatuses.find(s => s.fileName === doc.title);
+          if (fileStatus) {
+            pollDocumentStatus(doc.document_id, fileStatus.id);
           }
         });
         toast.success(`${documentsData.length} documento(s) enviado(s) para processamento!`);
