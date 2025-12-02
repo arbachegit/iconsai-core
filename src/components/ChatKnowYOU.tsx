@@ -638,10 +638,10 @@ export default function ChatKnowYOU() {
       {/* Suggestions - DUAS LINHAS FIXAS com carrossel horizontal */}
       {(displayedSuggestions.length > 0 || newDocumentBadge || complementarySuggestions.length > 0) && !isLoading && (
         <div className="px-4 py-2 bg-muted/50 border-t border-border/50 space-y-1.5">
-          {/* LINHA 1: Carrossel horizontal - Tópicos Novos OU primeira metade dos existentes */}
+          {/* LINHA 1: Carrossel horizontal */}
           <CarouselRow>
-            {newDocumentBadge && newDocumentBadge.themes.length > 0 ? (
-              // Há documentos novos - mostrar na Linha 1
+            {/* CENÁRIO 3: Ambos existem - mostrar NOVOS completos na Linha 1 */}
+            {newDocumentBadge && newDocumentBadge.themes.length > 0 && complementarySuggestions.length > 0 && (
               newDocumentBadge.themes.map((theme, idx) => (
                 <TopicDrillDown
                   key={`new-${theme}-${idx}`}
@@ -657,8 +657,29 @@ export default function ChatKnowYOU() {
                   cachedSubtopics={subtopicsCache[theme]}
                 />
               ))
-            ) : (
-              // Sem documentos novos - primeira metade dos existentes na Linha 1
+            )}
+            
+            {/* CENÁRIO 1: Só novos - mostrar 1ª METADE dos novos (roxo) */}
+            {newDocumentBadge && newDocumentBadge.themes.length > 0 && complementarySuggestions.length === 0 && (
+              newDocumentBadge.themes.slice(0, Math.ceil(newDocumentBadge.themes.length / 2)).map((theme, idx) => (
+                <TopicDrillDown
+                  key={`new1-${theme}-${idx}`}
+                  topic={theme}
+                  isNew={true}
+                  isExpanded={expandedTheme === theme}
+                  onToggle={() => setExpandedTheme(expandedTheme === theme ? null : theme)}
+                  onSubtopicClick={(subtopic) => {
+                    recordSuggestionClick(subtopic, newDocumentBadge.documentIds[idx]);
+                    sendMessage(subtopic);
+                  }}
+                  getSubtopics={getSubtopicsForTheme}
+                  cachedSubtopics={subtopicsCache[theme]}
+                />
+              ))
+            )}
+            
+            {/* CENÁRIO 2: Só antigos - mostrar 1ª METADE dos antigos (dourado) */}
+            {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length > 0 && (
               complementarySuggestions.slice(0, Math.ceil(complementarySuggestions.length / 2)).map((suggestion, idx) => (
                 <TopicDrillDown
                   key={`comp1-${suggestion}-${idx}`}
@@ -675,8 +696,9 @@ export default function ChatKnowYOU() {
                 />
               ))
             )}
-            {/* Fallback: sugestões padrão quando não há documentos */}
-            {!newDocumentBadge && !complementarySuggestions.length && displayedSuggestions.slice(0, Math.ceil(displayedSuggestions.length / 2)).map((suggestion, idx) => (
+            
+            {/* CENÁRIO 4: Nenhum documento - fallback 1ª metade */}
+            {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length === 0 && displayedSuggestions.slice(0, Math.ceil(displayedSuggestions.length / 2)).map((suggestion, idx) => (
               <Button
                 key={`disp1-${suggestion}-${idx}`}
                 variant="outline"
@@ -689,10 +711,10 @@ export default function ChatKnowYOU() {
             ))}
           </CarouselRow>
           
-          {/* LINHA 2: Carrossel horizontal - Tópicos Existentes + Ranking */}
+          {/* LINHA 2: Carrossel horizontal */}
           <CarouselRow>
-            {newDocumentBadge && newDocumentBadge.themes.length > 0 ? (
-              // Há documentos novos - mostrar existentes completos na Linha 2
+            {/* CENÁRIO 3: Ambos existem - mostrar ANTIGOS completos na Linha 2 (dourado) */}
+            {newDocumentBadge && newDocumentBadge.themes.length > 0 && complementarySuggestions.length > 0 && (
               complementarySuggestions.map((suggestion, idx) => (
                 <TopicDrillDown
                   key={`comp-${suggestion}-${idx}`}
@@ -708,8 +730,30 @@ export default function ChatKnowYOU() {
                   cachedSubtopics={subtopicsCache[suggestion]}
                 />
               ))
-            ) : (
-              // Sem documentos novos - segunda metade dos existentes na Linha 2
+            )}
+            
+            {/* CENÁRIO 1: Só novos - mostrar 2ª METADE dos novos (roxo) */}
+            {newDocumentBadge && newDocumentBadge.themes.length > 0 && complementarySuggestions.length === 0 && (
+              newDocumentBadge.themes.slice(Math.ceil(newDocumentBadge.themes.length / 2)).map((theme, idx) => (
+                <TopicDrillDown
+                  key={`new2-${theme}-${idx}`}
+                  topic={theme}
+                  isNew={true}
+                  isExpanded={expandedTheme === theme}
+                  onToggle={() => setExpandedTheme(expandedTheme === theme ? null : theme)}
+                  onSubtopicClick={(subtopic) => {
+                    const originalIdx = Math.ceil(newDocumentBadge.themes.length / 2) + idx;
+                    recordSuggestionClick(subtopic, newDocumentBadge.documentIds[originalIdx]);
+                    sendMessage(subtopic);
+                  }}
+                  getSubtopics={getSubtopicsForTheme}
+                  cachedSubtopics={subtopicsCache[theme]}
+                />
+              ))
+            )}
+            
+            {/* CENÁRIO 2: Só antigos - mostrar 2ª METADE dos antigos (dourado) */}
+            {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length > 0 && (
               complementarySuggestions.slice(Math.ceil(complementarySuggestions.length / 2)).map((suggestion, idx) => (
                 <TopicDrillDown
                   key={`comp2-${suggestion}-${idx}`}
@@ -726,8 +770,9 @@ export default function ChatKnowYOU() {
                 />
               ))
             )}
-            {/* Fallback: sugestões padrão quando não há documentos */}
-            {!newDocumentBadge && !complementarySuggestions.length && displayedSuggestions.slice(Math.ceil(displayedSuggestions.length / 2)).map((suggestion, idx) => (
+            
+            {/* CENÁRIO 4: Nenhum documento - fallback 2ª metade */}
+            {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length === 0 && displayedSuggestions.slice(Math.ceil(displayedSuggestions.length / 2)).map((suggestion, idx) => (
               <Button
                 key={`disp2-${suggestion}-${idx}`}
                 variant="outline"
@@ -738,7 +783,6 @@ export default function ChatKnowYOU() {
                 {suggestion}
               </Button>
             ))}
-            
           </CarouselRow>
         </div>
       )}
