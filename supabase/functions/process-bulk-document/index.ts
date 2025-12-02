@@ -123,6 +123,135 @@ function chunkText(text: string, size = 750, overlap = 180): string[] {
   return chunks;
 }
 
+// 5. ANÁLISE FONÉTICA AUTOMÁTICA
+async function extractTermsForPhoneticMap(
+  text: string, 
+  existingMap: Record<string, string>,
+  apiKey: string
+): Promise<Record<string, string>> {
+  
+  // Lista de palavras técnicas em inglês comuns
+  const KNOWN_FOREIGN_TERMS = [
+    "embedding", "embeddings", "chunk", "chunks", "token", "tokens",
+    "prompt", "prompts", "pipeline", "pipelines", "framework", "frameworks",
+    "benchmark", "benchmarks", "chatbot", "chatbots", "transformer", "transformers",
+    "vector", "vectors", "retrieval", "augmented", "generation", "dataset", "datasets",
+    "fine-tuning", "multimodal", "healthcare", "workflow", "workflows",
+    "dashboard", "feedback", "insight", "insights", "compliance", "analytics",
+    "backend", "frontend", "endpoint", "endpoints", "deployment", "cache",
+    "streaming", "batch", "inference", "training", "model", "models"
+  ];
+  
+  // 1. Detectar SIGLAS (2-6 letras maiúsculas)
+  const acronymRegex = /\b[A-Z]{2,6}\b/g;
+  const foundAcronyms = [...new Set(text.match(acronymRegex) || [])];
+  
+  // 2. Detectar palavras estrangeiras conhecidas (case insensitive)
+  const foundForeignTerms: string[] = [];
+  for (const term of KNOWN_FOREIGN_TERMS) {
+    const regex = new RegExp(`\\b${term}\\b`, 'gi');
+    if (regex.test(text)) {
+      foundForeignTerms.push(term);
+    }
+  }
+  
+  // 3. Filtrar termos que já existem no mapa
+  const existingTermsLower = Object.keys(existingMap).map(t => t.toLowerCase());
+  const newTerms = [
+    ...foundAcronyms.filter(t => !existingTermsLower.includes(t.toLowerCase())),
+    ...foundForeignTerms.filter(t => !existingTermsLower.includes(t.toLowerCase()))
+  ];
+  
+  if (newTerms.length === 0) {
+    console.log("Nenhum novo termo para pronúncia encontrado");
+    return {};
+  }
+  
+  console.log(`Detectados ${newTerms.length} novos termos para pronúncia:`, newTerms.slice(0, 10));
+  
+  // 4. Usar IA para gerar pronúncias fonéticas em português
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: `Você é um especialista em fonética. Gere pronúncias fonéticas em português brasileiro para os termos abaixo.
+
+REGRAS:
+- Para SIGLAS (letras maiúsculas): soletre letra por letra usando fonemas portugueses
+  - Exemplo: "LLM" → "éle-éle-ême", "API" → "á-pê-í", "RAG" → "érre-á-jê"
+- Para PALAVRAS em inglês: transcreva como seria pronunciado por brasileiro
+  - Exemplo: "embedding" → "embéding", "framework" → "fréim uórk", "chunk" → "tchânk"
+- Use hífens para separar sílabas em siglas
+- Retorne APENAS JSON válido no formato: {"termo1": "pronúncia1", "termo2": "pronúncia2"}
+- Não inclua explicações, apenas o JSON`
+        },
+        { 
+          role: "user", 
+          content: `Gere pronúncias fonéticas para: ${newTerms.slice(0, 30).join(", ")}` 
+        }
+      ],
+    }),
+  });
+  
+  if (!response.ok) {
+    console.error("Erro ao gerar pronúncias fonéticas");
+    return {};
+  }
+  
+  const data = await response.json();
+  const content = data.choices[0].message.content
+    .replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  
+  try {
+    return JSON.parse(content);
+  } catch (e) {
+    console.error("Erro ao parsear pronúncias fonéticas:", e);
+    return {};
+  }
+}
+
+async function updatePhoneticMap(
+  supabase: any,
+  targetChat: string,
+  newPronunciations: Record<string, string>
+): Promise<void> {
+  if (Object.keys(newPronunciations).length === 0) return;
+  
+  // Buscar mapa existente
+  const { data: config } = await supabase
+    .from("chat_config")
+    .select("phonetic_map")
+    .eq("chat_type", targetChat)
+    .single();
+  
+  const existingMap = config?.phonetic_map || {};
+  
+  // Merge: novos termos são adicionados, existentes são preservados
+  const updatedMap = {
+    ...existingMap,
+    ...newPronunciations
+  };
+  
+  // Atualizar no banco
+  const { error } = await supabase
+    .from("chat_config")
+    .update({ phonetic_map: updatedMap })
+    .eq("chat_type", targetChat);
+  
+  if (error) {
+    console.error(`Erro ao atualizar phonetic_map para ${targetChat}:`, error);
+  } else {
+    console.log(`✅ phonetic_map atualizado para ${targetChat}: +${Object.keys(newPronunciations).length} termos`);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -273,6 +402,33 @@ serve(async (req) => {
           inserted_in_chat: isAutoInserted ? targetChat : null,
           inserted_at: isAutoInserted ? new Date().toISOString() : null
         }).eq("id", doc.document_id);
+        
+        // 5. ANÁLISE FONÉTICA AUTOMÁTICA
+        if (targetChat === 'health' || targetChat === 'study') {
+          console.log(`Iniciando análise fonética para documento ${doc.document_id}...`);
+          
+          // Buscar mapa existente para este chat
+          const { data: existingConfig } = await supabase
+            .from("chat_config")
+            .select("phonetic_map")
+            .eq("chat_type", targetChat)
+            .single();
+          
+          const existingMap = existingConfig?.phonetic_map || {};
+          
+          // Extrair e gerar pronúncias para novos termos
+          const newPronunciations = await extractTermsForPhoneticMap(
+            doc.full_text,
+            existingMap,
+            lovableKey
+          );
+          
+          // Atualizar phonetic_map no chat_config
+          if (Object.keys(newPronunciations).length > 0) {
+            await updatePhoneticMap(supabase, targetChat, newPronunciations);
+            console.log(`✅ Biblioteca de pronúncias atualizada para ${targetChat}`);
+          }
+        }
         
         // Criar entrada inicial em document_versions
         await supabase.from("document_versions").insert({
