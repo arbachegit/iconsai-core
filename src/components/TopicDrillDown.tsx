@@ -69,10 +69,20 @@ export function TopicDrillDown({
           size="sm"
           className={cn(
             "text-[10px] h-6 px-2 rounded-full shrink-0",
-            "border border-primary/50 hover:border-primary",
-            "hover:bg-primary hover:text-primary-foreground",
             "transition-colors",
-            isOpen && "bg-primary/10 border-primary",
+            // NOVOS - Manter estilo atual (roxo/primary)
+            isNew && [
+              "border border-primary/50 hover:border-primary",
+              "hover:bg-primary hover:text-primary-foreground",
+              isOpen && "bg-primary/10 border-primary",
+            ],
+            // ANTIGOS - Estilo dourado
+            !isNew && [
+              "border border-yellow-500/60 hover:border-yellow-400",
+              "bg-yellow-600/20 text-yellow-300",
+              "hover:bg-yellow-500 hover:text-yellow-950",
+              isOpen && "bg-yellow-500/30 border-yellow-400",
+            ],
             className
           )}
         >
@@ -89,7 +99,8 @@ export function TopicDrillDown({
           ) : (
             <ChevronDown className={cn(
               "h-3 w-3 ml-1 transition-transform",
-              isOpen && "rotate-180"
+              isOpen && "rotate-180",
+              !isNew && "text-yellow-400"
             )} />
           )}
         </Button>
@@ -97,7 +108,10 @@ export function TopicDrillDown({
       <PopoverContent 
         side="bottom" 
         align="start" 
-        className="w-auto p-2 max-w-[320px]"
+        className={cn(
+          "w-auto p-2 max-w-[320px]",
+          !isNew && "border-yellow-500/50"
+        )}
         sideOffset={4}
       >
         {isLoading ? (
@@ -113,7 +127,12 @@ export function TopicDrillDown({
                 variant="ghost"
                 size="sm"
                 onClick={() => handleSubtopicClick(subtopic.name)}
-                className="text-[10px] h-5 px-2 rounded-full bg-muted/50 hover:bg-primary/20 hover:text-primary"
+                className={cn(
+                  "text-[10px] h-5 px-2 rounded-full",
+                  isNew 
+                    ? "bg-muted/50 hover:bg-primary/20 hover:text-primary"
+                    : "bg-yellow-600/20 hover:bg-yellow-500/30 text-yellow-300 hover:text-yellow-200"
+                )}
               >
                 {subtopic.name}
               </Button>
@@ -124,7 +143,12 @@ export function TopicDrillDown({
             variant="ghost"
             size="sm"
             onClick={() => handleSubtopicClick(topic)}
-            className="text-[10px] h-5 px-2 rounded-full bg-muted/50 hover:bg-primary/20 hover:text-primary w-full"
+            className={cn(
+              "text-[10px] h-5 px-2 rounded-full w-full",
+              isNew 
+                ? "bg-muted/50 hover:bg-primary/20 hover:text-primary"
+                : "bg-yellow-600/20 hover:bg-yellow-500/30 text-yellow-300 hover:text-yellow-200"
+            )}
           >
             Perguntar sobre "{topic}"
           </Button>
