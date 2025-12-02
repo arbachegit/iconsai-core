@@ -532,6 +532,43 @@
           "dimension": "**Dimensão** - Quantidade de números no vetor (1536 neste sistema)",
           "index": "**Índice HNSW** - Estrutura de dados para busca rápida em vetores"
         }
+      },
+      "ragTest": {
+        "title": "Teste de Busca RAG",
+        "intro": "permite validar em tempo real se uma query específica retornaria contexto relevante dos documentos indexados antes de usá-la em produção.",
+        "whatIs": {
+          "title": "1. O que é o Teste de Busca RAG?",
+          "content": "É uma ferramenta de diagnóstico que simula o processo de recuperação de documentos do sistema RAG. Permite testar queries e visualizar quais chunks seriam enviados ao LLM como contexto, com seus respectivos scores de similaridade."
+        },
+        "howItWorks": {
+          "title": "2. Como Funciona o Teste",
+          "intro": "O teste executa o fluxo completo de busca semântica:",
+          "step1": "**Conversão:** A query é transformada em embedding usando o mesmo modelo dos documentos (text-embedding-3-small).",
+          "step2": "**Busca Vetorial:** Sistema procura os chunks mais similares no Vector Store usando similaridade cosseno.",
+          "step3": "**Aplicação de Threshold:** Apenas chunks com score ≥ 0.15 são considerados relevantes.",
+          "step4": "**Ordenação:** Resultados são ordenados por similaridade decrescente e os top-K são exibidos."
+        },
+        "interpretation": {
+          "title": "3. Interpretação dos Resultados",
+          "intro": "O teste retorna indicadores claros sobre a qualidade da busca:",
+          "success": "**✅ Contexto Encontrado:** Chat usará RAG e responderá com base nos documentos recuperados.",
+          "failure": "**❌ Sem Contexto:** Chat responderá sem RAG, usando apenas conhecimento base do LLM.",
+          "score": "**Score de Similaridade:** Valores entre 0.15-0.40 = baixa relevância; 0.40-0.70 = boa relevância; >0.70 = alta relevância."
+        },
+        "useCase": {
+          "title": "4. Casos de Uso",
+          "intro": "Use este teste para:",
+          "case1": "**Validar Indexação:** Verificar se documentos novos foram corretamente processados e estão pesquisáveis.",
+          "case2": "**Depurar Falhas:** Investigar por que o chat não responde sobre um tópico esperado.",
+          "case3": "**Otimizar Queries:** Testar diferentes formulações de perguntas para encontrar a mais eficaz."
+        },
+        "glossary": {
+          "title": "5. Glossário",
+          "query": "**Query** - Pergunta ou termo de busca testado",
+          "chunk": "**Chunk** - Fragmento de documento retornado pela busca",
+          "similarity": "**Similaridade** - Score entre 0 e 1 indicando relevância do chunk",
+          "threshold": "**Threshold** - Limite mínimo de similaridade (0.15) para inclusão nos resultados"
+        }
       }
     }
   }
