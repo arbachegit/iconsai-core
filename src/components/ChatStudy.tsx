@@ -14,6 +14,11 @@ import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { X } from "lucide-react";
+
+interface ChatStudyProps {
+  onClose?: () => void;
+}
 
 // Sugestões de estudo sobre KnowRisk/KnowYOU/ACC
 const STUDY_SUGGESTIONS = [
@@ -41,7 +46,7 @@ const IMAGE_SUGGESTIONS = [
   "Rede neural de comunicação",
 ];
 
-export default function ChatStudy() {
+export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { location, requestLocation } = useGeolocation();
@@ -493,7 +498,7 @@ export default function ChatStudy() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border-2 border-primary/40 shadow-[0_0_15px_rgba(139,92,246,0.2),0_0_30px_rgba(139,92,246,0.1)]">
+    <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b-2 border-primary/30">
         <div className="flex items-center gap-3">
@@ -518,7 +523,7 @@ export default function ChatStudy() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-gradient">{t('chat.studyTitle')}</h2>
+            <h2 className="text-lg font-bold text-gradient">{t('chat.studyModalTitle')}</h2>
             {currentSentiment && (
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50 border border-border/30">
                 <span className="text-2xl">
@@ -532,14 +537,29 @@ export default function ChatStudy() {
             )}
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={clearHistory}
-          className="text-xs"
-        >
-          {t('chat.clear')}
-        </Button>
+        
+        {/* Botões empilhados: Fechar acima, Limpar abaixo */}
+        <div className="flex flex-col gap-1">
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8"
+              title={t('aiHistory.close')}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearHistory}
+            className="text-xs"
+          >
+            {t('chat.clear')}
+          </Button>
+        </div>
       </div>
 
       {/* Messages */}
