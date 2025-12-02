@@ -8,6 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, Activity, Search } from "lucide-react";
 import { format } from "date-fns";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const operationTypeColors: Record<string, string> = {
   INSERT: "bg-green-500/20 text-green-700 border-green-500/50",
@@ -166,44 +174,44 @@ export const SystemIncrementsTab = () => {
             {/* Tabela */}
             <div className="rounded-md border">
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="p-3 text-left text-sm font-medium">Data/Hora</th>
-                      <th className="p-3 text-left text-sm font-medium">Usuário</th>
-                      <th className="p-3 text-left text-sm font-medium">Operação</th>
-                      <th className="p-3 text-left text-sm font-medium">Fonte</th>
-                      <th className="p-3 text-left text-sm font-medium">Tabelas Afetadas</th>
-                      <th className="p-3 text-left text-sm font-medium">Resumo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data/Hora</TableHead>
+                      <TableHead>Usuário</TableHead>
+                      <TableHead>Operação</TableHead>
+                      <TableHead>Fonte</TableHead>
+                      <TableHead>Tabelas Afetadas</TableHead>
+                      <TableHead>Resumo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {isLoading ? (
-                      <tr>
-                        <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">
                           Carregando incrementos...
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ) : increments && increments.length > 0 ? (
                       increments.map((inc) => (
-                        <tr key={inc.id} className="border-b hover:bg-muted/50">
-                          <td className="p-3 text-sm">
+                        <TableRow key={inc.id}>
+                          <TableCell className="text-sm">
                             {format(new Date(inc.timestamp), "dd/MM/yyyy HH:mm:ss")}
-                          </td>
-                          <td className="p-3 text-sm text-muted-foreground">
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
                             {inc.triggered_by_email}
-                          </td>
-                          <td className="p-3">
+                          </TableCell>
+                          <TableCell>
                             <Badge className={operationTypeColors[inc.operation_type]}>
                               {inc.operation_type}
                             </Badge>
-                          </td>
-                          <td className="p-3 text-sm">
+                          </TableCell>
+                          <TableCell className="text-sm">
                             <code className="text-xs bg-muted px-2 py-1 rounded">
                               {inc.operation_source}
                             </code>
-                          </td>
-                          <td className="p-3">
+                          </TableCell>
+                          <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {inc.tables_affected.map((table: string) => (
                                 <Badge key={table} variant="outline" className="text-xs">
@@ -211,19 +219,19 @@ export const SystemIncrementsTab = () => {
                                 </Badge>
                               ))}
                             </div>
-                          </td>
-                          <td className="p-3 text-sm">{inc.summary}</td>
-                        </tr>
+                          </TableCell>
+                          <TableCell className="text-sm">{inc.summary}</TableCell>
+                        </TableRow>
                       ))
                     ) : (
-                      <tr>
-                        <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">
                           Nenhum incremento encontrado
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
 
