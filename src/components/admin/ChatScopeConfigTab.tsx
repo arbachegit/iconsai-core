@@ -49,6 +49,7 @@ export function ChatScopeConfigTab() {
   const [healthConfig, setHealthConfig] = useState<ChatConfig | null>(null);
   const [ragInfoStudyOpen, setRagInfoStudyOpen] = useState(false);
   const [ragInfoHealthOpen, setRagInfoHealthOpen] = useState(false);
+  const [ragTestInfoOpen, setRagTestInfoOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingChat, setEditingChat] = useState<"study" | "health" | null>(null);
   const [testQuery, setTestQuery] = useState("");
@@ -172,6 +173,52 @@ ${tts.technologies.intro}
 * ${tts.technologies.wavenet}
 * ${tts.technologies.valle}`;
   };
+
+  // Generate RAG Test info content from i18n translations
+  const getRAGTestInfoContent = () => {
+    if (!ready) return "Carregando...";
+    
+    const rt = t('admin.tooltips.ragTest', { returnObjects: true }) as any;
+    if (!rt || typeof rt !== 'object' || !rt.intro) {
+      return "Erro ao carregar informações sobre Teste de Busca RAG.";
+    }
+    
+    return `**Teste de Busca RAG** ${rt.intro}
+
+---
+
+### ${rt.whatIs.title}
+${rt.whatIs.content}
+
+### ${rt.howItWorks.title}
+${rt.howItWorks.intro}
+
+1. ${rt.howItWorks.step1}
+2. ${rt.howItWorks.step2}
+3. ${rt.howItWorks.step3}
+4. ${rt.howItWorks.step4}
+
+### ${rt.interpretation.title}
+${rt.interpretation.intro}
+
+* ${rt.interpretation.success}
+* ${rt.interpretation.failure}
+* ${rt.interpretation.score}
+
+### ${rt.useCase.title}
+${rt.useCase.intro}
+
+1. ${rt.useCase.case1}
+2. ${rt.useCase.case2}
+3. ${rt.useCase.case3}
+
+### ${rt.glossary.title}
+* ${rt.glossary.query}
+* ${rt.glossary.chunk}
+* ${rt.glossary.similarity}
+* ${rt.glossary.threshold}`;
+  };
+
   useEffect(() => {
     fetchConfigs();
   }, []);
@@ -630,10 +677,74 @@ ${tts.technologies.intro}
       {/* RAG Test Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Teste de Busca RAG
-          </CardTitle>
+          <div className="flex items-center gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Teste de Busca RAG
+            </CardTitle>
+            
+            {/* Tooltip RAG Test Info */}
+            <Popover open={ragTestInfoOpen} onOpenChange={setRagTestInfoOpen}>
+              <PopoverTrigger asChild>
+                <button className="relative w-7 h-7 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30 hover:from-green-500/30 hover:to-emerald-500/30 transition-all duration-300 group flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-green-500/50">
+                  <Lightbulb className="h-3.5 w-3.5 text-green-500 group-hover:text-green-400 transition-colors" />
+                  <div className="absolute -top-0.5 -right-0.5 pointer-events-none">
+                    <div className="relative">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+                    </div>
+                  </div>
+                </button>
+              </PopoverTrigger>
+              
+              <PopoverContent 
+                className="w-[500px] max-h-[70vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-green-500/20" 
+                side="right"
+                align="start"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <Lightbulb className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <h3 className="text-base font-bold text-green-500">Teste de Busca RAG</h3>
+                  </div>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      h3: ({ children }) => (
+                        <h3 className="text-sm font-bold mt-4 mb-2 text-foreground">
+                          {children}
+                        </h3>
+                      ),
+                      p: ({ children }) => (
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+                          {children}
+                        </p>
+                      ),
+                      ul: ({ children }) => (
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                          {children}
+                        </ul>
+                      ),
+                      ol: ({ children }) => (
+                        <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                          {children}
+                        </ol>
+                      ),
+                      li: ({ children }) => (
+                        <li className="text-sm text-muted-foreground">{children}</li>
+                      ),
+                      strong: ({ children }) => (
+                        <strong className="font-semibold text-foreground">{children}</strong>
+                      ),
+                      hr: () => <hr className="my-3 border-border" />,
+                    }}
+                  >
+                    {getRAGTestInfoContent()}
+                  </ReactMarkdown>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
           <CardDescription>Teste se uma query retorna contexto dos documentos</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

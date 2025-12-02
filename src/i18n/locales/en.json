@@ -533,6 +533,43 @@
           "dimension": "**Dimension** - Number of values in the vector (1536 in this system)",
           "index": "**HNSW Index** - Data structure for fast vector search"
         }
+      },
+      "ragTest": {
+        "title": "RAG Search Test",
+        "intro": "allows real-time validation of whether a specific query would return relevant context from indexed documents before using it in production.",
+        "whatIs": {
+          "title": "1. What is the RAG Search Test?",
+          "content": "It's a diagnostic tool that simulates the RAG system's document retrieval process. It allows testing queries and visualizing which chunks would be sent to the LLM as context, with their respective similarity scores."
+        },
+        "howItWorks": {
+          "title": "2. How the Test Works",
+          "intro": "The test executes the complete semantic search flow:",
+          "step1": "**Conversion:** The query is transformed into an embedding using the same model as the documents (text-embedding-3-small).",
+          "step2": "**Vector Search:** System searches for the most similar chunks in the Vector Store using cosine similarity.",
+          "step3": "**Threshold Application:** Only chunks with score ≥ 0.15 are considered relevant.",
+          "step4": "**Sorting:** Results are sorted by descending similarity and the top-K are displayed."
+        },
+        "interpretation": {
+          "title": "3. Interpreting Results",
+          "intro": "The test returns clear indicators about search quality:",
+          "success": "**✅ Context Found:** Chat will use RAG and respond based on retrieved documents.",
+          "failure": "**❌ No Context:** Chat will respond without RAG, using only the LLM's base knowledge.",
+          "score": "**Similarity Score:** Values between 0.15-0.40 = low relevance; 0.40-0.70 = good relevance; >0.70 = high relevance."
+        },
+        "useCase": {
+          "title": "4. Use Cases",
+          "intro": "Use this test to:",
+          "case1": "**Validate Indexing:** Verify if new documents were correctly processed and are searchable.",
+          "case2": "**Debug Failures:** Investigate why the chat doesn't respond about an expected topic.",
+          "case3": "**Optimize Queries:** Test different question formulations to find the most effective one."
+        },
+        "glossary": {
+          "title": "5. Glossary",
+          "query": "**Query** - Question or search term being tested",
+          "chunk": "**Chunk** - Document fragment returned by the search",
+          "similarity": "**Similarity** - Score between 0 and 1 indicating chunk relevance",
+          "threshold": "**Threshold** - Minimum similarity limit (0.15) for inclusion in results"
+        }
       }
     }
   }

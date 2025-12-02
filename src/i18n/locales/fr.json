@@ -533,6 +533,43 @@
           "dimension": "**Dimension** - Nombre de valeurs dans le vecteur (1536 dans ce système)",
           "index": "**Index HNSW** - Structure de données pour recherche vectorielle rapide"
         }
+      },
+      "ragTest": {
+        "title": "Test de Recherche RAG",
+        "intro": "permet de valider en temps réel si une requête spécifique retournerait un contexte pertinent des documents indexés avant de l'utiliser en production.",
+        "whatIs": {
+          "title": "1. Qu'est-ce que le Test de Recherche RAG ?",
+          "content": "C'est un outil de diagnostic qui simule le processus de récupération de documents du système RAG. Il permet de tester des requêtes et de visualiser quels chunks seraient envoyés au LLM comme contexte, avec leurs scores de similarité respectifs."
+        },
+        "howItWorks": {
+          "title": "2. Comment Fonctionne le Test",
+          "intro": "Le test exécute le flux complet de recherche sémantique :",
+          "step1": "**Conversion :** La requête est transformée en embedding en utilisant le même modèle que les documents (text-embedding-3-small).",
+          "step2": "**Recherche Vectorielle :** Le système recherche les chunks les plus similaires dans le Vector Store en utilisant la similarité cosinus.",
+          "step3": "**Application du Seuil :** Seuls les chunks avec score ≥ 0.15 sont considérés pertinents.",
+          "step4": "**Tri :** Les résultats sont triés par similarité décroissante et les top-K sont affichés."
+        },
+        "interpretation": {
+          "title": "3. Interprétation des Résultats",
+          "intro": "Le test retourne des indicateurs clairs sur la qualité de la recherche :",
+          "success": "**✅ Contexte Trouvé :** Le chat utilisera RAG et répondra basé sur les documents récupérés.",
+          "failure": "**❌ Sans Contexte :** Le chat répondra sans RAG, en utilisant uniquement les connaissances de base du LLM.",
+          "score": "**Score de Similarité :** Valeurs entre 0.15-0.40 = faible pertinence ; 0.40-0.70 = bonne pertinence ; >0.70 = haute pertinence."
+        },
+        "useCase": {
+          "title": "4. Cas d'Usage",
+          "intro": "Utilisez ce test pour :",
+          "case1": "**Valider l'Indexation :** Vérifier si les nouveaux documents ont été correctement traités et sont recherchables.",
+          "case2": "**Déboguer les Échecs :** Enquêter pourquoi le chat ne répond pas sur un sujet attendu.",
+          "case3": "**Optimiser les Requêtes :** Tester différentes formulations de questions pour trouver la plus efficace."
+        },
+        "glossary": {
+          "title": "5. Glossaire",
+          "query": "**Requête** - Question ou terme de recherche testé",
+          "chunk": "**Chunk** - Fragment de document retourné par la recherche",
+          "similarity": "**Similarité** - Score entre 0 et 1 indiquant la pertinence du chunk",
+          "threshold": "**Seuil** - Limite minimale de similarité (0.15) pour inclusion dans les résultats"
+        }
       }
     }
   }
