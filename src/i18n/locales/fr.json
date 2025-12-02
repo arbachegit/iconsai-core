@@ -405,6 +405,92 @@
           "pgvector": "**pgvector** - Extension PostgreSQL pour vecteurs"
         }
       },
+      "embeddings": {
+        "title": "Embeddings et Similarité Vectorielle",
+        "intro": "sont des représentations numériques de texte qui capturent le sens sémantique. Elles permettent aux ordinateurs de 'comprendre' et comparer des textes mathématiquement.",
+        "whatIs": {
+          "title": "1. Que sont les Embeddings ?",
+          "content": "Les embeddings sont des vecteurs de nombres qui représentent des mots, phrases ou documents dans un espace mathématique. Les textes avec des significations similaires sont proches dans cet espace, permettant des recherches sémantiques."
+        },
+        "models": {
+          "title": "2. Modèles d'Embeddings",
+          "intro": "Différents modèles génèrent des embeddings avec des caractéristiques distinctes :",
+          "model": "Modèle",
+          "dimensions": "Dimensions",
+          "useCase": "Cas d'Usage",
+          "smallDim": "1536",
+          "smallUse": "Usage général, bon rapport qualité-prix",
+          "largeDim": "3072",
+          "largeUse": "Haute précision, textes complexes",
+          "adaDim": "1536",
+          "adaUse": "Hérité, encore largement utilisé"
+        },
+        "similarity": {
+          "title": "3. Calcul de Similarité",
+          "intro": "Nous mesurons la 'proximité' de deux embeddings en utilisant :",
+          "cosine": "**Similarité Cosinus :** Mesure l'angle entre vecteurs (0 = différents, 1 = identiques). Utilisé dans le système.",
+          "euclidean": "**Distance Euclidienne :** Distance géométrique directe entre points.",
+          "dot": "**Produit Scalaire :** Considère la magnitude des vecteurs, utile pour les recommandations."
+        },
+        "quality": {
+          "title": "4. Critères de Qualité",
+          "intro": "Des embeddings de haute qualité nécessitent :",
+          "criterion1": "**Chunks bien structurés :** Textes cohérents et complets (idéalement 200-800 mots).",
+          "criterion2": "**Contexte préservé :** Éviter les coupures au milieu de phrases ou concepts.",
+          "criterion3": "**Densité sémantique :** Chunks avec contenu riche et pertinent, pas seulement des connecteurs."
+        },
+        "glossary": {
+          "title": "5. Glossaire",
+          "vector": "**Vecteur** - Liste ordonnée de nombres représentant un concept",
+          "dimension": "**Dimension** - Nombre de valeurs dans le vecteur (ex: 1536)",
+          "distance": "**Distance** - Mesure de différence entre deux vecteurs",
+          "similarity": "**Similarité** - Mesure de proximité entre deux vecteurs (inverse de la distance)"
+        }
+      },
+      "chunks": {
+        "title": "Chunks et Fragmentation",
+        "intro": "sont des fragments de documents optimisés pour la recherche sémantique. La stratégie de fragmentation impacte directement la qualité des réponses RAG.",
+        "whatIs": {
+          "title": "1. Que sont les Chunks ?",
+          "content": "Les chunks sont des unités de texte en lesquelles les documents sont divisés pour le traitement RAG. Chaque chunk reçoit son propre embedding et est indexé indépendamment, permettant une recherche granulaire d'extraits pertinents."
+        },
+        "strategy": {
+          "title": "2. Stratégies de Fragmentation",
+          "intro": "Il existe différentes façons de diviser les documents :",
+          "fixedSize": "**Taille Fixe :** Divise par nombre de mots ou tokens (utilisé dans ce système : ~750 mots).",
+          "semantic": "**Sémantique :** Divise par paragraphes, sections ou sujets complets.",
+          "overlap": "**Chevauchement :** Les chunks partagent des mots aux bordures pour préserver le contexte (180 mots de chevauchement)."
+        },
+        "sizing": {
+          "title": "3. Taille Idéale des Chunks",
+          "intro": "La taille impacte la précision et le contexte :",
+          "size": "Taille",
+          "words": "Mots",
+          "quality": "Qualité",
+          "verySmallWords": "< 50",
+          "verySmallQuality": "❌ Très faible - contexte insuffisant",
+          "smallWords": "50-200",
+          "smallQuality": "⚠️ Faible - contexte limité",
+          "mediumWords": "200-800",
+          "mediumQuality": "✅ Bonne - équilibre idéal",
+          "largeWords": "800+",
+          "largeQuality": "⚡ Excellent - contexte riche"
+        },
+        "impact": {
+          "title": "4. Impact sur RAG",
+          "intro": "Des chunks mal dimensionnés affectent :",
+          "precision": "**Précision :** Les petits chunks perdent du contexte ; les grands mélangent plusieurs sujets.",
+          "context": "**Contexte :** Le chevauchement préserve la continuité entre chunks adjacents.",
+          "performance": "**Performance :** Plus de chunks = plus de recherches, mais plus grande granularité."
+        },
+        "glossary": {
+          "title": "5. Glossaire",
+          "chunk": "**Chunk** - Fragment de document avec taille optimisée pour la recherche",
+          "overlap": "**Chevauchement** - Mots partagés entre chunks consécutifs",
+          "window": "**Fenêtre** - Taille du chunk en mots ou tokens",
+          "token": "**Token** - Unité de texte de base (~0.75 mots en portugais)"
+        }
+      },
       "vectorStore": {
         "title": "Vector Store et pgvector",
         "intro": "est le composant responsable du stockage et de la recherche de représentations vectorielles (embeddings) de texte. Il permet des recherches par similarité sémantique plutôt que par correspondance exacte de mots.",

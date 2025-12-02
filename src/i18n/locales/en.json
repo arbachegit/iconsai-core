@@ -405,6 +405,92 @@
           "pgvector": "**pgvector** - PostgreSQL extension for vectors"
         }
       },
+      "embeddings": {
+        "title": "Embeddings and Vector Similarity",
+        "intro": "are numerical representations of text that capture semantic meaning. They allow computers to 'understand' and compare texts mathematically.",
+        "whatIs": {
+          "title": "1. What are Embeddings?",
+          "content": "Embeddings are vectors of numbers that represent words, phrases, or documents in a mathematical space. Texts with similar meanings are close in this space, enabling semantic searches."
+        },
+        "models": {
+          "title": "2. Embedding Models",
+          "intro": "Different models generate embeddings with distinct characteristics:",
+          "model": "Model",
+          "dimensions": "Dimensions",
+          "useCase": "Use Case",
+          "smallDim": "1536",
+          "smallUse": "General use, cost-effective",
+          "largeDim": "3072",
+          "largeUse": "High precision, complex texts",
+          "adaDim": "1536",
+          "adaUse": "Legacy, still widely used"
+        },
+        "similarity": {
+          "title": "3. Similarity Calculation",
+          "intro": "We measure how 'close' two embeddings are using:",
+          "cosine": "**Cosine Similarity:** Measures the angle between vectors (0 = different, 1 = identical). Used in the system.",
+          "euclidean": "**Euclidean Distance:** Direct geometric distance between points.",
+          "dot": "**Dot Product:** Considers vector magnitude, useful for recommendations."
+        },
+        "quality": {
+          "title": "4. Quality Criteria",
+          "intro": "High-quality embeddings require:",
+          "criterion1": "**Well-structured chunks:** Coherent and complete texts (ideally 200-800 words).",
+          "criterion2": "**Preserved context:** Avoid cuts in the middle of sentences or concepts.",
+          "criterion3": "**Semantic density:** Chunks with rich and relevant content, not just connectors."
+        },
+        "glossary": {
+          "title": "5. Glossary",
+          "vector": "**Vector** - Ordered list of numbers representing a concept",
+          "dimension": "**Dimension** - Number of values in the vector (e.g., 1536)",
+          "distance": "**Distance** - Measure of difference between two vectors",
+          "similarity": "**Similarity** - Measure of proximity between two vectors (inverse of distance)"
+        }
+      },
+      "chunks": {
+        "title": "Chunks and Fragmentation",
+        "intro": "are document fragments optimized for semantic search. The fragmentation strategy directly impacts RAG response quality.",
+        "whatIs": {
+          "title": "1. What are Chunks?",
+          "content": "Chunks are text units into which documents are divided for RAG processing. Each chunk receives its own embedding and is indexed independently, enabling granular search for relevant excerpts."
+        },
+        "strategy": {
+          "title": "2. Fragmentation Strategies",
+          "intro": "There are different ways to divide documents:",
+          "fixedSize": "**Fixed Size:** Divides by number of words or tokens (used in this system: ~750 words).",
+          "semantic": "**Semantic:** Divides by paragraphs, sections, or complete topics.",
+          "overlap": "**Overlap:** Chunks share words at borders to preserve context (180 words overlap)."
+        },
+        "sizing": {
+          "title": "3. Ideal Chunk Size",
+          "intro": "Size impacts precision and context:",
+          "size": "Size",
+          "words": "Words",
+          "quality": "Quality",
+          "verySmallWords": "< 50",
+          "verySmallQuality": "❌ Very low - insufficient context",
+          "smallWords": "50-200",
+          "smallQuality": "⚠️ Low - limited context",
+          "mediumWords": "200-800",
+          "mediumQuality": "✅ Good - ideal balance",
+          "largeWords": "800+",
+          "largeQuality": "⚡ Excellent - rich context"
+        },
+        "impact": {
+          "title": "4. Impact on RAG",
+          "intro": "Poorly sized chunks affect:",
+          "precision": "**Precision:** Small chunks lose context; large ones mix multiple topics.",
+          "context": "**Context:** Overlap preserves continuity between adjacent chunks.",
+          "performance": "**Performance:** More chunks = more searches, but greater granularity."
+        },
+        "glossary": {
+          "title": "5. Glossary",
+          "chunk": "**Chunk** - Document fragment with size optimized for search",
+          "overlap": "**Overlap** - Words shared between consecutive chunks",
+          "window": "**Window** - Chunk size in words or tokens",
+          "token": "**Token** - Basic text unit (~0.75 words in Portuguese)"
+        }
+      },
       "vectorStore": {
         "title": "Vector Store and pgvector",
         "intro": "is the component responsible for storing and searching vector representations (embeddings) of text. It enables semantic similarity searches instead of exact word matching.",

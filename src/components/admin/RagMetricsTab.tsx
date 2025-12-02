@@ -35,7 +35,102 @@ import {
 
 export const RagMetricsTab = () => {
   const [vectorStoreInfoOpen, setVectorStoreInfoOpen] = useState(false);
+  const [embeddingsInfoOpen, setEmbeddingsInfoOpen] = useState(false);
+  const [chunksInfoOpen, setChunksInfoOpen] = useState(false);
   const { t, ready } = useTranslation();
+
+  // Generate Embeddings info content from i18n translations
+  const getEmbeddingsInfoContent = () => {
+    if (!ready) return "Carregando...";
+    
+    const emb = t('admin.tooltips.embeddings', { returnObjects: true }) as any;
+    if (!emb || typeof emb !== 'object' || !emb.intro) {
+      return "Erro ao carregar informações sobre Embeddings.";
+    }
+    
+    return `**Embeddings** ${emb.intro}
+
+---
+
+### ${emb.whatIs.title}
+${emb.whatIs.content}
+
+### ${emb.models.title}
+${emb.models.intro}
+
+| ${emb.models.model} | ${emb.models.dimensions} | ${emb.models.useCase} |
+| :--- | :--- | :--- |
+| **text-embedding-3-small** | ${emb.models.smallDim} | ${emb.models.smallUse} |
+| **text-embedding-3-large** | ${emb.models.largeDim} | ${emb.models.largeUse} |
+| **ada-002** | ${emb.models.adaDim} | ${emb.models.adaUse} |
+
+### ${emb.similarity.title}
+${emb.similarity.intro}
+
+* ${emb.similarity.cosine}
+* ${emb.similarity.euclidean}
+* ${emb.similarity.dot}
+
+### ${emb.quality.title}
+${emb.quality.intro}
+
+1. ${emb.quality.criterion1}
+2. ${emb.quality.criterion2}
+3. ${emb.quality.criterion3}
+
+### ${emb.glossary.title}
+* ${emb.glossary.vector}
+* ${emb.glossary.dimension}
+* ${emb.glossary.distance}
+* ${emb.glossary.similarity}`;
+  };
+
+  // Generate Chunks info content from i18n translations
+  const getChunksInfoContent = () => {
+    if (!ready) return "Carregando...";
+    
+    const ch = t('admin.tooltips.chunks', { returnObjects: true }) as any;
+    if (!ch || typeof ch !== 'object' || !ch.intro) {
+      return "Erro ao carregar informações sobre Chunks.";
+    }
+    
+    return `**Chunks** ${ch.intro}
+
+---
+
+### ${ch.whatIs.title}
+${ch.whatIs.content}
+
+### ${ch.strategy.title}
+${ch.strategy.intro}
+
+* ${ch.strategy.fixedSize}
+* ${ch.strategy.semantic}
+* ${ch.strategy.overlap}
+
+### ${ch.sizing.title}
+${ch.sizing.intro}
+
+| ${ch.sizing.size} | ${ch.sizing.words} | ${ch.sizing.quality} |
+| :--- | :--- | :--- |
+| **Muito Pequeno** | ${ch.sizing.verySmallWords} | ${ch.sizing.verySmallQuality} |
+| **Pequeno** | ${ch.sizing.smallWords} | ${ch.sizing.smallQuality} |
+| **Médio** | ${ch.sizing.mediumWords} | ${ch.sizing.mediumQuality} |
+| **Grande** | ${ch.sizing.largeWords} | ${ch.sizing.largeQuality} |
+
+### ${ch.impact.title}
+${ch.impact.intro}
+
+* ${ch.impact.precision}
+* ${ch.impact.context}
+* ${ch.impact.performance}
+
+### ${ch.glossary.title}
+* ${ch.glossary.chunk}
+* ${ch.glossary.overlap}
+* ${ch.glossary.window}
+* ${ch.glossary.token}`;
+  };
 
   // Generate Vector Store info content from i18n translations
   const getVectorStoreInfoContent = () => {
@@ -407,6 +502,83 @@ ${vs.howItWorks.intro}
         <div className="flex items-center gap-3 mb-4">
           <h3 className="text-lg font-semibold">Métricas de Performance RAG</h3>
           
+          {/* Tooltip Chunks Info */}
+          <Popover open={chunksInfoOpen} onOpenChange={setChunksInfoOpen}>
+            <PopoverTrigger asChild>
+              <button className="relative w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 hover:from-cyan-500/30 hover:to-blue-500/30 transition-all duration-300 group flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-cyan-500/50">
+                <Lightbulb className="h-4 w-4 text-cyan-500 group-hover:text-cyan-400 transition-colors" />
+                <div className="absolute -top-1 -right-1 pointer-events-none">
+                  <div className="relative">
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+                    <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+                  </div>
+                </div>
+              </button>
+            </PopoverTrigger>
+            
+            <PopoverContent 
+              className="w-[550px] max-h-[75vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-cyan-500/20" 
+              side="right"
+              align="start"
+            >
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <Lightbulb className="h-5 w-5 text-cyan-500 flex-shrink-0 mt-0.5" />
+                  <h3 className="text-base font-bold text-cyan-500">Chunks e Fragmentação</h3>
+                </div>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h3: ({ children }) => (
+                      <h3 className="text-sm font-bold mt-4 mb-2 text-foreground">
+                        {children}
+                      </h3>
+                    ),
+                    p: ({ children }) => (
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+                        {children}
+                      </p>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                        {children}
+                      </ul>
+                    ),
+                    li: ({ children }) => (
+                      <li className="text-sm text-muted-foreground">{children}</li>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-semibold text-foreground">{children}</strong>
+                    ),
+                    table: ({ children }) => (
+                      <div className="overflow-x-auto my-3">
+                        <table className="w-full border-collapse text-xs">
+                          {children}
+                        </table>
+                      </div>
+                    ),
+                    thead: ({ children }) => (
+                      <thead className="bg-muted/50">{children}</thead>
+                    ),
+                    th: ({ children }) => (
+                      <th className="border border-border px-2 py-1.5 text-left font-semibold">
+                        {children}
+                      </th>
+                    ),
+                    td: ({ children }) => (
+                      <td className="border border-border px-2 py-1.5">
+                        {children}
+                      </td>
+                    ),
+                    hr: () => <hr className="my-3 border-border" />,
+                  }}
+                >
+                  {getChunksInfoContent()}
+                </ReactMarkdown>
+              </div>
+            </PopoverContent>
+          </Popover>
+          
           {/* Tooltip Vector Store Info */}
           <Popover open={vectorStoreInfoOpen} onOpenChange={setVectorStoreInfoOpen}>
             <PopoverTrigger asChild>
@@ -711,9 +883,93 @@ ${vs.howItWorks.intro}
 
       {/* Embedding Quality Analysis */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          🔬 Análise de Qualidade de Embeddings
-        </h3>
+        <div className="flex items-center gap-3 mb-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            🔬 Análise de Qualidade de Embeddings
+          </h3>
+          
+          {/* Tooltip Embeddings Info */}
+          <Popover open={embeddingsInfoOpen} onOpenChange={setEmbeddingsInfoOpen}>
+            <PopoverTrigger asChild>
+              <button className="relative w-8 h-8 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 hover:from-amber-500/30 hover:to-orange-500/30 transition-all duration-300 group flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-amber-500/50">
+                <Lightbulb className="h-4 w-4 text-amber-500 group-hover:text-amber-400 transition-colors" />
+                <div className="absolute -top-1 -right-1 pointer-events-none">
+                  <div className="relative">
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+                    <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+                  </div>
+                </div>
+              </button>
+            </PopoverTrigger>
+            
+            <PopoverContent 
+              className="w-[550px] max-h-[75vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-amber-500/20" 
+              side="right"
+              align="start"
+            >
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <Lightbulb className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <h3 className="text-base font-bold text-amber-500">Embeddings e Similaridade Vetorial</h3>
+                </div>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h3: ({ children }) => (
+                      <h3 className="text-sm font-bold mt-4 mb-2 text-foreground">
+                        {children}
+                      </h3>
+                    ),
+                    p: ({ children }) => (
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+                        {children}
+                      </p>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                        {children}
+                      </ul>
+                    ),
+                    ol: ({ children }) => (
+                      <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                        {children}
+                      </ol>
+                    ),
+                    li: ({ children }) => (
+                      <li className="text-sm text-muted-foreground">{children}</li>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-semibold text-foreground">{children}</strong>
+                    ),
+                    table: ({ children }) => (
+                      <div className="overflow-x-auto my-3">
+                        <table className="w-full border-collapse text-xs">
+                          {children}
+                        </table>
+                      </div>
+                    ),
+                    thead: ({ children }) => (
+                      <thead className="bg-muted/50">{children}</thead>
+                    ),
+                    th: ({ children }) => (
+                      <th className="border border-border px-2 py-1.5 text-left font-semibold">
+                        {children}
+                      </th>
+                    ),
+                    td: ({ children }) => (
+                      <td className="border border-border px-2 py-1.5">
+                        {children}
+                      </td>
+                    ),
+                    hr: () => <hr className="my-3 border-border" />,
+                  }}
+                >
+                  {getEmbeddingsInfoContent()}
+                </ReactMarkdown>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="p-4 bg-muted/50 rounded-lg text-center">
             <p className="text-sm text-muted-foreground mb-2">Chunks Válidos</p>
