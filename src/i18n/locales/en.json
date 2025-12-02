@@ -214,6 +214,7 @@
     "healthTitle": "KnowYOU",
     "healthSubtitle": "AI Health Assistant",
     "studyTitle": "AI Assistant to help you study",
+    "studyModalTitle": "Talk to KnowYOU",
     "greeting": "Hello! I'm KnowYOU",
     "greetingDesc": "Your specialized health assistant. How can I help you today?",
     "placeholder": "Type your message about health...",

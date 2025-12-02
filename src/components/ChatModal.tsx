@@ -47,22 +47,9 @@ export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border/50 shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
-            <h2 className="text-xl font-bold text-gradient">Fale com o KnowYOU</h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClose}
-              className="rounded-full"
-            >
-              <X className="w-5 h-5" />
-            </Button>
-          </div>
-
           {/* Chat Content */}
-          <div className="p-4 h-[600px]">
-            <ChatStudy />
+          <div className="p-4 h-[700px]">
+            <ChatStudy onClose={handleClose} />
           </div>
         </div>
       </div>
