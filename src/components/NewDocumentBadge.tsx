@@ -22,7 +22,6 @@ export function NewDocumentBadge({ currentTheme, onThemeClick, className }: NewD
         "border-primary/50 hover:border-primary",
         "text-foreground hover:text-primary-foreground hover:bg-primary",
         "shadow-lg hover:shadow-primary/25",
-        "animate-pulse hover:animate-none",
         className
       )}
     >

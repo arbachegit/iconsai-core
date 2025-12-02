@@ -23,12 +23,12 @@ interface UseDocumentSuggestionsReturn {
 export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumentSuggestionsReturn {
   const [currentThemeIndex, setCurrentThemeIndex] = useState(0);
 
-  // Buscar documentos recentes (últimos 7 dias)
+  // Buscar documentos recentes (últimos 3 dias)
   const { data: recentDocs } = useQuery({
     queryKey: ['recent-documents', chatType],
     queryFn: async () => {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
       
       const { data, error } = await supabase
         .from('documents')
@@ -40,7 +40,7 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
         `)
         .eq('target_chat', chatType)
         .eq('status', 'completed')
-        .gte('created_at', sevenDaysAgo.toISOString())
+        .gte('created_at', threeDaysAgo.toISOString())
         .order('created_at', { ascending: false })
         .limit(5);
       
@@ -128,12 +128,12 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
     return newDocumentData.themes[currentThemeIndex] || newDocumentData.themes[0];
   }, [newDocumentData, currentThemeIndex]);
 
-  // Sugestões complementares (documentos mais antigos)
+  // Sugestões complementares (documentos mais antigos, >3 dias)
   const { data: olderDocs } = useQuery({
     queryKey: ['older-documents', chatType],
     queryFn: async () => {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
       
       const { data, error } = await supabase
         .from('documents')
@@ -143,7 +143,7 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
         `)
         .eq('target_chat', chatType)
         .eq('status', 'completed')
-        .lt('created_at', sevenDaysAgo.toISOString())
+        .lt('created_at', threeDaysAgo.toISOString())
         .order('created_at', { ascending: false })
         .limit(10);
       
