@@ -570,6 +570,32 @@
           "similarity": "**Similarity** - Score between 0 and 1 indicating chunk relevance",
           "threshold": "**Threshold** - Minimum similarity limit (0.15) for inclusion in results"
         }
+      },
+      "ragDiagnostics": {
+        "threshold": {
+          "title": "Similarity Threshold",
+          "intro": "The **similarity threshold** determines the minimum relevance level required for a chunk to be considered relevant to the user's query.",
+          "vector": "### Vector Search (0.15)\n\nIn vector search, 1536-dimensional embeddings are compared using cosine similarity. A threshold of **0.15** means only chunks with similarity ≥ 15% are returned.\n\n**Why 0.15?**\n- **Very high values** (>0.30): Return few results, may miss relevant information\n- **Very low values** (<0.10): Return too much noise, less relevant information\n- **0.15 is the sweet spot**: Balances precision and recall for educational context",
+          "keyword": "### Keyword Search (0.50)\n\nWhen vector search finds no results, the system extracts keywords from the query (removing stopwords) and searches for exact matches. Threshold of **0.50** is more restrictive because keywords require higher similarity.\n\n**Hybrid Flow:**\n1. Try vector search with threshold 0.15\n2. If 0 results → extract keywords\n3. Full-text search with threshold 0.50\n4. Ensures context is always available",
+          "examples": "### Practical Examples\n\n| Query | Threshold | Chunks Found | Context |\n|-------|-----------|--------------|----------|\n| \"John McCarthy\" | 0.15 | 5 chunks | ✅ Rich context |\n| \"John McCarthy\" | 0.30 | 1 chunk | ⚠️ Limited context |\n| \"XYZ123\" | 0.15 | 0 chunks | ❌ Fallback to keyword |",
+          "glossary": "### Glossary\n\n- **Cosine Similarity**: Vector distance measure (0-1)\n- **Recall**: % of relevant documents found\n- **Precision**: % of results that are relevant\n- **Threshold**: Minimum cutoff value to accept result"
+        },
+        "embedding": {
+          "title": "Embedding Model",
+          "intro": "**text-embedding-3-small** is OpenAI's model used to transform text into 1536-dimensional numerical vectors, capturing semantic meaning.",
+          "specs": "### Technical Specifications\n\n- **Dimensions**: 1536 numerical values\n- **Max context**: 8,191 tokens (~6,000 words)\n- **Model**: text-embedding-3-small (OpenAI)\n- **Accuracy**: 62.3% on MTEB benchmark\n- **Cost**: $0.02 per 1M tokens",
+          "comparison": "### Comparison with Other Models\n\n| Model | Dimensions | Accuracy | Cost (1M) | Use |\n|-------|------------|----------|-----------|-----|\n| text-embedding-3-small | 1536 | 62.3% | $0.02 | ✅ Ideal (cost/benefit) |\n| text-embedding-3-large | 3072 | 64.6% | $0.13 | Academic research |\n| ada-002 | 1536 | 61.0% | $0.10 | Legacy |",
+          "how": "### How Does It Work?\n\n1. **Input**: Text \"type 2 diabetes\"\n2. **Processing**: Model transforms to vector [0.023, -0.156, 0.891, ...]\n3. **Storage**: pgvector saves in PostgreSQL\n4. **Search**: Calculates cosine similarity between query and chunks\n\n**Why Vectors?**\n- Capture **semantic meaning**, not just exact words\n- \"diabetes\" and \"high blood sugar\" have similar vectors\n- Enable concept search, not just keyword",
+          "glossary": "### Glossary\n\n- **Embedding**: Vector representation of text\n- **Token**: Basic text unit (~0.75 word)\n- **pgvector**: PostgreSQL extension for vector search\n- **MTEB**: Standard benchmark for embeddings"
+        },
+        "matchCount": {
+          "title": "Default Match Count",
+          "intro": "**Match Count** defines how many semantically similar chunks will be sent as context to the LLM to generate the final response.",
+          "tradeoffs": "### Trade-offs of Different Values\n\n| Count | Context | Tokens | Latency | Cost | Use |\n|-------|---------|--------|---------|------|-----|\n| 1 | Minimal | ~600 | Fast | Low | Direct answers |\n| 3 | Moderate | ~1,800 | Medium | Medium | FAQ, support |\n| **5** | **Rich** | **~3,000** | **Good** | **Ideal** | **✅ Education** |\n| 10 | Very rich | ~6,000 | Slow | High | Deep research |",
+          "recommendations": "### When to Use Each Value\n\n**Match Count 1-2**: Simple questions, direct answers (\"What is X?\")\n\n**Match Count 3-5**: Education, complete explanations (current)\n- Balances rich context with performance\n- Ideal for educational chat\n- Covers multiple perspectives on topic\n\n**Match Count 7-10**: Deep analysis, complex comparisons\n- Only when extensive context needed\n- Significantly increases cost and latency",
+          "impact": "### System Impact\n\n**Insufficient Context (Count too low):**\n- ❌ Superficial answers\n- ❌ Misses important nuances\n- ❌ User needs multiple questions\n\n**Excessive Context (Count too high):**\n- ❌ LLM may get confused with conflicting information\n- ❌ High latency (user waits longer)\n- ❌ High token cost\n\n**Count 5 (Current):**\n- ✅ Rich and complete context\n- ✅ Acceptable performance (~2-3s)\n- ✅ Optimized cost",
+          "glossary": "### Glossary\n\n- **Chunk**: Document piece (~300 words)\n- **Token**: API billing unit (~0.75 word)\n- **Latency**: System response time\n- **Context Window**: Token limit that LLM processes"
+        }
       }
     }
   }

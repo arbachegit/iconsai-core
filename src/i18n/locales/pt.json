@@ -569,6 +569,32 @@
           "similarity": "**Similaridade** - Score entre 0 e 1 indicando relevância do chunk",
           "threshold": "**Threshold** - Limite mínimo de similaridade (0.15) para inclusão nos resultados"
         }
+      },
+      "ragDiagnostics": {
+        "threshold": {
+          "title": "Threshold de Similaridade",
+          "intro": "O **threshold de similaridade** determina o nível mínimo de relevância necessário para que um chunk seja considerado relevante para a query do usuário.",
+          "vector": "### Busca Vetorial (0.15)\n\nNa busca vetorial, embeddings de 1536 dimensões são comparados usando similaridade de cosseno. Um threshold de **0.15** significa que apenas chunks com similaridade ≥ 15% são retornados.\n\n**Por que 0.15?**\n- **Valores muito altos** (>0.30): Retornam poucos resultados, podem não achar informação relevante\n- **Valores muito baixos** (<0.10): Retornam muito ruído, informação pouco relevante\n- **0.15 é o ponto ideal**: Balança precisão e recall para contexto educacional",
+          "keyword": "### Busca por Palavra-chave (0.50)\n\nQuando a busca vetorial não encontra resultados, o sistema extrai palavras-chave da query (removendo stopwords) e busca por correspondências exatas. Threshold de **0.50** é mais restritivo porque palavra-chave exige maior similaridade.\n\n**Fluxo Híbrido:**\n1. Tenta busca vetorial com threshold 0.15\n2. Se 0 resultados → extrai palavras-chave\n3. Busca full-text com threshold 0.50\n4. Garante que sempre há contexto disponível",
+          "examples": "### Exemplos Práticos\n\n| Query | Threshold | Chunks Encontrados | Contexto |\n|-------|-----------|---------------------|----------|\n| \"John McCarthy\" | 0.15 | 5 chunks | ✅ Contexto rico |\n| \"John McCarthy\" | 0.30 | 1 chunk | ⚠️ Contexto limitado |\n| \"XYZ123\" | 0.15 | 0 chunks | ❌ Fallback para keyword |",
+          "glossary": "### Glossário\n\n- **Similaridade de Cosseno**: Medida de distância vetorial (0-1)\n- **Recall**: % de documentos relevantes encontrados\n- **Precisão**: % de resultados que são relevantes\n- **Threshold**: Valor mínimo de corte para aceitar resultado"
+        },
+        "embedding": {
+          "title": "Modelo de Embedding",
+          "intro": "**text-embedding-3-small** é o modelo da OpenAI usado para transformar texto em vetores numéricos de 1536 dimensões, capturando significado semântico.",
+          "specs": "### Especificações Técnicas\n\n- **Dimensões**: 1536 valores numéricos\n- **Contexto máximo**: 8.191 tokens (~6.000 palavras)\n- **Modelo**: text-embedding-3-small (OpenAI)\n- **Precisão**: 62.3% no MTEB benchmark\n- **Custo**: $0.02 por 1M tokens",
+          "comparison": "### Comparação com Outros Modelos\n\n| Modelo | Dimensões | Precisão | Custo (1M) | Uso |\n|--------|-----------|----------|------------|-----|\n| text-embedding-3-small | 1536 | 62.3% | $0.02 | ✅ Ideal (custo/benefício) |\n| text-embedding-3-large | 3072 | 64.6% | $0.13 | Pesquisa acadêmica |\n| ada-002 | 1536 | 61.0% | $0.10 | Legado |",
+          "how": "### Como Funciona?\n\n1. **Input**: Texto \"diabetes tipo 2\"\n2. **Processamento**: Modelo transforma em vetor [0.023, -0.156, 0.891, ...]\n3. **Armazenamento**: pgvector salva no PostgreSQL\n4. **Busca**: Calcula similaridade de cosseno entre query e chunks\n\n**Por que Vetores?**\n- Capturam **significado semântico**, não apenas palavras exatas\n- \"diabetes\" e \"glicemia elevada\" têm vetores similares\n- Permitem busca por conceito, não só por keyword",
+          "glossary": "### Glossário\n\n- **Embedding**: Representação vetorial de texto\n- **Token**: Unidade básica de texto (~0.75 palavra)\n- **pgvector**: Extensão PostgreSQL para busca vetorial\n- **MTEB**: Benchmark padrão para embeddings"
+        },
+        "matchCount": {
+          "title": "Match Count Padrão",
+          "intro": "**Match Count** define quantos chunks semanticamente similares serão enviados como contexto ao LLM para gerar a resposta final.",
+          "tradeoffs": "### Trade-offs de Diferentes Valores\n\n| Count | Contexto | Tokens | Latência | Custo | Uso |\n|-------|----------|--------|----------|-------|-----|\n| 1 | Mínimo | ~600 | Rápido | Baixo | Respostas diretas |\n| 3 | Moderado | ~1.800 | Médio | Médio | FAQ, suporte |\n| **5** | **Rico** | **~3.000** | **Bom** | **Ideal** | **✅ Educação** |\n| 10 | Muito rico | ~6.000 | Lento | Alto | Pesquisa profunda |",
+          "recommendations": "### Quando Usar Cada Valor\n\n**Match Count 1-2**: Perguntas simples, respostas diretas (\"O que é X?\")\n\n**Match Count 3-5**: Educação, explicações completas (atual)\n- Balança contexto rico com performance\n- Ideal para chat educacional\n- Cobre múltiplas perspectivas do tema\n\n**Match Count 7-10**: Análise profunda, comparações complexas\n- Apenas quando necessário contexto extenso\n- Aumenta custo e latência significativamente",
+          "impact": "### Impacto no Sistema\n\n**Contexto Insuficiente (Count muito baixo):**\n- ❌ Respostas superficiais\n- ❌ Perde nuances importantes\n- ❌ Usuário precisa fazer múltiplas perguntas\n\n**Contexto Excessivo (Count muito alto):**\n- ❌ LLM pode se confundir com informação conflitante\n- ❌ Latência alta (usuário espera mais)\n- ❌ Custo elevado de tokens\n\n**Count 5 (Atual):**\n- ✅ Contexto rico e completo\n- ✅ Performance aceitável (~2-3s)\n- ✅ Custo otimizado",
+          "glossary": "### Glossário\n\n- **Chunk**: Pedaço de documento (~300 palavras)\n- **Token**: Unidade de cobrança da API (~0.75 palavra)\n- **Latência**: Tempo de resposta do sistema\n- **Context Window**: Limite de tokens que LLM processa"
+        }
       }
     }
   }
