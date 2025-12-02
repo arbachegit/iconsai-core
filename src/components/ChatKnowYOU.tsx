@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
 import { Send, Loader2, ImagePlus, Mic, Square, X } from "lucide-react";
+import { ChartTypeSelector, ChartType } from "./ChartTypeSelector";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
@@ -98,6 +99,7 @@ export default function ChatKnowYOU() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isImageMode, setIsImageMode] = useState(false);
+  const [selectedChartType, setSelectedChartType] = useState<ChartType | null>(null);
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
   const [waitingCountdown, setWaitingCountdown] = useState(5);
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
@@ -238,8 +240,13 @@ export default function ChatKnowYOU() {
         setInput("");
         setIsImageMode(false);
       } else {
-        sendMessage(input);
+        // Prefix message with chart type preference if selected
+        const messageToSend = selectedChartType 
+          ? `[PREFERÊNCIA: Gráfico de ${selectedChartType}] ${input}`
+          : input;
+        sendMessage(messageToSend);
         setInput("");
+        setSelectedChartType(null); // Reset after sending
       }
       // Scroll imediato após enviar
       setTimeout(scrollToBottom, 100);
@@ -741,6 +748,12 @@ export default function ChatKnowYOU() {
             <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} title="Desenhar" className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
               <ImagePlus className="w-4 h-4" />
             </Button>
+            
+            <ChartTypeSelector
+              selectedType={selectedChartType}
+              onSelectType={setSelectedChartType}
+              disabled={isLoading || isImageMode}
+            />
           </div>
         </div>
         <p className="text-xs text-muted-foreground mt-2">

@@ -225,22 +225,28 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    - "Perfeito! Na resposta anterior você pode ver..."
    - Qualquer resposta SEM o bloco \`\`\`mermaid\`\`\` quando pedirem diagrama
    
-   A) Para GRÁFICOS DE DADOS (barras, linhas, pizza, área):
-      Use o formato exato: CHART_DATA: {"type":"...", "title":"...", "data":[...]}
-      
-      Tipos disponíveis: "bar", "line", "pie", "area"
-      
-      Exemplo de gráfico de barras:
-      CHART_DATA: {"type":"bar","title":"Casos por Região","data":[{"name":"Norte","value":150},{"name":"Sul","value":280},{"name":"Sudeste","value":520}]}
-      
-      Exemplo de gráfico de pizza:
-      CHART_DATA: {"type":"pie","title":"Distribuição de Especialidades","data":[{"name":"Cardiologia","value":30},{"name":"Neurologia","value":25},{"name":"Ortopedia","value":20},{"name":"Outros","value":25}]}
-      
-      Exemplo de gráfico de linhas (múltiplas séries):
-      CHART_DATA: {"type":"line","title":"Evolução Mensal","data":[{"name":"Jan","internacoes":100,"altas":95},{"name":"Fev","internacoes":120,"altas":110}],"dataKeys":["internacoes","altas"]}
-      
-      Exemplo de gráfico de área:
-      CHART_DATA: {"type":"area","title":"Tendência de Casos","data":[{"name":"2020","value":500},{"name":"2021","value":650},{"name":"2022","value":800},{"name":"2023","value":720}]}
+    A) Para GRÁFICOS DE DADOS (barras, linhas, pizza, área):
+       Use o formato exato: CHART_DATA: {"type":"...", "title":"...", "data":[...]}
+       
+       Tipos disponíveis: "bar", "line", "pie", "area"
+       
+       🔴 PREFERÊNCIA DO USUÁRIO:
+       Se a mensagem contiver "[PREFERÊNCIA: Gráfico de {tipo}]" no início:
+       - Use OBRIGATORIAMENTE o tipo especificado (bar, line, pie, area)
+       - NÃO inclua a tag de preferência na sua resposta
+       - Gere o CHART_DATA com o tipo solicitado pelo usuário
+       
+       Exemplo de gráfico de barras:
+       CHART_DATA: {"type":"bar","title":"Casos por Região","data":[{"name":"Norte","value":150},{"name":"Sul","value":280},{"name":"Sudeste","value":520}]}
+       
+       Exemplo de gráfico de pizza:
+       CHART_DATA: {"type":"pie","title":"Distribuição de Especialidades","data":[{"name":"Cardiologia","value":30},{"name":"Neurologia","value":25},{"name":"Ortopedia","value":20},{"name":"Outros","value":25}]}
+       
+       Exemplo de gráfico de linhas (múltiplas séries):
+       CHART_DATA: {"type":"line","title":"Evolução Mensal","data":[{"name":"Jan","internacoes":100,"altas":95},{"name":"Fev","internacoes":120,"altas":110}],"dataKeys":["internacoes","altas"]}
+       
+       Exemplo de gráfico de área:
+       CHART_DATA: {"type":"area","title":"Tendência de Casos","data":[{"name":"2020","value":500},{"name":"2021","value":650},{"name":"2022","value":800},{"name":"2023","value":720}]}
 
    B) Para FLUXOGRAMAS e DIAGRAMAS:
       Use blocos Mermaid - O SISTEMA RENDERIZA AUTOMATICAMENTE:

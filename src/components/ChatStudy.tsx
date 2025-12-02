@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatStudy } from "@/hooks/useChatStudy";
 import { Send, Loader2, ImagePlus, Mic, Square, X } from "lucide-react";
+import { ChartTypeSelector, ChartType } from "./ChartTypeSelector";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
@@ -81,6 +82,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isImageMode, setIsImageMode] = useState(false);
+  const [selectedChartType, setSelectedChartType] = useState<ChartType | null>(null);
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
   const [waitingCountdown, setWaitingCountdown] = useState(5);
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
@@ -186,8 +188,13 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
         setInput("");
         setIsImageMode(false);
       } else {
-        sendMessage(input);
+        // Prefix message with chart type preference if selected
+        const messageToSend = selectedChartType 
+          ? `[PREFERÊNCIA: Gráfico de ${selectedChartType}] ${input}`
+          : input;
+        sendMessage(messageToSend);
         setInput("");
+        setSelectedChartType(null); // Reset after sending
       }
       // Scroll múltiplo para garantir que vá até a última mensagem
       setTimeout(scrollToBottom, 50);
@@ -782,6 +789,12 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
             >
               <ImagePlus className="w-4 h-4" />
             </Button>
+            
+            <ChartTypeSelector
+              selectedType={selectedChartType}
+              onSelectType={setSelectedChartType}
+              disabled={isLoading || isImageMode}
+            />
           </div>
         </div>
       </form>
