@@ -416,7 +416,11 @@ export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
         {title && (
           <h4 className="text-sm font-semibold text-foreground mb-3 text-center">{title}</h4>
         )}
-        <div ref={chartRef}>
+        <div 
+          ref={chartRef}
+          key={effectiveType}
+          className="animate-scale-in"
+        >
           {renderChart()}
         </div>
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 flex-wrap justify-end">
