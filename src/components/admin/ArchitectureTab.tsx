@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, RotateCcw, Server, Database, Cloud, Cpu, HardDrive } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCcw, Server, Database, Cloud, Cpu, HardDrive, User, Globe, Network, Brain, Plug, Zap, Package, BarChart3, Building2, DollarSign, TrendingUp, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export const ArchitectureTab = () => {
@@ -41,7 +41,10 @@ export const ArchitectureTab = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-gradient">🏗️ Arquitetura de GPU</h2>
+          <div className="flex items-center gap-3">
+            <Building2 className="w-8 h-8 text-primary" />
+            <h2 className="text-3xl font-bold text-gradient">Arquitetura de GPU</h2>
+          </div>
           <p className="text-muted-foreground mt-2">
             Infraestrutura AWS com Base Model + LoRA Adapters
           </p>
@@ -109,17 +112,23 @@ export const ArchitectureTab = () => {
                       stroke="hsl(var(--primary))" strokeWidth="2" className="transition-all hover:fill-[hsl(var(--primary)/0.3)]">
                   <animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite" />
                 </rect>
-                <text x="225" y="85" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="bold">👤 Usuário A</text>
-                <text x="225" y="105" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Empresa A</text>
-                <text x="225" y="125" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">Request: Prompt</text>
+                <foreignObject x="210" y="60" width="30" height="30">
+                  <User className="w-6 h-6 text-primary" />
+                </foreignObject>
+                <text x="225" y="105" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="bold">Usuário A</text>
+                <text x="225" y="125" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Empresa A</text>
+                <text x="225" y="140" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">Request: Prompt</text>
                 
                 <rect x="400" y="50" width="150" height="100" rx="10" fill="hsl(var(--primary) / 0.2)" 
                       stroke="hsl(var(--primary))" strokeWidth="2" className="transition-all hover:fill-[hsl(var(--primary)/0.3)]">
                   <animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite" begin="0.5s" />
                 </rect>
-                <text x="475" y="85" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="bold">👤 Usuário B</text>
-                <text x="475" y="105" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Empresa B</text>
-                <text x="475" y="125" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">Request: Prompt</text>
+                <foreignObject x="460" y="60" width="30" height="30">
+                  <User className="w-6 h-6 text-primary" />
+                </foreignObject>
+                <text x="475" y="105" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="bold">Usuário B</text>
+                <text x="475" y="125" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Empresa B</text>
+                <text x="475" y="140" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">Request: Prompt</text>
               </g>
 
               {/* Arrows from Users to API Gateway */}
@@ -144,7 +153,10 @@ export const ArchitectureTab = () => {
               <g id="api-gateway">
                 <rect x="200" y="220" width="300" height="80" rx="10" fill="hsl(var(--secondary) / 0.3)" 
                       stroke="hsl(var(--secondary))" strokeWidth="2" className="transition-all hover:fill-[hsl(var(--secondary)/0.4)]" />
-                <text x="350" y="250" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="16" fontWeight="bold">🌐 API Gateway / Load Balancer</text>
+                <foreignObject x="215" y="235" width="24" height="24">
+                  <Globe className="w-5 h-5 text-secondary" />
+                </foreignObject>
+                <text x="350" y="250" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="16" fontWeight="bold">API Gateway / Load Balancer</text>
                 <text x="350" y="270" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Entrada unificada</text>
                 <text x="350" y="285" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">Roteia requests para cluster</text>
               </g>
@@ -162,7 +174,10 @@ export const ArchitectureTab = () => {
               <g id="orchestrator">
                 <rect x="200" y="370" width="300" height="80" rx="10" fill="hsl(var(--secondary) / 0.3)" 
                       stroke="hsl(var(--secondary))" strokeWidth="2" className="transition-all hover:fill-[hsl(var(--secondary)/0.4)]" />
-                <text x="350" y="400" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="16" fontWeight="bold">☸️ Orquestrador (EKS/ECS)</text>
+                <foreignObject x="215" y="385" width="24" height="24">
+                  <Network className="w-5 h-5 text-secondary" />
+                </foreignObject>
+                <text x="350" y="400" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="16" fontWeight="bold">Orquestrador (EKS/ECS)</text>
                 <text x="350" y="420" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">Kubernetes gerencia pods</text>
                 <text x="350" y="435" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">Auto-scaling e load balancing</text>
               </g>
@@ -180,21 +195,30 @@ export const ArchitectureTab = () => {
               <g id="gpu-cluster">
                 <rect x="100" y="520" width="500" height="280" rx="15" fill="hsl(var(--accent) / 0.2)" 
                       stroke="hsl(var(--accent))" strokeWidth="3" />
-                <text x="350" y="545" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="18" fontWeight="bold">🖥️ Cluster de Inferência - GPU Nodes</text>
+                <foreignObject x="115" y="525" width="24" height="24">
+                  <Server className="w-5 h-5 text-accent" />
+                </foreignObject>
+                <text x="350" y="545" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="18" fontWeight="bold">Cluster de Inferência - GPU Nodes</text>
 
                 {/* VRAM Container */}
                 <rect x="120" y="560" width="460" height="220" rx="10" fill="hsl(var(--accent) / 0.15)" 
                       stroke="hsl(var(--accent))" strokeWidth="2" strokeDasharray="4,4">
                   <animate attributeName="opacity" values="0.7;1;0.7" dur="3s" repeatCount="indefinite" />
                 </rect>
-                <text x="350" y="580" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="bold">💾 VRAM (24GB - NVIDIA A10G)</text>
+                <foreignObject x="135" y="565" width="20" height="20">
+                  <HardDrive className="w-4 h-4 text-accent" />
+                </foreignObject>
+                <text x="350" y="580" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="bold">VRAM (24GB - NVIDIA A10G)</text>
 
                 {/* Base Model */}
                 <rect x="140" y="595" width="420" height="60" rx="8" fill="hsl(var(--chart-1) / 0.3)" 
                       stroke="hsl(var(--chart-1))" strokeWidth="2">
                   <animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite" />
                 </rect>
-                <text x="350" y="615" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="bold">🧠 BASE MODEL (Llama-3-8B)</text>
+                <foreignObject x="155" y="605" width="20" height="20">
+                  <Brain className="w-4 h-4 text-chart-1" />
+                </foreignObject>
+                <text x="350" y="615" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="bold">BASE MODEL (Llama-3-8B)</text>
                 <text x="350" y="635" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">16GB VRAM | Compartilhado por todos</text>
                 <text x="350" y="650" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">Permanentemente carregado</text>
 
@@ -203,13 +227,19 @@ export const ArchitectureTab = () => {
                       stroke="hsl(var(--chart-2))" strokeWidth="2">
                   <animate attributeName="opacity" values="0.6;1;0.6" dur="2.5s" repeatCount="indefinite" />
                 </rect>
-                <text x="350" y="690" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="13" fontWeight="bold">🔌 Slot de Inferência + Adapter Ativo</text>
+                <foreignObject x="155" y="678" width="20" height="20">
+                  <Plug className="w-4 h-4 text-chart-2" />
+                </foreignObject>
+                <text x="350" y="690" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="13" fontWeight="bold">Slot de Inferência + Adapter Ativo</text>
                 <text x="350" y="708" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="11">~200MB | Troca dinâmica em milissegundos</text>
 
                 {/* Inference Server */}
                 <rect x="140" y="735" width="420" height="35" rx="8" fill="hsl(var(--chart-3) / 0.3)" 
                       stroke="hsl(var(--chart-3))" strokeWidth="2" />
-                <text x="350" y="757" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="13" fontWeight="bold">⚡ Inference Server (vLLM / TGI)</text>
+                <foreignObject x="155" y="741" width="20" height="20">
+                  <Zap className="w-4 h-4 text-chart-3" />
+                </foreignObject>
+                <text x="350" y="757" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="13" fontWeight="bold">Inference Server (vLLM / TGI)</text>
               </g>
 
               {/* Arrows to S3 Buckets */}
@@ -230,19 +260,28 @@ export const ArchitectureTab = () => {
               <g id="s3-storage">
                 <rect x="50" y="820" width="150" height="70" rx="8" fill="hsl(var(--chart-4) / 0.2)" 
                       stroke="hsl(var(--chart-4))" strokeWidth="2" />
-                <text x="125" y="845" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="13" fontWeight="bold">📦 S3 Bucket</text>
+                <foreignObject x="60" y="830" width="20" height="20">
+                  <Package className="w-4 h-4 text-chart-4" />
+                </foreignObject>
+                <text x="125" y="845" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="13" fontWeight="bold">S3 Bucket</text>
                 <text x="125" y="860" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="11">Adapter A</text>
                 <text x="125" y="875" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">~100MB</text>
 
                 <rect x="275" y="820" width="150" height="70" rx="8" fill="hsl(var(--chart-4) / 0.2)" 
                       stroke="hsl(var(--chart-4))" strokeWidth="2" />
-                <text x="350" y="845" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="13" fontWeight="bold">📦 S3 Bucket</text>
+                <foreignObject x="285" y="830" width="20" height="20">
+                  <Package className="w-4 h-4 text-chart-4" />
+                </foreignObject>
+                <text x="350" y="845" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="13" fontWeight="bold">S3 Bucket</text>
                 <text x="350" y="860" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="11">Adapter B</text>
                 <text x="350" y="875" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">~100MB</text>
 
                 <rect x="500" y="820" width="150" height="70" rx="8" fill="hsl(var(--chart-4) / 0.2)" 
                       stroke="hsl(var(--chart-4))" strokeWidth="2" />
-                <text x="575" y="845" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="13" fontWeight="bold">📦 S3 Bucket</text>
+                <foreignObject x="510" y="830" width="20" height="20">
+                  <Package className="w-4 h-4 text-chart-4" />
+                </foreignObject>
+                <text x="575" y="845" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="13" fontWeight="bold">S3 Bucket</text>
                 <text x="575" y="860" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="11">Base Model</text>
                 <text x="575" y="875" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">Weights</text>
               </g>
@@ -251,7 +290,10 @@ export const ArchitectureTab = () => {
               <g id="legend" transform="translate(750, 50)">
                 <rect x="0" y="0" width="400" height="200" rx="10" fill="hsl(var(--background) / 0.9)" 
                       stroke="hsl(var(--border))" strokeWidth="1.5" />
-                <text x="20" y="30" fill="hsl(var(--foreground))" fontSize="16" fontWeight="bold">📊 Legenda</text>
+                <foreignObject x="20" y="15" width="20" height="20">
+                  <BarChart3 className="w-4 h-4 text-primary" />
+                </foreignObject>
+                <text x="50" y="30" fill="hsl(var(--foreground))" fontSize="16" fontWeight="bold">Legenda</text>
                 
                 <circle cx="30" cy="60" r="6" fill="hsl(var(--primary))" />
                 <text x="50" y="65" fill="hsl(var(--muted-foreground))" fontSize="12">Fluxo de Requisições</text>
@@ -265,8 +307,11 @@ export const ArchitectureTab = () => {
                 <rect x="24" y="130" width="12" height="12" fill="hsl(var(--chart-4) / 0.2)" stroke="hsl(var(--chart-4))" />
                 <text x="50" y="140" fill="hsl(var(--muted-foreground))" fontSize="12">Armazenamento S3</text>
 
-                <text x="20" y="170" fill="hsl(var(--muted-foreground))" fontSize="11" fontStyle="italic">⚡ Carregamento dinâmico</text>
-                <text x="20" y="185" fill="hsl(var(--muted-foreground))" fontSize="11" fontStyle="italic">de Adapters em milissegundos</text>
+                <foreignObject x="20" y="160" width="16" height="16">
+                  <Zap className="w-3 h-3 text-chart-3" />
+                </foreignObject>
+                <text x="40" y="170" fill="hsl(var(--muted-foreground))" fontSize="11" fontStyle="italic">Carregamento dinâmico</text>
+                <text x="40" y="185" fill="hsl(var(--muted-foreground))" fontSize="11" fontStyle="italic">de Adapters em milissegundos</text>
               </g>
             </svg>
           </div>
@@ -386,7 +431,7 @@ export const ArchitectureTab = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-              <div className="text-2xl mb-2">⚡</div>
+              <Zap className="w-8 h-8 text-primary mb-2" />
               <h4 className="font-semibold mb-1">Inferência Rápida</h4>
               <p className="text-sm text-muted-foreground">
                 Latência ultra-baixa com vLLM e troca instantânea de adapters
@@ -394,7 +439,7 @@ export const ArchitectureTab = () => {
             </div>
             
             <div className="p-4 rounded-lg bg-chart-2/5 border border-chart-2/20">
-              <div className="text-2xl mb-2">💰</div>
+              <DollarSign className="w-8 h-8 text-chart-2 mb-2" />
               <h4 className="font-semibold mb-1">Custo Eficiente</h4>
               <p className="text-sm text-muted-foreground">
                 90% de economia compartilhando base model entre múltiplos clientes
@@ -402,7 +447,7 @@ export const ArchitectureTab = () => {
             </div>
             
             <div className="p-4 rounded-lg bg-chart-3/5 border border-chart-3/20">
-              <div className="text-2xl mb-2">📈</div>
+              <TrendingUp className="w-8 h-8 text-chart-3 mb-2" />
               <h4 className="font-semibold mb-1">Escalável</h4>
               <p className="text-sm text-muted-foreground">
                 Auto-scaling horizontal com Kubernetes para atender demanda
@@ -410,7 +455,7 @@ export const ArchitectureTab = () => {
             </div>
             
             <div className="p-4 rounded-lg bg-chart-4/5 border border-chart-4/20">
-              <div className="text-2xl mb-2">🔒</div>
+              <Lock className="w-8 h-8 text-chart-4 mb-2" />
               <h4 className="font-semibold mb-1">Isolamento</h4>
               <p className="text-sm text-muted-foreground">
                 Adapters isolados por cliente garantem privacidade de dados
