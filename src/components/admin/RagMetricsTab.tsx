@@ -5,6 +5,7 @@ import { Database, FileText, Search, CheckCircle2, Loader2, Clock, TrendingUp, D
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
@@ -430,8 +431,9 @@ ${vs.howItWorks.intro}
                   <Lightbulb className="h-5 w-5 text-purple-500 flex-shrink-0 mt-0.5" />
                   <h3 className="text-base font-bold text-purple-500">Vector Store e pgvector</h3>
                 </div>
-                <ReactMarkdown
-                  components={{
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
                     h3: ({ children }) => (
                       <h3 className="text-sm font-bold mt-4 mb-2 text-foreground">
                         {children}

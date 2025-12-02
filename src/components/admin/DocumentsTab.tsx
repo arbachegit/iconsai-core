@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { RagFlowDiagram } from "./RagFlowDiagram";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 // Configure PDF.js worker with local bundle
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -1100,8 +1101,9 @@ O sistema utiliza um pipeline de 4 etapas:
                   <div>
                     <h4 className="font-semibold text-sm mb-3">RAG: Retrieval-Augmented Generation</h4>
                     <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
-                      <ReactMarkdown
-                        components={{
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
                           p: ({ children }) => <p className="mb-2 last:mb-0 text-sm">{children}</p>,
                           ul: ({ children }) => <ul className="list-disc pl-4 mb-2 text-sm">{children}</ul>,
                           ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 text-sm">{children}</ol>,
