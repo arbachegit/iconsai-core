@@ -17,9 +17,16 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import html2canvas from 'html2canvas';
-import { Download } from 'lucide-react';
+import { Download, FileImage, FileText, MessageCircle, Mail, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
 
 type ChartType = 'bar' | 'line' | 'pie' | 'area';
 
@@ -51,6 +58,36 @@ const COLORS = [
   'hsl(262, 83%, 58%)', // violet
 ];
 
+// Get chart as image data
+const getChartAsImage = async (chartRef: React.RefObject<HTMLDivElement>): Promise<{ dataUrl: string; blob: Blob; width: number; height: number } | null> => {
+  if (!chartRef.current) return null;
+  
+  try {
+    const canvas = await html2canvas(chartRef.current, {
+      backgroundColor: '#1a1a2e',
+      scale: 2,
+    });
+    
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve({
+            dataUrl: canvas.toDataURL('image/png'),
+            blob,
+            width: canvas.width / 2,
+            height: canvas.height / 2
+          });
+        } else {
+          resolve(null);
+        }
+      }, 'image/png');
+    });
+  } catch (error) {
+    console.error('Error capturing chart:', error);
+    return null;
+  }
+};
+
 export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -63,25 +100,110 @@ export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
     }
   }, [chartData]);
 
-  const handleDownload = async () => {
-    if (!chartRef.current) return;
+  const filename = `grafico-${parsedData?.title?.replace(/\s+/g, '-') || 'chart'}`;
+
+  // Download as PNG
+  const handleDownloadPng = async () => {
+    const result = await getChartAsImage(chartRef);
+    if (!result) {
+      toast.error('Erro ao capturar gráfico');
+      return;
+    }
+    
+    const link = document.createElement('a');
+    link.download = `${filename}.png`;
+    link.href = result.dataUrl;
+    link.click();
+    toast.success('Gráfico baixado como PNG!');
+  };
+
+  // Download as PDF
+  const handleDownloadPdf = async () => {
+    const result = await getChartAsImage(chartRef);
+    if (!result) {
+      toast.error('Erro ao capturar gráfico');
+      return;
+    }
     
     try {
-      const canvas = await html2canvas(chartRef.current, {
-        backgroundColor: '#1a1a2e',
-        scale: 2, // Better quality
-      });
+      const pdf = new jsPDF('landscape', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
       
-      const link = document.createElement('a');
-      link.download = `grafico-${parsedData?.title?.replace(/\s+/g, '-') || 'chart'}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      // Title
+      pdf.setFontSize(16);
+      const title = parsedData?.title || 'Gráfico';
+      pdf.text(title, pageWidth / 2, 15, { align: 'center' });
       
-      toast.success('Gráfico baixado com sucesso!');
+      // Calculate image dimensions to fit the page
+      const maxWidth = pageWidth - 40;
+      const maxHeight = pageHeight - 40;
+      const ratio = Math.min(maxWidth / result.width, maxHeight / result.height);
+      const imgWidth = result.width * ratio;
+      const imgHeight = result.height * ratio;
+      const x = (pageWidth - imgWidth) / 2;
+      
+      pdf.addImage(result.dataUrl, 'PNG', x, 25, imgWidth, imgHeight);
+      pdf.save(`${filename}.pdf`);
+      toast.success('Gráfico baixado como PDF!');
     } catch (error) {
-      console.error('Error downloading chart:', error);
-      toast.error('Erro ao baixar gráfico');
+      console.error('Error creating PDF:', error);
+      toast.error('Erro ao criar PDF');
     }
+  };
+
+  // Share to WhatsApp
+  const handleShareWhatsApp = async () => {
+    const result = await getChartAsImage(chartRef);
+    
+    if (result && navigator.share && navigator.canShare) {
+      const file = new File([result.blob], `${filename}.png`, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: parsedData?.title || 'Gráfico KnowYOU',
+            files: [file],
+          });
+          return;
+        } catch (err) {
+          if ((err as Error).name !== 'AbortError') {
+            console.error('Share failed:', err);
+          }
+        }
+      }
+    }
+    
+    // Fallback: open WhatsApp with message
+    const text = encodeURIComponent(`📊 ${parsedData?.title || 'Gráfico'} - Gerado por KnowYOU`);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+    toast.info('Abra o WhatsApp para compartilhar');
+  };
+
+  // Share via Email
+  const handleShareEmail = async () => {
+    const result = await getChartAsImage(chartRef);
+    
+    if (result && navigator.share && navigator.canShare) {
+      const file = new File([result.blob], `${filename}.png`, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: parsedData?.title || 'Gráfico KnowYOU',
+            files: [file],
+          });
+          return;
+        } catch (err) {
+          if ((err as Error).name !== 'AbortError') {
+            console.error('Share failed:', err);
+          }
+        }
+      }
+    }
+    
+    // Fallback: mailto
+    const subject = encodeURIComponent(`Gráfico: ${parsedData?.title || 'KnowYOU'}`);
+    const body = encodeURIComponent('Segue o gráfico gerado pelo KnowYOU.');
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
   if (!parsedData || !parsedData.data || parsedData.data.length === 0) {
@@ -250,16 +372,51 @@ export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
       <div ref={chartRef}>
         {renderChart()}
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleDownload}
-        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
-        title="Baixar gráfico"
-      >
-        <Download className="h-4 w-4 mr-1" />
-        Baixar
-      </Button>
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-background/80 backdrop-blur-sm"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Baixar
+              <ChevronDown className="h-3 w-3 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleDownloadPng}>
+              <FileImage className="h-4 w-4 mr-2" />
+              PNG
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDownloadPdf}>
+              <FileText className="h-4 w-4 mr-2" />
+              PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleShareWhatsApp}
+          className="bg-background/80 backdrop-blur-sm"
+          title="Compartilhar no WhatsApp"
+        >
+          <MessageCircle className="h-4 w-4" />
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleShareEmail}
+          className="bg-background/80 backdrop-blur-sm"
+          title="Compartilhar por Email"
+        >
+          <Mail className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 };
