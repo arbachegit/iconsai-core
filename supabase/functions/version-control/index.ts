@@ -182,15 +182,32 @@ serve(async (req) => {
         );
       }
 
-      // Buscar versão atual
-      const { data: currentRecord } = await supabase
+      // Buscar versão atual COM FALLBACK ROBUSTO
+      console.log("🔍 Fetching current version...");
+      
+      const { data: currentRecord, error: fetchError } = await supabase
         .from("version_control")
         .select("current_version")
         .order("timestamp", { ascending: false })
         .limit(1)
         .single();
 
-      const currentVersion = currentRecord?.current_version || "0.0.0";
+      let currentVersion = currentRecord?.current_version;
+
+      // Se não conseguiu buscar, calcular da contagem de registros
+      if (!currentVersion || currentVersion === "0.0.0" || fetchError) {
+        console.log("⚠️ Calculating version from record count...");
+        
+        const { count } = await supabase
+          .from("version_control")
+          .select("*", { count: "exact", head: true });
+        
+        // Versão = 0.0.(total de registros)
+        currentVersion = `0.0.${count || 0}`;
+        console.log(`📊 Calculated version from ${count} records: ${currentVersion}`);
+      }
+
+      console.log(`📌 Current version: ${currentVersion}`);
       const [major, minor, patch] = currentVersion.split(".").map(Number);
 
       // Calcular nova versão
@@ -219,7 +236,7 @@ serve(async (req) => {
           triggerType = "INITIAL";
       }
 
-      console.log(`Version update: ${currentVersion} -> ${newVersion} (${triggerType})`);
+      console.log(`🆕 Version update: ${currentVersion} -> ${newVersion} (${triggerType})`);
 
       // Criar snapshot ID para versionamento
       const snapshotId = `snapshot_${newVersion}_${Date.now()}`;
