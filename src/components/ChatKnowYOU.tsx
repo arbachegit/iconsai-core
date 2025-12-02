@@ -26,7 +26,6 @@ import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useDocumentSuggestions } from "@/hooks/useDocumentSuggestions";
 import { TopicDrillDown } from "./TopicDrillDown";
-import { SuggestionRankingBadges } from "./SuggestionRankingBadges";
 import { CarouselRow } from "./CarouselRow";
 
 // 30 sugestões de saúde para rotação
@@ -95,7 +94,6 @@ export default function ChatKnowYOU() {
     newDocumentBadge,
     currentTheme,
     complementarySuggestions,
-    topSuggestions,
     recordSuggestionClick,
     getSubtopicsForTheme,
     expandedTheme,
@@ -638,7 +636,7 @@ export default function ChatKnowYOU() {
       </ScrollArea>
 
       {/* Suggestions - DUAS LINHAS FIXAS com carrossel horizontal */}
-      {(displayedSuggestions.length > 0 || newDocumentBadge || topSuggestions.length > 0 || complementarySuggestions.length > 0) && !isLoading && (
+      {(displayedSuggestions.length > 0 || newDocumentBadge || complementarySuggestions.length > 0) && !isLoading && (
         <div className="px-4 py-2 bg-muted/50 border-t border-border/50 space-y-1.5">
           {/* LINHA 1: Carrossel horizontal - Tópicos Novos OU primeira metade dos existentes */}
           <CarouselRow>
@@ -741,12 +739,6 @@ export default function ChatKnowYOU() {
               </Button>
             ))}
             
-            {/* Ranking - sempre na Linha 2 */}
-            <SuggestionRankingBadges
-              rankings={topSuggestions}
-              onRankingClick={(text) => handleSuggestionClick(text)}
-              className="text-[10px]"
-            />
           </CarouselRow>
         </div>
       )}
