@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Image as ImageIcon, ChevronUp, ChevronDown } from "lucide-react";
+import { Loader2, Image as ImageIcon, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -48,7 +48,12 @@ export const ImageCacheTab = () => {
   const [isTimelineOpen, setIsTimelineOpen] = useState(true);
   const [isTooltipsOpen, setIsTooltipsOpen] = useState(true);
   const [optimizingImage, setOptimizingImage] = useState<string | null>(null);
-  const [zoomImage, setZoomImage] = useState<{ url: string; title: string } | null>(null);
+  const [zoomImage, setZoomImage] = useState<{ 
+    url: string; 
+    title: string; 
+    category: 'sections' | 'timeline' | 'tooltips';
+    index: number;
+  } | null>(null);
 
   const { data: existingImages } = useQuery({
     queryKey: ['section-images-admin'],
@@ -345,6 +350,99 @@ export const ImageCacheTab = () => {
       setOptimizingImage(null);
     }
   });
+
+  // Criar lista unificada de todas as imagens para navegação
+  const getAllImages = useCallback(() => {
+    const images: Array<{ url: string; title: string; category: 'sections' | 'timeline' | 'tooltips' }> = [];
+    
+    // Imagens das seções
+    SECTIONS.forEach(section => {
+      const img = existingImages?.find(i => i.section_id === section.id);
+      if (img) {
+        images.push({ url: img.image_url, title: section.name, category: 'sections' });
+      }
+    });
+    
+    // Imagens da timeline
+    TIMELINE_EVENTS.forEach(event => {
+      const img = timelineImages?.find(i => i.section_id === `history-${event.id}`);
+      if (img) {
+        images.push({ url: img.image_url, title: event.name, category: 'timeline' });
+      }
+    });
+    
+    // Imagens dos tooltips
+    SECTIONS.slice(0, -1).forEach(section => {
+      const img = tooltipImages?.find(i => i.section_id === `tooltip-${section.id}`);
+      if (img) {
+        images.push({ url: img.image_url, title: `${section.name} - Tooltip`, category: 'tooltips' });
+      }
+    });
+    
+    return images;
+  }, [existingImages, timelineImages, tooltipImages]);
+
+  const allImages = getAllImages();
+
+  const navigateImage = useCallback((direction: 'prev' | 'next') => {
+    if (!zoomImage) return;
+    
+    const currentIndex = allImages.findIndex(
+      img => img.url === zoomImage.url && img.title === zoomImage.title
+    );
+    
+    if (currentIndex === -1) return;
+    
+    let newIndex: number;
+    if (direction === 'prev') {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : allImages.length - 1;
+    } else {
+      newIndex = currentIndex < allImages.length - 1 ? currentIndex + 1 : 0;
+    }
+    
+    const newImage = allImages[newIndex];
+    setZoomImage({ ...newImage, index: newIndex });
+  }, [zoomImage, allImages]);
+
+  const handleDownload = async () => {
+    if (!zoomImage) return;
+    
+    try {
+      const response = await fetch(zoomImage.url);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${zoomImage.title.replace(/[^a-zA-Z0-9]/g, '-')}.webp`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({
+        title: "Erro ao baixar",
+        description: "Não foi possível baixar a imagem",
+        variant: "destructive"
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!zoomImage) return;
+      
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigateImage('prev');
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigateImage('next');
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [zoomImage, navigateImage]);
 
   const getSectionImage = (sectionId: string) => {
     return existingImages?.find(img => img.section_id === sectionId);
@@ -673,7 +771,10 @@ export const ImageCacheTab = () => {
                   {existingImage && (
                     <div 
                       className="w-24 h-24 rounded-lg overflow-hidden border cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                      onClick={() => setZoomImage({ url: existingImage.image_url, title: section.name })}
+                      onClick={() => {
+                        const index = allImages.findIndex(img => img.title === section.name);
+                        setZoomImage({ url: existingImage.image_url, title: section.name, category: 'sections', index });
+                      }}
                     >
                       <img
                         src={existingImage.image_url}
@@ -831,7 +932,10 @@ export const ImageCacheTab = () => {
                   {existingImage && (
                     <div 
                       className="w-24 h-24 rounded-lg overflow-hidden border cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                      onClick={() => setZoomImage({ url: existingImage.image_url, title: event.name })}
+                      onClick={() => {
+                        const index = allImages.findIndex(img => img.title === event.name);
+                        setZoomImage({ url: existingImage.image_url, title: event.name, category: 'timeline', index });
+                      }}
                     >
                       <img
                         src={existingImage.image_url}
@@ -989,7 +1093,11 @@ export const ImageCacheTab = () => {
                       {existingImage && (
                         <div 
                           className="w-24 h-24 rounded-lg overflow-hidden border cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                          onClick={() => setZoomImage({ url: existingImage.image_url, title: `${section.name} - Tooltip` })}
+                          onClick={() => {
+                            const title = `${section.name} - Tooltip`;
+                            const index = allImages.findIndex(img => img.title === title);
+                            setZoomImage({ url: existingImage.image_url, title, category: 'tooltips', index });
+                          }}
                         >
                           <img
                             src={existingImage.image_url}
@@ -1010,17 +1118,55 @@ export const ImageCacheTab = () => {
       {/* Modal de Zoom da Imagem */}
       <Dialog open={!!zoomImage} onOpenChange={(open) => !open && setZoomImage(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>{zoomImage?.title}</DialogTitle>
+          <DialogHeader className="flex flex-row items-center justify-between">
+            <DialogTitle className="flex-1">{zoomImage?.title}</DialogTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              className="ml-2"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
           </DialogHeader>
-          <div className="flex items-center justify-center overflow-auto">
-            {zoomImage && (
-              <img 
-                src={zoomImage.url} 
-                alt={zoomImage.title} 
-                className="max-w-full max-h-[70vh] object-contain rounded-lg"
-              />
-            )}
+          
+          <div className="relative flex items-center justify-center">
+            {/* Botão Anterior */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-0 z-10 h-12 w-12 rounded-full bg-background/80 hover:bg-background"
+              onClick={() => navigateImage('prev')}
+            >
+              <ChevronLeft className="h-8 w-8" />
+            </Button>
+            
+            {/* Imagem */}
+            <div className="flex items-center justify-center overflow-auto px-16">
+              {zoomImage && (
+                <img 
+                  src={zoomImage.url} 
+                  alt={zoomImage.title} 
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                />
+              )}
+            </div>
+            
+            {/* Botão Próximo */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 z-10 h-12 w-12 rounded-full bg-background/80 hover:bg-background"
+              onClick={() => navigateImage('next')}
+            >
+              <ChevronRight className="h-8 w-8" />
+            </Button>
+          </div>
+          
+          {/* Indicador de posição */}
+          <div className="text-center text-sm text-muted-foreground">
+            {zoomImage && `${allImages.findIndex(img => img.url === zoomImage.url) + 1} de ${allImages.length}`}
           </div>
         </DialogContent>
       </Dialog>
