@@ -46,6 +46,7 @@ export function ChatScopeConfigTab() {
   
   const [studyConfig, setStudyConfig] = useState<ChatConfig | null>(null);
   const [healthConfig, setHealthConfig] = useState<ChatConfig | null>(null);
+  const [ragInfoPopoverOpen, setRagInfoPopoverOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingChat, setEditingChat] = useState<"study" | "health" | null>(null);
   const [testQuery, setTestQuery] = useState("");
@@ -58,6 +59,62 @@ export function ChatScopeConfigTab() {
   const [newPronunciation, setNewPronunciation] = useState("");
   const [addingTermFor, setAddingTermFor] = useState<"study" | "health" | null>(null);
   const [phoneticsInfoOpen, setPhoneticsInfoOpen] = useState(false);
+
+  // Generate RAG content from i18n translations
+  const getRAGInfoContent = () => {
+    if (!ready) {
+      return "Carregando informações sobre RAG...";
+    }
+    
+    const rag = t('admin.tooltips.rag', { returnObjects: true }) as any;
+    if (!rag || typeof rag !== 'object' || !rag.intro) {
+      console.error('RAG translations not loaded properly:', rag);
+      return "Erro ao carregar informações sobre RAG. Por favor, recarregue a página.";
+    }
+    
+    return `${rag.intro}
+
+---
+
+### ${rag.whatIs.title}
+${rag.whatIs.intro}
+
+1. ${rag.whatIs.retrieval}
+2. ${rag.whatIs.generation}
+
+${rag.whatIs.result}
+
+### ${rag.comparison.title}
+
+| ${rag.comparison.aspect} | ${rag.comparison.traditional} | ${rag.comparison.rag} |
+| :--- | :--- | :--- |
+| **${rag.comparison.knowledge}** | ${rag.comparison.knowledgeTraditional} | ${rag.comparison.knowledgeRag} |
+| **${rag.comparison.precision}** | ${rag.comparison.precisionTraditional} | ${rag.comparison.precisionRag} |
+| **${rag.comparison.traceability}** | ${rag.comparison.traceabilityTraditional} | ${rag.comparison.traceabilityRag} |
+| **${rag.comparison.customization}** | ${rag.comparison.customizationTraditional} | ${rag.comparison.customizationRag} |
+
+### ${rag.pipeline.title}
+${rag.pipeline.intro}
+
+1. ${rag.pipeline.step1}
+2. ${rag.pipeline.step2}
+3. ${rag.pipeline.step3}
+4. ${rag.pipeline.step4}
+
+### ${rag.technical.title}
+* ${rag.technical.embeddings}
+* ${rag.technical.vectorStore}
+* ${rag.technical.chunking}
+* ${rag.technical.threshold}
+
+### ${rag.glossary.title}
+* ${rag.glossary.rag}
+* ${rag.glossary.etl}
+* ${rag.glossary.llm}
+* ${rag.glossary.embedding}
+* ${rag.glossary.chunk}
+* ${rag.glossary.pgvector}`;
+  };
 
   // Generate TTS content from i18n translations
   const getTTSInfoContent = () => {
@@ -297,6 +354,91 @@ ${tts.technologies.intro}
 
           {/* RAG Configuration */}
           <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Label className="text-sm font-medium">Configurações RAG</Label>
+              
+              {/* Tooltip RAG Info */}
+              <Popover open={ragInfoPopoverOpen} onOpenChange={setRagInfoPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button className="relative w-7 h-7 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-amber-500/30 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all duration-300 group flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-amber-500/50">
+                    <Lightbulb className="h-3.5 w-3.5 text-amber-500 group-hover:text-amber-400 transition-colors" />
+                    <div className="absolute -top-0.5 -right-0.5 pointer-events-none">
+                      <div className="relative">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+                      </div>
+                    </div>
+                  </button>
+                </PopoverTrigger>
+                
+                <PopoverContent 
+                  className="w-[500px] max-h-[70vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-amber-500/20" 
+                  side="right"
+                  align="start"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2">
+                      <Lightbulb className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <h3 className="text-base font-bold text-amber-500">RAG - Retrieval-Augmented Generation</h3>
+                    </div>
+                    <ReactMarkdown
+                      components={{
+                        h3: ({ children }) => (
+                          <h3 className="text-sm font-bold mt-4 mb-2 text-foreground">
+                            {children}
+                          </h3>
+                        ),
+                        p: ({ children }) => (
+                          <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+                            {children}
+                          </p>
+                        ),
+                        ul: ({ children }) => (
+                          <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                            {children}
+                          </ul>
+                        ),
+                        ol: ({ children }) => (
+                          <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                            {children}
+                          </ol>
+                        ),
+                        li: ({ children }) => (
+                          <li className="text-sm text-muted-foreground">{children}</li>
+                        ),
+                        strong: ({ children }) => (
+                          <strong className="font-semibold text-foreground">{children}</strong>
+                        ),
+                        table: ({ children }) => (
+                          <div className="overflow-x-auto my-3">
+                            <table className="w-full border-collapse text-xs">
+                              {children}
+                            </table>
+                          </div>
+                        ),
+                        thead: ({ children }) => (
+                          <thead className="bg-muted/50">{children}</thead>
+                        ),
+                        th: ({ children }) => (
+                          <th className="border border-border px-2 py-1.5 text-left font-semibold">
+                            {children}
+                          </th>
+                        ),
+                        td: ({ children }) => (
+                          <td className="border border-border px-2 py-1.5">
+                            {children}
+                          </td>
+                        ),
+                        hr: () => <hr className="my-3 border-border" />,
+                      }}
+                    >
+                      {getRAGInfoContent()}
+                    </ReactMarkdown>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            
             <div>
               <Label className="text-sm font-medium">Match Threshold</Label>
               {isEditing ? <div className="flex items-center gap-4 mt-2">

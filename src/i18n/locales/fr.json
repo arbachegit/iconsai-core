@@ -404,6 +404,49 @@
           "chunk": "**Chunk** - Fragment de document indexé",
           "pgvector": "**pgvector** - Extension PostgreSQL pour vecteurs"
         }
+      },
+      "vectorStore": {
+        "title": "Vector Store et pgvector",
+        "intro": "est le composant responsable du stockage et de la recherche de représentations vectorielles (embeddings) de texte. Il permet des recherches par similarité sémantique plutôt que par correspondance exacte de mots.",
+        "whatIs": {
+          "title": "1. Qu'est-ce qu'un Vector Store ?",
+          "content": "Un Vector Store est une base de données spécialisée pour stocker des vecteurs de haute dimension et effectuer des recherches par similarité. Chaque fragment de document est converti en un vecteur numérique (embedding) qui capture son sens sémantique."
+        },
+        "pgvector": {
+          "title": "2. Pourquoi pgvector ?",
+          "intro": "pgvector est une extension PostgreSQL qui ajoute un support natif des vecteurs :",
+          "feature1": "**Intégration Native :** Fonctionne directement dans PostgreSQL existant, sans base de données séparée.",
+          "feature2": "**Performance :** Supporte les index HNSW et IVFFlat pour des recherches rapides sur des millions de vecteurs.",
+          "feature3": "**Simplicité :** Combine données structurées (métadonnées, tags) avec recherche vectorielle dans la même requête."
+        },
+        "similarity": {
+          "title": "3. Métriques de Similarité",
+          "intro": "Le système supporte différentes façons de mesurer la \"proximité\" de deux vecteurs :",
+          "metric": "Métrique",
+          "description": "Description",
+          "useCase": "Usage Courant",
+          "cosineDesc": "Mesure l'angle entre vecteurs (ignore la magnitude)",
+          "cosineUse": "Texte, sémantique",
+          "euclideanDesc": "Distance géométrique directe entre points",
+          "euclideanUse": "Images, clustering",
+          "dotDesc": "Produit scalaire (considère la magnitude)",
+          "dotUse": "Recommandations"
+        },
+        "howItWorks": {
+          "title": "4. Comment Fonctionne la Recherche",
+          "intro": "Le flux de recherche sémantique :",
+          "step1": "**Requête → Embedding :** La question de l'utilisateur est convertie dans le même espace vectoriel que les documents.",
+          "step2": "**Recherche ANN :** Approximate Nearest Neighbor trouve les vecteurs les plus proches sans parcourir tous.",
+          "step3": "**Seuil :** Seuls les vecteurs avec similarité supérieure à 0.15 sont considérés pertinents.",
+          "step4": "**Reranking :** Les résultats sont triés et les top-K sont envoyés au LLM."
+        },
+        "glossary": {
+          "title": "5. Glossaire Technique",
+          "vector": "**Vecteur** - Tableau de nombres représentant un concept dans l'espace sémantique",
+          "embedding": "**Embedding** - Vecteur généré par modèle d'IA (ex: text-embedding-3-small)",
+          "dimension": "**Dimension** - Nombre de valeurs dans le vecteur (1536 dans ce système)",
+          "index": "**Index HNSW** - Structure de données pour recherche vectorielle rapide"
+        }
       }
     }
   }
