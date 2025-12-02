@@ -723,17 +723,24 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
             )}
             
             {/* CENÁRIO 4: Nenhum documento - fallback 1ª metade */}
-            {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length === 0 && displayedSuggestions.slice(0, Math.ceil(displayedSuggestions.length / 2)).map((suggestion, idx) => (
-              <Button
-                key={`disp1-${suggestion}-${idx}`}
-                variant="outline"
-                size="sm"
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="text-[10px] h-6 px-2 rounded-full shrink-0 border border-primary/40 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                {suggestion}
-              </Button>
-            ))}
+            {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length === 0 && displayedSuggestions.slice(0, Math.ceil(displayedSuggestions.length / 2)).map((suggestion, idx) => {
+              const isDataBadge = suggestion.startsWith("📊");
+              return (
+                <Button
+                  key={`disp1-${suggestion}-${idx}`}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className={`text-[10px] h-6 px-2 rounded-full shrink-0 transition-colors ${
+                    isDataBadge 
+                      ? "border-emerald-500/60 bg-emerald-600/20 text-emerald-300 hover:bg-emerald-500 hover:text-emerald-950 hover:border-emerald-500 animate-pulse" 
+                      : "border border-primary/40 hover:border-primary hover:bg-primary hover:text-primary-foreground"
+                  }`}
+                >
+                  {suggestion}
+                </Button>
+              );
+            })}
           </CarouselRow>
           
           {/* LINHA 2: Carrossel horizontal */}
@@ -797,17 +804,24 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
             )}
             
             {/* CENÁRIO 4: Nenhum documento - fallback 2ª metade */}
-            {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length === 0 && displayedSuggestions.slice(Math.ceil(displayedSuggestions.length / 2)).map((suggestion, idx) => (
-              <Button
-                key={`disp2-${suggestion}-${idx}`}
-                variant="outline"
-                size="sm"
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="text-[10px] h-6 px-2 rounded-full shrink-0 border border-primary/40 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                {suggestion}
-              </Button>
-            ))}
+            {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length === 0 && displayedSuggestions.slice(Math.ceil(displayedSuggestions.length / 2)).map((suggestion, idx) => {
+              const isDataBadge = suggestion.startsWith("📊");
+              return (
+                <Button
+                  key={`disp2-${suggestion}-${idx}`}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className={`text-[10px] h-6 px-2 rounded-full shrink-0 transition-colors ${
+                    isDataBadge 
+                      ? "border-emerald-500/60 bg-emerald-600/20 text-emerald-300 hover:bg-emerald-500 hover:text-emerald-950 hover:border-emerald-500 animate-pulse" 
+                      : "border border-primary/40 hover:border-primary hover:bg-primary hover:text-primary-foreground"
+                  }`}
+                >
+                  {suggestion}
+                </Button>
+              );
+            })}
           </CarouselRow>
         </div>
       )}
