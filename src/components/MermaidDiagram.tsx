@@ -8,14 +8,45 @@ interface MermaidDiagramProps {
   theme?: 'dark' | 'light';
 }
 
+// Valid Mermaid diagram type declarations
+const VALID_DIAGRAM_STARTS = [
+  'graph', 'flowchart', 'sequencediagram', 'classdiagram', 
+  'statediagram', 'erdiagram', 'journey', 'gantt', 'pie', 
+  'gitgraph', 'mindmap', 'timeline', 'quadrantchart', 'xychart'
+];
+
+// Auto-fix chart if missing diagram type declaration
+const autoFixChart = (chart: string): string => {
+  const trimmedChart = chart.trim();
+  const firstLine = trimmedChart.split('\n')[0].toLowerCase().trim();
+  
+  // Check if chart already starts with a valid diagram type
+  const hasValidStart = VALID_DIAGRAM_STARTS.some(start => 
+    firstLine.startsWith(start)
+  );
+  
+  if (hasValidStart) {
+    return trimmedChart;
+  }
+  
+  // Auto-add 'graph TD' if missing
+  console.log('[MermaidDiagram] Auto-fixing chart: adding "graph TD" declaration');
+  return `graph TD\n${trimmedChart}`;
+};
+
 export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCode, setShowCode] = useState(false);
+  const [finalChart, setFinalChart] = useState<string>('');
 
   useEffect(() => {
     if (containerRef.current) {
       setError(null);
+      
+      // Apply auto-fix
+      const fixedChart = autoFixChart(chart);
+      setFinalChart(fixedChart);
       
       mermaid.initialize({
         startOnLoad: true,
@@ -47,13 +78,14 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
         try {
           // Generate unique ID to avoid conflicts
           const uniqueId = `${id}-${Date.now()}`;
-          const { svg } = await mermaid.render(uniqueId, chart);
+          const { svg } = await mermaid.render(uniqueId, fixedChart);
           if (containerRef.current) {
             containerRef.current.innerHTML = svg;
           }
         } catch (err) {
           console.error('Error rendering mermaid diagram:', err);
-          setError(err instanceof Error ? err.message : 'Erro ao renderizar diagrama');
+          const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+          setError(errorMessage);
         }
       };
 
@@ -68,8 +100,8 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
           <AlertTriangle className="h-5 w-5" />
           <span className="font-medium">Erro ao renderizar diagrama</span>
         </div>
-        <p className="text-sm text-muted-foreground mb-3">
-          O código Mermaid contém caracteres não suportados (emojis ou acentos nos nós).
+        <p className="text-sm text-muted-foreground mb-3 font-mono text-xs">
+          {error}
         </p>
         <button
           onClick={() => setShowCode(!showCode)}
@@ -80,7 +112,7 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
         </button>
         {showCode && (
           <pre className="mt-3 p-3 bg-background/50 rounded text-xs overflow-x-auto border border-border">
-            <code>{chart}</code>
+            <code>{finalChart}</code>
           </pre>
         )}
       </div>
