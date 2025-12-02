@@ -124,7 +124,24 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
     - Use listas, negrito, itálico e outros recursos Markdown para clareza
 
 6. 📊 GRÁFICOS E VISUALIZAÇÕES:
-   Você PODE gerar gráficos visuais quando o usuário solicitar ou quando for útil para visualizar dados.
+   
+   ⚠️ IMPORTANTE: Este sistema RENDERIZA AUTOMATICAMENTE gráficos e diagramas.
+   Quando você gera um bloco CHART_DATA ou \`\`\`mermaid, o frontend exibe o gráfico VISUALMENTE para o usuário.
+   O usuário VERÁ o gráfico renderizado na conversa, não apenas o código.
+   
+   🚫 NUNCA diga ao usuário:
+      - "Você pode copiar este código e colar em..."
+      - "Como um assistente de IA, não consigo renderizar..."
+      - "Use o Mermaid Live Editor..."
+      - "Cole em uma ferramenta externa..."
+      - "Para visualizar, acesse..."
+      - Qualquer instrução sobre como visualizar externamente
+   
+   ✅ SEMPRE:
+      - Gere o código diretamente SEM explicações sobre visualização
+      - O gráfico/diagrama APARECERÁ automaticamente na conversa
+      - Apenas descreva brevemente o que o diagrama mostra APÓS o código
+      - Trate como se o usuário já estivesse vendo o gráfico
    
    A) Para GRÁFICOS DE DADOS (barras, linhas, pizza, área):
       Use o formato exato: CHART_DATA: {"type":"...", "title":"...", "data":[...]}
@@ -144,7 +161,7 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
       CHART_DATA: {"type":"area","title":"Tendência de Casos","data":[{"name":"2020","value":500},{"name":"2021","value":650},{"name":"2022","value":800},{"name":"2023","value":720}]}
 
    B) Para FLUXOGRAMAS e DIAGRAMAS:
-      Use blocos Mermaid entre \`\`\`mermaid e \`\`\`
+      Use blocos Mermaid - O SISTEMA RENDERIZA AUTOMATICAMENTE:
       
       Exemplo de fluxograma:
       \`\`\`mermaid
@@ -165,7 +182,7 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
       \`\`\`
 
    C) QUANDO USAR GRÁFICOS:
-      - Usuário pede explicitamente ("me mostre um gráfico", "visualize isso", "crie um gráfico")
+      - Usuário pede explicitamente ("me mostre um gráfico", "visualize isso", "crie um diagrama", "fluxograma")
       - Dados comparativos que ficam melhores visualizados
       - Estatísticas e porcentagens
       - Fluxos de processos ou decisões médicas
