@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
-import { AlertTriangle, Code, Download } from 'lucide-react';
+import { AlertTriangle, Code, Download, FileImage, FileType, FileText, MessageCircle, Mail, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
 
 interface MermaidDiagramProps {
   chart: string;
@@ -101,36 +108,29 @@ const processChart = (chart: string): string => {
   return autoFixChart(sanitizeChart(chart));
 };
 
-// Download SVG as PNG
-const downloadDiagramAsPng = async (containerRef: React.RefObject<HTMLDivElement>, filename: string) => {
-  if (!containerRef.current) return;
+// Get image data URL from SVG
+const getSvgAsImageDataUrl = async (containerRef: React.RefObject<HTMLDivElement>): Promise<{ dataUrl: string; blob: Blob; width: number; height: number } | null> => {
+  if (!containerRef.current) return null;
   
   const svgElement = containerRef.current.querySelector('svg');
-  if (!svgElement) {
-    toast.error('Diagrama não encontrado');
-    return;
-  }
+  if (!svgElement) return null;
 
-  try {
-    // Clone SVG and set explicit dimensions
-    const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
-    const bbox = svgElement.getBoundingClientRect();
-    
-    // Set background color
-    svgClone.style.backgroundColor = '#1a1a2e';
-    
-    // Convert SVG to data URL
-    const svgData = new XMLSerializer().serializeToString(svgClone);
-    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-    const svgUrl = URL.createObjectURL(svgBlob);
-    
-    // Create canvas and draw SVG
+  const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
+  const bbox = svgElement.getBoundingClientRect();
+  
+  svgClone.style.backgroundColor = '#1a1a2e';
+  
+  const svgData = new XMLSerializer().serializeToString(svgClone);
+  const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+  const svgUrl = URL.createObjectURL(svgBlob);
+  
+  return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const img = new Image();
     
     img.onload = () => {
-      canvas.width = bbox.width * 2; // 2x for better quality
+      canvas.width = bbox.width * 2;
       canvas.height = bbox.height * 2;
       
       if (ctx) {
@@ -139,28 +139,32 @@ const downloadDiagramAsPng = async (containerRef: React.RefObject<HTMLDivElement
         ctx.fillRect(0, 0, bbox.width, bbox.height);
         ctx.drawImage(img, 0, 0, bbox.width, bbox.height);
         
-        // Download
-        const link = document.createElement('a');
-        link.download = `${filename}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        
-        toast.success('Diagrama baixado com sucesso!');
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve({
+              dataUrl: canvas.toDataURL('image/png'),
+              blob,
+              width: bbox.width,
+              height: bbox.height
+            });
+          } else {
+            resolve(null);
+          }
+        }, 'image/png');
+      } else {
+        resolve(null);
       }
       
       URL.revokeObjectURL(svgUrl);
     };
     
     img.onerror = () => {
-      toast.error('Erro ao processar diagrama');
       URL.revokeObjectURL(svgUrl);
+      resolve(null);
     };
     
     img.src = svgUrl;
-  } catch (error) {
-    console.error('Error downloading diagram:', error);
-    toast.error('Erro ao baixar diagrama');
-  }
+  });
 };
 
 export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProps) => {
@@ -173,7 +177,6 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
     if (containerRef.current) {
       setError(null);
       
-      // Apply all fixes (sanitize + auto-fix)
       const fixedChart = processChart(chart);
       setFinalChart(fixedChart);
       
@@ -205,7 +208,6 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
 
       const renderDiagram = async () => {
         try {
-          // Generate unique ID to avoid conflicts
           const uniqueId = `${id}-${Date.now()}`;
           const { svg } = await mermaid.render(uniqueId, fixedChart);
           if (containerRef.current) {
@@ -222,8 +224,139 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
     }
   }, [chart, id, theme]);
 
-  const handleDownload = () => {
-    downloadDiagramAsPng(containerRef, `diagrama-${id}`);
+  const filename = `diagrama-${id}`;
+
+  // Download as PNG
+  const handleDownloadPng = async () => {
+    const result = await getSvgAsImageDataUrl(containerRef);
+    if (!result) {
+      toast.error('Diagrama não encontrado');
+      return;
+    }
+    
+    const link = document.createElement('a');
+    link.download = `${filename}.png`;
+    link.href = result.dataUrl;
+    link.click();
+    toast.success('Diagrama baixado como PNG!');
+  };
+
+  // Download as SVG
+  const handleDownloadSvg = () => {
+    if (!containerRef.current) {
+      toast.error('Diagrama não encontrado');
+      return;
+    }
+    
+    const svgElement = containerRef.current.querySelector('svg');
+    if (!svgElement) {
+      toast.error('Diagrama não encontrado');
+      return;
+    }
+    
+    const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
+    svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    svgClone.style.backgroundColor = '#1a1a2e';
+    
+    const svgData = new XMLSerializer().serializeToString(svgClone);
+    const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.download = `${filename}.svg`;
+    link.href = url;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+    toast.success('Diagrama baixado como SVG!');
+  };
+
+  // Download as PDF
+  const handleDownloadPdf = async () => {
+    const result = await getSvgAsImageDataUrl(containerRef);
+    if (!result) {
+      toast.error('Diagrama não encontrado');
+      return;
+    }
+    
+    try {
+      const pdf = new jsPDF('landscape', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      // Title
+      pdf.setFontSize(16);
+      pdf.text('Diagrama - KnowYOU', pageWidth / 2, 15, { align: 'center' });
+      
+      // Calculate image dimensions to fit the page
+      const maxWidth = pageWidth - 40;
+      const maxHeight = pageHeight - 40;
+      const ratio = Math.min(maxWidth / result.width, maxHeight / result.height);
+      const imgWidth = result.width * ratio;
+      const imgHeight = result.height * ratio;
+      const x = (pageWidth - imgWidth) / 2;
+      
+      pdf.addImage(result.dataUrl, 'PNG', x, 25, imgWidth, imgHeight);
+      pdf.save(`${filename}.pdf`);
+      toast.success('Diagrama baixado como PDF!');
+    } catch (error) {
+      console.error('Error creating PDF:', error);
+      toast.error('Erro ao criar PDF');
+    }
+  };
+
+  // Share to WhatsApp
+  const handleShareWhatsApp = async () => {
+    const result = await getSvgAsImageDataUrl(containerRef);
+    
+    if (result && navigator.share && navigator.canShare) {
+      const file = new File([result.blob], `${filename}.png`, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: 'Diagrama KnowYOU',
+            files: [file],
+          });
+          return;
+        } catch (err) {
+          if ((err as Error).name !== 'AbortError') {
+            console.error('Share failed:', err);
+          }
+        }
+      }
+    }
+    
+    // Fallback: open WhatsApp with message
+    const text = encodeURIComponent('📊 Diagrama gerado por KnowYOU');
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+    toast.info('Abra o WhatsApp para compartilhar');
+  };
+
+  // Share via Email
+  const handleShareEmail = async () => {
+    const result = await getSvgAsImageDataUrl(containerRef);
+    
+    if (result && navigator.share && navigator.canShare) {
+      const file = new File([result.blob], `${filename}.png`, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: 'Diagrama KnowYOU',
+            files: [file],
+          });
+          return;
+        } catch (err) {
+          if ((err as Error).name !== 'AbortError') {
+            console.error('Share failed:', err);
+          }
+        }
+      }
+    }
+    
+    // Fallback: mailto
+    const subject = encodeURIComponent('Diagrama - KnowYOU');
+    const body = encodeURIComponent('Segue o diagrama gerado pelo KnowYOU.');
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
   if (error) {
@@ -255,16 +388,55 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
   return (
     <div className="my-6 relative group">
       <div ref={containerRef} className="mermaid-diagram" />
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleDownload}
-        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
-        title="Baixar diagrama"
-      >
-        <Download className="h-4 w-4 mr-1" />
-        Baixar
-      </Button>
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-background/80 backdrop-blur-sm"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Baixar
+              <ChevronDown className="h-3 w-3 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleDownloadPng}>
+              <FileImage className="h-4 w-4 mr-2" />
+              PNG
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDownloadSvg}>
+              <FileType className="h-4 w-4 mr-2" />
+              SVG
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDownloadPdf}>
+              <FileText className="h-4 w-4 mr-2" />
+              PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleShareWhatsApp}
+          className="bg-background/80 backdrop-blur-sm"
+          title="Compartilhar no WhatsApp"
+        >
+          <MessageCircle className="h-4 w-4" />
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleShareEmail}
+          className="bg-background/80 backdrop-blur-sm"
+          title="Compartilhar por Email"
+        >
+          <Mail className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 };
