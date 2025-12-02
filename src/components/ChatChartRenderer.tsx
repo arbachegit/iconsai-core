@@ -17,7 +17,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import html2canvas from 'html2canvas';
-import { Download, FileImage, FileText, MessageCircle, Mail, ChevronDown, Copy, Eye } from 'lucide-react';
+import { Download, FileImage, FileText, MessageCircle, Mail, ChevronDown, Copy, Eye, BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -66,6 +66,13 @@ const COLORS = [
   'hsl(262, 83%, 58%)', // violet
 ];
 
+const CHART_TYPE_ICONS: Record<ChartType, { icon: React.ElementType; label: string }> = {
+  bar: { icon: BarChart3, label: 'Barras' },
+  line: { icon: TrendingUp, label: 'Linha' },
+  pie: { icon: PieChartIcon, label: 'Pizza' },
+  area: { icon: AreaChartIcon, label: 'Área' },
+};
+
 // Get chart as image data
 const getChartAsImage = async (chartRef: React.RefObject<HTMLDivElement>): Promise<{ dataUrl: string; blob: Blob; width: number; height: number } | null> => {
   if (!chartRef.current) return null;
@@ -104,6 +111,9 @@ export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
   const [previewData, setPreviewData] = useState<{ dataUrl: string; width: number; height: number } | null>(null);
   const [pendingAction, setPendingAction] = useState<'whatsapp' | 'email' | null>(null);
   const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
+  
+  // Local type override for instant conversion
+  const [localType, setLocalType] = useState<ChartType | null>(null);
 
   const parsedData = useMemo(() => {
     try {
@@ -113,6 +123,9 @@ export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
       return null;
     }
   }, [chartData]);
+  
+  // Effective type = local override or original type
+  const effectiveType = localType || parsedData?.type || 'bar';
 
   const filename = `grafico-${parsedData?.title?.replace(/\s+/g, '-') || 'chart'}`;
 
@@ -247,10 +260,10 @@ export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
     );
   }
 
-  const { type, title, data, xKey = 'name', dataKeys = ['value'], colors = COLORS } = parsedData;
+  const { title, data, xKey = 'name', dataKeys = ['value'], colors = COLORS } = parsedData;
 
   const renderChart = () => {
-    switch (type) {
+    switch (effectiveType) {
       case 'bar':
         return (
           <ResponsiveContainer width="100%" height={280}>
@@ -406,7 +419,27 @@ export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
         <div ref={chartRef}>
           {renderChart()}
         </div>
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 flex-wrap justify-end">
+          {/* Type conversion buttons */}
+          <div className="flex gap-0.5 border border-border rounded-md bg-background/80 backdrop-blur-sm p-0.5">
+            {(Object.entries(CHART_TYPE_ICONS) as [ChartType, typeof CHART_TYPE_ICONS[ChartType]][]).map(([type, config]) => {
+              const Icon = config.icon;
+              const isActive = effectiveType === type;
+              return (
+                <Button
+                  key={type}
+                  variant={isActive ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setLocalType(type === parsedData?.type ? null : type)}
+                  className={`h-7 w-7 p-0 ${isActive ? '' : 'hover:bg-muted'}`}
+                  title={config.label}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </Button>
+              );
+            })}
+          </div>
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -419,7 +452,7 @@ export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
                 <ChevronDown className="h-3 w-3 ml-1" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="bg-background border border-border">
               <DropdownMenuItem onClick={handleDownloadPng}>
                 <FileImage className="h-4 w-4 mr-2" />
                 PNG

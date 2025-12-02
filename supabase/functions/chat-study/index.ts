@@ -245,22 +245,28 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    - "Perfeito! Na resposta anterior você pode ver..."
    - Qualquer resposta SEM o bloco \`\`\`mermaid\`\`\` quando pedirem diagrama
    
-   A) Para GRÁFICOS DE DADOS (barras, linhas, pizza, área):
-      Use o formato exato: CHART_DATA: {"type":"...", "title":"...", "data":[...]}
-      
-      Tipos disponíveis: "bar", "line", "pie", "area"
-      
-      Exemplo de gráfico de barras:
-      CHART_DATA: {"type":"bar","title":"Marcos da IA por Década","data":[{"name":"1950s","value":3},{"name":"1960s","value":5},{"name":"1970s","value":4},{"name":"1980s","value":6},{"name":"1990s","value":8},{"name":"2000s","value":12},{"name":"2010s","value":20},{"name":"2020s","value":35}]}
-      
-      Exemplo de gráfico de pizza:
-      CHART_DATA: {"type":"pie","title":"Áreas de Aplicação da IA","data":[{"name":"Saúde","value":30},{"name":"Finanças","value":25},{"name":"Educação","value":20},{"name":"Indústria","value":15},{"name":"Outros","value":10}]}
-      
-      Exemplo de gráfico de linhas (múltiplas séries):
-      CHART_DATA: {"type":"line","title":"Crescimento de Modelos de IA","data":[{"name":"2018","parametros":110,"capacidade":50},{"name":"2019","parametros":175,"capacidade":70},{"name":"2020","parametros":175,"capacidade":85}],"dataKeys":["parametros","capacidade"]}
-      
-      Exemplo de gráfico de área:
-      CHART_DATA: {"type":"area","title":"Investimentos em IA (bilhões USD)","data":[{"name":"2019","value":50},{"name":"2020","value":68},{"name":"2021","value":93},{"name":"2022","value":120},{"name":"2023","value":150}]}
+    A) Para GRÁFICOS DE DADOS (barras, linhas, pizza, área):
+       Use o formato exato: CHART_DATA: {"type":"...", "title":"...", "data":[...]}
+       
+       Tipos disponíveis: "bar", "line", "pie", "area"
+       
+       🔴 PREFERÊNCIA DO USUÁRIO:
+       Se a mensagem contiver "[PREFERÊNCIA: Gráfico de {tipo}]" no início:
+       - Use OBRIGATORIAMENTE o tipo especificado (bar, line, pie, area)
+       - NÃO inclua a tag de preferência na sua resposta
+       - Gere o CHART_DATA com o tipo solicitado pelo usuário
+       
+       Exemplo de gráfico de barras:
+       CHART_DATA: {"type":"bar","title":"Marcos da IA por Década","data":[{"name":"1950s","value":3},{"name":"1960s","value":5},{"name":"1970s","value":4},{"name":"1980s","value":6},{"name":"1990s","value":8},{"name":"2000s","value":12},{"name":"2010s","value":20},{"name":"2020s","value":35}]}
+       
+       Exemplo de gráfico de pizza:
+       CHART_DATA: {"type":"pie","title":"Áreas de Aplicação da IA","data":[{"name":"Saúde","value":30},{"name":"Finanças","value":25},{"name":"Educação","value":20},{"name":"Indústria","value":15},{"name":"Outros","value":10}]}
+       
+       Exemplo de gráfico de linhas (múltiplas séries):
+       CHART_DATA: {"type":"line","title":"Crescimento de Modelos de IA","data":[{"name":"2018","parametros":110,"capacidade":50},{"name":"2019","parametros":175,"capacidade":70},{"name":"2020","parametros":175,"capacidade":85}],"dataKeys":["parametros","capacidade"]}
+       
+       Exemplo de gráfico de área:
+       CHART_DATA: {"type":"area","title":"Investimentos em IA (bilhões USD)","data":[{"name":"2019","value":50},{"name":"2020","value":68},{"name":"2021","value":93},{"name":"2022","value":120},{"name":"2023","value":150}]}
 
    B) Para FLUXOGRAMAS e DIAGRAMAS:
       Use blocos Mermaid - O SISTEMA RENDERIZA AUTOMATICAMENTE:
