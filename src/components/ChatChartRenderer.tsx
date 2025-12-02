@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import {
   BarChart,
   Bar,
@@ -16,6 +16,10 @@ import {
   Cell,
   ResponsiveContainer,
 } from 'recharts';
+import html2canvas from 'html2canvas';
+import { Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 type ChartType = 'bar' | 'line' | 'pie' | 'area';
 
@@ -48,6 +52,8 @@ const COLORS = [
 ];
 
 export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
+  const chartRef = useRef<HTMLDivElement>(null);
+
   const parsedData = useMemo(() => {
     try {
       return JSON.parse(chartData) as ChartData;
@@ -56,6 +62,27 @@ export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
       return null;
     }
   }, [chartData]);
+
+  const handleDownload = async () => {
+    if (!chartRef.current) return;
+    
+    try {
+      const canvas = await html2canvas(chartRef.current, {
+        backgroundColor: '#1a1a2e',
+        scale: 2, // Better quality
+      });
+      
+      const link = document.createElement('a');
+      link.download = `grafico-${parsedData?.title?.replace(/\s+/g, '-') || 'chart'}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+      toast.success('Gráfico baixado com sucesso!');
+    } catch (error) {
+      console.error('Error downloading chart:', error);
+      toast.error('Erro ao baixar gráfico');
+    }
+  };
 
   if (!parsedData || !parsedData.data || parsedData.data.length === 0) {
     return (
@@ -216,11 +243,23 @@ export const ChatChartRenderer = ({ chartData }: ChatChartRendererProps) => {
   };
 
   return (
-    <div className="my-4 p-4 bg-card/50 border border-border rounded-lg">
+    <div className="my-4 p-4 bg-card/50 border border-border rounded-lg relative group">
       {title && (
         <h4 className="text-sm font-semibold text-foreground mb-3 text-center">{title}</h4>
       )}
-      {renderChart()}
+      <div ref={chartRef}>
+        {renderChart()}
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleDownload}
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
+        title="Baixar gráfico"
+      >
+        <Download className="h-4 w-4 mr-1" />
+        Baixar
+      </Button>
     </div>
   );
 };

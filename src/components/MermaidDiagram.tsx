@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
-import { AlertTriangle, Code } from 'lucide-react';
+import { AlertTriangle, Code, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface MermaidDiagramProps {
   chart: string;
@@ -99,6 +101,68 @@ const processChart = (chart: string): string => {
   return autoFixChart(sanitizeChart(chart));
 };
 
+// Download SVG as PNG
+const downloadDiagramAsPng = async (containerRef: React.RefObject<HTMLDivElement>, filename: string) => {
+  if (!containerRef.current) return;
+  
+  const svgElement = containerRef.current.querySelector('svg');
+  if (!svgElement) {
+    toast.error('Diagrama não encontrado');
+    return;
+  }
+
+  try {
+    // Clone SVG and set explicit dimensions
+    const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
+    const bbox = svgElement.getBoundingClientRect();
+    
+    // Set background color
+    svgClone.style.backgroundColor = '#1a1a2e';
+    
+    // Convert SVG to data URL
+    const svgData = new XMLSerializer().serializeToString(svgClone);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    
+    // Create canvas and draw SVG
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      canvas.width = bbox.width * 2; // 2x for better quality
+      canvas.height = bbox.height * 2;
+      
+      if (ctx) {
+        ctx.scale(2, 2);
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, bbox.width, bbox.height);
+        ctx.drawImage(img, 0, 0, bbox.width, bbox.height);
+        
+        // Download
+        const link = document.createElement('a');
+        link.download = `${filename}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        
+        toast.success('Diagrama baixado com sucesso!');
+      }
+      
+      URL.revokeObjectURL(svgUrl);
+    };
+    
+    img.onerror = () => {
+      toast.error('Erro ao processar diagrama');
+      URL.revokeObjectURL(svgUrl);
+    };
+    
+    img.src = svgUrl;
+  } catch (error) {
+    console.error('Error downloading diagram:', error);
+    toast.error('Erro ao baixar diagrama');
+  }
+};
+
 export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -158,6 +222,10 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
     }
   }, [chart, id, theme]);
 
+  const handleDownload = () => {
+    downloadDiagramAsPng(containerRef, `diagrama-${id}`);
+  };
+
   if (error) {
     return (
       <div className="my-6 rounded-lg border border-destructive/50 bg-destructive/10 p-4">
@@ -184,5 +252,19 @@ export const MermaidDiagram = ({ chart, id, theme = 'dark' }: MermaidDiagramProp
     );
   }
 
-  return <div ref={containerRef} className="mermaid-diagram my-6" />;
+  return (
+    <div className="my-6 relative group">
+      <div ref={containerRef} className="mermaid-diagram" />
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleDownload}
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
+        title="Baixar diagrama"
+      >
+        <Download className="h-4 w-4 mr-1" />
+        Baixar
+      </Button>
+    </div>
+  );
 };
