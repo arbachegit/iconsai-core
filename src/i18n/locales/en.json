@@ -301,5 +301,110 @@
     "studyDesc": "KnowRISK and ACC",
     "general": "General",
     "generalDesc": "Keep as is"
+  },
+  "admin": {
+    "tooltips": {
+      "tts": {
+        "title": "TTS, Phonetics and Artificial Intelligence",
+        "intro": "stands for **Text-to-Speech**. In the context of Artificial Intelligence and phonetics, it refers to technology that converts written text into synthetic spoken audio, simulating the human voice.",
+        "description": "It's not just about \"reading\" words, but understanding how those words should sound based on linguistic rules and deep learning models.",
+        "pipeline": {
+          "title": "1. The Process Flow (Pipeline)",
+          "intro": "For an AI to transform text into speech, it goes through critical stages where phonetics is essential:",
+          "step1": "**Text Normalization:** The AI converts numbers, abbreviations, and symbols into full words.",
+          "step1Example": "*Example:* \"$10.00\" becomes \"ten dollars\".",
+          "step2": "**Grapheme-to-Phoneme Conversion (G2P):** This is where the phonetics magic happens. The system translates writing (graphemes) into sound representation (phonemes).",
+          "step2Example": "*Example:* The word \"house\" is internally converted to something like `/h/ /aʊ/ /s/`.",
+          "step3": "**Prosodic Analysis:** The AI determines rhythm, intonation (question vs. statement), and emphasis (stress).",
+          "step4": "**Audio Synthesis:** The computer generates the final sound waves based on these instructions."
+        },
+        "phoneticsRole": {
+          "title": "2. The Role of Phonetics in AI",
+          "intro": "Phonetics in modern TTS is not just a pronunciation dictionary; it's a dynamic interpretation system.",
+          "disambiguation": "**Homograph Disambiguation:** The AI needs to analyze context to know which phoneme to use for words spelled the same but pronounced differently.",
+          "disambiguationExample": "*Example:* \"I will **read** the book\" (present) vs. \"I have **read** the book\" (past).",
+          "coarticulation": "**Coarticulation:** In human speech, a letter's sound is influenced by neighboring letters. Good TTS uses AI to smooth these transitions, preventing speech from sounding \"robotic\" or choppy.",
+          "prosody": "**Prosody and Emotion:** Modern neural models (like those from OpenAI or ElevenLabs) analyze text semantics to apply correct emotion (sadness, excitement, doubt) in phrase phonetics."
+        },
+        "comparison": {
+          "title": "3. Evolution: Parametric vs. Neural TTS",
+          "characteristic": "Characteristic",
+          "traditional": "Traditional TTS",
+          "neural": "Neural TTS",
+          "method": "Method",
+          "methodTraditional": "\"Glues\" pieces of recorded audio.",
+          "methodNeural": "Generates sound waves from scratch using neural networks.",
+          "naturalness": "Naturalness",
+          "naturalnessTraditional": "Sounds robotic, with junction failures.",
+          "naturalnessNeural": "Almost indistinguishable from human voice.",
+          "phonetics": "Phonetics",
+          "phoneticsTraditional": "Based strictly on fixed rules.",
+          "phoneticsNeural": "Learns complex phonetic patterns.",
+          "flexibility": "Flexibility",
+          "flexibilityTraditional": "Difficult to change voice style.",
+          "flexibilityNeural": "Can clone voices or change styles easily."
+        },
+        "technologies": {
+          "title": "4. Main Technologies",
+          "intro": "Today, the most advanced TTS models use architectures such as:",
+          "tacotron": "**Tacotron 2:** Maps text directly to spectrograms (visual representations of sound).",
+          "wavenet": "**WaveNet / WaveGlow:** Generate raw audio waves point by point, resulting in very high fidelity.",
+          "valle": "**VALL-E / XTTS:** Models capable of cloning voice and room acoustics with just a few seconds of reference audio."
+        }
+      },
+      "rag": {
+        "title": "RAG: Retrieval-Augmented Generation",
+        "intro": "**RAG** stands for **Retrieval-Augmented Generation**. It's an AI architecture that combines information retrieval with text generation, allowing language models to respond based on specific documents.",
+        "whatIs": {
+          "title": "1. What is RAG?",
+          "intro": "RAG is a hybrid paradigm that unites two worlds:",
+          "retrieval": "**Retrieval:** A semantic search system finds the most relevant documents for the user's question.",
+          "generation": "**Augmented Generation:** The LLM receives these documents as additional context to ground its response.",
+          "result": "*Result:* Accurate, up-to-date answers grounded in verifiable sources."
+        },
+        "comparison": {
+          "title": "2. Why is RAG Superior to Pure LLM?",
+          "aspect": "Aspect",
+          "traditional": "Traditional LLM",
+          "rag": "RAG",
+          "knowledge": "Knowledge",
+          "knowledgeTraditional": "Limited to training (cutoff date)",
+          "knowledgeRag": "Dynamically updated with new documents",
+          "precision": "Precision",
+          "precisionTraditional": "May \"hallucinate\" information",
+          "precisionRag": "Grounded in verifiable sources",
+          "traceability": "Traceability",
+          "traceabilityTraditional": "Impossible to cite sources",
+          "traceabilityRag": "Can reference specific documents",
+          "customization": "Customization",
+          "customizationTraditional": "Requires expensive fine-tuning",
+          "customizationRag": "Just add documents to the index"
+        },
+        "pipeline": {
+          "title": "3. The Implemented RAG Pipeline",
+          "intro": "The system uses a 4-stage pipeline:",
+          "step1": "**Ingestion (ETL):** Documents are processed, validated, and fragmented into optimized chunks.",
+          "step2": "**Vector Indexing:** Each chunk is converted to an embedding and stored with pgvector.",
+          "step3": "**Hybrid Search:** Combines semantic similarity + metadata filters (tags, chat_type).",
+          "step4": "**Grounded Generation:** The LLM receives relevant chunks as mandatory context."
+        },
+        "technical": {
+          "title": "4. Technical Components",
+          "embeddings": "**Embeddings:** OpenAI text-embedding-3-small (1536 dimensions)",
+          "vectorStore": "**Vector Store:** PostgreSQL + pgvector (cosine similarity search)",
+          "chunking": "**Chunking:** 750 words with 180 overlap",
+          "threshold": "**Threshold:** Minimum similarity of 0.15 for context inclusion"
+        },
+        "glossary": {
+          "title": "5. Acronym Glossary",
+          "rag": "**RAG** - Retrieval-Augmented Generation",
+          "etl": "**ETL** - Extract, Transform, Load",
+          "llm": "**LLM** - Large Language Model",
+          "embedding": "**Embedding** - Vector representation of text",
+          "chunk": "**Chunk** - Indexed document fragment",
+          "pgvector": "**pgvector** - PostgreSQL extension for vectors"
+        }
+      }
+    }
   }
 }
