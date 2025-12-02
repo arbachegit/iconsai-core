@@ -21,11 +21,12 @@ import { ChatScopeConfigTab } from "@/components/admin/ChatScopeConfigTab";
 import { RagDocumentationTab } from "@/components/admin/RagDocumentationTab";
 import { ContentManagementTab } from "@/components/admin/ContentManagementTab";
 import UserActivityLogsTab from "@/components/admin/UserActivityLogsTab";
+import { ArchitectureTab } from "@/components/admin/ArchitectureTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useActivityLogger } from "@/hooks/useActivityLogger";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "activity-logs";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "activity-logs" | "architecture";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -123,6 +124,8 @@ const Admin = () => {
         return <ContentManagementTab />;
       case "activity-logs":
         return <UserActivityLogsTab />;
+      case "architecture":
+        return <ArchitectureTab />;
       case "images":
         return <ImageCacheTab />;
       case "youtube":
