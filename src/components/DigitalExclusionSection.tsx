@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ChevronDown, Play, Square, Download } from "lucide-react";
+import { ChevronDown, Play, Square, Download, Loader2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,7 @@ export const DigitalExclusionSection = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const audioPlayerRef = useRef<AudioStreamPlayer | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
@@ -38,10 +39,60 @@ export const DigitalExclusionSection = () => {
     }
   };
 
+  const generateAndSaveAudio = async (): Promise<string> => {
+    const fullText = `${t('digitalExclusion.content1')} ${t('digitalExclusion.content2')} ${t('digitalExclusion.content3')}`;
+    
+    const { data, error } = await supabase.functions.invoke('text-to-speech', {
+      body: { text: fullText, chatType: 'health' }
+    });
+    
+    if (error) throw error;
+    if (!data?.audioUrl) throw new Error('No audio URL returned');
+
+    const audioResponse = await fetch(data.audioUrl);
+    const audioBlob = await audioResponse.blob();
+    const fileName = `digital-exclusion-${Date.now()}.mp3`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('tooltip-audio')
+      .upload(fileName, audioBlob, { contentType: 'audio/mpeg', upsert: true });
+    
+    if (uploadError) throw uploadError;
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('tooltip-audio')
+      .getPublicUrl(fileName);
+    
+    return publicUrl;
+  };
+
   const handlePlayAudio = async () => {
-    if (!audioUrl) {
-      toast.error(t('audio.notAvailable'));
-      return;
+    // Se não tem áudio ou é BLOB URL expirado, regenerar
+    if (!audioUrl || audioUrl.startsWith('blob:')) {
+      setIsLoadingAudio(true);
+      try {
+        const newAudioUrl = await generateAndSaveAudio();
+        setAudioUrl(newAudioUrl);
+        
+        // Atualizar no banco de dados
+        const { error: updateError } = await supabase
+          .from('section_audio')
+          .upsert({ 
+            section_id: 'digital-exclusion',
+            audio_url: newAudioUrl 
+          });
+        
+        if (updateError) {
+          console.error('Error updating audio URL:', updateError);
+        }
+      } catch (error) {
+        console.error('Error generating audio:', error);
+        toast.error(t('audio.playError'));
+        setIsLoadingAudio(false);
+        return;
+      } finally {
+        setIsLoadingAudio(false);
+      }
     }
 
     if (isPlaying) {
@@ -144,9 +195,19 @@ export const DigitalExclusionSection = () => {
                         onClick={handlePlayAudio}
                         variant="outline"
                         className="gap-2"
+                        disabled={isLoadingAudio}
                       >
-                        <Play className="h-4 w-4" />
-                        {isPlaying ? t('audio.pause') : t('audio.play')}
+                        {isLoadingAudio ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {t('audio.generating')}
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4" />
+                            {isPlaying ? t('audio.pause') : t('audio.play')}
+                          </>
+                        )}
                       </Button>
                       <Button
                         size="sm"
