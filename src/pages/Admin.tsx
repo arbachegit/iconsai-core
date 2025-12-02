@@ -20,16 +20,19 @@ import { RagDiagnosticsTab } from "@/components/admin/RagDiagnosticsTab";
 import { ChatScopeConfigTab } from "@/components/admin/ChatScopeConfigTab";
 import { RagDocumentationTab } from "@/components/admin/RagDocumentationTab";
 import { ContentManagementTab } from "@/components/admin/ContentManagementTab";
+import UserActivityLogsTab from "@/components/admin/UserActivityLogsTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useActivityLogger } from "@/hooks/useActivityLogger";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "activity-logs";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { logActivity } = useActivityLogger();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -59,6 +62,9 @@ const Admin = () => {
           navigate("/admin/login");
           return;
         }
+
+        // Log successful login
+        await logActivity("Login no painel admin realizado com sucesso", "LOGIN");
       } catch (error) {
         console.error("Auth check error:", error);
         navigate("/admin/login");
@@ -115,6 +121,8 @@ const Admin = () => {
         return <RagDocumentationTab />;
       case "content-management":
         return <ContentManagementTab />;
+      case "activity-logs":
+        return <UserActivityLogsTab />;
       case "images":
         return <ImageCacheTab />;
       case "youtube":

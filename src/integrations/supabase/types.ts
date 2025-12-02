@@ -866,6 +866,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_activity_logs: {
+        Row: {
+          action: string
+          action_category: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_email: string
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          action_category: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_email: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          action_category?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_email?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
