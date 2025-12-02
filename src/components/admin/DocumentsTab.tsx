@@ -745,6 +745,12 @@ O sistema utiliza um pipeline de 4 etapas:
     }
   }, []);
 
+  // Remove file from queue
+  const removeFileFromQueue = useCallback((indexToRemove: number) => {
+    setSelectedFiles(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    toast.info("Arquivo removido da fila");
+  }, []);
+
   // Download document as PDF
   const downloadAsPDF = useCallback((doc: any) => {
     try {
@@ -1289,10 +1295,20 @@ O sistema utiliza um pipeline de 4 etapas:
 
           {selectedFiles.length > 0 && <div className="space-y-2">
               <p className="text-sm font-medium">{selectedFiles.length} arquivo(s) selecionado(s):</p>
-              {selectedFiles.map((file, idx) => <div key={idx} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+              {selectedFiles.map((file, idx) => <div key={idx} className="flex items-center gap-2 p-2 bg-muted rounded-lg group">
                   <FileText className="h-4 w-4" />
-                  <span className="text-sm flex-1">{file.name}</span>
+                  <span className="text-sm flex-1 truncate">{file.name}</span>
                   <Badge variant="outline">{(file.size / 1024).toFixed(2)} KB</Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 opacity-60 hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => removeFileFromQueue(idx)}
+                    disabled={uploading}
+                    title="Remover da fila"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>)}
             </div>}
 
