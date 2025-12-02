@@ -836,6 +836,38 @@ export type Database = {
         }
         Relationships: []
       }
+      suggestion_clicks: {
+        Row: {
+          chat_type: string
+          clicked_at: string | null
+          document_id: string | null
+          id: string
+          suggestion_text: string
+        }
+        Insert: {
+          chat_type: string
+          clicked_at?: string | null
+          document_id?: string | null
+          id?: string
+          suggestion_text: string
+        }
+        Update: {
+          chat_type?: string
+          clicked_at?: string | null
+          document_id?: string | null
+          id?: string
+          suggestion_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggestion_clicks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_increments: {
         Row: {
           details: Json | null
