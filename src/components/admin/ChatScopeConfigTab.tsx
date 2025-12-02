@@ -42,7 +42,7 @@ interface ChatConfig {
 }
 export function ChatScopeConfigTab() {
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, ready } = useTranslation();
   
   const [studyConfig, setStudyConfig] = useState<ChatConfig | null>(null);
   const [healthConfig, setHealthConfig] = useState<ChatConfig | null>(null);
@@ -61,7 +61,18 @@ export function ChatScopeConfigTab() {
 
   // Generate TTS content from i18n translations
   const getTTSInfoContent = () => {
+    // Wait for translations to be ready
+    if (!ready) {
+      return "Carregando informações sobre TTS...";
+    }
+    
     const tts = t('admin.tooltips.tts', { returnObjects: true }) as any;
+    
+    // Defensive check: if translations not loaded, return fallback
+    if (!tts || typeof tts !== 'object' || !tts.intro || !tts.pipeline) {
+      console.error('TTS translations not loaded properly:', tts);
+      return "Erro ao carregar informações sobre TTS. Por favor, recarregue a página.";
+    }
     
     return `**TTS** ${tts.intro}
 
