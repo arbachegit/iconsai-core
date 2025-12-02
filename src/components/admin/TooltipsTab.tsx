@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useActivityLogger } from "@/hooks/useActivityLogger";
 import { Edit2, Save, X, FileText, ChevronDown, Edit3, ChevronUp, Download, Upload, Eye, EyeOff, History, RotateCcw, GripVertical, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
@@ -49,6 +50,7 @@ interface SectionVersion {
 
 export const TooltipsTab = () => {
   const { toast } = useToast();
+  const { logActivity } = useActivityLogger();
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ header: "", title: "", content: "" });
@@ -80,8 +82,16 @@ export const TooltipsTab = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["all-tooltips"] });
+      
+      // Log tooltip update
+      const tooltip = tooltips?.find(t => t.id === id);
+      logActivity("Tooltip atualizado", "CONTENT", { 
+        sectionId: tooltip?.section_id,
+        title: editForm.title 
+      });
+      
       toast({
         title: "Sucesso!",
         description: "Tooltip atualizado com sucesso.",
@@ -302,6 +312,7 @@ const TimelineHistoryManager = ({ tooltips, queryClient }: { tooltips: TooltipCo
   const [localOrder, setLocalOrder] = useState<TooltipContent[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const { toast } = useToast();
+  const { logActivity } = useActivityLogger();
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -330,8 +341,14 @@ const TimelineHistoryManager = ({ tooltips, queryClient }: { tooltips: TooltipCo
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (data, orderedItems) => {
       queryClient.invalidateQueries({ queryKey: ['all-tooltips'] });
+      
+      // Log timeline reorder
+      logActivity("Ordem da timeline alterada", "CONTENT", { 
+        eventCount: orderedItems.length 
+      });
+      
       toast({ title: 'Ordem salva com sucesso!' });
       setHasChanges(false);
     },
@@ -462,6 +479,7 @@ const SortableHistoryCard = ({ event, index, queryClient }: { event: TooltipCont
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ header: "", title: "", content: "" });
   const { toast } = useToast();
+  const { logActivity } = useActivityLogger();
 
   const {
     attributes,
@@ -489,6 +507,13 @@ const SortableHistoryCard = ({ event, index, queryClient }: { event: TooltipCont
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-tooltips'] });
+      
+      // Log event update
+      logActivity("Evento histórico atualizado", "CONTENT", { 
+        sectionId: event.section_id,
+        title: editForm.title 
+      });
+      
       toast({ title: 'Tooltip atualizado com sucesso!' });
       setEditingId(null);
     },
