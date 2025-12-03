@@ -102,8 +102,52 @@
 - Throttle de 1000ms no MutationObserver
 - Sem `isTyping` state (causa re-renders)
 - Sem typing indicator animado (animate-bounce removido)
-- Sem animationDelay dinâmico no CarouselRow
+- Sem animationDelay dinâmico em NENHUM componente
+- Sem animate-pulse em badges visíveis
+- Sem transition-all ou transition-colors em badges
+- Sem willChange: 'transform' no textarea
 - setIntervals pausados via verificação de isTypingRef ou classe .typing-active
+
+---
+
+## 🛡️ SISTEMA DE REDUNDÂNCIA ANTI-LATÊNCIA (4 CAMADAS)
+
+### Camada 1 - CÓDIGO (Remoção Preventiva)
+- ZERO `animationDelay` dinâmico no código
+- ZERO `animate-pulse` em elementos visíveis durante digitação
+- ZERO `transition-all` ou `transition-colors` em badges
+- ZERO `willChange: 'transform'` em textareas (deixar browser decidir)
+
+### Camada 2 - CSS (Seletores Ultra-Específicos)
+```css
+.typing-active, .typing-active *, .typing-active button,
+.typing-active [class*="animate-"], .typing-active [class*="transition-"] {
+  animation: none !important;
+  animation-duration: 0s !important;
+  transition: none !important;
+  transition-duration: 0s !important;
+  will-change: auto !important;
+}
+```
+
+### Camada 3 - REFS (Controle de Estado)
+- `isTypingRef.current` verificado em TODOS os setInterval callbacks
+- `typingTimeoutRef` para debounce de 500ms
+- `chatContainerRef` cacheado no mount para DOM queries
+
+### Camada 4 - DOM (Queries Cacheadas)
+- `chatContainerRef.current = document.querySelector('.chat-container')` no useEffect mount
+- NUNCA usar `document.querySelector` diretamente no onChange
+- Classes adicionadas/removidas via ref cacheada
+
+### Checklist de Validação Anti-Latência
+- [ ] ZERO `animationDelay` dinâmico no código
+- [ ] ZERO `animate-pulse` em elementos visíveis durante digitação
+- [ ] TODAS as `transition-*` removidas ou cobertas pelo CSS
+- [ ] `willChange` removido do textarea
+- [ ] Nenhum `setInterval` sem verificação de `isTypingRef`
+- [ ] Nenhum `document.querySelector` dentro de event handlers
+- [ ] CSS `.typing-active` com seletores ultra-específicos
 
 ---
 
