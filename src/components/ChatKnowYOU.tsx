@@ -665,9 +665,9 @@ export default function ChatKnowYOU() {
 
       {/* Input Area */}
       <form onSubmit={handleSubmit} className="p-4 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
-          {/* Indicador de voz ativo */}
+          {/* Indicador de voz ativo - SEM animate-pulse para evitar latência */}
           {isRecording && <div className="flex items-center gap-2 text-xs mb-2">
-              <div className={`w-2 h-2 rounded-full ${voiceStatus === 'waiting' ? 'bg-amber-500' : voiceStatus === 'processing' ? 'bg-blue-500' : 'bg-red-500'} animate-pulse`} />
+              <div className={`w-2 h-2 rounded-full ${voiceStatus === 'waiting' ? 'bg-amber-500' : voiceStatus === 'processing' ? 'bg-blue-500' : 'bg-red-500'}`} />
               <span className={voiceStatus === 'waiting' ? 'text-amber-500' : 'text-muted-foreground'}>
                 {voiceStatus === 'listening' && t('chat.listening')}
                 {voiceStatus === 'waiting' && `${t('chat.waiting')} (${waitingCountdown}s)`}
@@ -782,7 +782,7 @@ export default function ChatKnowYOU() {
                   }}
                   className={`next-step-badge text-[11px] h-7 px-3 rounded-full shrink-0 transition-all ${
                     isDiagram 
-                      ? "animate-pulse bg-gradient-to-r from-red-400/30 to-rose-400/30 border-red-300/60 text-red-200 hover:from-red-400 hover:to-rose-400 hover:text-white hover:border-red-400 shadow-[0_0_20px_rgba(248,113,113,0.4)]"
+                      ? "bg-gradient-to-r from-violet-500/30 to-fuchsia-500/30 border-violet-400/60 text-violet-200 hover:from-violet-400 hover:to-fuchsia-400 hover:text-white hover:border-violet-400 shadow-[0_0_20px_rgba(139,92,246,0.4)]"
                       : "border-cyan-400/60 bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500 hover:text-cyan-950 hover:border-cyan-500 hover:scale-105 shadow-[0_0_12px_rgba(34,211,238,0.25)]"
                   }`}
                   style={{ animationDelay: `${idx * 50}ms` }}
