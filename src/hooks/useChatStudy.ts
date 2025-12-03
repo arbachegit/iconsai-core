@@ -93,7 +93,7 @@ export function useChatStudy() {
           });
         }
       } catch (error) {
-        console.log("No preferences found, using defaults");
+        // Ignorar erro se não existir registro
       }
     };
     loadPreferences();
@@ -140,7 +140,6 @@ export function useChatStudy() {
         }, { onConflict: 'session_id,chat_type' });
         
         setUserPreferences(prev => ({ ...prev, responseStyle: detectedStyle! }));
-        console.log(`Style preference detected and saved: ${detectedStyle}`);
       } catch (error) {
         console.error("Error saving style preference:", error);
       }
