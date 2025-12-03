@@ -101,17 +101,17 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
 
   return (
     <div className="relative group">
-      {/* Fade na borda esquerda */}
+      {/* Fade na borda esquerda - SEM transition para evitar latência */}
       <div className={cn(
-        "absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-muted/80 to-transparent z-10 pointer-events-none transition-opacity duration-200",
+        "absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-muted/80 to-transparent z-10 pointer-events-none",
         canScrollLeft ? "opacity-100" : "opacity-0"
       )} />
       
-      {/* Seta esquerda */}
+      {/* Seta esquerda - SEM transition para evitar latência */}
       <button
         onClick={() => scrollBy('left')}
         className={cn(
-          "absolute left-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-background/90 border border-primary/40 shadow-md flex items-center justify-center hover:bg-primary/20 transition-all duration-200",
+          "absolute left-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-background/90 border border-primary/40 shadow-md flex items-center justify-center hover:bg-primary/20",
           canScrollLeft ? "opacity-0 group-hover:opacity-100" : "opacity-0 pointer-events-none"
         )}
       >
@@ -150,17 +150,17 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
         </div>
       )}
 
-      {/* Fade na borda direita */}
+      {/* Fade na borda direita - SEM transition para evitar latência */}
       <div className={cn(
-        "absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-muted/80 to-transparent z-10 pointer-events-none transition-opacity duration-200",
+        "absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-muted/80 to-transparent z-10 pointer-events-none",
         canScrollRight ? "opacity-100" : "opacity-0"
       )} />
 
-      {/* Seta direita */}
+      {/* Seta direita - SEM transition para evitar latência */}
       <button
         onClick={() => scrollBy('right')}
         className={cn(
-          "absolute right-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-background/90 border border-primary/40 shadow-md flex items-center justify-center hover:bg-primary/20 transition-all duration-200",
+          "absolute right-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-background/90 border border-primary/40 shadow-md flex items-center justify-center hover:bg-primary/20",
           canScrollRight ? "opacity-0 group-hover:opacity-100" : "opacity-0 pointer-events-none"
         )}
       >
