@@ -793,27 +793,36 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
             <span className="text-xs font-semibold text-cyan-400/90 tracking-wide">Próximos passos:</span>
           </div>
           <CarouselRow>
-            {nextSteps.map((step, idx) => (
-              <Button
-                key={`next-${idx}`}
-                variant="outline"
-                size="sm"
-                onClick={() => sendMessage(step)}
-                className="next-step-badge text-[11px] h-7 px-3 rounded-full shrink-0 
-                  border-cyan-400/60 bg-cyan-500/20 text-cyan-300
-                  hover:bg-cyan-500 hover:text-cyan-950 hover:border-cyan-500
-                  hover:scale-105 transition-all
-                  shadow-[0_0_12px_rgba(34,211,238,0.25)]"
-                style={{ animationDelay: `${idx * 50}ms` }}
-              >
-                {step === "Diagrama" ? (
-                  <GitBranch className="w-3 h-3 mr-1" />
-                ) : (
-                  <Target className="w-3 h-3 mr-1" />
-                )}
-                {step}
-              </Button>
-            ))}
+            {nextSteps.map((step, idx) => {
+              const isDiagram = step === "Diagrama";
+              return (
+                <Button
+                  key={`next-${idx}`}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (isDiagram) {
+                      sendMessage("Crie um diagrama Mermaid visual resumindo tudo o que conversamos até agora. Inclua os principais pontos, conceitos e conexões entre os temas discutidos.");
+                    } else {
+                      sendMessage(step);
+                    }
+                  }}
+                  className={`next-step-badge text-[11px] h-7 px-3 rounded-full shrink-0 transition-all ${
+                    isDiagram 
+                      ? "animate-pulse bg-gradient-to-r from-violet-500/30 to-fuchsia-500/30 border-violet-400/60 text-violet-300 hover:from-violet-500 hover:to-fuchsia-500 hover:text-white hover:border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.4)]"
+                      : "border-cyan-400/60 bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500 hover:text-cyan-950 hover:border-cyan-500 hover:scale-105 shadow-[0_0_12px_rgba(34,211,238,0.25)]"
+                  }`}
+                  style={{ animationDelay: `${idx * 50}ms` }}
+                >
+                  {isDiagram ? (
+                    <GitBranch className="w-3 h-3 mr-1" />
+                  ) : (
+                    <Target className="w-3 h-3 mr-1" />
+                  )}
+                  {step}
+                </Button>
+              );
+            })}
           </CarouselRow>
         </div>
       )}
