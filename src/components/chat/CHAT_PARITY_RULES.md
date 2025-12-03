@@ -52,6 +52,7 @@
 - Cores: Cyan (bg-cyan-500/20, border-cyan-400/60, text-cyan-300)
 - Container: `bg-gradient-to-r from-cyan-500/20 to-cyan-600/10`
 - Badge hover: `hover:bg-cyan-500 hover:text-cyan-950 hover:scale-105`
+- Diagrama badge: Violet (SEM animate-pulse)
 
 ### 9. Refs e Scroll
 - `scrollViewportRef` para capturar viewport do Radix ScrollArea
@@ -75,6 +76,45 @@
 3. **Múltiplos `setTimeout` para scroll** - Usar apenas um `setTimeout(scrollToBottom, 100)`
 4. **Online indicators com múltiplos ping** - Usar apenas dot sólido
 5. **`useEffect` com `[input]` dependency** - Triggera a cada caractere
+6. **`animate-pulse` em badges** - Animação infinita causa repaints constantes
+7. **`animate-pulse` no indicador de gravação** - Remove durante recording
+8. **Animações infinitas CSS** - Não usar `animation: X infinite` em elementos visíveis
+
+---
+
+## 🔧 SISTEMA DE PROTEÇÃO ANTI-LATÊNCIA
+
+### CSS (index.css)
+```css
+/* CRITICAL: Parar TODAS animações durante digitação */
+.typing-active,
+.typing-active *,
+.typing-active [class*="animate-"] {
+  animation: none !important;
+  animation-play-state: paused !important;
+  transition: none !important;
+}
+
+/* Textarea otimizado */
+.chat-container textarea {
+  will-change: auto; /* NÃO usar 'contents' */
+}
+```
+
+### JavaScript (onChange do Textarea)
+```javascript
+onChange={(e) => {
+  setInput(e.target.value);
+  isTypingRef.current = true;
+  document.querySelector('.chat-container')?.classList.add('typing-active');
+  
+  if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+  typingTimeoutRef.current = setTimeout(() => {
+    isTypingRef.current = false;
+    document.querySelector('.chat-container')?.classList.remove('typing-active');
+  }, 500);
+}}
+```
 
 ---
 
@@ -86,6 +126,8 @@
 - [ ] Testar digitação em ambos (sem lag)
 - [ ] Comparar visualmente ambos lado a lado
 - [ ] Verificar se animações pausam durante digitação
+- [ ] Confirmar que não há `animate-pulse` em elementos visíveis durante typing
+- [ ] Confirmar que não há `useState` com `[input]` como dependência
 
 ---
 
@@ -105,3 +147,6 @@
 - Simplificado online indicator
 - Unificado sistema de scroll
 - Adicionado regras CSS mais agressivas para `.typing-active`
+- Removido `animate-pulse` de todos os badges e indicadores
+- Removido animação `nextStepPulse` infinita
+- Corrigido `will-change: contents` para `will-change: auto`
