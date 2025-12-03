@@ -38,11 +38,7 @@ export function useChatKnowYOU() {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [currentlyPlayingIndex, setCurrentlyPlayingIndex] = useState<number | null>(null);
-  const [nextSteps, setNextSteps] = useState<string[]>([
-    "O que é telemedicina?",
-    "Como prevenir doenças crônicas?",
-    "Tendências em saúde digital",
-  ]);
+  const [nextSteps, setNextSteps] = useState<string[]>([]);
   const [currentSentiment, setCurrentSentiment] = useState<{
     label: "positive" | "negative" | "neutral";
     score: number;
@@ -477,11 +473,7 @@ export function useChatKnowYOU() {
     audioPlayerRef.current.stop();
     setMessages([]);
     setCurrentlyPlayingIndex(null);
-    setNextSteps([
-      "O que é telemedicina?",
-      "Como prevenir doenças crônicas?",
-      "Tendências em saúde digital",
-    ]);
+    setNextSteps([]);
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 

@@ -119,8 +119,8 @@ export async function streamChat({
 }
 
 export function extractNextSteps(text: string): string[] {
-  // Regex para capturar arrays JSON mesmo com quebras de linha
-  const match = text.match(/PRÓXIMOS_PASSOS:\s*(\[[\s\S]*?\])/);
+  // Regex case-insensitive para capturar variações como PRÓXIMOS_PASSOs
+  const match = text.match(/PR[ÓO]XIMOS_PASSOS?:\s*(\[[\s\S]*?\])/i);
   if (match) {
     try {
       // Limpar possíveis quebras de linha dentro do JSON
@@ -140,20 +140,23 @@ export function extractNextSteps(text: string): string[] {
 }
 
 export function removeNextStepsFromText(text: string): string {
-  // Remover formato estruturado: PRÓXIMOS_PASSOS: [...]
-  let cleaned = text.replace(/\n*PRÓXIMOS_PASSOS:\s*\[[\s\S]*?\]\s*/g, "");
+  // Remover formato estruturado case-insensitive: PRÓXIMOS_PASSOS: [...] ou PRÓXIMOS_PASSOs: [...]
+  let cleaned = text.replace(/\n*PR[ÓO]XIMOS_PASSOS?:\s*\[[\s\S]*?\]\s*/gi, "");
   
-  // Remover formato markdown: 🎯 Próximos passos para aprofundar: [...]
-  cleaned = cleaned.replace(/\n*🎯\s*Próximos passos[^:]*:\s*\[[\s\S]*?\]\s*/gi, "");
+  // Remover seção visual completa com linha separadora e lista formatada
+  cleaned = cleaned.replace(/\n*---\s*\n*🎯\s*\*?\*?Pr[óo]ximos\s*Passos\*?\*?:?\s*\n(?:[\s\S]*?)(?=\n\n[A-Z]|\n\n\*\*|$)/gi, "");
   
-  // Remover variação sem emoji com lista
-  cleaned = cleaned.replace(/\n*Próximos passos para aprofundar:\s*\[[\s\S]*?\]\s*/gi, "");
+  // Remover formato markdown: 🎯 **Próximos Passos:** seguido de lista com bullets
+  cleaned = cleaned.replace(/\n*🎯\s*\*?\*?Pr[óo]ximos\s*Passos\*?\*?:?\s*\n(?:•[^\n]*\n?)+/gi, "");
   
-  // Remover formato markdown com lista de itens em bold/asteriscos
-  cleaned = cleaned.replace(/\n*🎯\s*Próximos passos[^:]*:[\s\S]*?(?=\n\n|\n(?=[A-Z])|$)/gi, "");
+  // Remover variação com "para aprofundar"
+  cleaned = cleaned.replace(/\n*🎯?\s*\*?\*?Pr[óo]ximos\s*passos\s*para\s*aprofundar\*?\*?:?\s*\n(?:•[^\n]*\n?)+/gi, "");
+  
+  // Remover linha separadora solitária no final
+  cleaned = cleaned.replace(/\n*---\s*$/g, "");
   
   // Remover SUGESTÕES se ainda aparecer
-  cleaned = cleaned.replace(/\n*SUGESTÕES:\s*\[.*?\]\s*$/g, "");
+  cleaned = cleaned.replace(/\n*SUGESTÕES:\s*\[.*?\]\s*$/gi, "");
   
   return cleaned.trim();
 }
