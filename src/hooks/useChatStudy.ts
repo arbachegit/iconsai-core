@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { extractSuggestions, removeSuggestionsFromText } from "@/lib/chat-stream";
+import { extractSuggestions, removeSuggestionsFromText, extractNextSteps, removeNextStepsFromText } from "@/lib/chat-stream";
 import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +39,7 @@ export function useChatStudy() {
     "Como funciona o ACC?",
     "O que é o KnowYOU?",
   ]);
+  const [nextSteps, setNextSteps] = useState<string[]>([]);
   const [currentSentiment, setCurrentSentiment] = useState<{
     label: "positive" | "negative" | "neutral";
     score: number;
@@ -324,6 +325,15 @@ export function useChatStudy() {
           }
         }
 
+        // Extrair próximos passos (antes das sugestões)
+        const extractedNextSteps = extractNextSteps(assistantContent);
+        if (extractedNextSteps.length > 0) {
+          setNextSteps(extractedNextSteps);
+          assistantContent = removeNextStepsFromText(assistantContent);
+        } else {
+          setNextSteps([]);
+        }
+
         // Extrair sugestões
         const extracted = extractSuggestions(assistantContent);
         if (extracted.length > 0) {
@@ -581,6 +591,7 @@ export function useChatStudy() {
     isGeneratingImage,
     currentlyPlayingIndex,
     suggestions,
+    nextSteps,
     currentSentiment,
     sendMessage,
     clearHistory,

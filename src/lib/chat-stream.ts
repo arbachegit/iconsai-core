@@ -130,6 +130,22 @@ export function extractSuggestions(text: string): string[] {
   return [];
 }
 
+export function extractNextSteps(text: string): string[] {
+  const match = text.match(/PRÓXIMOS_PASSOS:\s*(\[.*?\])/);
+  if (match) {
+    try {
+      return JSON.parse(match[1]);
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 export function removeSuggestionsFromText(text: string): string {
   return text.replace(/\n*SUGESTÕES:\s*\[.*?\]\s*$/g, "").trim();
+}
+
+export function removeNextStepsFromText(text: string): string {
+  return text.replace(/\n*PRÓXIMOS_PASSOS:\s*\[.*?\]\s*/g, "").trim();
 }
