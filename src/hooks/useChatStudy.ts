@@ -22,6 +22,12 @@ interface UserPreferences {
   intentConfirmed: boolean;
 }
 
+interface TopicTracking {
+  previousTopics: string[];
+  topicStreak: number;
+  currentTopic: string;
+}
+
 export function useChatStudy() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,6 +48,11 @@ export function useChatStudy() {
     responseStyle: 'not_set',
     interactionCount: 0,
     intentConfirmed: false,
+  });
+  const [topicTracking, setTopicTracking] = useState<TopicTracking>({
+    previousTopics: [],
+    topicStreak: 0,
+    currentTopic: '',
   });
   
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
@@ -250,6 +261,8 @@ export function useChatStudy() {
               interactionCount: userPreferences.interactionCount,
               isNewUser: userPreferences.interactionCount < 3,
             },
+            previousTopics: topicTracking.previousTopics,
+            topicStreak: topicTracking.topicStreak,
           }),
         });
 
@@ -337,6 +350,23 @@ export function useChatStudy() {
         if (newSuggestions.length > 0) {
           setSuggestions(newSuggestions);
         }
+
+        // Update topic tracking - extract topic from the user's question
+        const topicWords = input.toLowerCase()
+          .replace(/[?!.,]/g, "")
+          .split(" ")
+          .filter((w: string) => w.length > 3 && !["o que", "como", "qual", "quais", "onde", "quando", "porque", "para", "sobre", "este", "esta", "isso", "aqui"].includes(w))
+          .slice(0, 3);
+        const extractedTopic = topicWords.join(" ") || "geral";
+        
+        setTopicTracking(prev => {
+          const newTopics = [...prev.previousTopics, extractedTopic].slice(-10); // Keep last 10 topics
+          return {
+            previousTopics: newTopics,
+            topicStreak: prev.topicStreak + 1,
+            currentTopic: extractedTopic,
+          };
+        });
 
         // Analyze sentiment
         analyzeSentiment(input, finalUpdated);

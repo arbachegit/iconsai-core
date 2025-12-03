@@ -25,6 +25,12 @@ interface UserPreferences {
   intentConfirmed: boolean;
 }
 
+interface TopicTracking {
+  previousTopics: string[];
+  topicStreak: number;
+  currentTopic: string;
+}
+
 export function useChatKnowYOU() {
   const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -56,6 +62,11 @@ export function useChatKnowYOU() {
     responseStyle: 'not_set',
     interactionCount: 0,
     intentConfirmed: false,
+  });
+  const [topicTracking, setTopicTracking] = useState<TopicTracking>({
+    previousTopics: [],
+    topicStreak: 0,
+    currentTopic: '',
   });
   
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
@@ -353,6 +364,8 @@ export function useChatKnowYOU() {
               interactionCount: userPreferences.interactionCount,
               isNewUser: userPreferences.interactionCount < 3,
             },
+            previousTopics: topicTracking.previousTopics,
+            topicStreak: topicTracking.topicStreak,
             onDelta: (chunk) => updateAssistantMessage(chunk),
             onDone: async () => {
             const extractedSuggestions = extractSuggestions(fullResponse);
@@ -361,6 +374,23 @@ export function useChatKnowYOU() {
             }
 
             const cleanedResponse = removeSuggestionsFromText(fullResponse);
+
+            // Update topic tracking
+            const topicWords = input.toLowerCase()
+              .replace(/[?!.,]/g, "")
+              .split(" ")
+              .filter((w: string) => w.length > 3 && !["o que", "como", "qual", "quais", "onde", "quando", "porque", "para", "sobre", "este", "esta", "isso", "aqui"].includes(w))
+              .slice(0, 3);
+            const extractedTopic = topicWords.join(" ") || "geral";
+            
+            setTopicTracking(prev => {
+              const newTopics = [...prev.previousTopics, extractedTopic].slice(-10);
+              return {
+                previousTopics: newTopics,
+                topicStreak: prev.topicStreak + 1,
+                currentTopic: extractedTopic,
+              };
+            });
 
             // Gerar áudio da resposta (somente se habilitado)
             if (settings?.chat_audio_enabled) {

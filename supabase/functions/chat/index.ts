@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, sessionId, userPreferences } = await req.json();
+    const { messages, sessionId, userPreferences, previousTopics = [], topicStreak = 0 } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     // Extrair preferências do usuário
@@ -22,6 +22,7 @@ serve(async (req) => {
     
     // 🔍 DEBUG: Log de preferências recebidas
     console.log(`[PERSONALIZATION DEBUG] sessionId=${sessionId}, isNewUser=${isNewUser}, interactionCount=${interactionCount}, preferredStyle=${preferredStyle}`);
+    console.log(`[TOPIC TRACKING] previousTopics=${JSON.stringify(previousTopics)}, topicStreak=${topicStreak}`);
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY não configurada");
@@ -30,6 +31,83 @@ serve(async (req) => {
     // Get last user message for RAG search
     const lastUserMessage = messages.filter((m: any) => m.role === "user").pop();
     const userQuery = lastUserMessage?.content || "";
+
+    // ========== CLASSIFICAÇÃO DE TÓPICO ==========
+    let topicClassification = {
+      mainTopic: "geral",
+      isNewTopic: true,
+      relatedTopics: [] as string[],
+      currentStreak: 1,
+    };
+
+    if (userQuery && previousTopics.length > 0) {
+      try {
+        console.log(`[TOPIC CLASSIFIER] Classifying query: "${userQuery.substring(0, 50)}..." against topics: ${previousTopics.join(", ")}`);
+        
+        const classifyResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [{
+              role: "user",
+              content: `Analise se a pergunta abaixo está relacionada aos tópicos anteriores.
+
+PERGUNTA ATUAL: "${userQuery}"
+
+TÓPICOS ANTERIORES DA CONVERSA: ${previousTopics.join(", ")}
+
+Responda APENAS com um JSON válido (sem markdown, sem \`\`\`):
+{
+  "mainTopic": "tópico principal da pergunta atual (máximo 3 palavras)",
+  "isRelatedToPrevious": true/false (se a pergunta trata do mesmo assunto ou conceito relacionado),
+  "relatedTopics": ["lista de tópicos anteriores que se relacionam com esta pergunta"]
+}
+
+REGRA: Perguntas sobre o mesmo tema/conceito são relacionadas mesmo com palavras diferentes.
+Exemplo: "O que é telemedicina?" e "Como funciona consulta online?" são RELACIONADAS (ambas sobre telemedicina).
+Exemplo: "Sintomas de diabetes" e "Tratamento para açúcar alto" são RELACIONADAS (ambas sobre diabetes).`
+            }],
+            max_tokens: 150,
+            temperature: 0.1,
+          }),
+        });
+
+        if (classifyResponse.ok) {
+          const classifyData = await classifyResponse.json();
+          const content = classifyData.choices?.[0]?.message?.content || "";
+          
+          // Parse JSON from response
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            topicClassification = {
+              mainTopic: parsed.mainTopic || "geral",
+              isNewTopic: !parsed.isRelatedToPrevious,
+              relatedTopics: parsed.relatedTopics || [],
+              currentStreak: parsed.isRelatedToPrevious ? topicStreak + 1 : 1,
+            };
+            console.log(`[TOPIC CLASSIFIER] Result: mainTopic="${topicClassification.mainTopic}", isNewTopic=${topicClassification.isNewTopic}, streak=${topicClassification.currentStreak}`);
+          }
+        }
+      } catch (classifyError) {
+        console.error("[TOPIC CLASSIFIER] Error:", classifyError);
+        // Continue with default classification
+      }
+    } else if (userQuery) {
+      // First message - extract topic
+      const topicWords = userQuery.toLowerCase()
+        .replace(/[?!.,]/g, "")
+        .split(" ")
+        .filter((w: string) => w.length > 3 && !["o que", "como", "qual", "quais", "onde", "quando", "porque", "para"].includes(w))
+        .slice(0, 3);
+      topicClassification.mainTopic = topicWords.join(" ") || "introdução";
+      topicClassification.currentStreak = 1;
+      console.log(`[TOPIC CLASSIFIER] First message, extracted topic: "${topicClassification.mainTopic}"`);
+    }
 
     // Get chat configuration from database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -445,24 +523,56 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
       - Dados estatísticos e percentuais
       - Rankings e classificações
 
-10. 📚 JORNADA DE APRENDIZADO E CONTINUIDADE:
+10. 📚 JORNADA DE APRENDIZADO E CONTINUIDADE TEMÁTICA:
 
+   🔍 ANÁLISE DE TÓPICO ATUAL:
+   ${topicClassification.isNewTopic ? `
+   🆕 NOVO TEMA DETECTADO: "${topicClassification.mainTopic}"
+   ${previousTopics.length > 0 ? `- Tópicos anteriores: ${previousTopics.slice(-3).join(", ")}` : '- Esta é a primeira pergunta do usuário'}
+   - O usuário MUDOU de assunto. Inicie uma nova trilha de aprendizado sobre saúde.
+   - NÃO referencie tópicos anteriores desnecessariamente.
+   ` : `
+   📚 CONTINUIDADE DETECTADA: "${topicClassification.mainTopic}"
+   - Tópicos relacionados anteriores: ${topicClassification.relatedTopics.join(", ") || previousTopics.slice(-3).join(", ")}
+   - Streak de continuidade: ${topicClassification.currentStreak}/5
+   - O usuário está APROFUNDANDO no mesmo tema de saúde. Mantenha coerência e construa sobre respostas anteriores.
+   - CONECTE esta resposta com o que já foi discutido sobre o tema.
+   `}
+
+   ${topicClassification.currentStreak >= 5 ? `
+   🎯🎯🎯 JORNADA MADURA DETECTADA (${topicClassification.currentStreak} perguntas sobre "${topicClassification.mainTopic}"):
+   
+   VOCÊ DEVE fazer TODAS estas 3 ações nesta resposta:
+   
+   1. RECAPITULAR (após responder à pergunta):
+      "📖 **Recapitulando sua jornada sobre ${topicClassification.mainTopic}:**
+      - Você entendeu [listar conceitos de saúde discutidos nas mensagens anteriores]
+      - Explorou [listar tratamentos/prevenções abordados]
+      - Aprofundou em [listar aspectos clínicos cobertos]"
+   
+   2. SUGERIR PLANO DE AÇÃO PRÁTICO:
+      "💡 **Que tal consolidar com um plano de ação?**
+      [Sugerir um plano prático específico relacionado a ${topicClassification.mainTopic}]"
+   
+   3. OFERECER FLUXO VISUAL:
+      "🗺️ **Quer que eu crie um fluxo de ação?**
+      Posso gerar um diagrama visual com os passos para você seguir esse plano de saúde."
+   ` : `
    ⚠️ REGRA OBRIGATÓRIA: Após CADA resposta substancial, ANTES das SUGESTÕES, inclua um bloco de CONTINUIDADE:
    
    🎯 **Próximos passos para aprofundar:**
-   - [Passo 1: conceito ou aspecto relacionado à saúde]
+   - [Passo 1: conceito ou aspecto relacionado a ${topicClassification.mainTopic}]
    - [Passo 2: aplicação prática ou prevenção]
    - [Passo 3: recurso ou cuidado complementar]
+   `}
    
    REGRAS DE CONTINUIDADE:
    1. Os passos devem ser PROGRESSIVOS (do básico ao avançado)
    2. Pelo menos um passo deve ser PRÁTICO (ação real de saúde)
-   3. Baseie-se no CONTEXTO DA CONVERSA, não em genéricos
+   3. Baseie-se no CONTEXTO DA CONVERSA sobre "${topicClassification.mainTopic}", não em genéricos
    4. Os passos devem ajudar o usuário a CONSOLIDAR o entendimento sobre saúde
    
-   📖 DETECÇÃO DE JORNADA MADURA (analise o histórico da conversa):
-   
-   Quando perceber que o usuário fez 5+ perguntas sobre um tema similar de saúde (mesmo tópico sendo explorado em profundidade):
+   📖 QUANDO O USUÁRIO PEDIR FLUXO DE AÇÃO (responder "sim", "pode fazer", "quero", "gera", "criar fluxo"):
    
    1. RESUMA o que foi aprendido:
       "📖 **Recapitulando sua jornada:**
