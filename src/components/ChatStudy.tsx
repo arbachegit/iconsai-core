@@ -20,31 +20,6 @@ interface ChatStudyProps {
   onClose?: () => void;
 }
 
-// Sugestões de estudo sobre KnowRisk/KnowYOU/ACC
-const STUDY_SUGGESTIONS = [
-  "O que é a KnowRisk?",
-  "Como funciona o ACC?",
-  "O que é o KnowYOU?",
-  "Quais seções tem o site?",
-  "O que é a Era Generativa?",
-  "Onde está a seção sobre Watson?",
-  "O que fala na seção de Exclusão Digital?",
-  "Como comunicar bem com IA?",
-  "Qual a história da IA apresentada?",
-  "O que é Tech Sem Propósito?",
-  "Onde fala sobre HAL 9000?",
-  "O que é a Nova Era da IA?",
-];
-
-// Sugestões para modo de imagem
-const IMAGE_SUGGESTIONS = [
-  "Logo da KnowRisk moderno",
-  "Ilustração do ACC",
-  "Arquitetura cognitiva visual",
-  "Sistema conversacional de IA",
-  "Interface de chat futurista",
-  "Rede neural de comunicação",
-];
 
 export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const { t } = useTranslation();
@@ -72,7 +47,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const [isImageMode, setIsImageMode] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
   const [waitingCountdown, setWaitingCountdown] = useState(5);
-  const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -130,18 +105,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     }
   }, [currentlyPlayingIndex, audioVisibility]);
 
-  // Rotação de sugestões a cada 10 segundos
-  useEffect(() => {
-    const rotateSuggestions = () => {
-      const sourceList = isImageMode ? IMAGE_SUGGESTIONS : STUDY_SUGGESTIONS;
-      const shuffled = [...sourceList].sort(() => Math.random() - 0.5);
-      setDisplayedSuggestions(shuffled.slice(0, 4));
-    };
-    
-    rotateSuggestions();
-    const interval = setInterval(rotateSuggestions, 10000);
-    return () => clearInterval(interval);
-  }, [isImageMode]);
 
   // Helper function to scroll to bottom using the sentinel element
   const scrollToBottom = () => {
@@ -185,17 +148,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     }
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
-    if (isImageMode) {
-      generateImage(suggestion);
-    } else {
-      sendMessage(suggestion);
-    }
-    // Scroll múltiplo após clicar em sugestão
-    setTimeout(scrollToBottom, 50);
-    setTimeout(scrollToBottom, 200);
-    setTimeout(scrollToBottom, 500);
-  };
 
   const toggleImageMode = () => {
     setIsImageMode(!isImageMode);
@@ -630,31 +582,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
         </div>
       </ScrollArea>
 
-      {/* Suggestions with optional disclaimer */}
-      {displayedSuggestions.length > 0 && (
-        <div className="px-4 pb-2 space-y-2">
-          {/* Show disclaimer if provided by backend */}
-          <div className="flex gap-2 overflow-x-auto">
-            {displayedSuggestions.map((suggestion, index) => {
-              const isNew = suggestion.startsWith('🆕 NOVO:') || suggestion.toLowerCase().includes('novo:');
-              return (
-              <Button
-                key={index}
-                variant={isNew ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleSuggestionClick(suggestion)}
-                className={cn(
-                  "text-xs whitespace-nowrap rounded-full border-2 border-primary/50 hover:border-primary",
-                  isNew && "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-none animate-pulse shadow-lg"
-                )}
-              >
-                  {suggestion.replace('🆕 NOVO:', '').trim()}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Input */}
       <form onSubmit={handleSubmit} className="p-4 border-t-2 border-primary/30 bg-muted/30 rounded-b-lg shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">

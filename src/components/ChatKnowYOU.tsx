@@ -18,11 +18,6 @@ import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
-// 30 sugestões de saúde para rotação
-const HEALTH_SUGGESTIONS = ["O que é telemedicina?", "Como prevenir doenças cardíacas?", "Quais especialidades o Hospital Moinhos de Vento oferece?", "Como funciona a robótica cirúrgica?", "O que são doenças crônicas?", "Como manter uma alimentação saudável?", "Quais exames preventivos fazer anualmente?", "O que é diabetes tipo 2?", "Como controlar a pressão arterial?", "O que faz um cardiologista?", "Como prevenir o câncer?", "O que é saúde mental?", "Como funciona a fisioterapia?", "Quais sintomas indicam AVC?", "O que é medicina preventiva?", "Como melhorar a qualidade do sono?", "O que são exames de imagem?", "Como funciona a vacinação?", "O que é obesidade mórbida?", "Como tratar ansiedade?", "O que faz um endocrinologista?", "Como prevenir osteoporose?", "O que é check-up médico?", "Como funciona a nutrição clínica?", "Quais benefícios da atividade física?", "O que é colesterol alto?", "Como identificar depressão?", "O que são doenças autoimunes?", "Como funciona o transplante de órgãos?", "Qual a importância da hidratação?"];
-
-// Sugestões específicas para modo de geração de imagem
-const IMAGE_SUGGESTIONS = ["Anatomia do coração humano", "Sistema respiratório", "Processo de cicatrização", "Estrutura de um neurônio", "Aparelho digestivo", "Sistema circulatório", "Esqueleto humano", "Sistema nervoso central"];
 const SentimentIndicator = ({
   sentiment
 }: {
@@ -87,7 +82,7 @@ export default function ChatKnowYOU() {
   const [isImageMode, setIsImageMode] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
   const [waitingCountdown, setWaitingCountdown] = useState(5);
-  const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -161,18 +156,6 @@ export default function ChatKnowYOU() {
     }
   }, [currentlyPlayingIndex, audioVisibility]);
 
-  // Rotação de sugestões a cada 10 segundos (filtrar tags >80%)
-  useEffect(() => {
-    const rotateSuggestions = () => {
-      const sourceList = isImageMode ? IMAGE_SUGGESTIONS : HEALTH_SUGGESTIONS;
-      // Filtrar sugestões com confidence < 80% (se houver metadata)
-      const shuffled = [...sourceList].sort(() => Math.random() - 0.5);
-      setDisplayedSuggestions(shuffled.slice(0, 4));
-    };
-    rotateSuggestions();
-    const interval = setInterval(rotateSuggestions, 10000);
-    return () => clearInterval(interval);
-  }, [isImageMode]);
 
   // Helper function to scroll to bottom
   const scrollToBottom = () => {
@@ -231,15 +214,6 @@ export default function ChatKnowYOU() {
       // Scroll imediato após enviar
       setTimeout(scrollToBottom, 100);
     }
-  };
-  const handleSuggestionClick = (suggestion: string) => {
-    if (isImageMode) {
-      generateImage(suggestion);
-    } else {
-      sendMessage(suggestion);
-    }
-    // Scroll imediato após clicar em sugestão
-    setTimeout(scrollToBottom, 100);
   };
   const toggleImageMode = () => {
     setIsImageMode(!isImageMode);
@@ -603,33 +577,6 @@ export default function ChatKnowYOU() {
           </div>}
       </ScrollArea>
 
-      {/* Suggestions com slider */}
-      {displayedSuggestions.length > 0 && !isLoading && <div className="px-6 py-4 bg-muted/50 border-t border-border/50">
-          {/* Disclaimer when document attached */}
-          {activeDisclaimer && <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-amber-500">
-                    {activeDisclaimer.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {activeDisclaimer.message}
-                  </p>
-                </div>
-              </div>
-            </div>}
-          
-          
-          <div className="flex flex-wrap gap-2 suggestions-slider">
-            {displayedSuggestions.map((suggestion, idx) => {
-          const isNew = suggestion.startsWith('🆕 NOVO:') || suggestion.toLowerCase().includes('novo:');
-          return <Button key={`${suggestion}-${idx}`} variant={isNew ? "default" : "outline"} size="sm" onClick={() => handleSuggestionClick(suggestion)} className={cn("text-xs rounded-full border-2 border-primary/50 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors", isNew && "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-none animate-pulse shadow-lg")}>
-                  {suggestion.replace('🆕 NOVO:', '').trim()}
-                </Button>;
-        })}
-          </div>
-        </div>}
 
       {/* Input Area */}
       <form onSubmit={handleSubmit} className="p-6 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
