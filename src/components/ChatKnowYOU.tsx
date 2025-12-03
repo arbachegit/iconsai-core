@@ -78,7 +78,7 @@ export default function ChatKnowYOU() {
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+  
   const [isImageMode, setIsImageMode] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
   const [waitingCountdown, setWaitingCountdown] = useState(5);
@@ -497,12 +497,6 @@ export default function ChatKnowYOU() {
     link.click();
     document.body.removeChild(link);
   };
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsTyping(input.length > 0);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [input]);
   return <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border-2 border-primary/40 shadow-[0_0_15px_rgba(139,92,246,0.2),0_0_30px_rgba(139,92,246,0.1)] animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b-2 border-primary/30">
@@ -590,20 +584,6 @@ export default function ChatKnowYOU() {
             </span>
           </div>}
         
-        {isTyping && <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
-            <div className="flex gap-1">
-              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
-            animationDelay: "0ms"
-          }} />
-              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
-            animationDelay: "150ms"
-          }} />
-              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
-            animationDelay: "300ms"
-          }} />
-            </div>
-            {t('chat.typing')}
-          </div>}
           <div className="flex gap-2 items-end">
             <DocumentAttachButton onAttach={attachDocument} disabled={isLoading || isGeneratingAudio || isGeneratingImage} />
             <Textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {
