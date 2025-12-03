@@ -222,9 +222,15 @@ All colors MUST be HSL.
    ============================================================================
    Este bloco de CSS é CRÍTICO para eliminar latência durante digitação.
    Qualquer modificação deve ser testada exaustivamente em ambos os chats.
+   
+   SISTEMA DE REDUNDÂNCIA EM 4 CAMADAS:
+   1. Código: Remoção de animationDelay, animate-pulse, transition-* dinâmicos
+   2. CSS: Seletores ultra-específicos com !important
+   3. Refs: isTypingRef.current verificado em todos os callbacks
+   4. DOM: chatContainerRef cacheado para evitar querySelector
    ============================================================================ */
 
-/* 🚨 CRITICAL PERFORMANCE: Parar ABSOLUTAMENTE TUDO durante digitação */
+/* 🚨 CAMADA 2A: Seletores ULTRA-ESPECÍFICOS para .typing-active */
 .typing-active,
 .typing-active *,
 .typing-active *::before,
@@ -237,35 +243,47 @@ All colors MUST be HSL.
 .typing-active .animate-spin,
 .typing-active .animate-fade-in,
 .typing-active [class*="animate-"],
-.typing-active [class*="transition-"] {
+.typing-active [class*="transition-"],
+.typing-active button,
+.typing-active [style*="animation"],
+.typing-active [style*="transition"] {
   animation: none !important;
   animation-play-state: paused !important;
   animation-duration: 0s !important;
   animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
   transition: none !important;
   transition-duration: 0s !important;
   transition-delay: 0s !important;
+  transition-property: none !important;
 }
 
-/* Forçar GPU compositing OFF durante digitação */
-.typing-active * {
+/* 🚨 CAMADA 2B: Forçar GPU compositing OFF durante digitação */
+.typing-active *,
+.typing-active *::before,
+.typing-active *::after {
   will-change: auto !important;
   backface-visibility: visible !important;
+  perspective: none !important;
 }
 
-/* Otimização específica do textarea durante digitação */
-.typing-active textarea {
+/* 🚨 CAMADA 2C: Proteção ABSOLUTA do textarea */
+.typing-active textarea,
+.typing-active textarea:focus,
+.chat-container.typing-active textarea {
   will-change: auto !important;
   transform: none !important;
+  animation: none !important;
+  transition: none !important;
 }
 
-/* Otimização de textarea - will-change: auto para deixar browser decidir */
+/* 🚨 CAMADA 2D: Otimização padrão de textarea */
 .chat-container textarea {
   will-change: auto;
 }
 
 /* ============================================================================
-   FIM DA PROTEÇÃO ABSOLUTA
+   FIM DA PROTEÇÃO ABSOLUTA - 4 CAMADAS DE REDUNDÂNCIA ATIVAS
    ============================================================================ */
 
 @layer base {

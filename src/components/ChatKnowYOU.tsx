@@ -708,7 +708,7 @@ export default function ChatKnowYOU() {
                 e.preventDefault();
                 handleSubmit(e);
               }
-            }} placeholder={isTranscribing ? t('chat.transcribing') : isImageMode ? t('chat.placeholderImage') : t('chat.placeholderHealth')} className="min-h-[100px] resize-none w-full pb-12 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]" style={{ willChange: 'transform' }} disabled={isLoading || isTranscribing} />
+            }} placeholder={isTranscribing ? t('chat.transcribing') : isImageMode ? t('chat.placeholderImage') : t('chat.placeholderHealth')} className="min-h-[100px] resize-none w-full pb-12 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]" disabled={isLoading || isTranscribing} />
             
             {/* Botões de funcionalidade - inferior esquerdo */}
             <TooltipProvider delayDuration={200}>
@@ -787,12 +787,11 @@ export default function ChatKnowYOU() {
                       sendMessage(step);
                     }
                   }}
-                  className={`next-step-badge text-[11px] h-7 px-3 rounded-full shrink-0 transition-all ${
+                  className={`next-step-badge text-[11px] h-7 px-3 rounded-full shrink-0 ${
                     isDiagram 
                       ? "bg-gradient-to-r from-violet-500/30 to-fuchsia-500/30 border-violet-400/60 text-violet-200 hover:from-violet-400 hover:to-fuchsia-400 hover:text-white hover:border-violet-400 shadow-[0_0_20px_rgba(139,92,246,0.4)]"
                       : "border-cyan-400/60 bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500 hover:text-cyan-950 hover:border-cyan-500 hover:scale-105 shadow-[0_0_12px_rgba(34,211,238,0.25)]"
                   }`}
-                  style={{ animationDelay: `${idx * 50}ms` }}
                 >
                   {isDiagram ? (
                     <GitBranch className="w-3 h-3 mr-1" />
@@ -879,9 +878,9 @@ export default function ChatKnowYOU() {
                   variant="outline"
                   size="sm"
                   onClick={() => handleSuggestionClick(suggestion)}
-                  className={`text-[10px] h-6 px-2 rounded-full shrink-0 transition-colors ${
+                  className={`text-[10px] h-6 px-2 rounded-full shrink-0 ${
                     isDataBadge 
-                      ? "border-emerald-500/60 bg-emerald-600/20 text-emerald-300 hover:bg-emerald-500 hover:text-emerald-950 hover:border-emerald-500 animate-pulse" 
+                      ? "border-emerald-500/60 bg-emerald-600/20 text-emerald-300 hover:bg-emerald-500 hover:text-emerald-950 hover:border-emerald-500" 
                       : isNoDataBadge
                         ? "border-slate-500/60 bg-slate-600/20 text-slate-300 hover:bg-slate-500 hover:text-slate-950 hover:border-slate-500"
                         : "border border-primary/40 hover:border-primary hover:bg-primary hover:text-primary-foreground"
