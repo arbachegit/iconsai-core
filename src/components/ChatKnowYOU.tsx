@@ -106,7 +106,7 @@ export default function ChatKnowYOU() {
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+  // REMOVIDO: isTyping state - causava re-renders e latência
   const [isImageMode, setIsImageMode] = useState(false);
   const [selectedChartType, setSelectedChartType] = useState<ChartType | null>(null);
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
@@ -593,12 +593,7 @@ export default function ChatKnowYOU() {
     link.click();
     document.body.removeChild(link);
   };
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsTyping(input.length > 0);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [input]);
+  // REMOVIDO: useEffect de isTyping - causava re-renders contínuos e latência na digitação
   return <div className="chat-container flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border-2 border-primary/40 shadow-[0_0_15px_rgba(139,92,246,0.2),0_0_30px_rgba(139,92,246,0.1)] animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b-2 border-primary/30">
@@ -606,13 +601,8 @@ export default function ChatKnowYOU() {
           <div className="relative">
             <img src={knowriskLogo} alt="KnowRisk Logo" className="w-10 h-10" />
             
-            {/* Online indicator with sequential waves */}
-            <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 flex items-center justify-center">
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse z-10" />
-              <div className="absolute w-5 h-5 rounded-full bg-green-500/30 animate-ping animation-delay-0" />
-              <div className="absolute w-5 h-5 rounded-full bg-green-500/20 animate-ping animation-delay-150" />
-              <div className="absolute w-5 h-5 rounded-full bg-green-500/10 animate-ping animation-delay-300" />
-            </div>
+            {/* Online indicator - simplificado para reduzir animações */}
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border border-green-400 shadow-md shadow-green-500/50" />
           </div>
           <h2 className="text-lg font-bold text-gradient">{t('chat.healthTitle')}</h2>
         </div>
@@ -685,20 +675,7 @@ export default function ChatKnowYOU() {
               </span>
             </div>}
           
-          {isTyping && <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
-              animationDelay: "0ms"
-            }} />
-                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
-              animationDelay: "150ms"
-            }} />
-                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
-              animationDelay: "300ms"
-            }} />
-              </div>
-              {t('chat.typing')}
-            </div>}
+          {/* REMOVIDO: Typing indicator - causava animações e re-renders durante digitação */}
           
           {/* Container relativo para posicionar botões dentro */}
           <div className="relative">

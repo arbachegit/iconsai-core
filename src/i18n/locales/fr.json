@@ -217,6 +217,8 @@
     "studyModalTitle": "Parlez avec KnowYOU",
     "greeting": "Bonjour! Je suis KnowYOU",
     "greetingDesc": "Votre assistant spécialisé en santé. Comment puis-je vous aider aujourd'hui?",
+    "studyGreeting": "Bonjour! Je suis KnowYOU",
+    "studyGreetingDesc": "Votre assistant d'étude pour KnowRisk, KnowYOU et ACC. Comment puis-je vous aider?",
     "placeholder": "Tapez votre message sur la santé...",
     "placeholderHealth": "Ici vous pouvez rechercher des informations sur la santé, l'administration hospitalière et l'Hospital Moinhos de Vento.",
     "placeholderStudy": "Ici vous pouvez rechercher divers sujets sur l'IA et sur l'IA KnowYOU qui gère cet outil.",

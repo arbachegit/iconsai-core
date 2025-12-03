@@ -217,6 +217,8 @@
     "studyModalTitle": "Talk to KnowYOU",
     "greeting": "Hello! I'm KnowYOU",
     "greetingDesc": "Your specialized health assistant. How can I help you today?",
+    "studyGreeting": "Hello! I'm KnowYOU",
+    "studyGreetingDesc": "Your study assistant for KnowRisk, KnowYOU and ACC. How can I help you?",
     "placeholder": "Type your message about health...",
     "placeholderHealth": "Here you can search about health, hospital administration and Hospital Moinhos de Vento.",
     "placeholderStudy": "Here you can search about various AI topics and about the KnowYOU AI that manages this tool.",

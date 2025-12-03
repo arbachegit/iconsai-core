@@ -97,6 +97,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
   const [badgesCollapsed, setBadgesCollapsed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -104,7 +105,9 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<string>("");
   const prefixTextRef = useRef<string>("");
-  const [audioStates, setAudioStates] = useState<{[key: number]: { isPlaying: boolean; currentTime: number; duration: number }}>({});
+  const mountTimeRef = useRef(Date.now());
+  const previousMessagesLength = useRef(messages.length);
+  const INIT_PERIOD = 1000;
   const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
   const [audioVisibility, setAudioVisibility] = useState<{[key: number]: boolean}>({});
   const audioMessageRefs = useRef<{[key: number]: HTMLDivElement | null}>({});
@@ -112,6 +115,16 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   // Request location on mount
   useEffect(() => {
     requestLocation();
+  }, []);
+
+  // Capturar o viewport do ScrollArea após mount (idêntico ao Health)
+  useEffect(() => {
+    if (scrollRef.current) {
+      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        scrollViewportRef.current = viewport as HTMLDivElement;
+      }
+    }
   }, []);
 
 
@@ -192,23 +205,40 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     return () => clearInterval(interval);
   }, [isImageMode]);
 
-  // Helper function to scroll to bottom using the sentinel element
+  // Helper function to scroll to bottom (idêntico ao Health)
   const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+    if (scrollViewportRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollViewportRef.current) {
+          scrollViewportRef.current.scrollTo({
+            top: scrollViewportRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
     }
   };
 
-  // Auto-scroll to latest message - solução definitiva usando messagesEndRef
+  // Auto-scroll to latest message - SOLUÇÃO DEFINITIVA (idêntica ao Health)
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-      }
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, [messages, isLoading, isGeneratingAudio, isGeneratingImage]);
+    const timeSinceMount = Date.now() - mountTimeRef.current;
+    if (timeSinceMount < INIT_PERIOD) {
+      previousMessagesLength.current = messages.length;
+      return;
+    }
+    const shouldScroll = messages.length > previousMessagesLength.current || isLoading;
+    if (shouldScroll && scrollViewportRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollViewportRef.current) {
+          scrollViewportRef.current.scrollTo({
+            top: scrollViewportRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
+    }
+    previousMessagesLength.current = messages.length;
+  }, [messages, isLoading]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,10 +265,8 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
         setInput("");
         setSelectedChartType(null); // Reset after sending
       }
-      // Scroll múltiplo para garantir que vá até a última mensagem
-      setTimeout(scrollToBottom, 50);
-      setTimeout(scrollToBottom, 200);
-      setTimeout(scrollToBottom, 500);
+      // Scroll único após enviar (idêntico ao Health)
+      setTimeout(scrollToBottom, 100);
     }
   };
   
@@ -258,10 +286,8 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     } else {
       sendMessage(suggestion);
     }
-    // Scroll múltiplo após clicar em sugestão
-    setTimeout(scrollToBottom, 50);
-    setTimeout(scrollToBottom, 200);
-    setTimeout(scrollToBottom, 500);
+    // Scroll único após clicar em sugestão (idêntico ao Health)
+    setTimeout(scrollToBottom, 100);
   };
 
   const toggleImageMode = () => {
@@ -565,53 +591,37 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   };
 
   return (
-    <div className="chat-container flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border-2 border-primary/40 shadow-[0_0_15px_rgba(139,92,246,0.2),0_0_30px_rgba(139,92,246,0.1)]">
+    <div className="chat-container flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border-2 border-primary/40 shadow-[0_0_15px_rgba(139,92,246,0.2),0_0_30px_rgba(139,92,246,0.1)] animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b-2 border-primary/30">
+      <div className="flex items-center justify-between p-4 border-b-2 border-primary/30">
         <div className="flex items-center gap-3">
           <div className="relative">
             <img src={knowriskLogo} alt="KnowRisk Logo" className="w-10 h-10" />
             
-            {/* Online indicator with sequential waves */}
-            <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 flex items-center justify-center">
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-md shadow-green-500/50 border border-green-400" />
-              <div 
-                className="absolute w-3.5 h-3.5 rounded-full border border-green-400/50 animate-ping" 
-                style={{ animationDuration: '1.5s', animationDelay: '0s' }} 
-              />
-              <div 
-                className="absolute w-4.5 h-4.5 rounded-full border border-green-400/40 animate-ping" 
-                style={{ animationDuration: '1.5s', animationDelay: '0.3s' }} 
-              />
-              <div 
-                className="absolute w-5 h-5 rounded-full border border-green-400/30 animate-ping" 
-                style={{ animationDuration: '1.5s', animationDelay: '0.6s' }} 
-              />
-            </div>
+            {/* Online indicator - simplificado para reduzir animações */}
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border border-green-400 shadow-md shadow-green-500/50" />
           </div>
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-gradient">{t('chat.studyModalTitle')}</h2>
-            {currentSentiment && (
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50 border border-border/30">
-                <span className="text-2xl">
-                  {currentSentiment.label === "positive" ? "😊" : 
-                   currentSentiment.label === "negative" ? "😟" : "😐"}
-                </span>
-                <span className="text-xs font-medium text-muted-foreground">
-                  {(currentSentiment.score * 100).toFixed(0)}%
-                </span>
-              </div>
-            )}
-          </div>
+          <h2 className="text-lg font-bold text-gradient">{t('chat.studyModalTitle')}</h2>
         </div>
         
-        {/* Botões lado a lado: Limpar à esquerda, Fechar à direita */}
+        {/* Botões lado a lado: Sentimento, Limpar, Fechar */}
         <div className="flex items-center gap-2">
+          {currentSentiment && (
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/50 backdrop-blur-sm">
+              <span className="text-lg">
+                {currentSentiment.label === "positive" ? "😊" : 
+                 currentSentiment.label === "negative" ? "😟" : "😐"}
+              </span>
+              <span className="text-xs font-medium">
+                {(currentSentiment.score * 100).toFixed(0)}%
+              </span>
+            </div>
+          )}
           <Button
             variant="ghost"
             size="sm"
             onClick={clearHistory}
-            className="text-xs h-8"
+            className="text-xs"
           >
             {t('chat.clear')}
           </Button>
@@ -629,76 +639,87 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Messages Area */}
       <ScrollArea 
-        className="flex-1 p-4 border-2 border-[hsl(var(--chat-container-border))] bg-[hsl(var(--chat-container-bg))] rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3)]" 
+        className="h-[500px] p-6 border-2 border-cyan-400/60 bg-[hsl(var(--chat-container-bg))] rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" 
         style={{
           transform: 'translateZ(-10px)',
           backfaceVisibility: 'hidden'
         }}
         ref={scrollRef}>
-        <div className="space-y-4">
-          {messages.map((message, index) => (
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
+              <span className="text-4xl font-bold text-primary-foreground">K</span>
+            </div>
+            <h4 className="text-xl font-semibold mb-2">{t('chat.studyGreeting')}</h4>
+            <p className="text-muted-foreground max-w-md">
+              {t('chat.studyGreetingDesc')}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {messages.map((message, index) => (
               <div
                 key={index}
                 className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-              ref={(el) => {
-                if (message.role === "assistant" && message.audioUrl) {
-                  audioMessageRefs.current[index] = el;
-                }
-              }}
-            >
-              <div
-                className={`max-w-[80%] rounded-lg p-3 ${
-                  message.role === "user"
-                    ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground"
-                    : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground"
-                }`}
+                ref={(el) => {
+                  if (message.role === "assistant" && message.audioUrl) {
+                    audioMessageRefs.current[index] = el;
+                  }
+                }}
               >
-                <div className="flex items-start gap-2">
-                  <MarkdownContent content={message.content} className="text-sm flex-1" />
-                </div>
-                
-                {message.imageUrl && (
-                  <img
-                    src={message.imageUrl}
-                    alt="Generated"
-                    className="mt-2 rounded-lg max-w-full"
-                  />
-                )}
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                    message.role === "user"
+                      ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right"
+                      : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"
+                  }`}
+                >
+                  {message.imageUrl && (
+                    <img
+                      src={message.imageUrl}
+                      alt="Generated"
+                      className="max-w-full rounded-lg mb-2"
+                    />
+                  )}
+                  <div className="flex items-start gap-2">
+                    <MarkdownContent content={message.content} className="text-sm leading-relaxed flex-1" />
+                  </div>
 
-                {message.role === "assistant" && (
-                  <AudioControls
-                    audioUrl={message.audioUrl}
-                    imageUrl={message.imageUrl}
-                    isPlaying={currentlyPlayingIndex === index}
-                    isGeneratingAudio={isGeneratingAudio}
-                    currentTime={audioStates[index]?.currentTime}
-                    duration={audioStates[index]?.duration}
-                    timestamp={message.timestamp}
-                    location={location || undefined}
-                    messageContent={message.content}
-                    onPlay={() => handleAudioPlay(index)}
-                    onStop={handleAudioStop}
-                    onDownload={() => message.audioUrl && handleDownloadAudio(message.audioUrl, index)}
-                    onDownloadImage={message.imageUrl ? () => handleDownloadImage(message.imageUrl!, index) : undefined}
-                  />
-                )}
-              </div>
-            </div>
-          ))}
-          
-              {(isLoading || isGeneratingAudio || isGeneratingImage) && (
-                <div className="flex justify-start">
-                  <TypingIndicator isDrawing={isGeneratingImage} />
+                  {message.role === "assistant" && (
+                    <AudioControls
+                      audioUrl={message.audioUrl}
+                      imageUrl={message.imageUrl}
+                      isPlaying={currentlyPlayingIndex === index}
+                      isGeneratingAudio={isGeneratingAudio}
+                      currentTime={0}
+                      duration={0}
+                      timestamp={message.timestamp}
+                      location={location || undefined}
+                      messageContent={message.content}
+                      onPlay={() => handleAudioPlay(index)}
+                      onStop={handleAudioStop}
+                      onDownload={() => message.audioUrl && handleDownloadAudio(message.audioUrl, index)}
+                      onDownloadImage={message.imageUrl ? () => handleDownloadImage(message.imageUrl!, index) : undefined}
+                    />
+                  )}
                 </div>
-              )}
-          <div ref={messagesEndRef} />
-        </div>
+              </div>
+            ))}
+            
+            {(isLoading || isGeneratingAudio || isGeneratingImage) && (
+              <div className="flex justify-start">
+                <TypingIndicator isDrawing={isGeneratingImage} />
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
       </ScrollArea>
 
-      {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t-2 border-primary/30 bg-muted/30 rounded-b-lg shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
+      {/* Input Area */}
+      <form onSubmit={handleSubmit} className="p-4 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
           {/* Indicador de voz ativo */}
           {isRecording && (
             <div className="flex items-center gap-2 text-xs mb-2">
@@ -741,14 +762,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
                   document.querySelector('.chat-container')?.classList.remove('typing-active');
                 }, 500);
               }}
-              placeholder={
-                isTranscribing ? t('chat.transcribing') :
-                isImageMode ? t('chat.placeholderImageStudy') : 
-                t('chat.placeholderStudy')
-              }
-              className="min-h-[80px] w-full resize-none pb-12 border-2 border-cyan-400/60 focus:border-primary/50 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]"
-              style={{ willChange: 'transform' }}
-              disabled={isTranscribing}
               onKeyDown={(e) => {
                 handleInputKeyDown(e);
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -756,6 +769,14 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
                   handleSubmit(e);
                 }
               }}
+              placeholder={
+                isTranscribing ? t('chat.transcribing') :
+                isImageMode ? t('chat.placeholderImageStudy') : 
+                t('chat.placeholderStudy')
+              }
+              className="min-h-[100px] resize-none w-full pb-12 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]"
+              style={{ willChange: 'transform' }}
+              disabled={isLoading || isTranscribing}
             />
             
             {/* Botões de funcionalidade - inferior esquerdo */}
@@ -1063,8 +1084,8 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
       {/* Floating Audio Player */}
       <FloatingAudioPlayer
         isVisible={showFloatingPlayer && currentlyPlayingIndex !== null}
-        currentTime={audioStates[currentlyPlayingIndex ?? -1]?.currentTime ?? 0}
-        duration={audioStates[currentlyPlayingIndex ?? -1]?.duration ?? 0}
+        currentTime={0}
+        duration={0}
         onStop={() => {
           stopAudio();
           setShowFloatingPlayer(false);
