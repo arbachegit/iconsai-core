@@ -23,47 +23,52 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Process base64 in chunks to prevent memory issues
-    function processBase64Chunks(base64String: string, chunkSize = 32768) {
-      const chunks: Uint8Array[] = [];
-      let position = 0;
-      
-      while (position < base64String.length) {
-        const chunk = base64String.slice(position, position + chunkSize);
-        const binaryChunk = atob(chunk);
-        const bytes = new Uint8Array(binaryChunk.length);
-        
-        for (let i = 0; i < binaryChunk.length; i++) {
-          bytes[i] = binaryChunk.charCodeAt(i);
-        }
-        
-        chunks.push(bytes);
-        position += chunkSize;
+    // Strip data URL prefix if present
+    let base64Data = audio;
+    let mimeType = 'audio/webm';
+    
+    if (audio.includes(',')) {
+      const parts = audio.split(',');
+      base64Data = parts[1];
+      // Extract mime type from data URL
+      const mimeMatch = parts[0].match(/data:([^;]+)/);
+      if (mimeMatch) {
+        mimeType = mimeMatch[1];
       }
-
-      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-      const result = new Uint8Array(totalLength);
-      let offset = 0;
-
-      for (const chunk of chunks) {
-        result.set(chunk, offset);
-        offset += chunk.length;
-      }
-
-      return result;
     }
+    
+    console.log('Audio mime type:', mimeType);
+    console.log('Base64 data length:', base64Data.length);
 
-    // Process audio in chunks
-    const binaryAudio = processBase64Chunks(audio);
+    // Decode base64 directly (Deno handles large strings well)
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    console.log('Decoded audio bytes:', bytes.length);
+    
+    // Determine file extension based on mime type
+    let extension = 'webm';
+    if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
+      extension = 'mp4';
+    } else if (mimeType.includes('wav')) {
+      extension = 'wav';
+    } else if (mimeType.includes('mp3') || mimeType.includes('mpeg')) {
+      extension = 'mp3';
+    } else if (mimeType.includes('ogg')) {
+      extension = 'ogg';
+    }
     
     // Prepare form data
     const formData = new FormData();
-    const blob = new Blob([binaryAudio], { type: 'audio/webm' });
-    formData.append('file', blob, 'audio.webm');
+    const blob = new Blob([bytes], { type: mimeType });
+    formData.append('file', blob, `audio.${extension}`);
     formData.append('model', 'whisper-1');
-    formData.append('language', 'pt'); // Portuguese
+    formData.append('language', 'pt');
 
-    console.log('Sending audio to OpenAI Whisper API...');
+    console.log('Sending audio to OpenAI Whisper API, file:', `audio.${extension}`);
 
     // Send to OpenAI
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
