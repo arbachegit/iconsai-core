@@ -56,13 +56,23 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
   useEffect(() => {
     updateScrollState();
     const el = scrollRef.current;
+    
+    // Debounce para resize - evita processamento excessivo
+    let resizeTimeout: number | null = null;
+    const debouncedResize = () => {
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeTimeout = window.setTimeout(updateScrollState, 200);
+    };
+    
     if (el) {
-      el.addEventListener('scroll', updateScrollState);
-      window.addEventListener('resize', updateScrollState);
+      el.addEventListener('scroll', updateScrollState, { passive: true });
+      window.addEventListener('resize', debouncedResize);
     }
+    
     return () => {
       if (el) el.removeEventListener('scroll', updateScrollState);
-      window.removeEventListener('resize', updateScrollState);
+      window.removeEventListener('resize', debouncedResize);
+      if (resizeTimeout) clearTimeout(resizeTimeout);
     };
   }, [updateScrollState]);
 

@@ -121,14 +121,15 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
   }, [recentDocs]);
 
   // PROTEÇÃO ABSOLUTA: Alternância automática de temas a cada 5 segundos
-  // Intervalo pausado quando há digitação ativa via classe CSS .typing-active
+  // Intervalo pausado quando textarea está focado (detecção via :focus)
   useEffect(() => {
     if (!newDocumentData?.themes.length || newDocumentData.themes.length <= 1) return;
 
     const interval = setInterval(() => {
-      // Verificar se usuário está digitando antes de atualizar
-      const isTyping = document.querySelector('.typing-active');
-      if (isTyping) return;
+      // NOVA VERIFICAÇÃO: Detectar se algum textarea está focado no chat
+      const chatContainer = document.querySelector('.chat-container');
+      const focusedElement = chatContainer?.querySelector('textarea:focus');
+      if (focusedElement) return; // Não atualizar durante digitação
       
       setCurrentThemeIndex(prev => 
         (prev + 1) % newDocumentData.themes.length

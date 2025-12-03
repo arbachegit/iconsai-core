@@ -120,11 +120,11 @@ export default function ChatKnowYOU() {
   const audioChunksRef = useRef<Blob[]>([]);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  // REMOVIDO: inputRef - variável morta que nunca era usada
   const prefixTextRef = useRef<string>("");
   const mountTimeRef = useRef(Date.now());
   const previousMessagesLength = useRef(messages.length);
-  const INIT_PERIOD = 1000; // 1 segundo de período de inicialização
+  const isTextareaFocusedRef = useRef(false); // NOVO: ref para pausar intervals durante digitação
+  const INIT_PERIOD = 1000;
   const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
   const [audioVisibility, setAudioVisibility] = useState<{
     [key: number]: boolean;
@@ -176,15 +176,18 @@ export default function ChatKnowYOU() {
     
     observeElements();
     
-    // MutationObserver simplificado - sem verificações de typing
+    // MutationObserver otimizado - throttle maior e proteção de foco
     let mutationThrottleId: number | null = null;
     const mutationObserver = new MutationObserver(() => {
       if (mutationThrottleId) return;
       
+      // NÃO processar se textarea está focado
+      if (isTextareaFocusedRef.current) return;
+      
       mutationThrottleId = window.setTimeout(() => {
         mutationThrottleId = null;
         observeElements();
-      }, 1000);
+      }, 2000); // Aumentado de 1000ms para 2000ms
     });
     
     const container = document.querySelector('[data-radix-scroll-area-viewport]');
@@ -208,9 +211,12 @@ export default function ChatKnowYOU() {
     }
   }, [currentlyPlayingIndex, audioVisibility]);
 
-  // Rotação de sugestões
+  // Rotação de sugestões - PROTEGIDA contra digitação
   useEffect(() => {
     const rotateSuggestions = () => {
+      // NÃO rodar se textarea está focado
+      if (isTextareaFocusedRef.current) return;
+      
       const sourceList = isImageMode ? IMAGE_SUGGESTIONS : HEALTH_SUGGESTIONS;
       const shuffled = [...sourceList].sort(() => Math.random() - 0.5);
       setDisplayedSuggestions(shuffled.slice(0, 4));
@@ -219,6 +225,14 @@ export default function ChatKnowYOU() {
     const interval = setInterval(rotateSuggestions, 15000);
     return () => clearInterval(interval);
   }, [isImageMode]);
+  
+  // Cleanup completo no unmount para evitar memory leaks
+  useEffect(() => {
+    return () => {
+      if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, []);
 
   // Helper function to scroll to bottom
   const scrollToBottom = () => {
@@ -674,13 +688,22 @@ export default function ChatKnowYOU() {
           {/* Container relativo para posicionar botões dentro */}
           <div className="relative">
             <DocumentAttachButton onAttach={attachDocument} disabled={isLoading || isGeneratingAudio || isGeneratingImage} />
-            <Textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {
-              handleInputKeyDown(e);
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }} placeholder={isTranscribing ? t('chat.transcribing') : isImageMode ? t('chat.placeholderImage') : t('chat.placeholderHealth')} className="min-h-[100px] resize-none w-full pb-12 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]" disabled={isLoading || isTranscribing} />
+            <Textarea 
+              value={input} 
+              onChange={e => setInput(e.target.value)} 
+              onFocus={() => { isTextareaFocusedRef.current = true; }}
+              onBlur={() => { isTextareaFocusedRef.current = false; }}
+              onKeyDown={e => {
+                handleInputKeyDown(e);
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }} 
+              placeholder={isTranscribing ? t('chat.transcribing') : isImageMode ? t('chat.placeholderImage') : t('chat.placeholderHealth')} 
+              className="min-h-[100px] resize-none w-full pb-12 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]" 
+              disabled={isLoading || isTranscribing} 
+            />
             
             {/* Botões de funcionalidade - inferior esquerdo */}
             <TooltipProvider delayDuration={200}>
