@@ -227,11 +227,20 @@ All colors MUST be HSL.
               background-color 0.2s ease;
 }
 
-/* PERFORMANCE: Pausar animações durante digitação */
+/* PERFORMANCE: Pausar TODAS as animações durante digitação - CRÍTICO PARA LATÊNCIA */
+.typing-active *,
 .typing-active .next-step-badge,
 .typing-active .carousel-badge-item,
-.typing-active .animate-pulse {
+.typing-active .animate-pulse,
+.typing-active .animate-ping,
+.typing-active .animate-bounce {
   animation-play-state: paused !important;
+  transition: none !important;
+}
+
+/* Otimização de textarea para evitar layout thrashing */
+.chat-container textarea {
+  will-change: contents;
 }
 
 @layer base {
