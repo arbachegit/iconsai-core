@@ -3,52 +3,87 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatStudy } from "@/hooks/useChatStudy";
-import { Send, Loader2, ImagePlus, Mic, Square } from "lucide-react";
+import { Send, Loader2, ImagePlus, Mic, Square, X } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
 import { TypingIndicator } from "./TypingIndicator";
 import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 import { useTranslation } from "react-i18next";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
+import { DocumentAttachButton } from "./DocumentAttachButton";
 import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { X } from "lucide-react";
+
+const SentimentIndicator = ({
+  sentiment
+}: {
+  sentiment: {
+    label: string;
+    score: number;
+  } | null;
+}) => {
+  if (!sentiment) return null;
+  const emoji = {
+    positive: "😊",
+    neutral: "😐",
+    negative: "😟"
+  };
+  const color = {
+    positive: "text-green-500",
+    neutral: "text-yellow-500",
+    negative: "text-red-500"
+  };
+  return <div className={`flex items-center gap-2 px-3 py-1 rounded-full bg-background/50 backdrop-blur-sm ${color[sentiment.label as keyof typeof color]}`}>
+      <span className="text-lg">{emoji[sentiment.label as keyof typeof emoji]}</span>
+      <span className="text-xs font-medium">{(sentiment.score * 100).toFixed(0)}%</span>
+    </div>;
+};
 
 interface ChatStudyProps {
   onClose?: () => void;
 }
 
-
 export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { location, requestLocation } = useGeolocation();
-  const { 
-    messages, 
-    isLoading, 
+  const {
+    messages,
+    isLoading,
     isGeneratingAudio,
     isGeneratingImage,
     currentlyPlayingIndex,
     suggestions,
     currentSentiment,
-    sendMessage, 
+    activeDisclaimer,
+    attachedDocumentId,
+    audioProgress,
+    sendMessage,
     clearHistory,
     playAudio,
     stopAudio,
     generateImage,
     transcribeAudio,
+    attachDocument,
+    detachDocument,
   } = useChatStudy();
-  
+
   const [input, setInput] = useState("");
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+
   const [isImageMode, setIsImageMode] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
   const [waitingCountdown, setWaitingCountdown] = useState(5);
-  
+
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -56,16 +91,31 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<string>("");
   const prefixTextRef = useRef<string>("");
-  const [audioStates, setAudioStates] = useState<{[key: number]: { isPlaying: boolean; currentTime: number; duration: number }}>({});
+  const mountTimeRef = useRef(Date.now());
+  const previousMessagesLength = useRef(messages.length);
+  const INIT_PERIOD = 1000; // 1 segundo de período de inicialização
   const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
-  const [audioVisibility, setAudioVisibility] = useState<{[key: number]: boolean}>({});
-  const audioMessageRefs = useRef<{[key: number]: HTMLDivElement | null}>({});
+  const [audioVisibility, setAudioVisibility] = useState<{
+    [key: number]: boolean;
+  }>({});
+  const audioMessageRefs = useRef<{
+    [key: number]: HTMLDivElement | null;
+  }>({});
 
   // Request location on mount
   useEffect(() => {
     requestLocation();
   }, []);
 
+  // Capturar o viewport do ScrollArea após mount
+  useEffect(() => {
+    if (scrollRef.current) {
+      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        scrollViewportRef.current = viewport as HTMLDivElement;
+      }
+    }
+  }, []);
 
   // Sync inputRef with input state
   useEffect(() => {
@@ -74,25 +124,25 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
 
   // IntersectionObserver para detectar quando mensagem de áudio sai do viewport
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const idx = Number(entry.target.getAttribute('data-audio-index'));
-          if (!isNaN(idx)) {
-            setAudioVisibility(prev => ({ ...prev, [idx]: entry.isIntersecting }));
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const idx = Number(entry.target.getAttribute('data-audio-index'));
+        if (!isNaN(idx)) {
+          setAudioVisibility(prev => ({
+            ...prev,
+            [idx]: entry.isIntersecting
+          }));
+        }
+      });
+    }, {
+      threshold: 0.1
+    });
     Object.entries(audioMessageRefs.current).forEach(([idx, el]) => {
       if (el) {
         el.setAttribute('data-audio-index', idx);
         observer.observe(el);
       }
     });
-
     return () => observer.disconnect();
   }, [messages]);
 
@@ -105,33 +155,52 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     }
   }, [currentlyPlayingIndex, audioVisibility]);
 
-
-  // Helper function to scroll to bottom using the sentinel element
+  // Helper function to scroll to bottom
   const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+    if (scrollViewportRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollViewportRef.current) {
+          scrollViewportRef.current.scrollTo({
+            top: scrollViewportRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
     }
   };
 
-  // Auto-scroll to latest message - solução definitiva usando messagesEndRef
+  // Auto-scroll to latest message - SOLUÇÃO DEFINITIVA
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-      }
-    }, 100);
+    // Ignorar scrolls durante o período de inicialização
+    const timeSinceMount = Date.now() - mountTimeRef.current;
+    if (timeSinceMount < INIT_PERIOD) {
+      previousMessagesLength.current = messages.length;
+      return;
+    }
 
-    return () => clearTimeout(timeoutId);
-  }, [messages, isLoading, isGeneratingAudio, isGeneratingImage]);
+    // Scroll quando há nova mensagem OU quando está carregando (streaming)
+    const shouldScroll = messages.length > previousMessagesLength.current || isLoading;
+    if (shouldScroll && scrollViewportRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollViewportRef.current) {
+          scrollViewportRef.current.scrollTo({
+            top: scrollViewportRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
+    }
+    previousMessagesLength.current = messages.length;
+  }, [messages, isLoading]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Parar gravação explicitamente ao enviar mensagem
     if (isRecording) {
       stopRecording();
     }
-    
+
     if (input.trim() && !isLoading) {
       if (isImageMode) {
         generateImage(input);
@@ -141,13 +210,10 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
         sendMessage(input);
         setInput("");
       }
-      // Scroll múltiplo para garantir que vá até a última mensagem
-      setTimeout(scrollToBottom, 50);
-      setTimeout(scrollToBottom, 200);
-      setTimeout(scrollToBottom, 500);
+      // Scroll imediato após enviar
+      setTimeout(scrollToBottom, 100);
     }
   };
-
 
   const toggleImageMode = () => {
     setIsImageMode(!isImageMode);
@@ -158,13 +224,11 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     try {
       // Tentar usar Web Speech API para transcrição em tempo real
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
         recognition.lang = 'pt-BR';
         recognition.continuous = true;
         recognition.interimResults = true;
-        
         let silenceTimeout: NodeJS.Timeout | null = null;
         const SILENCE_TIMEOUT = 5000; // 5 segundos
 
@@ -174,10 +238,9 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           setIsTranscribing(true);
           setVoiceStatus('listening');
         };
-
         recognition.onresult = (event: any) => {
           let fullTranscript = '';
-          
+
           // Reconstruir TODO o texto a partir de TODOS os resultados
           // NÃO usar inputRef.current aqui para evitar duplicação!
           for (let i = 0; i < event.results.length; i++) {
@@ -187,21 +250,19 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
               fullTranscript += ' ';
             }
           }
-          
+
           // Concatenar com texto que existia ANTES da gravação (modo append)
           const prefix = prefixTextRef.current;
           const separator = prefix && !prefix.endsWith(' ') ? ' ' : '';
           setInput(prefix + separator + fullTranscript.trim());
         };
-
         recognition.onspeechend = () => {
           // Clear any existing timers
           if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
           if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
-          
           setVoiceStatus('waiting');
           setWaitingCountdown(5);
-          
+
           // Countdown interval - store in ref
           countdownIntervalRef.current = setInterval(() => {
             setWaitingCountdown(prev => {
@@ -219,7 +280,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
             recognition.stop();
           }, SILENCE_TIMEOUT);
         };
-
         recognition.onspeechstart = () => {
           // Clear BOTH timeout and interval when speech resumes
           if (silenceTimeoutRef.current) {
@@ -233,7 +293,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           setVoiceStatus('listening');
           setWaitingCountdown(5); // Reset countdown
         };
-
         recognition.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error);
           // Cleanup all timers
@@ -248,15 +307,14 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           setIsRecording(false);
           setIsTranscribing(false);
           setVoiceStatus('idle');
-          
+
           // Fallback para gravação com Whisper se Web Speech API falhar
           toast({
             title: t('chat.speechNotAvailable'),
-            description: t('chat.speechFallback'),
+            description: t('chat.speechFallback')
           });
           startRecordingWithWhisper();
         };
-
         recognition.onend = () => {
           // Cleanup all timers
           if (silenceTimeoutRef.current) {
@@ -272,7 +330,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           setIsTranscribing(false);
           setVoiceStatus('idle');
         };
-
         mediaRecorderRef.current = recognition as any;
         recognition.start();
       } else {
@@ -284,7 +341,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
       toast({
         title: t('chat.micError'),
         description: t('chat.micPermissions'),
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
@@ -292,7 +349,9 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const startRecordingWithWhisper = async () => {
     try {
       prefixTextRef.current = input; // Salvar texto existente
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true
+      });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -303,18 +362,15 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
       const microphone = audioContext.createMediaStreamSource(stream);
       microphone.connect(analyser);
       analyser.fftSize = 2048;
-      
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       let silenceStart: number | null = null;
       let animationFrameId: number;
-
       const checkSilence = () => {
         if (!isRecording) return;
-        
         analyser.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        
-        if (average < 10) { // Silence threshold
+        if (average < 10) {
+          // Silence threshold
           if (!silenceStart) {
             silenceStart = Date.now();
             setVoiceStatus('waiting');
@@ -332,24 +388,20 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           setVoiceStatus('listening');
           setWaitingCountdown(5);
         }
-        
         animationFrameId = requestAnimationFrame(checkSilence);
       };
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+      mediaRecorder.ondataavailable = event => {
+        audioChunksRef.current.push(event.data);
       };
-
       mediaRecorder.onstop = async () => {
         cancelAnimationFrame(animationFrameId);
         audioContext.close();
-        
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        stream.getTracks().forEach((track) => track.stop());
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: 'audio/webm'
+        });
         audioChunksRef.current = [];
-        
+        stream.getTracks().forEach(track => track.stop());
+
         // Transcribe audio using Whisper API
         setIsTranscribing(true);
         setVoiceStatus('processing');
@@ -361,18 +413,17 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           setInput(prefix + separator + transcribedText.trim());
           prefixTextRef.current = ""; // Limpar após uso
         } catch (error) {
-          console.error("Error transcribing audio:", error);
+          console.error('Error transcribing audio:', error);
           toast({
             title: t('chat.transcriptionError'),
             description: t('chat.transcriptionRetry'),
-            variant: "destructive",
+            variant: "destructive"
           });
         } finally {
           setIsTranscribing(false);
           setVoiceStatus('idle');
         }
       };
-
       mediaRecorder.start();
       setIsRecording(true);
       setVoiceStatus('listening');
@@ -382,7 +433,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
       toast({
         title: t('chat.micError'),
         description: t('chat.micPermissions'),
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
@@ -431,73 +482,44 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     stopAudio();
   };
 
-  const handleDownloadAudio = (audioUrl: string, index: number) => {
+  const handleDownloadAudio = (audioUrl: string, messageIndex: number) => {
     const link = document.createElement("a");
     link.href = audioUrl;
-    link.download = `knowyou-study-audio-${index}.mp3`;
+    link.download = `knowyou-estudo-audio-${messageIndex}.mp3`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const handleDownloadImage = (imageUrl: string, index: number) => {
+  const handleDownloadImage = (imageUrl: string, messageIndex: number) => {
     const link = document.createElement("a");
     link.href = imageUrl;
-    link.download = `knowyou-estudo-imagem-${index}.png`;
+    link.download = `knowyou-estudo-imagem-${messageIndex}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  return (
-    <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm">
+  return <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border-2 border-primary/40 shadow-[0_0_15px_rgba(139,92,246,0.2),0_0_30px_rgba(139,92,246,0.1)] animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b-2 border-primary/30">
+      <div className="flex items-center justify-between p-4 border-b-2 border-primary/30">
         <div className="flex items-center gap-3">
           <div className="relative">
             <img src={knowriskLogo} alt="KnowRisk Logo" className="w-10 h-10" />
             
             {/* Online indicator with sequential waves */}
             <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 flex items-center justify-center">
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-md shadow-green-500/50 border border-green-400" />
-              <div 
-                className="absolute w-3.5 h-3.5 rounded-full border border-green-400/50 animate-ping" 
-                style={{ animationDuration: '1.5s', animationDelay: '0s' }} 
-              />
-              <div 
-                className="absolute w-4.5 h-4.5 rounded-full border border-green-400/40 animate-ping" 
-                style={{ animationDuration: '1.5s', animationDelay: '0.3s' }} 
-              />
-              <div 
-                className="absolute w-5 h-5 rounded-full border border-green-400/30 animate-ping" 
-                style={{ animationDuration: '1.5s', animationDelay: '0.6s' }} 
-              />
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse z-10" />
+              <div className="absolute w-5 h-5 rounded-full bg-green-500/30 animate-ping animation-delay-0" />
+              <div className="absolute w-5 h-5 rounded-full bg-green-500/20 animate-ping animation-delay-150" />
+              <div className="absolute w-5 h-5 rounded-full bg-green-500/10 animate-ping animation-delay-300" />
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-gradient">{t('chat.studyModalTitle')}</h2>
-            {currentSentiment && (
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50 border border-border/30">
-                <span className="text-2xl">
-                  {currentSentiment.label === "positive" ? "😊" : 
-                   currentSentiment.label === "negative" ? "😟" : "😐"}
-                </span>
-                <span className="text-xs font-medium text-muted-foreground">
-                  {(currentSentiment.score * 100).toFixed(0)}%
-                </span>
-              </div>
-            )}
-          </div>
+          <h2 className="text-lg font-bold text-gradient">{t('chat.studyModalTitle')}</h2>
         </div>
-        
-        {/* Botões lado a lado: Limpar à esquerda, Fechar à direita */}
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearHistory}
-            className="text-xs h-8"
-          >
+          <SentimentIndicator sentiment={currentSentiment} />
+          <Button variant="ghost" size="sm" onClick={clearHistory} className="text-xs">
             {t('chat.clear')}
           </Button>
           {onClose && (
@@ -514,184 +536,113 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
         </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea 
-        className="flex-1 p-4 border-2 border-[hsl(var(--chat-container-border))] bg-[hsl(var(--chat-container-bg))] rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3)]" 
-        style={{
-          transform: 'translateZ(-10px)',
-          backfaceVisibility: 'hidden'
-        }}
-        ref={scrollRef}>
-        <div className="space-y-4">
-          {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-              ref={(el) => {
-                if (message.role === "assistant" && message.audioUrl) {
-                  audioMessageRefs.current[index] = el;
-                }
-              }}
-            >
-              <div
-                className={`max-w-[80%] rounded-lg p-3 ${
-                  message.role === "user"
-                    ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground"
-                    : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground"
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  <MarkdownContent content={message.content} className="text-sm flex-1" />
-                </div>
-                
-                {message.imageUrl && (
-                  <img
-                    src={message.imageUrl}
-                    alt="Generated"
-                    className="mt-2 rounded-lg max-w-full"
-                  />
-                )}
-
-                {message.role === "assistant" && (
-                  <AudioControls
-                    audioUrl={message.audioUrl}
-                    imageUrl={message.imageUrl}
-                    isPlaying={currentlyPlayingIndex === index}
-                    isGeneratingAudio={isGeneratingAudio}
-                    currentTime={audioStates[index]?.currentTime}
-                    duration={audioStates[index]?.duration}
-                    timestamp={message.timestamp}
-                    location={location || undefined}
-                    messageContent={message.content}
-                    onPlay={() => handleAudioPlay(index)}
-                    onStop={handleAudioStop}
-                    onDownload={() => message.audioUrl && handleDownloadAudio(message.audioUrl, index)}
-                    onDownloadImage={message.imageUrl ? () => handleDownloadImage(message.imageUrl!, index) : undefined}
-                  />
-                )}
-              </div>
+      {/* Messages Area */}
+      <ScrollArea className="h-[500px] p-6 border-2 border-cyan-400/60 bg-[hsl(var(--chat-container-bg))] rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" style={{
+      transform: 'translateZ(-10px)',
+      backfaceVisibility: 'hidden'
+    }} ref={scrollRef}>
+        {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
+              <span className="text-4xl font-bold text-primary-foreground">K</span>
             </div>
-          ))}
-          
-              {(isLoading || isGeneratingAudio || isGeneratingImage) && (
-                <div className="flex justify-start">
-                  <TypingIndicator isDrawing={isGeneratingImage} />
+            <h4 className="text-xl font-semibold mb-2">{t('chat.greeting')}</h4>
+            <p className="text-muted-foreground max-w-md">
+              {t('chat.greetingDescStudy')}
+            </p>
+          </div> : <div className="space-y-4">
+            {/* Disclaimer when document is attached */}
+            {activeDisclaimer && <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <AlertTitle className="flex items-center justify-between">
+                  {t('documentAttach.disclaimerTitle')}
+                  <Button variant="ghost" size="sm" onClick={detachDocument} className="h-6 w-6 p-0" title={t('documentAttach.removeButton')}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </AlertTitle>
+                <AlertDescription>
+                  {activeDisclaimer.message}
+                </AlertDescription>
+              </Alert>}
+            
+            {messages.map((msg, idx) => <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`} ref={el => {
+          if (msg.role === "assistant" && msg.audioUrl) {
+            audioMessageRefs.current[idx] = el;
+          }
+        }}>
+                <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right" : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"}`}>
+                  {msg.imageUrl && <img src={msg.imageUrl} alt={t('chat.generatingImage')} className="max-w-full rounded-lg mb-2" />}
+                  <div className="flex items-start gap-2">
+                    <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1" />
+                  </div>
+                  
+                  {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} imageUrl={msg.imageUrl} isPlaying={currentlyPlayingIndex === idx} isGeneratingAudio={isGeneratingAudio} currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0} duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} onDownloadImage={msg.imageUrl ? () => handleDownloadImage(msg.imageUrl!, idx) : undefined} />}
                 </div>
-              )}
-          <div ref={messagesEndRef} />
-        </div>
+              </div>)}
+              {(isLoading || isGeneratingAudio || isGeneratingImage) && <div className="flex justify-start">
+                  <TypingIndicator isDrawing={isGeneratingImage} />
+                </div>}
+            <div ref={messagesEndRef} />
+          </div>}
       </ScrollArea>
 
-
-      {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t-2 border-primary/30 bg-muted/30 rounded-b-lg shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
+      {/* Input Area */}
+      <form onSubmit={handleSubmit} className="p-6 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
         {/* Indicador de voz ativo */}
-        {isRecording && (
-          <div className="flex items-center gap-2 text-xs mb-2">
-            <div className={`w-2 h-2 rounded-full ${
-              voiceStatus === 'waiting' 
-                ? 'bg-amber-500' 
-                : voiceStatus === 'processing' 
-                ? 'bg-blue-500' 
-                : 'bg-red-500'
-            } animate-pulse`} />
-            <span className={
-              voiceStatus === 'waiting' 
-                ? 'text-amber-500' 
-                : 'text-muted-foreground'
-            }>
+        {isRecording && <div className="flex items-center gap-2 text-xs mb-2">
+            <div className={`w-2 h-2 rounded-full ${voiceStatus === 'waiting' ? 'bg-amber-500' : voiceStatus === 'processing' ? 'bg-blue-500' : 'bg-red-500'} animate-pulse`} />
+            <span className={voiceStatus === 'waiting' ? 'text-amber-500' : 'text-muted-foreground'}>
               {voiceStatus === 'listening' && t('chat.listening')}
               {voiceStatus === 'waiting' && `${t('chat.waiting')} (${waitingCountdown}s)`}
               {voiceStatus === 'processing' && t('chat.processing')}
             </span>
-          </div>
-        )}
+          </div>}
         
-        <div className="flex gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={
-              isTranscribing ? t('chat.transcribing') :
-              isImageMode ? t('chat.placeholderImageStudy') : 
-              t('chat.placeholderStudy')
-            }
-            onFocus={(e) => {
-              if (isImageMode) {
-                e.target.placeholder = t('chat.imageLimitStudy');
-              }
-            }}
-            onBlur={(e) => {
-              if (isImageMode) {
-                e.target.placeholder = t('chat.placeholderImageStudy');
-              }
-            }}
-            className="min-h-[60px] flex-1 resize-none border-2 border-cyan-400/60 focus:border-primary/50 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]"
-            style={{
-              transform: 'translateZ(-8px)',
-              backfaceVisibility: 'hidden'
-            }}
-            disabled={isTranscribing}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-          />
+          <div className="flex gap-2 items-end">
+            <DocumentAttachButton onAttach={attachDocument} disabled={isLoading || isGeneratingAudio || isGeneratingImage} />
+            <Textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit(e);
+          }
+        }} placeholder={isTranscribing ? t('chat.transcribing') : isImageMode ? t('chat.placeholderImageStudy') : t('chat.placeholderStudy')} onFocus={e => {
+          if (isImageMode) {
+            e.target.placeholder = t('chat.imageLimitStudy');
+          }
+        }} onBlur={e => {
+          if (isImageMode) {
+            e.target.placeholder = t('chat.placeholderImageStudy');
+          }
+        }} className="min-h-[140px] resize-none flex-1 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]" style={{
+          transform: 'translateZ(-8px)',
+          backfaceVisibility: 'hidden'
+        }} disabled={isLoading || isTranscribing} />
           
           <div className="flex flex-col gap-2">
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={isRecording ? stopRecording : startRecording}
-              className={`shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500" : ""}`}
-            >
+            <Button type="button" size="icon" variant="ghost" onClick={isRecording ? stopRecording : startRecording} className={`shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500" : ""}`}>
               {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </Button>
             
-            <Button
-              type="submit"
-              size="icon"
-              disabled={isLoading || !input.trim()}
-              className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
+            <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
             
-            <Button
-              type="button"
-              size="icon"
-              variant={isImageMode ? "default" : "ghost"}
-              onClick={toggleImageMode}
-              disabled={isGeneratingImage}
-              className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow"
-            >
+            <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} title="Desenhar" className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
               <ImagePlus className="w-4 h-4" />
             </Button>
           </div>
         </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Pressione Enter para enviar • Shift+Enter para nova linha
+        </p>
       </form>
       
       {/* Floating Audio Player */}
-      <FloatingAudioPlayer
-        isVisible={showFloatingPlayer && currentlyPlayingIndex !== null}
-        currentTime={audioStates[currentlyPlayingIndex ?? -1]?.currentTime ?? 0}
-        duration={audioStates[currentlyPlayingIndex ?? -1]?.duration ?? 0}
-        onStop={() => {
-          stopAudio();
-          setShowFloatingPlayer(false);
-        }}
-        onClose={() => {
-          stopAudio();
-          setShowFloatingPlayer(false);
-        }}
-      />
-    </div>
-  );
+      <FloatingAudioPlayer isVisible={showFloatingPlayer && currentlyPlayingIndex !== null} currentTime={audioProgress.currentTime} duration={audioProgress.duration} onStop={() => {
+      stopAudio();
+      setShowFloatingPlayer(false);
+    }} onClose={() => {
+      stopAudio();
+      setShowFloatingPlayer(false);
+    }} />
+    </div>;
 }
