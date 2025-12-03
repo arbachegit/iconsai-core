@@ -65,7 +65,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     isGeneratingAudio,
     isGeneratingImage,
     currentlyPlayingIndex,
-    suggestions,
     nextSteps,
     currentSentiment,
     sendMessage, 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { extractSuggestions, removeSuggestionsFromText, extractNextSteps, removeNextStepsFromText } from "@/lib/chat-stream";
+import { extractNextSteps, removeNextStepsFromText } from "@/lib/chat-stream";
 import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,12 +34,11 @@ export function useChatStudy() {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [currentlyPlayingIndex, setCurrentlyPlayingIndex] = useState<number | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>([
+  const [nextSteps, setNextSteps] = useState<string[]>([
     "O que é a KnowRisk?",
     "Como funciona o ACC?",
     "O que é o KnowYOU?",
   ]);
-  const [nextSteps, setNextSteps] = useState<string[]>([]);
   const [currentSentiment, setCurrentSentiment] = useState<{
     label: "positive" | "negative" | "neutral";
     score: number;
@@ -329,22 +328,15 @@ export function useChatStudy() {
         console.log('[useChatStudy] Full response before extraction:', assistantContent.slice(-500));
         console.log('[useChatStudy] Contains PRÓXIMOS_PASSOS:', assistantContent.includes('PRÓXIMOS_PASSOS'));
         
-        // Extrair próximos passos (antes das sugestões)
+        // Extrair próximos passos
         const extractedNextSteps = extractNextSteps(assistantContent);
         console.log('[useChatStudy] Extracted nextSteps:', extractedNextSteps);
         if (extractedNextSteps.length > 0) {
           setNextSteps(extractedNextSteps);
-          assistantContent = removeNextStepsFromText(assistantContent);
-        } else {
-          setNextSteps([]);
         }
-
-        // Extrair sugestões
-        const extracted = extractSuggestions(assistantContent);
-        if (extracted.length > 0) {
-          newSuggestions = extracted;
-          assistantContent = removeSuggestionsFromText(assistantContent);
-        }
+        
+        // Limpar texto removendo PRÓXIMOS_PASSOS e SUGESTÕES
+        assistantContent = removeNextStepsFromText(assistantContent);
 
         const finalMessages = updatedMessages.map((m, i) =>
           i === updatedMessages.length
@@ -362,9 +354,6 @@ export function useChatStudy() {
         setMessages(finalUpdated);
         saveHistory(finalUpdated);
 
-        if (newSuggestions.length > 0) {
-          setSuggestions(newSuggestions);
-        }
 
         // Update topic tracking - extract topic from the user's question
         const topicWords = input.toLowerCase()
@@ -421,7 +410,7 @@ export function useChatStudy() {
 
   const clearHistory = useCallback(() => {
     setMessages([]);
-    setSuggestions(["O que é a KnowRisk?", "Como funciona o ACC?", "O que é o KnowYOU?"]);
+    setNextSteps(["O que é a KnowRisk?", "Como funciona o ACC?", "O que é o KnowYOU?"]);
     localStorage.removeItem(STORAGE_KEY);
     toast({
       title: "Histórico limpo",
@@ -595,7 +584,6 @@ export function useChatStudy() {
     isGeneratingAudio,
     isGeneratingImage,
     currentlyPlayingIndex,
-    suggestions,
     nextSteps,
     currentSentiment,
     sendMessage,

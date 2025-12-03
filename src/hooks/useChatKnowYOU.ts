@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { streamChat, extractSuggestions, removeSuggestionsFromText, extractNextSteps, removeNextStepsFromText } from "@/lib/chat-stream";
+import { streamChat, extractNextSteps, removeNextStepsFromText } from "@/lib/chat-stream";
 import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "./useAdminSettings";
@@ -38,12 +38,11 @@ export function useChatKnowYOU() {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [currentlyPlayingIndex, setCurrentlyPlayingIndex] = useState<number | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>([
+  const [nextSteps, setNextSteps] = useState<string[]>([
     "O que é telemedicina?",
     "Como prevenir doenças crônicas?",
     "Tendências em saúde digital",
   ]);
-  const [nextSteps, setNextSteps] = useState<string[]>([]);
   const [currentSentiment, setCurrentSentiment] = useState<{
     label: "positive" | "negative" | "neutral";
     score: number;
@@ -273,7 +272,7 @@ export function useChatKnowYOU() {
           if (last?.role === "assistant") {
             return prev.map((m, i) =>
               i === prev.length - 1
-                ? { ...m, content: removeSuggestionsFromText(assistantContent) }
+                ? { ...m, content: removeNextStepsFromText(assistantContent) }
                 : m
             );
           }
@@ -281,7 +280,7 @@ export function useChatKnowYOU() {
             ...prev,
             {
               role: "assistant",
-              content: removeSuggestionsFromText(assistantContent),
+              content: removeNextStepsFromText(assistantContent),
               timestamp: new Date(),
             },
           ];
@@ -381,15 +380,9 @@ export function useChatKnowYOU() {
             } else {
               setNextSteps([]);
             }
-            
-            const extractedSuggestions = extractSuggestions(fullResponse);
-            if (extractedSuggestions.length > 0) {
-              setSuggestions(extractedSuggestions);
-            }
 
-            // Remove both nextSteps and suggestions from response
-            let cleanedResponse = removeNextStepsFromText(fullResponse);
-            cleanedResponse = removeSuggestionsFromText(cleanedResponse);
+            // Remove nextSteps from response
+            const cleanedResponse = removeNextStepsFromText(fullResponse);
 
             // Update topic tracking
             const topicWords = input.toLowerCase()
@@ -474,75 +467,11 @@ export function useChatKnowYOU() {
           },
         });
         }
-
-        // Common post-processing for both paths
-        const extractedSuggestions = extractSuggestions(fullResponse);
-        if (extractedSuggestions.length > 0) {
-          setSuggestions(extractedSuggestions);
-        }
-
-        const cleanedResponse = removeSuggestionsFromText(fullResponse);
-
-        // Gerar áudio da resposta (somente se habilitado)
-        if (settings?.chat_audio_enabled) {
-          setIsGeneratingAudio(true);
-          try {
-            const audioUrl = await generateAudioUrl(cleanedResponse, "health");
-            
-            setMessages((prev) => {
-              const updated = prev.map((m, i) =>
-                i === prev.length - 1
-                  ? { ...m, content: cleanedResponse, audioUrl }
-                  : m
-              );
-              saveHistory(updated);
-              return updated;
-            });
-
-            // Update analytics with audio play
-            updateSession({
-              session_id: sessionId,
-              updates: { audio_plays: messages.filter(m => m.audioUrl).length + 1 },
-            }).catch(console.error);
-          } catch (error) {
-            console.error("Erro ao gerar áudio:", error);
-            setMessages((prev) => {
-              const updated = prev.map((m, i) =>
-                i === prev.length - 1
-                  ? { ...m, content: cleanedResponse }
-                  : m
-              );
-              saveHistory(updated);
-              return updated;
-            });
-          } finally {
-            setIsGeneratingAudio(false);
-          }
-        } else {
-          // No audio - just save the message
-          setMessages((prev) => {
-            const updated = prev.map((m, i) =>
-              i === prev.length - 1
-                ? { ...m, content: cleanedResponse }
-                : m
-            );
-            saveHistory(updated);
-            return updated;
-          });
-        }
-
-        // Update analytics with message count
-        updateSession({
-          session_id: sessionId,
-          updates: { message_count: messages.length + 2 },
-        }).catch(console.error);
-
-        setIsLoading(false);
       } catch (error) {
-        console.error("Erro ao enviar mensagem:", error);
+        console.error("Error in chat:", error);
         toast({
           title: "Erro",
-          description: "Não foi possível enviar a mensagem. Tente novamente.",
+          description: error instanceof Error ? error.message : "Erro desconhecido",
           variant: "destructive",
         });
         setIsLoading(false);
@@ -555,7 +484,7 @@ export function useChatKnowYOU() {
     audioPlayerRef.current.stop();
     setMessages([]);
     setCurrentlyPlayingIndex(null);
-    setSuggestions([
+    setNextSteps([
       "O que é telemedicina?",
       "Como prevenir doenças crônicas?",
       "Tendências em saúde digital",
@@ -751,7 +680,6 @@ export function useChatKnowYOU() {
     isGeneratingAudio,
     isGeneratingImage,
     currentlyPlayingIndex,
-    suggestions,
     nextSteps,
     currentSentiment,
     activeDisclaimer,
