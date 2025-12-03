@@ -7,16 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw, Volume2, Plus, Trash2, Code, Lightbulb } from "lucide-react";
+import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw, Volume2, Plus, Trash2, Code } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { useTranslation } from "react-i18next";
 interface ChatConfig {
   id: string;
   chat_type: "study" | "health";
@@ -42,14 +38,11 @@ interface ChatConfig {
   updated_at: string;
 }
 export function ChatScopeConfigTab() {
-  const { toast } = useToast();
-  const { t, ready } = useTranslation();
-  
+  const {
+    toast
+  } = useToast();
   const [studyConfig, setStudyConfig] = useState<ChatConfig | null>(null);
   const [healthConfig, setHealthConfig] = useState<ChatConfig | null>(null);
-  const [ragInfoStudyOpen, setRagInfoStudyOpen] = useState(false);
-  const [ragInfoHealthOpen, setRagInfoHealthOpen] = useState(false);
-  const [ragTestInfoOpen, setRagTestInfoOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingChat, setEditingChat] = useState<"study" | "health" | null>(null);
   const [testQuery, setTestQuery] = useState("");
@@ -61,164 +54,6 @@ export function ChatScopeConfigTab() {
   const [newTerm, setNewTerm] = useState("");
   const [newPronunciation, setNewPronunciation] = useState("");
   const [addingTermFor, setAddingTermFor] = useState<"study" | "health" | null>(null);
-  const [phoneticsInfoOpen, setPhoneticsInfoOpen] = useState(false);
-
-  // Generate RAG content from i18n translations
-  const getRAGInfoContent = () => {
-    if (!ready) {
-      return "Carregando informações sobre RAG...";
-    }
-    
-    const rag = t('admin.tooltips.rag', { returnObjects: true }) as any;
-    if (!rag || typeof rag !== 'object' || !rag.intro) {
-      console.error('RAG translations not loaded properly:', rag);
-      return "Erro ao carregar informações sobre RAG. Por favor, recarregue a página.";
-    }
-    
-    return `${rag.intro}
-
----
-
-### ${rag.whatIs.title}
-${rag.whatIs.intro}
-
-1. ${rag.whatIs.retrieval}
-2. ${rag.whatIs.generation}
-
-${rag.whatIs.result}
-
-### ${rag.comparison.title}
-
-| ${rag.comparison.aspect} | ${rag.comparison.traditional} | ${rag.comparison.rag} |
-| :--- | :--- | :--- |
-| **${rag.comparison.knowledge}** | ${rag.comparison.knowledgeTraditional} | ${rag.comparison.knowledgeRag} |
-| **${rag.comparison.precision}** | ${rag.comparison.precisionTraditional} | ${rag.comparison.precisionRag} |
-| **${rag.comparison.traceability}** | ${rag.comparison.traceabilityTraditional} | ${rag.comparison.traceabilityRag} |
-| **${rag.comparison.customization}** | ${rag.comparison.customizationTraditional} | ${rag.comparison.customizationRag} |
-
-### ${rag.pipeline.title}
-${rag.pipeline.intro}
-
-1. ${rag.pipeline.step1}
-2. ${rag.pipeline.step2}
-3. ${rag.pipeline.step3}
-4. ${rag.pipeline.step4}
-
-### ${rag.technical.title}
-* ${rag.technical.embeddings}
-* ${rag.technical.vectorStore}
-* ${rag.technical.chunking}
-* ${rag.technical.threshold}
-
-### ${rag.glossary.title}
-* ${rag.glossary.rag}
-* ${rag.glossary.etl}
-* ${rag.glossary.llm}
-* ${rag.glossary.embedding}
-* ${rag.glossary.chunk}
-* ${rag.glossary.pgvector}`;
-  };
-
-  // Generate TTS content from i18n translations
-  const getTTSInfoContent = () => {
-    // Wait for translations to be ready
-    if (!ready) {
-      return "Carregando informações sobre TTS...";
-    }
-    
-    const tts = t('admin.tooltips.tts', { returnObjects: true }) as any;
-    
-    // Defensive check: if translations not loaded, return fallback
-    if (!tts || typeof tts !== 'object' || !tts.intro || !tts.pipeline) {
-      console.error('TTS translations not loaded properly:', tts);
-      return "Erro ao carregar informações sobre TTS. Por favor, recarregue a página.";
-    }
-    
-    return `**TTS** ${tts.intro}
-
-${tts.description}
-
----
-
-### ${tts.pipeline.title}
-${tts.pipeline.intro}
-
-1.  ${tts.pipeline.step1}
-    * ${tts.pipeline.step1Example}
-2.  ${tts.pipeline.step2}
-    * ${tts.pipeline.step2Example}
-3.  ${tts.pipeline.step3}
-4.  ${tts.pipeline.step4}
-
-### ${tts.phoneticsRole.title}
-${tts.phoneticsRole.intro}
-
-* ${tts.phoneticsRole.disambiguation}
-    * ${tts.phoneticsRole.disambiguationExample}
-* ${tts.phoneticsRole.coarticulation}
-* ${tts.phoneticsRole.prosody}
-
-### ${tts.comparison.title}
-
-| ${tts.comparison.characteristic} | ${tts.comparison.traditional} | ${tts.comparison.neural} |
-| :--- | :--- | :--- |
-| **${tts.comparison.method}** | ${tts.comparison.methodTraditional} | ${tts.comparison.methodNeural} |
-| **${tts.comparison.naturalness}** | ${tts.comparison.naturalnessTraditional} | ${tts.comparison.naturalnessNeural} |
-| **${tts.comparison.phonetics}** | ${tts.comparison.phoneticsTraditional} | ${tts.comparison.phoneticsNeural} |
-| **${tts.comparison.flexibility}** | ${tts.comparison.flexibilityTraditional} | ${tts.comparison.flexibilityNeural} |
-
-### ${tts.technologies.title}
-${tts.technologies.intro}
-* ${tts.technologies.tacotron}
-* ${tts.technologies.wavenet}
-* ${tts.technologies.valle}`;
-  };
-
-  // Generate RAG Test info content from i18n translations
-  const getRAGTestInfoContent = () => {
-    if (!ready) return "Carregando...";
-    
-    const rt = t('admin.tooltips.ragTest', { returnObjects: true }) as any;
-    if (!rt || typeof rt !== 'object' || !rt.intro) {
-      return "Erro ao carregar informações sobre Teste de Busca RAG.";
-    }
-    
-    return `**Teste de Busca RAG** ${rt.intro}
-
----
-
-### ${rt.whatIs.title}
-${rt.whatIs.content}
-
-### ${rt.howItWorks.title}
-${rt.howItWorks.intro}
-
-1. ${rt.howItWorks.step1}
-2. ${rt.howItWorks.step2}
-3. ${rt.howItWorks.step3}
-4. ${rt.howItWorks.step4}
-
-### ${rt.interpretation.title}
-${rt.interpretation.intro}
-
-* ${rt.interpretation.success}
-* ${rt.interpretation.failure}
-* ${rt.interpretation.score}
-
-### ${rt.useCase.title}
-${rt.useCase.intro}
-
-1. ${rt.useCase.case1}
-2. ${rt.useCase.case2}
-3. ${rt.useCase.case3}
-
-### ${rt.glossary.title}
-* ${rt.glossary.query}
-* ${rt.glossary.chunk}
-* ${rt.glossary.similarity}
-* ${rt.glossary.threshold}`;
-  };
-
   useEffect(() => {
     fetchConfigs();
   }, []);
@@ -372,13 +207,7 @@ ${rt.useCase.intro}
         return null;
     }
   };
-  const renderChatCard = (
-    config: ChatConfig | null, 
-    title: string, 
-    icon: React.ReactNode,
-    ragPopoverOpen: boolean,
-    setRagPopoverOpen: (open: boolean) => void
-  ) => {
+  const renderChatCard = (config: ChatConfig | null, title: string, icon: React.ReactNode) => {
     if (!config) return null;
     const isEditing = editingChat === config.chat_type;
     return <Card className="flex-1">
@@ -409,92 +238,6 @@ ${rt.useCase.intro}
 
           {/* RAG Configuration */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Label className="text-sm font-medium">Configurações RAG</Label>
-              
-              {/* Tooltip RAG Info */}
-              <Popover open={ragPopoverOpen} onOpenChange={setRagPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <button className="relative w-7 h-7 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-amber-500/30 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all duration-300 group flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-amber-500/50">
-                    <Lightbulb className="h-3.5 w-3.5 text-amber-500 group-hover:text-amber-400 transition-colors" />
-                    <div className="absolute -top-0.5 -right-0.5 pointer-events-none">
-                      <div className="relative">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
-                      </div>
-                    </div>
-                  </button>
-                </PopoverTrigger>
-                
-                <PopoverContent 
-                  className="w-[500px] max-h-[70vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-amber-500/20" 
-                  side="right"
-                  align="start"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-2">
-                      <Lightbulb className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                      <h3 className="text-base font-bold text-amber-500">RAG - Retrieval-Augmented Generation</h3>
-                    </div>
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                        h3: ({ children }) => (
-                          <h3 className="text-sm font-bold mt-4 mb-2 text-foreground">
-                            {children}
-                          </h3>
-                        ),
-                        p: ({ children }) => (
-                          <p className="text-sm text-muted-foreground leading-relaxed mb-2">
-                            {children}
-                          </p>
-                        ),
-                        ul: ({ children }) => (
-                          <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                            {children}
-                          </ul>
-                        ),
-                        ol: ({ children }) => (
-                          <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                            {children}
-                          </ol>
-                        ),
-                        li: ({ children }) => (
-                          <li className="text-sm text-muted-foreground">{children}</li>
-                        ),
-                        strong: ({ children }) => (
-                          <strong className="font-semibold text-foreground">{children}</strong>
-                        ),
-                        table: ({ children }) => (
-                          <div className="overflow-x-auto my-3">
-                            <table className="w-full border-collapse text-xs">
-                              {children}
-                            </table>
-                          </div>
-                        ),
-                        thead: ({ children }) => (
-                          <thead className="bg-muted/50">{children}</thead>
-                        ),
-                        th: ({ children }) => (
-                          <th className="border border-border px-2 py-1.5 text-left font-semibold">
-                            {children}
-                          </th>
-                        ),
-                        td: ({ children }) => (
-                          <td className="border border-border px-2 py-1.5">
-                            {children}
-                          </td>
-                        ),
-                        hr: () => <hr className="my-3 border-border" />,
-                      }}
-                    >
-                      {getRAGInfoContent()}
-                    </ReactMarkdown>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-            
             <div>
               <Label className="text-sm font-medium">Match Threshold</Label>
               {isEditing ? <div className="flex items-center gap-4 mt-2">
@@ -677,74 +420,10 @@ ${rt.useCase.intro}
       {/* RAG Test Section */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <CardTitle className="flex items-center gap-2">
-              <Search className="h-5 w-5" />
-              Teste de Busca RAG
-            </CardTitle>
-            
-            {/* Tooltip RAG Test Info */}
-            <Popover open={ragTestInfoOpen} onOpenChange={setRagTestInfoOpen}>
-              <PopoverTrigger asChild>
-                <button className="relative w-7 h-7 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30 hover:from-green-500/30 hover:to-emerald-500/30 transition-all duration-300 group flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-green-500/50">
-                  <Lightbulb className="h-3.5 w-3.5 text-green-500 group-hover:text-green-400 transition-colors" />
-                  <div className="absolute -top-0.5 -right-0.5 pointer-events-none">
-                    <div className="relative">
-                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
-                    </div>
-                  </div>
-                </button>
-              </PopoverTrigger>
-              
-              <PopoverContent 
-                className="w-[500px] max-h-[70vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-green-500/20" 
-                side="right"
-                align="start"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    <Lightbulb className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <h3 className="text-base font-bold text-green-500">Teste de Busca RAG</h3>
-                  </div>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      h3: ({ children }) => (
-                        <h3 className="text-sm font-bold mt-4 mb-2 text-foreground">
-                          {children}
-                        </h3>
-                      ),
-                      p: ({ children }) => (
-                        <p className="text-sm text-muted-foreground leading-relaxed mb-2">
-                          {children}
-                        </p>
-                      ),
-                      ul: ({ children }) => (
-                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                          {children}
-                        </ul>
-                      ),
-                      ol: ({ children }) => (
-                        <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                          {children}
-                        </ol>
-                      ),
-                      li: ({ children }) => (
-                        <li className="text-sm text-muted-foreground">{children}</li>
-                      ),
-                      strong: ({ children }) => (
-                        <strong className="font-semibold text-foreground">{children}</strong>
-                      ),
-                      hr: () => <hr className="my-3 border-border" />,
-                    }}
-                  >
-                    {getRAGTestInfoContent()}
-                  </ReactMarkdown>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-5 w-5" />
+            Teste de Busca RAG
+          </CardTitle>
           <CardDescription>Teste se uma query retorna contexto dos documentos</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -797,69 +476,6 @@ ${rt.useCase.intro}
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
             Biblioteca de Pronúncias
-            
-            {/* Tooltip Informativo TTS */}
-            <Popover open={phoneticsInfoOpen} onOpenChange={setPhoneticsInfoOpen}>
-              <PopoverTrigger asChild>
-                <button 
-                  className="relative w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/50 ml-2"
-                  aria-label="Informações sobre TTS e Fonética"
-                >
-                  <Lightbulb className="w-4 h-4 text-primary" />
-                  <div className="absolute -top-1 -right-1 pointer-events-none">
-                    <div className="relative">
-                      <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-                      <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
-                    </div>
-                  </div>
-                </button>
-              </PopoverTrigger>
-              
-              <PopoverContent 
-                className="w-[500px] max-h-[70vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-primary/20" 
-                side="right"
-                align="start"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    <Lightbulb className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-semibold text-sm mb-3">TTS, Fonética e Inteligência Artificial</h4>
-                      <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    p: ({ children }) => <p className="mb-2 last:mb-0 text-sm">{children}</p>,
-                            ul: ({ children }) => <ul className="list-disc pl-4 mb-2 text-sm">{children}</ul>,
-                            ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 text-sm">{children}</ol>,
-                            li: ({ children }) => <li className="mb-1">{children}</li>,
-                            strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
-                            em: ({ children }) => <em className="italic">{children}</em>,
-                            code: ({ children }) => (
-                              <code className="bg-muted px-1 py-0.5 rounded text-xs">{children}</code>
-                            ),
-                            h3: ({ children }) => <h3 className="font-semibold text-sm mt-4 mb-2 text-foreground">{children}</h3>,
-                            hr: () => <hr className="my-3 border-primary/20" />,
-                      table: ({ children }) => (
-                        <div className="overflow-x-auto my-4 rounded-lg bg-muted/30">
-                          <table className="w-full text-xs">{children}</table>
-                        </div>
-                      ),
-                      thead: ({ children }) => <thead className="border-b border-border/50">{children}</thead>,
-                      tbody: ({ children }) => <tbody className="divide-y divide-border/30">{children}</tbody>,
-                      tr: ({ children }) => <tr className="hover:bg-muted/50 transition-colors">{children}</tr>,
-                      th: ({ children }) => <th className="px-4 py-3 text-left font-semibold text-foreground/80 text-xs uppercase tracking-wider">{children}</th>,
-                      td: ({ children }) => <td className="px-4 py-3 text-muted-foreground">{children}</td>,
-                          }}
-                        >
-                          {getTTSInfoContent()}
-                        </ReactMarkdown>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
           </CardTitle>
           <CardDescription>
             Configure pronúncias fonéticas para TTS de cada chat
@@ -1094,8 +710,8 @@ ${rt.useCase.intro}
 
       {/* Chat Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {renderChatCard(studyConfig, "Chat de Estudo", <FileText className="h-5 w-5" />, ragInfoStudyOpen, setRagInfoStudyOpen)}
-        {renderChatCard(healthConfig, "Chat de Saúde", <MessageSquare className="h-5 w-5" />, ragInfoHealthOpen, setRagInfoHealthOpen)}
+        {renderChatCard(studyConfig, "Chat de Estudo", <FileText className="h-5 w-5" />)}
+        {renderChatCard(healthConfig, "Chat de Saúde", <MessageSquare className="h-5 w-5" />)}
       </div>
     </div>;
 }

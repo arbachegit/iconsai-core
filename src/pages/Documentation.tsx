@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -360,9 +359,7 @@ const performFullTextSearch = (query: string): SearchResult[] => {
 const Documentation = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const queryClient = useQueryClient();
   const [isExporting, setIsExporting] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeSection, setActiveSection] = useState('menu-principal');
   const [readProgress, setReadProgress] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
@@ -404,51 +401,6 @@ const Documentation = () => {
       return data;
     },
   });
-
-  // Refresh documentation handler
-  const handleRefreshDocumentation = async () => {
-    setIsRefreshing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-documentation', {
-        body: {
-          log_message: 'Atualização de documentação via painel admin',
-          changes: [
-            { 
-              type: 'documentation', 
-              description: 'Atualização da documentação técnica do sistema' 
-            }
-          ]
-        }
-      });
-      
-      if (error) throw error;
-      
-      // Invalidate both caches to fetch new versions
-      await queryClient.invalidateQueries({ queryKey: ['documentation-versions'] });
-      await queryClient.invalidateQueries({ queryKey: ['version-control'] });
-      
-      toast.success(`Documentação atualizada para ${data.version}`);
-    } catch (err) {
-      console.error('Erro ao atualizar documentação:', err);
-      toast.error('Erro ao atualizar documentação');
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  // Read progress tracking
-  useEffect(() => {
-    const handleScroll = () => {
-      const windowHeight = window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight - windowHeight;
-      const scrollTop = window.scrollY;
-      const progress = (scrollTop / documentHeight) * 100;
-      setReadProgress(Math.min(progress, 100));
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // Persist theme preference
   useEffect(() => {
@@ -1036,31 +988,9 @@ const Documentation = () => {
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
                   Documentação Técnica
                 </h1>
-                
-                {/* Version Badge */}
-                {versions && versions[0] && (
-                  <Badge 
-                    variant="secondary" 
-                    className="bg-primary/10 text-primary border-primary/20 text-sm px-3 py-1"
-                  >
-                    {versions[0].version}
-                  </Badge>
-                )}
-
                 <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                   Sistema RAG com Auto-Categorização LLM, Processamento em Lote e Chat Multimodal
                 </p>
-
-                {/* Refresh Documentation Button */}
-                <Button
-                  onClick={handleRefreshDocumentation}
-                  disabled={isRefreshing}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-                  {isRefreshing ? "Atualizando..." : "Atualizar Documentação"}
-                </Button>
                 <div className="flex flex-wrap justify-center gap-4 pt-6">
                   <Button onClick={() => scrollToSection('database')} size="lg" className="gap-2">
                     <Database className="h-5 w-5" />

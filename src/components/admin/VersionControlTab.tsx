@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useActivityLogger } from "@/hooks/useActivityLogger";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GitBranch, Rocket, RefreshCw, Clock, Download, Undo2, Tag, FileText, FileCode } from "lucide-react";
+import { GitBranch, Rocket, RefreshCw, Clock, Download, Undo2, Tag, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
   Table,
@@ -30,7 +28,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export const VersionControlTab = () => {
-  const { logActivity } = useActivityLogger();
   const [versionDialog, setVersionDialog] = useState<"minor" | "major" | "code_change" | null>(null);
   const [rollbackDialog, setRollbackDialog] = useState<{ open: boolean; versionId: string | null; version: string | null }>({
     open: false,
@@ -83,19 +80,10 @@ export const VersionControlTab = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data, { action, message }) => {
+    onSuccess: (data) => {
       toast.success(
         `Versão atualizada: ${data.previous_version} → ${data.new_version}`
       );
-      
-      // Log version increment
-      logActivity(`Versão incrementada (${action})`, "VERSION", { 
-        previousVersion: data.previous_version,
-        newVersion: data.new_version,
-        action,
-        message 
-      });
-      
       queryClient.invalidateQueries({ queryKey: ["version-control"] });
       setVersionDialog(null);
       setLogMessage("");
@@ -147,13 +135,6 @@ export const VersionControlTab = () => {
     },
     onSuccess: (data) => {
       toast.success(`Rollback realizado: ${data.rolled_back_to} → ${data.new_version}`);
-      
-      // Log rollback
-      logActivity("Rollback de versão", "VERSION", { 
-        rolledBackTo: data.rolled_back_to,
-        newVersion: data.new_version 
-      });
-      
       queryClient.invalidateQueries({ queryKey: ["version-control"] });
       setRollbackDialog({ open: false, versionId: null, version: null });
       setRollbackMessage("");
@@ -176,7 +157,7 @@ export const VersionControlTab = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data, format) => {
+    onSuccess: (data) => {
       const blob = new Blob([data.content], { type: data.format === "json" ? "application/json" : "text/markdown" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -186,12 +167,6 @@ export const VersionControlTab = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
-      // Log changelog export
-      logActivity("Changelog exportado", "EXPORT", { 
-        format: data.format 
-      });
-      
       toast.success(`Changelog exportado (${data.format})`);
     },
     onError: (error) => {
@@ -209,24 +184,16 @@ export const VersionControlTab = () => {
   };
 
   const getTriggerTypeBadge = (type: string) => {
-    const badges: Record<string, { color: string; label: string }> = {
-      MINOR_RELEASE: { color: "bg-blue-500", label: "Minor Release" },
-      MANUAL_MINOR: { color: "bg-blue-500", label: "Minor" },
-      MAJOR_RELEASE: { color: "bg-purple-500", label: "Major Release" },
-      MANUAL_MAJOR: { color: "bg-purple-500", label: "Major" },
-      AUTO_PATCH: { color: "bg-green-500", label: "Auto Patch" },
-      ROLLBACK: { color: "bg-red-500", label: "Rollback" },
-      CODE_CHANGE: { color: "bg-cyan-500", label: "Code Change" },
-      DOC_UPDATE: { color: "bg-gray-500", label: "Doc Update" },
-      INITIAL: { color: "bg-gray-500", label: "Inicial" },
+    const variants = {
+      AUTO_PATCH: { variant: "secondary" as const, label: "Auto Patch" },
+      MANUAL_MINOR: { variant: "default" as const, label: "Minor" },
+      MANUAL_MAJOR: { variant: "destructive" as const, label: "Major" },
+      CODE_CHANGE: { variant: "outline" as const, label: "Code Change" },
+      INITIAL: { variant: "outline" as const, label: "Inicial" },
+      ROLLBACK: { variant: "outline" as const, label: "Rollback" },
     };
-
-    const badge = badges[type] || { color: "bg-gray-500", label: type };
-    return (
-      <Badge className={`${badge.color} text-white`}>
-        {badge.label}
-      </Badge>
-    );
+    const config = variants[type as keyof typeof variants] || variants.INITIAL;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   if (isLoading) {
@@ -375,10 +342,10 @@ export const VersionControlTab = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Versão</TableHead>
                 <TableHead>Data/Hora</TableHead>
+                <TableHead>Versão</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead>Descrição</TableHead>
+                <TableHead>Mensagem</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -392,33 +359,13 @@ export const VersionControlTab = () => {
               ) : (
                 history.map((record: any, index: number) => (
                   <TableRow key={record.id}>
-                    <TableCell className="font-mono font-bold">{record.current_version}</TableCell>
                     <TableCell className="font-mono text-sm">
-                      {format(new Date(record.timestamp), "dd/MM/yyyy HH:mm:ss")}
+                      {new Date(record.timestamp).toLocaleString("pt-BR")}
                     </TableCell>
+                    <TableCell className="font-bold">{record.current_version}</TableCell>
                     <TableCell>{getTriggerTypeBadge(record.trigger_type)}</TableCell>
-                    <TableCell>
-                      <div className="max-w-md">
-                        <div className="truncate">{record.log_message}</div>
-                        {record.associated_data?.files_created?.length > 0 && (
-                          <div className="mt-1 text-xs text-green-600 dark:text-green-400">
-                            <FileCode className="h-3 w-3 inline mr-1" />
-                            Criados: {record.associated_data.files_created.join(", ")}
-                          </div>
-                        )}
-                        {record.associated_data?.files_modified?.length > 0 && (
-                          <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
-                            <FileCode className="h-3 w-3 inline mr-1" />
-                            Modificados: {record.associated_data.files_modified.join(", ")}
-                          </div>
-                        )}
-                        {record.associated_data?.files_deleted?.length > 0 && (
-                          <div className="mt-1 text-xs text-red-600 dark:text-red-400">
-                            <FileCode className="h-3 w-3 inline mr-1" />
-                            Deletados: {record.associated_data.files_deleted.join(", ")}
-                          </div>
-                        )}
-                      </div>
+                    <TableCell className="max-w-md truncate">
+                      {record.log_message}
                     </TableCell>
                     <TableCell>
                       {index > 0 && (

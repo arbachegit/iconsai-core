@@ -52,14 +52,11 @@ export type Database = {
           auto_play_audio: boolean | null
           chat_audio_enabled: boolean | null
           created_at: string | null
-          daily_report_enabled: boolean | null
           gmail_api_configured: boolean | null
           gmail_notification_email: string | null
           id: string
-          monthly_report_enabled: boolean | null
           updated_at: string | null
           vimeo_history_url: string | null
-          weekly_report_enabled: boolean | null
         }
         Insert: {
           alert_email?: string | null
@@ -68,14 +65,11 @@ export type Database = {
           auto_play_audio?: boolean | null
           chat_audio_enabled?: boolean | null
           created_at?: string | null
-          daily_report_enabled?: boolean | null
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
-          monthly_report_enabled?: boolean | null
           updated_at?: string | null
           vimeo_history_url?: string | null
-          weekly_report_enabled?: boolean | null
         }
         Update: {
           alert_email?: string | null
@@ -84,14 +78,11 @@ export type Database = {
           auto_play_audio?: boolean | null
           chat_audio_enabled?: boolean | null
           created_at?: string | null
-          daily_report_enabled?: boolean | null
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
-          monthly_report_enabled?: boolean | null
           updated_at?: string | null
           vimeo_history_url?: string | null
-          weekly_report_enabled?: boolean | null
         }
         Relationships: []
       }
@@ -836,74 +827,6 @@ export type Database = {
         }
         Relationships: []
       }
-      suggestion_clicks: {
-        Row: {
-          chat_type: string
-          clicked_at: string | null
-          document_id: string | null
-          id: string
-          suggestion_text: string
-        }
-        Insert: {
-          chat_type: string
-          clicked_at?: string | null
-          document_id?: string | null
-          id?: string
-          suggestion_text: string
-        }
-        Update: {
-          chat_type?: string
-          clicked_at?: string | null
-          document_id?: string | null
-          id?: string
-          suggestion_text?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "suggestion_clicks_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "documents"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      system_increments: {
-        Row: {
-          details: Json | null
-          id: string
-          operation_source: string
-          operation_type: string
-          summary: string
-          tables_affected: string[]
-          timestamp: string
-          triggered_by_email: string
-          triggered_by_user_id: string | null
-        }
-        Insert: {
-          details?: Json | null
-          id?: string
-          operation_source: string
-          operation_type: string
-          summary: string
-          tables_affected: string[]
-          timestamp?: string
-          triggered_by_email: string
-          triggered_by_user_id?: string | null
-        }
-        Update: {
-          details?: Json | null
-          id?: string
-          operation_source?: string
-          operation_type?: string
-          summary?: string
-          tables_affected?: string[]
-          timestamp?: string
-          triggered_by_email?: string
-          triggered_by_user_id?: string | null
-        }
-        Relationships: []
-      }
       tooltip_contents: {
         Row: {
           audio_url: string | null
@@ -940,45 +863,6 @@ export type Database = {
           section_id?: string
           title?: string
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      user_activity_logs: {
-        Row: {
-          action: string
-          action_category: string
-          created_at: string | null
-          details: Json | null
-          id: string
-          ip_address: string | null
-          user_agent: string | null
-          user_email: string
-          user_id: string | null
-          user_name: string | null
-        }
-        Insert: {
-          action: string
-          action_category: string
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          ip_address?: string | null
-          user_agent?: string | null
-          user_email: string
-          user_id?: string | null
-          user_name?: string | null
-        }
-        Update: {
-          action?: string
-          action_category?: string
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          ip_address?: string | null
-          user_agent?: string | null
-          user_email?: string
-          user_id?: string | null
-          user_name?: string | null
         }
         Relationships: []
       }

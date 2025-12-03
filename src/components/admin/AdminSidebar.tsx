@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
-import { useActivityLogger } from "@/hooks/useActivityLogger";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -28,12 +27,9 @@ import {
   Settings,
   Route,
   TestTube,
-  History,
-  Network,
-  Activity,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "activity-logs" | "architecture" | "system-increments";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -43,10 +39,8 @@ interface AdminSidebarProps {
 export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<string[]>(["quick-access"]);
-  const { logActivity } = useActivityLogger();
 
-  const handleLogout = async () => {
-    await logActivity("Logout do painel admin", "LOGOUT");
+  const handleLogout = () => {
     localStorage.removeItem("admin_authenticated");
     navigate("/admin/login");
   };
@@ -85,7 +79,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       label: "RAG & Análise",
       icon: Brain,
       items: [
-        { id: "rag-documentation" as TabType, label: "Documentação RAG", icon: BookOpen },
+        { id: "rag-documentation" as TabType, label: "📖 Documentação RAG", icon: BookOpen },
         { id: "rag-metrics" as TabType, label: "Métricas RAG", icon: Database },
         { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
         { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
@@ -108,10 +102,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       label: "Sistema",
       icon: Settings,
       items: [
-        { id: "architecture" as TabType, label: "Arquitetura", icon: Network },
         { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
-        { id: "activity-logs" as TabType, label: "Log de Atividades", icon: History },
-        { id: "system-increments" as TabType, label: "Incrementos Sistema", icon: Activity },
         { id: "gmail" as TabType, label: "Gmail", icon: Mail },
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
       ]

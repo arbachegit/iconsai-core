@@ -182,32 +182,15 @@ serve(async (req) => {
         );
       }
 
-      // Buscar versão atual COM FALLBACK ROBUSTO
-      console.log("🔍 Fetching current version...");
-      
-      const { data: currentRecord, error: fetchError } = await supabase
+      // Buscar versão atual
+      const { data: currentRecord } = await supabase
         .from("version_control")
         .select("current_version")
         .order("timestamp", { ascending: false })
         .limit(1)
         .single();
 
-      let currentVersion = currentRecord?.current_version;
-
-      // Se não conseguiu buscar, calcular da contagem de registros
-      if (!currentVersion || currentVersion === "0.0.0" || fetchError) {
-        console.log("⚠️ Calculating version from record count...");
-        
-        const { count } = await supabase
-          .from("version_control")
-          .select("*", { count: "exact", head: true });
-        
-        // Versão = 0.0.(total de registros)
-        currentVersion = `0.0.${count || 0}`;
-        console.log(`📊 Calculated version from ${count} records: ${currentVersion}`);
-      }
-
-      console.log(`📌 Current version: ${currentVersion}`);
+      const currentVersion = currentRecord?.current_version || "0.0.0";
       const [major, minor, patch] = currentVersion.split(".").map(Number);
 
       // Calcular nova versão
@@ -236,28 +219,10 @@ serve(async (req) => {
           triggerType = "INITIAL";
       }
 
-      console.log(`🆕 Version update: ${currentVersion} -> ${newVersion} (${triggerType})`);
+      console.log(`Version update: ${currentVersion} -> ${newVersion} (${triggerType})`);
 
       // Criar snapshot ID para versionamento
       const snapshotId = `snapshot_${newVersion}_${Date.now()}`;
-      
-      // Prepare associated_data with file metadata for code changes
-      const associatedDataPayload: any = {
-        ...associated_data,
-        snapshot_id: snapshotId,
-        created_at: new Date().toISOString(),
-        tags: associated_data?.tags || [],
-        release_notes: associated_data?.release_notes || ""
-      };
-
-      // Add file metadata if provided (for code changes)
-      if (associated_data) {
-        if (associated_data.files_created) associatedDataPayload.files_created = associated_data.files_created;
-        if (associated_data.files_modified) associatedDataPayload.files_modified = associated_data.files_modified;
-        if (associated_data.files_deleted) associatedDataPayload.files_deleted = associated_data.files_deleted;
-        if (associated_data.change_summary) associatedDataPayload.change_summary = associated_data.change_summary;
-        if (associated_data.change_category) associatedDataPayload.change_category = associated_data.change_category;
-      }
       
       // Inserir novo registro com snapshot metadata
       const { data: newRecord, error: insertError } = await supabase
@@ -266,7 +231,13 @@ serve(async (req) => {
           current_version: newVersion,
           log_message: log_message || `Atualização ${action} automática`,
           trigger_type: triggerType,
-          associated_data: associatedDataPayload,
+          associated_data: {
+            ...associated_data,
+            snapshot_id: snapshotId,
+            created_at: new Date().toISOString(),
+            tags: associated_data?.tags || [],
+            release_notes: associated_data?.release_notes || ""
+          },
         })
         .select()
         .single();
@@ -277,28 +248,6 @@ serve(async (req) => {
           JSON.stringify({ error: insertError.message }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
-      }
-      
-      // Registrar incremento do sistema
-      try {
-        await supabase.from("system_increments").insert({
-          triggered_by_email: "system@knowrisk.io",
-          operation_type: "INSERT",
-          operation_source: "version_increment",
-          tables_affected: ["version_control"],
-          summary: `Nova versão ${newVersion} criada (${triggerType})`,
-          details: {
-            version: newVersion,
-            trigger_type: triggerType,
-            log_message: log_message,
-            previous_version: currentVersion,
-            timestamp: new Date().toISOString()
-          }
-        });
-        
-        console.log("✅ System increment logged");
-      } catch (incrementError) {
-        console.error("⚠️ Error logging system increment:", incrementError);
       }
 
       // Generate documentation and send notifications for Minor/Major releases

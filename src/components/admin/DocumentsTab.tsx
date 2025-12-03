@@ -1,8 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useActivityLogger } from "@/hooks/useActivityLogger";
-import { useSystemIncrement } from "@/hooks/useSystemIncrement";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +24,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { RagFlowDiagram } from "./RagFlowDiagram";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
 // Configure PDF.js worker with local bundle
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -44,8 +40,6 @@ interface FileUploadStatus {
   error?: string;
 }
 export const DocumentsTab = () => {
-  const { logActivity } = useActivityLogger();
-  const { logIncrement } = useSystemIncrement();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
@@ -88,9 +82,6 @@ export const DocumentsTab = () => {
 
   // RAG Info Modal state
   const [showRagInfoModal, setShowRagInfoModal] = useState(false);
-  
-  // RAG Info Popover state
-  const [ragInfoPopoverOpen, setRagInfoPopoverOpen] = useState(false);
 
   // Tags modal state
   const [tagsModalDoc, setTagsModalDoc] = useState<any>(null);
@@ -98,53 +89,6 @@ export const DocumentsTab = () => {
   // Manual insertion modal state
   const [insertionModalDoc, setInsertionModalDoc] = useState<any>(null);
   const queryClient = useQueryClient();
-
-  // RAG Tooltip Content
-  const RAG_INFO_CONTENT = `**RAG** é a sigla para **Retrieval-Augmented Generation** (Geração Aumentada por Recuperação). É uma arquitetura de IA que combina recuperação de informações com geração de texto, permitindo que modelos de linguagem respondam com base em documentos específicos.
-
----
-
-### 1. O que é RAG?
-RAG é um paradigma híbrido que une dois mundos:
-
-1. **Retrieval (Recuperação):** Um sistema de busca semântica encontra os documentos mais relevantes para a pergunta do usuário.
-2. **Augmented Generation (Geração Aumentada):** O LLM recebe esses documentos como contexto adicional para fundamentar sua resposta.
-
-*Resultado:* Respostas precisas, atualizadas e fundamentadas em fontes verificáveis.
-
-### 2. Por que RAG é Superior ao LLM Puro?
-
-| Aspecto | LLM Tradicional | RAG |
-| :--- | :--- | :--- |
-| **Conhecimento** | Limitado ao treinamento (data de corte) | Atualizado dinamicamente com novos documentos |
-| **Precisão** | Pode "alucinar" informações | Fundamentado em fontes verificáveis |
-| **Rastreabilidade** | Impossível citar fontes | Pode referenciar documentos específicos |
-| **Customização** | Requer fine-tuning caro | Basta adicionar documentos ao índice |
-
-### 3. O Pipeline RAG Implementado
-
-O sistema utiliza um pipeline de 4 etapas:
-
-1. **Ingestão (ETL):** Documentos são processados, validados e fragmentados em chunks otimizados.
-2. **Indexação Vetorial:** Cada chunk é convertido em embedding e armazenado com pgvector.
-3. **Busca Híbrida:** Combina similaridade semântica + filtros de metadados (tags, chat_type).
-4. **Geração Fundamentada:** O LLM recebe os chunks relevantes como contexto obrigatório.
-
-### 4. Componentes Técnicos
-
-* **Embeddings:** OpenAI text-embedding-3-small (1536 dimensões)
-* **Vector Store:** PostgreSQL + pgvector (busca por similaridade cosseno)
-* **Chunking:** 750 palavras com 180 de overlap
-* **Threshold:** Similaridade mínima de 0.15 para inclusão no contexto
-
-### 5. Glossário de Siglas
-
-* **RAG** - Retrieval-Augmented Generation
-* **ETL** - Extract, Transform, Load
-* **LLM** - Large Language Model
-* **Embedding** - Representação vetorial de texto
-* **Chunk** - Fragmento de documento indexado
-* **pgvector** - Extensão PostgreSQL para vetores`;
 
   // Fetch documents
   const {
@@ -210,12 +154,6 @@ O sistema utiliza um pipeline de 4 etapas:
           totalChunks: data.total_chunks,
           details: `Processado com sucesso em ${data.total_chunks} chunks`
         } : s));
-        
-        // Auto-limpar após 5 segundos e atualizar lista
-        queryClient.invalidateQueries({ queryKey: ["documents"] });
-        setTimeout(() => {
-          setUploadStatuses(prev => prev.filter(s => s.id !== fileId));
-        }, 5000);
       } else if (data?.status === 'failed') {
         clearInterval(poll);
         setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
@@ -224,11 +162,6 @@ O sistema utiliza um pipeline de 4 etapas:
           progress: 100,
           details: `Falha: ${data.error_message || 'Erro desconhecido'}`
         } : s));
-        
-        // Auto-limpar falhas após 10 segundos
-        setTimeout(() => {
-          setUploadStatuses(prev => prev.filter(s => s.id !== fileId));
-        }, 10000);
       } else {
         // Still processing
         setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
@@ -371,11 +304,11 @@ O sistema utiliza um pipeline de 4 etapas:
           }
         }
 
-        // Start polling for each document - usar initialStatuses diretamente
-        documentsData.forEach((doc) => {
-          const fileStatus = initialStatuses.find(s => s.fileName === doc.title);
-          if (fileStatus) {
-            pollDocumentStatus(doc.document_id, fileStatus.id);
+        // Start polling for each document
+        documentsData.forEach((doc, idx) => {
+          const fileId = uploadStatuses.find(s => s.documentId === doc.document_id)?.id;
+          if (fileId) {
+            pollDocumentStatus(doc.document_id, fileId);
           }
         });
         toast.success(`${documentsData.length} documento(s) enviado(s) para processamento!`);
@@ -386,17 +319,10 @@ O sistema utiliza um pipeline de 4 etapas:
         setUploading(false);
       }
     },
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["documents"]
       });
-      
-      // Log upload activity
-      logActivity("Upload de documentos", "DOCUMENT", { 
-        count: selectedFiles.length,
-        filenames: selectedFiles.map(f => f.name)
-      });
-      
       setSelectedFiles([]);
     },
     onError: (error: any) => {
@@ -413,30 +339,10 @@ O sistema utiliza um pipeline de 4 etapas:
       } = await supabase.from("documents").delete().eq("id", docId);
       if (error) throw error;
     },
-    onSuccess: (data, docId) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["documents"]
       });
-      
-      // Log deletion activity
-      logActivity("Documento excluído", "DELETE", { 
-        documentId: docId,
-        filename: selectedDoc?.filename 
-      });
-      
-      // Log system increment
-      logIncrement({
-        operationType: "DELETE",
-        operationSource: "document_delete",
-        tablesAffected: ["documents", "document_chunks", "document_tags"],
-        summary: `Documento "${selectedDoc?.filename || docId}" excluído`,
-        details: {
-          document_id: docId,
-          filename: selectedDoc?.filename,
-          target_chat: selectedDoc?.target_chat
-        }
-      });
-      
       toast.success("Documento deletado");
       setSelectedDoc(null);
     }
@@ -476,16 +382,10 @@ O sistema utiliza um pipeline de 4 etapas:
       });
       if (processError) throw processError;
     },
-    onSuccess: (data, docId) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["documents"]
       });
-      
-      // Log reprocess activity
-      logActivity("Documento reprocessado", "DOCUMENT", { 
-        documentId: docId 
-      });
-      
       toast.success("Documento reprocessado com sucesso!");
     },
     onError: (error: any) => {
@@ -769,12 +669,6 @@ O sistema utiliza um pipeline de 4 etapas:
       setSelectedFiles(pdfFiles);
       setUploadStatuses([]);
     }
-  }, []);
-
-  // Remove file from queue
-  const removeFileFromQueue = useCallback((indexToRemove: number) => {
-    setSelectedFiles(prev => prev.filter((_, idx) => idx !== indexToRemove));
-    toast.info("Arquivo removido da fila");
   }, []);
 
   // Download document as PDF
@@ -1121,83 +1015,22 @@ O sistema utiliza um pipeline de 4 etapas:
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold">Documentos RAG</h2>
           
-          {/* Badge de contagem de documentos indexados */}
-          <Badge 
-            variant="secondary" 
-            className="bg-green-500/10 text-green-600 border-green-500/20"
-          >
-            <FileText className="h-3 w-3 mr-1" />
-            {documents?.filter(d => d.status === "completed").length || 0} indexados
-          </Badge>
-          
-          {/* Popover RAG Info (não-modal) */}
-          <Popover open={ragInfoPopoverOpen} onOpenChange={setRagInfoPopoverOpen}>
-            <PopoverTrigger asChild>
-              <button className="relative w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-amber-500/30 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all duration-300 group flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-amber-500/50">
-                <Lightbulb className="h-5 w-5 text-amber-500 group-hover:text-amber-400 transition-colors" />
-                <div className="absolute -top-1 -right-1 pointer-events-none">
-                  <div className="relative">
-                    <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-                    <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
-                  </div>
-                </div>
-              </button>
-            </PopoverTrigger>
-            
-            <PopoverContent 
-              className="w-[550px] max-h-[75vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-amber-500/20" 
-              side="right"
-              align="start"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start gap-2">
-                  <Lightbulb className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-semibold text-sm mb-3">RAG: Retrieval-Augmented Generation</h4>
-                    <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                          p: ({ children }) => <p className="mb-2 last:mb-0 text-sm">{children}</p>,
-                          ul: ({ children }) => <ul className="list-disc pl-4 mb-2 text-sm">{children}</ul>,
-                          ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 text-sm">{children}</ol>,
-                          li: ({ children }) => <li className="mb-1">{children}</li>,
-                          strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
-                          em: ({ children }) => <em className="italic">{children}</em>,
-                          code: ({ children }) => <code className="bg-muted px-1 py-0.5 rounded text-xs">{children}</code>,
-                          h3: ({ children }) => <h3 className="font-semibold text-sm mt-4 mb-2 text-foreground">{children}</h3>,
-                          hr: () => <hr className="my-3 border-amber-500/20" />,
-                          table: ({ children }) => (
-                            <div className="overflow-x-auto my-4 rounded-lg bg-muted/30">
-                              <table className="w-full text-xs">{children}</table>
-                            </div>
-                          ),
-                          thead: ({ children }) => <thead className="border-b border-border/50">{children}</thead>,
-                          tbody: ({ children }) => <tbody className="divide-y divide-border/30">{children}</tbody>,
-                          tr: ({ children }) => <tr className="hover:bg-muted/50 transition-colors">{children}</tr>,
-                          th: ({ children }) => <th className="px-4 py-3 text-left font-semibold text-foreground/80 text-xs uppercase tracking-wider">{children}</th>,
-                          td: ({ children }) => <td className="px-4 py-3 text-muted-foreground">{children}</td>,
-                        }}
-                      >
-                        {RAG_INFO_CONTENT}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-          
-          {/* Modal completo RAG (mantido) */}
+          {/* RAG Info Button com círculo, ícone Lightbulb e pulsing dot */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => setShowRagInfoModal(true)} className="relative flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors">
-                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                <button onClick={() => setShowRagInfoModal(true)} className="relative flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-amber-500/30 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all duration-300 group">
+                  <Lightbulb className="h-5 w-5 text-amber-500 group-hover:text-amber-400 transition-colors" />
+                  
+                  {/* Green pulsing dot - posicionado na parte externa do círculo */}
+                  <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                  </span>
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Ver modal completo com diagrama</p>
+                <p>Resumo da Engenharia RAG</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -1321,20 +1154,10 @@ O sistema utiliza um pipeline de 4 etapas:
 
           {selectedFiles.length > 0 && <div className="space-y-2">
               <p className="text-sm font-medium">{selectedFiles.length} arquivo(s) selecionado(s):</p>
-              {selectedFiles.map((file, idx) => <div key={idx} className="flex items-center gap-2 p-2 bg-muted rounded-lg group">
+              {selectedFiles.map((file, idx) => <div key={idx} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                   <FileText className="h-4 w-4" />
-                  <span className="text-sm flex-1 truncate">{file.name}</span>
+                  <span className="text-sm flex-1">{file.name}</span>
                   <Badge variant="outline">{(file.size / 1024).toFixed(2)} KB</Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 opacity-60 hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => removeFileFromQueue(idx)}
-                    disabled={uploading}
-                    title="Remover da fila"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </div>)}
             </div>}
 

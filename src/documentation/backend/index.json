@@ -28,7 +28,7 @@
         "Hierarchical tag generation",
         "AI summary generation",
         "Chunking (1500 words/chunk)",
-        "KY AI embeddings"
+        "OpenAI embeddings"
       ]
     },
     {
@@ -51,7 +51,7 @@
     },
     {
       "name": "voice-to-text",
-      "description": "KY AI transcription",
+      "description": "OpenAI Whisper transcription",
       "auth_required": false,
       "category": "Audio"
     },

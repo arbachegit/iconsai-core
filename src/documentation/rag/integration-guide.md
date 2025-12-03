@@ -161,7 +161,7 @@ for (let i = 0; i < words.length; i += chunkSize) {
 const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
   method: "POST",
   headers: {
-    Authorization: `Bearer ${KY_AI_API_KEY}`,
+    Authorization: `Bearer ${OPENAI_API_KEY}`,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({

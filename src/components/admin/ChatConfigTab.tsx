@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { useToast } from "@/hooks/use-toast";
-import { useActivityLogger } from "@/hooks/useActivityLogger";
 import { Volume2, Play, Loader2, Bell, Settings as SettingsIcon } from "lucide-react";
 import { useState } from "react";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
@@ -13,7 +12,6 @@ import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 export const ChatConfigTab = () => {
   const { settings, updateSettings, isLoading } = useAdminSettings();
   const { toast } = useToast();
-  const { logActivity } = useActivityLogger();
   const [alertEmail, setAlertEmail] = useState(settings?.alert_email || "");
   const [alertThreshold, setAlertThreshold] = useState(settings?.alert_threshold || 0.30);
 
@@ -24,12 +22,6 @@ export const ChatConfigTab = () => {
       await updateSettings({
         [field]: !settings[field],
       });
-
-      await logActivity(
-        `Configuração "${field}" alterada para ${!settings[field]}`,
-        "CONFIG",
-        { field, newValue: !settings[field] }
-      );
 
       toast({
         title: "Configuração atualizada",
@@ -52,12 +44,6 @@ export const ChatConfigTab = () => {
         alert_email: alertEmail,
         alert_threshold: alertThreshold,
       });
-
-      await logActivity(
-        "Configurações de alertas de sentimento atualizadas",
-        "CONFIG",
-        { alert_email: alertEmail, alert_threshold: alertThreshold }
-      );
 
       toast({
         title: "Configurações de alerta atualizadas",

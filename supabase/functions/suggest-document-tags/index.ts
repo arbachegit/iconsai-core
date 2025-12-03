@@ -172,30 +172,6 @@ Regras:
     
     console.log(`Tags generated for document ${documentId}`);
     
-    // Registrar incremento do sistema
-    try {
-      const totalParentTags = Object.keys(parentTagIds).length;
-      const totalChildTags = Object.values(tags.childTags).reduce((sum: number, children: any) => sum + children.length, 0);
-      
-      await supabase.from("system_increments").insert({
-        triggered_by_email: "system@knowrisk.io",
-        operation_type: "INSERT",
-        operation_source: "tag_suggestion",
-        tables_affected: ["document_tags"],
-        summary: `${totalParentTags} parent tags e ${totalChildTags} child tags sugeridas para documento`,
-        details: {
-          document_id: documentId,
-          total_parent_tags: totalParentTags,
-          total_child_tags: totalChildTags,
-          timestamp: new Date().toISOString()
-        }
-      });
-      
-      console.log("✅ System increment logged");
-    } catch (incrementError) {
-      console.error("⚠️ Error logging system increment:", incrementError);
-    }
-    
     return new Response(
       JSON.stringify({ success: true, tags }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

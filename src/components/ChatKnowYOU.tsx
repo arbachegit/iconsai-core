@@ -17,9 +17,6 @@ import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { useDocumentSuggestions } from "@/hooks/useDocumentSuggestions";
-import { NewDocumentBadge } from "./NewDocumentBadge";
-import { SuggestionRankingBadges } from "./SuggestionRankingBadges";
 
 // 30 sugestões de saúde para rotação
 const HEALTH_SUGGESTIONS = ["O que é telemedicina?", "Como prevenir doenças cardíacas?", "Quais especialidades o Hospital Moinhos de Vento oferece?", "Como funciona a robótica cirúrgica?", "O que são doenças crônicas?", "Como manter uma alimentação saudável?", "Quais exames preventivos fazer anualmente?", "O que é diabetes tipo 2?", "Como controlar a pressão arterial?", "O que faz um cardiologista?", "Como prevenir o câncer?", "O que é saúde mental?", "Como funciona a fisioterapia?", "Quais sintomas indicam AVC?", "O que é medicina preventiva?", "Como melhorar a qualidade do sono?", "O que são exames de imagem?", "Como funciona a vacinação?", "O que é obesidade mórbida?", "Como tratar ansiedade?", "O que faz um endocrinologista?", "Como prevenir osteoporose?", "O que é check-up médico?", "Como funciona a nutrição clínica?", "Quais benefícios da atividade física?", "O que é colesterol alto?", "Como identificar depressão?", "O que são doenças autoimunes?", "Como funciona o transplante de órgãos?", "Qual a importância da hidratação?"];
@@ -81,16 +78,6 @@ export default function ChatKnowYOU() {
     attachDocument,
     detachDocument
   } = useChatKnowYOU();
-  
-  // Hook para sugestões dinâmicas baseadas em documentos
-  const {
-    newDocumentBadge,
-    currentTheme,
-    complementarySuggestions,
-    topSuggestions,
-    recordSuggestionClick,
-  } = useDocumentSuggestions('health');
-  
   const [input, setInput] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
@@ -245,10 +232,7 @@ export default function ChatKnowYOU() {
       setTimeout(scrollToBottom, 100);
     }
   };
-  const handleSuggestionClick = (suggestion: string, documentId?: string) => {
-    // Registrar clique para ranking
-    recordSuggestionClick(suggestion, documentId);
-    
+  const handleSuggestionClick = (suggestion: string) => {
     if (isImageMode) {
       generateImage(suggestion);
     } else {
@@ -619,12 +603,10 @@ export default function ChatKnowYOU() {
           </div>}
       </ScrollArea>
 
-      {/* Suggestions com badges dinâmicos */}
-      {(displayedSuggestions.length > 0 || newDocumentBadge || topSuggestions.length > 0) && !isLoading && (
-        <div className="px-6 py-4 bg-muted/50 border-t border-border/50">
+      {/* Suggestions com slider */}
+      {displayedSuggestions.length > 0 && !isLoading && <div className="px-6 py-4 bg-muted/50 border-t border-border/50">
           {/* Disclaimer when document attached */}
-          {activeDisclaimer && (
-            <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+          {activeDisclaimer && <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
@@ -636,52 +618,18 @@ export default function ChatKnowYOU() {
                   </p>
                 </div>
               </div>
-            </div>
-          )}
+            </div>}
           
-          <div className="flex flex-wrap gap-2 items-center suggestions-slider">
-            {/* 1. Badge NOVO (sempre à esquerda) */}
-            {newDocumentBadge && currentTheme && (
-              <NewDocumentBadge
-                currentTheme={currentTheme}
-                onThemeClick={() => handleSuggestionClick(currentTheme, newDocumentBadge.documentIds[0])}
-              />
-            )}
-            
-            {/* 2. Sugestões complementares (documentos antigos) */}
-            {complementarySuggestions.slice(0, 3).map((suggestion, idx) => (
-              <Button
-                key={`comp-${suggestion}-${idx}`}
-                variant="outline"
-                size="sm"
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="text-xs rounded-full border-2 border-primary/50 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                {suggestion}
-              </Button>
-            ))}
-            
-            {/* 3. Sugestões do hook original (fallback) */}
-            {!newDocumentBadge && !complementarySuggestions.length && displayedSuggestions.slice(0, 4).map((suggestion, idx) => (
-              <Button
-                key={`disp-${suggestion}-${idx}`}
-                variant="outline"
-                size="sm"
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="text-xs rounded-full border-2 border-primary/50 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                {suggestion}
-              </Button>
-            ))}
-            
-            {/* 4. Ranking (sempre à direita) */}
-            <SuggestionRankingBadges
-              rankings={topSuggestions}
-              onRankingClick={(text) => handleSuggestionClick(text)}
-            />
+          
+          <div className="flex flex-wrap gap-2 suggestions-slider">
+            {displayedSuggestions.map((suggestion, idx) => {
+          const isNew = suggestion.startsWith('🆕 NOVO:') || suggestion.toLowerCase().includes('novo:');
+          return <Button key={`${suggestion}-${idx}`} variant={isNew ? "default" : "outline"} size="sm" onClick={() => handleSuggestionClick(suggestion)} className={cn("text-xs rounded-full border-2 border-primary/50 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors", isNew && "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-none animate-pulse shadow-lg")}>
+                  {suggestion.replace('🆕 NOVO:', '').trim()}
+                </Button>;
+        })}
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* Input Area */}
       <form onSubmit={handleSubmit} className="p-6 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">

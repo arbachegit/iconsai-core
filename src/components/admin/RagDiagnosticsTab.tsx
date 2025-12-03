@@ -8,18 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search, Database, FileText, AlertCircle, CheckCircle2, Clock, Key, Settings as SettingsIcon, Lightbulb } from "lucide-react";
+import { Search, Database, FileText, AlertCircle, CheckCircle2, Clock, Key, Settings as SettingsIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
-import { useTranslation } from "react-i18next";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { MermaidDiagram } from "@/components/MermaidDiagram";
 
 export const RagDiagnosticsTab = () => {
   const { toast } = useToast();
-  const { t } = useTranslation();
   const [testQuery, setTestQuery] = useState("");
   const [testChatType, setTestChatType] = useState<"study" | "health">("study");
   const [testResults, setTestResults] = useState<any>(null);
@@ -150,166 +144,18 @@ export const RagDiagnosticsTab = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-4">
-            {/* Threshold de Similaridade */}
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-1">
-                <p className="text-sm text-muted-foreground">Threshold de Similaridade</p>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="relative">
-                      <Lightbulb className="h-4 w-4 text-primary hover:text-cyan-500 transition-colors cursor-pointer" />
-                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                      </span>
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[550px] max-h-[70vh] overflow-y-auto">
-                    <h3 className="font-bold text-lg mb-3">{t('admin.tooltips.ragDiagnostics.threshold.title')}</h3>
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {`${t('admin.tooltips.ragDiagnostics.threshold.intro')}\n\n${t('admin.tooltips.ragDiagnostics.threshold.vector')}\n\n${t('admin.tooltips.ragDiagnostics.threshold.keyword')}\n\n${t('admin.tooltips.ragDiagnostics.threshold.examples')}\n\n${t('admin.tooltips.ragDiagnostics.threshold.glossary')}`}
-                      </ReactMarkdown>
-                    </div>
-                    <div className="mt-4">
-                      <MermaidDiagram
-                        id="threshold-diagram"
-                        chart={`flowchart LR
-    subgraph Input
-        Q[Query do Usuário]
-    end
-    
-    subgraph Processing
-        E[Embedding 1536D]
-        VS[(Vector Store)]
-        S{Similaridade<br/>≥ 0.15?}
-    end
-    
-    subgraph Output
-        R[Chunks Relevantes]
-        KW{Fallback<br/>Keyword?}
-        F[Sem Contexto]
-    end
-    
-    Q --> E --> VS --> S
-    S -->|Sim| R
-    S -->|Não| KW
-    KW -->|≥ 0.50| R
-    KW -->|Não| F
-    
-    style S fill:#ffc107,stroke:#333
-    style R fill:#4caf50,stroke:#333
-    style F fill:#f44336,stroke:#333`}
-                      />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Threshold de Similaridade</p>
               <p className="text-xl font-bold text-primary">0.15 (vector) / 0.50 (keyword)</p>
             </div>
-
-            {/* Modelo de Embedding */}
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-1">
-                <p className="text-sm text-muted-foreground">Modelo de Embedding</p>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="relative">
-                      <Lightbulb className="h-4 w-4 text-primary hover:text-cyan-500 transition-colors cursor-pointer" />
-                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                      </span>
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[550px] max-h-[70vh] overflow-y-auto">
-                    <h3 className="font-bold text-lg mb-3">{t('admin.tooltips.ragDiagnostics.embedding.title')}</h3>
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {`${t('admin.tooltips.ragDiagnostics.embedding.intro')}\n\n${t('admin.tooltips.ragDiagnostics.embedding.specs')}\n\n${t('admin.tooltips.ragDiagnostics.embedding.comparison')}\n\n${t('admin.tooltips.ragDiagnostics.embedding.how')}\n\n${t('admin.tooltips.ragDiagnostics.embedding.glossary')}`}
-                      </ReactMarkdown>
-                    </div>
-                    <div className="mt-4">
-                      <MermaidDiagram
-                        id="embedding-diagram"
-                        chart={`flowchart TB
-    subgraph Texto
-        T["Texto: 'Diabetes tipo 2'"]
-    end
-    
-    subgraph Processamento
-        M[text-embedding-3-small]
-        V["Vetor [0.023, -0.156, ...]<br/>1536 dimensões"]
-    end
-    
-    subgraph Armazenamento
-        DB[(pgvector<br/>PostgreSQL)]
-    end
-    
-    T --> M --> V --> DB
-    
-    style M fill:#8b5cf6,stroke:#333
-    style V fill:#3b82f6,stroke:#333`}
-                      />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Modelo de Embedding</p>
               <p className="text-lg font-medium">text-embedding-3-small</p>
             </div>
-
-            {/* Match Count Padrão */}
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-1">
-                <p className="text-sm text-muted-foreground">Match Count Padrão</p>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="relative">
-                      <Lightbulb className="h-4 w-4 text-primary hover:text-cyan-500 transition-colors cursor-pointer" />
-                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                      </span>
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[550px] max-h-[70vh] overflow-y-auto">
-                    <h3 className="font-bold text-lg mb-3">{t('admin.tooltips.ragDiagnostics.matchCount.title')}</h3>
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {`${t('admin.tooltips.ragDiagnostics.matchCount.intro')}\n\n${t('admin.tooltips.ragDiagnostics.matchCount.tradeoffs')}\n\n${t('admin.tooltips.ragDiagnostics.matchCount.recommendations')}\n\n${t('admin.tooltips.ragDiagnostics.matchCount.impact')}\n\n${t('admin.tooltips.ragDiagnostics.matchCount.glossary')}`}
-                      </ReactMarkdown>
-                    </div>
-                    <div className="mt-4">
-                      <MermaidDiagram
-                        id="match-count-diagram"
-                        chart={`flowchart LR
-    subgraph Busca
-        Q[Query]
-        VS[(Vector Store<br/>1000+ chunks)]
-    end
-    
-    subgraph Seleção
-        TOP5[Top 5 Chunks<br/>mais similares]
-    end
-    
-    subgraph LLM
-        CTX[Contexto<br/>~3000 tokens]
-        RESP[Resposta<br/>Fundamentada]
-    end
-    
-    Q --> VS --> TOP5 --> CTX --> RESP
-    
-    style TOP5 fill:#10b981,stroke:#333
-    style RESP fill:#8b5cf6,stroke:#333`}
-                      />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Match Count Padrão</p>
               <p className="text-2xl font-bold text-primary">5</p>
             </div>
-
-            {/* Busca Híbrida */}
             <div>
               <p className="text-sm text-muted-foreground">Busca Híbrida</p>
               <Badge className="mt-1">Vector + Keyword Fallback</Badge>

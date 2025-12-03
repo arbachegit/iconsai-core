@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useSystemIncrement } from "@/hooks/useSystemIncrement";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,7 +64,6 @@ interface Tag {
 }
 
 export const TagsManagementTab = () => {
-  const { logIncrement } = useSystemIncrement();
   const [editDialog, setEditDialog] = useState<{ open: boolean; tag: Tag | null; isParent: boolean }>({
     open: false,
     tag: null,
@@ -164,13 +162,6 @@ export const TagsManagementTab = () => {
     onSuccess: () => {
       toast.success("Tag criada com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["all-tags"] });
-      logIncrement({
-        operationType: "INSERT",
-        operationSource: "tag_manual",
-        tablesAffected: ["document_tags"],
-        summary: `Tag "${formData.tag_name}" criada manualmente`,
-        details: { tag_type: formData.tag_type }
-      });
       setEditDialog({ open: false, tag: null, isParent: true });
       resetForm();
     },
