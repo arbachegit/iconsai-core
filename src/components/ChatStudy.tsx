@@ -103,10 +103,10 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const audioChunksRef = useRef<Blob[]>([]);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  // REMOVIDO: inputRef - variável morta que nunca era usada
   const prefixTextRef = useRef<string>("");
   const mountTimeRef = useRef(Date.now());
   const previousMessagesLength = useRef(messages.length);
+  const isTextareaFocusedRef = useRef(false); // NOVO: ref para pausar intervals durante digitação
   const INIT_PERIOD = 1000;
   const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
   const [audioVisibility, setAudioVisibility] = useState<{[key: number]: boolean}>({});
@@ -154,15 +154,18 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     
     observeElements();
     
-    // MutationObserver simplificado - sem verificações de typing
+    // MutationObserver otimizado - throttle maior e proteção de foco
     let mutationThrottleId: number | null = null;
     const mutationObserver = new MutationObserver(() => {
       if (mutationThrottleId) return;
       
+      // NÃO processar se textarea está focado
+      if (isTextareaFocusedRef.current) return;
+      
       mutationThrottleId = window.setTimeout(() => {
         mutationThrottleId = null;
         observeElements();
-      }, 1000);
+      }, 2000); // Aumentado de 1000ms para 2000ms
     });
     
     const container = document.querySelector('[data-radix-scroll-area-viewport]');
@@ -186,9 +189,12 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     }
   }, [currentlyPlayingIndex, audioVisibility]);
 
-  // Rotação de sugestões
+  // Rotação de sugestões - PROTEGIDA contra digitação
   useEffect(() => {
     const rotateSuggestions = () => {
+      // NÃO rodar se textarea está focado
+      if (isTextareaFocusedRef.current) return;
+      
       const sourceList = isImageMode ? IMAGE_SUGGESTIONS : STUDY_SUGGESTIONS;
       const shuffled = [...sourceList].sort(() => Math.random() - 0.5);
       setDisplayedSuggestions(shuffled.slice(0, 4));
@@ -198,6 +204,14 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     const interval = setInterval(rotateSuggestions, 15000);
     return () => clearInterval(interval);
   }, [isImageMode]);
+  
+  // Cleanup completo no unmount para evitar memory leaks
+  useEffect(() => {
+    return () => {
+      if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, []);
 
   // Helper function to scroll to bottom (idêntico ao Health)
   const scrollToBottom = () => {
@@ -741,6 +755,8 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onFocus={() => { isTextareaFocusedRef.current = true; }}
+              onBlur={() => { isTextareaFocusedRef.current = false; }}
               onKeyDown={(e) => {
                 handleInputKeyDown(e);
                 if (e.key === "Enter" && !e.shiftKey) {
