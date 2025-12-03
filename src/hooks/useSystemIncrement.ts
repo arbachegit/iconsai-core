@@ -38,8 +38,6 @@ export const useSystemIncrement = () => {
 
       if (error) {
         console.error("Error logging system increment:", error);
-      } else {
-        console.log(`✅ System increment logged: ${operationType} on ${tablesAffected.join(", ")}`);
       }
     } catch (error) {
       console.error("Error logging system increment:", error);

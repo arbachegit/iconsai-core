@@ -135,10 +135,6 @@ const sanitizeChart = (chart: string): string => {
   sanitized = sanitized.replace(/\[([^\]]*)\s{2,}([^\]]*)\]/g, '[$1 $2]');
   sanitized = sanitized.replace(/\{([^\}]*)\s{2,}([^\}]*)\}/g, '{$1 $2}');
   
-  if (sanitized !== chart) {
-    console.log('[MermaidDiagram] Auto-sanitized chart: removed problematic characters from nodes');
-  }
-  
   return sanitized;
 };
 
@@ -157,7 +153,6 @@ const autoFixChart = (chart: string): string => {
   }
   
   // Auto-add 'graph TD' if missing
-  console.log('[MermaidDiagram] Auto-fixing chart: adding "graph TD" declaration');
   return `graph TD\n${trimmedChart}`;
 };
 

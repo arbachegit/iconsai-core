@@ -121,7 +121,6 @@ export function useChatKnowYOU() {
         }
       } catch (error) {
         // Ignorar erro se não existir registro
-        console.log("No preferences found, using defaults");
       }
     };
     loadPreferences();
@@ -171,7 +170,6 @@ export function useChatKnowYOU() {
         }, { onConflict: 'session_id,chat_type' });
         
         setUserPreferences(prev => ({ ...prev, responseStyle: detectedStyle! }));
-        console.log(`Style preference detected and saved: ${detectedStyle}`);
       } catch (error) {
         console.error("Error saving style preference:", error);
       }
