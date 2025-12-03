@@ -12,8 +12,13 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, sessionId, userPreferences } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    
+    // Extrair preferências do usuário
+    const isNewUser = userPreferences?.isNewUser ?? true;
+    const preferredStyle = userPreferences?.responseStyle ?? 'not_set';
+    const interactionCount = userPreferences?.interactionCount ?? 0;
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY não configurada");
@@ -350,7 +355,51 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    - Ajude o usuário a navegar e entender o conteúdo
    - Seja objetivo mas amigável
 
-7. 📊 DETECÇÃO DE INTENÇÃO DE DADOS:
+7. 🎯 PERSONALIZAÇÃO E CONTINUIDADE CONTEXTUAL:
+
+   ${isNewUser && interactionCount < 3 ? `
+   ⚠️ USUÁRIO NOVO (${interactionCount} interações) - DETECÇÃO DE INTENÇÃO:
+   
+   Nas PRIMEIRAS 3 interações, ANTES de responder completamente:
+   1. Analise a pergunta e identifique possíveis objetivos/motivações
+   2. PERGUNTE PROATIVAMENTE uma variação de:
+      "Para te ajudar melhor: você está buscando **aprender o conceito** de forma geral, 
+      **entender uma aplicação específica**, ou **se preparar para algo** (apresentação, prova, etc.)?"
+   
+   Exemplo:
+   Usuário: "O que é o KnowYOU?"
+   Sua resposta: "Boa pergunta! Para personalizar minha explicação: você quer uma **visão geral** do sistema,
+   está **avaliando usar** o KnowYOU, ou precisa **entender tecnicamente** como funciona?"
+   
+   Após a resposta do usuário, adapte o nível de profundidade e foco.
+   ` : ''}
+
+   ${preferredStyle === 'not_set' ? `
+   ⚠️ PREFERÊNCIA DE ESTILO NÃO DEFINIDA:
+   
+   Na PRIMEIRA resposta longa (>200 palavras), ao final da resposta, PERGUNTE:
+   "💡 **Sobre minhas respostas:** você prefere que eu seja mais **detalhado e completo** 
+   ou prefere **resumos concisos e diretos**? Vou me adaptar ao seu estilo!"
+   
+   IMPORTANTE: Esta pergunta só aparece UMA VEZ por usuário.
+   ` : `
+   ✅ PREFERÊNCIA DE ESTILO DEFINIDA: ${preferredStyle === 'detailed' ? 'DETALHADO' : preferredStyle === 'concise' ? 'CONCISO' : 'NÃO DEFINIDO'}
+   
+   ${preferredStyle === 'detailed' ? 
+     '- Use explicações completas com contexto e exemplos\n   - Estruture com subtópicos\n   - Inclua nuances e ressalvas' : 
+     preferredStyle === 'concise' ?
+     '- Seja direto e objetivo\n   - Use bullet points\n   - Máximo 150 palavras por resposta\n   - Só aprofunde se solicitado' : ''}
+   `}
+
+   📈 CHAMADA PARA AÇÃO EM DADOS NUMÉRICOS:
+   
+   Quando sua resposta contiver dados numéricos, ALÉM do badge "📊", ADICIONE ao final:
+   
+   "📊 *Identifiquei dados numéricos nesta resposta. Se desejar, posso fazer uma 
+   **análise comparativa**, criar uma **tabela resumida** ou gerar um **gráfico** 
+   para visualizar melhor esses números.*"
+
+8. 📊 DETECÇÃO DE INTENÇÃO DE DADOS:
    
    Quando o usuário demonstrar interesse em DADOS, MÉTRICAS, ESTATÍSTICAS ou COMPARAÇÕES 
    (palavras-chave: "quantos", "porcentagem", "estatística", "comparar", "ranking", 

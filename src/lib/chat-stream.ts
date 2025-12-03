@@ -1,10 +1,18 @@
 type Message = { role: "user" | "assistant"; content: string };
 
+interface UserPreferences {
+  responseStyle: 'detailed' | 'concise' | 'not_set';
+  interactionCount: number;
+  isNewUser: boolean;
+}
+
 interface StreamChatOptions {
   messages: Message[];
   onDelta: (deltaText: string) => void;
   onDone: () => void;
   onError?: (error: Error) => void;
+  sessionId?: string;
+  userPreferences?: UserPreferences;
 }
 
 export async function streamChat({
@@ -12,6 +20,8 @@ export async function streamChat({
   onDelta,
   onDone,
   onError,
+  sessionId,
+  userPreferences,
 }: StreamChatOptions) {
   const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
@@ -22,7 +32,7 @@ export async function streamChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, sessionId, userPreferences }),
     });
 
     if (!resp.ok) {
