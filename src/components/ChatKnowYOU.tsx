@@ -148,6 +148,10 @@ export default function ChatKnowYOU() {
     }
   }, []);
 
+  // Ref para desabilitar MutationObserver durante digitação
+  const isTypingRef = useRef(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // IntersectionObserver estável - sem dependência de messages para evitar recriação
   useEffect(() => {
     const observer = new IntersectionObserver(entries => {
@@ -176,9 +180,11 @@ export default function ChatKnowYOU() {
     
     observeElements();
     
-    // MutationObserver para detectar novos elementos
+    // MutationObserver para detectar novos elementos - desabilitado durante digitação
     const mutationObserver = new MutationObserver(() => {
-      observeElements();
+      if (!isTypingRef.current) {
+        observeElements();
+      }
     });
     
     const container = document.querySelector('[data-radix-scroll-area-viewport]');
@@ -696,6 +702,13 @@ export default function ChatKnowYOU() {
               const value = e.target.value;
               setInput(value);
               inputRef.current = value;
+              
+              // Desabilitar MutationObserver durante digitação
+              isTypingRef.current = true;
+              if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+              typingTimeoutRef.current = setTimeout(() => {
+                isTypingRef.current = false;
+              }, 500);
             }} onKeyDown={e => {
               handleInputKeyDown(e);
               if (e.key === "Enter" && !e.shiftKey) {
@@ -710,10 +723,7 @@ export default function ChatKnowYOU() {
               if (isImageMode) {
                 e.target.placeholder = t('chat.placeholderImage');
               }
-            }} className="min-h-[100px] resize-none w-full pb-12 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]" style={{
-              transform: 'translateZ(-8px)',
-              backfaceVisibility: 'hidden'
-            }} disabled={isLoading || isTranscribing} />
+            }} className="min-h-[100px] resize-none w-full pb-12 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]" disabled={isLoading || isTranscribing} />
             
             {/* Botões de funcionalidade - inferior esquerdo */}
             <div className="absolute bottom-2 left-2 flex gap-1 items-end">

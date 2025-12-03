@@ -18,29 +18,39 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
   const [startX, setStartX] = useState(0);
   const [scrollStartLeft, setScrollStartLeft] = useState(0);
 
+  // Throttle ref para evitar chamadas excessivas
+  const throttleRef = useRef<number | null>(null);
+
   const updateScrollState = useCallback(() => {
-    if (!scrollRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-    setCanScrollLeft(scrollLeft > 0);
-    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
+    // Usar requestAnimationFrame para evitar layout thrashing
+    if (throttleRef.current) return;
     
-    // Calculate hidden badges on the right
-    if (scrollWidth > clientWidth) {
-      const children = scrollRef.current.children;
-      const visibleEnd = scrollLeft + clientWidth;
-      let hiddenOnRight = 0;
+    throttleRef.current = requestAnimationFrame(() => {
+      throttleRef.current = null;
+      if (!scrollRef.current) return;
       
-      for (let i = 0; i < children.length; i++) {
-        const child = children[i] as HTMLElement;
-        const childRight = child.offsetLeft + child.offsetWidth;
-        if (childRight > visibleEnd + 10) {
-          hiddenOnRight++;
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
+      
+      // Calculate hidden badges on the right
+      if (scrollWidth > clientWidth) {
+        const children = scrollRef.current.children;
+        const visibleEnd = scrollLeft + clientWidth;
+        let hiddenOnRight = 0;
+        
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i] as HTMLElement;
+          const childRight = child.offsetLeft + child.offsetWidth;
+          if (childRight > visibleEnd + 10) {
+            hiddenOnRight++;
+          }
         }
+        setHiddenCount(hiddenOnRight);
+      } else {
+        setHiddenCount(0);
       }
-      setHiddenCount(hiddenOnRight);
-    } else {
-      setHiddenCount(0);
-    }
+    });
   }, []);
 
   useEffect(() => {
