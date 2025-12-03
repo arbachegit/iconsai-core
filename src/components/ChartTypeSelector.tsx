@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,54 +23,58 @@ const CHART_TYPE_CONFIG: Record<ChartType, { icon: React.ElementType; label: str
   area: { icon: AreaChart, label: 'Área' },
 };
 
-export function ChartTypeSelector({ selectedType, onSelectType, disabled }: ChartTypeSelectorProps) {
-  const selectedConfig = selectedType ? CHART_TYPE_CONFIG[selectedType] : null;
-  const SelectedIcon = selectedConfig?.icon || BarChart3;
+const ChartTypeSelector = React.forwardRef<HTMLButtonElement, ChartTypeSelectorProps>(
+  ({ selectedType, onSelectType, disabled }, ref) => {
+    const selectedConfig = selectedType ? CHART_TYPE_CONFIG[selectedType] : null;
+    const SelectedIcon = selectedConfig?.icon || BarChart3;
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          size="icon"
-          variant={selectedType ? "default" : "ghost"}
-          disabled={disabled}
-          className="h-8 w-8 relative"
-          title={selectedType ? `Tipo: ${selectedConfig?.label}` : "Selecionar tipo de gráfico"}
-        >
-          <SelectedIcon className="w-4 h-4" />
-          {selectedType && (
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="bg-background border border-border">
-        {selectedType && (
-          <DropdownMenuItem 
-            onClick={() => onSelectType(null)}
-            className="text-muted-foreground"
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            ref={ref}
+            type="button"
+            size="icon"
+            variant={selectedType ? "default" : "ghost"}
+            disabled={disabled}
+            className="h-8 w-8 relative"
+            title={selectedType ? `Tipo: ${selectedConfig?.label}` : "Selecionar tipo de gráfico"}
           >
-            <span className="w-4 h-4 mr-2" />
-            Automático
-          </DropdownMenuItem>
-        )}
-        {(Object.entries(CHART_TYPE_CONFIG) as [ChartType, typeof CHART_TYPE_CONFIG[ChartType]][]).map(([type, config]) => {
-          const Icon = config.icon;
-          return (
+            <SelectedIcon className="w-4 h-4" />
+            {selectedType && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="bg-background border border-border">
+          {selectedType && (
             <DropdownMenuItem 
-              key={type} 
-              onClick={() => onSelectType(type)}
-              className={selectedType === type ? "bg-primary/20" : ""}
+              onClick={() => onSelectType(null)}
+              className="text-muted-foreground"
             >
-              <Icon className="w-4 h-4 mr-2" />
-              {config.label}
+              <span className="w-4 h-4 mr-2" />
+              Automático
             </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
+          )}
+          {(Object.entries(CHART_TYPE_CONFIG) as [ChartType, typeof CHART_TYPE_CONFIG[ChartType]][]).map(([type, config]) => {
+            const Icon = config.icon;
+            return (
+              <DropdownMenuItem 
+                key={type} 
+                onClick={() => onSelectType(type)}
+                className={selectedType === type ? "bg-primary/20" : ""}
+              >
+                <Icon className="w-4 h-4 mr-2" />
+                {config.label}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+);
 
-// Export for use in ChatChartRenderer
-export { CHART_TYPE_CONFIG };
+ChartTypeSelector.displayName = "ChartTypeSelector";
+
+export { ChartTypeSelector, CHART_TYPE_CONFIG };

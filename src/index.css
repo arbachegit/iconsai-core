@@ -227,6 +227,13 @@ All colors MUST be HSL.
               background-color 0.2s ease;
 }
 
+/* PERFORMANCE: Pausar animações durante digitação */
+.typing-active .next-step-badge,
+.typing-active .carousel-badge-item,
+.typing-active .animate-pulse {
+  animation-play-state: paused !important;
+}
+
 @layer base {
   * {
     @apply border-border;

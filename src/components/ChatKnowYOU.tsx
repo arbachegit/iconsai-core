@@ -180,11 +180,17 @@ export default function ChatKnowYOU() {
     
     observeElements();
     
-    // MutationObserver para detectar novos elementos - desabilitado durante digitação
+    // MutationObserver com throttle agressivo - desabilitado durante digitação
+    let mutationThrottleId: number | null = null;
     const mutationObserver = new MutationObserver(() => {
-      if (!isTypingRef.current) {
-        observeElements();
-      }
+      if (isTypingRef.current || mutationThrottleId) return;
+      
+      mutationThrottleId = window.setTimeout(() => {
+        mutationThrottleId = null;
+        if (!isTypingRef.current) {
+          observeElements();
+        }
+      }, 1000); // Throttle de 1 segundo
     });
     
     const container = document.querySelector('[data-radix-scroll-area-viewport]');
@@ -195,6 +201,7 @@ export default function ChatKnowYOU() {
     return () => {
       observer.disconnect();
       mutationObserver.disconnect();
+      if (mutationThrottleId) clearTimeout(mutationThrottleId);
     };
   }, []);
 
@@ -592,7 +599,7 @@ export default function ChatKnowYOU() {
     }, 300);
     return () => clearTimeout(timer);
   }, [input]);
-  return <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border-2 border-primary/40 shadow-[0_0_15px_rgba(139,92,246,0.2),0_0_30px_rgba(139,92,246,0.1)] animate-fade-in">
+  return <div className="chat-container flex flex-col h-full bg-background/50 backdrop-blur-sm rounded-lg border-2 border-primary/40 shadow-[0_0_15px_rgba(139,92,246,0.2),0_0_30px_rgba(139,92,246,0.1)] animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b-2 border-primary/30">
         <div className="flex items-center gap-3">
@@ -701,11 +708,15 @@ export default function ChatKnowYOU() {
               setInput(value);
               inputRef.current = value;
               
-              // Desabilitar MutationObserver durante digitação
+              // Desabilitar MutationObserver e pausar animações durante digitação
               isTypingRef.current = true;
+              // Adicionar classe para pausar animações CSS
+              document.querySelector('.chat-container')?.classList.add('typing-active');
+              
               if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
               typingTimeoutRef.current = setTimeout(() => {
                 isTypingRef.current = false;
+                document.querySelector('.chat-container')?.classList.remove('typing-active');
               }, 500);
             }} onKeyDown={e => {
               handleInputKeyDown(e);
@@ -713,15 +724,7 @@ export default function ChatKnowYOU() {
                 e.preventDefault();
                 handleSubmit(e);
               }
-            }} placeholder={isTranscribing ? t('chat.transcribing') : isImageMode ? t('chat.placeholderImage') : t('chat.placeholderHealth')} onFocus={e => {
-              if (isImageMode) {
-                e.target.placeholder = t('chat.imageLimitHealth');
-              }
-            }} onBlur={e => {
-              if (isImageMode) {
-                e.target.placeholder = t('chat.placeholderImage');
-              }
-            }} className="min-h-[100px] resize-none w-full pb-12 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]" style={{ willChange: 'transform' }} disabled={isLoading || isTranscribing} />
+            }} placeholder={isTranscribing ? t('chat.transcribing') : isImageMode ? t('chat.placeholderImage') : t('chat.placeholderHealth')} className="min-h-[100px] resize-none w-full pb-12 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]" style={{ willChange: 'transform' }} disabled={isLoading || isTranscribing} />
             
             {/* Botões de funcionalidade - inferior esquerdo */}
             <TooltipProvider delayDuration={200}>
