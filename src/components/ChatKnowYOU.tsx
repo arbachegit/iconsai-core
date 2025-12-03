@@ -148,9 +148,15 @@ export default function ChatKnowYOU() {
     }
   }, []);
 
-  // Ref para desabilitar MutationObserver durante digitação
+  // PROTEÇÃO ABSOLUTA: Refs para controle de latência durante digitação
   const isTypingRef = useRef(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const chatContainerRef = useRef<HTMLElement | null>(null);
+  
+  // Cachear referência do container uma única vez
+  useEffect(() => {
+    chatContainerRef.current = document.querySelector('.chat-container');
+  }, []);
 
   // IntersectionObserver estável - sem dependência de messages para evitar recriação
   useEffect(() => {
@@ -214,9 +220,12 @@ export default function ChatKnowYOU() {
     }
   }, [currentlyPlayingIndex, audioVisibility]);
 
-  // Rotação de sugestões a cada 15 segundos (otimizado para reduzir re-renders)
+  // PROTEÇÃO ABSOLUTA: Rotação de sugestões pausada durante digitação
   useEffect(() => {
     const rotateSuggestions = () => {
+      // Verificar se está digitando antes de atualizar
+      if (isTypingRef.current) return;
+      
       const sourceList = isImageMode ? IMAGE_SUGGESTIONS : HEALTH_SUGGESTIONS;
       const shuffled = [...sourceList].sort(() => Math.random() - 0.5);
       setDisplayedSuggestions(shuffled.slice(0, 4));
@@ -683,17 +692,15 @@ export default function ChatKnowYOU() {
             <Textarea value={input} onChange={e => {
               const value = e.target.value;
               setInput(value);
-              inputRef.current = value;
               
-              // Desabilitar MutationObserver e pausar animações durante digitação
+              // PROTEÇÃO ABSOLUTA: Usar ref cacheada em vez de document.querySelector
               isTypingRef.current = true;
-              // Adicionar classe para pausar animações CSS
-              document.querySelector('.chat-container')?.classList.add('typing-active');
+              chatContainerRef.current?.classList.add('typing-active');
               
               if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
               typingTimeoutRef.current = setTimeout(() => {
                 isTypingRef.current = false;
-                document.querySelector('.chat-container')?.classList.remove('typing-active');
+                chatContainerRef.current?.classList.remove('typing-active');
               }, 500);
             }} onKeyDown={e => {
               handleInputKeyDown(e);

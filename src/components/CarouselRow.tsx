@@ -132,14 +132,11 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
       >
-      {/* Wrapper para animação de filhos com layout shift suave - memoizado */}
+      {/* PROTEÇÃO ABSOLUTA: SEM animationDelay dinâmico para evitar latência */}
         {useMemo(() => React.Children.map(children, (child, index) => (
           <div 
             key={index}
-            className="carousel-badge-item"
-            style={{ 
-              animationDelay: `${index * 30}ms`,
-            }}
+            className="carousel-badge-item flex-shrink-0"
           >
             {child}
           </div>

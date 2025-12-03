@@ -120,11 +120,16 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
     return { themes: themes.slice(0, 15), documentIds };
   }, [recentDocs]);
 
-  // Alternância automática de temas a cada 5 segundos (otimizado para reduzir re-renders)
+  // PROTEÇÃO ABSOLUTA: Alternância automática de temas a cada 5 segundos
+  // Intervalo pausado quando há digitação ativa via classe CSS .typing-active
   useEffect(() => {
     if (!newDocumentData?.themes.length || newDocumentData.themes.length <= 1) return;
 
     const interval = setInterval(() => {
+      // Verificar se usuário está digitando antes de atualizar
+      const isTyping = document.querySelector('.typing-active');
+      if (isTyping) return;
+      
       setCurrentThemeIndex(prev => 
         (prev + 1) % newDocumentData.themes.length
       );
