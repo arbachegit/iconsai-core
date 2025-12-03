@@ -5,6 +5,41 @@
 
 ---
 
+## 🔐 PROTEÇÃO ABSOLUTA - CÓDIGO PROTEGIDO CONTRA LATÊNCIA
+
+### Arquivos que NÃO PODEM ser modificados sem revisão de paridade:
+1. `src/components/ChatKnowYOU.tsx`
+2. `src/components/ChatStudy.tsx`  
+3. `src/components/TypingIndicator.tsx`
+4. `src/components/CarouselRow.tsx`
+5. `src/hooks/useDocumentSuggestions.ts`
+6. `src/index.css` (seção .typing-active)
+
+### Regras de Modificação:
+- [ ] ANTES de modificar: Verificar se afeta digitação
+- [ ] DURANTE modificação: Aplicar IDENTICAMENTE em ambos os chats
+- [ ] DEPOIS de modificar: Testar latência em ambos
+
+### Padrões PROIBIDOS (causam latência):
+1. ❌ `useState` com dependência de `input` em useEffect
+2. ❌ `useEffect` com `[input]` no dependency array
+3. ❌ `setInterval` sem verificação de `isTypingRef.current`
+4. ❌ `document.querySelector` dentro de onChange handlers (usar ref cacheada)
+5. ❌ `animate-bounce`, `animate-spin`, `animate-pulse` em elementos visíveis durante digitação
+6. ❌ `animationDelay` dinâmico em style props
+7. ❌ `transition-*` sem classe `.typing-active` de override
+8. ❌ `inputRef.current = value` redundante (já temos `input` state)
+
+### Padrões OBRIGATÓRIOS:
+1. ✅ `chatContainerRef` cacheado via useRef para DOM queries
+2. ✅ `isTypingRef.current` verificado em todos os setInterval callbacks
+3. ✅ `.typing-active` classe adicionada/removida via ref cacheada
+4. ✅ Timeout de 500ms para remover `.typing-active`
+5. ✅ MutationObserver com throttle de 1000ms
+6. ✅ MutationObserver desabilitado quando `isTypingRef.current === true`
+
+---
+
 ## ✅ ELEMENTOS QUE DEVEM SER IDÊNTICOS
 
 ### 1. Container Principal
@@ -59,13 +94,16 @@
 - `mountTimeRef` e `previousMessagesLength` para controle de scroll
 - `INIT_PERIOD = 1000` para ignorar scrolls durante inicialização
 - Auto-scroll via `requestAnimationFrame` + `scrollTo`
+- `chatContainerRef` para DOM queries cacheadas
 
-### 10. Otimização de Performance
-- `.typing-active` class durante digitação
+### 10. Otimização de Performance (PROTEÇÃO ABSOLUTA)
+- `.typing-active` class durante digitação (via ref cacheada)
 - `isTypingRef` para desabilitar MutationObserver
 - Throttle de 1000ms no MutationObserver
 - Sem `isTyping` state (causa re-renders)
-- Sem typing indicator animado
+- Sem typing indicator animado (animate-bounce removido)
+- Sem animationDelay dinâmico no CarouselRow
+- setIntervals pausados via verificação de isTypingRef ou classe .typing-active
 
 ---
 
@@ -79,41 +117,89 @@
 6. **`animate-pulse` em badges** - Animação infinita causa repaints constantes
 7. **`animate-pulse` no indicador de gravação** - Remove durante recording
 8. **Animações infinitas CSS** - Não usar `animation: X infinite` em elementos visíveis
+9. **`document.querySelector` em onChange** - Layout thrashing a cada keystroke
+10. **`animationDelay` dinâmico** - Recálculo de style a cada render
 
 ---
 
 ## 🔧 SISTEMA DE PROTEÇÃO ANTI-LATÊNCIA
 
-### CSS (index.css)
+### CSS (index.css) - PROTEÇÃO ABSOLUTA
 ```css
-/* CRITICAL: Parar TODAS animações durante digitação */
+/* 🔐 PROTEÇÃO ABSOLUTA - NÃO MODIFICAR */
 .typing-active,
 .typing-active *,
-.typing-active [class*="animate-"] {
+.typing-active *::before,
+.typing-active *::after,
+.typing-active [class*="animate-"],
+.typing-active [class*="transition-"] {
   animation: none !important;
   animation-play-state: paused !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
   transition: none !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
 }
 
-/* Textarea otimizado */
-.chat-container textarea {
-  will-change: auto; /* NÃO usar 'contents' */
+.typing-active * {
+  will-change: auto !important;
+  backface-visibility: visible !important;
 }
+
+.typing-active textarea {
+  will-change: auto !important;
+  transform: none !important;
+}
+
+.chat-container textarea {
+  will-change: auto;
+}
+```
+
+### JavaScript (Refs de Controle)
+```javascript
+// Refs obrigatórias em ambos os chats
+const isTypingRef = useRef(false);
+const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+const chatContainerRef = useRef<HTMLElement | null>(null);
+
+// Cachear container no mount
+useEffect(() => {
+  chatContainerRef.current = document.querySelector('.chat-container');
+}, []);
 ```
 
 ### JavaScript (onChange do Textarea)
 ```javascript
 onChange={(e) => {
-  setInput(e.target.value);
+  const value = e.target.value;
+  setInput(value);
+  
+  // PROTEÇÃO ABSOLUTA: Usar ref cacheada
   isTypingRef.current = true;
-  document.querySelector('.chat-container')?.classList.add('typing-active');
+  chatContainerRef.current?.classList.add('typing-active');
   
   if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
   typingTimeoutRef.current = setTimeout(() => {
     isTypingRef.current = false;
-    document.querySelector('.chat-container')?.classList.remove('typing-active');
+    chatContainerRef.current?.classList.remove('typing-active');
   }, 500);
 }}
+```
+
+### JavaScript (setInterval com verificação)
+```javascript
+// Em useDocumentSuggestions.ts e rotação de sugestões
+const interval = setInterval(() => {
+  // Verificar antes de atualizar
+  const isTyping = document.querySelector('.typing-active');
+  if (isTyping) return;
+  if (isTypingRef.current) return;
+  
+  // Só atualizar se não estiver digitando
+  doUpdate();
+}, intervalMs);
 ```
 
 ---
@@ -128,6 +214,8 @@ onChange={(e) => {
 - [ ] Verificar se animações pausam durante digitação
 - [ ] Confirmar que não há `animate-pulse` em elementos visíveis durante typing
 - [ ] Confirmar que não há `useState` com `[input]` como dependência
+- [ ] Confirmar que DOM queries usam refs cacheadas
+- [ ] Confirmar que setIntervals verificam isTypingRef antes de atualizar
 
 ---
 
@@ -135,18 +223,22 @@ onChange={(e) => {
 
 - `src/components/ChatKnowYOU.tsx` - Chat de Saúde
 - `src/components/ChatStudy.tsx` - Chat de Estudo
+- `src/components/TypingIndicator.tsx` - Indicador de digitação (ESTÁTICO)
+- `src/components/CarouselRow.tsx` - Carrossel de badges (SEM animationDelay)
 - `src/hooks/useChatKnowYOU.ts` - Hook do chat de saúde
 - `src/hooks/useChatStudy.ts` - Hook do chat de estudo
-- `src/index.css` - Regras `.typing-active`
+- `src/hooks/useDocumentSuggestions.ts` - Sugestões dinâmicas (interval pausável)
+- `src/index.css` - Regras `.typing-active` (PROTEÇÃO ABSOLUTA)
 
 ---
 
 ## ⚠️ ÚLTIMA ATUALIZAÇÃO: 2025-12-03
-- Removido `isTyping` state de ambos os chats
-- Removido typing indicator animado
-- Simplificado online indicator
-- Unificado sistema de scroll
-- Adicionado regras CSS mais agressivas para `.typing-active`
-- Removido `animate-pulse` de todos os badges e indicadores
-- Removido animação `nextStepPulse` infinita
-- Corrigido `will-change: contents` para `will-change: auto`
+- Adicionada seção de PROTEÇÃO ABSOLUTA
+- Removido `inputRef.current = value` redundante
+- Cacheado `chatContainerRef` via useRef
+- Removido `animate-bounce` do TypingIndicator
+- Removido `animationDelay` dinâmico do CarouselRow
+- Expandido CSS `.typing-active` com animation-duration e transition-duration
+- Adicionada verificação de `.typing-active` no setInterval de useDocumentSuggestions
+- Adicionada verificação de `isTypingRef.current` nos setIntervals de rotação
+- Documentados todos os padrões proibidos e obrigatórios

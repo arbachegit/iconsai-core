@@ -217,30 +217,56 @@ All colors MUST be HSL.
               background-color 0.2s ease;
 }
 
-/* 🚨 CRITICAL PERFORMANCE: Parar TODAS as animações durante digitação */
+/* ============================================================================
+   🔐 PROTEÇÃO ABSOLUTA DE PERFORMANCE - NÃO MODIFICAR SEM REVISÃO
+   ============================================================================
+   Este bloco de CSS é CRÍTICO para eliminar latência durante digitação.
+   Qualquer modificação deve ser testada exaustivamente em ambos os chats.
+   ============================================================================ */
+
+/* 🚨 CRITICAL PERFORMANCE: Parar ABSOLUTAMENTE TUDO durante digitação */
 .typing-active,
 .typing-active *,
+.typing-active *::before,
+.typing-active *::after,
 .typing-active .next-step-badge,
 .typing-active .carousel-badge-item,
 .typing-active .animate-pulse,
 .typing-active .animate-ping,
 .typing-active .animate-bounce,
+.typing-active .animate-spin,
 .typing-active .animate-fade-in,
-.typing-active [class*="animate-"] {
+.typing-active [class*="animate-"],
+.typing-active [class*="transition-"] {
   animation: none !important;
   animation-play-state: paused !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
   transition: none !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
 }
 
-/* Desabilitar will-change durante digitação para evitar layer promotion excessiva */
+/* Forçar GPU compositing OFF durante digitação */
+.typing-active * {
+  will-change: auto !important;
+  backface-visibility: visible !important;
+}
+
+/* Otimização específica do textarea durante digitação */
 .typing-active textarea {
   will-change: auto !important;
+  transform: none !important;
 }
 
 /* Otimização de textarea - will-change: auto para deixar browser decidir */
 .chat-container textarea {
   will-change: auto;
 }
+
+/* ============================================================================
+   FIM DA PROTEÇÃO ABSOLUTA
+   ============================================================================ */
 
 @layer base {
   * {
