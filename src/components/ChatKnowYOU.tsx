@@ -102,6 +102,9 @@ export default function ChatKnowYOU() {
     subtopicsCache,
   } = useDocumentSuggestions('health');
   
+  // Debug: rastrear estado nextSteps
+  console.log('[ChatKnowYOU] nextSteps state:', nextSteps);
+  
   const [input, setInput] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
