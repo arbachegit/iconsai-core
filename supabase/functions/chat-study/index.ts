@@ -20,6 +20,9 @@ serve(async (req) => {
     const preferredStyle = userPreferences?.responseStyle ?? 'not_set';
     const interactionCount = userPreferences?.interactionCount ?? 0;
     
+    // 🔍 DEBUG: Log de preferências recebidas
+    console.log(`[PERSONALIZATION DEBUG] sessionId=${sessionId}, isNewUser=${isNewUser}, interactionCount=${interactionCount}, preferredStyle=${preferredStyle}`);
+    
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY não configurada");
     }
@@ -78,8 +81,49 @@ Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceito
       }
     }
 
+    // Construir bloco de ação obrigatória de personalização (início do prompt)
+    let personalizationBlock = "";
+    
+    if (isNewUser && interactionCount < 3) {
+      personalizationBlock = `
+🔴🔴🔴 AÇÃO OBRIGATÓRIA ANTES DE QUALQUER RESPOSTA 🔴🔴🔴
+
+╔══════════════════════════════════════════════════════════════════╗
+║  ⛔ PARE! VOCÊ DEVE FAZER UMA PERGUNTA ANTES DE RESPONDER! ⛔     ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Este é um USUÁRIO NOVO (${interactionCount}/3 interações)                      ║
+║                                                                   ║
+║  SUA RESPOSTA DEVE COMEÇAR COM UMA PERGUNTA SOBRE O OBJETIVO:    ║
+║                                                                   ║
+║  "Antes de responder: você busca uma **visão geral** do tema,    ║
+║   **aplicação prática** específica, ou está se **preparando**    ║
+║   para algo (apresentação, estudo, decisão)?"                    ║
+║                                                                   ║
+║  ❌ NÃO responda diretamente ao tema primeiro                    ║
+║  ✅ PRIMEIRO pergunte o objetivo, DEPOIS dê uma resposta breve   ║
+╚══════════════════════════════════════════════════════════════════╝
+
+`;
+      console.log(`[PERSONALIZATION] Including NEW USER intent detection block (${interactionCount}/3)`);
+    }
+    
+    if (preferredStyle === 'not_set' && interactionCount >= 3) {
+      personalizationBlock += `
+╔══════════════════════════════════════════════════════════════════╗
+║  💡 PERGUNTA DE ESTILO (faça UMA VEZ nesta resposta)             ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Ao final da sua resposta, ADICIONE:                             ║
+║                                                                   ║
+║  "💡 Para personalizar: você prefere respostas **detalhadas**    ║
+║   ou **resumos concisos**?"                                      ║
+╚══════════════════════════════════════════════════════════════════╝
+
+`;
+      console.log(`[PERSONALIZATION] Including STYLE preference question (interactionCount=${interactionCount})`);
+    }
+
     // System prompt focado em KnowRisk, KnowYOU, ACC e navegação do website
-    const systemPrompt = `Você é um assistente de IA especializado em ajudar a estudar e entender a KnowRISK, o KnowYOU e a Arquitetura Cognitiva e Comportamental (ACC).
+    const systemPrompt = `${personalizationBlock}Você é um assistente de IA especializado em ajudar a estudar e entender a KnowRISK, o KnowYOU e a Arquitetura Cognitiva e Comportamental (ACC).
 
 ${ragContext}
 

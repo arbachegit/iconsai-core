@@ -20,6 +20,9 @@ serve(async (req) => {
     const preferredStyle = userPreferences?.responseStyle ?? 'not_set';
     const interactionCount = userPreferences?.interactionCount ?? 0;
     
+    // 🔍 DEBUG: Log de preferências recebidas
+    console.log(`[PERSONALIZATION DEBUG] sessionId=${sessionId}, isNewUser=${isNewUser}, interactionCount=${interactionCount}, preferredStyle=${preferredStyle}`);
+    
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY não configurada");
     }
@@ -75,8 +78,49 @@ mencionado no contexto, responda com base nele.\n\n`;
       }
     }
 
+    // Construir bloco de ação obrigatória de personalização (início do prompt)
+    let personalizationBlock = "";
+    
+    if (isNewUser && interactionCount < 3) {
+      personalizationBlock = `
+🔴🔴🔴 AÇÃO OBRIGATÓRIA ANTES DE QUALQUER RESPOSTA 🔴🔴🔴
+
+╔══════════════════════════════════════════════════════════════════╗
+║  ⛔ PARE! VOCÊ DEVE FAZER UMA PERGUNTA ANTES DE RESPONDER! ⛔     ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Este é um USUÁRIO NOVO (${interactionCount}/3 interações)                      ║
+║                                                                   ║
+║  SUA RESPOSTA DEVE COMEÇAR COM UMA PERGUNTA SOBRE O OBJETIVO:    ║
+║                                                                   ║
+║  "Antes de responder: você está buscando **informações gerais**  ║
+║   para conhecimento, **dados específicos** para uma decisão, ou  ║
+║   **orientação prática** para uma situação real?"                ║
+║                                                                   ║
+║  ❌ NÃO responda diretamente ao tema primeiro                    ║
+║  ✅ PRIMEIRO pergunte o objetivo, DEPOIS dê uma resposta breve   ║
+╚══════════════════════════════════════════════════════════════════╝
+
+`;
+      console.log(`[PERSONALIZATION] Including NEW USER intent detection block (${interactionCount}/3)`);
+    }
+    
+    if (preferredStyle === 'not_set' && interactionCount >= 3) {
+      personalizationBlock += `
+╔══════════════════════════════════════════════════════════════════╗
+║  💡 PERGUNTA DE ESTILO (faça UMA VEZ nesta resposta)             ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Ao final da sua resposta, ADICIONE:                             ║
+║                                                                   ║
+║  "💡 Para personalizar: você prefere respostas **detalhadas**    ║
+║   ou **resumos concisos**?"                                      ║
+╚══════════════════════════════════════════════════════════════════╝
+
+`;
+      console.log(`[PERSONALIZATION] Including STYLE preference question (interactionCount=${interactionCount})`);
+    }
+
     // System prompt especializado em Hospital Moinhos de Vento e saúde
-    const systemPrompt = `Você é o KnowYOU, um assistente de IA especializado em saúde e no Hospital Moinhos de Vento, desenvolvido pela KnowRISK para ajudar profissionais e gestores da área de saúde.
+    const systemPrompt = `${personalizationBlock}Você é o KnowYOU, um assistente de IA especializado em saúde e no Hospital Moinhos de Vento, desenvolvido pela KnowRISK para ajudar profissionais e gestores da área de saúde.
 
 ${ragContext}
 
