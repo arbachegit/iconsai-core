@@ -428,9 +428,32 @@ O sistema utiliza um pipeline de 4 etapas:
   // Delete document
   const deleteMutation = useMutation({
     mutationFn: async (docId: string) => {
-      const {
-        error
-      } = await supabase.from("documents").delete().eq("id", docId);
+      // 1. Delete related chunks first (foreign key constraint)
+      const { error: chunksError } = await supabase
+        .from("document_chunks")
+        .delete()
+        .eq("document_id", docId);
+      if (chunksError) throw chunksError;
+
+      // 2. Delete related tags
+      const { error: tagsError } = await supabase
+        .from("document_tags")
+        .delete()
+        .eq("document_id", docId);
+      if (tagsError) throw tagsError;
+
+      // 3. Delete related document versions (if any)
+      const { error: versionsError } = await supabase
+        .from("document_versions")
+        .delete()
+        .eq("document_id", docId);
+      if (versionsError) throw versionsError;
+
+      // 4. Finally delete the document
+      const { error } = await supabase
+        .from("documents")
+        .delete()
+        .eq("id", docId);
       if (error) throw error;
     },
     onSuccess: (data, docId) => {
