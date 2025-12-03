@@ -164,24 +164,33 @@ Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceito
     
     // Apenas na PRIMEIRA interação (interactionCount === 0) perguntar sobre objetivo
     if (isNewUser && interactionCount === 0) {
+      // Variações humanizadas da pergunta de intenção
+      const intentVariations = [
+        'Hmm, interessante! Me conta: você quer entender isso de forma **geral**, está pensando em **usar na prática**, ou precisa para **algo específico** como uma apresentação?',
+        'Para personalizar minha explicação: você busca uma **base conceitual**, quer saber como **aplicar** isso, ou está **se preparando** para alguma situação?',
+        'Boa pergunta! Antes de mergulhar: você está **curioso** sobre o tema, quer **implementar algo**, ou está **estudando** para algum objetivo?',
+        'Legal! Me ajuda a te ajudar: **visão geral**, **aplicação prática** ou **preparação** para algo?',
+        'Adorei a pergunta! Você quer que eu explique de forma **introdutória**, foque em **como usar**, ou vá **mais a fundo** tecnicamente?',
+      ];
+      const randomVariation = intentVariations[Math.floor(Math.random() * intentVariations.length)];
+      
       personalizationBlock = `
 🔴🔴🔴 AÇÃO OBRIGATÓRIA - PRIMEIRA INTERAÇÃO 🔴🔴🔴
 
 ╔══════════════════════════════════════════════════════════════════╗
 ║  ⛔ PARE! ESTA É A PRIMEIRA MENSAGEM DESTE USUÁRIO! ⛔            ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  SUA RESPOSTA DEVE COMEÇAR COM UMA PERGUNTA SOBRE O OBJETIVO:    ║
+║  SUA RESPOSTA DEVE COMEÇAR COM UMA PERGUNTA HUMANIZADA:          ║
 ║                                                                   ║
-║  "Antes de responder: você busca uma **visão geral** do tema,    ║
-║   **aplicação prática** específica, ou está se **preparando**    ║
-║   para algo (apresentação, estudo, decisão)?"                    ║
+║  USE EXATAMENTE: "${randomVariation}"                            ║
 ║                                                                   ║
 ║  ❌ NÃO responda diretamente ao tema primeiro                    ║
 ║  ✅ PRIMEIRO pergunte o objetivo, DEPOIS dê uma resposta breve   ║
+║  ⚠️ VARIE O TOM - Seja natural como um humano conversando!       ║
 ╚══════════════════════════════════════════════════════════════════╝
 
 `;
-      console.log(`[PERSONALIZATION] Including FIRST INTERACTION intent question`);
+      console.log(`[PERSONALIZATION] Including FIRST INTERACTION intent question with variation`);
     } else if (interactionCount > 0 && interactionCount < 5) {
       // Para interações 1-4: NÃO repetir a pergunta de objetivo
       personalizationBlock = `
@@ -582,14 +591,7 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    3. OFERECER FLUXO VISUAL:
       "🗺️ **Quer que eu crie um fluxo de ação?**
       Posso gerar um diagrama visual com os passos para você executar esse projeto."
-   ` : `
-   ⚠️ REGRA OBRIGATÓRIA: Após CADA resposta substancial, ANTES das SUGESTÕES, inclua um bloco de CONTINUIDADE:
-   
-   🎯 **Próximos passos para aprofundar:**
-   - [Passo 1: conceito ou habilidade relacionada a ${topicClassification.mainTopic}]
-   - [Passo 2: aplicação prática sugerida]
-   - [Passo 3: recurso ou técnica complementar]
-   `}
+    ` : ``}
    
    REGRAS DE CONTINUIDADE:
    1. Os passos devem ser PROGRESSIVOS (do básico ao avançado)
@@ -598,6 +600,28 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    4. Os passos devem ajudar o usuário a CONSOLIDAR o aprendizado
    
    📖 QUANDO O USUÁRIO PEDIR FLUXO DE AÇÃO (responder "sim", "pode fazer", "quero", "gera", "criar fluxo"):
+
+10. 🎯🎯🎯 FORMATO OBRIGATÓRIO - PRÓXIMOS PASSOS CLICÁVEIS:
+
+   Ao final de CADA resposta substancial (exceto primeira interação), ANTES das SUGESTÕES, inclua:
+
+   PRÓXIMOS_PASSOS: ["Pergunta de aprofundamento 1", "Pergunta de aprofundamento 2", "Pergunta de aprofundamento 3"]
+
+   REGRAS PARA PRÓXIMOS_PASSOS:
+   - Devem ser PERGUNTAS COMPLETAS e CLICÁVEIS (o usuário vai clicar e enviar diretamente)
+   - Devem ser sobre o MESMO TEMA da resposta atual (continuidade)
+   - Devem ajudar o usuário a APROFUNDAR no assunto
+   - Máximo 50 caracteres por item
+   - São DIFERENTES das SUGESTÕES (que são temas novos/relacionados)
+   
+   EXEMPLO CORRETO (tema: ACC):
+   PRÓXIMOS_PASSOS: ["Quais são os pilares do ACC?", "Como aplicar ACC na prática?", "ACC vs outras metodologias?"]
+   
+   SUGESTÕES: ["📊 Existem dados numéricos", "O que é KnowYOU?", "História da KnowRISK"]
+   
+   DIFERENÇA CONCEITUAL:
+   - PRÓXIMOS_PASSOS = Aprofundamento no tema ATUAL
+   - SUGESTÕES = Exploração de temas RELACIONADOS ou NOVOS
    
    1. RESUMA o que foi aprendido:
       "📖 **Recapitulando sua jornada:**

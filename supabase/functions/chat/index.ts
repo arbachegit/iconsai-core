@@ -161,24 +161,33 @@ mencionado no contexto, responda com base nele.\n\n`;
     
     // Apenas na PRIMEIRA interação (interactionCount === 0) perguntar sobre objetivo
     if (isNewUser && interactionCount === 0) {
+      // Variações humanizadas da pergunta de intenção (contexto de saúde)
+      const intentVariations = [
+        'Antes de te ajudar: você busca **informações gerais** para entender melhor, **dados específicos** para uma decisão, ou **orientação prática** para uma situação?',
+        'Para personalizar minha resposta: você quer **conhecer o básico** sobre o tema, **entender detalhes técnicos**, ou está **pesquisando para alguém**?',
+        'Boa pergunta! Me conta: você está **buscando conhecimento geral**, precisa de **informações específicas**, ou está **se preparando para uma consulta**?',
+        'Interessante! Você quer uma **explicação introdutória**, **detalhes aprofundados**, ou **orientações práticas** sobre o tema?',
+        'Para te ajudar melhor: você está **curioso sobre o assunto**, **pesquisando sintomas/tratamentos**, ou **buscando orientação específica**?',
+      ];
+      const randomVariation = intentVariations[Math.floor(Math.random() * intentVariations.length)];
+      
       personalizationBlock = `
 🔴🔴🔴 AÇÃO OBRIGATÓRIA - PRIMEIRA INTERAÇÃO 🔴🔴🔴
 
 ╔══════════════════════════════════════════════════════════════════╗
 ║  ⛔ PARE! ESTA É A PRIMEIRA MENSAGEM DESTE USUÁRIO! ⛔            ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  SUA RESPOSTA DEVE COMEÇAR COM UMA PERGUNTA SOBRE O OBJETIVO:    ║
+║  SUA RESPOSTA DEVE COMEÇAR COM UMA PERGUNTA HUMANIZADA:          ║
 ║                                                                   ║
-║  "Antes de responder: você está buscando **informações gerais**  ║
-║   para conhecimento, **dados específicos** para uma decisão, ou  ║
-║   **orientação prática** para uma situação real?"                ║
+║  USE EXATAMENTE: "${randomVariation}"                            ║
 ║                                                                   ║
 ║  ❌ NÃO responda diretamente ao tema primeiro                    ║
 ║  ✅ PRIMEIRO pergunte o objetivo, DEPOIS dê uma resposta breve   ║
+║  ⚠️ VARIE O TOM - Seja natural como um humano conversando!       ║
 ╚══════════════════════════════════════════════════════════════════╝
 
 `;
-      console.log(`[PERSONALIZATION] Including FIRST INTERACTION intent question`);
+      console.log(`[PERSONALIZATION] Including FIRST INTERACTION intent question with variation`);
     } else if (interactionCount > 0 && interactionCount < 5) {
       // Para interações 1-4: NÃO repetir a pergunta de objetivo
       personalizationBlock = `
@@ -557,20 +566,35 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    3. OFERECER FLUXO VISUAL:
       "🗺️ **Quer que eu crie um fluxo de ação?**
       Posso gerar um diagrama visual com os passos para você seguir esse plano de saúde."
-   ` : `
-   ⚠️ REGRA OBRIGATÓRIA: Após CADA resposta substancial, ANTES das SUGESTÕES, inclua um bloco de CONTINUIDADE:
-   
-   🎯 **Próximos passos para aprofundar:**
-   - [Passo 1: conceito ou aspecto relacionado a ${topicClassification.mainTopic}]
-   - [Passo 2: aplicação prática ou prevenção]
-   - [Passo 3: recurso ou cuidado complementar]
-   `}
+    ` : ``}
    
    REGRAS DE CONTINUIDADE:
    1. Os passos devem ser PROGRESSIVOS (do básico ao avançado)
    2. Pelo menos um passo deve ser PRÁTICO (ação real de saúde)
    3. Baseie-se no CONTEXTO DA CONVERSA sobre "${topicClassification.mainTopic}", não em genéricos
    4. Os passos devem ajudar o usuário a CONSOLIDAR o entendimento sobre saúde
+
+11. 🎯🎯🎯 FORMATO OBRIGATÓRIO - PRÓXIMOS PASSOS CLICÁVEIS:
+
+   Ao final de CADA resposta substancial (exceto primeira interação), ANTES das SUGESTÕES, inclua:
+
+   PRÓXIMOS_PASSOS: ["Pergunta de aprofundamento 1", "Pergunta de aprofundamento 2", "Pergunta de aprofundamento 3"]
+
+   REGRAS PARA PRÓXIMOS_PASSOS:
+   - Devem ser PERGUNTAS COMPLETAS e CLICÁVEIS (o usuário vai clicar e enviar diretamente)
+   - Devem ser sobre o MESMO TEMA DE SAÚDE da resposta atual (continuidade)
+   - Devem ajudar o usuário a APROFUNDAR no assunto
+   - Máximo 50 caracteres por item
+   - São DIFERENTES das SUGESTÕES (que são temas novos/relacionados)
+   
+   EXEMPLO CORRETO (tema: Telemedicina):
+   PRÓXIMOS_PASSOS: ["Como funciona uma consulta online?", "Quais exames podem ser feitos?", "É seguro para diagnósticos?"]
+   
+   SUGESTÕES: ["📊 Existem dados numéricos", "O que é medicina preventiva?", "Especialidades do Hospital"]
+   
+   DIFERENÇA CONCEITUAL:
+   - PRÓXIMOS_PASSOS = Aprofundamento no tema ATUAL de saúde
+   - SUGESTÕES = Exploração de temas RELACIONADOS ou NOVOS de saúde
    
    📖 QUANDO O USUÁRIO PEDIR FLUXO DE AÇÃO (responder "sim", "pode fazer", "quero", "gera", "criar fluxo"):
    

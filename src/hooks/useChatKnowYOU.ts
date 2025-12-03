@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { streamChat, extractSuggestions, removeSuggestionsFromText } from "@/lib/chat-stream";
+import { streamChat, extractSuggestions, removeSuggestionsFromText, extractNextSteps, removeNextStepsFromText } from "@/lib/chat-stream";
 import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "./useAdminSettings";
@@ -43,6 +43,7 @@ export function useChatKnowYOU() {
     "Como prevenir doenças crônicas?",
     "Tendências em saúde digital",
   ]);
+  const [nextSteps, setNextSteps] = useState<string[]>([]);
   const [currentSentiment, setCurrentSentiment] = useState<{
     label: "positive" | "negative" | "neutral";
     score: number;
@@ -368,12 +369,22 @@ export function useChatKnowYOU() {
             topicStreak: topicTracking.topicStreak,
             onDelta: (chunk) => updateAssistantMessage(chunk),
             onDone: async () => {
+            // Extrair próximos passos (antes das sugestões)
+            const extractedNextSteps = extractNextSteps(fullResponse);
+            if (extractedNextSteps.length > 0) {
+              setNextSteps(extractedNextSteps);
+            } else {
+              setNextSteps([]);
+            }
+            
             const extractedSuggestions = extractSuggestions(fullResponse);
             if (extractedSuggestions.length > 0) {
               setSuggestions(extractedSuggestions);
             }
 
-            const cleanedResponse = removeSuggestionsFromText(fullResponse);
+            // Remove both nextSteps and suggestions from response
+            let cleanedResponse = removeNextStepsFromText(fullResponse);
+            cleanedResponse = removeSuggestionsFromText(cleanedResponse);
 
             // Update topic tracking
             const topicWords = input.toLowerCase()
@@ -736,6 +747,7 @@ export function useChatKnowYOU() {
     isGeneratingImage,
     currentlyPlayingIndex,
     suggestions,
+    nextSteps,
     currentSentiment,
     activeDisclaimer,
     attachedDocumentId,

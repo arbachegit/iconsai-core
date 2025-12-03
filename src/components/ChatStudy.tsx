@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatStudy } from "@/hooks/useChatStudy";
-import { Loader2, ImagePlus, Mic, Square, X, ArrowUp } from "lucide-react";
+import { Loader2, ImagePlus, Mic, Square, X, ArrowUp, Target } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -66,6 +66,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     isGeneratingImage,
     currentlyPlayingIndex,
     suggestions,
+    nextSteps,
     currentSentiment,
     sendMessage, 
     clearHistory,
@@ -659,6 +660,29 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
+
+      {/* Próximos Passos Clicáveis - Seção separada acima das sugestões */}
+      {nextSteps.length > 0 && (
+        <div className="px-4 py-2 border-t border-primary/30 bg-primary/5">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Target className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-medium text-primary/80">Próximos passos:</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {nextSteps.map((step, idx) => (
+              <Button
+                key={`next-${idx}`}
+                variant="outline"
+                size="sm"
+                onClick={() => sendMessage(step)}
+                className="text-[11px] h-7 px-3 border-primary/50 bg-primary/10 hover:bg-primary hover:text-white transition-colors"
+              >
+                {step}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Suggestions - DUAS LINHAS FIXAS com carrossel horizontal */}
       {(displayedSuggestions.length > 0 || newDocumentBadge || complementarySuggestions.length > 0) && (
