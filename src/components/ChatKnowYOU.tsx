@@ -207,16 +207,15 @@ export default function ChatKnowYOU() {
     }
   }, [currentlyPlayingIndex, audioVisibility]);
 
-  // Rotação de sugestões a cada 10 segundos (filtrar tags >80%)
+  // Rotação de sugestões a cada 15 segundos (otimizado para reduzir re-renders)
   useEffect(() => {
     const rotateSuggestions = () => {
       const sourceList = isImageMode ? IMAGE_SUGGESTIONS : HEALTH_SUGGESTIONS;
-      // Filtrar sugestões com confidence < 80% (se houver metadata)
       const shuffled = [...sourceList].sort(() => Math.random() - 0.5);
       setDisplayedSuggestions(shuffled.slice(0, 4));
     };
     rotateSuggestions();
-    const interval = setInterval(rotateSuggestions, 10000);
+    const interval = setInterval(rotateSuggestions, 15000);
     return () => clearInterval(interval);
   }, [isImageMode]);
 
@@ -668,8 +667,7 @@ export default function ChatKnowYOU() {
       </ScrollArea>
 
       {/* Input Area */}
-      <TooltipProvider delayDuration={200}>
-        <form onSubmit={handleSubmit} className="p-4 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
           {/* Indicador de voz ativo */}
           {isRecording && <div className="flex items-center gap-2 text-xs mb-2">
               <div className={`w-2 h-2 rounded-full ${voiceStatus === 'waiting' ? 'bg-amber-500' : voiceStatus === 'processing' ? 'bg-blue-500' : 'bg-red-500'} animate-pulse`} />
@@ -723,9 +721,10 @@ export default function ChatKnowYOU() {
               if (isImageMode) {
                 e.target.placeholder = t('chat.placeholderImage');
               }
-            }} className="min-h-[100px] resize-none w-full pb-12 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]" disabled={isLoading || isTranscribing} />
+            }} className="min-h-[100px] resize-none w-full pb-12 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]" style={{ willChange: 'transform' }} disabled={isLoading || isTranscribing} />
             
             {/* Botões de funcionalidade - inferior esquerdo */}
+            <TooltipProvider delayDuration={200}>
             <div className="absolute bottom-2 left-2 flex gap-1 items-end">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -771,13 +770,13 @@ export default function ChatKnowYOU() {
               </TooltipTrigger>
               <TooltipContent side="top">{isLoading ? "Parar" : "Enviar"}</TooltipContent>
             </Tooltip>
+            </TooltipProvider>
           </div>
           
           <p className="text-xs text-muted-foreground mt-2">
             Enter para enviar • Shift+Enter para nova linha
           </p>
         </form>
-      </TooltipProvider>
 
       {/* Próximos Passos - POSIÇÃO FIXA: Abaixo do input, Acima das sugestões */}
       {nextSteps.length > 0 && !badgesCollapsed && (

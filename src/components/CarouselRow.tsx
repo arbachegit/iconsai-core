@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -64,7 +64,7 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
       if (el) el.removeEventListener('scroll', updateScrollState);
       window.removeEventListener('resize', updateScrollState);
     };
-  }, [children, updateScrollState]);
+  }, [updateScrollState]);
 
   const scrollBy = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return;
@@ -132,8 +132,8 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Wrapper para animação de filhos com layout shift suave */}
-        {React.Children.map(children, (child, index) => (
+      {/* Wrapper para animação de filhos com layout shift suave - memoizado */}
+        {useMemo(() => React.Children.map(children, (child, index) => (
           <div 
             key={index}
             className="carousel-badge-item"
@@ -143,7 +143,7 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
           >
             {child}
           </div>
-        ))}
+        )), [children])}
       </div>
 
       {/* Indicador de badges ocultos */}
