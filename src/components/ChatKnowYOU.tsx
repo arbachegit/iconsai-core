@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Loader2, ImagePlus, Mic, Square, X, ArrowUp, Target } from "lucide-react";
+import { Loader2, ImagePlus, Mic, Square, X, ArrowUp, Target, GitBranch } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -762,7 +762,12 @@ export default function ChatKnowYOU() {
                   shadow-[0_0_12px_rgba(34,211,238,0.25)]"
                 style={{ animationDelay: `${idx * 50}ms` }}
               >
-                🎯 {step}
+                {step === "Diagrama" ? (
+                  <GitBranch className="w-3 h-3 mr-1" />
+                ) : (
+                  <Target className="w-3 h-3 mr-1" />
+                )}
+                {step}
               </Button>
             ))}
           </CarouselRow>
