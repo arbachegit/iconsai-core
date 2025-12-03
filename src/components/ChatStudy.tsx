@@ -172,7 +172,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     }
   }, [currentlyPlayingIndex, audioVisibility]);
 
-  // Rotação de sugestões a cada 10 segundos
+  // Rotação de sugestões a cada 15 segundos (otimizado para reduzir re-renders)
   useEffect(() => {
     const rotateSuggestions = () => {
       const sourceList = isImageMode ? IMAGE_SUGGESTIONS : STUDY_SUGGESTIONS;
@@ -181,7 +181,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     };
     
     rotateSuggestions();
-    const interval = setInterval(rotateSuggestions, 10000);
+    const interval = setInterval(rotateSuggestions, 15000);
     return () => clearInterval(interval);
   }, [isImageMode]);
 
@@ -691,8 +691,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
       </ScrollArea>
 
       {/* Input */}
-      <TooltipProvider delayDuration={200}>
-        <form onSubmit={handleSubmit} className="p-4 border-t-2 border-primary/30 bg-muted/30 rounded-b-lg shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
+      <form onSubmit={handleSubmit} className="p-4 border-t-2 border-primary/30 bg-muted/30 rounded-b-lg shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
           {/* Indicador de voz ativo */}
           {isRecording && (
             <div className="flex items-center gap-2 text-xs mb-2">
@@ -746,7 +745,8 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
                   e.target.placeholder = t('chat.placeholderImageStudy');
                 }
               }}
-              className="min-h-[80px] w-full resize-none pb-12 border-2 border-cyan-400/60 focus:border-primary/50 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]"
+              className="min-h-[80px] w-full resize-none pb-12 border-2 border-cyan-400/60 focus:border-primary/50 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]"
+              style={{ willChange: 'transform' }}
               disabled={isTranscribing}
               onKeyDown={(e) => {
                 handleInputKeyDown(e);
@@ -758,6 +758,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
             />
             
             {/* Botões de funcionalidade - inferior esquerdo */}
+            <TooltipProvider delayDuration={200}>
             <div className="absolute bottom-2 left-2 flex gap-1 items-end">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -816,9 +817,9 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
               </TooltipTrigger>
               <TooltipContent side="top">{isLoading ? "Parar" : "Enviar"}</TooltipContent>
             </Tooltip>
+            </TooltipProvider>
           </div>
         </form>
-      </TooltipProvider>
 
       {/* Próximos Passos - POSIÇÃO FIXA: Abaixo do input, Acima das sugestões */}
       {nextSteps.length > 0 && !badgesCollapsed && (
