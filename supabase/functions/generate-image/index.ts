@@ -44,6 +44,13 @@ serve(async (req) => {
       "sistema", "órgão", "célula", "corpo", "humano", "respiratório",
       "digestivo", "circulatório", "nervoso", "esqueleto", "moinhos de vento",
       
+      // Português - anatomia específica
+      "coluna", "vertebral", "coluna vertebral", "espinha", "vértebra", "vértebras",
+      "osso", "ossos", "músculo", "músculos", "articulação", "articulações",
+      "tendão", "ligamento", "cartilagem", "medula", "nervo", "nervos",
+      "pulmão", "pulmões", "fígado", "rim", "rins", "estômago", "intestino",
+      "pele", "sangue", "veia", "artéria", "olho", "olhos", "ouvido",
+      
       // Português - IA/RAG em contexto de saúde
       "fluxo rag", "rag clínico", "rag em saúde", "ia em saúde", "inteligência artificial em saúde",
       "sistema de apoio à decisão clínica", "prontuário eletrônico", "prontuario eletrônico",
@@ -56,6 +63,12 @@ serve(async (req) => {
       "clinic", "wellness", "nutrition", "physiotherapy", "mental health",
       "system", "organ", "cell", "body", "human", "respiratory",
       "digestive", "circulatory", "nervous", "skeleton", "bone",
+      
+      // English - anatomia específica
+      "spine", "spinal", "vertebra", "vertebrae", "vertebral", "muscle", "muscles",
+      "joint", "joints", "tendon", "ligament", "cartilage", "nerve", "nerves",
+      "lung", "lungs", "liver", "kidney", "kidneys", "stomach", "intestine",
+      "skin", "blood", "vein", "artery", "eye", "eyes", "ear",
 
       // English - AI/RAG em contexto de saúde
       "rag flow", "rag pipeline", "clinical rag", "medical rag", "ai in healthcare",
