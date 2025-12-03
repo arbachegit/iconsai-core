@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatStudy } from "@/hooks/useChatStudy";
-import { Send, Loader2, ImagePlus, Mic, Square, X } from "lucide-react";
+import { Loader2, ImagePlus, Mic, Square, X, ArrowUp } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
@@ -12,7 +12,7 @@ import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
-import { DocumentAttachButton } from "./DocumentAttachButton";
+
 import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
@@ -597,8 +597,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
             </span>
           </div>}
         
-          <div className="flex gap-2 items-end">
-            <DocumentAttachButton onAttach={attachDocument} disabled={isLoading || isGeneratingAudio || isGeneratingImage} />
+          <div className="relative">
             <Textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -612,25 +611,27 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           if (isImageMode) {
             e.target.placeholder = t('chat.placeholderImageStudy');
           }
-        }} className="min-h-[140px] resize-none flex-1 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]" style={{
+        }} className="min-h-[140px] resize-none w-full pb-14 pr-14 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]" style={{
           transform: 'translateZ(-8px)',
           backfaceVisibility: 'hidden'
         }} disabled={isLoading || isTranscribing} />
           
-          <div className="flex flex-col gap-2">
-            <Button type="button" size="icon" variant="ghost" onClick={isRecording ? stopRecording : startRecording} className={`shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500" : ""}`}>
-              {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-            </Button>
+            {/* Esquerda: Mic + Draw lado a lado */}
+            <div className="absolute bottom-3 left-3 flex items-center gap-2">
+              <Button type="button" size="icon" variant="ghost" onClick={isRecording ? stopRecording : startRecording} className={`h-10 w-10 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500 bg-red-500/10" : ""}`}>
+                {isRecording ? <Square className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              </Button>
+              
+              <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} title="Desenhar" className="h-10 w-10 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
+                <ImagePlus className="w-5 h-5" />
+              </Button>
+            </div>
             
-            <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </Button>
-            
-            <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} title="Desenhar" className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
-              <ImagePlus className="w-4 h-4" />
+            {/* Direita: Input (círculo) */}
+            <Button type="submit" size="icon" disabled={!input.trim() && !isLoading} className="absolute bottom-3 right-3 rounded-full h-10 w-10 bg-primary hover:bg-primary/90 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
+              {isLoading ? <Square className="w-5 h-5" /> : <ArrowUp className="w-5 h-5" />}
             </Button>
           </div>
-        </div>
         <p className="text-xs text-muted-foreground mt-2">
           Pressione Enter para enviar • Shift+Enter para nova linha
         </p>
