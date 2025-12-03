@@ -115,6 +115,10 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   }, []);
 
 
+  // Ref para desabilitar MutationObserver durante digitação
+  const isTypingRef = useRef(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // IntersectionObserver estável - sem dependência de messages para evitar recriação
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -141,9 +145,11 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     
     observeElements();
     
-    // MutationObserver para detectar novos elementos
+    // MutationObserver para detectar novos elementos - desabilitado durante digitação
     const mutationObserver = new MutationObserver(() => {
-      observeElements();
+      if (!isTypingRef.current) {
+        observeElements();
+      }
     });
     
     const container = document.querySelector('[data-radix-scroll-area-viewport]');
@@ -717,6 +723,13 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
                 const value = e.target.value;
                 setInput(value);
                 inputRef.current = value;
+                
+                // Desabilitar MutationObserver durante digitação
+                isTypingRef.current = true;
+                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                typingTimeoutRef.current = setTimeout(() => {
+                  isTypingRef.current = false;
+                }, 500);
               }}
               placeholder={
                 isTranscribing ? t('chat.transcribing') :
@@ -734,10 +747,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
                 }
               }}
               className="min-h-[80px] w-full resize-none pb-12 border-2 border-cyan-400/60 focus:border-primary/50 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]"
-              style={{
-                transform: 'translateZ(-8px)',
-                backfaceVisibility: 'hidden'
-              }}
               disabled={isTranscribing}
               onKeyDown={(e) => {
                 handleInputKeyDown(e);

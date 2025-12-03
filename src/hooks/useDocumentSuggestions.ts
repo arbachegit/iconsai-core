@@ -120,15 +120,15 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
     return { themes: themes.slice(0, 15), documentIds };
   }, [recentDocs]);
 
-  // Alternância automática de temas a cada 3 segundos
+  // Alternância automática de temas a cada 5 segundos (otimizado para reduzir re-renders)
   useEffect(() => {
-    if (!newDocumentData?.themes.length) return;
+    if (!newDocumentData?.themes.length || newDocumentData.themes.length <= 1) return;
 
     const interval = setInterval(() => {
       setCurrentThemeIndex(prev => 
         (prev + 1) % newDocumentData.themes.length
       );
-    }, 3000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [newDocumentData?.themes.length]);
