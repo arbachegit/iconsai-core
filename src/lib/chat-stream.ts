@@ -161,6 +161,17 @@ export function removeSuggestionsFromText(text: string): string {
 }
 
 export function removeNextStepsFromText(text: string): string {
-  // Usar [\s\S]*? para capturar arrays com quebras de linha
-  return text.replace(/\n*PRÓXIMOS_PASSOS:\s*\[[\s\S]*?\]\s*/g, "").trim();
+  // Remover formato estruturado: PRÓXIMOS_PASSOS: [...]
+  let cleaned = text.replace(/\n*PRÓXIMOS_PASSOS:\s*\[[\s\S]*?\]\s*/g, "");
+  
+  // Remover formato markdown: 🎯 Próximos passos para aprofundar: [...]
+  cleaned = cleaned.replace(/\n*🎯\s*Próximos passos[^:]*:\s*\[[\s\S]*?\]\s*/gi, "");
+  
+  // Remover variação sem emoji com lista
+  cleaned = cleaned.replace(/\n*Próximos passos para aprofundar:\s*\[[\s\S]*?\]\s*/gi, "");
+  
+  // Remover formato markdown com lista de itens em bold/asteriscos
+  cleaned = cleaned.replace(/\n*🎯\s*Próximos passos[^:]*:[\s\S]*?(?=\n\n|\n(?=[A-Z])|$)/gi, "");
+  
+  return cleaned.trim();
 }
