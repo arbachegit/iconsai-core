@@ -589,7 +589,7 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
 
    Ao final de CADA resposta substancial (exceto primeira interação), ANTES das SUGESTÕES, inclua:
 
-   PRÓXIMOS_PASSOS: ["Pergunta de aprofundamento 1", "Pergunta de aprofundamento 2", "Pergunta de aprofundamento 3"]
+   PRÓXIMOS_PASSOS: ["Pergunta de aprofundamento 1", "Pergunta de aprofundamento 2", "Diagrama"]
 
    REGRAS PARA PRÓXIMOS_PASSOS:
    - Devem ser PERGUNTAS COMPLETAS e CLICÁVEIS (o usuário vai clicar e enviar diretamente)
@@ -599,7 +599,9 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    - São DIFERENTES das SUGESTÕES (que são temas novos/relacionados)
    
    EXEMPLO CORRETO (tema: ACC):
-   PRÓXIMOS_PASSOS: ["Quais são os pilares do ACC?", "Como aplicar ACC na prática?", "ACC vs outras metodologias?"]
+   PRÓXIMOS_PASSOS: ["Quais são os pilares do ACC?", "Como aplicar ACC na prática?", "Diagrama"]
+   
+   🔴 LEMBRETE: "Diagrama" DEVE ser SEMPRE a última opção do array!
    
    SUGESTÕES: ["📊 Existem dados numéricos", "O que é KnowYOU?", "História da KnowRISK"]
    
