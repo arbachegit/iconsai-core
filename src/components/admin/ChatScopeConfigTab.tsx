@@ -54,6 +54,8 @@ export function ChatScopeConfigTab() {
   const [newTerm, setNewTerm] = useState("");
   const [newPronunciation, setNewPronunciation] = useState("");
   const [addingTermFor, setAddingTermFor] = useState<"study" | "health" | null>(null);
+  const [studySearchTerm, setStudySearchTerm] = useState("");
+  const [healthSearchTerm, setHealthSearchTerm] = useState("");
   useEffect(() => {
     fetchConfigs();
   }, []);
@@ -521,11 +523,28 @@ export function ChatScopeConfigTab() {
                         <tr>
                           <th className="text-left p-2 font-medium">Termo</th>
                           <th className="text-left p-2 font-medium">Pronúncia</th>
-                          <th className="w-12"></th>
+                          <th className="w-36 p-1">
+                            <div className="relative">
+                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                              <Input
+                                placeholder="Buscar..."
+                                value={studySearchTerm}
+                                onChange={(e) => setStudySearchTerm(e.target.value)}
+                                className="h-7 pl-7 text-xs"
+                              />
+                            </div>
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {Object.entries(studyConfig.phonetic_map).map(([term, pronunciation]) => (
+                        {Object.entries(studyConfig.phonetic_map)
+                          .filter(([term, pronunciation]) => {
+                            if (!studySearchTerm.trim()) return true;
+                            const search = studySearchTerm.toLowerCase();
+                            return term.toLowerCase().includes(search) || 
+                                   (pronunciation as string).toLowerCase().includes(search);
+                          })
+                          .map(([term, pronunciation]) => (
                           <tr key={term} className="border-t">
                             <td className="p-2 font-mono text-xs">{term}</td>
                             <td className="p-2">{pronunciation}</td>
@@ -595,11 +614,28 @@ export function ChatScopeConfigTab() {
                         <tr>
                           <th className="text-left p-2 font-medium">Termo</th>
                           <th className="text-left p-2 font-medium">Pronúncia</th>
-                          <th className="w-12"></th>
+                          <th className="w-36 p-1">
+                            <div className="relative">
+                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                              <Input
+                                placeholder="Buscar..."
+                                value={healthSearchTerm}
+                                onChange={(e) => setHealthSearchTerm(e.target.value)}
+                                className="h-7 pl-7 text-xs"
+                              />
+                            </div>
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {Object.entries(healthConfig.phonetic_map).map(([term, pronunciation]) => (
+                        {Object.entries(healthConfig.phonetic_map)
+                          .filter(([term, pronunciation]) => {
+                            if (!healthSearchTerm.trim()) return true;
+                            const search = healthSearchTerm.toLowerCase();
+                            return term.toLowerCase().includes(search) || 
+                                   (pronunciation as string).toLowerCase().includes(search);
+                          })
+                          .map(([term, pronunciation]) => (
                           <tr key={term} className="border-t">
                             <td className="p-2 font-mono text-xs">{term}</td>
                             <td className="p-2">{pronunciation}</td>
