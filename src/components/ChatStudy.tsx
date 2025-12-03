@@ -88,6 +88,9 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     subtopicsCache,
   } = useDocumentSuggestions('study');
   
+  // Debug: rastrear estado nextSteps
+  console.log('[ChatStudy] nextSteps state:', nextSteps);
+  
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);

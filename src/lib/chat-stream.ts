@@ -133,13 +133,20 @@ export function extractSuggestions(text: string): string[] {
 export function extractNextSteps(text: string): string[] {
   // Regex melhorado para capturar arrays JSON mesmo com quebras de linha
   const match = text.match(/PRÓXIMOS_PASSOS:\s*(\[[\s\S]*?\])/);
+  console.log('[NEXT_STEPS] Raw text search:', text.includes('PRÓXIMOS_PASSOS'));
   if (match) {
     try {
       // Limpar possíveis quebras de linha dentro do JSON
       const cleanJson = match[1].replace(/\n/g, ' ').replace(/\s+/g, ' ');
       const parsed = JSON.parse(cleanJson);
-      console.log('[NEXT_STEPS] Extracted:', parsed);
-      return parsed;
+      
+      // Validar que é array de strings
+      if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+        console.log('[NEXT_STEPS] Valid array extracted:', parsed);
+        return parsed;
+      }
+      console.warn('[NEXT_STEPS] Invalid format (not string array):', parsed);
+      return [];
     } catch (e) {
       console.error('[NEXT_STEPS] Parse error:', e, 'Raw:', match[1]);
       return [];
@@ -154,5 +161,6 @@ export function removeSuggestionsFromText(text: string): string {
 }
 
 export function removeNextStepsFromText(text: string): string {
-  return text.replace(/\n*PRÓXIMOS_PASSOS:\s*\[.*?\]\s*/g, "").trim();
+  // Usar [\s\S]*? para capturar arrays com quebras de linha
+  return text.replace(/\n*PRÓXIMOS_PASSOS:\s*\[[\s\S]*?\]\s*/g, "").trim();
 }
