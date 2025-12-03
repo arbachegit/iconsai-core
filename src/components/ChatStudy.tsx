@@ -128,39 +128,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   }, []);
 
 
-  // PROTEÇÃO ABSOLUTA: Refs para controle de latência durante digitação
-  const isTypingRef = useRef(false);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const chatContainerRef = useRef<HTMLElement | null>(null);
-  const mutationObserverEnabledRef = useRef(true);
-  
-  // Cachear referência do container uma única vez
-  useEffect(() => {
-    chatContainerRef.current = document.querySelector('.chat-container');
-  }, []);
-  
-  // 🛡️ CAMADA 5: Proteção JavaScript Proativa - desabilita animações via inline style
-  const disableAllAnimations = () => {
-    if (!chatContainerRef.current) return;
-    const allElements = chatContainerRef.current.querySelectorAll('*');
-    allElements.forEach(el => {
-      const htmlEl = el as HTMLElement;
-      htmlEl.style.setProperty('animation', 'none', 'important');
-      htmlEl.style.setProperty('transition', 'none', 'important');
-    });
-  };
-  
-  // Restaurar animações quando parar de digitar
-  const enableAllAnimations = () => {
-    if (!chatContainerRef.current) return;
-    const allElements = chatContainerRef.current.querySelectorAll('*');
-    allElements.forEach(el => {
-      const htmlEl = el as HTMLElement;
-      htmlEl.style.removeProperty('animation');
-      htmlEl.style.removeProperty('transition');
-    });
-  };
-
   // IntersectionObserver estável - sem dependência de messages para evitar recriação
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -187,18 +154,15 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     
     observeElements();
     
-    // MutationObserver com throttle agressivo - desabilitado durante digitação via ref
+    // MutationObserver simplificado - sem verificações de typing
     let mutationThrottleId: number | null = null;
     const mutationObserver = new MutationObserver(() => {
-      // 🛡️ CAMADA 4: Verificar DUAS flags antes de processar
-      if (!mutationObserverEnabledRef.current || isTypingRef.current || mutationThrottleId) return;
+      if (mutationThrottleId) return;
       
       mutationThrottleId = window.setTimeout(() => {
         mutationThrottleId = null;
-        if (mutationObserverEnabledRef.current && !isTypingRef.current) {
-          observeElements();
-        }
-      }, 1000); // Throttle de 1 segundo
+        observeElements();
+      }, 1000);
     });
     
     const container = document.querySelector('[data-radix-scroll-area-viewport]');
@@ -222,12 +186,9 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     }
   }, [currentlyPlayingIndex, audioVisibility]);
 
-  // PROTEÇÃO ABSOLUTA: Rotação de sugestões pausada durante digitação
+  // Rotação de sugestões
   useEffect(() => {
     const rotateSuggestions = () => {
-      // Verificar se está digitando antes de atualizar
-      if (isTypingRef.current) return;
-      
       const sourceList = isImageMode ? IMAGE_SUGGESTIONS : STUDY_SUGGESTIONS;
       const shuffled = [...sourceList].sort(() => Math.random() - 0.5);
       setDisplayedSuggestions(shuffled.slice(0, 4));
@@ -779,24 +740,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           <div className="relative">
             <Textarea
               value={input}
-              onChange={(e) => {
-                const value = e.target.value;
-                setInput(value);
-                
-                // 🛡️ PROTEÇÃO 5 CAMADAS: CSS + JS + Refs + DOM + MutationObserver
-                isTypingRef.current = true;
-                mutationObserverEnabledRef.current = false;
-                chatContainerRef.current?.classList.add('typing-active');
-                disableAllAnimations(); // CAMADA 5: Proteção JavaScript proativa
-                
-                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-                typingTimeoutRef.current = setTimeout(() => {
-                  isTypingRef.current = false;
-                  mutationObserverEnabledRef.current = true;
-                  chatContainerRef.current?.classList.remove('typing-active');
-                  enableAllAnimations(); // Restaurar animações após parar de digitar
-                }, 500);
-              }}
+              onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 handleInputKeyDown(e);
                 if (e.key === "Enter" && !e.shiftKey) {
