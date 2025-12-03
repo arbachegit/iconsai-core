@@ -13,6 +13,8 @@ interface StreamChatOptions {
   onError?: (error: Error) => void;
   sessionId?: string;
   userPreferences?: UserPreferences;
+  previousTopics?: string[];
+  topicStreak?: number;
 }
 
 export async function streamChat({
@@ -22,6 +24,8 @@ export async function streamChat({
   onError,
   sessionId,
   userPreferences,
+  previousTopics = [],
+  topicStreak = 0,
 }: StreamChatOptions) {
   const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
@@ -32,7 +36,7 @@ export async function streamChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages, sessionId, userPreferences }),
+      body: JSON.stringify({ messages, sessionId, userPreferences, previousTopics, topicStreak }),
     });
 
     if (!resp.ok) {
