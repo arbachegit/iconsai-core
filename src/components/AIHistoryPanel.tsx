@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Play, StopCircle, Download, FileDown, Shield, Radio, Cpu, KeyRound, MessageCircle, Network, GitBranch, Globe, Users, Brain, Sparkles, FileText, MessageSquare, Rocket, ChevronDown, LucideIcon, Type } from "lucide-react";
+import { X, Play, StopCircle, Download, FileDown, Shield, Radio, Cpu, KeyRound, MessageCircle, Network, GitBranch, Globe, Users, Brain, Sparkles, FileText, MessageSquare, Rocket, ChevronDown, LucideIcon, Type, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -70,6 +70,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentEventId, setCurrentEventId] = useState("talos");
@@ -152,6 +153,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
       setIsPlaying(true);
     } else {
       try {
+        setIsLoadingAudio(true);
         const audioUrl = await generateAudioUrl(fullText);
         
         const audio = new Audio(audioUrl);
@@ -173,6 +175,8 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
         setIsPlaying(true);
       } catch (error) {
         console.error('Erro ao gerar áudio:', error);
+      } finally {
+        setIsLoadingAudio(false);
       }
     }
   };
@@ -478,9 +482,9 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
             {/* Audio Controls */}
             <div className="p-3 rounded-lg bg-muted/50 border border-border">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <Button onClick={handlePlayAudio} disabled={isPlaying} size="sm" variant="outline">
-                  <Play className="w-4 h-4 mr-1" />
-                  {t('audio.play')}
+                <Button onClick={handlePlayAudio} disabled={isPlaying || isLoadingAudio} size="sm" variant="outline">
+                  {isLoadingAudio ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Play className="w-4 h-4 mr-1" />}
+                  {isLoadingAudio ? t('audio.loading') : t('audio.play')}
                 </Button>
                 <Button onClick={handleStopAudio} disabled={!isPlaying} size="sm" variant="outline">
                   <StopCircle className="w-4 h-4 mr-1" />
@@ -620,12 +624,12 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
               <div className="flex items-center gap-3 mb-2">
                 <Button
                   onClick={handlePlayAudio}
-                  disabled={isPlaying}
+                  disabled={isPlaying || isLoadingAudio}
                   size="sm"
                   variant="outline"
                 >
-                  <Play className="w-4 h-4 mr-2" />
-                  {t('audio.play')}
+                  {isLoadingAudio ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                  {isLoadingAudio ? t('audio.loading') : t('audio.play')}
                 </Button>
                 <Button
                   onClick={handleStopAudio}
