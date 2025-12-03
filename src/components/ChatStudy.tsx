@@ -664,28 +664,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
         </div>
       </ScrollArea>
 
-      {/* Próximos Passos Clicáveis - Seção separada acima das sugestões */}
-      {nextSteps.length > 0 && (
-        <div className="px-4 py-2 border-t border-primary/30 bg-primary/5">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <Target className="w-3.5 h-3.5 text-primary" />
-            <span className="text-xs font-medium text-primary/80">Próximos passos:</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {nextSteps.map((step, idx) => (
-              <Button
-                key={`next-${idx}`}
-                variant="outline"
-                size="sm"
-                onClick={() => sendMessage(step)}
-                className="text-[11px] h-7 px-3 border-primary/50 bg-primary/10 hover:bg-primary hover:text-white transition-colors"
-              >
-                {step}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Suggestions - DUAS LINHAS FIXAS com carrossel horizontal */}
       {(displayedSuggestions.length > 0 || newDocumentBadge || complementarySuggestions.length > 0) && (
@@ -1004,6 +982,33 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           </div>
         </form>
       </TooltipProvider>
+
+      {/* Próximos Passos - POSIÇÃO FIXA: Abaixo do input, Acima das sugestões */}
+      {nextSteps.length > 0 && (
+        <div className="px-4 py-2.5 bg-cyan-500/5 border-t border-cyan-400/30">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Target className="w-4 h-4 text-cyan-400" />
+            <span className="text-xs font-semibold text-cyan-400/90 tracking-wide">Próximos passos:</span>
+          </div>
+          <CarouselRow>
+            {nextSteps.map((step, idx) => (
+              <Button
+                key={`next-${idx}`}
+                variant="outline"
+                size="sm"
+                onClick={() => sendMessage(step)}
+                className="next-step-badge text-[11px] h-7 px-3 rounded-full shrink-0 
+                  border-cyan-400/50 bg-cyan-500/15 text-cyan-300
+                  hover:bg-cyan-500 hover:text-cyan-950 hover:border-cyan-500
+                  shadow-[0_0_8px_rgba(34,211,238,0.15)]"
+                style={{ animationDelay: `${idx * 50}ms` }}
+              >
+                🎯 {step}
+              </Button>
+            ))}
+          </CarouselRow>
+        </div>
+      )}
       
       {/* Floating Audio Player */}
       <FloatingAudioPlayer
