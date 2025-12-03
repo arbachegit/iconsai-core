@@ -108,20 +108,32 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
         <ChevronLeft className="w-4 h-4 text-primary" />
       </button>
 
-      {/* Container do carrossel */}
+      {/* Container do carrossel com scroll suave */}
       <div
         ref={scrollRef}
         className={cn(
-          "flex gap-1.5 items-center overflow-x-auto scrollbar-thin pb-1 px-2 select-none",
+          "flex gap-1.5 items-center overflow-x-auto scrollbar-thin pb-1 px-2 select-none scroll-smooth",
           isDragging ? "cursor-grabbing" : "cursor-grab",
           className
         )}
+        style={{ scrollBehavior: 'smooth' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
       >
-        {children}
+        {/* Wrapper para animação de filhos com layout shift suave */}
+        {React.Children.map(children, (child, index) => (
+          <div 
+            key={index}
+            className="carousel-badge-item"
+            style={{ 
+              animationDelay: `${index * 30}ms`,
+            }}
+          >
+            {child}
+          </div>
+        ))}
       </div>
 
       {/* Indicador de badges ocultos */}

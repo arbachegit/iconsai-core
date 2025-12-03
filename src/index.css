@@ -168,6 +168,65 @@ All colors MUST be HSL.
   animation: rankingSlideIn 0.4s ease-out forwards;
 }
 
+/* Carousel badge smooth animations */
+@keyframes badgeSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-8px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes badgeGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px hsl(var(--primary) / 0.3);
+  }
+}
+
+.carousel-badge-item {
+  animation: badgeSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              opacity 0.2s ease-out;
+}
+
+.carousel-badge-item:hover {
+  transform: scale(1.05);
+}
+
+/* Next steps badge special animation */
+@keyframes nextStepPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(187 100% 50% / 0);
+  }
+  50% {
+    box-shadow: 0 0 12px 3px hsl(187 100% 50% / 0.25);
+  }
+}
+
+.next-step-badge {
+  animation: badgeSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+             nextStepPulse 2.5s ease-in-out infinite;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.next-step-badge:hover {
+  transform: scale(1.08) translateY(-1px);
+  box-shadow: 0 4px 12px hsl(187 100% 50% / 0.3);
+}
+
+/* Smooth reorder animation for suggestion badges */
+.suggestion-badge-reorder {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.3s ease-out,
+              background-color 0.2s ease;
+}
+
 @layer base {
   * {
     @apply border-border;
