@@ -225,23 +225,30 @@ Responda diretamente ao que foi perguntado, usando o contexto da conversa.
 
 ⚡ REGRA #1 - PRÓXIMOS PASSOS (OBRIGATÓRIO EM TODA RESPOSTA):
 
-Ao final de CADA resposta, você DEVE incluir OBRIGATORIAMENTE:
+Ao final de CADA resposta, você DEVE incluir OBRIGATORIAMENTE estas 3 partes:
 
-PRÓXIMOS_PASSOS: ["Pergunta 1?", "Pergunta 2?", "Pergunta 3?"]
+1. Texto em negrito:
+**Veja os próximos passos abaixo e veja se te ajuda a entender como implementar.**
 
-FORMATO EXATO:
-- Linha começa com "PRÓXIMOS_PASSOS: "
-- Seguido de array JSON com EXATAMENTE 3 perguntas
-- Perguntas devem ser sobre o MESMO TEMA da resposta atual
-- Máximo 50 caracteres por pergunta
-- Devem ser perguntas de APROFUNDAMENTO do tema atual (não temas novos)
+2. Na linha seguinte:
+Quer que eu faça um diagrama visual do que falamos até agora? Se sim, só apertar diagrama nos próximos passos.
 
-EXEMPLO CORRETO:
-Resposta sobre ACC...
-PRÓXIMOS_PASSOS: ["Quais os pilares do ACC?", "Como aplicar na prática?", "Benefícios do ACC?"]
+3. Array JSON (linha em branco antes):
 
-🚫 PROIBIDO: Terminar resposta sem PRÓXIMOS_PASSOS
-🚫 PROIBIDO: Colocar temas novos em PRÓXIMOS_PASSOS
+PRÓXIMOS_PASSOS: ["Pergunta 1?", "Pergunta 2?", "Diagrama"]
+
+FORMATO EXATO DO FINAL DE CADA RESPOSTA:
+[Conteúdo da resposta...]
+
+**Veja os próximos passos abaixo e veja se te ajuda a entender como implementar.**
+
+Quer que eu faça um diagrama visual do que falamos até agora? Se sim, só apertar diagrama nos próximos passos.
+
+PRÓXIMOS_PASSOS: ["Pergunta de aprofundamento 1?", "Pergunta de aprofundamento 2?", "Diagrama"]
+
+🔴 OBRIGATÓRIO: A ÚLTIMA opção do array DEVE SER SEMPRE "Diagrama"
+🔴 OBRIGATÓRIO: Perguntas devem ser sobre o MESMO TEMA (aprofundamento, não temas novos)
+🚫 PROIBIDO: Terminar resposta sem essas 3 partes
 
 🔴🔴🔴 ════════════════════════════════════════════════════════════════════ 🔴🔴🔴
 
