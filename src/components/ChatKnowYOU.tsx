@@ -120,7 +120,7 @@ export default function ChatKnowYOU() {
   const audioChunksRef = useRef<Blob[]>([]);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const inputRef = useRef<string>("");
+  // REMOVIDO: inputRef - variável morta que nunca era usada
   const prefixTextRef = useRef<string>("");
   const mountTimeRef = useRef(Date.now());
   const previousMessagesLength = useRef(messages.length);
@@ -152,11 +152,34 @@ export default function ChatKnowYOU() {
   const isTypingRef = useRef(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const chatContainerRef = useRef<HTMLElement | null>(null);
+  const mutationObserverEnabledRef = useRef(true);
   
   // Cachear referência do container uma única vez
   useEffect(() => {
     chatContainerRef.current = document.querySelector('.chat-container');
   }, []);
+  
+  // 🛡️ CAMADA 5: Proteção JavaScript Proativa - desabilita animações via inline style
+  const disableAllAnimations = () => {
+    if (!chatContainerRef.current) return;
+    const allElements = chatContainerRef.current.querySelectorAll('*');
+    allElements.forEach(el => {
+      const htmlEl = el as HTMLElement;
+      htmlEl.style.setProperty('animation', 'none', 'important');
+      htmlEl.style.setProperty('transition', 'none', 'important');
+    });
+  };
+  
+  // Restaurar animações quando parar de digitar
+  const enableAllAnimations = () => {
+    if (!chatContainerRef.current) return;
+    const allElements = chatContainerRef.current.querySelectorAll('*');
+    allElements.forEach(el => {
+      const htmlEl = el as HTMLElement;
+      htmlEl.style.removeProperty('animation');
+      htmlEl.style.removeProperty('transition');
+    });
+  };
 
   // IntersectionObserver estável - sem dependência de messages para evitar recriação
   useEffect(() => {
@@ -186,14 +209,15 @@ export default function ChatKnowYOU() {
     
     observeElements();
     
-    // MutationObserver com throttle agressivo - desabilitado durante digitação
+    // MutationObserver com throttle agressivo - desabilitado durante digitação via ref
     let mutationThrottleId: number | null = null;
     const mutationObserver = new MutationObserver(() => {
-      if (isTypingRef.current || mutationThrottleId) return;
+      // 🛡️ CAMADA 4: Verificar DUAS flags antes de processar
+      if (!mutationObserverEnabledRef.current || isTypingRef.current || mutationThrottleId) return;
       
       mutationThrottleId = window.setTimeout(() => {
         mutationThrottleId = null;
-        if (!isTypingRef.current) {
+        if (mutationObserverEnabledRef.current && !isTypingRef.current) {
           observeElements();
         }
       }, 1000); // Throttle de 1 segundo
@@ -693,14 +717,18 @@ export default function ChatKnowYOU() {
               const value = e.target.value;
               setInput(value);
               
-              // PROTEÇÃO ABSOLUTA: Usar ref cacheada em vez de document.querySelector
+              // 🛡️ PROTEÇÃO 5 CAMADAS: CSS + JS + Refs + DOM + MutationObserver
               isTypingRef.current = true;
+              mutationObserverEnabledRef.current = false;
               chatContainerRef.current?.classList.add('typing-active');
+              disableAllAnimations(); // CAMADA 5: Proteção JavaScript proativa
               
               if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
               typingTimeoutRef.current = setTimeout(() => {
                 isTypingRef.current = false;
+                mutationObserverEnabledRef.current = true;
                 chatContainerRef.current?.classList.remove('typing-active');
+                enableAllAnimations(); // Restaurar animações após parar de digitar
               }, 500);
             }} onKeyDown={e => {
               handleInputKeyDown(e);

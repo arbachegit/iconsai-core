@@ -168,53 +168,36 @@ All colors MUST be HSL.
   animation: rankingSlideIn 0.4s ease-out forwards;
 }
 
-/* Carousel badge smooth animations */
-@keyframes badgeSlideIn {
-  0% {
-    opacity: 0;
-    transform: translateX(-8px) scale(0.92);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
+/* ============================================================================
+   🛡️ BADGES SEM ANIMAÇÕES DEFAULT - PROTEÇÃO ANTI-LATÊNCIA
+   ============================================================================
+   Badges não têm mais animações/transições por padrão.
+   Hover effects mantidos apenas via :not(.typing-active *) para segurança.
+   ============================================================================ */
 
-@keyframes badgeGlow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
-  }
-  50% {
-    box-shadow: 0 0 8px 2px hsl(var(--primary) / 0.3);
-  }
-}
-
+/* Carousel badge - SEM animação default */
 .carousel-badge-item {
-  animation: badgeSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), 
-              opacity 0.2s ease-out;
+  /* ZERO animation/transition por padrão */
 }
 
-.carousel-badge-item:hover {
+/* Next steps badge - SEM animação default */
+.next-step-badge {
+  /* ZERO animation/transition por padrão */
+}
+
+/* Suggestion badge - SEM animação default */
+.suggestion-badge-reorder {
+  /* ZERO animation/transition por padrão */
+}
+
+/* Hover effects APENAS quando não está digitando */
+.carousel-badge-item:hover:not(.typing-active *) {
   transform: scale(1.05);
 }
 
-/* Next steps badge - SEM animação infinita para evitar latência */
-.next-step-badge {
-  animation: badgeSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.next-step-badge:hover {
+.next-step-badge:hover:not(.typing-active *) {
   transform: scale(1.08) translateY(-1px);
   box-shadow: 0 4px 12px hsl(187 100% 50% / 0.3);
-}
-
-/* Smooth reorder animation for suggestion badges */
-.suggestion-badge-reorder {
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-              opacity 0.3s ease-out,
-              background-color 0.2s ease;
 }
 
 /* ============================================================================
@@ -223,11 +206,12 @@ All colors MUST be HSL.
    Este bloco de CSS é CRÍTICO para eliminar latência durante digitação.
    Qualquer modificação deve ser testada exaustivamente em ambos os chats.
    
-   SISTEMA DE REDUNDÂNCIA EM 4 CAMADAS:
+   SISTEMA DE REDUNDÂNCIA EM 5 CAMADAS:
    1. Código: Remoção de animationDelay, animate-pulse, transition-* dinâmicos
    2. CSS: Seletores ultra-específicos com !important
    3. Refs: isTypingRef.current verificado em todos os callbacks
    4. DOM: chatContainerRef cacheado para evitar querySelector
+   5. JavaScript: Proteção proativa desabilitando animações inline
    ============================================================================ */
 
 /* 🚨 CAMADA 2A: Seletores ULTRA-ESPECÍFICOS para .typing-active */
@@ -237,6 +221,7 @@ All colors MUST be HSL.
 .typing-active *::after,
 .typing-active .next-step-badge,
 .typing-active .carousel-badge-item,
+.typing-active .suggestion-badge-reorder,
 .typing-active .animate-pulse,
 .typing-active .animate-ping,
 .typing-active .animate-bounce,
@@ -245,6 +230,9 @@ All colors MUST be HSL.
 .typing-active [class*="animate-"],
 .typing-active [class*="transition-"],
 .typing-active button,
+.typing-active div,
+.typing-active span,
+.typing-active svg,
 .typing-active [style*="animation"],
 .typing-active [style*="transition"] {
   animation: none !important;
@@ -265,6 +253,7 @@ All colors MUST be HSL.
   will-change: auto !important;
   backface-visibility: visible !important;
   perspective: none !important;
+  transform: none !important;
 }
 
 /* 🚨 CAMADA 2C: Proteção ABSOLUTA do textarea */
@@ -282,8 +271,20 @@ All colors MUST be HSL.
   will-change: auto;
 }
 
+/* 🚨 CAMADA 2E: Classes específicas por nome */
+.typing-active .carousel-badge-item,
+.typing-active .next-step-badge,
+.typing-active .suggestion-badge-reorder,
+.typing-active div[class*="transition-"],
+.typing-active button[class*="transition-"],
+.typing-active span[class*="animate-"] {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+}
+
 /* ============================================================================
-   FIM DA PROTEÇÃO ABSOLUTA - 4 CAMADAS DE REDUNDÂNCIA ATIVAS
+   FIM DA PROTEÇÃO ABSOLUTA - 5 CAMADAS DE REDUNDÂNCIA ATIVAS
    ============================================================================ */
 
 @layer base {
