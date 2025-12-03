@@ -670,7 +670,17 @@ CHART_DATA: {"type":"area","title":"Evolução da IA por Década","data":[{"name
 - **2010s**: Deep Learning revoluciona a área
 - **2020s**: LLMs e IA Generativa dominam
 
-SUGESTÕES: ["O que foi a Conferência de Dartmouth?", "Como funciona o Deep Learning?", "O que são LLMs?"]"
+**Veja os próximos passos abaixo:**
+
+PRÓXIMOS_PASSOS: ["O que foi a Conferência de Dartmouth?", "Como funciona o Deep Learning?", "Diagrama"]
+
+SUGESTÕES: ["O que são LLMs?", "Evolução do Machine Learning", "História da KnowRISK"]"
+
+🔴🔴🔴 LEMBRETE FINAL ABSOLUTAMENTE CRÍTICO:
+TODA resposta DEVE terminar com:
+PRÓXIMOS_PASSOS: ["Pergunta 1", "Pergunta 2", "Diagrama"]
+A palavra "Diagrama" É OBRIGATÓRIA como última opção do array!
+🔴🔴🔴
 
 Agora responda seguindo este padrão.`;
 
