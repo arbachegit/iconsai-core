@@ -36,25 +36,6 @@ const VALID_DIAGRAM_STARTS = [
 const sanitizeChart = (chart: string): string => {
   let sanitized = chart;
   
-  // NEW 1. Remove colons from node labels: [texto: algo] → [texto algo]
-  sanitized = sanitized.replace(/\[([^\]]*):([^\]]*)\]/g, '[$1 $2]');
-  sanitized = sanitized.replace(/\{([^\}]*):([^\}]*)\}/g, '{$1 $2}');
-  
-  // NEW 2. Remove ALL quotes (single and double) from labels - apply multiple times for orphaned quotes
-  sanitized = sanitized.replace(/\[([^\]]*)["']([^\]]*)\]/g, '[$1$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)["']([^\}]*)\}/g, '{$1$2}');
-  sanitized = sanitized.replace(/\[([^\]]*)["']([^\]]*)\]/g, '[$1$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)["']([^\}]*)\}/g, '{$1$2}');
-  sanitized = sanitized.replace(/\[([^\]]*)["']([^\]]*)\]/g, '[$1$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)["']([^\}]*)\}/g, '{$1$2}');
-  
-  // NEW 3. Remove emojis from labels (Unicode special characters)
-  sanitized = sanitized.replace(/\[([^\]]*)([\u{1F300}-\u{1F9FF}])([^\]]*)\]/gu, '[$1$3]');
-  sanitized = sanitized.replace(/\{([^\}]*)([\u{1F300}-\u{1F9FF}])([^\}]*)\}/gu, '{$1$3}');
-  // Apply again to catch multiple emojis
-  sanitized = sanitized.replace(/\[([^\]]*)([\u{1F300}-\u{1F9FF}])([^\]]*)\]/gu, '[$1$3]');
-  sanitized = sanitized.replace(/\{([^\}]*)([\u{1F300}-\u{1F9FF}])([^\}]*)\}/gu, '{$1$3}');
-  
   // 1. Replace parentheses inside [] nodes with hyphens: [text (something)] → [text - something]
   sanitized = sanitized.replace(/\[([^\]]*)\(([^\)]*)\)([^\]]*)\]/g, '[$1- $2$3]');
   
@@ -65,38 +46,43 @@ const sanitizeChart = (chart: string): string => {
   sanitized = sanitized.replace(/\[([^\]]*)\?\]/g, '[$1]');
   sanitized = sanitized.replace(/\{([^\}]*)\?\}/g, '{$1}');
   
-  // 4. Replace nested brackets inside [] with hyphens: [Array[0]] → [Array-0]
+  // 4. Replace double quotes with single quotes: [text "quoted"] → [text 'quoted']
+  sanitized = sanitized.replace(/\[([^\]]*)"([^\]]*)\]/g, "[$1'$2]");
+  sanitized = sanitized.replace(/\{([^\}]*)"([^\}]*)\}/g, "{$1'$2}");
+  
+  // 5. Replace nested brackets inside [] with hyphens: [Array[0]] → [Array-0]
   sanitized = sanitized.replace(/\[([^\[\]]*)\[([^\[\]]*)\]([^\[\]]*)\]/g, '[$1-$2$3]');
   
-  // 5. Replace nested curly braces inside {} with hyphens: {Config{item}} → {Config-item}
+  // 6. Replace nested curly braces inside {} with hyphens: {Config{item}} → {Config-item}
   sanitized = sanitized.replace(/\{([^\{\}]*)\{([^\{\}]*)\}([^\{\}]*)\}/g, '{$1-$2$3}');
   
-  // 6. Replace < and > with text equivalents
+  // 7. Replace < and > with text equivalents
   sanitized = sanitized.replace(/\[([^\]]*)<([^\]]*)\]/g, '[$1 menor que $2]');
   sanitized = sanitized.replace(/\[([^\]]*)>([^\]]*)\]/g, '[$1 maior que $2]');
   sanitized = sanitized.replace(/\{([^\}]*)<([^\}]*)\}/g, '{$1 menor que $2}');
   sanitized = sanitized.replace(/\{([^\}]*)>([^\}]*)\}/g, '{$1 maior que $2}');
   
-  // 7. Replace ampersand & with "e"
+  // 8. Replace ampersand & with "e"
   sanitized = sanitized.replace(/\[([^\]]*)&([^\]]*)\]/g, '[$1 e $2]');
   sanitized = sanitized.replace(/\{([^\}]*)&([^\}]*)\}/g, '{$1 e $2}');
   
-  // 8. Replace hash # with "No."
+  // 9. Replace hash # with "No."
   sanitized = sanitized.replace(/\[([^\]]*)#([^\]]*)\]/g, '[$1No.$2]');
   sanitized = sanitized.replace(/\{([^\}]*)#([^\}]*)\}/g, '{$1No.$2}');
   
-  // 9. Replace semicolon ; with comma
+  // 10. Replace semicolon ; with comma
   sanitized = sanitized.replace(/\[([^\]]*);([^\]]*)\]/g, '[$1,$2]');
   sanitized = sanitized.replace(/\{([^\}]*);([^\}]*)\}/g, '{$1,$2}');
   
-  // 10. Replace pipe | inside nodes with "ou" (conflicts with edge labels)
+  // 11. Replace pipe | inside nodes with "ou" (conflicts with edge labels)
   sanitized = sanitized.replace(/\[([^\]]*)\|([^\]]*)\]/g, '[$1 ou $2]');
   sanitized = sanitized.replace(/\{([^\}]*)\|([^\}]*)\}/g, '{$1 ou $2}');
   
-  // 11. Replace parentheses in subgraph titles: subgraph Name (Text) → subgraph Name - Text
+  // 12. Replace parentheses in subgraph titles: subgraph Name (Text) → subgraph Name - Text
   sanitized = sanitized.replace(/subgraph\s+([^\n(]*)\(([^)]*)\)/gi, 'subgraph $1- $2');
   
-  // 12. Replace + operator between nodes (H + E --> causes parsing issues)
+  // 13. Replace + operator between nodes (H + E --> causes parsing issues)
+  // Simplify by removing the + combination entirely
   sanitized = sanitized.replace(/(\w+)\s*\+\s*(\w+)\s*(-->)/g, '$1 $3');
   
   if (sanitized !== chart) {
