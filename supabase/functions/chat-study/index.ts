@@ -162,8 +162,15 @@ Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceito
     // Construir bloco de ação obrigatória de personalização (início do prompt)
     let personalizationBlock = "";
     
-    // Apenas na PRIMEIRA interação (interactionCount === 0) perguntar sobre objetivo
-    if (isNewUser && interactionCount === 0) {
+    // ========== DETECÇÃO DE COMANDOS OBJETIVOS ==========
+    // Comandos objetivos devem ser respondidos diretamente, sem perguntar intenção
+    const objectiveCommandPattern = /\b(lista|quais|quantos|enumere|mostre|cite|diga|fale|conte|delete|remova|apague|quero ver|me (diga|fale|mostre|liste|conte)|qual é|o que é)\b/i;
+    const isObjectiveCommand = objectiveCommandPattern.test(userQuery);
+    
+    console.log(`[OBJECTIVE COMMAND] Query: "${userQuery.substring(0, 50)}...", isObjective: ${isObjectiveCommand}`);
+    
+    // Apenas na PRIMEIRA interação (interactionCount === 0) E SE NÃO for comando objetivo
+    if (isNewUser && interactionCount === 0 && !isObjectiveCommand) {
       // Variações humanizadas da pergunta de intenção
       const intentVariations = [
         'Hmm, interessante! Me conta: você quer entender isso de forma **geral**, está pensando em **usar na prática**, ou precisa para **algo específico** como uma apresentação?',
@@ -191,6 +198,16 @@ Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceito
 
 `;
       console.log(`[PERSONALIZATION] Including FIRST INTERACTION intent question with variation`);
+    } else if (isNewUser && interactionCount === 0 && isObjectiveCommand) {
+      // Comando objetivo na primeira interação - responder diretamente
+      personalizationBlock = `
+⚠️ CONTEXTO: Comando objetivo detectado na primeira mensagem.
+RESPONDA DIRETAMENTE ao que foi solicitado sem perguntar sobre intenção/objetivo.
+O usuário fez uma pergunta específica que requer uma resposta direta e objetiva.
+Se for uma lista, forneça a lista. Se for uma pergunta "o que é", explique diretamente.
+
+`;
+      console.log(`[PERSONALIZATION] OBJECTIVE COMMAND detected - skipping intent question`);
     } else if (interactionCount > 0 && interactionCount < 5) {
       // Para interações 1-4: NÃO repetir a pergunta de objetivo
       personalizationBlock = `
