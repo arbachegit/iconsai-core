@@ -131,14 +131,21 @@ export function extractSuggestions(text: string): string[] {
 }
 
 export function extractNextSteps(text: string): string[] {
-  const match = text.match(/PRÓXIMOS_PASSOS:\s*(\[.*?\])/);
+  // Regex melhorado para capturar arrays JSON mesmo com quebras de linha
+  const match = text.match(/PRÓXIMOS_PASSOS:\s*(\[[\s\S]*?\])/);
   if (match) {
     try {
-      return JSON.parse(match[1]);
-    } catch {
+      // Limpar possíveis quebras de linha dentro do JSON
+      const cleanJson = match[1].replace(/\n/g, ' ').replace(/\s+/g, ' ');
+      const parsed = JSON.parse(cleanJson);
+      console.log('[NEXT_STEPS] Extracted:', parsed);
+      return parsed;
+    } catch (e) {
+      console.error('[NEXT_STEPS] Parse error:', e, 'Raw:', match[1]);
       return [];
     }
   }
+  console.log('[NEXT_STEPS] No match found in text');
   return [];
 }
 
