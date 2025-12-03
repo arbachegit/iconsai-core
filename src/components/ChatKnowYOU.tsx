@@ -598,7 +598,7 @@ export default function ChatKnowYOU() {
           if (isImageMode) {
             e.target.placeholder = t('chat.placeholderImage');
           }
-        }} className="min-h-[140px] resize-none w-full pb-14 pr-14 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]" style={{
+        }} className="min-h-[100px] resize-none w-full pb-14 pr-14 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]" style={{
           transform: 'translateZ(-8px)',
           backfaceVisibility: 'hidden'
         }} disabled={isLoading || isTranscribing} />
