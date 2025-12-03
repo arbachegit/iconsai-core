@@ -84,15 +84,14 @@ Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceito
     // Construir bloco de ação obrigatória de personalização (início do prompt)
     let personalizationBlock = "";
     
-    if (isNewUser && interactionCount < 3) {
+    // Apenas na PRIMEIRA interação (interactionCount === 0) perguntar sobre objetivo
+    if (isNewUser && interactionCount === 0) {
       personalizationBlock = `
-🔴🔴🔴 AÇÃO OBRIGATÓRIA ANTES DE QUALQUER RESPOSTA 🔴🔴🔴
+🔴🔴🔴 AÇÃO OBRIGATÓRIA - PRIMEIRA INTERAÇÃO 🔴🔴🔴
 
 ╔══════════════════════════════════════════════════════════════════╗
-║  ⛔ PARE! VOCÊ DEVE FAZER UMA PERGUNTA ANTES DE RESPONDER! ⛔     ║
+║  ⛔ PARE! ESTA É A PRIMEIRA MENSAGEM DESTE USUÁRIO! ⛔            ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  Este é um USUÁRIO NOVO (${interactionCount}/3 interações)                      ║
-║                                                                   ║
 ║  SUA RESPOSTA DEVE COMEÇAR COM UMA PERGUNTA SOBRE O OBJETIVO:    ║
 ║                                                                   ║
 ║  "Antes de responder: você busca uma **visão geral** do tema,    ║
@@ -104,7 +103,16 @@ Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceito
 ╚══════════════════════════════════════════════════════════════════╝
 
 `;
-      console.log(`[PERSONALIZATION] Including NEW USER intent detection block (${interactionCount}/3)`);
+      console.log(`[PERSONALIZATION] Including FIRST INTERACTION intent question`);
+    } else if (interactionCount > 0 && interactionCount < 5) {
+      // Para interações 1-4: NÃO repetir a pergunta de objetivo
+      personalizationBlock = `
+⚠️ CONTEXTO: Este usuário já interagiu ${interactionCount} vez(es).
+NÃO repita a pergunta sobre objetivo/intenção - ela já foi feita na primeira interação.
+Responda diretamente ao que foi perguntado, usando o contexto da conversa.
+
+`;
+      console.log(`[PERSONALIZATION] User has ${interactionCount} interactions - NOT repeating intent question`);
     }
     
     if (preferredStyle === 'not_set' && interactionCount >= 3) {
