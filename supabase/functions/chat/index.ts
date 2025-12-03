@@ -597,7 +597,7 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
 
    Ao final de CADA resposta substancial (exceto primeira interação), ANTES das SUGESTÕES, inclua:
 
-   PRÓXIMOS_PASSOS: ["Pergunta de aprofundamento 1", "Pergunta de aprofundamento 2", "Pergunta de aprofundamento 3"]
+   PRÓXIMOS_PASSOS: ["Pergunta de aprofundamento 1", "Pergunta de aprofundamento 2", "Diagrama"]
 
    REGRAS PARA PRÓXIMOS_PASSOS:
    - Devem ser PERGUNTAS COMPLETAS e CLICÁVEIS (o usuário vai clicar e enviar diretamente)
@@ -607,7 +607,9 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    - São DIFERENTES das SUGESTÕES (que são temas novos/relacionados)
    
    EXEMPLO CORRETO (tema: Telemedicina):
-   PRÓXIMOS_PASSOS: ["Como funciona uma consulta online?", "Quais exames podem ser feitos?", "É seguro para diagnósticos?"]
+   PRÓXIMOS_PASSOS: ["Como funciona uma consulta online?", "Quais exames podem ser feitos?", "Diagrama"]
+   
+   🔴 LEMBRETE: "Diagrama" DEVE ser SEMPRE a última opção do array!
    
    SUGESTÕES: ["📊 Existem dados numéricos", "O que é medicina preventiva?", "Especialidades do Hospital"]
    
@@ -671,7 +673,15 @@ CHART_DATA: {"type":"bar","title":"Principais Causas de Internação no Brasil",
 
 As **doenças cardiovasculares** lideram as internações devido ao envelhecimento da população e fatores de risco como hipertensão e sedentarismo. As **pneumonias** ocupam o segundo lugar, especialmente em idosos e crianças.
 
-SUGESTÕES: ["Como prevenir doenças cardíacas?", "Sintomas de pneumonia grave", "O que causa AVC?"]"
+PRÓXIMOS_PASSOS: ["Como prevenir doenças cardíacas?", "Sintomas de pneumonia grave?", "Diagrama"]
+
+SUGESTÕES: ["O que causa AVC?", "Medicina preventiva", "Especialidades do Hospital"]"
+
+🔴🔴🔴 LEMBRETE FINAL ABSOLUTAMENTE CRÍTICO:
+TODA resposta DEVE terminar com:
+PRÓXIMOS_PASSOS: ["Pergunta 1", "Pergunta 2", "Diagrama"]
+A palavra "Diagrama" É OBRIGATÓRIA como última opção do array!
+🔴🔴🔴
 
 Agora, responda às mensagens mantendo sempre este padrão.`;
 
