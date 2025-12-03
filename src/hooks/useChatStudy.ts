@@ -16,6 +16,12 @@ interface Message {
 const STORAGE_KEY = "knowyou_study_chat_history";
 const CHAT_FUNCTION = "chat-study";
 
+interface UserPreferences {
+  responseStyle: 'detailed' | 'concise' | 'not_set';
+  interactionCount: number;
+  intentConfirmed: boolean;
+}
+
 export function useChatStudy() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,11 +38,16 @@ export function useChatStudy() {
     score: number;
   } | null>(null);
   const [sessionId] = useState(() => `study_${new Date().toISOString().split('T')[0]}_${Date.now()}`);
+  const [userPreferences, setUserPreferences] = useState<UserPreferences>({
+    responseStyle: 'not_set',
+    interactionCount: 0,
+    intentConfirmed: false,
+  });
   
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
   const { toast } = useToast();
 
-  // Carregar histórico do localStorage
+  // Carregar histórico e preferências
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -52,7 +63,30 @@ export function useChatStudy() {
     } catch (error) {
       console.error("Erro ao carregar histórico:", error);
     }
-  }, []);
+
+    // Carregar preferências do banco de dados
+    const loadPreferences = async () => {
+      try {
+        const { data } = await supabase
+          .from('user_chat_preferences')
+          .select('*')
+          .eq('session_id', sessionId)
+          .eq('chat_type', 'study')
+          .single();
+        
+        if (data) {
+          setUserPreferences({
+            responseStyle: data.response_style as UserPreferences['responseStyle'],
+            interactionCount: data.total_interactions,
+            intentConfirmed: data.intent_confirmed,
+          });
+        }
+      } catch (error) {
+        console.log("No preferences found, using defaults");
+      }
+    };
+    loadPreferences();
+  }, [sessionId]);
 
   // Salvar histórico no localStorage
   const saveHistory = useCallback((msgs: Message[]) => {
@@ -67,6 +101,57 @@ export function useChatStudy() {
       console.error("Erro ao salvar histórico:", error);
     }
   }, []);
+
+  // Detectar e salvar preferência de estilo baseado na resposta do usuário
+  const detectAndSaveStylePreference = useCallback(async (userResponse: string) => {
+    const lowerResponse = userResponse.toLowerCase();
+    let detectedStyle: 'detailed' | 'concise' | null = null;
+    
+    if (lowerResponse.includes('detalhad') || lowerResponse.includes('complet') || 
+        lowerResponse.includes('aprofund') || lowerResponse.includes('explique mais') ||
+        lowerResponse.includes('mais informaç')) {
+      detectedStyle = 'detailed';
+    } else if (lowerResponse.includes('resumo') || lowerResponse.includes('direto') || 
+               lowerResponse.includes('concis') || lowerResponse.includes('breve') ||
+               lowerResponse.includes('objetivo') || lowerResponse.includes('curto')) {
+      detectedStyle = 'concise';
+    }
+    
+    if (detectedStyle && userPreferences.responseStyle === 'not_set') {
+      try {
+        await supabase.from('user_chat_preferences').upsert({
+          session_id: sessionId,
+          chat_type: 'study',
+          response_style: detectedStyle,
+          response_style_confidence: 0.8,
+          total_interactions: userPreferences.interactionCount,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'session_id,chat_type' });
+        
+        setUserPreferences(prev => ({ ...prev, responseStyle: detectedStyle! }));
+        console.log(`Style preference detected and saved: ${detectedStyle}`);
+      } catch (error) {
+        console.error("Error saving style preference:", error);
+      }
+    }
+  }, [sessionId, userPreferences]);
+
+  // Atualizar contador de interações
+  const updateInteractionCount = useCallback(async () => {
+    const newCount = userPreferences.interactionCount + 1;
+    try {
+      await supabase.from('user_chat_preferences').upsert({
+        session_id: sessionId,
+        chat_type: 'study',
+        total_interactions: newCount,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'session_id,chat_type' });
+      
+      setUserPreferences(prev => ({ ...prev, interactionCount: newCount }));
+    } catch (error) {
+      console.error("Error updating interaction count:", error);
+    }
+  }, [sessionId, userPreferences.interactionCount]);
 
   const analyzeSentiment = useCallback(async (text: string, currentMessages: Message[]) => {
     try {
@@ -136,6 +221,12 @@ export function useChatStudy() {
       saveHistory(updatedMessages);
       setIsLoading(true);
 
+      // Detectar preferência de estilo na resposta do usuário
+      detectAndSaveStylePreference(input);
+      
+      // Atualizar contador de interações
+      updateInteractionCount();
+
       let assistantContent = "";
       let newSuggestions: string[] = [];
 
@@ -153,6 +244,12 @@ export function useChatStudy() {
               role: m.role,
               content: m.content,
             })),
+            sessionId: sessionId,
+            userPreferences: {
+              responseStyle: userPreferences.responseStyle,
+              interactionCount: userPreferences.interactionCount,
+              isNewUser: userPreferences.interactionCount < 3,
+            },
           }),
         });
 

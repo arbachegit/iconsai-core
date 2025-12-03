@@ -17,6 +17,13 @@ interface Message {
 }
 
 const STORAGE_KEY = "knowyou_chat_history";
+const PREFS_STORAGE_KEY = "knowyou_chat_preferences";
+
+interface UserPreferences {
+  responseStyle: 'detailed' | 'concise' | 'not_set';
+  interactionCount: number;
+  intentConfirmed: boolean;
+}
 
 export function useChatKnowYOU() {
   const { t } = useTranslation();
@@ -45,6 +52,11 @@ export function useChatKnowYOU() {
     message: string;
   } | null>(null);
   const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
+  const [userPreferences, setUserPreferences] = useState<UserPreferences>({
+    responseStyle: 'not_set',
+    interactionCount: 0,
+    intentConfirmed: false,
+  });
   
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
   const { toast } = useToast();
@@ -62,7 +74,7 @@ export function useChatKnowYOU() {
     });
   }, []);
 
-  // Carregar histórico do localStorage
+  // Carregar histórico e preferências
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -78,6 +90,30 @@ export function useChatKnowYOU() {
     } catch (error) {
       console.error("Erro ao carregar histórico:", error);
     }
+
+    // Carregar preferências do banco de dados
+    const loadPreferences = async () => {
+      try {
+        const { data } = await supabase
+          .from('user_chat_preferences')
+          .select('*')
+          .eq('session_id', sessionId)
+          .eq('chat_type', 'health')
+          .single();
+        
+        if (data) {
+          setUserPreferences({
+            responseStyle: data.response_style as UserPreferences['responseStyle'],
+            interactionCount: data.total_interactions,
+            intentConfirmed: data.intent_confirmed,
+          });
+        }
+      } catch (error) {
+        // Ignorar erro se não existir registro
+        console.log("No preferences found, using defaults");
+      }
+    };
+    loadPreferences();
 
     // Create analytics session
     createSession({ session_id: sessionId, user_name: null }).catch(console.error);
@@ -96,6 +132,57 @@ export function useChatKnowYOU() {
       console.error("Erro ao salvar histórico:", error);
     }
   }, []);
+
+  // Detectar e salvar preferência de estilo baseado na resposta do usuário
+  const detectAndSaveStylePreference = useCallback(async (userResponse: string) => {
+    const lowerResponse = userResponse.toLowerCase();
+    let detectedStyle: 'detailed' | 'concise' | null = null;
+    
+    if (lowerResponse.includes('detalhad') || lowerResponse.includes('complet') || 
+        lowerResponse.includes('aprofund') || lowerResponse.includes('explique mais') ||
+        lowerResponse.includes('mais informaç')) {
+      detectedStyle = 'detailed';
+    } else if (lowerResponse.includes('resumo') || lowerResponse.includes('direto') || 
+               lowerResponse.includes('concis') || lowerResponse.includes('breve') ||
+               lowerResponse.includes('objetivo') || lowerResponse.includes('curto')) {
+      detectedStyle = 'concise';
+    }
+    
+    if (detectedStyle && userPreferences.responseStyle === 'not_set') {
+      try {
+        await supabase.from('user_chat_preferences').upsert({
+          session_id: sessionId,
+          chat_type: 'health',
+          response_style: detectedStyle,
+          response_style_confidence: 0.8,
+          total_interactions: userPreferences.interactionCount,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'session_id,chat_type' });
+        
+        setUserPreferences(prev => ({ ...prev, responseStyle: detectedStyle! }));
+        console.log(`Style preference detected and saved: ${detectedStyle}`);
+      } catch (error) {
+        console.error("Error saving style preference:", error);
+      }
+    }
+  }, [sessionId, userPreferences]);
+
+  // Atualizar contador de interações
+  const updateInteractionCount = useCallback(async () => {
+    const newCount = userPreferences.interactionCount + 1;
+    try {
+      await supabase.from('user_chat_preferences').upsert({
+        session_id: sessionId,
+        chat_type: 'health',
+        total_interactions: newCount,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'session_id,chat_type' });
+      
+      setUserPreferences(prev => ({ ...prev, interactionCount: newCount }));
+    } catch (error) {
+      console.error("Error updating interaction count:", error);
+    }
+  }, [sessionId, userPreferences.interactionCount]);
 
   const analyzeSentiment = useCallback(async (text: string, currentMessages: Message[]) => {
     try {
@@ -153,6 +240,12 @@ export function useChatKnowYOU() {
       saveHistory(newMessages);
       setIsLoading(true);
 
+      // Detectar preferência de estilo na resposta do usuário
+      detectAndSaveStylePreference(input);
+      
+      // Atualizar contador de interações
+      updateInteractionCount();
+
       // Análise de sentimento em tempo real
       await analyzeSentiment(input, newMessages);
 
@@ -199,6 +292,11 @@ export function useChatKnowYOU() {
                 chatType: "health",
                 documentId: attachedDocumentId,
                 sessionId: sessionId,
+                userPreferences: {
+                  responseStyle: userPreferences.responseStyle,
+                  interactionCount: userPreferences.interactionCount,
+                  isNewUser: userPreferences.interactionCount < 3,
+                },
               }),
             }
           );
@@ -249,6 +347,12 @@ export function useChatKnowYOU() {
           // Use regular chat endpoint
           await streamChat({
             messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+            sessionId: sessionId,
+            userPreferences: {
+              responseStyle: userPreferences.responseStyle,
+              interactionCount: userPreferences.interactionCount,
+              isNewUser: userPreferences.interactionCount < 3,
+            },
             onDelta: (chunk) => updateAssistantMessage(chunk),
             onDone: async () => {
             const extractedSuggestions = extractSuggestions(fullResponse);

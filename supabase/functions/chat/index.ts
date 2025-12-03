@@ -12,8 +12,13 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, sessionId, userPreferences } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    
+    // Extrair preferências do usuário
+    const isNewUser = userPreferences?.isNewUser ?? true;
+    const preferredStyle = userPreferences?.responseStyle ?? 'not_set';
+    const interactionCount = userPreferences?.interactionCount ?? 0;
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY não configurada");
@@ -325,7 +330,51 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
     - Use linguagem técnica quando apropriado, mas sempre explique termos complexos
     - Seja empático e respeitoso
 
-8. 📊 DETECÇÃO DE INTENÇÃO DE DADOS:
+8. 🎯 PERSONALIZAÇÃO E CONTINUIDADE CONTEXTUAL:
+
+   ${isNewUser && interactionCount < 3 ? `
+   ⚠️ USUÁRIO NOVO (${interactionCount} interações) - DETECÇÃO DE INTENÇÃO:
+   
+   Nas PRIMEIRAS 3 interações, ANTES de responder completamente:
+   1. Analise a pergunta e identifique possíveis objetivos/motivações
+   2. PERGUNTE PROATIVAMENTE uma variação de:
+      "Para te ajudar melhor: você está buscando **informações gerais** para conhecimento, 
+      **dados específicos** para uma decisão, ou **orientação prática** para uma situação real?"
+   
+   Exemplo:
+   Usuário: "O que é telemedicina?"
+   Sua resposta: "Ótima pergunta! Antes de responder, me ajuda: você quer uma **visão geral** do conceito,
+   está **avaliando adotar** telemedicina, ou precisa de **orientação técnica** para implementação?"
+   
+   Após a resposta do usuário, adapte o nível de profundidade e foco.
+   ` : ''}
+
+   ${preferredStyle === 'not_set' ? `
+   ⚠️ PREFERÊNCIA DE ESTILO NÃO DEFINIDA:
+   
+   Na PRIMEIRA resposta longa (>200 palavras), ao final da resposta, PERGUNTE:
+   "💡 **Sobre minhas respostas:** você prefere que eu seja mais **detalhado e completo** 
+   ou prefere **resumos concisos e diretos**? Vou me adaptar ao seu estilo!"
+   
+   IMPORTANTE: Esta pergunta só aparece UMA VEZ por usuário.
+   ` : `
+   ✅ PREFERÊNCIA DE ESTILO DEFINIDA: ${preferredStyle === 'detailed' ? 'DETALHADO' : preferredStyle === 'concise' ? 'CONCISO' : 'NÃO DEFINIDO'}
+   
+   ${preferredStyle === 'detailed' ? 
+     '- Use explicações completas com contexto e exemplos\n   - Estruture com subtópicos\n   - Inclua nuances e ressalvas' : 
+     preferredStyle === 'concise' ?
+     '- Seja direto e objetivo\n   - Use bullet points\n   - Máximo 150 palavras por resposta\n   - Só aprofunde se solicitado' : ''}
+   `}
+
+   📈 CHAMADA PARA AÇÃO EM DADOS NUMÉRICOS:
+   
+   Quando sua resposta contiver dados numéricos, ALÉM do badge "📊", ADICIONE ao final:
+   
+   "📊 *Identifiquei dados numéricos nesta resposta. Se desejar, posso fazer uma 
+   **análise comparativa**, criar uma **tabela resumida** ou gerar um **gráfico** 
+   para visualizar melhor esses números.*"
+
+9. 📊 DETECÇÃO DE INTENÇÃO DE DADOS:
    
    Quando o usuário demonstrar interesse em DADOS, MÉTRICAS, ESTATÍSTICAS ou COMPARAÇÕES 
    (palavras-chave: "quantos", "porcentagem", "estatística", "comparar", "ranking", 
