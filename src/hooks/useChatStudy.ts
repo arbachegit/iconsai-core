@@ -34,11 +34,7 @@ export function useChatStudy() {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [currentlyPlayingIndex, setCurrentlyPlayingIndex] = useState<number | null>(null);
-  const [nextSteps, setNextSteps] = useState<string[]>([
-    "O que é a KnowRisk?",
-    "Como funciona o ACC?",
-    "O que é o KnowYOU?",
-  ]);
+  const [nextSteps, setNextSteps] = useState<string[]>([]);
   const [currentSentiment, setCurrentSentiment] = useState<{
     label: "positive" | "negative" | "neutral";
     score: number;
@@ -404,7 +400,7 @@ export function useChatStudy() {
 
   const clearHistory = useCallback(() => {
     setMessages([]);
-    setNextSteps(["O que é a KnowRisk?", "Como funciona o ACC?", "O que é o KnowYOU?"]);
+    setNextSteps([]);
     localStorage.removeItem(STORAGE_KEY);
     toast({
       title: "Histórico limpo",
