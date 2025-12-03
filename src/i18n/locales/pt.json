@@ -254,6 +254,7 @@
   },
   "audio": {
     "play": "Reproduzir",
+    "loading": "Carregando...",
     "pause": "Pausar",
     "stop": "Parar",
     "generating": "Gerando áudio...",

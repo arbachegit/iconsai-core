@@ -255,6 +255,7 @@
   },
   "audio": {
     "play": "Lire",
+    "loading": "Chargement...",
     "pause": "Pause",
     "stop": "Arrêter",
     "generating": "Génération de l'audio...",

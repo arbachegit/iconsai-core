@@ -255,6 +255,7 @@
   },
   "audio": {
     "play": "Play",
+    "loading": "Loading...",
     "pause": "Pause",
     "stop": "Stop",
     "generating": "Generating audio...",
