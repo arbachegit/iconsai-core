@@ -17,17 +17,19 @@ export function NewDocumentBadge({ currentTheme, onThemeClick, className }: NewD
       variant="outline"
       size="sm"
       className={cn(
-        "text-[10px] h-6 px-2 rounded-full shrink-0",
-        "border border-primary/50 hover:border-primary",
-        "hover:bg-primary hover:text-primary-foreground",
-        "transition-colors",
+        "relative overflow-hidden transition-all duration-300",
+        "bg-gradient-to-r from-primary/20 to-accent/20",
+        "border-primary/50 hover:border-primary",
+        "text-foreground hover:text-primary-foreground hover:bg-primary",
+        "shadow-lg hover:shadow-primary/25",
+        "animate-pulse hover:animate-none",
         className
       )}
     >
-      <Sparkles className="h-3 w-3 mr-1 text-primary" />
-      <span className="font-bold uppercase tracking-wide">NOVO</span>
-      <span className="mx-1 text-muted-foreground">·</span>
-      <span className="max-w-[100px] truncate">
+      <Sparkles className="h-3 w-3 mr-1.5 text-primary" />
+      <span className="font-bold text-xs uppercase tracking-wide">NOVO</span>
+      <span className="mx-1.5 text-muted-foreground">·</span>
+      <span className="transition-all duration-500 ease-in-out max-w-[120px] truncate">
         {currentTheme}
       </span>
     </Button>

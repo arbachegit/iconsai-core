@@ -12,34 +12,23 @@ interface SuggestionRanking {
   clickCount: number;
 }
 
-interface Subtopic {
-  name: string;
-  confidence: number;
-}
-
 interface UseDocumentSuggestionsReturn {
   newDocumentBadge: NewDocumentBadgeData | null;
   currentTheme: string;
   complementarySuggestions: string[];
   topSuggestions: SuggestionRanking[];
   recordSuggestionClick: (text: string, documentId?: string) => void;
-  getSubtopicsForTheme: (theme: string) => Promise<Subtopic[]>;
-  expandedTheme: string | null;
-  setExpandedTheme: (theme: string | null) => void;
-  subtopicsCache: Record<string, Subtopic[]>;
 }
 
 export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumentSuggestionsReturn {
   const [currentThemeIndex, setCurrentThemeIndex] = useState(0);
-  const [expandedTheme, setExpandedTheme] = useState<string | null>(null);
-  const [subtopicsCache, setSubtopicsCache] = useState<Record<string, Subtopic[]>>({});
 
-  // Buscar documentos recentes (últimos 3 dias) - aumentar limite para 15
+  // Buscar documentos recentes (últimos 7 dias)
   const { data: recentDocs } = useQuery({
     queryKey: ['recent-documents', chatType],
     queryFn: async () => {
-      const threeDaysAgo = new Date();
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       
       const { data, error } = await supabase
         .from('documents')
@@ -51,9 +40,9 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
         `)
         .eq('target_chat', chatType)
         .eq('status', 'completed')
-        .gte('created_at', threeDaysAgo.toISOString())
+        .gte('created_at', sevenDaysAgo.toISOString())
         .order('created_at', { ascending: false })
-        .limit(15);
+        .limit(5);
       
       if (error) {
         console.error('Error fetching recent documents:', error);
@@ -61,10 +50,10 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
       }
       return data || [];
     },
-    staleTime: 60000,
+    staleTime: 60000, // 1 minuto
   });
 
-  // Buscar ranking de sugestões mais clicadas - aumentar para 20
+  // Buscar ranking de sugestões mais clicadas
   const { data: clickRanking } = useQuery({
     queryKey: ['suggestion-ranking', chatType],
     queryFn: async () => {
@@ -92,12 +81,12 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
       return Object.entries(counts)
         .map(([text, clickCount]) => ({ text, clickCount }))
         .sort((a, b) => b.clickCount - a.clickCount)
-        .slice(0, 20);
+        .slice(0, 5);
     },
     staleTime: 60000,
   });
 
-  // Extrair temas das tags com confidence > 0.70 - aumentar limite para 15
+  // Extrair temas das tags com confidence > 0.70
   const newDocumentData = useMemo((): NewDocumentBadgeData | null => {
     if (!recentDocs?.length) return null;
     
@@ -117,7 +106,7 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
 
     if (themes.length === 0) return null;
     
-    return { themes: themes.slice(0, 15), documentIds };
+    return { themes: themes.slice(0, 10), documentIds };
   }, [recentDocs]);
 
   // Alternância automática de temas a cada 3 segundos
@@ -139,12 +128,12 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
     return newDocumentData.themes[currentThemeIndex] || newDocumentData.themes[0];
   }, [newDocumentData, currentThemeIndex]);
 
-  // Sugestões complementares (documentos mais antigos, >3 dias) - aumentar limite para 20
+  // Sugestões complementares (documentos mais antigos)
   const { data: olderDocs } = useQuery({
     queryKey: ['older-documents', chatType],
     queryFn: async () => {
-      const threeDaysAgo = new Date();
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       
       const { data, error } = await supabase
         .from('documents')
@@ -154,9 +143,9 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
         `)
         .eq('target_chat', chatType)
         .eq('status', 'completed')
-        .lt('created_at', threeDaysAgo.toISOString())
+        .lt('created_at', sevenDaysAgo.toISOString())
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(10);
       
       if (error) {
         console.error('Error fetching older documents:', error);
@@ -185,58 +174,8 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
     const newThemes = newDocumentData?.themes || [];
     return suggestions
       .filter(s => !newThemes.includes(s))
-      .slice(0, 15);
+      .slice(0, 5);
   }, [olderDocs, newDocumentData?.themes]);
-
-  // Buscar subtópicos para um tema (tags filhas)
-  const getSubtopicsForTheme = useCallback(async (theme: string): Promise<Subtopic[]> => {
-    // Check cache first
-    if (subtopicsCache[theme]) {
-      return subtopicsCache[theme];
-    }
-
-    try {
-      // Buscar tag parent pelo nome
-      const { data: parentTag, error: parentError } = await supabase
-        .from('document_tags')
-        .select('id')
-        .eq('tag_name', theme)
-        .eq('tag_type', 'parent')
-        .limit(1)
-        .single();
-
-      if (parentError || !parentTag) {
-        return [];
-      }
-
-      // Buscar tags filhas
-      const { data: childTags, error: childError } = await supabase
-        .from('document_tags')
-        .select('tag_name, confidence')
-        .eq('parent_tag_id', parentTag.id)
-        .eq('tag_type', 'child')
-        .order('confidence', { ascending: false })
-        .limit(10);
-
-      if (childError) {
-        console.error('Error fetching subtopics:', childError);
-        return [];
-      }
-
-      const subtopics = (childTags || []).map(tag => ({
-        name: tag.tag_name,
-        confidence: tag.confidence || 0
-      }));
-
-      // Cache the result
-      setSubtopicsCache(prev => ({ ...prev, [theme]: subtopics }));
-      
-      return subtopics;
-    } catch (error) {
-      console.error('Error getting subtopics:', error);
-      return [];
-    }
-  }, [subtopicsCache]);
 
   // Registrar clique em sugestão
   const recordSuggestionClick = useCallback(async (text: string, documentId?: string) => {
@@ -259,9 +198,5 @@ export function useDocumentSuggestions(chatType: 'health' | 'study'): UseDocumen
     complementarySuggestions,
     topSuggestions: clickRanking || [],
     recordSuggestionClick,
-    getSubtopicsForTheme,
-    expandedTheme,
-    setExpandedTheme,
-    subtopicsCache,
   };
 }

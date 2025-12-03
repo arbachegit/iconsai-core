@@ -65,6 +65,3 @@ verify_jwt = false
 
 [functions.migrate-all-images]
 verify_jwt = false
-
-[functions.process-pending-batch]
-verify_jwt = false

@@ -31,10 +31,9 @@ import {
   History,
   Network,
   Activity,
-  Music,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "activity-logs" | "architecture" | "system-increments" | "podcasts";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "activity-logs" | "architecture" | "system-increments";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -99,7 +98,6 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       icon: Palette,
       items: [
         { id: "content-management" as TabType, label: "Seções Landing Page", icon: FileText },
-        { id: "podcasts" as TabType, label: "Podcasts", icon: Music },
         { id: "tooltips" as TabType, label: "Tooltips", icon: MessageCircle },
         { id: "images" as TabType, label: "Cache de Imagens", icon: Image },
         { id: "youtube" as TabType, label: "Inserir Vídeos", icon: Youtube },

@@ -3,14 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Loader2, ImagePlus, Mic, Square, X, ArrowUp } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { ChartTypeSelector, ChartType } from "./ChartTypeSelector";
+import { Send, Loader2, ImagePlus, Mic, Square, X } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
@@ -25,8 +18,8 @@ import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useDocumentSuggestions } from "@/hooks/useDocumentSuggestions";
-import { TopicDrillDown } from "./TopicDrillDown";
-import { CarouselRow } from "./CarouselRow";
+import { NewDocumentBadge } from "./NewDocumentBadge";
+import { SuggestionRankingBadges } from "./SuggestionRankingBadges";
 
 // 30 sugestões de saúde para rotação
 const HEALTH_SUGGESTIONS = ["O que é telemedicina?", "Como prevenir doenças cardíacas?", "Quais especialidades o Hospital Moinhos de Vento oferece?", "Como funciona a robótica cirúrgica?", "O que são doenças crônicas?", "Como manter uma alimentação saudável?", "Quais exames preventivos fazer anualmente?", "O que é diabetes tipo 2?", "Como controlar a pressão arterial?", "O que faz um cardiologista?", "Como prevenir o câncer?", "O que é saúde mental?", "Como funciona a fisioterapia?", "Quais sintomas indicam AVC?", "O que é medicina preventiva?", "Como melhorar a qualidade do sono?", "O que são exames de imagem?", "Como funciona a vacinação?", "O que é obesidade mórbida?", "Como tratar ansiedade?", "O que faz um endocrinologista?", "Como prevenir osteoporose?", "O que é check-up médico?", "Como funciona a nutrição clínica?", "Quais benefícios da atividade física?", "O que é colesterol alto?", "Como identificar depressão?", "O que são doenças autoimunes?", "Como funciona o transplante de órgãos?", "Qual a importância da hidratação?"];
@@ -94,11 +87,8 @@ export default function ChatKnowYOU() {
     newDocumentBadge,
     currentTheme,
     complementarySuggestions,
+    topSuggestions,
     recordSuggestionClick,
-    getSubtopicsForTheme,
-    expandedTheme,
-    setExpandedTheme,
-    subtopicsCache,
   } = useDocumentSuggestions('health');
   
   const [input, setInput] = useState("");
@@ -108,7 +98,6 @@ export default function ChatKnowYOU() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isImageMode, setIsImageMode] = useState(false);
-  const [selectedChartType, setSelectedChartType] = useState<ChartType | null>(null);
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
   const [waitingCountdown, setWaitingCountdown] = useState(5);
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
@@ -249,13 +238,8 @@ export default function ChatKnowYOU() {
         setInput("");
         setIsImageMode(false);
       } else {
-        // Prefix message with chart type preference if selected
-        const messageToSend = selectedChartType 
-          ? `[PREFERÊNCIA: Gráfico de ${selectedChartType}] ${input}`
-          : input;
-        sendMessage(messageToSend);
+        sendMessage(input);
         setInput("");
-        setSelectedChartType(null); // Reset after sending
       }
       // Scroll imediato após enviar
       setTimeout(scrollToBottom, 100);
@@ -635,304 +619,134 @@ export default function ChatKnowYOU() {
           </div>}
       </ScrollArea>
 
-      {/* Suggestions - DUAS LINHAS FIXAS com carrossel horizontal */}
-      {(displayedSuggestions.length > 0 || newDocumentBadge || complementarySuggestions.length > 0) && !isLoading && (
-        <div className="px-4 py-2 bg-muted/50 border-t border-border/50 space-y-1.5">
-          {/* LINHA 1: Carrossel horizontal */}
-          <CarouselRow>
-            {/* CENÁRIO 3: Ambos existem - mostrar NOVOS completos na Linha 1 */}
-            {newDocumentBadge && newDocumentBadge.themes.length > 0 && complementarySuggestions.length > 0 && (
-              newDocumentBadge.themes.map((theme, idx) => (
-                <TopicDrillDown
-                  key={`new-${theme}-${idx}`}
-                  topic={theme}
-                  isNew={true}
-                  isExpanded={expandedTheme === theme}
-                  onToggle={() => setExpandedTheme(expandedTheme === theme ? null : theme)}
-                  onSubtopicClick={(subtopic) => {
-                    recordSuggestionClick(subtopic, newDocumentBadge.documentIds[idx]);
-                    sendMessage(subtopic);
-                  }}
-                  getSubtopics={getSubtopicsForTheme}
-                  cachedSubtopics={subtopicsCache[theme]}
-                />
-              ))
-            )}
-            
-            {/* CENÁRIO 1: Só novos - mostrar 1ª METADE dos novos (roxo) */}
-            {newDocumentBadge && newDocumentBadge.themes.length > 0 && complementarySuggestions.length === 0 && (
-              newDocumentBadge.themes.slice(0, Math.ceil(newDocumentBadge.themes.length / 2)).map((theme, idx) => (
-                <TopicDrillDown
-                  key={`new1-${theme}-${idx}`}
-                  topic={theme}
-                  isNew={true}
-                  isExpanded={expandedTheme === theme}
-                  onToggle={() => setExpandedTheme(expandedTheme === theme ? null : theme)}
-                  onSubtopicClick={(subtopic) => {
-                    recordSuggestionClick(subtopic, newDocumentBadge.documentIds[idx]);
-                    sendMessage(subtopic);
-                  }}
-                  getSubtopics={getSubtopicsForTheme}
-                  cachedSubtopics={subtopicsCache[theme]}
-                />
-              ))
-            )}
-            
-            {/* CENÁRIO 2: Só antigos - mostrar 1ª METADE dos antigos (dourado) */}
-            {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length > 0 && (
-              complementarySuggestions.slice(0, Math.ceil(complementarySuggestions.length / 2)).map((suggestion, idx) => (
-                <TopicDrillDown
-                  key={`comp1-${suggestion}-${idx}`}
-                  topic={suggestion}
-                  isNew={false}
-                  isExpanded={expandedTheme === suggestion}
-                  onToggle={() => setExpandedTheme(expandedTheme === suggestion ? null : suggestion)}
-                  onSubtopicClick={(subtopic) => {
-                    recordSuggestionClick(subtopic);
-                    sendMessage(subtopic);
-                  }}
-                  getSubtopics={getSubtopicsForTheme}
-                  cachedSubtopics={subtopicsCache[suggestion]}
-                />
-              ))
-            )}
-            
-            {/* CENÁRIO 4: Nenhum documento - fallback 1ª metade */}
-            {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length === 0 && displayedSuggestions.slice(0, Math.ceil(displayedSuggestions.length / 2)).map((suggestion, idx) => {
-              const isDataBadge = suggestion.startsWith("📊");
-              const isNoDataBadge = suggestion.startsWith("📉");
-              const buttonElement = (
-                <Button
-                  key={`disp1-${suggestion}-${idx}`}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className={`text-[10px] h-6 px-2 rounded-full shrink-0 transition-colors ${
-                    isDataBadge 
-                      ? "border-emerald-500/60 bg-emerald-600/20 text-emerald-300 hover:bg-emerald-500 hover:text-emerald-950 hover:border-emerald-500 animate-pulse" 
-                      : isNoDataBadge
-                        ? "border-slate-500/60 bg-slate-600/20 text-slate-300 hover:bg-slate-500 hover:text-slate-950 hover:border-slate-500"
-                        : "border border-primary/40 hover:border-primary hover:bg-primary hover:text-primary-foreground"
-                  }`}
-                >
-                  {suggestion}
-                </Button>
-              );
-              return (isDataBadge || isNoDataBadge) ? (
-                <Tooltip key={`tooltip1-${idx}`}>
-                  <TooltipTrigger asChild>{buttonElement}</TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[220px] text-center">
-                    <p className="text-xs">
-                      {isDataBadge 
-                        ? "Clique para ver todos os dados numéricos encontrados nos documentos"
-                        : "Este contexto não contém estatísticas. Clique para sugestões de como obter dados"}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              ) : buttonElement;
-            })}
-          </CarouselRow>
+      {/* Suggestions com badges dinâmicos */}
+      {(displayedSuggestions.length > 0 || newDocumentBadge || topSuggestions.length > 0) && !isLoading && (
+        <div className="px-6 py-4 bg-muted/50 border-t border-border/50">
+          {/* Disclaimer when document attached */}
+          {activeDisclaimer && (
+            <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-500">
+                    {activeDisclaimer.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {activeDisclaimer.message}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           
-          {/* LINHA 2: Carrossel horizontal */}
-          <CarouselRow>
-            {/* CENÁRIO 3: Ambos existem - mostrar ANTIGOS completos na Linha 2 (dourado) */}
-            {newDocumentBadge && newDocumentBadge.themes.length > 0 && complementarySuggestions.length > 0 && (
-              complementarySuggestions.map((suggestion, idx) => (
-                <TopicDrillDown
-                  key={`comp-${suggestion}-${idx}`}
-                  topic={suggestion}
-                  isNew={false}
-                  isExpanded={expandedTheme === suggestion}
-                  onToggle={() => setExpandedTheme(expandedTheme === suggestion ? null : suggestion)}
-                  onSubtopicClick={(subtopic) => {
-                    recordSuggestionClick(subtopic);
-                    sendMessage(subtopic);
-                  }}
-                  getSubtopics={getSubtopicsForTheme}
-                  cachedSubtopics={subtopicsCache[suggestion]}
-                />
-              ))
+          <div className="flex flex-wrap gap-2 items-center suggestions-slider">
+            {/* 1. Badge NOVO (sempre à esquerda) */}
+            {newDocumentBadge && currentTheme && (
+              <NewDocumentBadge
+                currentTheme={currentTheme}
+                onThemeClick={() => handleSuggestionClick(currentTheme, newDocumentBadge.documentIds[0])}
+              />
             )}
             
-            {/* CENÁRIO 1: Só novos - mostrar 2ª METADE dos novos (roxo) */}
-            {newDocumentBadge && newDocumentBadge.themes.length > 0 && complementarySuggestions.length === 0 && (
-              newDocumentBadge.themes.slice(Math.ceil(newDocumentBadge.themes.length / 2)).map((theme, idx) => (
-                <TopicDrillDown
-                  key={`new2-${theme}-${idx}`}
-                  topic={theme}
-                  isNew={true}
-                  isExpanded={expandedTheme === theme}
-                  onToggle={() => setExpandedTheme(expandedTheme === theme ? null : theme)}
-                  onSubtopicClick={(subtopic) => {
-                    const originalIdx = Math.ceil(newDocumentBadge.themes.length / 2) + idx;
-                    recordSuggestionClick(subtopic, newDocumentBadge.documentIds[originalIdx]);
-                    sendMessage(subtopic);
-                  }}
-                  getSubtopics={getSubtopicsForTheme}
-                  cachedSubtopics={subtopicsCache[theme]}
-                />
-              ))
-            )}
+            {/* 2. Sugestões complementares (documentos antigos) */}
+            {complementarySuggestions.slice(0, 3).map((suggestion, idx) => (
+              <Button
+                key={`comp-${suggestion}-${idx}`}
+                variant="outline"
+                size="sm"
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="text-xs rounded-full border-2 border-primary/50 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
+                {suggestion}
+              </Button>
+            ))}
             
-            {/* CENÁRIO 2: Só antigos - mostrar 2ª METADE dos antigos (dourado) */}
-            {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length > 0 && (
-              complementarySuggestions.slice(Math.ceil(complementarySuggestions.length / 2)).map((suggestion, idx) => (
-                <TopicDrillDown
-                  key={`comp2-${suggestion}-${idx}`}
-                  topic={suggestion}
-                  isNew={false}
-                  isExpanded={expandedTheme === suggestion}
-                  onToggle={() => setExpandedTheme(expandedTheme === suggestion ? null : suggestion)}
-                  onSubtopicClick={(subtopic) => {
-                    recordSuggestionClick(subtopic);
-                    sendMessage(subtopic);
-                  }}
-                  getSubtopics={getSubtopicsForTheme}
-                  cachedSubtopics={subtopicsCache[suggestion]}
-                />
-              ))
-            )}
+            {/* 3. Sugestões do hook original (fallback) */}
+            {!newDocumentBadge && !complementarySuggestions.length && displayedSuggestions.slice(0, 4).map((suggestion, idx) => (
+              <Button
+                key={`disp-${suggestion}-${idx}`}
+                variant="outline"
+                size="sm"
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="text-xs rounded-full border-2 border-primary/50 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
+                {suggestion}
+              </Button>
+            ))}
             
-            {/* CENÁRIO 4: Nenhum documento - fallback 2ª metade */}
-            {(!newDocumentBadge || newDocumentBadge.themes.length === 0) && complementarySuggestions.length === 0 && displayedSuggestions.slice(Math.ceil(displayedSuggestions.length / 2)).map((suggestion, idx) => {
-              const isDataBadge = suggestion.startsWith("📊");
-              const isNoDataBadge = suggestion.startsWith("📉");
-              const buttonElement = (
-                <Button
-                  key={`disp2-${suggestion}-${idx}`}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className={`text-[10px] h-6 px-2 rounded-full shrink-0 transition-colors ${
-                    isDataBadge 
-                      ? "border-emerald-500/60 bg-emerald-600/20 text-emerald-300 hover:bg-emerald-500 hover:text-emerald-950 hover:border-emerald-500 animate-pulse" 
-                      : isNoDataBadge
-                        ? "border-slate-500/60 bg-slate-600/20 text-slate-300 hover:bg-slate-500 hover:text-slate-950 hover:border-slate-500"
-                        : "border border-primary/40 hover:border-primary hover:bg-primary hover:text-primary-foreground"
-                  }`}
-                >
-                  {suggestion}
-                </Button>
-              );
-              return (isDataBadge || isNoDataBadge) ? (
-                <Tooltip key={`tooltip2-${idx}`}>
-                  <TooltipTrigger asChild>{buttonElement}</TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[220px] text-center">
-                    <p className="text-xs">
-                      {isDataBadge 
-                        ? "Clique para ver todos os dados numéricos encontrados nos documentos"
-                        : "Este contexto não contém estatísticas. Clique para sugestões de como obter dados"}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              ) : buttonElement;
-            })}
-          </CarouselRow>
+            {/* 4. Ranking (sempre à direita) */}
+            <SuggestionRankingBadges
+              rankings={topSuggestions}
+              onRankingClick={(text) => handleSuggestionClick(text)}
+            />
+          </div>
         </div>
       )}
 
       {/* Input Area */}
-      <TooltipProvider delayDuration={200}>
-        <form onSubmit={handleSubmit} className="p-4 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
-          {/* Indicador de voz ativo */}
-          {isRecording && <div className="flex items-center gap-2 text-xs mb-2">
-              <div className={`w-2 h-2 rounded-full ${voiceStatus === 'waiting' ? 'bg-amber-500' : voiceStatus === 'processing' ? 'bg-blue-500' : 'bg-red-500'} animate-pulse`} />
-              <span className={voiceStatus === 'waiting' ? 'text-amber-500' : 'text-muted-foreground'}>
-                {voiceStatus === 'listening' && t('chat.listening')}
-                {voiceStatus === 'waiting' && `${t('chat.waiting')} (${waitingCountdown}s)`}
-                {voiceStatus === 'processing' && t('chat.processing')}
-              </span>
-            </div>}
-          
-          {isTyping && <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
-              animationDelay: "0ms"
-            }} />
-                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
-              animationDelay: "150ms"
-            }} />
-                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
-              animationDelay: "300ms"
-            }} />
-              </div>
-              {t('chat.typing')}
-            </div>}
-          
-          {/* Container relativo para posicionar botões dentro */}
-          <div className="relative">
+      <form onSubmit={handleSubmit} className="p-6 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
+        {/* Indicador de voz ativo */}
+        {isRecording && <div className="flex items-center gap-2 text-xs mb-2">
+            <div className={`w-2 h-2 rounded-full ${voiceStatus === 'waiting' ? 'bg-amber-500' : voiceStatus === 'processing' ? 'bg-blue-500' : 'bg-red-500'} animate-pulse`} />
+            <span className={voiceStatus === 'waiting' ? 'text-amber-500' : 'text-muted-foreground'}>
+              {voiceStatus === 'listening' && t('chat.listening')}
+              {voiceStatus === 'waiting' && `${t('chat.waiting')} (${waitingCountdown}s)`}
+              {voiceStatus === 'processing' && t('chat.processing')}
+            </span>
+          </div>}
+        
+        {isTyping && <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
+            <div className="flex gap-1">
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
+            animationDelay: "0ms"
+          }} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
+            animationDelay: "150ms"
+          }} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{
+            animationDelay: "300ms"
+          }} />
+            </div>
+            {t('chat.typing')}
+          </div>}
+          <div className="flex gap-2 items-end">
             <DocumentAttachButton onAttach={attachDocument} disabled={isLoading || isGeneratingAudio || isGeneratingImage} />
             <Textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }} placeholder={isTranscribing ? t('chat.transcribing') : isImageMode ? t('chat.placeholderImage') : t('chat.placeholderHealth')} onFocus={e => {
-              if (isImageMode) {
-                e.target.placeholder = t('chat.imageLimitHealth');
-              }
-            }} onBlur={e => {
-              if (isImageMode) {
-                e.target.placeholder = t('chat.placeholderImage');
-              }
-            }} className="min-h-[100px] resize-none w-full pb-12 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]" style={{
-              transform: 'translateZ(-8px)',
-              backfaceVisibility: 'hidden'
-            }} disabled={isLoading || isTranscribing} />
-            
-            {/* Botões de funcionalidade - inferior esquerdo */}
-            <div className="absolute bottom-2 left-2 flex gap-1 items-end">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button type="button" size="icon" variant="ghost" onClick={isRecording ? stopRecording : startRecording} className={`h-8 w-8 ${isRecording ? "text-red-500" : ""}`}>
-                    {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{isRecording ? "Parar gravação" : "Gravar áudio"}</TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} className="h-8 w-8">
-                    <ImagePlus className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Gerar imagem</TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <ChartTypeSelector
-                    selectedType={selectedChartType}
-                    onSelectType={setSelectedChartType}
-                    disabled={isLoading || isImageMode}
-                  />
-                </TooltipTrigger>
-                <TooltipContent side="top">Tipo de gráfico</TooltipContent>
-              </Tooltip>
-            </div>
-            
-            {/* Botão Submit - inferior direito, circular */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  type="submit" 
-                  size="icon" 
-                  className="absolute bottom-2 right-2 h-8 w-8 rounded-full"
-                  disabled={isLoading || !input.trim()}
-                >
-                  {isLoading ? <Square className="w-4 h-4" /> : <ArrowUp className="w-4 h-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">{isLoading ? "Parar" : "Enviar"}</TooltipContent>
-            </Tooltip>
-          </div>
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit(e);
+          }
+        }} placeholder={isTranscribing ? t('chat.transcribing') : isImageMode ? t('chat.placeholderImage') : t('chat.placeholderHealth')} onFocus={e => {
+          if (isImageMode) {
+            e.target.placeholder = t('chat.imageLimitHealth');
+          }
+        }} onBlur={e => {
+          if (isImageMode) {
+            e.target.placeholder = t('chat.placeholderImage');
+          }
+        }} className="min-h-[140px] resize-none flex-1 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]" style={{
+          transform: 'translateZ(-8px)',
+          backfaceVisibility: 'hidden'
+        }} disabled={isLoading || isTranscribing} />
           
-          <p className="text-xs text-muted-foreground mt-2">
-            Enter para enviar • Shift+Enter para nova linha
-          </p>
-        </form>
-      </TooltipProvider>
+          <div className="flex flex-col gap-2">
+            <Button type="button" size="icon" variant="ghost" onClick={isRecording ? stopRecording : startRecording} className={`shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500" : ""}`}>
+              {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </Button>
+            
+            <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </Button>
+            
+            <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} title="Desenhar" className="shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
+              <ImagePlus className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Pressione Enter para enviar • Shift+Enter para nova linha
+        </p>
+      </form>
       
       {/* Floating Audio Player */}
       <FloatingAudioPlayer isVisible={showFloatingPlayer && currentlyPlayingIndex !== null} currentTime={audioProgress.currentTime} duration={audioProgress.duration} onStop={() => {

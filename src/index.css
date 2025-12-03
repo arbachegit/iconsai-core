@@ -152,22 +152,6 @@ All colors MUST be HSL.
   }
 }
 
-/* Ranking badge entrance animation */
-@keyframes rankingSlideIn {
-  0% {
-    opacity: 0;
-    transform: translateX(-10px) scale(0.9);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-.animate-ranking-badge {
-  animation: rankingSlideIn 0.4s ease-out forwards;
-}
-
 @layer base {
   * {
     @apply border-border;
@@ -197,24 +181,6 @@ All colors MUST be HSL.
   --border: 220 13% 91%;
   --input: 220 13% 91%;
   --ring: 191 100% 40%;
-}
-
-/* Custom scrollbar for carousels */
-.scrollbar-thin::-webkit-scrollbar {
-  height: 4px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.3);
-  border-radius: 2px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.5);
 }
 
 /* Print styles for Documentation PDF export */
