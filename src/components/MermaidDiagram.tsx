@@ -36,104 +36,68 @@ const VALID_DIAGRAM_STARTS = [
 const sanitizeChart = (chart: string): string => {
   let sanitized = chart;
   
-  // 1. Remove colons from node labels: [texto: algo] → [texto algo]
-  // Apply multiple times for multiple colons
-  sanitized = sanitized.replace(/\[([^\]]*):([^\]]*)\]/g, '[$1 $2]');
-  sanitized = sanitized.replace(/\{([^\}]*):([^\}]*)\}/g, '{$1 $2}');
+  // NEW 1. Remove colons from node labels: [texto: algo] → [texto algo]
   sanitized = sanitized.replace(/\[([^\]]*):([^\]]*)\]/g, '[$1 $2]');
   sanitized = sanitized.replace(/\{([^\}]*):([^\}]*)\}/g, '{$1 $2}');
   
-  // 2. Remove ALL quotes (single, double, curly quotes) from labels
-  // Apply multiple times for orphaned quotes
-  sanitized = sanitized.replace(/\[([^\]]*)["'""''`]([^\]]*)\]/g, '[$1$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)["'""''`]([^\}]*)\}/g, '{$1$2}');
-  sanitized = sanitized.replace(/\[([^\]]*)["'""''`]([^\]]*)\]/g, '[$1$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)["'""''`]([^\}]*)\}/g, '{$1$2}');
-  sanitized = sanitized.replace(/\[([^\]]*)["'""''`]([^\]]*)\]/g, '[$1$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)["'""''`]([^\}]*)\}/g, '{$1$2}');
+  // NEW 2. Remove ALL quotes (single and double) from labels - apply multiple times for orphaned quotes
+  sanitized = sanitized.replace(/\[([^\]]*)["']([^\]]*)\]/g, '[$1$2]');
+  sanitized = sanitized.replace(/\{([^\}]*)["']([^\}]*)\}/g, '{$1$2}');
+  sanitized = sanitized.replace(/\[([^\]]*)["']([^\]]*)\]/g, '[$1$2]');
+  sanitized = sanitized.replace(/\{([^\}]*)["']([^\}]*)\}/g, '{$1$2}');
+  sanitized = sanitized.replace(/\[([^\]]*)["']([^\]]*)\]/g, '[$1$2]');
+  sanitized = sanitized.replace(/\{([^\}]*)["']([^\}]*)\}/g, '{$1$2}');
   
-  // 3. Remove emojis from labels (extended Unicode ranges)
-  // Basic emojis
+  // NEW 3. Remove emojis from labels (Unicode special characters)
   sanitized = sanitized.replace(/\[([^\]]*)([\u{1F300}-\u{1F9FF}])([^\]]*)\]/gu, '[$1$3]');
   sanitized = sanitized.replace(/\{([^\}]*)([\u{1F300}-\u{1F9FF}])([^\}]*)\}/gu, '{$1$3}');
-  // Supplemental symbols, dingbats, misc symbols
-  sanitized = sanitized.replace(/\[([^\]]*)([\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F000}-\u{1F02F}])([^\]]*)\]/gu, '[$1$3]');
-  sanitized = sanitized.replace(/\{([^\}]*)([\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F000}-\u{1F02F}])([^\}]*)\}/gu, '{$1$3}');
   // Apply again to catch multiple emojis
-  sanitized = sanitized.replace(/\[([^\]]*)([\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}])([^\]]*)\]/gu, '[$1$3]');
-  sanitized = sanitized.replace(/\{([^\}]*)([\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}])([^\}]*)\}/gu, '{$1$3]');
+  sanitized = sanitized.replace(/\[([^\]]*)([\u{1F300}-\u{1F9FF}])([^\]]*)\]/gu, '[$1$3]');
+  sanitized = sanitized.replace(/\{([^\}]*)([\u{1F300}-\u{1F9FF}])([^\}]*)\}/gu, '{$1$3}');
   
-  // 4. Replace percent % (Mermaid comment character)
-  sanitized = sanitized.replace(/\[([^\]]*)%([^\]]*)\]/g, '[$1 porcento $2]');
-  sanitized = sanitized.replace(/\{([^\}]*)%([^\}]*)\}/g, '{$1 porcento $2}');
-  
-  // 5. Replace tilde ~ (Mermaid styling character)
-  sanitized = sanitized.replace(/\[([^\]]*)~([^\]]*)\]/g, '[$1$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)~([^\}]*)\}/g, '{$1$2}');
-  
-  // 6. Replace backslash \
-  sanitized = sanitized.replace(/\[([^\]]*)\\([^\]]*)\]/g, '[$1$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)\\([^\}]*)\}/g, '{$1$2}');
-  
-  // 7. Replace caret ^
-  sanitized = sanitized.replace(/\[([^\]]*)\^([^\]]*)\]/g, '[$1$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)\^([^\}]*)\}/g, '{$1$2}');
-  
-  // 8. Replace asterisk * (markdown formatting)
-  sanitized = sanitized.replace(/\[([^\]]*)\*([^\]]*)\]/g, '[$1$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)\*([^\}]*)\}/g, '{$1$2}');
-  
-  // 9. Replace Unicode dashes (en-dash, em-dash) with regular dash
-  sanitized = sanitized.replace(/\[([^\]]*)[–—]([^\]]*)\]/g, '[$1-$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)[–—]([^\}]*)\}/g, '{$1-$2}');
-  
-  // 10. Replace ellipsis … with three dots
-  sanitized = sanitized.replace(/\[([^\]]*)…([^\]]*)\]/g, '[$1...$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)…([^\}]*)\}/g, '{$1...$2}');
-  
-  // 11. Replace parentheses inside [] nodes with hyphens: [text (something)] → [text - something]
+  // 1. Replace parentheses inside [] nodes with hyphens: [text (something)] → [text - something]
   sanitized = sanitized.replace(/\[([^\]]*)\(([^\)]*)\)([^\]]*)\]/g, '[$1- $2$3]');
+  
+  // 2. Replace parentheses inside {} nodes with hyphens: {text (something)} → {text - something}
   sanitized = sanitized.replace(/\{([^\}]*)\(([^\)]*)\)([^\}]*)\}/g, '{$1- $2$3}');
   
-  // 12. Remove question marks at end of node labels: [text?] → [text]
+  // 3. Remove question marks at end of node labels: [text?] → [text]
   sanitized = sanitized.replace(/\[([^\]]*)\?\]/g, '[$1]');
   sanitized = sanitized.replace(/\{([^\}]*)\?\}/g, '{$1}');
   
-  // 13. Replace nested brackets inside [] with hyphens: [Array[0]] → [Array-0]
+  // 4. Replace nested brackets inside [] with hyphens: [Array[0]] → [Array-0]
   sanitized = sanitized.replace(/\[([^\[\]]*)\[([^\[\]]*)\]([^\[\]]*)\]/g, '[$1-$2$3]');
+  
+  // 5. Replace nested curly braces inside {} with hyphens: {Config{item}} → {Config-item}
   sanitized = sanitized.replace(/\{([^\{\}]*)\{([^\{\}]*)\}([^\{\}]*)\}/g, '{$1-$2$3}');
   
-  // 14. Replace < and > with text equivalents
+  // 6. Replace < and > with text equivalents
   sanitized = sanitized.replace(/\[([^\]]*)<([^\]]*)\]/g, '[$1 menor que $2]');
   sanitized = sanitized.replace(/\[([^\]]*)>([^\]]*)\]/g, '[$1 maior que $2]');
   sanitized = sanitized.replace(/\{([^\}]*)<([^\}]*)\}/g, '{$1 menor que $2}');
   sanitized = sanitized.replace(/\{([^\}]*)>([^\}]*)\}/g, '{$1 maior que $2}');
   
-  // 15. Replace ampersand & with "e"
+  // 7. Replace ampersand & with "e"
   sanitized = sanitized.replace(/\[([^\]]*)&([^\]]*)\]/g, '[$1 e $2]');
   sanitized = sanitized.replace(/\{([^\}]*)&([^\}]*)\}/g, '{$1 e $2}');
   
-  // 16. Replace hash # with "No."
+  // 8. Replace hash # with "No."
   sanitized = sanitized.replace(/\[([^\]]*)#([^\]]*)\]/g, '[$1No.$2]');
   sanitized = sanitized.replace(/\{([^\}]*)#([^\}]*)\}/g, '{$1No.$2}');
   
-  // 17. Replace semicolon ; with comma
+  // 9. Replace semicolon ; with comma
   sanitized = sanitized.replace(/\[([^\]]*);([^\]]*)\]/g, '[$1,$2]');
   sanitized = sanitized.replace(/\{([^\}]*);([^\}]*)\}/g, '{$1,$2}');
   
-  // 18. Replace pipe | inside nodes with "ou" (conflicts with edge labels)
+  // 10. Replace pipe | inside nodes with "ou" (conflicts with edge labels)
   sanitized = sanitized.replace(/\[([^\]]*)\|([^\]]*)\]/g, '[$1 ou $2]');
   sanitized = sanitized.replace(/\{([^\}]*)\|([^\}]*)\}/g, '{$1 ou $2}');
   
-  // 19. Replace parentheses in subgraph titles: subgraph Name (Text) → subgraph Name - Text
+  // 11. Replace parentheses in subgraph titles: subgraph Name (Text) → subgraph Name - Text
   sanitized = sanitized.replace(/subgraph\s+([^\n(]*)\(([^)]*)\)/gi, 'subgraph $1- $2');
   
-  // 20. Replace + operator between nodes (H + E --> causes parsing issues)
+  // 12. Replace + operator between nodes (H + E --> causes parsing issues)
   sanitized = sanitized.replace(/(\w+)\s*\+\s*(\w+)\s*(-->)/g, '$1 $3');
-  
-  // 21. Clean up multiple spaces
-  sanitized = sanitized.replace(/\[([^\]]*)\s{2,}([^\]]*)\]/g, '[$1 $2]');
-  sanitized = sanitized.replace(/\{([^\}]*)\s{2,}([^\}]*)\}/g, '{$1 $2}');
   
   if (sanitized !== chart) {
     console.log('[MermaidDiagram] Auto-sanitized chart: removed problematic characters from nodes');
