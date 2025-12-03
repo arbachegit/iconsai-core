@@ -425,36 +425,19 @@ O sistema utiliza um pipeline de 4 etapas:
     }
   });
 
-  // Delete document
+  // Delete document - uses ON DELETE CASCADE from database
   const deleteMutation = useMutation({
     mutationFn: async (docId: string) => {
-      // 1. Delete related chunks first (foreign key constraint)
-      const { error: chunksError } = await supabase
-        .from("document_chunks")
-        .delete()
-        .eq("document_id", docId);
-      if (chunksError) throw chunksError;
-
-      // 2. Delete related tags
-      const { error: tagsError } = await supabase
-        .from("document_tags")
-        .delete()
-        .eq("document_id", docId);
-      if (tagsError) throw tagsError;
-
-      // 3. Delete related document versions (if any)
-      const { error: versionsError } = await supabase
-        .from("document_versions")
-        .delete()
-        .eq("document_id", docId);
-      if (versionsError) throw versionsError;
-
-      // 4. Finally delete the document
+      // Database has ON DELETE CASCADE - just delete the document
       const { error } = await supabase
         .from("documents")
         .delete()
         .eq("id", docId);
       if (error) throw error;
+    },
+    onError: (error: Error) => {
+      console.error("Erro ao deletar documento:", error);
+      toast.error(`Erro ao deletar: ${error.message}`);
     },
     onSuccess: (data, docId) => {
       queryClient.invalidateQueries({
