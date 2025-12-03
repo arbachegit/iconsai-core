@@ -292,18 +292,33 @@ export function ChatScopeConfigTab() {
                     {config.total_documents} documentos
                   </Badge>
                 </CardTitle>
+                {/* Search Field */}
+                <div className="relative mt-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar tags..."
+                    value={config.chat_type === "study" ? studySearchTerm : healthSearchTerm}
+                    onChange={(e) => config.chat_type === "study" ? setStudySearchTerm(e.target.value) : setHealthSearchTerm(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Parent Tags */}
                 {(() => {
-              const parentTags = config.document_tags_data.filter(t => t.tag_type === "parent");
-              const highConfParents = parentTags.filter(t => t.avg_confidence >= 0.7);
-              const lowConfParents = parentTags.filter(t => t.avg_confidence < 0.7);
+              const searchTerm = config.chat_type === "study" ? studySearchTerm : healthSearchTerm;
+              const allParentTags = config.document_tags_data
+                .filter(t => t.tag_type === "parent")
+                .filter(t => !searchTerm || t.tag_name.toLowerCase().includes(searchTerm.toLowerCase()))
+                .sort((a, b) => a.tag_name.localeCompare(b.tag_name, 'pt-BR'));
+              const highConfParents = allParentTags.filter(t => t.avg_confidence >= 0.7);
+              const lowConfParents = allParentTags.filter(t => t.avg_confidence < 0.7);
+              const totalParentTags = config.document_tags_data.filter(t => t.tag_type === "parent").length;
               return <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <Label className="text-sm font-semibold flex items-center gap-2">
                           <BookOpen className="h-4 w-4" />
-                          Tags Parent ({parentTags.length})
+                          Tags Parent ({allParentTags.length}{searchTerm ? ` de ${totalParentTags}` : ''})
                         </Label>
                         {lowConfParents.length > 0 && <Badge variant="outline" className="text-xs flex items-center gap-1">
                             <AlertTriangle className="h-3 w-3" />
@@ -335,6 +350,10 @@ export function ChatScopeConfigTab() {
                               </Badge>)}
                           </div>
                         </div>}
+                      
+                      {searchTerm && allParentTags.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">
+                          Nenhuma tag parent encontrada para "{searchTerm}"
+                        </p>}
                     </div>;
             })()}
 
@@ -342,21 +361,26 @@ export function ChatScopeConfigTab() {
 
                 {/* Child Tags */}
                 {(() => {
-              const childTags = config.document_tags_data.filter(t => t.tag_type === "child");
-              if (childTags.length === 0) return null;
+              const searchTerm = config.chat_type === "study" ? studySearchTerm : healthSearchTerm;
+              const allChildTags = config.document_tags_data
+                .filter(t => t.tag_type === "child")
+                .filter(t => !searchTerm || t.tag_name.toLowerCase().includes(searchTerm.toLowerCase()))
+                .sort((a, b) => a.tag_name.localeCompare(b.tag_name, 'pt-BR'));
+              const totalChildTags = config.document_tags_data.filter(t => t.tag_type === "child").length;
+              if (totalChildTags === 0) return null;
               return <div className="space-y-2">
                       <Label className="text-sm font-semibold flex items-center gap-2">
                         <FileText className="h-4 w-4" />
-                        Tags Child ({childTags.length})
+                        Tags Child ({allChildTags.length}{searchTerm ? ` de ${totalChildTags}` : ''})
                       </Label>
-                      <div className="p-3 bg-muted/50 rounded-lg max-h-32 overflow-y-auto">
+                      <div className="p-3 bg-muted/50 rounded-lg max-h-40 overflow-y-auto">
                         <div className="flex flex-wrap gap-1.5">
-                          {childTags.slice(0, 20).map((tag, idx) => <Badge key={idx} variant="secondary" className="text-xs">
+                          {allChildTags.map((tag, idx) => <Badge key={idx} variant="secondary" className="text-xs">
                               {tag.tag_name}
                             </Badge>)}
-                          {childTags.length > 20 && <Badge variant="outline" className="text-xs">
-                              +{childTags.length - 20} mais...
-                            </Badge>}
+                          {searchTerm && allChildTags.length === 0 && <p className="text-xs text-muted-foreground text-center w-full py-2">
+                              Nenhuma tag child encontrada para "{searchTerm}"
+                            </p>}
                         </div>
                       </div>
                     </div>;
