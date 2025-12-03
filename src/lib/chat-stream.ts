@@ -121,7 +121,6 @@ export async function streamChat({
 export function extractNextSteps(text: string): string[] {
   // Regex para capturar arrays JSON mesmo com quebras de linha
   const match = text.match(/PRÓXIMOS_PASSOS:\s*(\[[\s\S]*?\])/);
-  console.log('[NEXT_STEPS] Raw text search:', text.includes('PRÓXIMOS_PASSOS'));
   if (match) {
     try {
       // Limpar possíveis quebras de linha dentro do JSON
@@ -130,17 +129,13 @@ export function extractNextSteps(text: string): string[] {
       
       // Validar que é array de strings
       if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
-        console.log('[NEXT_STEPS] Valid array extracted:', parsed);
         return parsed;
       }
-      console.warn('[NEXT_STEPS] Invalid format (not string array):', parsed);
       return [];
-    } catch (e) {
-      console.error('[NEXT_STEPS] Parse error:', e, 'Raw:', match[1]);
+    } catch {
       return [];
     }
   }
-  console.log('[NEXT_STEPS] No match found in text');
   return [];
 }
 

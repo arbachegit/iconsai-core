@@ -324,13 +324,8 @@ export function useChatStudy() {
           }
         }
 
-        // Debug: verificar conteúdo antes da extração
-        console.log('[useChatStudy] Full response before extraction:', assistantContent.slice(-500));
-        console.log('[useChatStudy] Contains PRÓXIMOS_PASSOS:', assistantContent.includes('PRÓXIMOS_PASSOS'));
-        
         // Extrair próximos passos
         const extractedNextSteps = extractNextSteps(assistantContent);
-        console.log('[useChatStudy] Extracted nextSteps:', extractedNextSteps);
         if (extractedNextSteps.length > 0) {
           setNextSteps(extractedNextSteps);
         }
