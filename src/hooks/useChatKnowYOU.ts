@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { streamChat, extractNextSteps, removeNextStepsFromText } from "@/lib/chat-stream";
+import { streamChat, extractSuggestions, removeSuggestionsFromText } from "@/lib/chat-stream";
 import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "./useAdminSettings";
@@ -17,19 +17,6 @@ interface Message {
 }
 
 const STORAGE_KEY = "knowyou_chat_history";
-const PREFS_STORAGE_KEY = "knowyou_chat_preferences";
-
-interface UserPreferences {
-  responseStyle: 'detailed' | 'concise' | 'not_set';
-  interactionCount: number;
-  intentConfirmed: boolean;
-}
-
-interface TopicTracking {
-  previousTopics: string[];
-  topicStreak: number;
-  currentTopic: string;
-}
 
 export function useChatKnowYOU() {
   const { t } = useTranslation();
@@ -38,7 +25,11 @@ export function useChatKnowYOU() {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [currentlyPlayingIndex, setCurrentlyPlayingIndex] = useState<number | null>(null);
-  const [nextSteps, setNextSteps] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([
+    "O que é telemedicina?",
+    "Como prevenir doenças crônicas?",
+    "Tendências em saúde digital",
+  ]);
   const [currentSentiment, setCurrentSentiment] = useState<{
     label: "positive" | "negative" | "neutral";
     score: number;
@@ -54,16 +45,6 @@ export function useChatKnowYOU() {
     message: string;
   } | null>(null);
   const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
-  const [userPreferences, setUserPreferences] = useState<UserPreferences>({
-    responseStyle: 'not_set',
-    interactionCount: 0,
-    intentConfirmed: false,
-  });
-  const [topicTracking, setTopicTracking] = useState<TopicTracking>({
-    previousTopics: [],
-    topicStreak: 0,
-    currentTopic: '',
-  });
   
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
   const { toast } = useToast();
@@ -81,7 +62,7 @@ export function useChatKnowYOU() {
     });
   }, []);
 
-  // Carregar histórico e preferências
+  // Carregar histórico do localStorage
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -97,29 +78,6 @@ export function useChatKnowYOU() {
     } catch (error) {
       console.error("Erro ao carregar histórico:", error);
     }
-
-    // Carregar preferências do banco de dados
-    const loadPreferences = async () => {
-      try {
-        const { data } = await supabase
-          .from('user_chat_preferences')
-          .select('*')
-          .eq('session_id', sessionId)
-          .eq('chat_type', 'health')
-          .single();
-        
-        if (data) {
-          setUserPreferences({
-            responseStyle: data.response_style as UserPreferences['responseStyle'],
-            interactionCount: data.total_interactions,
-            intentConfirmed: data.intent_confirmed,
-          });
-        }
-      } catch (error) {
-        // Ignorar erro se não existir registro
-      }
-    };
-    loadPreferences();
 
     // Create analytics session
     createSession({ session_id: sessionId, user_name: null }).catch(console.error);
@@ -138,56 +96,6 @@ export function useChatKnowYOU() {
       console.error("Erro ao salvar histórico:", error);
     }
   }, []);
-
-  // Detectar e salvar preferência de estilo baseado na resposta do usuário
-  const detectAndSaveStylePreference = useCallback(async (userResponse: string) => {
-    const lowerResponse = userResponse.toLowerCase();
-    let detectedStyle: 'detailed' | 'concise' | null = null;
-    
-    if (lowerResponse.includes('detalhad') || lowerResponse.includes('complet') || 
-        lowerResponse.includes('aprofund') || lowerResponse.includes('explique mais') ||
-        lowerResponse.includes('mais informaç')) {
-      detectedStyle = 'detailed';
-    } else if (lowerResponse.includes('resumo') || lowerResponse.includes('direto') || 
-               lowerResponse.includes('concis') || lowerResponse.includes('breve') ||
-               lowerResponse.includes('objetivo') || lowerResponse.includes('curto')) {
-      detectedStyle = 'concise';
-    }
-    
-    if (detectedStyle && userPreferences.responseStyle === 'not_set') {
-      try {
-        await supabase.from('user_chat_preferences').upsert({
-          session_id: sessionId,
-          chat_type: 'health',
-          response_style: detectedStyle,
-          response_style_confidence: 0.8,
-          total_interactions: userPreferences.interactionCount,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'session_id,chat_type' });
-        
-        setUserPreferences(prev => ({ ...prev, responseStyle: detectedStyle! }));
-      } catch (error) {
-        console.error("Error saving style preference:", error);
-      }
-    }
-  }, [sessionId, userPreferences]);
-
-  // Atualizar contador de interações
-  const updateInteractionCount = useCallback(async () => {
-    const newCount = userPreferences.interactionCount + 1;
-    try {
-      await supabase.from('user_chat_preferences').upsert({
-        session_id: sessionId,
-        chat_type: 'health',
-        total_interactions: newCount,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'session_id,chat_type' });
-      
-      setUserPreferences(prev => ({ ...prev, interactionCount: newCount }));
-    } catch (error) {
-      console.error("Error updating interaction count:", error);
-    }
-  }, [sessionId, userPreferences.interactionCount]);
 
   const analyzeSentiment = useCallback(async (text: string, currentMessages: Message[]) => {
     try {
@@ -245,12 +153,6 @@ export function useChatKnowYOU() {
       saveHistory(newMessages);
       setIsLoading(true);
 
-      // Detectar preferência de estilo na resposta do usuário
-      detectAndSaveStylePreference(input);
-      
-      // Atualizar contador de interações
-      updateInteractionCount();
-
       // Análise de sentimento em tempo real
       await analyzeSentiment(input, newMessages);
 
@@ -266,7 +168,7 @@ export function useChatKnowYOU() {
           if (last?.role === "assistant") {
             return prev.map((m, i) =>
               i === prev.length - 1
-                ? { ...m, content: removeNextStepsFromText(assistantContent) }
+                ? { ...m, content: removeSuggestionsFromText(assistantContent) }
                 : m
             );
           }
@@ -274,7 +176,7 @@ export function useChatKnowYOU() {
             ...prev,
             {
               role: "assistant",
-              content: removeNextStepsFromText(assistantContent),
+              content: removeSuggestionsFromText(assistantContent),
               timestamp: new Date(),
             },
           ];
@@ -297,11 +199,6 @@ export function useChatKnowYOU() {
                 chatType: "health",
                 documentId: attachedDocumentId,
                 sessionId: sessionId,
-                userPreferences: {
-                  responseStyle: userPreferences.responseStyle,
-                  interactionCount: userPreferences.interactionCount,
-                  isNewUser: userPreferences.interactionCount < 3,
-                },
               }),
             }
           );
@@ -352,43 +249,14 @@ export function useChatKnowYOU() {
           // Use regular chat endpoint
           await streamChat({
             messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
-            sessionId: sessionId,
-            userPreferences: {
-              responseStyle: userPreferences.responseStyle,
-              interactionCount: userPreferences.interactionCount,
-              isNewUser: userPreferences.interactionCount < 3,
-            },
-            previousTopics: topicTracking.previousTopics,
-            topicStreak: topicTracking.topicStreak,
             onDelta: (chunk) => updateAssistantMessage(chunk),
             onDone: async () => {
-            // Extrair próximos passos (antes das sugestões)
-            const extractedNextSteps = extractNextSteps(fullResponse);
-            if (extractedNextSteps.length > 0) {
-              setNextSteps(extractedNextSteps);
-            } else {
-              setNextSteps([]);
+            const extractedSuggestions = extractSuggestions(fullResponse);
+            if (extractedSuggestions.length > 0) {
+              setSuggestions(extractedSuggestions);
             }
 
-            // Remove nextSteps from response
-            const cleanedResponse = removeNextStepsFromText(fullResponse);
-
-            // Update topic tracking
-            const topicWords = input.toLowerCase()
-              .replace(/[?!.,]/g, "")
-              .split(" ")
-              .filter((w: string) => w.length > 3 && !["o que", "como", "qual", "quais", "onde", "quando", "porque", "para", "sobre", "este", "esta", "isso", "aqui"].includes(w))
-              .slice(0, 3);
-            const extractedTopic = topicWords.join(" ") || "geral";
-            
-            setTopicTracking(prev => {
-              const newTopics = [...prev.previousTopics, extractedTopic].slice(-10);
-              return {
-                previousTopics: newTopics,
-                topicStreak: prev.topicStreak + 1,
-                currentTopic: extractedTopic,
-              };
-            });
+            const cleanedResponse = removeSuggestionsFromText(fullResponse);
 
             // Gerar áudio da resposta (somente se habilitado)
             if (settings?.chat_audio_enabled) {
@@ -456,11 +324,75 @@ export function useChatKnowYOU() {
           },
         });
         }
+
+        // Common post-processing for both paths
+        const extractedSuggestions = extractSuggestions(fullResponse);
+        if (extractedSuggestions.length > 0) {
+          setSuggestions(extractedSuggestions);
+        }
+
+        const cleanedResponse = removeSuggestionsFromText(fullResponse);
+
+        // Gerar áudio da resposta (somente se habilitado)
+        if (settings?.chat_audio_enabled) {
+          setIsGeneratingAudio(true);
+          try {
+            const audioUrl = await generateAudioUrl(cleanedResponse, "health");
+            
+            setMessages((prev) => {
+              const updated = prev.map((m, i) =>
+                i === prev.length - 1
+                  ? { ...m, content: cleanedResponse, audioUrl }
+                  : m
+              );
+              saveHistory(updated);
+              return updated;
+            });
+
+            // Update analytics with audio play
+            updateSession({
+              session_id: sessionId,
+              updates: { audio_plays: messages.filter(m => m.audioUrl).length + 1 },
+            }).catch(console.error);
+          } catch (error) {
+            console.error("Erro ao gerar áudio:", error);
+            setMessages((prev) => {
+              const updated = prev.map((m, i) =>
+                i === prev.length - 1
+                  ? { ...m, content: cleanedResponse }
+                  : m
+              );
+              saveHistory(updated);
+              return updated;
+            });
+          } finally {
+            setIsGeneratingAudio(false);
+          }
+        } else {
+          // No audio - just save the message
+          setMessages((prev) => {
+            const updated = prev.map((m, i) =>
+              i === prev.length - 1
+                ? { ...m, content: cleanedResponse }
+                : m
+            );
+            saveHistory(updated);
+            return updated;
+          });
+        }
+
+        // Update analytics with message count
+        updateSession({
+          session_id: sessionId,
+          updates: { message_count: messages.length + 2 },
+        }).catch(console.error);
+
+        setIsLoading(false);
       } catch (error) {
-        console.error("Error in chat:", error);
+        console.error("Erro ao enviar mensagem:", error);
         toast({
           title: "Erro",
-          description: error instanceof Error ? error.message : "Erro desconhecido",
+          description: "Não foi possível enviar a mensagem. Tente novamente.",
           variant: "destructive",
         });
         setIsLoading(false);
@@ -473,7 +405,11 @@ export function useChatKnowYOU() {
     audioPlayerRef.current.stop();
     setMessages([]);
     setCurrentlyPlayingIndex(null);
-    setNextSteps([]);
+    setSuggestions([
+      "O que é telemedicina?",
+      "Como prevenir doenças crônicas?",
+      "Tendências em saúde digital",
+    ]);
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
@@ -665,7 +601,7 @@ export function useChatKnowYOU() {
     isGeneratingAudio,
     isGeneratingImage,
     currentlyPlayingIndex,
-    nextSteps,
+    suggestions,
     currentSentiment,
     activeDisclaimer,
     attachedDocumentId,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { extractNextSteps, removeNextStepsFromText } from "@/lib/chat-stream";
+import { extractSuggestions, removeSuggestionsFromText } from "@/lib/chat-stream";
 import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,45 +16,27 @@ interface Message {
 const STORAGE_KEY = "knowyou_study_chat_history";
 const CHAT_FUNCTION = "chat-study";
 
-interface UserPreferences {
-  responseStyle: 'detailed' | 'concise' | 'not_set';
-  interactionCount: number;
-  intentConfirmed: boolean;
-}
-
-interface TopicTracking {
-  previousTopics: string[];
-  topicStreak: number;
-  currentTopic: string;
-}
-
 export function useChatStudy() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [currentlyPlayingIndex, setCurrentlyPlayingIndex] = useState<number | null>(null);
-  const [nextSteps, setNextSteps] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([
+    "O que é a KnowRisk?",
+    "Como funciona o ACC?",
+    "O que é o KnowYOU?",
+  ]);
   const [currentSentiment, setCurrentSentiment] = useState<{
     label: "positive" | "negative" | "neutral";
     score: number;
   } | null>(null);
   const [sessionId] = useState(() => `study_${new Date().toISOString().split('T')[0]}_${Date.now()}`);
-  const [userPreferences, setUserPreferences] = useState<UserPreferences>({
-    responseStyle: 'not_set',
-    interactionCount: 0,
-    intentConfirmed: false,
-  });
-  const [topicTracking, setTopicTracking] = useState<TopicTracking>({
-    previousTopics: [],
-    topicStreak: 0,
-    currentTopic: '',
-  });
   
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
   const { toast } = useToast();
 
-  // Carregar histórico e preferências
+  // Carregar histórico do localStorage
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -70,30 +52,7 @@ export function useChatStudy() {
     } catch (error) {
       console.error("Erro ao carregar histórico:", error);
     }
-
-    // Carregar preferências do banco de dados
-    const loadPreferences = async () => {
-      try {
-        const { data } = await supabase
-          .from('user_chat_preferences')
-          .select('*')
-          .eq('session_id', sessionId)
-          .eq('chat_type', 'study')
-          .single();
-        
-        if (data) {
-          setUserPreferences({
-            responseStyle: data.response_style as UserPreferences['responseStyle'],
-            interactionCount: data.total_interactions,
-            intentConfirmed: data.intent_confirmed,
-          });
-        }
-      } catch (error) {
-        // Ignorar erro se não existir registro
-      }
-    };
-    loadPreferences();
-  }, [sessionId]);
+  }, []);
 
   // Salvar histórico no localStorage
   const saveHistory = useCallback((msgs: Message[]) => {
@@ -108,56 +67,6 @@ export function useChatStudy() {
       console.error("Erro ao salvar histórico:", error);
     }
   }, []);
-
-  // Detectar e salvar preferência de estilo baseado na resposta do usuário
-  const detectAndSaveStylePreference = useCallback(async (userResponse: string) => {
-    const lowerResponse = userResponse.toLowerCase();
-    let detectedStyle: 'detailed' | 'concise' | null = null;
-    
-    if (lowerResponse.includes('detalhad') || lowerResponse.includes('complet') || 
-        lowerResponse.includes('aprofund') || lowerResponse.includes('explique mais') ||
-        lowerResponse.includes('mais informaç')) {
-      detectedStyle = 'detailed';
-    } else if (lowerResponse.includes('resumo') || lowerResponse.includes('direto') || 
-               lowerResponse.includes('concis') || lowerResponse.includes('breve') ||
-               lowerResponse.includes('objetivo') || lowerResponse.includes('curto')) {
-      detectedStyle = 'concise';
-    }
-    
-    if (detectedStyle && userPreferences.responseStyle === 'not_set') {
-      try {
-        await supabase.from('user_chat_preferences').upsert({
-          session_id: sessionId,
-          chat_type: 'study',
-          response_style: detectedStyle,
-          response_style_confidence: 0.8,
-          total_interactions: userPreferences.interactionCount,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'session_id,chat_type' });
-        
-        setUserPreferences(prev => ({ ...prev, responseStyle: detectedStyle! }));
-      } catch (error) {
-        console.error("Error saving style preference:", error);
-      }
-    }
-  }, [sessionId, userPreferences]);
-
-  // Atualizar contador de interações
-  const updateInteractionCount = useCallback(async () => {
-    const newCount = userPreferences.interactionCount + 1;
-    try {
-      await supabase.from('user_chat_preferences').upsert({
-        session_id: sessionId,
-        chat_type: 'study',
-        total_interactions: newCount,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'session_id,chat_type' });
-      
-      setUserPreferences(prev => ({ ...prev, interactionCount: newCount }));
-    } catch (error) {
-      console.error("Error updating interaction count:", error);
-    }
-  }, [sessionId, userPreferences.interactionCount]);
 
   const analyzeSentiment = useCallback(async (text: string, currentMessages: Message[]) => {
     try {
@@ -227,12 +136,6 @@ export function useChatStudy() {
       saveHistory(updatedMessages);
       setIsLoading(true);
 
-      // Detectar preferência de estilo na resposta do usuário
-      detectAndSaveStylePreference(input);
-      
-      // Atualizar contador de interações
-      updateInteractionCount();
-
       let assistantContent = "";
       let newSuggestions: string[] = [];
 
@@ -250,14 +153,6 @@ export function useChatStudy() {
               role: m.role,
               content: m.content,
             })),
-            sessionId: sessionId,
-            userPreferences: {
-              responseStyle: userPreferences.responseStyle,
-              interactionCount: userPreferences.interactionCount,
-              isNewUser: userPreferences.interactionCount < 3,
-            },
-            previousTopics: topicTracking.previousTopics,
-            topicStreak: topicTracking.topicStreak,
           }),
         });
 
@@ -319,14 +214,12 @@ export function useChatStudy() {
           }
         }
 
-        // Extrair próximos passos
-        const extractedNextSteps = extractNextSteps(assistantContent);
-        if (extractedNextSteps.length > 0) {
-          setNextSteps(extractedNextSteps);
+        // Extrair sugestões
+        const extracted = extractSuggestions(assistantContent);
+        if (extracted.length > 0) {
+          newSuggestions = extracted;
+          assistantContent = removeSuggestionsFromText(assistantContent);
         }
-        
-        // Limpar texto removendo PRÓXIMOS_PASSOS e SUGESTÕES
-        assistantContent = removeNextStepsFromText(assistantContent);
 
         const finalMessages = updatedMessages.map((m, i) =>
           i === updatedMessages.length
@@ -344,23 +237,9 @@ export function useChatStudy() {
         setMessages(finalUpdated);
         saveHistory(finalUpdated);
 
-
-        // Update topic tracking - extract topic from the user's question
-        const topicWords = input.toLowerCase()
-          .replace(/[?!.,]/g, "")
-          .split(" ")
-          .filter((w: string) => w.length > 3 && !["o que", "como", "qual", "quais", "onde", "quando", "porque", "para", "sobre", "este", "esta", "isso", "aqui"].includes(w))
-          .slice(0, 3);
-        const extractedTopic = topicWords.join(" ") || "geral";
-        
-        setTopicTracking(prev => {
-          const newTopics = [...prev.previousTopics, extractedTopic].slice(-10); // Keep last 10 topics
-          return {
-            previousTopics: newTopics,
-            topicStreak: prev.topicStreak + 1,
-            currentTopic: extractedTopic,
-          };
-        });
+        if (newSuggestions.length > 0) {
+          setSuggestions(newSuggestions);
+        }
 
         // Analyze sentiment
         analyzeSentiment(input, finalUpdated);
@@ -400,7 +279,7 @@ export function useChatStudy() {
 
   const clearHistory = useCallback(() => {
     setMessages([]);
-    setNextSteps([]);
+    setSuggestions(["O que é a KnowRisk?", "Como funciona o ACC?", "O que é o KnowYOU?"]);
     localStorage.removeItem(STORAGE_KEY);
     toast({
       title: "Histórico limpo",
@@ -574,7 +453,7 @@ export function useChatStudy() {
     isGeneratingAudio,
     isGeneratingImage,
     currentlyPlayingIndex,
-    nextSteps,
+    suggestions,
     currentSentiment,
     sendMessage,
     clearHistory,

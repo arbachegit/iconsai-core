@@ -36,51 +36,6 @@ const VALID_DIAGRAM_STARTS = [
 const sanitizeChart = (chart: string): string => {
   let sanitized = chart;
   
-  // ========== NOVAS REGRAS AVANÇADAS (PRIORIDADE ALTA) ==========
-  
-  // A1. Remover chaves vazias {} dentro de nós []: [Objetos - {}] → [Objetos]
-  sanitized = sanitized.replace(/\[([^\]]*)\s*-?\s*\{\s*\}([^\]]*)\]/g, '[$1$2]');
-  sanitized = sanitized.replace(/\[([^\]]*)\{\s*\}([^\]]*)\]/g, '[$1$2]');
-  
-  // A2. Substituir chaves com conteúdo {texto} dentro de nós [] por espaços
-  // Ex: [Ex {nome Joao, idade 30}] → [Ex nome Joao idade 30]
-  for (let i = 0; i < 3; i++) {
-    sanitized = sanitized.replace(/\[([^\[\]]*)\{([^\{\}]+)\}([^\[\]]*)\]/g, '[$1 $2 $3]');
-  }
-  
-  // A3. Tratar colchetes representados como - em arrays: [Arrays - -] → [Arrays - lista]
-  // Pattern: [text - -] ou [text - -text]
-  sanitized = sanitized.replace(/\[([^\]]*)\s+-\s*-([^\]]*)\]/g, '[$1 - lista$2]');
-  sanitized = sanitized.replace(/\[([^\]]*)\s+-\s*\]/g, '[$1]');
-  
-  // A4. Remover aspas órfãs (não pareadas) dentro de nós
-  // Aplicar múltiplas vezes para capturar todas
-  for (let i = 0; i < 4; i++) {
-    sanitized = sanitized.replace(/\[([^\]]*)"([^\]"]*)\]/g, '[$1$2]');
-    sanitized = sanitized.replace(/\[([^\]]*)'([^\]']*)\]/g, '[$1$2]');
-  }
-  
-  // A5. Limpar hífens múltiplos: [texto---algo] → [texto-algo]
-  sanitized = sanitized.replace(/\[([^\]]*)--+([^\]]*)\]/g, '[$1-$2]');
-  sanitized = sanitized.replace(/\{([^\}]*)--+([^\}]*)\}/g, '{$1-$2}');
-  
-  // A6. Remover hífens no início ou fim do texto do nó
-  sanitized = sanitized.replace(/\[\s*-\s+([^\]]+)\]/g, '[$1]');
-  sanitized = sanitized.replace(/\[([^\]]+)\s+-\s*\]/g, '[$1]');
-  
-  // A7. Normalizar vírgulas - remover antes de fechar o nó
-  sanitized = sanitized.replace(/\[([^\]]*),\s*\]/g, '[$1]');
-  sanitized = sanitized.replace(/\{([^\}]*),\s*\}/g, '{$1}');
-  
-  // A8. Normalizar espaços ao redor de vírgulas
-  sanitized = sanitized.replace(/\[([^\]]*)\s*,\s+([^\]]*)\]/g, '[$1, $2]');
-  sanitized = sanitized.replace(/\{([^\}]*)\s*,\s+([^\}]*)\}/g, '{$1, $2}');
-  
-  // A9. Remover colchetes literais dentro de texto: [Ex -"maca, banana] → [Ex maca banana]
-  sanitized = sanitized.replace(/\[([^\]]*)-"([^\]]*)\]/g, '[$1$2]');
-  
-  // ========== REGRAS EXISTENTES ==========
-  
   // 1. Remove colons from node labels: [texto: algo] → [texto algo]
   // Apply multiple times for multiple colons
   sanitized = sanitized.replace(/\[([^\]]*):([^\]]*)\]/g, '[$1 $2]');
@@ -180,9 +135,9 @@ const sanitizeChart = (chart: string): string => {
   sanitized = sanitized.replace(/\[([^\]]*)\s{2,}([^\]]*)\]/g, '[$1 $2]');
   sanitized = sanitized.replace(/\{([^\}]*)\s{2,}([^\}]*)\}/g, '{$1 $2}');
   
-  // 22. Final cleanup - trim whitespace inside nodes
-  sanitized = sanitized.replace(/\[\s+([^\]]*)\]/g, '[$1]');
-  sanitized = sanitized.replace(/\[([^\]]*)\s+\]/g, '[$1]');
+  if (sanitized !== chart) {
+    console.log('[MermaidDiagram] Auto-sanitized chart: removed problematic characters from nodes');
+  }
   
   return sanitized;
 };
@@ -202,6 +157,7 @@ const autoFixChart = (chart: string): string => {
   }
   
   // Auto-add 'graph TD' if missing
+  console.log('[MermaidDiagram] Auto-fixing chart: adding "graph TD" declaration');
   return `graph TD\n${trimmedChart}`;
 };
 

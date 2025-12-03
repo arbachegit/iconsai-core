@@ -12,17 +12,8 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, sessionId, userPreferences, previousTopics = [], topicStreak = 0 } = await req.json();
+    const { messages } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    // Extrair preferências do usuário
-    const isNewUser = userPreferences?.isNewUser ?? true;
-    const preferredStyle = userPreferences?.responseStyle ?? 'not_set';
-    const interactionCount = userPreferences?.interactionCount ?? 0;
-    
-    // 🔍 DEBUG: Log de preferências recebidas
-    console.log(`[PERSONALIZATION DEBUG] sessionId=${sessionId}, isNewUser=${isNewUser}, interactionCount=${interactionCount}, preferredStyle=${preferredStyle}`);
-    console.log(`[TOPIC TRACKING] previousTopics=${JSON.stringify(previousTopics)}, topicStreak=${topicStreak}`);
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY não configurada");
@@ -31,83 +22,6 @@ serve(async (req) => {
     // Get last user message for RAG search
     const lastUserMessage = messages.filter((m: any) => m.role === "user").pop();
     const userQuery = lastUserMessage?.content || "";
-
-    // ========== CLASSIFICAÇÃO DE TÓPICO ==========
-    let topicClassification = {
-      mainTopic: "geral",
-      isNewTopic: true,
-      relatedTopics: [] as string[],
-      currentStreak: 1,
-    };
-
-    if (userQuery && previousTopics.length > 0) {
-      try {
-        console.log(`[TOPIC CLASSIFIER] Classifying query: "${userQuery.substring(0, 50)}..." against topics: ${previousTopics.join(", ")}`);
-        
-        const classifyResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
-            messages: [{
-              role: "user",
-              content: `Analise se a pergunta abaixo está relacionada aos tópicos anteriores.
-
-PERGUNTA ATUAL: "${userQuery}"
-
-TÓPICOS ANTERIORES DA CONVERSA: ${previousTopics.join(", ")}
-
-Responda APENAS com um JSON válido (sem markdown, sem \`\`\`):
-{
-  "mainTopic": "tópico principal da pergunta atual (máximo 3 palavras)",
-  "isRelatedToPrevious": true/false (se a pergunta trata do mesmo assunto ou conceito relacionado),
-  "relatedTopics": ["lista de tópicos anteriores que se relacionam com esta pergunta"]
-}
-
-REGRA: Perguntas sobre o mesmo tema/conceito são relacionadas mesmo com palavras diferentes.
-Exemplo: "O que é ACC?" e "Como aplicar a arquitetura cognitiva?" são RELACIONADAS (ambas sobre ACC).
-Exemplo: "O que é KnowYOU?" e "Quem fundou a empresa?" são RELACIONADAS (ambas sobre KnowRISK).`
-            }],
-            max_tokens: 150,
-            temperature: 0.1,
-          }),
-        });
-
-        if (classifyResponse.ok) {
-          const classifyData = await classifyResponse.json();
-          const content = classifyData.choices?.[0]?.message?.content || "";
-          
-          // Parse JSON from response
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            topicClassification = {
-              mainTopic: parsed.mainTopic || "geral",
-              isNewTopic: !parsed.isRelatedToPrevious,
-              relatedTopics: parsed.relatedTopics || [],
-              currentStreak: parsed.isRelatedToPrevious ? topicStreak + 1 : 1,
-            };
-            console.log(`[TOPIC CLASSIFIER] Result: mainTopic="${topicClassification.mainTopic}", isNewTopic=${topicClassification.isNewTopic}, streak=${topicClassification.currentStreak}`);
-          }
-        }
-      } catch (classifyError) {
-        console.error("[TOPIC CLASSIFIER] Error:", classifyError);
-        // Continue with default classification
-      }
-    } else if (userQuery) {
-      // First message - extract topic
-      const topicWords = userQuery.toLowerCase()
-        .replace(/[?!.,]/g, "")
-        .split(" ")
-        .filter((w: string) => w.length > 3 && !["o que", "como", "qual", "quais", "onde", "quando", "porque", "para"].includes(w))
-        .slice(0, 3);
-      topicClassification.mainTopic = topicWords.join(" ") || "introdução";
-      topicClassification.currentStreak = 1;
-      console.log(`[TOPIC CLASSIFIER] First message, extracted topic: "${topicClassification.mainTopic}"`);
-    }
 
     // Get chat configuration from database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -159,135 +73,8 @@ Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceito
       }
     }
 
-    // Construir bloco de ação obrigatória de personalização (início do prompt)
-    let personalizationBlock = "";
-    
-    // ========== DETECÇÃO DE COMANDOS OBJETIVOS ==========
-    // Comandos objetivos devem ser respondidos diretamente, sem perguntar intenção
-    const objectiveCommandPattern = /\b(lista|quais|quantos|enumere|mostre|cite|diga|fale|conte|delete|remova|apague|quero ver|me (diga|fale|mostre|liste|conte)|qual é|o que é)\b/i;
-    const isObjectiveCommand = objectiveCommandPattern.test(userQuery);
-    
-    console.log(`[OBJECTIVE COMMAND] Query: "${userQuery.substring(0, 50)}...", isObjective: ${isObjectiveCommand}`);
-    
-    // Apenas na PRIMEIRA interação (interactionCount === 0) E SE NÃO for comando objetivo
-    if (isNewUser && interactionCount === 0 && !isObjectiveCommand) {
-      // Variações humanizadas da pergunta de intenção
-      const intentVariations = [
-        'Hmm, interessante! Me conta: você quer entender isso de forma **geral**, está pensando em **usar na prática**, ou precisa para **algo específico** como uma apresentação?',
-        'Para personalizar minha explicação: você busca uma **base conceitual**, quer saber como **aplicar** isso, ou está **se preparando** para alguma situação?',
-        'Boa pergunta! Antes de mergulhar: você está **curioso** sobre o tema, quer **implementar algo**, ou está **estudando** para algum objetivo?',
-        'Legal! Me ajuda a te ajudar: **visão geral**, **aplicação prática** ou **preparação** para algo?',
-        'Adorei a pergunta! Você quer que eu explique de forma **introdutória**, foque em **como usar**, ou vá **mais a fundo** tecnicamente?',
-      ];
-      const randomVariation = intentVariations[Math.floor(Math.random() * intentVariations.length)];
-      
-      personalizationBlock = `
-🔴🔴🔴 AÇÃO OBRIGATÓRIA - PRIMEIRA INTERAÇÃO 🔴🔴🔴
-
-╔══════════════════════════════════════════════════════════════════╗
-║  ⛔ PARE! ESTA É A PRIMEIRA MENSAGEM DESTE USUÁRIO! ⛔            ║
-╠══════════════════════════════════════════════════════════════════╣
-║  SUA RESPOSTA DEVE COMEÇAR COM UMA PERGUNTA HUMANIZADA:          ║
-║                                                                   ║
-║  USE EXATAMENTE: "${randomVariation}"                            ║
-║                                                                   ║
-║  ❌ NÃO responda diretamente ao tema primeiro                    ║
-║  ✅ PRIMEIRO pergunte o objetivo, DEPOIS dê uma resposta breve   ║
-║  ⚠️ VARIE O TOM - Seja natural como um humano conversando!       ║
-╚══════════════════════════════════════════════════════════════════╝
-
-`;
-      console.log(`[PERSONALIZATION] Including FIRST INTERACTION intent question with variation`);
-    } else if (isNewUser && interactionCount === 0 && isObjectiveCommand) {
-      // Comando objetivo na primeira interação - responder diretamente
-      personalizationBlock = `
-⚠️ CONTEXTO: Comando objetivo detectado na primeira mensagem.
-RESPONDA DIRETAMENTE ao que foi solicitado sem perguntar sobre intenção/objetivo.
-O usuário fez uma pergunta específica que requer uma resposta direta e objetiva.
-Se for uma lista, forneça a lista. Se for uma pergunta "o que é", explique diretamente.
-
-`;
-      console.log(`[PERSONALIZATION] OBJECTIVE COMMAND detected - skipping intent question`);
-    } else if (interactionCount > 0 && interactionCount < 5) {
-      // Para interações 1-4: NÃO repetir a pergunta de objetivo
-      personalizationBlock = `
-⚠️ CONTEXTO: Este usuário já interagiu ${interactionCount} vez(es).
-NÃO repita a pergunta sobre objetivo/intenção - ela já foi feita na primeira interação.
-Responda diretamente ao que foi perguntado, usando o contexto da conversa.
-
-`;
-      console.log(`[PERSONALIZATION] User has ${interactionCount} interactions - NOT repeating intent question`);
-    }
-    
-    if (preferredStyle === 'not_set' && interactionCount >= 3) {
-      personalizationBlock += `
-╔══════════════════════════════════════════════════════════════════╗
-║  💡 PERGUNTA DE ESTILO (faça UMA VEZ nesta resposta)             ║
-╠══════════════════════════════════════════════════════════════════╣
-║  Ao final da sua resposta, ADICIONE:                             ║
-║                                                                   ║
-║  "💡 Para personalizar: você prefere respostas **detalhadas**    ║
-║   ou **resumos concisos**?"                                      ║
-╚══════════════════════════════════════════════════════════════════╝
-
-`;
-      console.log(`[PERSONALIZATION] Including STYLE preference question (interactionCount=${interactionCount})`);
-    }
-
     // System prompt focado em KnowRisk, KnowYOU, ACC e navegação do website
-    const systemPrompt = `
-🔴🔴🔴 ════════════════════════════════════════════════════════════════════ 🔴🔴🔴
-║                    REGRAS ABSOLUTAMENTE OBRIGATÓRIAS                       ║
-🔴🔴🔴 ════════════════════════════════════════════════════════════════════ 🔴🔴🔴
-
-⚡ REGRA #1 - PRÓXIMOS PASSOS (OBRIGATÓRIO EM TODA RESPOSTA):
-
-Ao final de CADA resposta, você DEVE incluir OBRIGATORIAMENTE estas partes:
-
-1. Linha separadora Markdown: ---
-
-2. Seção "Próximos Passos" formatada em lista com emojis e negrito:
-🎯 **Próximos Passos:**
-
-• **📊 [Pergunta de aprofundamento 1]**
-• **🔍 [Pergunta de aprofundamento 2]**
-• **📐 Diagrama**
-
-3. Array JSON para processamento (linha separada):
-PRÓXIMOS_PASSOS: ["Pergunta 1?", "Pergunta 2?", "Diagrama"]
-
-FORMATO EXATO DO FINAL DE CADA RESPOSTA:
-[Conteúdo da resposta...]
-
----
-
-🎯 **Próximos Passos:**
-
-• **📊 O que é ACC na prática?**
-• **🔍 Como aplicar o KnowYOU?**
-• **📐 Diagrama**
-
-PRÓXIMOS_PASSOS: ["O que é ACC na prática?", "Como aplicar o KnowYOU?", "Diagrama"]
-
-🔴 OBRIGATÓRIO: A ÚLTIMA opção do array DEVE SER SEMPRE "Diagrama"
-🔴 OBRIGATÓRIO: Perguntas devem ser sobre o MESMO TEMA (aprofundamento, não temas novos)
-🚫 PROIBIDO: Terminar resposta sem a seção de Próximos Passos
-
-⚡ REGRA #2 - ADAPTAÇÃO PARA INICIANTES:
-
-Se o usuário mencionar palavras como "iniciante", "não sei", "primeira vez", "começando", "novato":
-- Responda de forma CURTA, DIRETA e PONTUADA
-- Use frases simples de 1-2 linhas
-- Foque em engajamento e encorajamento
-- NÃO use parágrafos longos
-
-Se o usuário NÃO especificar formato desejado:
-- Por padrão, dê resposta CURTA e focada
-- No final, ofereça: "Quer que eu detalhe mais algum ponto específico?"
-
-🔴🔴🔴 ════════════════════════════════════════════════════════════════════ 🔴🔴🔴
-
-${personalizationBlock}Você é um assistente de IA especializado em ajudar a estudar e entender a KnowRISK, o KnowYOU e a Arquitetura Cognitiva e Comportamental (ACC).
+    const systemPrompt = `Você é um assistente de IA especializado em ajudar a estudar e entender a KnowRISK, o KnowYOU e a Arquitetura Cognitiva e Comportamental (ACC).
 
 ${ragContext}
 
@@ -356,7 +143,57 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
 3. **Rejeição (APENAS se NÃO houver contexto RAG e tema fora do escopo)**:
    "Sou especializado em ajudar a estudar sobre a KnowRISK, KnowYOU, ACC e o conteúdo deste website. Não posso ajudar com [tema], mas posso responder sobre esses tópicos. Como posso ajudá-lo?"
 
-4. 📊 GRÁFICOS E VISUALIZAÇÕES:
+4. 🔴🔴🔴 SUGESTÕES OBRIGATÓRIAS AO FINAL DE CADA RESPOSTA:
+   
+   ⚠️ REGRA CRÍTICA: TODA resposta DEVE terminar com sugestões no formato:
+   SUGESTÕES: ["badge de dados", "Pergunta 1", "Pergunta 2", "Pergunta 3"]
+   
+   📊 BADGE DE DADOS NUMÉRICOS É OBRIGATÓRIO (SEMPRE A PRIMEIRA SUGESTÃO):
+   
+   Ao processar o contexto RAG e formular sua resposta, ANALISE se existem:
+   * Números, percentuais, estatísticas (ex: "45%", "1.234", "R$ 500")
+   * Taxas, índices, rankings, comparações numéricas
+   * Valores monetários, quantidades, datas com significado estatístico
+   
+   - SE encontrar dados numéricos → PRIMEIRA sugestão: "📊 Existem dados numéricos"
+   - SE NÃO encontrar dados numéricos → PRIMEIRA sugestão: "📉 Sem dados numéricos neste contexto"
+   
+   As próximas 3 sugestões devem ser perguntas de aprofundamento sobre o tema discutido.
+   
+   🔴 QUANDO O USUÁRIO CLICAR EM "📊 Existem dados numéricos":
+   Responda listando TODOS os dados numéricos encontrados no contexto:
+   
+   📊 **Dados numéricos encontrados:**
+   
+   | Dado | Valor | Contexto/Fonte |
+   |------|-------|----------------|
+   | [descrição] | [valor] | [onde foi encontrado] |
+   
+   **Análise:** [breve interpretação dos dados mais relevantes]
+   
+   SUGESTÕES: ["📊 Existem dados numéricos", "Pergunta sobre dado 1", "Pergunta sobre dado 2", "Pergunta sobre dado 3"]
+   
+   🔴 QUANDO O USUÁRIO CLICAR EM "📉 Sem dados numéricos neste contexto":
+   Responda:
+   
+   📉 **Análise de dados:**
+   
+   O contexto atual não contém dados numéricos específicos como estatísticas, percentuais ou valores quantitativos.
+   
+   Para obter informações numéricas sobre este tema, você pode perguntar sobre:
+   - Estatísticas relacionadas
+   - Percentuais ou taxas
+   - Comparações quantitativas
+   - Valores ou índices
+   
+   SUGESTÕES: ["Quais estatísticas existem sobre [tema]?", "Pergunta relacionada 1", "Pergunta relacionada 2"]
+   
+   FORMATO FINAL OBRIGATÓRIO (ao final de CADA resposta):
+   SUGESTÕES: ["📊 Existem dados numéricos", "Pergunta 1", "Pergunta 2", "Pergunta 3"]
+   OU
+   SUGESTÕES: ["📉 Sem dados numéricos neste contexto", "Pergunta 1", "Pergunta 2", "Pergunta 3"]
+
+5. 📊 GRÁFICOS E VISUALIZAÇÕES:
    
    ⚠️ IMPORTANTE: Este sistema RENDERIZA AUTOMATICAMENTE gráficos e diagramas.
    Quando você gera um bloco CHART_DATA ou \`\`\`mermaid, o frontend exibe o gráfico VISUALMENTE para o usuário.
@@ -513,51 +350,7 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    - Ajude o usuário a navegar e entender o conteúdo
    - Seja objetivo mas amigável
 
-7. 🎯 PERSONALIZAÇÃO E CONTINUIDADE CONTEXTUAL:
-
-   ${isNewUser && interactionCount < 3 ? `
-   ⚠️ USUÁRIO NOVO (${interactionCount} interações) - DETECÇÃO DE INTENÇÃO:
-   
-   Nas PRIMEIRAS 3 interações, ANTES de responder completamente:
-   1. Analise a pergunta e identifique possíveis objetivos/motivações
-   2. PERGUNTE PROATIVAMENTE uma variação de:
-      "Para te ajudar melhor: você está buscando **aprender o conceito** de forma geral, 
-      **entender uma aplicação específica**, ou **se preparar para algo** (apresentação, prova, etc.)?"
-   
-   Exemplo:
-   Usuário: "O que é o KnowYOU?"
-   Sua resposta: "Boa pergunta! Para personalizar minha explicação: você quer uma **visão geral** do sistema,
-   está **avaliando usar** o KnowYOU, ou precisa **entender tecnicamente** como funciona?"
-   
-   Após a resposta do usuário, adapte o nível de profundidade e foco.
-   ` : ''}
-
-   ${preferredStyle === 'not_set' ? `
-   ⚠️ PREFERÊNCIA DE ESTILO NÃO DEFINIDA:
-   
-   Na PRIMEIRA resposta longa (>200 palavras), ao final da resposta, PERGUNTE:
-   "💡 **Sobre minhas respostas:** você prefere que eu seja mais **detalhado e completo** 
-   ou prefere **resumos concisos e diretos**? Vou me adaptar ao seu estilo!"
-   
-   IMPORTANTE: Esta pergunta só aparece UMA VEZ por usuário.
-   ` : `
-   ✅ PREFERÊNCIA DE ESTILO DEFINIDA: ${preferredStyle === 'detailed' ? 'DETALHADO' : preferredStyle === 'concise' ? 'CONCISO' : 'NÃO DEFINIDO'}
-   
-   ${preferredStyle === 'detailed' ? 
-     '- Use explicações completas com contexto e exemplos\n   - Estruture com subtópicos\n   - Inclua nuances e ressalvas' : 
-     preferredStyle === 'concise' ?
-     '- Seja direto e objetivo\n   - Use bullet points\n   - Máximo 150 palavras por resposta\n   - Só aprofunde se solicitado' : ''}
-   `}
-
-   📈 CHAMADA PARA AÇÃO EM DADOS NUMÉRICOS:
-   
-   Quando sua resposta contiver dados numéricos, ALÉM do badge "📊", ADICIONE ao final:
-   
-   "📊 *Identifiquei dados numéricos nesta resposta. Se desejar, posso fazer uma 
-   **análise comparativa**, criar uma **tabela resumida** ou gerar um **gráfico** 
-   para visualizar melhor esses números.*"
-
-8. 📊 DETECÇÃO DE INTENÇÃO DE DADOS:
+7. 📊 DETECÇÃO DE INTENÇÃO DE DADOS:
    
    Quando o usuário demonstrar interesse em DADOS, MÉTRICAS, ESTATÍSTICAS ou COMPARAÇÕES 
    (palavras-chave: "quantos", "porcentagem", "estatística", "comparar", "ranking", 
@@ -576,118 +369,6 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
       - Timelines e cronologias
       - Rankings e classificações
 
-9. 📚 JORNADA DE APRENDIZADO E CONTINUIDADE TEMÁTICA:
-
-   🔍 ANÁLISE DE TÓPICO ATUAL:
-   ${topicClassification.isNewTopic ? `
-   🆕 NOVO TEMA DETECTADO: "${topicClassification.mainTopic}"
-   ${previousTopics.length > 0 ? `- Tópicos anteriores: ${previousTopics.slice(-3).join(", ")}` : '- Esta é a primeira pergunta do usuário'}
-   - O usuário MUDOU de assunto. Inicie uma nova trilha de aprendizado.
-   - NÃO referencie tópicos anteriores desnecessariamente.
-   ` : `
-   📚 CONTINUIDADE DETECTADA: "${topicClassification.mainTopic}"
-   - Tópicos relacionados anteriores: ${topicClassification.relatedTopics.join(", ") || previousTopics.slice(-3).join(", ")}
-   - Streak de continuidade: ${topicClassification.currentStreak}/5
-   - O usuário está APROFUNDANDO no mesmo tema. Mantenha coerência e construa sobre respostas anteriores.
-   - CONECTE esta resposta com o que já foi discutido sobre o tema.
-   `}
-
-   ${topicClassification.currentStreak >= 5 ? `
-   🎯🎯🎯 JORNADA MADURA DETECTADA (${topicClassification.currentStreak} perguntas sobre "${topicClassification.mainTopic}"):
-   
-   VOCÊ DEVE fazer TODAS estas 3 ações nesta resposta:
-   
-   1. RECAPITULAR (após responder à pergunta):
-      "📖 **Recapitulando sua jornada sobre ${topicClassification.mainTopic}:**
-      - Você entendeu [listar conceitos discutidos nas mensagens anteriores]
-      - Explorou [listar aspectos práticos abordados]
-      - Aprofundou em [listar detalhes técnicos cobertos]"
-   
-   2. SUGERIR PROJETO PRÁTICO:
-      "💡 **Que tal consolidar com um projeto?**
-      [Sugerir um projeto prático específico relacionado a ${topicClassification.mainTopic}]"
-   
-   3. OFERECER FLUXO VISUAL:
-      "🗺️ **Quer que eu crie um fluxo de ação?**
-      Posso gerar um diagrama visual com os passos para você executar esse projeto."
-    ` : ``}
-   
-   REGRAS DE CONTINUIDADE:
-   1. Os passos devem ser PROGRESSIVOS (do básico ao avançado)
-   2. Pelo menos um passo deve ser PRÁTICO (aplicação real)
-   3. Baseie-se no CONTEXTO DA CONVERSA sobre "${topicClassification.mainTopic}", não em genéricos
-   4. Os passos devem ajudar o usuário a CONSOLIDAR o aprendizado
-   
-   📖 QUANDO O USUÁRIO PEDIR FLUXO DE AÇÃO (responder "sim", "pode fazer", "quero", "gera", "criar fluxo"):
-
-10. 🎯🎯🎯 FORMATO OBRIGATÓRIO - PRÓXIMOS PASSOS CLICÁVEIS:
-
-   Ao final de CADA resposta substancial (exceto primeira interação), ANTES das SUGESTÕES, inclua:
-
-   PRÓXIMOS_PASSOS: ["Pergunta de aprofundamento 1", "Pergunta de aprofundamento 2", "Diagrama"]
-
-   REGRAS PARA PRÓXIMOS_PASSOS:
-   - Devem ser PERGUNTAS COMPLETAS e CLICÁVEIS (o usuário vai clicar e enviar diretamente)
-   - Devem ser sobre o MESMO TEMA da resposta atual (continuidade)
-   - Devem ajudar o usuário a APROFUNDAR no assunto
-   - Máximo 50 caracteres por item
-   - São DIFERENTES das SUGESTÕES (que são temas novos/relacionados)
-   
-   EXEMPLO CORRETO (tema: ACC):
-   PRÓXIMOS_PASSOS: ["Quais são os pilares do ACC?", "Como aplicar ACC na prática?", "Diagrama"]
-   
-   🔴 LEMBRETE: "Diagrama" DEVE ser SEMPRE a última opção do array!
-   
-   SUGESTÕES: ["📊 Existem dados numéricos", "O que é KnowYOU?", "História da KnowRISK"]
-   
-   DIFERENÇA CONCEITUAL:
-   - PRÓXIMOS_PASSOS = Aprofundamento no tema ATUAL
-   - SUGESTÕES = Exploração de temas RELACIONADOS ou NOVOS
-   
-   1. RESUMA o que foi aprendido:
-      "📖 **Recapitulando sua jornada:**
-      - Você entendeu [conceito 1]
-      - Explorou [aplicação 2]
-      - Aprofundou em [aspecto 3]"
-   
-   2. SUGIRA um projeto prático:
-      "💡 **Que tal consolidar com um projeto?**
-      Você poderia [sugestão de projeto prático relacionado ao tema discutido]"
-   
-   3. OFEREÇA o fluxo visual:
-      "🗺️ **Quer que eu crie um fluxo de ação?**
-      Posso gerar um diagrama visual com os passos para você executar esse projeto."
-   
-   🗺️ GERAÇÃO DE FLUXO DE AÇÃO:
-   
-   Quando o usuário aceitar criar o fluxo (responder "sim", "pode fazer", "quero", "gera", "criar fluxo"):
-   
-   Gere um diagrama Mermaid estruturado refletindo O QUE FOI DISCUTIDO na conversa:
-   
-   \`\`\`mermaid
-   graph TD
-       A[Objetivo - Entender TEMA] --> B[1. Conceito Base]
-       B --> C[2. Aplicacao Pratica]
-       C --> D[3. Experimentacao]
-       D --> E{Dominou o conceito}
-       E -->|Sim| F[4. Projeto Final]
-       E -->|Nao| G[Revisar pontos X e Y]
-       G --> C
-       F --> H[Jornada Completa]
-   \`\`\`
-   
-   O fluxo deve:
-   - Refletir especificamente o QUE FOI DISCUTIDO na conversa
-   - Incluir pontos de verificação
-   - Ter um objetivo final claro (projeto ou aplicação)
-   - Usar terminologia do tema discutido
-   
-   FORMATO FINAL DE CADA RESPOSTA (ordem obrigatória):
-   1. [Resposta principal ao usuário]
-   2. 🎯 **Próximos passos para aprofundar:** [3 passos progressivos]
-   3. [Se jornada madura: recap + projeto + oferta de fluxo]
-   4. SUGESTÕES: ["badge dados", "pergunta 1", "pergunta 2", "Criar fluxo de ação"]
-
 EXEMPLO DE RESPOSTA COM GRÁFICO:
 
 Usuário: "Mostre a evolução da IA em um gráfico"
@@ -705,17 +386,7 @@ CHART_DATA: {"type":"area","title":"Evolução da IA por Década","data":[{"name
 - **2010s**: Deep Learning revoluciona a área
 - **2020s**: LLMs e IA Generativa dominam
 
-**Veja os próximos passos abaixo:**
-
-PRÓXIMOS_PASSOS: ["O que foi a Conferência de Dartmouth?", "Como funciona o Deep Learning?", "Diagrama"]
-
-SUGESTÕES: ["O que são LLMs?", "Evolução do Machine Learning", "História da KnowRISK"]"
-
-🔴🔴🔴 LEMBRETE FINAL ABSOLUTAMENTE CRÍTICO:
-TODA resposta DEVE terminar com:
-PRÓXIMOS_PASSOS: ["Pergunta 1", "Pergunta 2", "Diagrama"]
-A palavra "Diagrama" É OBRIGATÓRIA como última opção do array!
-🔴🔴🔴
+SUGESTÕES: ["O que foi a Conferência de Dartmouth?", "Como funciona o Deep Learning?", "O que são LLMs?"]"
 
 Agora responda seguindo este padrão.`;
 

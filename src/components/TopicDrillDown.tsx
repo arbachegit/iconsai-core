@@ -69,7 +69,7 @@ export function TopicDrillDown({
           size="sm"
           className={cn(
             "text-[10px] h-6 px-2 rounded-full shrink-0",
-            // SEM transition-colors para evitar latência
+            "transition-colors",
             // NOVOS - Manter estilo atual (roxo/primary)
             isNew && [
               "border border-primary/50 hover:border-primary",
@@ -95,11 +95,10 @@ export function TopicDrillDown({
           )}
           <span className="max-w-[100px] truncate">{topic}</span>
           {isLoading ? (
-            <Loader2 className="h-3 w-3 ml-1" />
+            <Loader2 className="h-3 w-3 ml-1 animate-spin" />
           ) : (
             <ChevronDown className={cn(
-              "h-3 w-3 ml-1",
-              // SEM transition-transform para evitar latência
+              "h-3 w-3 ml-1 transition-transform",
               isOpen && "rotate-180",
               !isNew && "text-yellow-400"
             )} />
@@ -117,7 +116,7 @@ export function TopicDrillDown({
       >
         {isLoading ? (
           <div className="flex items-center justify-center py-2">
-            <Loader2 className="h-4 w-4 text-muted-foreground" />
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             <span className="ml-2 text-xs text-muted-foreground">Carregando...</span>
           </div>
         ) : subtopics.length > 0 ? (

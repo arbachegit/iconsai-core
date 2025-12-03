@@ -1,20 +1,10 @@
 type Message = { role: "user" | "assistant"; content: string };
 
-interface UserPreferences {
-  responseStyle: 'detailed' | 'concise' | 'not_set';
-  interactionCount: number;
-  isNewUser: boolean;
-}
-
 interface StreamChatOptions {
   messages: Message[];
   onDelta: (deltaText: string) => void;
   onDone: () => void;
   onError?: (error: Error) => void;
-  sessionId?: string;
-  userPreferences?: UserPreferences;
-  previousTopics?: string[];
-  topicStreak?: number;
 }
 
 export async function streamChat({
@@ -22,10 +12,6 @@ export async function streamChat({
   onDelta,
   onDone,
   onError,
-  sessionId,
-  userPreferences,
-  previousTopics = [],
-  topicStreak = 0,
 }: StreamChatOptions) {
   const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
@@ -36,7 +22,7 @@ export async function streamChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages, sessionId, userPreferences, previousTopics, topicStreak }),
+      body: JSON.stringify({ messages }),
     });
 
     if (!resp.ok) {
@@ -118,20 +104,11 @@ export async function streamChat({
   }
 }
 
-export function extractNextSteps(text: string): string[] {
-  // Regex case-insensitive para capturar variações como PRÓXIMOS_PASSOs
-  const match = text.match(/PR[ÓO]XIMOS_PASSOS?:\s*(\[[\s\S]*?\])/i);
+export function extractSuggestions(text: string): string[] {
+  const match = text.match(/SUGESTÕES:\s*(\[.*?\])/);
   if (match) {
     try {
-      // Limpar possíveis quebras de linha dentro do JSON
-      const cleanJson = match[1].replace(/\n/g, ' ').replace(/\s+/g, ' ');
-      const parsed = JSON.parse(cleanJson);
-      
-      // Validar que é array de strings
-      if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
-        return parsed;
-      }
-      return [];
+      return JSON.parse(match[1]);
     } catch {
       return [];
     }
@@ -139,24 +116,6 @@ export function extractNextSteps(text: string): string[] {
   return [];
 }
 
-export function removeNextStepsFromText(text: string): string {
-  // Remover formato estruturado case-insensitive: PRÓXIMOS_PASSOS: [...] ou PRÓXIMOS_PASSOs: [...]
-  let cleaned = text.replace(/\n*PR[ÓO]XIMOS_PASSOS?:\s*\[[\s\S]*?\]\s*/gi, "");
-  
-  // Remover seção visual completa com linha separadora e lista formatada
-  cleaned = cleaned.replace(/\n*---\s*\n*🎯\s*\*?\*?Pr[óo]ximos\s*Passos\*?\*?:?\s*\n(?:[\s\S]*?)(?=\n\n[A-Z]|\n\n\*\*|$)/gi, "");
-  
-  // Remover formato markdown: 🎯 **Próximos Passos:** seguido de lista com bullets
-  cleaned = cleaned.replace(/\n*🎯\s*\*?\*?Pr[óo]ximos\s*Passos\*?\*?:?\s*\n(?:•[^\n]*\n?)+/gi, "");
-  
-  // Remover variação com "para aprofundar"
-  cleaned = cleaned.replace(/\n*🎯?\s*\*?\*?Pr[óo]ximos\s*passos\s*para\s*aprofundar\*?\*?:?\s*\n(?:•[^\n]*\n?)+/gi, "");
-  
-  // Remover linha separadora solitária no final
-  cleaned = cleaned.replace(/\n*---\s*$/g, "");
-  
-  // Remover SUGESTÕES se ainda aparecer
-  cleaned = cleaned.replace(/\n*SUGESTÕES:\s*\[.*?\]\s*$/gi, "");
-  
-  return cleaned.trim();
+export function removeSuggestionsFromText(text: string): string {
+  return text.replace(/\n*SUGESTÕES:\s*\[.*?\]\s*$/g, "").trim();
 }

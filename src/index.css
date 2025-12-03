@@ -168,50 +168,6 @@ All colors MUST be HSL.
   animation: rankingSlideIn 0.4s ease-out forwards;
 }
 
-/* ============================================================================
-   🛡️ PROTEÇÃO ANTI-LATÊNCIA VIA CSS PURO - :focus-within
-   ============================================================================
-   Detecta digitação automaticamente quando textarea está focado.
-   ZERO JavaScript necessário durante digitação = ZERO latência.
-   ============================================================================ */
-
-/* Badges sem animações default */
-.carousel-badge-item,
-.next-step-badge,
-.suggestion-badge-reorder {
-  /* SEM animation/transition por padrão */
-}
-
-/* Hover effects apenas em estado normal */
-.carousel-badge-item:hover {
-  transform: scale(1.05);
-}
-
-.next-step-badge:hover {
-  transform: scale(1.08) translateY(-1px);
-  box-shadow: 0 4px 12px hsl(187 100% 50% / 0.3);
-}
-
-/* 🔐 PROTEÇÃO VIA :focus-within - Detecta digitação SEM JavaScript */
-.chat-container:focus-within,
-.chat-container:focus-within *,
-.chat-container:focus-within *::before,
-.chat-container:focus-within *::after {
-  animation: none !important;
-  animation-play-state: paused !important;
-  transition: none !important;
-}
-
-/* Exceção: manter estilos básicos do textarea durante foco */
-.chat-container:focus-within textarea {
-  animation: none !important;
-  transition: none !important;
-}
-
-/* ============================================================================
-   FIM DA PROTEÇÃO - CSS PURO, ZERO JAVASCRIPT
-   ============================================================================ */
-
 @layer base {
   * {
     @apply border-border;

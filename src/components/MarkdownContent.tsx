@@ -145,63 +145,61 @@ interface SortConfig {
   direction: 'asc' | 'desc';
 }
 
-// Helper function to extract table data (defined outside component to avoid recreation)
-const extractTableDataFromNode = (node: React.ReactNode): { headers: string[]; rows: string[][] } | null => {
-  const headers: string[] = [];
-  const rows: string[][] = [];
-
-  const extractText = (n: React.ReactNode): string => {
-    if (typeof n === 'string' || typeof n === 'number') return String(n);
-    if (Array.isArray(n)) return n.map(extractText).join('');
-    if (typeof n === 'object' && n !== null && 'props' in n) {
-      return extractText((n as React.ReactElement).props.children);
-    }
-    return '';
-  };
-
-  const processChildren = (children: React.ReactNode, isHeader = false, currentRow: string[] = []) => {
-    if (!children) return;
-
-    if (Array.isArray(children)) {
-      children.forEach(child => processChildren(child, isHeader, currentRow));
-      return;
-    }
-
-    if (typeof children === 'object' && children !== null && 'props' in children) {
-      const element = children as React.ReactElement;
-      const type = element.type;
-      const props = element.props;
-
-      if (type === 'thead') {
-        processChildren(props.children, true);
-      } else if (type === 'tbody') {
-        processChildren(props.children, false);
-      } else if (type === 'tr') {
-        const row: string[] = [];
-        processChildren(props.children, isHeader, row);
-        if (isHeader) {
-          headers.push(...row);
-        } else if (row.length > 0) {
-          rows.push(row);
-        }
-      } else if (type === 'th' || type === 'td') {
-        const text = extractText(props.children);
-        currentRow.push(text);
-      } else {
-        processChildren(props.children, isHeader, currentRow);
-      }
-    }
-  };
-
-  processChildren(node);
-  return headers.length > 0 ? { headers, rows } : null;
-};
-
 const SortableTableWrapper = ({ children }: { children: React.ReactNode }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const [tableData, setTableData] = useState<{ headers: string[]; rows: string[][] } | null>(null);
 
-  // FIXED: Use useMemo to compute tableData directly, no setState inside useMemo
-  const tableData = useMemo(() => extractTableDataFromNode(children), [children]);
+  // Extract table data on mount
+  const extractTableData = useCallback((node: React.ReactNode): { headers: string[]; rows: string[][] } | null => {
+    const headers: string[] = [];
+    const rows: string[][] = [];
+
+    const processChildren = (children: React.ReactNode, isHeader = false, currentRow: string[] = []) => {
+      if (!children) return;
+
+      if (Array.isArray(children)) {
+        children.forEach(child => processChildren(child, isHeader, currentRow));
+        return;
+      }
+
+      if (typeof children === 'object' && children !== null && 'props' in children) {
+        const element = children as React.ReactElement;
+        const type = element.type;
+        const props = element.props;
+
+        if (type === 'thead') {
+          processChildren(props.children, true);
+        } else if (type === 'tbody') {
+          processChildren(props.children, false);
+        } else if (type === 'tr') {
+          const row: string[] = [];
+          processChildren(props.children, isHeader, row);
+          if (isHeader) {
+            headers.push(...row);
+          } else if (row.length > 0) {
+            rows.push(row);
+          }
+        } else if (type === 'th' || type === 'td') {
+          const text = extractText(props.children);
+          currentRow.push(text);
+        } else {
+          processChildren(props.children, isHeader, currentRow);
+        }
+      }
+    };
+
+    const extractText = (node: React.ReactNode): string => {
+      if (typeof node === 'string' || typeof node === 'number') return String(node);
+      if (Array.isArray(node)) return node.map(extractText).join('');
+      if (typeof node === 'object' && node !== null && 'props' in node) {
+        return extractText((node as React.ReactElement).props.children);
+      }
+      return '';
+    };
+
+    processChildren(node);
+    return headers.length > 0 ? { headers, rows } : null;
+  }, []);
 
   const handleSort = useCallback((columnIndex: number) => {
     setSortConfig(prev => {
@@ -222,6 +220,12 @@ const SortableTableWrapper = ({ children }: { children: React.ReactNode }) => {
       ? <ArrowUp className="h-3 w-3 ml-1 text-primary inline" />
       : <ArrowDown className="h-3 w-3 ml-1 text-primary inline" />;
   };
+
+  // Extract data once
+  useMemo(() => {
+    const data = extractTableData(children);
+    if (data) setTableData(data);
+  }, [children, extractTableData]);
 
   // If we have table data, render sortable version
   if (tableData) {

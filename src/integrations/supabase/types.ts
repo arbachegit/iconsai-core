@@ -1015,51 +1015,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_chat_preferences: {
-        Row: {
-          avg_message_length: number | null
-          chat_type: string
-          created_at: string | null
-          detected_intent: string | null
-          id: string
-          intent_confirmed: boolean | null
-          response_style: string | null
-          response_style_confidence: number | null
-          session_id: string
-          topics_discussed: string[] | null
-          total_interactions: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          avg_message_length?: number | null
-          chat_type: string
-          created_at?: string | null
-          detected_intent?: string | null
-          id?: string
-          intent_confirmed?: boolean | null
-          response_style?: string | null
-          response_style_confidence?: number | null
-          session_id: string
-          topics_discussed?: string[] | null
-          total_interactions?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          avg_message_length?: number | null
-          chat_type?: string
-          created_at?: string | null
-          detected_intent?: string | null
-          id?: string
-          intent_confirmed?: boolean | null
-          response_style?: string | null
-          response_style_confidence?: number | null
-          session_id?: string
-          topics_discussed?: string[] | null
-          total_interactions?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       user_roles: {
         Row: {
           created_at: string | null

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,63 +18,43 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
   const [startX, setStartX] = useState(0);
   const [scrollStartLeft, setScrollStartLeft] = useState(0);
 
-  // Throttle ref para evitar chamadas excessivas
-  const throttleRef = useRef<number | null>(null);
-
   const updateScrollState = useCallback(() => {
-    // Usar requestAnimationFrame para evitar layout thrashing
-    if (throttleRef.current) return;
+    if (!scrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    setCanScrollLeft(scrollLeft > 0);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
     
-    throttleRef.current = requestAnimationFrame(() => {
-      throttleRef.current = null;
-      if (!scrollRef.current) return;
+    // Calculate hidden badges on the right
+    if (scrollWidth > clientWidth) {
+      const children = scrollRef.current.children;
+      const visibleEnd = scrollLeft + clientWidth;
+      let hiddenOnRight = 0;
       
-      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
-      
-      // Calculate hidden badges on the right
-      if (scrollWidth > clientWidth) {
-        const children = scrollRef.current.children;
-        const visibleEnd = scrollLeft + clientWidth;
-        let hiddenOnRight = 0;
-        
-        for (let i = 0; i < children.length; i++) {
-          const child = children[i] as HTMLElement;
-          const childRight = child.offsetLeft + child.offsetWidth;
-          if (childRight > visibleEnd + 10) {
-            hiddenOnRight++;
-          }
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i] as HTMLElement;
+        const childRight = child.offsetLeft + child.offsetWidth;
+        if (childRight > visibleEnd + 10) {
+          hiddenOnRight++;
         }
-        setHiddenCount(hiddenOnRight);
-      } else {
-        setHiddenCount(0);
       }
-    });
+      setHiddenCount(hiddenOnRight);
+    } else {
+      setHiddenCount(0);
+    }
   }, []);
 
   useEffect(() => {
     updateScrollState();
     const el = scrollRef.current;
-    
-    // Debounce para resize - evita processamento excessivo
-    let resizeTimeout: number | null = null;
-    const debouncedResize = () => {
-      if (resizeTimeout) clearTimeout(resizeTimeout);
-      resizeTimeout = window.setTimeout(updateScrollState, 200);
-    };
-    
     if (el) {
-      el.addEventListener('scroll', updateScrollState, { passive: true });
-      window.addEventListener('resize', debouncedResize);
+      el.addEventListener('scroll', updateScrollState);
+      window.addEventListener('resize', updateScrollState);
     }
-    
     return () => {
       if (el) el.removeEventListener('scroll', updateScrollState);
-      window.removeEventListener('resize', debouncedResize);
-      if (resizeTimeout) clearTimeout(resizeTimeout);
+      window.removeEventListener('resize', updateScrollState);
     };
-  }, [updateScrollState]);
+  }, [children, updateScrollState]);
 
   const scrollBy = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return;
@@ -111,46 +91,37 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
 
   return (
     <div className="relative group">
-      {/* Fade na borda esquerda - SEM transition para evitar latência */}
+      {/* Fade na borda esquerda */}
       <div className={cn(
-        "absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-muted/80 to-transparent z-10 pointer-events-none",
+        "absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-muted/80 to-transparent z-10 pointer-events-none transition-opacity duration-200",
         canScrollLeft ? "opacity-100" : "opacity-0"
       )} />
       
-      {/* Seta esquerda - SEM transition para evitar latência */}
+      {/* Seta esquerda */}
       <button
         onClick={() => scrollBy('left')}
         className={cn(
-          "absolute left-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-background/90 border border-primary/40 shadow-md flex items-center justify-center hover:bg-primary/20",
+          "absolute left-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-background/90 border border-primary/40 shadow-md flex items-center justify-center hover:bg-primary/20 transition-all duration-200",
           canScrollLeft ? "opacity-0 group-hover:opacity-100" : "opacity-0 pointer-events-none"
         )}
       >
         <ChevronLeft className="w-4 h-4 text-primary" />
       </button>
 
-      {/* Container do carrossel com scroll suave */}
+      {/* Container do carrossel */}
       <div
         ref={scrollRef}
         className={cn(
-          "flex gap-1.5 items-center overflow-x-auto scrollbar-thin pb-1 px-2 select-none scroll-smooth",
+          "flex gap-1.5 items-center overflow-x-auto scrollbar-thin pb-1 px-2 select-none",
           isDragging ? "cursor-grabbing" : "cursor-grab",
           className
         )}
-        style={{ scrollBehavior: 'smooth' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
       >
-      {/* PROTEÇÃO ABSOLUTA: SEM animationDelay dinâmico para evitar latência */}
-        {useMemo(() => React.Children.map(children, (child, index) => (
-          <div 
-            key={index}
-            className="carousel-badge-item flex-shrink-0"
-          >
-            {child}
-          </div>
-        )), [children])}
+        {children}
       </div>
 
       {/* Indicador de badges ocultos */}
@@ -160,17 +131,17 @@ export function CarouselRow({ children, className }: CarouselRowProps) {
         </div>
       )}
 
-      {/* Fade na borda direita - SEM transition para evitar latência */}
+      {/* Fade na borda direita */}
       <div className={cn(
-        "absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-muted/80 to-transparent z-10 pointer-events-none",
+        "absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-muted/80 to-transparent z-10 pointer-events-none transition-opacity duration-200",
         canScrollRight ? "opacity-100" : "opacity-0"
       )} />
 
-      {/* Seta direita - SEM transition para evitar latência */}
+      {/* Seta direita */}
       <button
         onClick={() => scrollBy('right')}
         className={cn(
-          "absolute right-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-background/90 border border-primary/40 shadow-md flex items-center justify-center hover:bg-primary/20",
+          "absolute right-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-background/90 border border-primary/40 shadow-md flex items-center justify-center hover:bg-primary/20 transition-all duration-200",
           canScrollRight ? "opacity-0 group-hover:opacity-100" : "opacity-0 pointer-events-none"
         )}
       >

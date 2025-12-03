@@ -43,26 +43,6 @@ interface FileUploadStatus {
   documentId?: string;
   error?: string;
 }
-// Helper function to map status to process step label
-const getProcessStepLabel = (status: FileUploadStatus['status'], progress: number): string => {
-  switch (status) {
-    case 'waiting':
-      return 'Na fila';
-    case 'extracting':
-      return 'Análise de integridade';
-    case 'uploading':
-      return 'Upload';
-    case 'processing':
-      return progress < 75 ? 'Criando chunks' : 'Vetorização';
-    case 'completed':
-      return 'Concluído';
-    case 'failed':
-      return 'Falhou';
-    default:
-      return '';
-  }
-};
-
 export const DocumentsTab = () => {
   const { logActivity } = useActivityLogger();
   const { logIncrement } = useSystemIncrement();
@@ -425,19 +405,13 @@ O sistema utiliza um pipeline de 4 etapas:
     }
   });
 
-  // Delete document - uses ON DELETE CASCADE from database
+  // Delete document
   const deleteMutation = useMutation({
     mutationFn: async (docId: string) => {
-      // Database has ON DELETE CASCADE - just delete the document
-      const { error } = await supabase
-        .from("documents")
-        .delete()
-        .eq("id", docId);
+      const {
+        error
+      } = await supabase.from("documents").delete().eq("id", docId);
       if (error) throw error;
-    },
-    onError: (error: Error) => {
-      console.error("Erro ao deletar documento:", error);
-      toast.error(`Erro ao deletar: ${error.message}`);
     },
     onSuccess: (data, docId) => {
       queryClient.invalidateQueries({
@@ -1417,10 +1391,7 @@ O sistema utiliza um pipeline de 4 etapas:
                   <TableCell>
                     {fileStatus.status !== 'completed' && fileStatus.status !== 'failed' ? <div className="space-y-1">
                         <Progress value={fileStatus.progress} className="h-2" />
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="font-medium">{fileStatus.progress}%</span>
-                          <span className="text-primary/70">• {getProcessStepLabel(fileStatus.status, fileStatus.progress)}</span>
-                        </div>
+                        <span className="text-xs text-muted-foreground">{fileStatus.progress}%</span>
                       </div> : <span className="text-xs text-muted-foreground">
                         {fileStatus.progress}%
                       </span>}
