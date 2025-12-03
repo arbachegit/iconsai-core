@@ -368,13 +368,8 @@ export function useChatKnowYOU() {
             topicStreak: topicTracking.topicStreak,
             onDelta: (chunk) => updateAssistantMessage(chunk),
             onDone: async () => {
-            // Debug: verificar conteúdo antes da extração
-            console.log('[useChatKnowYOU] Full response before extraction:', fullResponse.slice(-500));
-            console.log('[useChatKnowYOU] Contains PRÓXIMOS_PASSOS:', fullResponse.includes('PRÓXIMOS_PASSOS'));
-            
             // Extrair próximos passos (antes das sugestões)
             const extractedNextSteps = extractNextSteps(fullResponse);
-            console.log('[useChatKnowYOU] Extracted nextSteps:', extractedNextSteps);
             if (extractedNextSteps.length > 0) {
               setNextSteps(extractedNextSteps);
             } else {

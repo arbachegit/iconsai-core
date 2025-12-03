@@ -148,12 +148,7 @@ export default function ChatKnowYOU() {
     }
   }, []);
 
-  // Sync inputRef with input state
-  useEffect(() => {
-    inputRef.current = input;
-  }, [input]);
-
-  // IntersectionObserver para detectar quando mensagem de áudio sai do viewport
+  // IntersectionObserver estável - sem dependência de messages para evitar recriação
   useEffect(() => {
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
@@ -168,14 +163,34 @@ export default function ChatKnowYOU() {
     }, {
       threshold: 0.1
     });
-    Object.entries(audioMessageRefs.current).forEach(([idx, el]) => {
-      if (el) {
-        el.setAttribute('data-audio-index', idx);
-        observer.observe(el);
-      }
+    
+    // Observar elementos existentes
+    const observeElements = () => {
+      Object.entries(audioMessageRefs.current).forEach(([idx, el]) => {
+        if (el) {
+          el.setAttribute('data-audio-index', idx);
+          observer.observe(el);
+        }
+      });
+    };
+    
+    observeElements();
+    
+    // MutationObserver para detectar novos elementos
+    const mutationObserver = new MutationObserver(() => {
+      observeElements();
     });
-    return () => observer.disconnect();
-  }, [messages]);
+    
+    const container = document.querySelector('[data-radix-scroll-area-viewport]');
+    if (container) {
+      mutationObserver.observe(container, { childList: true, subtree: true });
+    }
+    
+    return () => {
+      observer.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, []);
 
   // Mostrar FloatingPlayer quando áudio tocando E não visível
   useEffect(() => {
@@ -677,7 +692,11 @@ export default function ChatKnowYOU() {
           {/* Container relativo para posicionar botões dentro */}
           <div className="relative">
             <DocumentAttachButton onAttach={attachDocument} disabled={isLoading || isGeneratingAudio || isGeneratingImage} />
-            <Textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {
+            <Textarea value={input} onChange={e => {
+              const value = e.target.value;
+              setInput(value);
+              inputRef.current = value;
+            }} onKeyDown={e => {
               handleInputKeyDown(e);
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
