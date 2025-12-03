@@ -63,34 +63,23 @@ export const DigitalExclusionSection = () => {
   const generateAndSaveAudio = async (): Promise<string> => {
     const fullText = `${t('digitalExclusion.content1')} ${t('digitalExclusion.content2')} ${t('digitalExclusion.content3')}`;
     
-    // Usar fetch direto para receber o blob de áudio
-    const TTS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`;
-    
-    const response = await fetch(TTS_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
-      body: JSON.stringify({ text: fullText, chatType: 'health' }),
+    const { data, error } = await supabase.functions.invoke('text-to-speech', {
+      body: { text: fullText, chatType: 'health' }
     });
+    
+    if (error) throw error;
+    if (!data?.audioUrl) throw new Error('No audio URL returned');
 
-    if (!response.ok) {
-      throw new Error("Falha ao gerar áudio");
-    }
-
-    // Receber como blob (binário MP3)
-    const audioBlob = await response.blob();
+    const audioResponse = await fetch(data.audioUrl);
+    const audioBlob = await audioResponse.blob();
     const fileName = `digital-exclusion-${Date.now()}.mp3`;
     
-    // Upload para Storage
     const { error: uploadError } = await supabase.storage
       .from('tooltip-audio')
       .upload(fileName, audioBlob, { contentType: 'audio/mpeg', upsert: true });
     
     if (uploadError) throw uploadError;
     
-    // Retornar URL pública permanente
     const { data: { publicUrl } } = supabase.storage
       .from('tooltip-audio')
       .getPublicUrl(fileName);
