@@ -74,7 +74,6 @@ export default function ChatKnowYOU() {
     isGeneratingAudio,
     isGeneratingImage,
     currentlyPlayingIndex,
-    suggestions,
     nextSteps,
     currentSentiment,
     activeDisclaimer,

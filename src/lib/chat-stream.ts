@@ -118,20 +118,8 @@ export async function streamChat({
   }
 }
 
-export function extractSuggestions(text: string): string[] {
-  const match = text.match(/SUGESTÕES:\s*(\[.*?\])/);
-  if (match) {
-    try {
-      return JSON.parse(match[1]);
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
 export function extractNextSteps(text: string): string[] {
-  // Regex melhorado para capturar arrays JSON mesmo com quebras de linha
+  // Regex para capturar arrays JSON mesmo com quebras de linha
   const match = text.match(/PRÓXIMOS_PASSOS:\s*(\[[\s\S]*?\])/);
   console.log('[NEXT_STEPS] Raw text search:', text.includes('PRÓXIMOS_PASSOS'));
   if (match) {
@@ -156,10 +144,6 @@ export function extractNextSteps(text: string): string[] {
   return [];
 }
 
-export function removeSuggestionsFromText(text: string): string {
-  return text.replace(/\n*SUGESTÕES:\s*\[.*?\]\s*$/g, "").trim();
-}
-
 export function removeNextStepsFromText(text: string): string {
   // Remover formato estruturado: PRÓXIMOS_PASSOS: [...]
   let cleaned = text.replace(/\n*PRÓXIMOS_PASSOS:\s*\[[\s\S]*?\]\s*/g, "");
@@ -172,6 +156,9 @@ export function removeNextStepsFromText(text: string): string {
   
   // Remover formato markdown com lista de itens em bold/asteriscos
   cleaned = cleaned.replace(/\n*🎯\s*Próximos passos[^:]*:[\s\S]*?(?=\n\n|\n(?=[A-Z])|$)/gi, "");
+  
+  // Remover SUGESTÕES se ainda aparecer
+  cleaned = cleaned.replace(/\n*SUGESTÕES:\s*\[.*?\]\s*$/g, "");
   
   return cleaned.trim();
 }
