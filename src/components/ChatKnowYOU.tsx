@@ -101,9 +101,6 @@ export default function ChatKnowYOU() {
     subtopicsCache,
   } = useDocumentSuggestions('health');
   
-  // Debug: rastrear estado nextSteps
-  console.log('[ChatKnowYOU] nextSteps state:', nextSteps);
-  
   const [input, setInput] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
@@ -115,6 +112,7 @@ export default function ChatKnowYOU() {
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
   const [waitingCountdown, setWaitingCountdown] = useState(5);
   const [displayedSuggestions, setDisplayedSuggestions] = useState<string[]>([]);
+  const [badgesCollapsed, setBadgesCollapsed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -247,6 +245,9 @@ export default function ChatKnowYOU() {
     }
     
     if (input.trim() && !isLoading) {
+      // Expandir badges após envio (serão preenchidos com nova resposta)
+      setBadgesCollapsed(false);
+      
       if (isImageMode) {
         generateImage(input);
         setInput("");
@@ -262,6 +263,13 @@ export default function ChatKnowYOU() {
       }
       // Scroll imediato após enviar
       setTimeout(scrollToBottom, 100);
+    }
+  };
+  
+  // Handler para colapsar badges ao começar a digitar
+  const handleInputKeyDown = (e: React.KeyboardEvent) => {
+    if (!badgesCollapsed && input.length === 0 && e.key.length === 1) {
+      setBadgesCollapsed(true);
     }
   };
   const handleSuggestionClick = (suggestion: string, documentId?: string) => {
@@ -670,6 +678,7 @@ export default function ChatKnowYOU() {
           <div className="relative">
             <DocumentAttachButton onAttach={attachDocument} disabled={isLoading || isGeneratingAudio || isGeneratingImage} />
             <Textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {
+              handleInputKeyDown(e);
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSubmit(e);
@@ -742,7 +751,7 @@ export default function ChatKnowYOU() {
       </TooltipProvider>
 
       {/* Próximos Passos - POSIÇÃO FIXA: Abaixo do input, Acima das sugestões */}
-      {nextSteps.length > 0 && (
+      {nextSteps.length > 0 && !badgesCollapsed && (
         <div className="px-4 py-2.5 bg-gradient-to-r from-cyan-500/20 to-cyan-600/10 border-t border-cyan-400/60">
           <div className="flex items-center gap-1.5 mb-2">
             <Target className="w-4 h-4 text-cyan-400" />
@@ -765,7 +774,7 @@ export default function ChatKnowYOU() {
                   }}
                   className={`next-step-badge text-[11px] h-7 px-3 rounded-full shrink-0 transition-all ${
                     isDiagram 
-                      ? "animate-pulse bg-gradient-to-r from-violet-500/30 to-fuchsia-500/30 border-violet-400/60 text-violet-300 hover:from-violet-500 hover:to-fuchsia-500 hover:text-white hover:border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.4)]"
+                      ? "animate-pulse bg-gradient-to-r from-red-400/30 to-rose-400/30 border-red-300/60 text-red-200 hover:from-red-400 hover:to-rose-400 hover:text-white hover:border-red-400 shadow-[0_0_20px_rgba(248,113,113,0.4)]"
                       : "border-cyan-400/60 bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500 hover:text-cyan-950 hover:border-cyan-500 hover:scale-105 shadow-[0_0_12px_rgba(34,211,238,0.25)]"
                   }`}
                   style={{ animationDelay: `${idx * 50}ms` }}
@@ -784,7 +793,7 @@ export default function ChatKnowYOU() {
       )}
 
       {/* Suggestions - DUAS LINHAS FIXAS com carrossel horizontal - POSIÇÃO: Depois de Próximos Passos */}
-      {(displayedSuggestions.length > 0 || newDocumentBadge || complementarySuggestions.length > 0) && !isLoading && (
+      {(displayedSuggestions.length > 0 || newDocumentBadge || complementarySuggestions.length > 0) && !isLoading && !badgesCollapsed && (
         <div className="px-4 py-2 bg-muted/50 border-t border-border/50 space-y-1.5">
           {/* LINHA 1: Carrossel horizontal */}
           <CarouselRow>
