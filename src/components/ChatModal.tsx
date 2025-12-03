@@ -57,7 +57,7 @@ export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
-          className="w-full max-w-4xl bg-card/95 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.1)] border-t-2 border-l-2 border-t-white/20 border-l-white/20 border-r border-b border-r-black/30 border-b-black/30 pointer-events-auto animate-in zoom-in-95 duration-300"
+          className="w-full max-w-[986px] bg-card/95 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.1)] border-t-2 border-l-2 border-t-white/20 border-l-white/20 border-r border-b border-r-black/30 border-b-black/30 pointer-events-auto animate-in zoom-in-95 duration-300"
           style={{
             transform: 'translateZ(0)',
             backfaceVisibility: 'hidden'
@@ -65,7 +65,7 @@ export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
           onClick={(e) => e.stopPropagation()}
         >
           {/* Chat Content */}
-          <div className="p-3 h-[750px]">
+          <div className="p-3 h-[825px]">
             <ChatStudy onClose={handleClose} />
           </div>
         </div>
