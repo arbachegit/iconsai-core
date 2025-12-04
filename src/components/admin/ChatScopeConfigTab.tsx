@@ -281,56 +281,62 @@ export function ChatScopeConfigTab() {
             open={config.chat_type === "study" ? studyScopeOpen : healthScopeOpen}
             onOpenChange={config.chat_type === "study" ? setStudyScopeOpen : setHealthScopeOpen}
           >
-            <CollapsibleTrigger asChild>
-              <button className="flex items-center justify-between w-full group">
-                <Label className="text-sm font-medium flex items-center gap-2 cursor-pointer">
-                  Escopo Permitido (Auto-Gerado)
-                  <Badge variant="outline" className="text-xs">
-                    {config.scope_topics.length}
-                  </Badge>
-                </Label>
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-                  (config.chat_type === "study" ? studyScopeOpen : healthScopeOpen) ? "rotate-180" : ""
-                }`} />
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              {(() => {
-                // Group topics by first letter
-                const sortedTopics = [...config.scope_topics].sort((a, b) => 
-                  a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
-                );
-                const groupedTopics: Record<string, string[]> = {};
-                sortedTopics.forEach(topic => {
-                  const firstLetter = topic.charAt(0).toUpperCase();
-                  if (!groupedTopics[firstLetter]) {
-                    groupedTopics[firstLetter] = [];
-                  }
-                  groupedTopics[firstLetter].push(topic);
-                });
-                const letters = Object.keys(groupedTopics).sort();
-                
-                return (
-                  <div className="space-y-2">
-                    {letters.map(letter => (
-                      <div key={letter} className="space-y-1">
-                        <span className="text-xs font-bold text-primary">{letter}</span>
-                        <div className="flex flex-wrap gap-1.5 ml-2">
-                          {groupedTopics[letter].map((topic, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
-                              {topic}
-                            </Badge>
-                          ))}
-                        </div>
+            <Card className="border-2 border-primary/20">
+              <CardHeader className="pb-3">
+                <CollapsibleTrigger asChild>
+                  <button className="flex items-center justify-between w-full group">
+                    <CardTitle className="text-base flex items-center gap-2 cursor-pointer">
+                      Escopo Permitido (Auto-Gerado)
+                      <Badge variant="outline" className="text-xs">
+                        {config.scope_topics.length}
+                      </Badge>
+                    </CardTitle>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                      (config.chat_type === "study" ? studyScopeOpen : healthScopeOpen) ? "rotate-180" : ""
+                    }`} />
+                  </button>
+                </CollapsibleTrigger>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent className="pt-0">
+                  {(() => {
+                    // Group topics by first letter
+                    const sortedTopics = [...config.scope_topics].sort((a, b) => 
+                      a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+                    );
+                    const groupedTopics: Record<string, string[]> = {};
+                    sortedTopics.forEach(topic => {
+                      const firstLetter = topic.charAt(0).toUpperCase();
+                      if (!groupedTopics[firstLetter]) {
+                        groupedTopics[firstLetter] = [];
+                      }
+                      groupedTopics[firstLetter].push(topic);
+                    });
+                    const letters = Object.keys(groupedTopics).sort();
+                    
+                    return (
+                      <div className="space-y-2">
+                        {letters.map(letter => (
+                          <div key={letter} className="space-y-1">
+                            <span className="text-xs font-bold text-primary">{letter}</span>
+                            <div className="flex flex-wrap gap-1.5 ml-2">
+                              {groupedTopics[letter].map((topic, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {topic}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        {config.scope_topics.length === 0 && (
+                          <p className="text-xs text-muted-foreground">Nenhum escopo definido</p>
+                        )}
                       </div>
-                    ))}
-                    {config.scope_topics.length === 0 && (
-                      <p className="text-xs text-muted-foreground">Nenhum escopo definido</p>
-                    )}
-                  </div>
-                );
-              })()}
-            </CollapsibleContent>
+                    );
+                  })()}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
           </Collapsible>
 
           {/* Tags Extraídas dos Documentos */}
