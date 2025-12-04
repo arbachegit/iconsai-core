@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw, Volume2, Plus, Trash2, Code, ChevronDown, Info } from "lucide-react";
+import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw, Volume2, Plus, Trash2, Code, ChevronDown, Info, ArrowUpDown } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
@@ -62,6 +62,10 @@ export function ChatScopeConfigTab() {
   const [healthScopeOpen, setHealthScopeOpen] = useState(false);
   const [studyTagsOpen, setStudyTagsOpen] = useState(false);
   const [healthTagsOpen, setHealthTagsOpen] = useState(false);
+  const [studyTagsSortColumn, setStudyTagsSortColumn] = useState<'tag_name' | 'confidence'>('tag_name');
+  const [studyTagsSortAsc, setStudyTagsSortAsc] = useState(true);
+  const [healthTagsSortColumn, setHealthTagsSortColumn] = useState<'tag_name' | 'confidence'>('tag_name');
+  const [healthTagsSortAsc, setHealthTagsSortAsc] = useState(true);
   useEffect(() => {
     fetchConfigs();
   }, []);
@@ -384,10 +388,32 @@ export function ChatScopeConfigTab() {
                     {/* Parent Tags Table */}
                     {(() => {
                       const searchTerm = config.chat_type === "study" ? studySearchTerm : healthSearchTerm;
+                      const sortColumn = config.chat_type === "study" ? studyTagsSortColumn : healthTagsSortColumn;
+                      const sortAsc = config.chat_type === "study" ? studyTagsSortAsc : healthTagsSortAsc;
+                      const setSortColumn = config.chat_type === "study" ? setStudyTagsSortColumn : setHealthTagsSortColumn;
+                      const setSortAsc = config.chat_type === "study" ? setStudyTagsSortAsc : setHealthTagsSortAsc;
+                      
+                      const handleSort = (column: 'tag_name' | 'confidence') => {
+                        if (sortColumn === column) {
+                          setSortAsc(!sortAsc);
+                        } else {
+                          setSortColumn(column);
+                          setSortAsc(true);
+                        }
+                      };
+                      
                       const allParentTags = config.document_tags_data
                         .filter(t => t.tag_type === "parent")
                         .filter(t => !searchTerm || t.tag_name.toLowerCase().includes(searchTerm.toLowerCase()))
-                        .sort((a, b) => a.tag_name.localeCompare(b.tag_name, 'pt-BR'));
+                        .sort((a, b) => {
+                          if (sortColumn === 'tag_name') {
+                            const result = a.tag_name.localeCompare(b.tag_name, 'pt-BR');
+                            return sortAsc ? result : -result;
+                          } else {
+                            const result = a.avg_confidence - b.avg_confidence;
+                            return sortAsc ? result : -result;
+                          }
+                        });
                       const totalParentTags = config.document_tags_data.filter(t => t.tag_type === "parent").length;
                       const lowConfCount = allParentTags.filter(t => t.avg_confidence < 0.7).length;
                       
@@ -411,8 +437,28 @@ export function ChatScopeConfigTab() {
                               <Table>
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead>Nome da Tag</TableHead>
-                                    <TableHead>Confiança</TableHead>
+                                    <TableHead>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleSort('tag_name')}
+                                        className="h-8 px-2 -ml-2"
+                                      >
+                                        Nome da Tag
+                                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                                      </Button>
+                                    </TableHead>
+                                    <TableHead>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleSort('confidence')}
+                                        className="h-8 px-2 -ml-2"
+                                      >
+                                        Confiança
+                                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                                      </Button>
+                                    </TableHead>
                                     <TableHead className="w-[60px] text-center">Escopo</TableHead>
                                   </TableRow>
                                 </TableHeader>
