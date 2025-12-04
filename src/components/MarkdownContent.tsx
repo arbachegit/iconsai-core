@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
@@ -159,7 +159,8 @@ const TableWrapper = ({ children, node, ...props }: any) => {
   );
 };
 
-export const MarkdownContent = ({ content, className }: MarkdownContentProps) => {
+// Memoizado para evitar re-renders desnecessários durante digitação
+export const MarkdownContent = memo(({ content, className }: MarkdownContentProps) => {
   // Check for CHART_DATA in content
   const { chartData, cleanedContent } = useMemo(() => parseChartData(content), [content]);
 
@@ -197,4 +198,4 @@ export const MarkdownContent = ({ content, className }: MarkdownContentProps) =>
       </ReactMarkdown>
     </div>
   );
-};
+});

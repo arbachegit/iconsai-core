@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,8 +17,10 @@ import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useTypingAudit } from "@/hooks/useTypingAudit";
 
-const SentimentIndicator = ({
+// Memoizado para evitar re-renders durante digitação
+const SentimentIndicator = memo(({
   sentiment
 }: {
   sentiment: {
@@ -41,7 +43,7 @@ const SentimentIndicator = ({
       <span className="text-lg">{emoji[sentiment.label as keyof typeof emoji]}</span>
       <span className="text-xs font-medium">{(sentiment.score * 100).toFixed(0)}%</span>
     </div>;
-};
+});
 export default function ChatKnowYOU() {
   const {
     t
@@ -119,10 +121,8 @@ export default function ChatKnowYOU() {
     }
   }, []);
 
-  // Sync inputRef with input state
-  useEffect(() => {
-    inputRef.current = input;
-  }, [input]);
+  // Auditoria contínua de latência de digitação
+  useTypingAudit(input);
 
   // IntersectionObserver para detectar quando mensagem de áudio sai do viewport
   useEffect(() => {
@@ -593,7 +593,11 @@ export default function ChatKnowYOU() {
           </div>}
         
           <div className="relative">
-            <Textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {
+            <Textarea value={input} onChange={e => {
+          const newValue = e.target.value;
+          inputRef.current = newValue; // Sync direto sem useEffect
+          setInput(newValue);
+        }} onKeyDown={e => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             handleSubmit(e);
@@ -606,10 +610,7 @@ export default function ChatKnowYOU() {
           if (isImageMode) {
             e.target.placeholder = t('chat.placeholderImage');
           }
-        }} className="min-h-[60px] resize-none w-full pb-14 pr-14 border-2 border-cyan-400/60 shadow-[inset_0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_2px_rgba(0,0,0,0.25),0_0_15px_rgba(34,211,238,0.3)]" style={{
-          transform: 'translateZ(-8px)',
-          backfaceVisibility: 'hidden'
-        }} disabled={isLoading || isTranscribing} />
+        }} className="min-h-[60px] resize-none w-full pb-14 pr-14 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]" disabled={isLoading || isTranscribing} />
           
             {/* Esquerda: Mic + Draw lado a lado */}
             <div className="absolute bottom-3 left-3 flex items-center gap-2">
