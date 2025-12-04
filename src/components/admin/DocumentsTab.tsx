@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import jsPDF from "jspdf";
 import JSZip from "jszip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -102,7 +103,10 @@ export const DocumentsTab = () => {
     currentFile: number;
     totalFiles: number;
     fileName: string;
+    currentPage: number;
+    totalPages: number;
   } | null>(null);
+  const [fileToRemove, setFileToRemove] = useState<number | null>(null);
 
   // Document AI OCR toggle
   const [useDocumentAI, setUseDocumentAI] = useState(false);
@@ -179,14 +183,29 @@ export const DocumentsTab = () => {
     }
   });
 
-  // Extract text from PDF with improved OCR handling
-  const extractTextFromPDF = async (file: File): Promise<string> => {
+  // Extract text from PDF with improved OCR handling and progress callback
+  const extractTextFromPDF = async (
+    file: File,
+    onProgress?: (page: number, total: number) => void,
+    abortRef?: React.MutableRefObject<boolean>
+  ): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({
       data: arrayBuffer,
     }).promise;
     let fullText = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
+    const totalPages = pdf.numPages;
+    
+    for (let i = 1; i <= totalPages; i++) {
+      // Check for cancellation at each page
+      if (abortRef?.current) {
+        console.log(`Extração cancelada na página ${i}/${totalPages}`);
+        break;
+      }
+      
+      // Report progress
+      onProgress?.(i, totalPages);
+      
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       
@@ -877,11 +896,13 @@ export const DocumentsTab = () => {
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
       
-      // Update progress
+      // Update progress with initial page info
       setExtractionProgress({
         currentFile: i + 1,
         totalFiles,
-        fileName: file.name
+        fileName: file.name,
+        currentPage: 0,
+        totalPages: 0
       });
       
       // Check if cancelled
@@ -890,7 +911,17 @@ export const DocumentsTab = () => {
       }
       
       try {
-        const text = await extractTextFromPDF(file);
+        const text = await extractTextFromPDF(
+          file,
+          (currentPage, totalPages) => {
+            setExtractionProgress(prev => prev ? {
+              ...prev,
+              currentPage,
+              totalPages
+            } : null);
+          },
+          extractionAbortRef
+        );
         const analysis = analyzeTextQuality(text);
         previews.push({
           file,
@@ -925,17 +956,19 @@ export const DocumentsTab = () => {
     toast.info("Extração cancelada");
   }, []);
 
-  // Remove file from preview
-  const handleRemovePreviewFile = useCallback((index: number) => {
+  // Remove file from preview (with confirmation)
+  const handleRemovePreviewFile = useCallback(() => {
+    if (fileToRemove === null) return;
     setPreviewFiles(prev => {
-      const newPreviews = prev.filter((_, i) => i !== index);
+      const newPreviews = prev.filter((_, i) => i !== fileToRemove);
       if (newPreviews.length === 0) {
         setShowPreviewModal(false);
       }
       return newPreviews;
     });
+    setFileToRemove(null);
     toast.info("Arquivo removido do preview");
-  }, []);
+  }, [fileToRemove]);
 
   // Retry failed document with custom validation parameters
   const retryWithParamsMutation = useMutation({
@@ -1537,15 +1570,35 @@ export const DocumentsTab = () => {
 
           <div className="flex gap-3">
             {isExtracting ? (
-              <Button 
-                variant="destructive" 
-                onClick={handleCancelExtraction}
-                className="flex-1"
-                size="lg"
-              >
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Cancelar {extractionProgress && `(${extractionProgress.currentFile}/${extractionProgress.totalFiles})`}
-              </Button>
+              <div className="flex-1 flex flex-col gap-2">
+                <Button 
+                  variant="destructive" 
+                  onClick={handleCancelExtraction}
+                  className="w-full"
+                  size="lg"
+                >
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cancelar {extractionProgress && `(${extractionProgress.currentFile}/${extractionProgress.totalFiles})`}
+                </Button>
+                
+                {/* Detailed progress indicator */}
+                {extractionProgress && (
+                  <div className="text-xs text-muted-foreground text-center space-y-1">
+                    <div className="truncate max-w-[200px] mx-auto">
+                      📄 {extractionProgress.fileName}
+                    </div>
+                    {extractionProgress.totalPages > 0 && (
+                      <div className="flex items-center gap-2 justify-center">
+                        <Progress 
+                          value={(extractionProgress.currentPage / extractionProgress.totalPages) * 100} 
+                          className="w-32 h-1"
+                        />
+                        <span>Pág. {extractionProgress.currentPage}/{extractionProgress.totalPages}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             ) : (
               <Button 
                 variant="outline" 
@@ -2827,7 +2880,7 @@ export const DocumentsTab = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleRemovePreviewFile(idx)}
+                        onClick={() => setFileToRemove(idx)}
                         className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -2990,5 +3043,30 @@ export const DocumentsTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation dialog for removing file from preview */}
+      <AlertDialog open={fileToRemove !== null} onOpenChange={(open) => !open && setFileToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover arquivo do preview?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {fileToRemove !== null && previewFiles[fileToRemove] && (
+                <>
+                  O arquivo <strong>{previewFiles[fileToRemove].file.name}</strong> será removido da lista de preview. Esta ação não pode ser desfeita.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleRemovePreviewFile}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>;
 };
