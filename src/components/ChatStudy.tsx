@@ -17,7 +17,6 @@ import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { useTypingAudit } from "@/hooks/useTypingAudit";
 
 // Memoizado para evitar re-renders durante digitação
 const SentimentIndicator = memo(({
@@ -120,8 +119,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     }
   }, []);
 
-  // Auditoria contínua de latência de digitação
-  useTypingAudit(input);
+  // Auditoria de digitação removida - causava overhead no useEffect a cada keystroke
 
   // IntersectionObserver para detectar quando mensagem de áudio sai do viewport
   useEffect(() => {
@@ -515,12 +513,10 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           <div className="relative">
             <img src={knowriskLogo} alt="KnowRisk Logo" className="w-10 h-10" />
             
-            {/* Online indicator with sequential waves */}
-            <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 flex items-center justify-center">
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse z-10" />
-              <div className="absolute w-5 h-5 rounded-full bg-green-500/30 animate-ping animation-delay-0" />
-              <div className="absolute w-5 h-5 rounded-full bg-green-500/20 animate-ping animation-delay-150" />
-              <div className="absolute w-5 h-5 rounded-full bg-green-500/10 animate-ping animation-delay-300" />
+            {/* Online indicator - single animation for performance */}
+            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 flex items-center justify-center">
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500 z-10" />
+              <div className="absolute w-4 h-4 rounded-full bg-green-500/20 animate-ping" />
             </div>
           </div>
           <h2 className="text-lg font-bold text-gradient">{t('chat.studyModalTitle')}</h2>
@@ -545,10 +541,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="h-[500px] p-6 border-2 border-cyan-400/60 bg-[hsl(var(--chat-container-bg))] rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" style={{
-      transform: 'translateZ(-10px)',
-      backfaceVisibility: 'hidden'
-    }} ref={scrollRef}>
+      <ScrollArea className="h-[500px] p-6 border-2 border-cyan-400/60 bg-[hsl(var(--chat-container-bg))] rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" ref={scrollRef}>
         {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
               <span className="text-4xl font-bold text-primary-foreground">K</span>
