@@ -42,7 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search } from "lucide-react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
@@ -123,7 +123,41 @@ export const TagsManagementTab = () => {
     ? parentTags 
     : parentTags.filter((t) => t.source === filterSource);
 
-  // Detect duplicates
+  // Levenshtein distance for semantic similarity
+  const levenshteinDistance = (a: string, b: string): number => {
+    const matrix: number[][] = [];
+    for (let i = 0; i <= b.length; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j++) {
+      matrix[0][j] = j;
+    }
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  };
+
+  const calculateSimilarity = (a: string, b: string): number => {
+    const normalized1 = a.toLowerCase().replace(/[^a-záàâãéêíóôõúç\s]/gi, '').trim();
+    const normalized2 = b.toLowerCase().replace(/[^a-záàâãéêíóôõúç\s]/gi, '').trim();
+    const maxLen = Math.max(normalized1.length, normalized2.length);
+    if (maxLen === 0) return 1;
+    const distance = levenshteinDistance(normalized1, normalized2);
+    return 1 - (distance / maxLen);
+  };
+
+  // Detect exact duplicates
   const duplicateParentTags = parentTags.reduce((acc, tag) => {
     const existing = acc.find((item) => item.tag_name === tag.tag_name);
     if (existing) {
@@ -134,6 +168,30 @@ export const TagsManagementTab = () => {
     }
     return acc;
   }, [] as { tag_name: string; count: number; ids: string[] }[]).filter((item) => item.count > 1);
+
+  // Detect semantic duplicates (similar but not identical)
+  const semanticDuplicates: { tag1: string; tag2: string; similarity: number; ids: string[] }[] = [];
+  const uniqueTagNames = [...new Set(parentTags.map(t => t.tag_name))];
+  
+  for (let i = 0; i < uniqueTagNames.length; i++) {
+    for (let j = i + 1; j < uniqueTagNames.length; j++) {
+      const similarity = calculateSimilarity(uniqueTagNames[i], uniqueTagNames[j]);
+      // Consider similar if >= 70% match but not exact
+      if (similarity >= 0.7 && similarity < 1) {
+        const tag1Ids = parentTags.filter(t => t.tag_name === uniqueTagNames[i]).map(t => t.id);
+        const tag2Ids = parentTags.filter(t => t.tag_name === uniqueTagNames[j]).map(t => t.id);
+        semanticDuplicates.push({
+          tag1: uniqueTagNames[i],
+          tag2: uniqueTagNames[j],
+          similarity,
+          ids: [...tag1Ids, ...tag2Ids],
+        });
+      }
+    }
+  }
+
+  // Sort by similarity descending
+  semanticDuplicates.sort((a, b) => b.similarity - a.similarity);
 
   // Pagination
   const totalPages = Math.ceil(filteredParentTags.length / itemsPerPage);
@@ -412,23 +470,76 @@ export const TagsManagementTab = () => {
         </div>
       </div>
 
-      {/* Duplicate Detection */}
-      {duplicateParentTags.length > 0 && (
-        <Card className="p-4 border-yellow-500/50 bg-yellow-500/5">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-500" />
-            <h3 className="font-semibold">Tags Duplicadas Detectadas</h3>
+      {/* Duplicate Detection - Combined Section */}
+      {(duplicateParentTags.length > 0 || semanticDuplicates.length > 0) && (
+        <Card className="p-4 border-amber-500/50 bg-amber-500/5">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <h3 className="font-semibold">
+              Duplicatas Detectadas
+              <Badge variant="outline" className="ml-2">
+                {duplicateParentTags.length + semanticDuplicates.length}
+              </Badge>
+            </h3>
           </div>
-          <div className="space-y-2">
-            {duplicateParentTags.map(({ tag_name, count, ids }) => (
-              <div key={tag_name} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                <span className="text-sm">"{tag_name}" - {count}x ocorrências</span>
-                <Button size="sm" variant="outline" onClick={() => openMergeDialog(tag_name, ids)}>
-                  <Merge className="h-4 w-4 mr-1" /> Unificar
-                </Button>
+          
+          {/* Exact Duplicates */}
+          {duplicateParentTags.length > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="destructive" className="text-xs">Exatas</Badge>
+                <span className="text-sm text-muted-foreground">Tags com nome idêntico</span>
               </div>
-            ))}
-          </div>
+              <div className="space-y-2">
+                {duplicateParentTags.map(({ tag_name, count, ids }) => (
+                  <div key={tag_name} className="flex items-center justify-between p-2 bg-red-500/10 border border-red-500/30 rounded">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">"{tag_name}"</span>
+                      <Badge variant="outline" className="text-xs">{count}x</Badge>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => openMergeDialog(tag_name, ids)}>
+                      <Merge className="h-4 w-4 mr-1" /> Unificar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Semantic Duplicates */}
+          {semanticDuplicates.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Badge className="text-xs bg-purple-500/20 text-purple-300 border-purple-500/30">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Semânticas
+                </Badge>
+                <span className="text-sm text-muted-foreground">Tags com significado similar</span>
+              </div>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {semanticDuplicates.slice(0, 15).map(({ tag1, tag2, similarity, ids }, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2 bg-purple-500/10 border border-purple-500/30 rounded">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium">"{tag1}"</span>
+                      <span className="text-muted-foreground">≈</span>
+                      <span className="text-sm font-medium">"{tag2}"</span>
+                      <Badge variant="outline" className="text-xs">
+                        {Math.round(similarity * 100)}% similar
+                      </Badge>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => openMergeDialog(`${tag1} → ${tag2}`, ids)}>
+                      <Merge className="h-4 w-4 mr-1" /> Mesclar
+                    </Button>
+                  </div>
+                ))}
+                {semanticDuplicates.length > 15 && (
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    +{semanticDuplicates.length - 15} outras duplicatas semânticas
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </Card>
       )}
 
