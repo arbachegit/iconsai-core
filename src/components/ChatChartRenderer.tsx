@@ -40,7 +40,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { RangeSlider } from '@/components/ui/range-slider';
-import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle, Percent, Copy, Check, Zap } from 'lucide-react';
+import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle, Percent, Copy, Check, Zap, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -192,9 +192,24 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   const yKeys = chartData.yKeys || ['value'];
 
   // ===== Y-AXIS ZOOM CONTROLS =====
-  // Calculate data bounds for Y-axis
-  const dataBounds = useMemo(() => {
-    const values = displayData.map(d => d.value);
+  // Y-axis domain state - initial values will be set by useEffect
+  const [yDomain, setYDomain] = useState<[number, number]>([0, 100]);
+  const [isAutoScale, setIsAutoScale] = useState(false);
+
+  // ===== X-AXIS ZOOM CONTROLS =====
+  // X-axis range state (index-based filtering)
+  const [xRange, setXRange] = useState<[number, number]>([0, displayData.length - 1]);
+  
+  // Filtered data based on X-axis range
+  const filteredDisplayData = useMemo(() => {
+    const startIdx = Math.max(0, xRange[0]);
+    const endIdx = Math.min(displayData.length - 1, xRange[1]);
+    return displayData.slice(startIdx, endIdx + 1);
+  }, [displayData, xRange]);
+
+  // Recalculate Y bounds based on filtered data
+  const filteredDataBounds = useMemo(() => {
+    const values = filteredDisplayData.map(d => d.value);
     const dataMin = Math.min(...values);
     const dataMax = Math.max(...values);
     const padding = (dataMax - dataMin) * 0.1 || 5;
@@ -204,29 +219,30 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
       absoluteMin: 0,
       absoluteMax: Math.ceil(dataMax + padding)
     };
-  }, [displayData]);
+  }, [filteredDisplayData]);
 
-  // Y-axis domain state
-  const [yDomain, setYDomain] = useState<[number, number]>([0, dataBounds.absoluteMax]);
-  const [isAutoScale, setIsAutoScale] = useState(false);
+  // Reset xRange when data changes
+  useEffect(() => {
+    setXRange([0, displayData.length - 1]);
+  }, [displayData.length]);
 
-  // Reset yDomain when data changes or chart type changes
+  // Reset yDomain when filtered data changes or chart type changes
   useEffect(() => {
     if (isAutoScale) {
-      const autoMin = Math.max(0, Math.floor(dataBounds.dataMin - 5));
-      setYDomain([autoMin, dataBounds.absoluteMax]);
+      const autoMin = Math.max(0, Math.floor(filteredDataBounds.dataMin - 5));
+      setYDomain([autoMin, filteredDataBounds.absoluteMax]);
     } else {
-      setYDomain([0, dataBounds.absoluteMax]);
+      setYDomain([0, filteredDataBounds.absoluteMax]);
     }
-  }, [dataBounds.absoluteMax, dataBounds.dataMin, chartType]);
+  }, [filteredDataBounds.absoluteMax, filteredDataBounds.dataMin, chartType]);
 
   // Handle auto-scale toggle
   useEffect(() => {
     if (isAutoScale) {
-      const autoMin = Math.max(0, Math.floor(dataBounds.dataMin - 5));
-      setYDomain([autoMin, dataBounds.absoluteMax]);
+      const autoMin = Math.max(0, Math.floor(filteredDataBounds.dataMin - 5));
+      setYDomain([autoMin, filteredDataBounds.absoluteMax]);
     }
-  }, [isAutoScale, dataBounds]);
+  }, [isAutoScale, filteredDataBounds]);
 
   // Handle pie chart selection with normalization prompt
   const handlePieSelection = () => {
@@ -297,7 +313,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
       case 'bar':
         return (
           <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+            <BarChart data={filteredDisplayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey={xKey} 
@@ -321,7 +337,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
       case 'line':
         return (
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+            <LineChart data={filteredDisplayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey={xKey} 
@@ -354,7 +370,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
-                data={displayData}
+                data={filteredDisplayData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -363,7 +379,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 fill="hsl(var(--primary))"
                 dataKey="value"
               >
-                {displayData.map((_, index) => (
+                {filteredDisplayData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
@@ -376,7 +392,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
       case 'area':
         return (
           <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+            <AreaChart data={filteredDisplayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey={xKey} 
@@ -538,8 +554,8 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
               
               <div className="flex-1 px-2">
                 <RangeSlider
-                  min={dataBounds.absoluteMin}
-                  max={dataBounds.absoluteMax}
+                  min={filteredDataBounds.absoluteMin}
+                  max={filteredDataBounds.absoluteMax}
                   step={1}
                   value={yDomain}
                   onValueChange={(val) => {
@@ -580,6 +596,68 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   </p>
                 </TooltipContent>
               </Tooltip>
+            </div>
+          </div>
+        )}
+
+        {/* X-Axis Zoom Controls - Only for bar, line, area (not pie) and when more than 2 data points */}
+        {chartType !== 'pie' && displayData.length > 2 && (
+          <div className="px-3 py-2 border-b border-border/30 bg-muted/10">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                Eixo X:
+              </span>
+              
+              <div className="flex-1 px-2">
+                <RangeSlider
+                  min={0}
+                  max={displayData.length - 1}
+                  step={1}
+                  value={xRange}
+                  onValueChange={(val) => setXRange(val as [number, number])}
+                />
+              </div>
+              
+              <div className="flex items-center gap-1 text-xs min-w-[100px]">
+                <span className="text-amber-400 truncate max-w-[45px]" title={displayData[xRange[0]]?.[xKey]}>
+                  {displayData[xRange[0]]?.[xKey]}
+                </span>
+                <span className="text-muted-foreground">→</span>
+                <span className="text-amber-400 truncate max-w-[45px]" title={displayData[xRange[1]]?.[xKey]}>
+                  {displayData[xRange[1]]?.[xKey]}
+                </span>
+              </div>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] gap-1 px-2"
+                    onClick={() => {
+                      setXRange([0, displayData.length - 1]);
+                      setIsAutoScale(false);
+                      setYDomain([0, filteredDataBounds.absoluteMax]);
+                    }}
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Reset
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Resetar zoom para mostrar todos os dados</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            
+            {/* Data point count indicator */}
+            <div className="mt-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
+              <span>Exibindo {filteredDisplayData.length} de {displayData.length} pontos</span>
+              {filteredDisplayData.length < displayData.length && (
+                <span className="text-amber-400">
+                  Zoom ativo ({Math.round((filteredDisplayData.length / displayData.length) * 100)}%)
+                </span>
+              )}
             </div>
           </div>
         )}
