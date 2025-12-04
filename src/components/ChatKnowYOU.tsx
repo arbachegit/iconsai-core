@@ -641,7 +641,7 @@ export default function ChatKnowYOU() {
 
 
       {/* Input Area */}
-      <form onSubmit={handleSubmit} className="pt-2 pb-0 px-6 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
+      <form onSubmit={handleSubmit} className="pt-1 pb-0 px-6 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
         {/* Indicador de voz ativo */}
         {isRecording && <div className="flex items-center gap-2 text-xs mb-2">
             <div className={`w-2 h-2 rounded-full ${voiceStatus === 'waiting' ? 'bg-amber-500' : voiceStatus === 'processing' ? 'bg-blue-500' : 'bg-red-500'} animate-pulse`} />
@@ -670,26 +670,26 @@ export default function ChatKnowYOU() {
           if (isImageMode) {
             e.target.placeholder = t('chat.placeholderImage');
           }
-        }} className="min-h-[34px] resize-none w-full pb-14 pr-14 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]" disabled={isLoading || isTranscribing} />
+        }} className="min-h-[34px] resize-none w-full pb-12 pr-12 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]" disabled={isLoading || isTranscribing} />
           
             {/* Esquerda: Mic + Draw lado a lado */}
-            <div className="absolute bottom-3 left-3 flex items-center gap-2">
-              <Button type="button" size="icon" variant="ghost" onClick={isRecording ? stopRecording : startRecording} className={`h-10 w-10 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500 bg-red-500/10" : ""}`}>
-                {isRecording ? <Square className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
+              <Button type="button" size="icon" variant="ghost" onClick={isRecording ? stopRecording : startRecording} className={`h-9 w-9 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500 bg-red-500/10" : ""}`}>
+                {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
               </Button>
               
-              <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} title="Desenhar" className="h-10 w-10 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
-                <ImagePlus className="w-5 h-5" />
+              <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} title="Desenhar" className="h-9 w-9 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
+                <ImagePlus className="w-4 h-4" />
               </Button>
               
-              <Button type="button" size="icon" variant={isChartMode ? "default" : "ghost"} onClick={toggleChartMode} title="Gráfico" className="h-10 w-10 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
-                <BarChart3 className="w-5 h-5" />
+              <Button type="button" size="icon" variant={isChartMode ? "default" : "ghost"} onClick={toggleChartMode} title="Gráfico" className="h-9 w-9 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
+                <BarChart3 className="w-4 h-4" />
               </Button>
             </div>
             
             {/* Direita: Input (círculo) */}
-            <Button type="submit" size="icon" disabled={!input.trim() && !isLoading} className="absolute bottom-3 right-3 rounded-full h-10 w-10 bg-primary hover:bg-primary/90 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
-              {isLoading ? <Square className="w-5 h-5" /> : <ArrowUp className="w-5 h-5" />}
+            <Button type="submit" size="icon" disabled={!input.trim() && !isLoading} className="absolute bottom-2 right-2 rounded-full h-9 w-9 bg-primary hover:bg-primary/90 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
+              {isLoading ? <Square className="w-4 h-4" /> : <ArrowUp className="w-4 h-4" />}
             </Button>
           </div>
         <p className="text-xs leading-none text-muted-foreground mt-0.5 mb-0 text-center">
