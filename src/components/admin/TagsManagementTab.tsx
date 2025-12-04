@@ -42,9 +42,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp } from "lucide-react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 import {
   Tooltip,
   TooltipContent,
@@ -819,7 +820,7 @@ export const TagsManagementTab = () => {
 
       {/* Machine Learning Rules Panel */}
       {mergeRules && mergeRules.length > 0 && (
-        <Collapsible>
+        <Collapsible defaultOpen>
           <Card className="p-4 border-purple-500/50 bg-gradient-to-r from-purple-500/5 to-indigo-500/5">
             <CollapsibleTrigger className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
@@ -835,10 +836,186 @@ export const TagsManagementTab = () => {
               </div>
               <ChevronDown className="h-4 w-4 transition-transform" />
             </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4">
-              <p className="text-sm text-muted-foreground mb-4">
-                Regras criadas automaticamente quando tags são mescladas. A IA usa estas regras para evitar criar variações duplicadas.
-              </p>
+            <CollapsibleContent className="mt-4 space-y-6">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Regras criadas automaticamente quando tags são mescladas. A IA usa estas regras para evitar criar variações duplicadas.
+                </p>
+                <div className="flex gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Exportar
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => {
+                        const exportableRules = mergeRules.map(r => ({
+                          source_tag: r.source_tag,
+                          canonical_tag: r.canonical_tag,
+                          chat_type: r.chat_type,
+                          merge_count: r.merge_count || 0,
+                          created_at: r.created_at
+                        }));
+                        const jsonContent = JSON.stringify(exportableRules, null, 2);
+                        const blob = new Blob([jsonContent], { type: 'application/json' });
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `ml-rules-backup-${new Date().toISOString().split('T')[0]}.json`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                        toast.success("Regras ML exportadas com sucesso!");
+                      }}>
+                        <FileJson className="h-4 w-4 mr-2" /> JSON (Backup)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        exportData({
+                          filename: 'ml-rules',
+                          data: mergeRules.map(r => ({
+                            'Tag Original': r.source_tag,
+                            'Tag Canônica': r.canonical_tag,
+                            'Chat': r.chat_type === 'health' ? 'Saúde' : 'Estudo',
+                            'Aplicações': r.merge_count || 0,
+                            'Criado em': new Date(r.created_at).toLocaleDateString('pt-BR')
+                          })),
+                          format: 'csv'
+                        });
+                        toast.success("Regras ML exportadas em CSV!");
+                      }}>
+                        <FileText className="h-4 w-4 mr-2" /> CSV
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = '.json';
+                      input.onchange = async (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (!file) return;
+                        try {
+                          const text = await file.text();
+                          const rules = JSON.parse(text) as Array<{
+                            source_tag: string;
+                            canonical_tag: string;
+                            chat_type: string;
+                            merge_count?: number;
+                          }>;
+                          let imported = 0;
+                          for (const rule of rules) {
+                            if (rule.source_tag && rule.canonical_tag && rule.chat_type) {
+                              const { error } = await supabase
+                                .from("tag_merge_rules")
+                                .upsert({
+                                  source_tag: rule.source_tag,
+                                  canonical_tag: rule.canonical_tag,
+                                  chat_type: rule.chat_type,
+                                  merge_count: rule.merge_count || 0,
+                                  created_by: "import"
+                                }, { onConflict: "source_tag,chat_type" });
+                              if (!error) imported++;
+                            }
+                          }
+                          queryClient.invalidateQueries({ queryKey: ["tag-merge-rules"] });
+                          toast.success(`${imported} regra(s) importada(s) com sucesso!`);
+                        } catch (error) {
+                          toast.error("Erro ao importar: arquivo JSON inválido");
+                        }
+                      };
+                      input.click();
+                    }}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Importar
+                  </Button>
+                </div>
+              </div>
+
+              {/* Efficiency Chart */}
+              {mergeRules.some(r => (r.merge_count || 0) > 0) && (
+                <div className="border border-purple-500/30 rounded-lg p-4 bg-purple-500/5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <TrendingUp className="h-4 w-4 text-purple-400" />
+                    <h4 className="font-medium text-sm">Eficiência das Regras (Top 10 mais aplicadas)</h4>
+                  </div>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={mergeRules
+                          .filter(r => (r.merge_count || 0) > 0)
+                          .sort((a, b) => (b.merge_count || 0) - (a.merge_count || 0))
+                          .slice(0, 10)
+                          .map(r => ({
+                            name: `${r.source_tag.slice(0, 15)}${r.source_tag.length > 15 ? '...' : ''}`,
+                            fullName: r.source_tag,
+                            canonical: r.canonical_tag,
+                            aplicações: r.merge_count || 0,
+                            chatType: r.chat_type
+                          }))}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                        <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          stroke="hsl(var(--muted-foreground))" 
+                          fontSize={11}
+                          width={95}
+                        />
+                        <RechartsTooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                            fontSize: '12px'
+                          }}
+                          formatter={(value: number, _name: string, props: any) => [
+                            <span key="value">
+                              <strong>{value}</strong> aplicações
+                              <br />
+                              <span className="text-muted-foreground text-xs">
+                                "{props.payload.fullName}" → "{props.payload.canonical}"
+                              </span>
+                            </span>,
+                            ''
+                          ]}
+                        />
+                        <Bar dataKey="aplicações" radius={[0, 4, 4, 0]}>
+                          {mergeRules
+                            .filter(r => (r.merge_count || 0) > 0)
+                            .sort((a, b) => (b.merge_count || 0) - (a.merge_count || 0))
+                            .slice(0, 10)
+                            .map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={entry.chat_type === 'health' ? 'hsl(142, 71%, 45%)' : 'hsl(262, 83%, 58%)'} 
+                              />
+                            ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex items-center justify-center gap-4 mt-2 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-3 rounded bg-green-500"></span> Saúde
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-3 rounded bg-purple-500"></span> Estudo
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Rules List */}
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {mergeRules.map((rule) => (
                   <div 
