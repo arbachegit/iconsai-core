@@ -98,6 +98,11 @@ export const DocumentsTab = () => {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const extractionAbortRef = useRef(false);
+  const [extractionProgress, setExtractionProgress] = useState<{
+    currentFile: number;
+    totalFiles: number;
+    fileName: string;
+  } | null>(null);
 
   // Document AI OCR toggle
   const [useDocumentAI, setUseDocumentAI] = useState(false);
@@ -867,7 +872,18 @@ export const DocumentsTab = () => {
     extractionAbortRef.current = false;
     
     const previews: typeof previewFiles = [];
-    for (const file of selectedFiles) {
+    const totalFiles = selectedFiles.length;
+    
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      
+      // Update progress
+      setExtractionProgress({
+        currentFile: i + 1,
+        totalFiles,
+        fileName: file.name
+      });
+      
       // Check if cancelled
       if (extractionAbortRef.current) {
         break;
@@ -894,6 +910,7 @@ export const DocumentsTab = () => {
     }
     
     setPreviewFiles(previews);
+    setExtractionProgress(null);
     if (!extractionAbortRef.current && previews.length > 0) {
       setShowPreviewModal(true);
     }
@@ -903,6 +920,7 @@ export const DocumentsTab = () => {
   // Cancel extraction
   const handleCancelExtraction = useCallback(() => {
     extractionAbortRef.current = true;
+    setExtractionProgress(null);
     setIsExtracting(false);
     toast.info("Extração cancelada");
   }, []);
@@ -1513,8 +1531,8 @@ export const DocumentsTab = () => {
                 className="flex-1"
                 size="lg"
               >
-                <X className="mr-2 h-4 w-4" />
-                Cancelar Extração
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Cancelar {extractionProgress && `(${extractionProgress.currentFile}/${extractionProgress.totalFiles})`}
               </Button>
             ) : (
               <Button 
