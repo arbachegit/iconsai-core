@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.generate-image-study]
 verify_jwt = false
+
+[functions.analyze-deterministic]
+verify_jwt = false

@@ -380,6 +380,56 @@ export type Database = {
         }
         Relationships: []
       }
+      deterministic_analysis: {
+        Row: {
+          analysis_reason: string | null
+          analyzed_at: string | null
+          chat_type: string
+          classification: string
+          conversation_id: string | null
+          created_at: string | null
+          id: string
+          original_message: string
+          question_type: string | null
+          refactored_version: string | null
+          session_id: string
+        }
+        Insert: {
+          analysis_reason?: string | null
+          analyzed_at?: string | null
+          chat_type: string
+          classification: string
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          original_message: string
+          question_type?: string | null
+          refactored_version?: string | null
+          session_id: string
+        }
+        Update: {
+          analysis_reason?: string | null
+          analyzed_at?: string | null
+          chat_type?: string
+          classification?: string
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          original_message?: string
+          question_type?: string | null
+          refactored_version?: string | null
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deterministic_analysis_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_chunks: {
         Row: {
           chunk_index: number

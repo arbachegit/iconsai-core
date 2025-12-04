@@ -31,9 +31,10 @@ import {
   Shield,
   History,
   Users,
+  Target,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -75,6 +76,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         { id: "chat" as TabType, label: "Chat Config", icon: MessageSquare },
         { id: "chat-scope-config" as TabType, label: "Delimitações", icon: Settings },
         { id: "conversations" as TabType, label: "Conversas", icon: MessagesSquare },
+        { id: "deterministic-analysis" as TabType, label: "Fala Determinística", icon: Target },
         { id: "rag-diagnostics" as TabType, label: "Diagnóstico RAG", icon: TestTube },
       ]
     },
