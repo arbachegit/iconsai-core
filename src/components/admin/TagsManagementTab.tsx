@@ -1916,11 +1916,25 @@ export const TagsManagementTab = () => {
                       </TableCell>
                     </TableRow>
                     {/* Child Tags Rows */}
-                    {expandedParents.has(parent.id) && childTagsMap[parent.id]?.map((child) => (
-                      <TableRow key={child.id} className="bg-muted/30 group">
+                    {expandedParents.has(parent.id) && childTagsMap[parent.id]?.map((child) => {
+                      const searchLower = searchTagName.toLowerCase().trim();
+                      const childMatchesSearch = searchLower && child.tag_name.toLowerCase().includes(searchLower);
+                      
+                      return (
+                      <TableRow 
+                        key={child.id} 
+                        className={`group ${childMatchesSearch ? 'bg-yellow-500/20 border-l-2 border-yellow-400' : 'bg-muted/30'}`}
+                      >
                         <TableCell></TableCell>
-                        <TableCell className="pl-8 text-sm text-muted-foreground">
-                          ↳ {child.tag_name}
+                        <TableCell className="pl-8 text-sm">
+                          <span className={childMatchesSearch ? 'text-yellow-300 font-medium' : 'text-muted-foreground'}>
+                            ↳ {child.tag_name}
+                            {childMatchesSearch && (
+                              <Badge variant="outline" className="ml-2 text-xs bg-yellow-500/20 text-yellow-300 border-yellow-500/50">
+                                match
+                              </Badge>
+                            )}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-xs">
@@ -1981,7 +1995,9 @@ export const TagsManagementTab = () => {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    );
+                    })}
+
                   </>
                 ))}
               </TableBody>
