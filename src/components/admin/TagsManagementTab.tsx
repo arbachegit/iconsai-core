@@ -80,6 +80,7 @@ export const TagsManagementTab = () => {
     ids: [],
   });
   const [filterSource, setFilterSource] = useState<string>("all");
+  const [filterChat, setFilterChat] = useState<string>("all");
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -129,10 +130,12 @@ export const TagsManagementTab = () => {
     return acc;
   }, {} as Record<string, Tag[]>) || {};
 
-  // Filter by source
-  const filteredParentTags = filterSource === "all" 
-    ? parentTags 
-    : parentTags.filter((t) => t.source === filterSource);
+  // Filter by source and chat
+  const filteredParentTags = parentTags.filter((t) => {
+    const sourceMatch = filterSource === "all" || t.source === filterSource;
+    const chatMatch = filterChat === "all" || t.target_chat === filterChat;
+    return sourceMatch && chatMatch;
+  });
 
   // Sort tags
   const sortedParentTags = [...filteredParentTags].sort((a, b) => {
@@ -577,19 +580,35 @@ export const TagsManagementTab = () => {
       )}
 
       {/* Filters */}
+      {/* Filters */}
       <Card className="p-4">
-        <div className="flex items-center gap-4">
-          <Label>Filtrar por origem:</Label>
-          <Select value={filterSource} onValueChange={setFilterSource}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="ai">IA</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-6 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Label>Origem:</Label>
+            <Select value={filterSource} onValueChange={setFilterSource}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="ai">IA</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label>Chat:</Label>
+            <Select value={filterChat} onValueChange={setFilterChat}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="health">Saúde</SelectItem>
+                <SelectItem value="study">Estudo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </Card>
 
