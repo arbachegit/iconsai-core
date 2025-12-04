@@ -434,10 +434,147 @@ export function ChatScopeConfigTab() {
   }
   return <div className="space-y-6">
       <div>
-        <AdminTitleWithInfo title="Configurações de Chat & Delimitações" level="h2" icon={MessageSquare} tooltipText="Delimitações e configurações RAG" infoContent={<>
-              <p>Gerencie limites e configurações dos assistentes de IA.</p>
-              <p className="mt-2">Configure escopo permitido, thresholds RAG, mensagens de rejeição e teste buscas em tempo real.</p>
-            </>} />
+        <AdminTitleWithInfo title="Configurações de Chat & Delimitações" level="h2" icon={MessageSquare} tooltipText="Clique para ver explicação detalhada do sistema RAG" infoContent={
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+            {/* Introdução */}
+            <div>
+              <h5 className="font-bold text-primary mb-2">Sistema de Delimitação RAG</h5>
+              <p className="text-xs leading-relaxed">
+                O sistema RAG (Retrieval-Augmented Generation) usa documentos processados para criar um escopo dinâmico 
+                que delimita o que os assistentes de IA podem responder e quais imagens podem gerar.
+              </p>
+            </div>
+
+            {/* Fluxo de Dados */}
+            <div className="bg-muted/30 rounded-lg p-3">
+              <h5 className="font-semibold text-sm mb-2 text-primary">📊 Fluxo de Dados</h5>
+              <div className="text-xs space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-primary font-bold">1.</span>
+                  <span><strong>Upload de Documento</strong> → IA extrai tags (parent + child)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-primary font-bold">2.</span>
+                  <span><strong>Tags Parent ≥70%</strong> → Viram <code className="bg-primary/20 px-1 rounded">scope_topics</code></span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-primary font-bold">3.</span>
+                  <span><strong>Todas as Tags</strong> → Armazenadas em <code className="bg-primary/20 px-1 rounded">document_tags_data</code></span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-primary font-bold">4.</span>
+                  <span><strong>System Prompt</strong> → Recebe escopo para delimitar respostas</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-primary font-bold">5.</span>
+                  <span><strong>Geração de Imagens</strong> → Valida prompt contra keywords permitidas</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabela de Funções */}
+            <div>
+              <h5 className="font-semibold text-sm mb-2 text-primary">📋 Tabela de Funções</h5>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-primary/10">
+                    <tr>
+                      <th className="px-2 py-1.5 text-left font-semibold">Campo</th>
+                      <th className="px-2 py-1.5 text-left font-semibold">Função</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    <tr>
+                      <td className="px-2 py-1.5 font-medium text-primary">scope_topics</td>
+                      <td className="px-2 py-1.5">Tags parent com confiança ≥70%. Definem os temas principais permitidos no chat.</td>
+                    </tr>
+                    <tr className="bg-muted/20">
+                      <td className="px-2 py-1.5 font-medium text-primary">document_tags_data</td>
+                      <td className="px-2 py-1.5">Todas as tags extraídas (parent + child) com metadados. Usadas na validação de imagens.</td>
+                    </tr>
+                    <tr>
+                      <td className="px-2 py-1.5 font-medium text-primary">phonetic_map</td>
+                      <td className="px-2 py-1.5">Dicionário de pronúncias. Normaliza termos técnicos antes do Text-to-Speech.</td>
+                    </tr>
+                    <tr className="bg-muted/20">
+                      <td className="px-2 py-1.5 font-medium text-primary">match_threshold</td>
+                      <td className="px-2 py-1.5">Limiar de similaridade vetorial (0.15 padrão). Abaixo disso, busca por keywords.</td>
+                    </tr>
+                    <tr>
+                      <td className="px-2 py-1.5 font-medium text-primary">match_count</td>
+                      <td className="px-2 py-1.5">Quantidade de chunks retornados pela busca RAG (5 padrão).</td>
+                    </tr>
+                    <tr className="bg-muted/20">
+                      <td className="px-2 py-1.5 font-medium text-primary">rejection_message</td>
+                      <td className="px-2 py-1.5">Mensagem exibida quando usuário pergunta fora do escopo permitido.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Onde é Usado */}
+            <div className="bg-muted/30 rounded-lg p-3">
+              <h5 className="font-semibold text-sm mb-2 text-primary">🎯 Onde Cada Campo é Usado</h5>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-card/50 rounded p-2">
+                  <div className="font-semibold text-cyan-400 mb-1">System Prompt</div>
+                  <ul className="space-y-0.5 text-muted-foreground">
+                    <li>• scope_topics</li>
+                    <li>• rejection_message</li>
+                  </ul>
+                </div>
+                <div className="bg-card/50 rounded p-2">
+                  <div className="font-semibold text-emerald-400 mb-1">Geração de Imagens</div>
+                  <ul className="space-y-0.5 text-muted-foreground">
+                    <li>• scope_topics</li>
+                    <li>• document_tags_data</li>
+                  </ul>
+                </div>
+                <div className="bg-card/50 rounded p-2">
+                  <div className="font-semibold text-amber-400 mb-1">Text-to-Speech</div>
+                  <ul className="space-y-0.5 text-muted-foreground">
+                    <li>• phonetic_map</li>
+                  </ul>
+                </div>
+                <div className="bg-card/50 rounded p-2">
+                  <div className="font-semibold text-purple-400 mb-1">Busca RAG</div>
+                  <ul className="space-y-0.5 text-muted-foreground">
+                    <li>• match_threshold</li>
+                    <li>• match_count</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Diferença entre Chats */}
+            <div>
+              <h5 className="font-semibold text-sm mb-2 text-primary">🔀 Diferença entre os Chats</h5>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="border border-blue-500/30 rounded-lg p-2 bg-blue-500/5">
+                  <div className="font-bold text-blue-400 mb-1 flex items-center gap-1">
+                    <BookOpen className="h-3 w-3" /> Chat de Estudo
+                  </div>
+                  <p className="text-muted-foreground">Focado em KnowRISK, ACC, KnowYOU e conteúdo técnico de IA.</p>
+                </div>
+                <div className="border border-rose-500/30 rounded-lg p-2 bg-rose-500/5">
+                  <div className="font-bold text-rose-400 mb-1 flex items-center gap-1">
+                    <Heart className="h-3 w-3" /> Chat de Saúde
+                  </div>
+                  <p className="text-muted-foreground">Focado em saúde, medicina e Hospital Moinhos de Vento.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Nota importante */}
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2">
+              <p className="text-xs text-amber-200">
+                <strong>⚠️ Importante:</strong> O escopo é auto-gerado a partir dos documentos RAG. 
+                Adicionar novos documentos automaticamente expande os temas permitidos.
+              </p>
+            </div>
+          </div>
+        } />
         <p className="text-muted-foreground mt-1">
           Gerencie as delimitações e configurações RAG de cada assistente
         </p>
