@@ -5,17 +5,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface TableCell {
-  text: string;
-  rowIndex: number;
-  colIndex: number;
-}
-
 interface ExtractedTable {
   headers: string[];
   rows: string[][];
   markdownTable: string;
 }
+
+const MAX_PAGES_PER_REQUEST = 30;
 
 // Get Google Cloud access token using service account
 async function getAccessToken(credentials: any): Promise<string> {
@@ -31,7 +27,6 @@ async function getAccessToken(credentials: any): Promise<string> {
     exp: expiry,
   };
 
-  // Base64url encode
   const base64url = (obj: any) => {
     const json = JSON.stringify(obj);
     const base64 = btoa(json);
@@ -42,7 +37,6 @@ async function getAccessToken(credentials: any): Promise<string> {
   const payloadEncoded = base64url(payload);
   const signatureInput = `${headerEncoded}.${payloadEncoded}`;
 
-  // Import the private key
   const pemContents = credentials.private_key
     .replace(/-----BEGIN PRIVATE KEY-----/, "")
     .replace(/-----END PRIVATE KEY-----/, "")
@@ -58,7 +52,6 @@ async function getAccessToken(credentials: any): Promise<string> {
     ["sign"]
   );
 
-  // Sign the JWT
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
     cryptoKey,
@@ -72,7 +65,6 @@ async function getAccessToken(credentials: any): Promise<string> {
 
   const jwt = `${signatureInput}.${signatureEncoded}`;
 
-  // Exchange JWT for access token
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -87,7 +79,6 @@ async function getAccessToken(credentials: any): Promise<string> {
   return tokenData.access_token;
 }
 
-// Convert table cells to markdown
 function tablesToMarkdown(tables: ExtractedTable[]): string {
   return tables.map((table, idx) => {
     let md = `\n### Tabela ${idx + 1}\n\n`;
@@ -96,7 +87,6 @@ function tablesToMarkdown(tables: ExtractedTable[]): string {
   }).join("\n");
 }
 
-// Parse Document AI response for tables
 function extractTablesFromResponse(document: any): ExtractedTable[] {
   const tables: ExtractedTable[] = [];
   
@@ -112,7 +102,6 @@ function extractTablesFromResponse(document: any): ExtractedTable[] {
         markdownTable: "",
       };
 
-      // Extract header row
       if (table.headerRows && table.headerRows.length > 0) {
         for (const headerRow of table.headerRows) {
           const headerCells: string[] = [];
@@ -128,7 +117,6 @@ function extractTablesFromResponse(document: any): ExtractedTable[] {
         }
       }
 
-      // Extract body rows
       if (table.bodyRows) {
         for (const bodyRow of table.bodyRows) {
           const rowCells: string[] = [];
@@ -144,7 +132,6 @@ function extractTablesFromResponse(document: any): ExtractedTable[] {
         }
       }
 
-      // Generate markdown table
       if (extractedTable.headers.length > 0 || extractedTable.rows.length > 0) {
         const headers = extractedTable.headers.length > 0 
           ? extractedTable.headers 
@@ -158,7 +145,6 @@ function extractTablesFromResponse(document: any): ExtractedTable[] {
           : extractedTable.rows.slice(1);
         
         for (const row of dataRows) {
-          // Pad row to match header length
           while (row.length < headers.length) {
             row.push("");
           }
@@ -174,7 +160,6 @@ function extractTablesFromResponse(document: any): ExtractedTable[] {
   return tables;
 }
 
-// Extract text from layout segment
 function extractTextFromLayout(layout: any, fullText: string): string {
   if (!layout || !layout.textAnchor || !layout.textAnchor.textSegments) {
     return "";
@@ -187,6 +172,109 @@ function extractTextFromLayout(layout: any, fullText: string): string {
     text += fullText.substring(startIndex, endIndex);
   }
   return text;
+}
+
+// Process a batch of pages
+async function processPageBatch(
+  pdfBase64: string,
+  processorName: string,
+  location: string,
+  accessToken: string,
+  startPage: number,
+  endPage: number
+): Promise<{ text: string; tables: ExtractedTable[] }> {
+  const pages = [];
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(i);
+  }
+
+  console.log(`Processing pages ${startPage}-${endPage}...`);
+
+  const processResponse = await fetch(
+    `https://${location}-documentai.googleapis.com/v1/${processorName}:process`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        rawDocument: {
+          content: pdfBase64,
+          mimeType: "application/pdf",
+        },
+        skipHumanReview: true,
+        processOptions: {
+          individualPageSelector: {
+            pages: pages,
+          },
+        },
+      }),
+    }
+  );
+
+  if (!processResponse.ok) {
+    const errorText = await processResponse.text();
+    console.error(`Document AI error for pages ${startPage}-${endPage}:`, errorText);
+    throw new Error(`Document AI API error: ${processResponse.status} - ${errorText}`);
+  }
+
+  const result = await processResponse.json();
+  const text = result.document?.text || "";
+  const tables = extractTablesFromResponse(result.document);
+
+  return { text, tables };
+}
+
+// Get total page count by processing just page 1 with minimal options
+async function getPageCount(
+  pdfBase64: string,
+  processorName: string,
+  location: string,
+  accessToken: string
+): Promise<number> {
+  // Try to get page count from a quick single-page process
+  const processResponse = await fetch(
+    `https://${location}-documentai.googleapis.com/v1/${processorName}:process`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        rawDocument: {
+          content: pdfBase64,
+          mimeType: "application/pdf",
+        },
+        skipHumanReview: true,
+        processOptions: {
+          individualPageSelector: {
+            pages: [1],
+          },
+        },
+      }),
+    }
+  );
+
+  if (!processResponse.ok) {
+    // If we can't get page count, estimate from base64 size
+    // Average PDF page is ~100KB in base64
+    const estimatedPages = Math.ceil(pdfBase64.length / 100000);
+    console.log(`Could not get exact page count, estimated: ${estimatedPages}`);
+    return Math.min(estimatedPages, 500); // Cap at 500 pages
+  }
+
+  const result = await processResponse.json();
+  
+  // Document AI returns total pages in the document info
+  // We need to parse the raw PDF to get actual page count
+  // For now, estimate based on the error message pattern or default handling
+  
+  // The actual page count might be in result.document.pages array for processed pages
+  // but not the total. We'll use a different approach - process in batches until we get empty results
+  
+  return -1; // Signal that we need to process iteratively
 }
 
 serve(async (req) => {
@@ -204,23 +292,21 @@ serve(async (req) => {
     }
 
     const credentials = JSON.parse(credentialsJson);
-    const { pdf_base64, filename } = await req.json();
+    const { pdf_base64, filename, max_pages } = await req.json();
 
     if (!pdf_base64) {
       throw new Error("Missing pdf_base64 in request body");
     }
 
-    console.log(`Processing PDF with Document AI: ${filename}`);
+    // Allow caller to limit max pages (default 150 for reasonable processing time)
+    const maxPagesToProcess = max_pages || 150;
 
-    // Get access token
+    console.log(`Processing PDF with Document AI: ${filename} (max ${maxPagesToProcess} pages)`);
+
     const accessToken = await getAccessToken(credentials);
 
-    // Use the general document processor
-    // You need to create a processor in Google Cloud Console first
-    // For now, we'll use the inline processing endpoint
     const processorEndpoint = `https://${location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors`;
 
-    // List processors to find Document OCR processor
     const listResponse = await fetch(processorEndpoint, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -228,10 +314,8 @@ serve(async (req) => {
     const processorsList = await listResponse.json();
     console.log("Available processors:", JSON.stringify(processorsList, null, 2));
 
-    // Find the first processor or use default OCR
     let processorName = "";
     if (processorsList.processors && processorsList.processors.length > 0) {
-      // Prefer FORM_PARSER or DOCUMENT_OCR_PROCESSOR
       const formParser = processorsList.processors.find(
         (p: any) => p.type === "FORM_PARSER_PROCESSOR" || p.type === "DOCUMENT_OCR_PROCESSOR"
       );
@@ -239,7 +323,6 @@ serve(async (req) => {
     }
 
     if (!processorName) {
-      // If no processor exists, return error with instructions
       return new Response(
         JSON.stringify({
           error: "No Document AI processor found",
@@ -254,60 +337,81 @@ serve(async (req) => {
 
     console.log(`Using processor: ${processorName}`);
 
-    // Process the document
-    const processResponse = await fetch(`https://${location}-documentai.googleapis.com/v1/${processorName}:process`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        rawDocument: {
-          content: pdf_base64,
-          mimeType: "application/pdf",
-        },
-        skipHumanReview: true,
-      }),
-    });
+    // Process in batches of MAX_PAGES_PER_REQUEST
+    let allText = "";
+    let allTables: ExtractedTable[] = [];
+    let currentPage = 1;
+    let consecutiveEmptyBatches = 0;
+    let totalPagesProcessed = 0;
 
-    if (!processResponse.ok) {
-      const errorText = await processResponse.text();
-      console.error("Document AI error:", errorText);
-      throw new Error(`Document AI API error: ${processResponse.status} - ${errorText}`);
+    while (currentPage <= maxPagesToProcess && consecutiveEmptyBatches < 2) {
+      const endPage = Math.min(currentPage + MAX_PAGES_PER_REQUEST - 1, maxPagesToProcess);
+      
+      try {
+        const batchResult = await processPageBatch(
+          pdf_base64,
+          processorName,
+          location,
+          accessToken,
+          currentPage,
+          endPage
+        );
+
+        if (batchResult.text.trim().length === 0) {
+          consecutiveEmptyBatches++;
+          console.log(`Empty batch for pages ${currentPage}-${endPage}, consecutive empty: ${consecutiveEmptyBatches}`);
+        } else {
+          consecutiveEmptyBatches = 0;
+          allText += (allText ? "\n\n" : "") + `--- Páginas ${currentPage}-${endPage} ---\n\n` + batchResult.text;
+          allTables = [...allTables, ...batchResult.tables];
+          totalPagesProcessed = endPage;
+        }
+
+        console.log(`Batch ${currentPage}-${endPage} complete: ${batchResult.text.length} chars, ${batchResult.tables.length} tables`);
+      } catch (error) {
+        // If we get a page limit error, it means we've reached the end
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes("PAGE_LIMIT_EXCEEDED") || errorMessage.includes("out of range")) {
+          console.log(`Reached end of document at page ${currentPage}`);
+          break;
+        }
+        // For other errors, try to continue with next batch
+        console.error(`Error processing batch ${currentPage}-${endPage}:`, errorMessage);
+        consecutiveEmptyBatches++;
+      }
+
+      currentPage = endPage + 1;
+      
+      // Small delay between batches to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    const result = await processResponse.json();
-    console.log("Document AI processing complete");
-
-    // Extract full text
-    const fullText = result.document?.text || "";
-
-    // Extract tables
-    const tables = extractTablesFromResponse(result.document);
-    console.log(`Extracted ${tables.length} tables`);
+    if (allText.trim().length === 0) {
+      throw new Error("No text could be extracted from the document");
+    }
 
     // Combine text with table markdown
-    let enrichedText = fullText;
-    if (tables.length > 0) {
+    let enrichedText = allText;
+    if (allTables.length > 0) {
       enrichedText += "\n\n## DADOS TABULARES EXTRAÍDOS\n";
-      enrichedText += tablesToMarkdown(tables);
+      enrichedText += tablesToMarkdown(allTables);
     }
 
-    // Calculate statistics
     const wordCount = enrichedText.split(/\s+/).filter(Boolean).length;
-    const tableCount = tables.length;
-    const totalTableRows = tables.reduce((sum, t) => sum + t.rows.length, 0);
+
+    console.log(`Document AI processing complete: ${totalPagesProcessed} pages, ${wordCount} words, ${allTables.length} tables`);
 
     return new Response(
       JSON.stringify({
         success: true,
         text: enrichedText,
-        tables: tables,
+        tables: allTables,
         statistics: {
           wordCount,
-          tableCount,
-          totalTableRows,
-          originalTextLength: fullText.length,
+          tableCount: allTables.length,
+          totalTableRows: allTables.reduce((sum, t) => sum + t.rows.length, 0),
+          pagesProcessed: totalPagesProcessed,
+          originalTextLength: allText.length,
           enrichedTextLength: enrichedText.length,
         },
       }),
