@@ -74,6 +74,9 @@ export const DocumentsTab = () => {
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
   const [isBulkReprocessing, setIsBulkReprocessing] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [showUploadStatus, setShowUploadStatus] = useState(true);
 
   // Duplicate detection states
   const [duplicateInfo, setDuplicateInfo] = useState<{
@@ -338,6 +341,7 @@ export const DocumentsTab = () => {
         details: 'Na fila'
       }));
       setUploadStatuses(initialStatuses);
+      setShowUploadStatus(true);
       try {
         const documentsData: Array<{
           document_id: string;
@@ -635,26 +639,43 @@ export const DocumentsTab = () => {
   const handleReplaceDuplicate = async () => {
     if (!duplicateInfo) return;
     try {
-      // 1. Delete old document and its related data
+      // 1. Delete old document and ALL its related data
       await supabase.from("document_chunks").delete().eq("document_id", duplicateInfo.existingDocId);
       await supabase.from("document_tags").delete().eq("document_id", duplicateInfo.existingDocId);
       await supabase.from("document_versions").delete().eq("document_id", duplicateInfo.existingDocId);
+      await supabase.from("document_routing_log").delete().eq("document_id", duplicateInfo.existingDocId);
       await supabase.from("documents").delete().eq("id", duplicateInfo.existingDocId);
 
-      // 2. Get new document data and reprocess
-      const {
-        data: newDoc,
-        error: fetchError
-      } = await supabase.from("documents").select("*").eq("id", duplicateInfo.newDocId).single();
-      if (fetchError) throw fetchError;
+      // 2. Clean up any partial data from the new document (if processing started)
+      await supabase.from("document_chunks").delete().eq("document_id", duplicateInfo.newDocId);
+      await supabase.from("document_tags").delete().eq("document_id", duplicateInfo.newDocId);
+      await supabase.from("document_versions").delete().eq("document_id", duplicateInfo.newDocId);
 
-      // 3. Reset status and reprocess
+      // 3. Get new document data
+      const { data: newDoc, error: fetchError } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("id", duplicateInfo.newDocId)
+        .single();
+      
+      if (fetchError || !newDoc) {
+        throw new Error("Documento novo não encontrado");
+      }
+
+      // 4. Validate original_text exists
+      if (!newDoc.original_text || newDoc.original_text.length < 100) {
+        throw new Error("Texto original não disponível para reprocessamento");
+      }
+
+      // 5. Reset status and clear content_hash to avoid duplicate detection
       await supabase.from("documents").update({
-        status: "pending"
+        status: "pending",
+        content_hash: null,
+        error_message: null
       }).eq("id", duplicateInfo.newDocId);
-      const {
-        error: processError
-      } = await supabase.functions.invoke("process-bulk-document", {
+
+      // 6. Trigger reprocessing
+      const { error: processError } = await supabase.functions.invoke("process-bulk-document", {
         body: {
           documents_data: [{
             document_id: newDoc.id,
@@ -663,7 +684,9 @@ export const DocumentsTab = () => {
           }]
         }
       });
+      
       if (processError) throw processError;
+      
       toast.success("Documento substituído com sucesso!");
       setDuplicateInfo(null);
       queryClient.invalidateQueries({
@@ -671,6 +694,33 @@ export const DocumentsTab = () => {
       });
     } catch (error: any) {
       toast.error(`Erro ao substituir: ${error.message}`);
+    }
+  };
+
+  // Handle bulk delete selected documents
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const docsToDelete = Array.from(selectedDocs);
+      
+      for (const docId of docsToDelete) {
+        // Delete all related data first
+        await supabase.from("document_chunks").delete().eq("document_id", docId);
+        await supabase.from("document_tags").delete().eq("document_id", docId);
+        await supabase.from("document_versions").delete().eq("document_id", docId);
+        await supabase.from("document_routing_log").delete().eq("document_id", docId);
+        // Delete document
+        await supabase.from("documents").delete().eq("id", docId);
+      }
+      
+      toast.success(`${docsToDelete.length} documento(s) excluído(s) com sucesso`);
+      setSelectedDocs(new Set());
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    } catch (error: any) {
+      toast.error(`Erro ao excluir: ${error.message}`);
+    } finally {
+      setIsBulkDeleting(false);
+      setShowBulkDeleteConfirm(false);
     }
   };
 
@@ -1639,8 +1689,18 @@ export const DocumentsTab = () => {
       </Card>
 
       {/* Real-time Upload Status Table */}
-      {uploadStatuses.length > 0 && <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Status de Upload</h3>
+      {uploadStatuses.length > 0 && showUploadStatus && <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Status de Upload</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowUploadStatus(false)}
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -1848,7 +1908,53 @@ export const DocumentsTab = () => {
               <Button variant="outline" size="sm" onClick={() => setSelectedDocs(new Set())}>
                 Limpar Seleção
               </Button>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={() => setShowBulkDeleteConfirm(true)}
+                disabled={isBulkDeleting}
+              >
+                {isBulkDeleting ? <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Excluindo...
+                  </> : <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Excluir Selecionados
+                  </>}
+              </Button>
             </div>}
+
+          {/* Bulk Delete Confirmation Dialog */}
+          <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  Confirmar Exclusão
+                </AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <p>Você está prestes a excluir <strong>{selectedDocs.size} documento(s)</strong>.</p>
+                  <p>Esta ação é <strong>irreversível</strong> e removerá permanentemente:</p>
+                  <ul className="list-disc list-inside mt-2 text-sm">
+                    <li>Os documentos selecionados</li>
+                    <li>Todos os chunks e embeddings</li>
+                    <li>Tags e metadados associados</li>
+                    <li>Histórico de versões</li>
+                  </ul>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleBulkDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Excluir {selectedDocs.size} Documento(s)
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         
         {isLoading ? <div className="flex justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin" />
