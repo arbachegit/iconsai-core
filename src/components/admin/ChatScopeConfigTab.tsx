@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw, Volume2, Plus, Trash2, Code, ChevronDown } from "lucide-react";
+import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw, Volume2, Plus, Trash2, Code, ChevronDown, Info } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 interface ChatConfig {
   id: string;
   chat_type: "study" | "health";
@@ -56,10 +58,10 @@ export function ChatScopeConfigTab() {
   const [addingTermFor, setAddingTermFor] = useState<"study" | "health" | null>(null);
   const [studySearchTerm, setStudySearchTerm] = useState("");
   const [healthSearchTerm, setHealthSearchTerm] = useState("");
-  const [studyScopeOpen, setStudyScopeOpen] = useState(true);
-  const [healthScopeOpen, setHealthScopeOpen] = useState(true);
-  const [studyTagsOpen, setStudyTagsOpen] = useState(true);
-  const [healthTagsOpen, setHealthTagsOpen] = useState(true);
+  const [studyScopeOpen, setStudyScopeOpen] = useState(false);
+  const [healthScopeOpen, setHealthScopeOpen] = useState(false);
+  const [studyTagsOpen, setStudyTagsOpen] = useState(false);
+  const [healthTagsOpen, setHealthTagsOpen] = useState(false);
   useEffect(() => {
     fetchConfigs();
   }, []);
@@ -379,16 +381,16 @@ export function ChatScopeConfigTab() {
                 </CardHeader>
                 <CollapsibleContent>
                   <CardContent className="space-y-4">
-                    {/* Parent Tags */}
+                    {/* Parent Tags Table */}
                     {(() => {
                       const searchTerm = config.chat_type === "study" ? studySearchTerm : healthSearchTerm;
                       const allParentTags = config.document_tags_data
                         .filter(t => t.tag_type === "parent")
                         .filter(t => !searchTerm || t.tag_name.toLowerCase().includes(searchTerm.toLowerCase()))
                         .sort((a, b) => a.tag_name.localeCompare(b.tag_name, 'pt-BR'));
-                      const highConfParents = allParentTags.filter(t => t.avg_confidence >= 0.7);
-                      const lowConfParents = allParentTags.filter(t => t.avg_confidence < 0.7);
                       const totalParentTags = config.document_tags_data.filter(t => t.tag_type === "parent").length;
+                      const lowConfCount = allParentTags.filter(t => t.avg_confidence < 0.7).length;
+                      
                       return (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
@@ -396,52 +398,86 @@ export function ChatScopeConfigTab() {
                               <BookOpen className="h-4 w-4" />
                               Tags Parent ({allParentTags.length}{searchTerm ? ` de ${totalParentTags}` : ''})
                             </Label>
-                            {lowConfParents.length > 0 && (
+                            {lowConfCount > 0 && (
                               <Badge variant="outline" className="text-xs flex items-center gap-1">
                                 <AlertTriangle className="h-3 w-3" />
-                                {lowConfParents.length} com baixa confiança
+                                {lowConfCount} com baixa confiança
                               </Badge>
                             )}
                           </div>
                           
-                          {highConfParents.length > 0 && (
-                            <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
-                              <p className="text-xs mb-2 text-primary-foreground flex items-center gap-1">
-                                <CheckCircle2 className="h-3 w-3" />
-                                Incluídas no escopo (confidence ≥ 70%):
-                              </p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {highConfParents.map((tag, idx) => (
-                                  <Badge key={idx} variant="default" className="text-xs">
-                                    {tag.tag_name} {(tag.avg_confidence * 100).toFixed(0)}%
-                                    {tag.count > 1 && <span className="ml-1 opacity-70">×{tag.count}</span>}
-                                  </Badge>
-                                ))}
-                              </div>
+                          {allParentTags.length > 0 ? (
+                            <div className="border rounded-lg max-h-[300px] overflow-y-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Nome da Tag</TableHead>
+                                    <TableHead>Confiança</TableHead>
+                                    <TableHead className="w-[60px] text-center">Escopo</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {allParentTags.map((tag, idx) => {
+                                    const isInScope = tag.avg_confidence >= 0.7;
+                                    return (
+                                      <TableRow key={idx}>
+                                        <TableCell className="font-medium">
+                                          {tag.tag_name}
+                                          {tag.count > 1 && (
+                                            <span className="ml-1 text-xs text-muted-foreground">×{tag.count}</span>
+                                          )}
+                                        </TableCell>
+                                        <TableCell>
+                                          <Badge 
+                                            variant="outline" 
+                                            className={`text-xs ${
+                                              tag.avg_confidence >= 0.7 
+                                                ? "border-green-500/50 text-green-400" 
+                                                : tag.avg_confidence >= 0.5 
+                                                  ? "border-yellow-500/50 text-yellow-400"
+                                                  : "border-red-500/50 text-red-400"
+                                            }`}
+                                          >
+                                            {(tag.avg_confidence * 100).toFixed(0)}%
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <Info className={`h-4 w-4 mx-auto cursor-help ${
+                                                  isInScope ? "text-green-400" : "text-muted-foreground"
+                                                }`} />
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                {isInScope ? (
+                                                  <p className="text-xs">
+                                                    <span className="font-semibold text-green-400">Incluída no escopo</span>
+                                                    <br />
+                                                    Escopo: {tag.tag_name}
+                                                  </p>
+                                                ) : (
+                                                  <p className="text-xs">
+                                                    <span className="font-semibold text-yellow-400">Não incluída no escopo</span>
+                                                    <br />
+                                                    Confiança abaixo de 70%
+                                                  </p>
+                                                )}
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
                             </div>
-                          )}
-                          
-                          {lowConfParents.length > 0 && (
-                            <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                              <p className="text-xs mb-2 text-primary-foreground flex items-center gap-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                Não incluídas (confidence {'<'} 70%):
-                              </p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {lowConfParents.map((tag, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-xs opacity-60 text-primary-foreground">
-                                    {tag.tag_name} {(tag.avg_confidence * 100).toFixed(0)}%
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {searchTerm && allParentTags.length === 0 && (
+                          ) : searchTerm ? (
                             <p className="text-xs text-muted-foreground text-center py-2">
                               Nenhuma tag parent encontrada para "{searchTerm}"
                             </p>
-                          )}
+                          ) : null}
                         </div>
                       );
                     })()}
