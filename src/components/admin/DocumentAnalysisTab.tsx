@@ -24,7 +24,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle, Heart, BookOpen, Package, Check, AlertTriangle, X } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle, Heart, BookOpen, Package, Check, AlertTriangle, X, Plus } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
@@ -64,6 +77,10 @@ export const DocumentAnalysisTab = () => {
   const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [tagSearchOpen, setTagSearchOpen] = useState<string | null>(null);
+  const [tagSearchTerm, setTagSearchTerm] = useState("");
+  
+  const queryClient = useQueryClient();
 
   // Fetch documents
   const { data: documents, isLoading: docsLoading } = useQuery({
@@ -90,6 +107,41 @@ export const DocumentAnalysisTab = () => {
       if (error) throw error;
       return data as DocumentTag[];
     },
+  });
+
+  // Fetch unique tag names for autocomplete
+  const { data: uniqueTags } = useQuery({
+    queryKey: ["unique-tags"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("document_tags")
+        .select("tag_name")
+        .eq("tag_type", "parent");
+      return [...new Set(data?.map(t => t.tag_name) || [])];
+    }
+  });
+
+  // Insert tag mutation
+  const insertTagMutation = useMutation({
+    mutationFn: async ({ docId, tagName }: { docId: string; tagName: string }) => {
+      await supabase.from("document_tags").insert({
+        document_id: docId,
+        tag_name: tagName,
+        tag_type: "parent",
+        source: "admin",
+        confidence: 1.0
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["document-tags-all"] });
+      queryClient.invalidateQueries({ queryKey: ["unique-tags"] });
+      toast.success("Tag adicionada com sucesso!");
+      setTagSearchOpen(null);
+      setTagSearchTerm("");
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao adicionar tag: ${error.message}`);
+    }
   });
 
   // Group tags by document
@@ -398,19 +450,76 @@ export const DocumentAnalysisTab = () => {
                       )}
 
                       {/* Card de Classificação Completa */}
-                      {parentTags.length > 0 && (
+                      {parentTags.length > 0 ? (
                         <div className="p-4 bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg border border-primary/20">
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="font-semibold flex items-center gap-2">
                               <Tag className="h-4 w-4" />
                               Classificação do Documento
                             </h4>
-                            {/* Contexto/Caixa destacado */}
-                            <Badge variant="default" className="text-sm px-3 py-1 flex items-center gap-1">
-                              <Package className="h-3 w-3" />
-                              {doc.target_chat === "health" ? "Caixa: Saúde" : 
-                               doc.target_chat === "study" ? "Caixa: Estudo" : "Caixa: Geral"}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              {/* INSERIR TAGS Button */}
+                              <Popover open={tagSearchOpen === doc.id} onOpenChange={(open) => {
+                                setTagSearchOpen(open ? doc.id : null);
+                                if (!open) setTagSearchTerm("");
+                              }}>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" size="sm" className="gap-2">
+                                    <Plus className="h-4 w-4" />
+                                    INSERIR TAGS
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[250px] p-0" align="end">
+                                  <Command>
+                                    <CommandInput 
+                                      placeholder="Buscar ou criar tag..." 
+                                      value={tagSearchTerm}
+                                      onValueChange={setTagSearchTerm}
+                                    />
+                                    <CommandList>
+                                      <CommandEmpty>
+                                        {tagSearchTerm.trim() && (
+                                          <Button 
+                                            variant="ghost" 
+                                            className="w-full justify-start"
+                                            onClick={() => insertTagMutation.mutate({ 
+                                              docId: doc.id, 
+                                              tagName: tagSearchTerm.trim() 
+                                            })}
+                                          >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Criar "{tagSearchTerm}"
+                                          </Button>
+                                        )}
+                                      </CommandEmpty>
+                                      <CommandGroup heading="Tags existentes">
+                                        {uniqueTags
+                                          ?.filter(t => t.toLowerCase().includes(tagSearchTerm.toLowerCase()))
+                                          .slice(0, 10)
+                                          .map(tag => (
+                                            <CommandItem 
+                                              key={tag}
+                                              onSelect={() => {
+                                                insertTagMutation.mutate({ docId: doc.id, tagName: tag });
+                                              }}
+                                            >
+                                              <Tag className="h-4 w-4 mr-2" />
+                                              {tag}
+                                            </CommandItem>
+                                          ))
+                                        }
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                              {/* Contexto/Caixa destacado */}
+                              <Badge variant="default" className="text-sm px-3 py-1 flex items-center gap-1">
+                                <Package className="h-3 w-3" />
+                                {doc.target_chat === "health" ? "Caixa: Saúde" : 
+                                 doc.target_chat === "study" ? "Caixa: Estudo" : "Caixa: Geral"}
+                              </Badge>
+                            </div>
                           </div>
                           
                           {/* Tags com Confiança Visual */}
@@ -475,6 +584,66 @@ export const DocumentAnalysisTab = () => {
                                 </div>
                               );
                             })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-muted/30 rounded-lg border border-dashed border-muted-foreground/30">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Nenhuma tag atribuída</span>
+                            <Popover open={tagSearchOpen === doc.id} onOpenChange={(open) => {
+                              setTagSearchOpen(open ? doc.id : null);
+                              if (!open) setTagSearchTerm("");
+                            }}>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-2">
+                                  <Plus className="h-4 w-4" />
+                                  INSERIR TAGS
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[250px] p-0" align="end">
+                                <Command>
+                                  <CommandInput 
+                                    placeholder="Buscar ou criar tag..." 
+                                    value={tagSearchTerm}
+                                    onValueChange={setTagSearchTerm}
+                                  />
+                                  <CommandList>
+                                    <CommandEmpty>
+                                      {tagSearchTerm.trim() && (
+                                        <Button 
+                                          variant="ghost" 
+                                          className="w-full justify-start"
+                                          onClick={() => insertTagMutation.mutate({ 
+                                            docId: doc.id, 
+                                            tagName: tagSearchTerm.trim() 
+                                          })}
+                                        >
+                                          <Plus className="h-4 w-4 mr-2" />
+                                          Criar "{tagSearchTerm}"
+                                        </Button>
+                                      )}
+                                    </CommandEmpty>
+                                    <CommandGroup heading="Tags existentes">
+                                      {uniqueTags
+                                        ?.filter(t => t.toLowerCase().includes(tagSearchTerm.toLowerCase()))
+                                        .slice(0, 10)
+                                        .map(tag => (
+                                          <CommandItem 
+                                            key={tag}
+                                            onSelect={() => {
+                                              insertTagMutation.mutate({ docId: doc.id, tagName: tag });
+                                            }}
+                                          >
+                                            <Tag className="h-4 w-4 mr-2" />
+                                            {tag}
+                                          </CommandItem>
+                                        ))
+                                      }
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </div>
                       )}

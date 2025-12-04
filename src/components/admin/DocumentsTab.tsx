@@ -76,6 +76,8 @@ export const DocumentsTab = () => {
   const [isBulkReprocessing, setIsBulkReprocessing] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [isReplacing, setIsReplacing] = useState(false);
+  const [statusInfoDoc, setStatusInfoDoc] = useState<any>(null);
   const [showUploadStatus, setShowUploadStatus] = useState(true);
 
   // Duplicate detection states
@@ -660,6 +662,7 @@ export const DocumentsTab = () => {
   // Handle duplicate - Replace existing document
   const handleReplaceDuplicate = async () => {
     if (!duplicateInfo) return;
+    setIsReplacing(true);
     try {
       // 1. Delete old document and ALL its related data
       await supabase.from("document_chunks").delete().eq("document_id", duplicateInfo.existingDocId);
@@ -716,6 +719,8 @@ export const DocumentsTab = () => {
       });
     } catch (error: any) {
       toast.error(`Erro ao substituir: ${error.message}`);
+    } finally {
+      setIsReplacing(false);
     }
   };
 
@@ -2301,10 +2306,22 @@ export const DocumentsTab = () => {
                   })()}
                     </Button>
                   </TableCell>
-                  <TableCell onClick={() => setSelectedDoc(doc)}>
-                    {doc.implementation_status && <Badge variant={doc.implementation_status === "ready" ? "default" : doc.implementation_status === "needs_review" ? "secondary" : "outline"}>
-                        {doc.implementation_status}
-                      </Badge>}
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    {doc.implementation_status && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setStatusInfoDoc(doc)}
+                        className="h-auto p-0"
+                      >
+                        <Badge 
+                          variant={doc.implementation_status === "ready" ? "default" : doc.implementation_status === "needs_review" ? "secondary" : "outline"}
+                          className="cursor-pointer hover:opacity-80 transition-opacity"
+                        >
+                          {doc.implementation_status}
+                        </Badge>
+                      </Button>
+                    )}
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>{doc.total_chunks}</TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
@@ -2789,9 +2806,18 @@ export const DocumentsTab = () => {
                 <X className="h-4 w-4 mr-2" />
                 Excluir Inserção
               </Button>
-              <Button variant="destructive" onClick={handleReplaceDuplicate} className="flex-1">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Substituir Existente
+              <Button variant="destructive" onClick={handleReplaceDuplicate} className="flex-1" disabled={isReplacing}>
+                {isReplacing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Substituindo...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Substituir Existente
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -3266,5 +3292,70 @@ export const DocumentsTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Status Info Modal */}
+      <Dialog open={!!statusInfoDoc} onOpenChange={() => setStatusInfoDoc(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {statusInfoDoc?.implementation_status === "ready" ? (
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+              )}
+              Status: {statusInfoDoc?.implementation_status?.toUpperCase()}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {statusInfoDoc?.implementation_status === "ready" ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                ✅ Este documento foi processado com sucesso!
+              </p>
+              <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+                <h4 className="font-medium text-green-500 mb-2">O que funcionou:</h4>
+                <ul className="text-sm space-y-1 text-muted-foreground">
+                  <li>• Texto extraído corretamente</li>
+                  <li>• Chunks gerados: {statusInfoDoc?.total_chunks || 0}</li>
+                  <li>• Legibilidade: {statusInfoDoc?.readability_score ? 
+                    `${Math.round(statusInfoDoc.readability_score * 100)}%` : 'N/A'}</li>
+                  <li>• Tags classificadas pela IA</li>
+                  <li>• Embeddings vetoriais indexados</li>
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                ⚠️ Este documento precisa de revisão manual.
+              </p>
+              <div className="bg-amber-500/10 p-4 rounded-lg border border-amber-500/30">
+                <h4 className="font-medium text-amber-500 mb-2">Motivos possíveis:</h4>
+                <ul className="text-sm space-y-1 text-muted-foreground">
+                  <li>• Baixa legibilidade do texto ({statusInfoDoc?.readability_score ? 
+                    `${Math.round(statusInfoDoc.readability_score * 100)}%` : 'N/A'})</li>
+                  <li>• Poucos chunks gerados ({statusInfoDoc?.total_chunks || 0})</li>
+                  <li>• Erro na classificação automática</li>
+                  {statusInfoDoc?.error_message && (
+                    <li className="text-red-400">• Erro: {statusInfoDoc.error_message}</li>
+                  )}
+                </ul>
+              </div>
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  <strong>Sugestão:</strong> Revise o documento original e considere 
+                  reprocessar com parâmetros ajustados ou usar OCR avançado para PDFs escaneados.
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusInfoDoc(null)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>;
 };
