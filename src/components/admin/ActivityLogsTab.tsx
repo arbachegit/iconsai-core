@@ -38,6 +38,7 @@ const CATEGORY_CONFIG: Record<string, { color: string; icon: React.ComponentType
   CONFIG: { color: "bg-blue-500", icon: Settings },
   CONTENT: { color: "bg-purple-500", icon: FileText },
   DOCUMENT: { color: "bg-amber-500", icon: Upload },
+  UPLOAD: { color: "bg-lime-500", icon: Upload },
   RAG: { color: "bg-cyan-500", icon: Database },
   EXPORT: { color: "bg-indigo-500", icon: Download },
   VERSION: { color: "bg-pink-500", icon: GitBranch },

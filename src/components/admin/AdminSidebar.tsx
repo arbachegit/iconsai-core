@@ -30,9 +30,10 @@ import {
   Music,
   Shield,
   History,
+  Users,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -106,6 +107,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       icon: Shield,
       items: [
         { id: "activity-logs" as TabType, label: "Log de Atividades", icon: History },
+        { id: "user-usage-logs" as TabType, label: "Log de Uso (Usuários)", icon: Users },
         { id: "document-routing-logs" as TabType, label: "Logs de Roteamento", icon: Route },
       ]
     },
