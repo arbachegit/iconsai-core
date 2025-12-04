@@ -1545,8 +1545,27 @@ export const DocumentsTab = () => {
               <p className="text-sm font-medium">{selectedFiles.length} arquivo(s) selecionado(s):</p>
               {selectedFiles.map((file, idx) => <div key={idx} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                   <FileText className="h-4 w-4" />
-                  <span className="text-sm flex-1">{file.name}</span>
+                  <span className="text-sm flex-1 truncate">{file.name}</span>
                   <Badge variant="outline">{(file.size / 1024).toFixed(2)} KB</Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedFiles(prev => {
+                        const newFiles = prev.filter((_, i) => i !== idx);
+                        if (newFiles.length === 0) {
+                          toast.info("Todos os arquivos removidos");
+                        } else {
+                          toast.info("Arquivo removido da fila");
+                        }
+                        return newFiles;
+                      });
+                    }}
+                    disabled={uploading || isExtracting}
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 ml-1"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>)}
             </div>}
 
