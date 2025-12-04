@@ -94,12 +94,21 @@ export default {
             opacity: "0",
           },
         },
+        "slideRight": {
+          "0%": {
+            transform: "translateX(-100%)",
+          },
+          "100%": {
+            transform: "translateX(400%)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "color-pulse": "color-pulse 2s ease-in-out infinite",
         "expanding-waves": "expanding-waves 2s ease-out infinite",
+        "slideRight": "slideRight 1.5s ease-in-out infinite",
       },
     },
   },
