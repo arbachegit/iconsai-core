@@ -333,7 +333,10 @@ export function useChatStudy(options: UseChatStudyOptions = {}) {
         }
 
         // Common post-processing for both paths
+        console.log("[SUGGESTIONS DEBUG] Full response length:", fullResponse.length);
+        console.log("[SUGGESTIONS DEBUG] Response tail (last 500 chars):", fullResponse.slice(-500));
         const extractedSuggestions = extractSuggestions(fullResponse);
+        console.log("[SUGGESTIONS DEBUG] Extracted suggestions:", extractedSuggestions);
         if (extractedSuggestions.length > 0) {
           setSuggestions(extractedSuggestions);
           
