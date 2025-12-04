@@ -49,7 +49,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle, Heart, BookOpen, Package, Check, AlertTriangle, X, Plus, Trash2 } from "lucide-react";
+import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle, Heart, BookOpen, Package, Check, AlertTriangle, X, Plus, Trash2, Merge } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
@@ -125,6 +125,35 @@ export const DocumentAnalysisTab = () => {
       return data as DocumentTag[];
     },
   });
+
+  // Fetch tag modification logs for merge indicators
+  const { data: tagModificationLogs } = useQuery({
+    queryKey: ["tag-modification-logs-for-indicators"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tag_modification_logs")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as Array<{
+        id: string;
+        document_id: string | null;
+        document_filename: string;
+        original_tag_name: string;
+        new_tag_name: string;
+        modification_type: string;
+        created_at: string;
+      }>;
+    },
+  });
+
+  // Helper to get merge info for a tag
+  const getTagMergeInfo = (docId: string, tagName: string) => {
+    return tagModificationLogs?.filter(
+      log => log.document_id === docId && log.new_tag_name === tagName
+    ) || [];
+  };
 
   // Fetch unique parent tag names for autocomplete
   const { data: uniqueTags } = useQuery({
@@ -870,11 +899,48 @@ export const DocumentAnalysisTab = () => {
                           <div className="space-y-3">
                             {parentTags.map((parent) => {
                               const children = getChildTags(docTags, parent.id);
+                              const mergeInfo = getTagMergeInfo(doc.id, parent.tag_name);
+                              const hasMerge = mergeInfo.length > 0;
                               return (
                                 <div key={parent.id} className="flex items-start gap-3 p-3 bg-background rounded-lg group">
                                   <div className="flex-shrink-0 min-w-[140px]">
                                     <div className="flex items-center gap-1">
-                                      <Badge variant="default" className="mb-1">{parent.tag_name}</Badge>
+                                      <Badge 
+                                        variant="default" 
+                                        className={`mb-1 ${hasMerge ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
+                                      >
+                                        {hasMerge && <Merge className="h-3 w-3 mr-1" />}
+                                        {parent.tag_name}
+                                      </Badge>
+                                      {hasMerge && (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <div className="p-1 bg-purple-500/20 rounded-full cursor-help">
+                                                <Merge className="h-3 w-3 text-purple-400" />
+                                              </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-[300px]">
+                                              <p className="font-semibold text-purple-400 flex items-center gap-1">
+                                                <Merge className="h-4 w-4" /> Tag Mesclada
+                                              </p>
+                                              <p className="text-sm mt-1">Esta tag foi criada/atualizada por mescla:</p>
+                                              <ul className="text-xs mt-2 space-y-1">
+                                                {mergeInfo.slice(0, 3).map((m, i) => (
+                                                  <li key={i} className="flex items-center gap-1">
+                                                    <span className="text-red-400">{m.original_tag_name}</span>
+                                                    <span className="text-muted-foreground">→</span>
+                                                    <span className="text-green-400">{m.new_tag_name}</span>
+                                                  </li>
+                                                ))}
+                                                {mergeInfo.length > 3 && (
+                                                  <li className="text-muted-foreground">+{mergeInfo.length - 3} mais...</li>
+                                                )}
+                                              </ul>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      )}
                                       <TooltipProvider>
                                         <Tooltip>
                                           <TooltipTrigger asChild>

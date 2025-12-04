@@ -123,17 +123,18 @@ export const TagsManagementTab = () => {
         .from("document_tags")
         .select(`
           *,
-          documents:document_id (target_chat)
+          documents:document_id (target_chat, filename)
         `)
         .order("tag_name", { ascending: true });
 
       if (error) throw error;
       
-      // Flatten the target_chat from nested documents object
+      // Flatten the target_chat and filename from nested documents object
       return (data || []).map((tag: any) => ({
         ...tag,
         target_chat: tag.documents?.target_chat || null,
-      })) as Tag[];
+        document_filename: tag.documents?.filename || null,
+      })) as (Tag & { document_filename: string | null })[];
     },
   });
 
@@ -609,12 +610,13 @@ export const TagsManagementTab = () => {
 
   // Merge tags mutation with machine learning rule creation
   const mergeTagsMutation = useMutation({
-    mutationFn: async ({ targetTagId, sourceTagIds, sourceTagNames, targetTagName, chatType }: { 
+    mutationFn: async ({ targetTagId, sourceTagIds, sourceTagNames, targetTagName, chatType, documentsAffected }: { 
       targetTagId: string; 
       sourceTagIds: string[]; 
       sourceTagNames: string[];
       targetTagName: string;
       chatType: string;
+      documentsAffected?: Array<{ document_id: string; document_filename: string }>;
     }) => {
       // Move all child tags to target
       for (const sourceId of sourceTagIds) {
@@ -643,10 +645,33 @@ export const TagsManagementTab = () => {
             }, { onConflict: "source_tag,chat_type" });
         }
       }
+      
+      // Log tag modifications for each affected document
+      if (documentsAffected && documentsAffected.length > 0) {
+        for (const doc of documentsAffected) {
+          for (const sourceName of sourceTagNames) {
+            if (sourceName.toLowerCase() !== targetTagName.toLowerCase()) {
+              await supabase
+                .from("tag_modification_logs")
+                .insert({
+                  document_id: doc.document_id,
+                  document_filename: doc.document_filename,
+                  original_tag_name: sourceName,
+                  new_tag_name: targetTagName,
+                  modification_type: "merge",
+                  chat_type: chatType,
+                  created_by: "admin"
+                });
+            }
+          }
+        }
+      }
     },
     onSuccess: () => {
       toast.success("Tags unificadas! Regra de aprendizado criada - a IA não repetirá este erro.");
       queryClient.invalidateQueries({ queryKey: ["all-tags"] });
+      queryClient.invalidateQueries({ queryKey: ["tag-modification-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["tag-modification-logs-for-indicators"] });
       setMergeDialog({ open: false, tagName: "", ids: [] });
     },
     onError: (error: any) => {
@@ -677,12 +702,20 @@ export const TagsManagementTab = () => {
     // Determine chat type from the tag's target_chat field
     const chatType = targetTag.target_chat || "health";
     
+    // Get unique documents affected by this merge
+    const documentsAffected = [...new Map(
+      sourceTags
+        .filter(t => t.document_id && t.document_filename)
+        .map(t => [t.document_id, { document_id: t.document_id, document_filename: t.document_filename! }])
+    ).values()];
+    
     mergeTagsMutation.mutate({ 
       targetTagId: targetTag.id, 
       sourceTagIds: sourceTags.map(t => t.id),
       sourceTagNames: sourceTags.map(t => t.tag_name),
       targetTagName: targetTag.tag_name,
-      chatType
+      chatType,
+      documentsAffected
     });
   };
 
