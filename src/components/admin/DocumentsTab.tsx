@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap, Eye, Settings2, AlertTriangle, RotateCcw } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap, Eye, Settings2, AlertTriangle, RotateCcw, Table2 as TableIcon } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -21,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
@@ -96,6 +97,9 @@ export const DocumentsTab = () => {
   }>>([]);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
+
+  // Document AI OCR toggle
+  const [useDocumentAI, setUseDocumentAI] = useState(false);
 
   // Retry with custom validation parameters
   const [retryDoc, setRetryDoc] = useState<any>(null);
@@ -214,6 +218,34 @@ export const DocumentsTab = () => {
       .trim();
   };
 
+  // Extract text from PDF using Google Document AI (for tables)
+  const extractTextWithDocumentAI = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+
+    const { data, error } = await supabase.functions.invoke('extract-pdf-document-ai', {
+      body: {
+        pdf_base64: base64,
+        filename: file.name
+      }
+    });
+
+    if (error) {
+      console.error('Document AI error:', error);
+      throw new Error(`Document AI failed: ${error.message}`);
+    }
+
+    if (!data.success) {
+      throw new Error(data.error || 'Document AI processing failed');
+    }
+
+    console.log(`Document AI stats: ${data.statistics?.tableCount} tables, ${data.statistics?.totalTableRows} rows`);
+    
+    return data.text;
+  };
+
   // Poll document status
   const pollDocumentStatus = async (documentId: string, fileId: string) => {
     const maxAttempts = 30;
@@ -298,9 +330,11 @@ export const DocumentsTab = () => {
               ...s,
               status: 'extracting',
               progress: 10,
-              details: 'Extraindo texto do PDF...'
+              details: useDocumentAI ? 'Extraindo com Google Document AI (tabelas)...' : 'Extraindo texto do PDF...'
             } : s));
-            const extractedText = await extractTextFromPDF(file);
+            const extractedText = useDocumentAI 
+              ? await extractTextWithDocumentAI(file)
+              : await extractTextFromPDF(file);
             if (extractedText.length < 100) {
               setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
                 ...s,
@@ -1392,6 +1426,24 @@ export const DocumentsTab = () => {
                   <Badge variant="outline">{(file.size / 1024).toFixed(2)} KB</Badge>
                 </div>)}
             </div>}
+
+          {/* Document AI Toggle */}
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-400/30">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <TableIcon className="h-4 w-4 text-blue-400" />
+                <span className="font-medium">Google Document AI</span>
+                <Badge variant="outline" className="text-xs bg-blue-500/20 border-blue-400/50">OCR Avançado</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Extração precisa de tabelas e dados estruturados. Recomendado para PDFs com tabelas complexas.
+              </p>
+            </div>
+            <Switch
+              checked={useDocumentAI}
+              onCheckedChange={setUseDocumentAI}
+            />
+          </div>
 
           <div className="flex gap-3">
             <Button 
