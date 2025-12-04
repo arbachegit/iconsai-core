@@ -545,7 +545,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="h-[500px] p-6 border-2 border-cyan-400/60 bg-[hsl(var(--chat-container-bg))] rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" style={{
+      <ScrollArea className="flex-1 min-h-0 p-6 border-2 border-cyan-400/60 bg-[hsl(var(--chat-container-bg))] rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" style={{
       transform: 'translateZ(-10px)',
       backfaceVisibility: 'hidden'
     }} ref={scrollRef}>
