@@ -228,10 +228,26 @@ export const DocumentAnalysisTab = () => {
   // Delete tag mutation
   const deleteTagMutation = useMutation({
     mutationFn: async (tagId: string) => {
-      // First delete child tags
-      await supabase.from("document_tags").delete().eq("parent_tag_id", tagId);
+      // First delete all child tags that reference this tag
+      const { error: childError } = await supabase
+        .from("document_tags")
+        .delete()
+        .eq("parent_tag_id", tagId);
+      
+      if (childError) {
+        console.error("Error deleting child tags:", childError);
+        throw new Error(`Erro ao excluir tags filhas: ${childError.message}`);
+      }
+      
       // Then delete the tag itself
-      await supabase.from("document_tags").delete().eq("id", tagId);
+      const { error: deleteError } = await supabase
+        .from("document_tags")
+        .delete()
+        .eq("id", tagId);
+      
+      if (deleteError) {
+        throw new Error(deleteError.message);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["document-tags-all"] });
@@ -239,7 +255,7 @@ export const DocumentAnalysisTab = () => {
       toast.success("Tag excluída com sucesso!");
     },
     onError: (error: any) => {
-      toast.error(`Erro ao excluir tag: ${error.message}`);
+      toast.error(`Erro ao deletar tag: ${error.message}`);
     }
   });
 
