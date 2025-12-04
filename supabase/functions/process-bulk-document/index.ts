@@ -148,7 +148,7 @@ serve(async (req) => {
         const contentHash = generateContentHash(doc.full_text);
         console.log(`Generated content hash for ${doc.document_id}: ${contentHash.substring(0, 16)}...`);
         
-        // Verificar se já existe documento com o mesmo hash
+        // Verificar se já existe documento com o mesmo hash (duplicata exata)
         const { data: existingDoc } = await supabase
           .from("documents")
           .select("id, filename")
@@ -157,16 +157,73 @@ serve(async (req) => {
           .single();
         
         if (existingDoc) {
-          console.log(`⚠️ Duplicate detected: ${doc.title} matches existing ${existingDoc.filename}`);
+          console.log(`⚠️ Duplicate detected (exact hash): ${doc.title} matches existing ${existingDoc.filename}`);
           results.push({
             document_id: doc.document_id,
             status: "duplicate",
-            error: `Conteúdo duplicado do documento: ${existingDoc.filename}`,
+            error: `Conteúdo duplicado (100% idêntico): ${existingDoc.filename}`,
             existing_doc_id: existingDoc.id,
             existing_filename: existingDoc.filename
           } as any);
           continue;
         }
+        
+        // 0.5 VERIFICAR SIMILARIDADE DE CONTEÚDO (>90%) VIA EMBEDDINGS
+        console.log(`Checking content similarity for ${doc.document_id}...`);
+        
+        // Gerar embedding do novo documento (usando amostra para performance)
+        const sampleText = doc.full_text.substring(0, 8000); // Primeiros ~8k caracteres
+        const similarityEmbeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${openAIKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "text-embedding-3-small",
+            input: sampleText,
+          }),
+        });
+        
+        if (similarityEmbeddingResponse.ok) {
+          const embData = await similarityEmbeddingResponse.json();
+          const newDocEmbedding = embData.data[0].embedding;
+          
+          // Buscar documentos similares com threshold de 0.90
+          const { data: similarDocs } = await supabase.rpc('search_documents', {
+            query_embedding: newDocEmbedding,
+            match_threshold: 0.90,
+            match_count: 1
+          });
+          
+          if (similarDocs && similarDocs.length > 0) {
+            const similarDoc = similarDocs[0];
+            const similarity = Math.round(similarDoc.similarity * 100);
+            
+            // Buscar nome do documento similar
+            const { data: existingSimilarDoc } = await supabase
+              .from("documents")
+              .select("id, filename")
+              .eq("id", similarDoc.document_id)
+              .neq("id", doc.document_id)
+              .single();
+            
+            if (existingSimilarDoc) {
+              console.log(`⚠️ Similar content detected (${similarity}%): ${doc.title} matches ${existingSimilarDoc.filename}`);
+              results.push({
+                document_id: doc.document_id,
+                status: "duplicate",
+                error: `Conteúdo similar (${similarity}%): ${existingSimilarDoc.filename}`,
+                existing_doc_id: existingSimilarDoc.id,
+                existing_filename: existingSimilarDoc.filename,
+                similarity_score: similarity
+              } as any);
+              continue;
+            }
+          }
+        }
+        
+        console.log(`No similar content found for ${doc.document_id}, proceeding with processing...`);
         
         // 1. VALIDAÇÃO
         const validation = validateTextSanity(doc.full_text);
