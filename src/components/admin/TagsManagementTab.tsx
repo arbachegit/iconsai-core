@@ -145,22 +145,58 @@ export const TagsManagementTab = () => {
     setCurrentPage(1);
   }, [searchTagName]);
 
-  // Apply confidence filter and search
-  const confidenceFilteredTags = filteredParentTags.filter((t) => {
-    // Filter by tag name search
-    const searchMatch = !searchTagName.trim() || 
-      t.tag_name.toLowerCase().includes(searchTagName.toLowerCase().trim());
-    
-    if (!searchMatch) return false;
-
-    if (filterConfidence === "all") return true;
-    const conf = t.confidence ?? 0;
-    switch (filterConfidence) {
-      case "high": return conf >= 0.7;
-      case "medium": return conf >= 0.5 && conf < 0.7;
-      case "low": return conf < 0.5;
-      default: return true;
+  // Auto-expand parents with matching children when searching
+  useEffect(() => {
+    if (searchTagName.trim()) {
+      const searchLower = searchTagName.toLowerCase().trim();
+      const parentsWithMatchingChildren = new Set<string>();
+      
+      parentTags.forEach(parent => {
+        const children = childTagsMap[parent.id] || [];
+        const hasMatchingChild = children.some(child => 
+          child.tag_name.toLowerCase().includes(searchLower)
+        );
+        if (hasMatchingChild) {
+          parentsWithMatchingChildren.add(parent.id);
+        }
+      });
+      
+      setExpandedParents(prev => {
+        const newSet = new Set(prev);
+        parentsWithMatchingChildren.forEach(id => newSet.add(id));
+        return newSet;
+      });
     }
+  }, [searchTagName, parentTags, childTagsMap]);
+
+  // Apply confidence filter and search (including child tags)
+  const confidenceFilteredTags = filteredParentTags.filter((parentTag) => {
+    const searchLower = searchTagName.toLowerCase().trim();
+    
+    // Check if parent tag matches search
+    const parentMatch = !searchTagName.trim() || 
+      parentTag.tag_name.toLowerCase().includes(searchLower);
+    
+    // Check if any child tag matches search
+    const childTags = childTagsMap[parentTag.id] || [];
+    const childMatch = childTags.some(child => 
+      child.tag_name.toLowerCase().includes(searchLower)
+    );
+    
+    // Show parent if it matches OR if any child matches
+    if (!searchTagName.trim() || parentMatch || childMatch) {
+      // Apply confidence filter
+      if (filterConfidence === "all") return true;
+      const conf = parentTag.confidence ?? 0;
+      switch (filterConfidence) {
+        case "high": return conf >= 0.7;
+        case "medium": return conf >= 0.5 && conf < 0.7;
+        case "low": return conf < 0.5;
+        default: return true;
+      }
+    }
+    
+    return false;
   });
 
   // Sort tags
