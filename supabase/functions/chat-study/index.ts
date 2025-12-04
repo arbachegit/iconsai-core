@@ -60,6 +60,19 @@ serve(async (req) => {
     return toneRules[region || "default"] || "";
   }
 
+  // Mensagem para perguntar localização de forma amigável
+  function getLocationPrompt(region: string | undefined, isFirstMessage: boolean): string {
+    if (region && region !== "default") return "";
+    if (!isFirstMessage) return "";
+    
+    return `
+🎯 AÇÃO ESPECIAL - PERGUNTAR LOCALIZAÇÃO:
+Na sua resposta, após ajudar o usuário, pergunte de forma MUITO AMIGÁVEL e INFORMAL de qual cidade/região do Brasil ele é.
+Exemplo: "Ah, e de onde você é? Pergunto porque gosto de adaptar meu jeito de conversar!"
+Seja como um amigo de anos, não burocrático.
+`;
+  }
+
   try {
     const { messages, region } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -144,11 +157,14 @@ Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceito
 
     // Obter regras de tom cultural baseadas na região do usuário
     const culturalTone = getCulturalToneRules(region);
+    const isFirstMessage = messages.filter((m: any) => m.role === "user").length <= 1;
+    const locationPrompt = getLocationPrompt(region, isFirstMessage);
     console.log(`Using cultural tone for region: ${region || 'default'}`);
 
     // System prompt focado em KnowRisk, KnowYOU, ACC e navegação do website
     const systemPrompt = `Você é um assistente de IA especializado em ajudar a estudar e entender a KnowRISK, o KnowYOU e a Arquitetura Cognitiva e Comportamental (ACC).
 ${culturalTone}
+${locationPrompt}
 
 ${ragContext}
 

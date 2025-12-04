@@ -60,6 +60,24 @@ serve(async (req) => {
     return toneRules[region || "default"] || "";
   }
 
+  // Mensagem para perguntar localização de forma amigável
+  function getLocationPrompt(region: string | undefined, isFirstMessage: boolean): string {
+    if (region && region !== "default") return "";
+    if (!isFirstMessage) return "";
+    
+    return `
+🎯 AÇÃO ESPECIAL - PERGUNTAR LOCALIZAÇÃO:
+Como ainda não sei de onde você é, na PRIMEIRA resposta, após cumprimentar o usuário, pergunte de forma MUITO AMIGÁVEL e INFORMAL de qual cidade/região do Brasil ele é.
+
+Exemplos de como perguntar (escolha uma variação natural):
+- "Ah, e antes de continuar... de onde você é? Pergunto porque gosto de adaptar meu jeito de conversar pra gente se entender melhor!"
+- "Ei, e me conta uma coisa: de qual cantinho do Brasil você tá me escrevendo? Assim consigo conversar do jeito que você tá mais acostumado!"
+- "Aliás, de onde você é? Adoro saber de onde as pessoas vêm, ajuda a gente a bater um papo mais gostoso!"
+
+IMPORTANTE: Seja como um amigo de anos perguntando, não como um formulário burocrático.
+`;
+  }
+
   try {
     const { messages, region } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -140,11 +158,14 @@ Se o usuário perguntar "você tem o documento X?" ou "você conhece o documento
 
     // Obter regras de tom cultural baseadas na região do usuário
     const culturalTone = getCulturalToneRules(region);
+    const isFirstMessage = messages.filter((m: any) => m.role === "user").length <= 1;
+    const locationPrompt = getLocationPrompt(region, isFirstMessage);
     console.log(`Using cultural tone for region: ${region || 'default'}`);
 
     // System prompt especializado em Hospital Moinhos de Vento e saúde
     const systemPrompt = `Você é o KnowYOU, um assistente de IA especializado em saúde e no Hospital Moinhos de Vento, desenvolvido pela KnowRISK para ajudar profissionais e gestores da área de saúde.
 ${culturalTone}
+${locationPrompt}
 
 ${ragContext}
 
