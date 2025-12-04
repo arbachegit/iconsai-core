@@ -92,9 +92,9 @@ const sectionContent: Record<string, {
       { name: "Mensagem", description: "Usuário envia pergunta" },
       { name: "Search", description: "Busca contexto RAG" },
       { name: "Prompt Build", description: "Monta system prompt" },
-      { name: "Response", description: "LLM gera resposta" },
+      { name: "Response", description: "SLM gera resposta" },
     ],
-    items: ["User", "RAG", "Context", "LLM", "Chat"],
+    items: ["User", "RAG", "Context", "SLM", "Chat"],
     color: "green"
   },
   functions: {
