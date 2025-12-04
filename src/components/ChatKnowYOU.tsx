@@ -17,6 +17,7 @@ import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { mapCityToRegion } from "@/lib/region-mapping";
 
 // Memoizado para evitar re-renders durante digitação
 const SentimentIndicator = memo(({
@@ -54,6 +55,10 @@ export default function ChatKnowYOU() {
     location,
     requestLocation
   } = useGeolocation();
+  
+  // Mapear cidade para região cultural
+  const userRegion = mapCityToRegion(location);
+  
   const {
     messages,
     isLoading,
@@ -73,7 +78,7 @@ export default function ChatKnowYOU() {
     transcribeAudio,
     attachDocument,
     detachDocument
-  } = useChatKnowYOU();
+  } = useChatKnowYOU({ userRegion });
   const [input, setInput] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);

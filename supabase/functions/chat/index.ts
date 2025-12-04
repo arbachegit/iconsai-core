@@ -11,8 +11,57 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Função para gerar regras de tom cultural baseadas na região
+  function getCulturalToneRules(region: string | undefined): string {
+    const toneRules: Record<string, string> = {
+      "sudeste_sp": `
+🎯 TOM CULTURAL - SUDESTE (SP):
+- Seja CONCISO e DIRETO
+- Use verbos ativos, corte saudações longas
+- Foco em eficiência: vá direto ao ponto
+- Evite rodeios, seja objetivo
+- Exemplo: "Preciso disso pra hoje" → "Prioridade para hoje."
+`,
+      "sudeste_mg": `
+🎯 TOM CULTURAL - SUDESTE (MG):
+- Use tom SUAVE e ACOLHEDOR
+- Pergunte como as coisas estão antes de entrar no assunto
+- Use "nós" em vez de "eu" (coletividade)
+- Não pressione, seja paciente
+- Exemplo: "Preciso disso pra hoje" → "Será que conseguimos ver isso hoje ainda?"
+`,
+      "sul": `
+🎯 TOM CULTURAL - SUL:
+- Mantenha FORMALIDADE e RESPEITO
+- Seja ESTRUTURADO e PONTUAL
+- Use linguagem clara e organizada
+- Demonstre profissionalismo
+- Exemplo: "Não concordo" → "Acredito que precisamos revisar."
+`,
+      "nordeste_norte": `
+🎯 TOM CULTURAL - NORDESTE/NORTE:
+- Seja CALOROSO e AMIGÁVEL
+- Use saudações cordiais
+- Permita estrutura mais NARRATIVA
+- Evite ser "seco" - seja receptivo
+- Exemplo: "Preciso disso pra hoje" → "Meu amigo, vê se consegue me ajudar com isso hoje."
+`,
+      "rio": `
+🎯 TOM CULTURAL - RIO DE JANEIRO:
+- INFORMALIDADE CONTROLADA
+- Tom leve, menos corporativo rígido
+- Pode usar expressões coloquiais moderadas
+- Mantenha o profissionalismo com leveza
+- Exemplo: "Não concordo" → "Cara, acho que por aí não vai rolar."
+`,
+      "default": ""
+    };
+    
+    return toneRules[region || "default"] || "";
+  }
+
   try {
-    const { messages } = await req.json();
+    const { messages, region } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -89,8 +138,13 @@ Se o usuário perguntar "você tem o documento X?" ou "você conhece o documento
       }
     }
 
+    // Obter regras de tom cultural baseadas na região do usuário
+    const culturalTone = getCulturalToneRules(region);
+    console.log(`Using cultural tone for region: ${region || 'default'}`);
+
     // System prompt especializado em Hospital Moinhos de Vento e saúde
     const systemPrompt = `Você é o KnowYOU, um assistente de IA especializado em saúde e no Hospital Moinhos de Vento, desenvolvido pela KnowRISK para ajudar profissionais e gestores da área de saúde.
+${culturalTone}
 
 ${ragContext}
 

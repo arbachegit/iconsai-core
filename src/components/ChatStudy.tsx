@@ -17,6 +17,7 @@ import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { mapCityToRegion } from "@/lib/region-mapping";
 
 // Memoizado para evitar re-renders durante digitação
 const SentimentIndicator = memo(({
@@ -52,6 +53,10 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { location, requestLocation } = useGeolocation();
+  
+  // Mapear cidade para região cultural
+  const userRegion = mapCityToRegion(location);
+  
   const {
     messages,
     isLoading,
@@ -71,7 +76,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     transcribeAudio,
     attachDocument,
     detachDocument,
-  } = useChatStudy();
+  } = useChatStudy({ userRegion });
 
   const [input, setInput] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
