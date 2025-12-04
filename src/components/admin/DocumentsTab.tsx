@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -97,6 +97,7 @@ export const DocumentsTab = () => {
   }>>([]);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
+  const extractionAbortRef = useRef(false);
 
   // Document AI OCR toggle
   const [useDocumentAI, setUseDocumentAI] = useState(false);
@@ -863,9 +864,15 @@ export const DocumentsTab = () => {
   const handlePreviewExtraction = useCallback(async () => {
     if (selectedFiles.length === 0) return;
     setIsExtracting(true);
+    extractionAbortRef.current = false;
     
     const previews: typeof previewFiles = [];
     for (const file of selectedFiles) {
+      // Check if cancelled
+      if (extractionAbortRef.current) {
+        break;
+      }
+      
       try {
         const text = await extractTextFromPDF(file);
         const analysis = analyzeTextQuality(text);
@@ -887,9 +894,18 @@ export const DocumentsTab = () => {
     }
     
     setPreviewFiles(previews);
-    setShowPreviewModal(true);
+    if (!extractionAbortRef.current && previews.length > 0) {
+      setShowPreviewModal(true);
+    }
     setIsExtracting(false);
   }, [selectedFiles, extractTextFromPDF]);
+
+  // Cancel extraction
+  const handleCancelExtraction = useCallback(() => {
+    extractionAbortRef.current = true;
+    setIsExtracting(false);
+    toast.info("Extração cancelada");
+  }, []);
 
   // Retry failed document with custom validation parameters
   const retryWithParamsMutation = useMutation({
@@ -1490,21 +1506,28 @@ export const DocumentsTab = () => {
           </div>
 
           <div className="flex gap-3">
-            <Button 
-              variant="outline" 
-              onClick={handlePreviewExtraction} 
-              disabled={selectedFiles.length === 0 || uploading || isExtracting}
-              className="flex-1"
-              size="lg"
-            >
-              {isExtracting ? <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Extraindo texto...
-              </> : <>
+            {isExtracting ? (
+              <Button 
+                variant="destructive" 
+                onClick={handleCancelExtraction}
+                className="flex-1"
+                size="lg"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Cancelar Extração
+              </Button>
+            ) : (
+              <Button 
+                variant="outline" 
+                onClick={handlePreviewExtraction} 
+                disabled={selectedFiles.length === 0 || uploading}
+                className="flex-1"
+                size="lg"
+              >
                 <Eye className="mr-2 h-4 w-4" />
                 Preview do Texto
-              </>}
-            </Button>
+              </Button>
+            )}
             
             <Button onClick={() => uploadMutation.mutate()} disabled={selectedFiles.length === 0 || uploading} className="flex-1" size="lg">
               {uploading ? <>
