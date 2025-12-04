@@ -42,10 +42,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, CheckCircle2 } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, CheckCircle2, Bell, Mail, Settings } from "lucide-react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie, Legend } from "recharts";
+import { Switch } from "@/components/ui/switch";
+import { useAdminSettings } from "@/hooks/useAdminSettings";
 import {
   Tooltip,
   TooltipContent,
@@ -96,6 +98,22 @@ export const TagsManagementTab = () => {
   });
 
   const queryClient = useQueryClient();
+  const { settings: adminSettings, updateSettings } = useAdminSettings();
+  
+  // ML Alert configuration state
+  const [mlAlertThreshold, setMlAlertThreshold] = useState<number>(70);
+  const [mlAlertEmail, setMlAlertEmail] = useState<string>("");
+  const [mlAlertEnabled, setMlAlertEnabled] = useState<boolean>(false);
+  const [isTestingAlert, setIsTestingAlert] = useState<boolean>(false);
+  
+  // Sync state with admin settings
+  useEffect(() => {
+    if (adminSettings) {
+      setMlAlertThreshold((adminSettings.ml_accuracy_threshold || 0.70) * 100);
+      setMlAlertEmail(adminSettings.ml_accuracy_alert_email || adminSettings.alert_email || "");
+      setMlAlertEnabled(adminSettings.ml_accuracy_alert_enabled || false);
+    }
+  }, [adminSettings]);
 
   // Fetch all tags with document target_chat
   const { data: allTags, isLoading } = useQuery({
@@ -247,6 +265,45 @@ export const TagsManagementTab = () => {
       toast.error(`Erro ao remover regra: ${error.message}`);
     },
   });
+
+  // Save ML alert configuration
+  const handleSaveMlAlertConfig = async () => {
+    try {
+      await updateSettings({
+        ml_accuracy_threshold: mlAlertThreshold / 100,
+        ml_accuracy_alert_enabled: mlAlertEnabled,
+        ml_accuracy_alert_email: mlAlertEmail || null,
+      });
+      toast.success("Configurações de alerta ML salvas!");
+    } catch (error: any) {
+      toast.error(`Erro ao salvar configurações: ${error.message}`);
+    }
+  };
+
+  // Test ML alert (calls edge function)
+  const handleTestMlAlert = async () => {
+    setIsTestingAlert(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-ml-accuracy");
+      if (error) throw error;
+      
+      if (data?.message === "Alerts disabled") {
+        toast.info("Alertas ML desativados. Ative para testar.");
+      } else if (data?.message === "No alert email configured") {
+        toast.warning("Configure um email de alerta primeiro.");
+      } else if (data?.message === "Alert email sent") {
+        toast.success(`Email de alerta enviado! Taxa: ${(data.accuracyRate * 100).toFixed(1)}%`);
+      } else if (data?.message === "Accuracy OK") {
+        toast.success(`Taxa OK (${(data.accuracyRate * 100).toFixed(1)}%) - acima do threshold (${(data.threshold * 100).toFixed(0)}%)`);
+      } else {
+        toast.info(data?.message || "Verificação concluída");
+      }
+    } catch (error: any) {
+      toast.error(`Erro ao testar alerta: ${error.message}`);
+    } finally {
+      setIsTestingAlert(false);
+    }
+  };
 
   // Group tags by parent
   const parentTags = allTags?.filter((t) => !t.parent_tag_id) || [];
@@ -985,6 +1042,136 @@ export const TagsManagementTab = () => {
           )}
         </Card>
       )}
+
+      {/* ML Alert Configuration */}
+      <Card className="p-6 border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
+        <div className="flex items-center gap-2 mb-4">
+          <Bell className="h-5 w-5 text-amber-400" />
+          <h3 className="font-semibold text-lg">Configuração de Alertas ML</h3>
+        </div>
+        
+        <p className="text-sm text-muted-foreground mb-4">
+          Configure notificações por email quando a taxa de acerto ML cair abaixo do threshold.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="ml-alert-enabled">Alertas Habilitados</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Quando habilitado, envia email se a taxa de acerto cair abaixo do threshold (verificação a cada 24h)
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Switch
+                id="ml-alert-enabled"
+                checked={mlAlertEnabled}
+                onCheckedChange={setMlAlertEnabled}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ml-alert-threshold">Threshold Mínimo (%)</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  id="ml-alert-threshold"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={mlAlertThreshold}
+                  onChange={(e) => setMlAlertThreshold(Number(e.target.value))}
+                  className="w-24"
+                />
+                <span className="text-sm text-muted-foreground">
+                  Alerta quando taxa &lt; {mlAlertThreshold}%
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ml-alert-email">Email de Alerta</Label>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="ml-alert-email"
+                  type="email"
+                  placeholder="admin@empresa.com"
+                  value={mlAlertEmail}
+                  onChange={(e) => setMlAlertEmail(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="p-4 bg-background/50 rounded-lg border">
+              <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Status Atual
+              </h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Alertas:</span>
+                  <Badge variant={mlAlertEnabled ? "default" : "secondary"}>
+                    {mlAlertEnabled ? "Ativo" : "Desativado"}
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Threshold:</span>
+                  <span>{mlAlertThreshold}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Taxa Atual:</span>
+                  <Badge variant={
+                    routingAnalytics && routingAnalytics.accuracyRate >= mlAlertThreshold 
+                      ? "default" 
+                      : "destructive"
+                  }>
+                    {routingAnalytics?.accuracyRate?.toFixed(1) || 0}%
+                  </Badge>
+                </div>
+                {adminSettings?.ml_accuracy_last_alert && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Último Alerta:</span>
+                    <span className="text-xs">
+                      {new Date(adminSettings.ml_accuracy_last_alert).toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleSaveMlAlertConfig}
+                className="flex-1"
+              >
+                Salvar Configurações
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleTestMlAlert}
+                disabled={isTestingAlert}
+              >
+                {isTestingAlert ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Testar Alerta"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+
 
       {/* Chat Routing ML Rules Panel */}
       {chatRoutingRules && chatRoutingRules.length > 0 && (
