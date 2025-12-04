@@ -477,6 +477,12 @@ SUGESTÕES: ["Quais são os sinais de pré-diabetes?", "Que exames detectam diab
 
 Agora, responda às mensagens mantendo sempre este padrão.`;
 
+    // 📊 LOGGING DE AUDITORIA DE COERÊNCIA
+    console.log(`[COHERENCE_AUDIT] Chat: health | Query: "${userQuery.substring(0, 100)}..." | RAG Context: ${hasRagContext ? 'YES' : 'NO'} | Region: ${region || 'default'}`);
+    if (hasRagContext) {
+      console.log(`[COHERENCE_AUDIT] Expected coherent topics from RAG: documents about health/Hospital Moinhos de Vento`);
+    }
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
