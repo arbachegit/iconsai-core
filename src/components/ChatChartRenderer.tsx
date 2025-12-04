@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   BarChart,
   Bar,
@@ -15,6 +15,7 @@ import {
   Legend,
   ResponsiveContainer,
   Cell,
+  Brush,
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import {
@@ -200,6 +201,13 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   // X-axis range state (index-based filtering)
   const [xRange, setXRange] = useState<[number, number]>([0, displayData.length - 1]);
   
+  // Handler for brush change
+  const handleBrushChange = useCallback((brushData: { startIndex?: number; endIndex?: number }) => {
+    if (brushData.startIndex !== undefined && brushData.endIndex !== undefined) {
+      setXRange([brushData.startIndex, brushData.endIndex]);
+    }
+  }, []);
+  
   // Filtered data based on X-axis range
   const filteredDisplayData = useMemo(() => {
     const startIdx = Math.max(0, xRange[0]);
@@ -309,11 +317,15 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   };
 
   const renderChart = () => {
+    // Only show brush if there are more than 3 data points
+    const showBrush = displayData.length > 3;
+    const chartHeight = showBrush ? 300 : 250;
+    
     switch (chartType) {
       case 'bar':
         return (
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={filteredDisplayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: showBrush ? 5 : 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey={xKey} 
@@ -330,14 +342,26 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
               {yKeys.map((key, idx) => (
                 <Bar key={key} dataKey={key} fill={CHART_COLORS[idx % CHART_COLORS.length]} radius={[4, 4, 0, 0]} />
               ))}
+              {showBrush && (
+                <Brush
+                  dataKey={xKey}
+                  height={30}
+                  stroke="hsl(var(--primary))"
+                  fill="hsl(var(--muted))"
+                  startIndex={xRange[0]}
+                  endIndex={xRange[1]}
+                  onChange={handleBrushChange}
+                  tickFormatter={(value) => String(value).substring(0, 8)}
+                />
+              )}
             </BarChart>
           </ResponsiveContainer>
         );
 
       case 'line':
         return (
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={filteredDisplayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <LineChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: showBrush ? 5 : 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey={xKey} 
@@ -361,6 +385,18 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   dot={{ fill: CHART_COLORS[idx % CHART_COLORS.length], strokeWidth: 2 }}
                 />
               ))}
+              {showBrush && (
+                <Brush
+                  dataKey={xKey}
+                  height={30}
+                  stroke="hsl(var(--primary))"
+                  fill="hsl(var(--muted))"
+                  startIndex={xRange[0]}
+                  endIndex={xRange[1]}
+                  onChange={handleBrushChange}
+                  tickFormatter={(value) => String(value).substring(0, 8)}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         );
@@ -391,8 +427,8 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
 
       case 'area':
         return (
-          <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={filteredDisplayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <AreaChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: showBrush ? 5 : 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey={xKey} 
@@ -416,6 +452,18 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   fillOpacity={0.3}
                 />
               ))}
+              {showBrush && (
+                <Brush
+                  dataKey={xKey}
+                  height={30}
+                  stroke="hsl(var(--primary))"
+                  fill="hsl(var(--muted))"
+                  startIndex={xRange[0]}
+                  endIndex={xRange[1]}
+                  onChange={handleBrushChange}
+                  tickFormatter={(value) => String(value).substring(0, 8)}
+                />
+              )}
             </AreaChart>
           </ResponsiveContainer>
         );
