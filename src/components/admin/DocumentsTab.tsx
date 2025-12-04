@@ -1276,6 +1276,50 @@ export const DocumentsTab = () => {
       toast.error(`Erro ao inserir: ${error.message}`);
     }
   });
+
+  // Mutation para alterar destino do chat inserido
+  const updateInsertedChatMutation = useMutation({
+    mutationFn: async ({
+      docId,
+      newChat,
+      previousChat
+    }: {
+      docId: string;
+      newChat: string;
+      previousChat: string;
+    }) => {
+      const { error } = await supabase.from("documents").update({
+        inserted_in_chat: newChat
+      }).eq("id", docId);
+      if (error) throw error;
+
+      // Registrar log de alteração
+      const { data: doc } = await supabase.from("documents").select("filename").eq("id", docId).single();
+      await supabase.from("document_routing_log").insert({
+        document_id: docId,
+        document_name: doc?.filename || 'Documento',
+        original_category: previousChat,
+        final_category: newChat,
+        action_type: 'chat_change',
+        session_id: `admin-${Date.now()}`,
+        scope_changed: true,
+        disclaimer_shown: false,
+        metadata: {
+          chat_change: true,
+          admin_action: true,
+          previous_chat: previousChat,
+          new_chat: newChat
+        }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      toast.success("Destino do chat atualizado com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao atualizar destino: ${error.message}`);
+    }
+  });
   return <div className="space-y-6">
       <div>
         <div className="flex items-center gap-3">
@@ -1908,10 +1952,44 @@ export const DocumentsTab = () => {
                   <TableCell onClick={() => setSelectedDoc(doc)}>
                     <Badge variant="outline">{doc.target_chat || "pendente"}</Badge>
                   </TableCell>
-                  <TableCell onClick={e => !doc.is_inserted && e.stopPropagation()}>
-                    {doc.is_inserted && doc.inserted_in_chat ? <Badge className={getChatBadgeColor(doc.inserted_in_chat)}>
-                        {doc.inserted_in_chat}
-                      </Badge> : <TooltipProvider>
+                  <TableCell onClick={e => e.stopPropagation()}>
+                    {doc.is_inserted && doc.inserted_in_chat ? (
+                      <Select
+                        value={doc.inserted_in_chat}
+                        onValueChange={(newChat) => {
+                          if (newChat !== doc.inserted_in_chat) {
+                            updateInsertedChatMutation.mutate({
+                              docId: doc.id,
+                              newChat,
+                              previousChat: doc.inserted_in_chat
+                            });
+                          }
+                        }}
+                      >
+                        <SelectTrigger className={cn(
+                          "h-8 w-[100px] text-xs",
+                          doc.inserted_in_chat === "health" && "border-red-500/50 text-red-400",
+                          doc.inserted_in_chat === "study" && "border-purple-500/50 text-purple-400"
+                        )}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="health">
+                            <div className="flex items-center gap-2">
+                              <Heart className="h-3 w-3 text-red-500" />
+                              <span>health</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="study">
+                            <div className="flex items-center gap-2">
+                              <GraduationCap className="h-3 w-3 text-purple-500" />
+                              <span>study</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="outline" size="sm" onClick={e => {
@@ -1925,7 +2003,8 @@ export const DocumentsTab = () => {
                             <p className="text-sm">Inserir manualmente em um chat (Health ou Study)</p>
                           </TooltipContent>
                         </Tooltip>
-                      </TooltipProvider>}
+                      </TooltipProvider>
+                    )}
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)} className="text-center">
                     <TooltipProvider>
