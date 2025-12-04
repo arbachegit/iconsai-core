@@ -84,7 +84,7 @@ export const TagsManagementTab = () => {
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [sortColumn, setSortColumn] = useState<"tag_name" | "confidence">("tag_name");
+  const [sortColumn, setSortColumn] = useState<"tag_name" | "confidence" | "target_chat">("tag_name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [formData, setFormData] = useState({
     tag_name: "",
@@ -137,20 +137,40 @@ export const TagsManagementTab = () => {
     return sourceMatch && chatMatch;
   });
 
-  // Sort tags
-  const sortedParentTags = [...filteredParentTags].sort((a, b) => {
-    if (sortColumn === "tag_name") {
-      const comparison = a.tag_name.localeCompare(b.tag_name);
-      return sortDirection === "asc" ? comparison : -comparison;
-    } else {
-      const aConf = a.confidence ?? 0;
-      const bConf = b.confidence ?? 0;
-      return sortDirection === "asc" ? aConf - bConf : bConf - aConf;
+  const [filterConfidence, setFilterConfidence] = useState<string>("all");
+
+  // Apply confidence filter
+  const confidenceFilteredTags = filteredParentTags.filter((t) => {
+    if (filterConfidence === "all") return true;
+    const conf = t.confidence ?? 0;
+    switch (filterConfidence) {
+      case "high": return conf >= 0.7;
+      case "medium": return conf >= 0.5 && conf < 0.7;
+      case "low": return conf < 0.5;
+      default: return true;
     }
   });
 
+  // Sort tags
+  const sortedParentTags = [...confidenceFilteredTags].sort((a, b) => {
+    if (sortColumn === "tag_name") {
+      const comparison = a.tag_name.localeCompare(b.tag_name);
+      return sortDirection === "asc" ? comparison : -comparison;
+    } else if (sortColumn === "confidence") {
+      const aConf = a.confidence ?? 0;
+      const bConf = b.confidence ?? 0;
+      return sortDirection === "asc" ? aConf - bConf : bConf - aConf;
+    } else if (sortColumn === "target_chat") {
+      const aChat = a.target_chat || "";
+      const bChat = b.target_chat || "";
+      const comparison = aChat.localeCompare(bChat);
+      return sortDirection === "asc" ? comparison : -comparison;
+    }
+    return 0;
+  });
+
   // Handle sort toggle
-  const handleSort = (column: "tag_name" | "confidence") => {
+  const handleSort = (column: "tag_name" | "confidence" | "target_chat") => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -580,7 +600,6 @@ export const TagsManagementTab = () => {
       )}
 
       {/* Filters */}
-      {/* Filters */}
       <Card className="p-4">
         <div className="flex items-center gap-6 flex-wrap">
           <div className="flex items-center gap-2">
@@ -606,6 +625,20 @@ export const TagsManagementTab = () => {
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="health">Saúde</SelectItem>
                 <SelectItem value="study">Estudo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label>Confiança:</Label>
+            <Select value={filterConfidence} onValueChange={setFilterConfidence}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="high">Alta (≥70%)</SelectItem>
+                <SelectItem value="medium">Média (50-69%)</SelectItem>
+                <SelectItem value="low">Baixa (&lt;50%)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -646,7 +679,24 @@ export const TagsManagementTab = () => {
                   </TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Origem</TableHead>
-                  <TableHead>Chat</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("target_chat")}
+                      className="flex items-center gap-1 -ml-4 hover:bg-transparent"
+                    >
+                      Chat
+                      {sortColumn === "target_chat" ? (
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="h-4 w-4" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </TableHead>
                   <TableHead>
                     <Button
                       variant="ghost"
