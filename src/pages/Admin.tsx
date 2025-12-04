@@ -25,10 +25,11 @@ import { ActivityLogsTab } from "@/components/admin/ActivityLogsTab";
 import { UserUsageLogsTab } from "@/components/admin/UserUsageLogsTab";
 import { TagModificationLogsTab } from "@/components/admin/TagModificationLogsTab";
 import { DeterministicAnalysisTab } from "@/components/admin/DeterministicAnalysisTab";
+import { InfrastructureArchitectureTab } from "@/components/admin/InfrastructureArchitectureTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -130,6 +131,8 @@ const Admin = () => {
         return <TagModificationLogsTab />;
       case "deterministic-analysis":
         return <DeterministicAnalysisTab />;
+      case "architecture":
+        return <InfrastructureArchitectureTab />;
       case "images":
         return <ImageCacheTab />;
       case "youtube":
