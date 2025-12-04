@@ -420,9 +420,15 @@ export const TagsManagementTab = () => {
     },
   });
 
-  // Merge tags mutation
+  // Merge tags mutation with machine learning rule creation
   const mergeTagsMutation = useMutation({
-    mutationFn: async ({ targetTagId, sourceTagIds }: { targetTagId: string; sourceTagIds: string[] }) => {
+    mutationFn: async ({ targetTagId, sourceTagIds, sourceTagNames, targetTagName, chatType }: { 
+      targetTagId: string; 
+      sourceTagIds: string[]; 
+      sourceTagNames: string[];
+      targetTagName: string;
+      chatType: string;
+    }) => {
       // Move all child tags to target
       for (const sourceId of sourceTagIds) {
         await supabase
@@ -436,9 +442,23 @@ export const TagsManagementTab = () => {
         .from("document_tags")
         .delete()
         .in("id", sourceTagIds);
+      
+      // Save machine learning rules for each merged tag
+      for (const sourceName of sourceTagNames) {
+        if (sourceName.toLowerCase() !== targetTagName.toLowerCase()) {
+          await supabase
+            .from("tag_merge_rules")
+            .upsert({
+              source_tag: sourceName,
+              canonical_tag: targetTagName,
+              chat_type: chatType,
+              created_by: "admin"
+            }, { onConflict: "source_tag,chat_type" });
+        }
+      }
     },
     onSuccess: () => {
-      toast.success("Tags unificadas com sucesso!");
+      toast.success("Tags unificadas! Regra de aprendizado criada - a IA não repetirá este erro.");
       queryClient.invalidateQueries({ queryKey: ["all-tags"] });
       setMergeDialog({ open: false, tagName: "", ids: [] });
     },
@@ -457,10 +477,26 @@ export const TagsManagementTab = () => {
       return;
     }
     
-    const targetTagId = mergeDialog.ids[0]; // Keep the first (oldest) tag
-    const sourceTagIds = mergeDialog.ids.slice(1); // Remove duplicates
+    // Get all tag names for the IDs being merged
+    const tagsBeingMerged = allTags?.filter(t => mergeDialog.ids.includes(t.id)) || [];
+    const targetTag = tagsBeingMerged[0];
+    const sourceTags = tagsBeingMerged.slice(1);
     
-    mergeTagsMutation.mutate({ targetTagId, sourceTagIds });
+    if (!targetTag) {
+      toast.error("Tag alvo não encontrada");
+      return;
+    }
+    
+    // Determine chat type from the tag's target_chat field
+    const chatType = targetTag.target_chat || "health";
+    
+    mergeTagsMutation.mutate({ 
+      targetTagId: targetTag.id, 
+      sourceTagIds: sourceTags.map(t => t.id),
+      sourceTagNames: sourceTags.map(t => t.tag_name),
+      targetTagName: targetTag.tag_name,
+      chatType
+    });
   };
 
   const resetForm = () => {
@@ -1197,16 +1233,32 @@ export const TagsManagementTab = () => {
       <Dialog open={mergeDialog.open} onOpenChange={(open) => !open && setMergeDialog({ open: false, tagName: "", ids: [] })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Unificar Tags Duplicadas</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-400" />
+              Unificar Tags + Aprendizado de Máquina
+            </DialogTitle>
             <DialogDescription>
               Você está prestes a unificar todas as ocorrências de "{mergeDialog.tagName}". 
               <br /><br />
               <strong>O que acontecerá:</strong>
               <ul className="list-disc pl-5 mt-2">
-                <li>A tag mais antiga será mantida</li>
+                <li>A tag mais antiga será mantida como padrão</li>
                 <li>Todas as tags filhas serão movidas para a tag mantida</li>
                 <li>As tags duplicadas serão removidas</li>
               </ul>
+              <br />
+              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 mt-2">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
+                  <div className="text-sm">
+                    <strong className="text-purple-300">Aprendizado de Máquina:</strong>
+                    <p className="text-muted-foreground mt-1">
+                      Ao mesclar, uma regra será criada automaticamente para impedir que a IA 
+                      gere estas variações no futuro. A IA aprenderá a usar sempre a tag padronizada.
+                    </p>
+                  </div>
+                </div>
+              </div>
               <br />
               Esta ação não pode ser desfeita.
             </DialogDescription>

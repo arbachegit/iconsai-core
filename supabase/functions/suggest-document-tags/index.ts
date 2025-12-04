@@ -12,9 +12,9 @@ serve(async (req) => {
   }
 
   try {
-    const { documentId, text } = await req.json();
+    const { documentId, text, chatType } = await req.json();
     
-    console.log(`Generating tags for document ${documentId}`);
+    console.log(`Generating tags for document ${documentId} (chat: ${chatType || 'unknown'})`);
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -36,11 +36,33 @@ serve(async (req) => {
     const existingTagNames = existingTags?.map(t => t.tag_name) || [];
     console.log(`Found ${existingTagNames.length} existing parent tags`);
     
+    // Fetch machine learning merge rules to prevent duplicate creation
+    const { data: mergeRules } = await supabase
+      .from("tag_merge_rules")
+      .select("source_tag, canonical_tag")
+      .eq("chat_type", chatType || "health");
+    
+    const mergeRulesMap = new Map<string, string>();
+    mergeRules?.forEach(rule => {
+      mergeRulesMap.set(rule.source_tag.toLowerCase(), rule.canonical_tag);
+    });
+    console.log(`Loaded ${mergeRulesMap.size} machine learning merge rules`);
+    
+    // Build merge rules instruction for AI
+    const mergeRulesInstruction = mergeRules && mergeRules.length > 0 
+      ? `\n\n🔴 REGRAS DE APRENDIZADO (NÃO VIOLAR):
+As seguintes variações foram corrigidas pelo admin e NÃO devem ser usadas:
+${mergeRules.map(r => `- "${r.source_tag}" → USE "${r.canonical_tag}"`).join('\n')}
+
+NUNCA gere as tags do lado esquerdo. SEMPRE use as tags do lado direito.`
+      : '';
+    
     // Use Lovable AI to generate hierarchical tags with context of existing tags
     const systemPrompt = `Você é um especialista em categorização de documentos. Analise o texto e gere tags hierárquicas.
 
 TAGS EXISTENTES NO SISTEMA:
 ${existingTagNames.length > 0 ? existingTagNames.map(name => `- "${name}"`).join('\n') : '(Nenhuma tag existente)'}
+${mergeRulesInstruction}
 
 REGRAS DE PADRONIZAÇÃO:
 1. SE uma tag existente é semanticamente equivalente à que você criaria, USE A EXISTENTE (retorne "existingName" com o nome exato)
@@ -48,6 +70,7 @@ REGRAS DE PADRONIZAÇÃO:
 3. NUNCA crie duplicatas como "Machine Learning" e "Aprendizado de Máquina" - escolha UMA versão padronizada
 4. Para tags filhas, certifique-se de que o nome seja específico e não genérico
 5. Priorize REUTILIZAR tags existentes quando o documento se enquadrar nelas
+6. SE existe uma REGRA DE APRENDIZADO para uma tag, USE OBRIGATORIAMENTE a versão canônica
 
 IMPORTANTE: Retorne APENAS um JSON válido, sem markdown, sem explicações.
 
@@ -119,11 +142,24 @@ Regras:
       existingTags?.map(t => [t.tag_name.toLowerCase(), t.id]) || []
     );
     
+    // Helper function to apply merge rules
+    const applyMergeRules = (tagName: string): string => {
+      const canonical = mergeRulesMap.get(tagName.toLowerCase());
+      if (canonical) {
+        console.log(`ML Rule applied: "${tagName}" → "${canonical}"`);
+        return canonical;
+      }
+      return tagName;
+    };
+    
     // Save parent tags (reuse existing or create new)
     const parentTagIds: { [key: string]: string } = {};
     
     for (const parentTag of tags.parentTags) {
-      const tagNameToUse = parentTag.existingName || parentTag.name;
+      // Apply merge rules first
+      let tagNameToUse = parentTag.existingName || parentTag.name;
+      tagNameToUse = applyMergeRules(tagNameToUse);
+      
       const existingId = existingTagIndex.get(tagNameToUse.toLowerCase());
       
       if (existingId) {
@@ -157,11 +193,14 @@ Regras:
       if (!parentId) continue;
       
       for (const childTag of childTags as any[]) {
+        // Apply merge rules to child tags too
+        const childTagName = applyMergeRules(childTag.name);
+        
         await supabase
           .from("document_tags")
           .insert({
             document_id: documentId,
-            tag_name: childTag.name,
+            tag_name: childTagName,
             tag_type: "child",
             parent_tag_id: parentId,
             confidence: childTag.confidence,

@@ -940,6 +940,36 @@ export type Database = {
         }
         Relationships: []
       }
+      tag_merge_rules: {
+        Row: {
+          canonical_tag: string
+          chat_type: string
+          created_at: string
+          created_by: string | null
+          id: string
+          merge_count: number | null
+          source_tag: string
+        }
+        Insert: {
+          canonical_tag: string
+          chat_type: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          merge_count?: number | null
+          source_tag: string
+        }
+        Update: {
+          canonical_tag?: string
+          chat_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          merge_count?: number | null
+          source_tag?: string
+        }
+        Relationships: []
+      }
       tooltip_contents: {
         Row: {
           audio_url: string | null
