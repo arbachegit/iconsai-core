@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw, Volume2, Plus, Trash2, Code } from "lucide-react";
+import { MessageSquare, AlertTriangle, CheckCircle2, XCircle, Settings, FileText, Search, BookOpen, Heart, Tag as TagIcon, RefreshCw, Volume2, Plus, Trash2, Code, ChevronDown } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
@@ -56,6 +56,10 @@ export function ChatScopeConfigTab() {
   const [addingTermFor, setAddingTermFor] = useState<"study" | "health" | null>(null);
   const [studySearchTerm, setStudySearchTerm] = useState("");
   const [healthSearchTerm, setHealthSearchTerm] = useState("");
+  const [studyScopeOpen, setStudyScopeOpen] = useState(true);
+  const [healthScopeOpen, setHealthScopeOpen] = useState(true);
+  const [studyTagsOpen, setStudyTagsOpen] = useState(true);
+  const [healthTagsOpen, setHealthTagsOpen] = useState(true);
   useEffect(() => {
     fetchConfigs();
   }, []);
@@ -273,138 +277,226 @@ export function ChatScopeConfigTab() {
           </div>
 
           {/* Scope Topics */}
-          <div>
-            <Label className="text-sm font-medium">Escopo Permitido (Auto-Gerado)</Label>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {config.scope_topics.map((topic, idx) => <Badge key={idx} variant="secondary">
-                  {topic}
-                </Badge>)}
-            </div>
-          </div>
-
-          {/* Tags Extraídas dos Documentos */}
-          {config.document_tags_data && config.document_tags_data.length > 0 && <Card className="border-2 border-primary/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <TagIcon className="h-4 w-4" />
-                  Tags Extraídas dos Documentos
-                  <Badge variant="outline" className="ml-auto">
-                    {config.total_documents} documentos
+          <Collapsible 
+            open={config.chat_type === "study" ? studyScopeOpen : healthScopeOpen}
+            onOpenChange={config.chat_type === "study" ? setStudyScopeOpen : setHealthScopeOpen}
+          >
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center justify-between w-full group">
+                <Label className="text-sm font-medium flex items-center gap-2 cursor-pointer">
+                  Escopo Permitido (Auto-Gerado)
+                  <Badge variant="outline" className="text-xs">
+                    {config.scope_topics.length}
                   </Badge>
-                </CardTitle>
-                {/* Search Field */}
-                <div className="relative mt-3">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar tags..."
-                    value={config.chat_type === "study" ? studySearchTerm : healthSearchTerm}
-                    onChange={(e) => config.chat_type === "study" ? setStudySearchTerm(e.target.value) : setHealthSearchTerm(e.target.value)}
-                    className="pl-9 h-9"
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Parent Tags */}
-                {(() => {
-              const searchTerm = config.chat_type === "study" ? studySearchTerm : healthSearchTerm;
-              const allParentTags = config.document_tags_data
-                .filter(t => t.tag_type === "parent")
-                .filter(t => !searchTerm || t.tag_name.toLowerCase().includes(searchTerm.toLowerCase()))
-                .sort((a, b) => a.tag_name.localeCompare(b.tag_name, 'pt-BR'));
-              const highConfParents = allParentTags.filter(t => t.avg_confidence >= 0.7);
-              const lowConfParents = allParentTags.filter(t => t.avg_confidence < 0.7);
-              const totalParentTags = config.document_tags_data.filter(t => t.tag_type === "parent").length;
-              return <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm font-semibold flex items-center gap-2">
-                          <BookOpen className="h-4 w-4" />
-                          Tags Parent ({allParentTags.length}{searchTerm ? ` de ${totalParentTags}` : ''})
-                        </Label>
-                        {lowConfParents.length > 0 && <Badge variant="outline" className="text-xs flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            {lowConfParents.length} com baixa confiança
-                          </Badge>}
-                      </div>
-                      
-                      {highConfParents.length > 0 && <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
-                          <p className="text-xs mb-2 text-primary-foreground flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Incluídas no escopo (confidence ≥ 70%):
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {highConfParents.map((tag, idx) => <Badge key={idx} variant="default" className="text-xs">
-                                {tag.tag_name} {(tag.avg_confidence * 100).toFixed(0)}%
-                                {tag.count > 1 && <span className="ml-1 opacity-70">×{tag.count}</span>}
-                              </Badge>)}
-                          </div>
-                        </div>}
-                      
-                      {lowConfParents.length > 0 && <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                          <p className="text-xs mb-2 text-primary-foreground flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            Não incluídas (confidence {'<'} 70%):
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {lowConfParents.map((tag, idx) => <Badge key={idx} variant="outline" className="text-xs opacity-60 text-primary-foreground">
-                                {tag.tag_name} {(tag.avg_confidence * 100).toFixed(0)}%
-                              </Badge>)}
-                          </div>
-                        </div>}
-                      
-                      {searchTerm && allParentTags.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">
-                          Nenhuma tag parent encontrada para "{searchTerm}"
-                        </p>}
-                    </div>;
-            })()}
-
-                <Separator />
-
-                {/* Child Tags */}
-                {(() => {
-              const searchTerm = config.chat_type === "study" ? studySearchTerm : healthSearchTerm;
-              const allChildTags = config.document_tags_data
-                .filter(t => t.tag_type === "child")
-                .filter(t => !searchTerm || t.tag_name.toLowerCase().includes(searchTerm.toLowerCase()))
-                .sort((a, b) => a.tag_name.localeCompare(b.tag_name, 'pt-BR'));
-              const totalChildTags = config.document_tags_data.filter(t => t.tag_type === "child").length;
-              if (totalChildTags === 0) return null;
-              return <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        Tags Child ({allChildTags.length}{searchTerm ? ` de ${totalChildTags}` : ''})
-                      </Label>
-                      <div className="p-3 bg-muted/50 rounded-lg max-h-40 overflow-y-auto">
-                        <div className="flex flex-wrap gap-1.5">
-                          {allChildTags.map((tag, idx) => <Badge key={idx} variant="secondary" className="text-xs">
-                              {tag.tag_name}
-                            </Badge>)}
-                          {searchTerm && allChildTags.length === 0 && <p className="text-xs text-muted-foreground text-center w-full py-2">
-                              Nenhuma tag child encontrada para "{searchTerm}"
-                            </p>}
+                </Label>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                  (config.chat_type === "study" ? studyScopeOpen : healthScopeOpen) ? "rotate-180" : ""
+                }`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2">
+              {(() => {
+                // Group topics by first letter
+                const sortedTopics = [...config.scope_topics].sort((a, b) => 
+                  a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+                );
+                const groupedTopics: Record<string, string[]> = {};
+                sortedTopics.forEach(topic => {
+                  const firstLetter = topic.charAt(0).toUpperCase();
+                  if (!groupedTopics[firstLetter]) {
+                    groupedTopics[firstLetter] = [];
+                  }
+                  groupedTopics[firstLetter].push(topic);
+                });
+                const letters = Object.keys(groupedTopics).sort();
+                
+                return (
+                  <div className="space-y-2">
+                    {letters.map(letter => (
+                      <div key={letter} className="space-y-1">
+                        <span className="text-xs font-bold text-primary">{letter}</span>
+                        <div className="flex flex-wrap gap-1.5 ml-2">
+                          {groupedTopics[letter].map((topic, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">
+                              {topic}
+                            </Badge>
+                          ))}
                         </div>
                       </div>
-                    </div>;
-            })()}
+                    ))}
+                    {config.scope_topics.length === 0 && (
+                      <p className="text-xs text-muted-foreground">Nenhum escopo definido</p>
+                    )}
+                  </div>
+                );
+              })()}
+            </CollapsibleContent>
+          </Collapsible>
 
-                {/* Statistics */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-                  <span className="flex items-center gap-1">
-                    <RefreshCw className="h-3 w-3" />
-                    Última atualização: {new Date(config.updated_at).toLocaleString('pt-BR')}
-                  </span>
-                  <Button variant="ghost" size="sm" onClick={() => {
-                toast({
-                  title: "Atualizando tags...",
-                  description: "Recalculando escopo com base nos documentos"
-                });
-                updateConfig(config.chat_type, config);
-              }} className="h-7 text-xs flex items-center gap-1">
-                    <RefreshCw className="h-3 w-3" />
-                    Forçar Atualização
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>}
+          {/* Tags Extraídas dos Documentos */}
+          {config.document_tags_data && config.document_tags_data.length > 0 && (
+            <Collapsible 
+              open={config.chat_type === "study" ? studyTagsOpen : healthTagsOpen}
+              onOpenChange={config.chat_type === "study" ? setStudyTagsOpen : setHealthTagsOpen}
+            >
+              <Card className="border-2 border-primary/20">
+                <CardHeader className="pb-3">
+                  <CollapsibleTrigger asChild>
+                    <button className="flex items-center justify-between w-full group">
+                      <CardTitle className="text-base flex items-center gap-2 cursor-pointer">
+                        <TagIcon className="h-4 w-4" />
+                        Tags Extraídas dos Documentos
+                        <Badge variant="outline" className="text-xs">
+                          {config.document_tags_data.length}
+                        </Badge>
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {config.total_documents} docs
+                        </Badge>
+                      </CardTitle>
+                      <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                        (config.chat_type === "study" ? studyTagsOpen : healthTagsOpen) ? "rotate-180" : ""
+                      }`} />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    {/* Search Field */}
+                    <div className="relative mt-3">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar tags..."
+                        value={config.chat_type === "study" ? studySearchTerm : healthSearchTerm}
+                        onChange={(e) => config.chat_type === "study" ? setStudySearchTerm(e.target.value) : setHealthSearchTerm(e.target.value)}
+                        className="pl-9 h-9"
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="space-y-4">
+                    {/* Parent Tags */}
+                    {(() => {
+                      const searchTerm = config.chat_type === "study" ? studySearchTerm : healthSearchTerm;
+                      const allParentTags = config.document_tags_data
+                        .filter(t => t.tag_type === "parent")
+                        .filter(t => !searchTerm || t.tag_name.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .sort((a, b) => a.tag_name.localeCompare(b.tag_name, 'pt-BR'));
+                      const highConfParents = allParentTags.filter(t => t.avg_confidence >= 0.7);
+                      const lowConfParents = allParentTags.filter(t => t.avg_confidence < 0.7);
+                      const totalParentTags = config.document_tags_data.filter(t => t.tag_type === "parent").length;
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-semibold flex items-center gap-2">
+                              <BookOpen className="h-4 w-4" />
+                              Tags Parent ({allParentTags.length}{searchTerm ? ` de ${totalParentTags}` : ''})
+                            </Label>
+                            {lowConfParents.length > 0 && (
+                              <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                {lowConfParents.length} com baixa confiança
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {highConfParents.length > 0 && (
+                            <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                              <p className="text-xs mb-2 text-primary-foreground flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Incluídas no escopo (confidence ≥ 70%):
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {highConfParents.map((tag, idx) => (
+                                  <Badge key={idx} variant="default" className="text-xs">
+                                    {tag.tag_name} {(tag.avg_confidence * 100).toFixed(0)}%
+                                    {tag.count > 1 && <span className="ml-1 opacity-70">×{tag.count}</span>}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {lowConfParents.length > 0 && (
+                            <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                              <p className="text-xs mb-2 text-primary-foreground flex items-center gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                Não incluídas (confidence {'<'} 70%):
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {lowConfParents.map((tag, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs opacity-60 text-primary-foreground">
+                                    {tag.tag_name} {(tag.avg_confidence * 100).toFixed(0)}%
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {searchTerm && allParentTags.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">
+                              Nenhuma tag parent encontrada para "{searchTerm}"
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    <Separator />
+
+                    {/* Child Tags */}
+                    {(() => {
+                      const searchTerm = config.chat_type === "study" ? studySearchTerm : healthSearchTerm;
+                      const allChildTags = config.document_tags_data
+                        .filter(t => t.tag_type === "child")
+                        .filter(t => !searchTerm || t.tag_name.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .sort((a, b) => a.tag_name.localeCompare(b.tag_name, 'pt-BR'));
+                      const totalChildTags = config.document_tags_data.filter(t => t.tag_type === "child").length;
+                      if (totalChildTags === 0) return null;
+                      return (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            Tags Child ({allChildTags.length}{searchTerm ? ` de ${totalChildTags}` : ''})
+                          </Label>
+                          <div className="p-3 bg-muted/50 rounded-lg max-h-40 overflow-y-auto">
+                            <div className="flex flex-wrap gap-1.5">
+                              {allChildTags.map((tag, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {tag.tag_name}
+                                </Badge>
+                              ))}
+                              {searchTerm && allChildTags.length === 0 && (
+                                <p className="text-xs text-muted-foreground text-center w-full py-2">
+                                  Nenhuma tag child encontrada para "{searchTerm}"
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Statistics */}
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                      <span className="flex items-center gap-1">
+                        <RefreshCw className="h-3 w-3" />
+                        Última atualização: {new Date(config.updated_at).toLocaleString('pt-BR')}
+                      </span>
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        toast({
+                          title: "Atualizando tags...",
+                          description: "Recalculando escopo com base nos documentos"
+                        });
+                        updateConfig(config.chat_type, config);
+                      }} className="h-7 text-xs flex items-center gap-1">
+                        <RefreshCw className="h-3 w-3" />
+                        Forçar Atualização
+                      </Button>
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )}
 
           {/* Rejection Message */}
           {isEditing ? <div>
