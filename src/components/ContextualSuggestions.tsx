@@ -1,5 +1,5 @@
-import { memo, useMemo, useCallback } from 'react';
-import { Lightbulb, Calculator, BarChart3, TrendingUp, Table } from 'lucide-react';
+import { memo, useMemo } from 'react';
+import { Calculator, BarChart3, TrendingUp, Table } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ContextualSuggestionsProps {
@@ -45,17 +45,16 @@ const ContextualSuggestions = memo(({
     return { hasMathContext: hasMath, mathSuggestions: mathSuggs };
   }, [lastAssistantMessage]);
   
-  // Combinar sugestões normais + matemáticas (memoizado)
+  // Combinar sugestões - máximo 3 em uma única linha
   const allSuggestions = useMemo(() => {
-    // Se há contexto matemático, priorizar sugestões matemáticas
     if (hasMathContext) {
-      // Pegar até 2 sugestões normais para complementar
+      // 2 matemáticas + 1 contextual
       const normalSuggestions = suggestions
         .filter(s => !s.includes('📊') && !s.includes('📈') && !s.includes('🔢'))
-        .slice(0, 2);
-      return [...mathSuggestions, ...normalSuggestions];
+        .slice(0, 1);
+      return [...mathSuggestions.slice(0, 2), ...normalSuggestions];
     }
-    return suggestions.slice(0, 5);
+    return suggestions.slice(0, 3);
   }, [suggestions, hasMathContext, mathSuggestions]);
   
   // Não renderizar se não há sugestões ou está carregando
@@ -76,14 +75,8 @@ const ContextualSuggestions = memo(({
   };
   
   return (
-    <div className="px-4 py-3 border-t border-cyan-400/30 bg-gradient-to-r from-cyan-500/10 to-cyan-600/5">
-      <div className="flex items-center gap-2 mb-2">
-        <Lightbulb className="h-3.5 w-3.5 text-cyan-400" />
-        <span className="text-xs text-cyan-300/80 font-medium">
-          {hasMathContext ? 'Explore os dados' : 'Sugestões'}
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-2">
+    <div className="px-4 py-2 border-t border-cyan-400/30 bg-gradient-to-r from-cyan-500/10 to-cyan-600/5">
+      <div className="flex flex-nowrap gap-2 overflow-hidden">
         {allSuggestions.map((suggestion, index) => {
           const icon = getIcon(suggestion);
           const displayText = icon ? cleanText(suggestion) : suggestion;
