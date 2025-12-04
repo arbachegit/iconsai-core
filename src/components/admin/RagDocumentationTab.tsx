@@ -22,22 +22,24 @@ import {
 } from "lucide-react";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { ETLExplanationModal } from "./ETLExplanationModal";
+import { RagSectionModal } from "./RagSectionModal";
 
 export const RagDocumentationTab = () => {
   const [activeSection, setActiveSection] = useState<string>("overview");
   const [showETLModal, setShowETLModal] = useState(false);
+  const [showSectionModal, setShowSectionModal] = useState<string | null>(null);
 
   const sections = [
-    { id: "overview", title: "Visão Geral", icon: FileText },
-    { id: "architecture", title: "Arquitetura", icon: Database },
-    { id: "etl", title: "Pipeline ETL", icon: Code, hasInfo: true },
-    { id: "search", title: "Sistema de Busca", icon: Search },
-    { id: "integration", title: "Integração Chats", icon: MessageSquare },
-    { id: "functions", title: "Edge Functions", icon: Code },
-    { id: "tags", title: "Tags Hierárquicas", icon: Tags },
-    { id: "config", title: "Configurações", icon: Settings },
-    { id: "analytics", title: "Analytics", icon: TrendingUp },
-    { id: "troubleshooting", title: "Troubleshooting", icon: AlertTriangle },
+    { id: "overview", title: "Visão Geral", icon: FileText, hasInfo: true },
+    { id: "architecture", title: "Arquitetura", icon: Database, hasInfo: true },
+    { id: "etl", title: "Pipeline ETL", icon: Code, hasInfo: true, useETLModal: true },
+    { id: "search", title: "Sistema de Busca", icon: Search, hasInfo: true },
+    { id: "integration", title: "Integração Chats", icon: MessageSquare, hasInfo: true },
+    { id: "functions", title: "Edge Functions", icon: Code, hasInfo: true },
+    { id: "tags", title: "Tags Hierárquicas", icon: Tags, hasInfo: true },
+    { id: "config", title: "Configurações", icon: Settings, hasInfo: true },
+    { id: "analytics", title: "Analytics", icon: TrendingUp, hasInfo: true },
+    { id: "troubleshooting", title: "Troubleshooting", icon: AlertTriangle, hasInfo: true },
   ];
 
   const downloadMarkdown = () => {
@@ -101,7 +103,11 @@ export const RagDocumentationTab = () => {
                               className="h-8 w-8 shrink-0 relative group"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setShowETLModal(true);
+                                if (section.useETLModal) {
+                                  setShowETLModal(true);
+                                } else {
+                                  setShowSectionModal(section.id);
+                                }
                               }}
                             >
                               <Lightbulb className="h-4 w-4 text-yellow-500 group-hover:text-yellow-400 transition-colors" />
@@ -115,7 +121,7 @@ export const RagDocumentationTab = () => {
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent side="right">
-                            <p>Clique para entender o que é ETL</p>
+                            <p>Clique para entender {section.title}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -154,6 +160,13 @@ export const RagDocumentationTab = () => {
 
       {/* ETL Explanation Modal */}
       <ETLExplanationModal isOpen={showETLModal} onClose={() => setShowETLModal(false)} />
+      
+      {/* Section Explanation Modals */}
+      <RagSectionModal 
+        isOpen={showSectionModal !== null} 
+        onClose={() => setShowSectionModal(null)} 
+        sectionId={showSectionModal || 'overview'} 
+      />
     </div>
   );
 };
