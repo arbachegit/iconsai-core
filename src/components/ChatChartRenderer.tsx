@@ -42,7 +42,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { RangeSlider } from '@/components/ui/range-slider';
-import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle, Percent, Copy, Check, Zap, RotateCcw, Target, Plus, X, Minus } from 'lucide-react';
+import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle, Percent, Copy, Check, Zap, RotateCcw, Target, Plus, X, Minus, Activity } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -267,6 +267,40 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
     setReferenceLines(prev => prev.filter(r => r.id !== id));
   }, []);
 
+  // ===== MOVING AVERAGE & TREND LINE =====
+  const [showMovingAverage, setShowMovingAverage] = useState(false);
+  const [showTrendLine, setShowTrendLine] = useState(false);
+
+  // Moving Average calculation (3-point window)
+  const movingAverageData = useMemo(() => {
+    if (!showMovingAverage || filteredDisplayData.length < 3) return [];
+    const window = 3;
+    return filteredDisplayData.map((item, idx, arr) => {
+      if (idx < window - 1) return { ...item, movingAvg: null };
+      const slice = arr.slice(idx - window + 1, idx + 1);
+      const avg = slice.reduce((sum, d) => sum + (d.value || 0), 0) / window;
+      return { ...item, movingAvg: avg };
+    });
+  }, [filteredDisplayData, showMovingAverage]);
+
+  // Linear Regression for Trend Line
+  const trendLineData = useMemo(() => {
+    if (!showTrendLine || filteredDisplayData.length < 2) return [];
+    const n = filteredDisplayData.length;
+    const sumX = filteredDisplayData.reduce((s, _, i) => s + i, 0);
+    const sumY = filteredDisplayData.reduce((s, d) => s + (d.value || 0), 0);
+    const sumXY = filteredDisplayData.reduce((s, d, i) => s + i * (d.value || 0), 0);
+    const sumX2 = filteredDisplayData.reduce((s, _, i) => s + i * i, 0);
+    
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    
+    return filteredDisplayData.map((item, idx) => ({
+      ...item,
+      trend: intercept + slope * idx
+    }));
+  }, [filteredDisplayData, showTrendLine]);
+
   // Recalculate Y bounds based on filtered data
   const filteredDataBounds = useMemo(() => {
     const values = filteredDisplayData.map(d => d.value);
@@ -426,9 +460,11 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
         );
 
       case 'line':
+        // Use movingAverageData or trendLineData if enabled, otherwise displayData
+        const lineChartData = showMovingAverage ? movingAverageData : (showTrendLine ? trendLineData : displayData);
         return (
           <ResponsiveContainer width="100%" height={chartHeight}>
-            <LineChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: showBrush ? 5 : 20 }}>
+            <LineChart data={lineChartData} margin={{ top: 10, right: 10, left: 0, bottom: showBrush ? 5 : 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey={xKey} 
@@ -442,6 +478,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
               <RechartsTooltip content={<CustomChartTooltip />} />
+              <Legend />
               {yKeys.map((key, idx) => (
                 <Line 
                   key={key} 
@@ -450,8 +487,34 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   stroke={CHART_COLORS[idx % CHART_COLORS.length]} 
                   strokeWidth={2}
                   dot={{ fill: CHART_COLORS[idx % CHART_COLORS.length], strokeWidth: 2 }}
+                  name="Valor"
                 />
               ))}
+              {/* Moving Average Line */}
+              {showMovingAverage && (
+                <Line
+                  type="monotone"
+                  dataKey="movingAvg"
+                  stroke="hsl(45, 90%, 55%)"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                  name="Média Móvel"
+                  connectNulls={false}
+                />
+              )}
+              {/* Trend Line */}
+              {showTrendLine && (
+                <Line
+                  type="linear"
+                  dataKey="trend"
+                  stroke="hsl(280, 60%, 55%)"
+                  strokeWidth={2}
+                  strokeDasharray="10 5"
+                  dot={false}
+                  name="Tendência"
+                />
+              )}
               {referenceLines.map((refLine) => (
                 <ReferenceLine
                   key={refLine.id}
@@ -893,6 +956,55 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Moving Average & Trend Line Controls - Only for line charts */}
+        {chartType === 'line' && (
+          <div className="px-3 py-2 border-b border-border/30 bg-muted/5">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">Análise:</span>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={showMovingAverage ? "default" : "outline"}
+                    size="sm"
+                    className={cn(
+                      "h-6 text-[10px] gap-1 px-2",
+                      showMovingAverage && "bg-amber-600 hover:bg-amber-700"
+                    )}
+                    onClick={() => setShowMovingAverage(!showMovingAverage)}
+                  >
+                    <TrendingUp className="h-3 w-3" />
+                    Média Móvel
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Exibir média móvel de 3 pontos para suavizar variações</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={showTrendLine ? "default" : "outline"}
+                    size="sm"
+                    className={cn(
+                      "h-6 text-[10px] gap-1 px-2",
+                      showTrendLine && "bg-purple-600 hover:bg-purple-700"
+                    )}
+                    onClick={() => setShowTrendLine(!showTrendLine)}
+                  >
+                    <Activity className="h-3 w-3" />
+                    Tendência
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Exibir linha de regressão linear para análise de tendência</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         )}
 
