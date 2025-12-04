@@ -173,6 +173,21 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    - Ajude o usuário a navegar e entender o conteúdo
    - Seja objetivo mas amigável
 
+5. 🔴 FORMATAÇÃO DE TABELAS (CRÍTICO):
+   - Quando solicitado a criar tabelas, SEMPRE use formato Markdown GFM
+   - NUNCA gere código HTML (<table>, <tr>, <td>, <th>)
+   - Formato OBRIGATÓRIO:
+   
+   | Coluna 1 | Coluna 2 | Coluna 3 |
+   |----------|----------|----------|
+   | Dado 1   | Dado 2   | Dado 3   |
+   
+   - Use alinhamento com : nos separadores quando apropriado:
+     * :--- (esquerda)
+     * :---: (centro)  
+     * ---: (direita)
+   - O sistema converterá automaticamente para tabela interativa com ordenação e filtros
+
 EXEMPLO:
 
 Usuário: "O que é o ACC?"
