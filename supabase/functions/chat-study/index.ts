@@ -188,6 +188,18 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
      * ---: (direita)
    - O sistema converterá automaticamente para tabela interativa com ordenação e filtros
 
+6. 📊 GERAÇÃO DE GRÁFICOS:
+   - Quando o usuário pedir gráfico, estatísticas visuais ou visualização de dados
+   - Gere um bloco JSON estruturado ANTES do texto explicativo
+   - Formato OBRIGATÓRIO:
+   
+   CHART_DATA: {"type":"bar","title":"Título do Gráfico","data":[{"name":"Item1","value":10},{"name":"Item2","value":20}]}
+   
+   - Tipos disponíveis: "bar", "line", "pie", "area"
+   - Cada item em "data" DEVE ter "name" (string) e "value" (número)
+   - Para múltiplas séries, adicione mais campos numéricos e use "yKeys": ["value", "value2"]
+   - O sistema renderizará automaticamente o gráfico interativo com opções de exportação
+
 EXEMPLO:
 
 Usuário: "O que é o ACC?"
