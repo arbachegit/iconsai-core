@@ -57,15 +57,20 @@ serve(async (req) => {
           hasRagContext = true;
           console.log(`RAG found ${searchResults.results.length} chunks for health chat, top score: ${searchResults.analytics?.top_score?.toFixed(3) || 'N/A'}`);
           
-          // Extract unique document titles from results
-          const documentTitles = [...new Set(searchResults.results.map((r: any) => r.metadata?.document_title).filter(Boolean))];
+          // Extract unique document titles from results - prioritize document_filename from RPC
+          const documentTitles = [...new Set(searchResults.results.map((r: any) => 
+            r.document_filename || r.metadata?.document_title
+          ).filter(Boolean))];
           const documentList = documentTitles.length > 0 ? `\n📄 DOCUMENTOS ENCONTRADOS: ${documentTitles.join(', ')}\n` : '';
+          
+          console.log(`Documents found in RAG: ${documentTitles.join(', ')}`);
           
           ragContext = `\n\n📚 CONTEXTO RELEVANTE DOS DOCUMENTOS DE SAÚDE:
 ${documentList}
 ${searchResults.results.map((r: any) => {
-  const docTitle = r.metadata?.document_title ? `[Fonte: ${r.metadata.document_title}]\n` : '';
-  return docTitle + r.content;
+  const docTitle = r.document_filename || r.metadata?.document_title;
+  const sourceLabel = docTitle ? `[Fonte: ${docTitle}]\n` : '';
+  return sourceLabel + r.content;
 }).join("\n\n---\n\n")}
 
 ⚠️ IMPORTANTE: O contexto acima é dos DOCUMENTOS OFICIAIS sobre saúde e Hospital Moinhos de Vento. 

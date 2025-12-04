@@ -1148,6 +1148,7 @@ export type Database = {
         Returns: {
           chunk_id: string
           content: string
+          document_filename: string
           document_id: string
           metadata: Json
           similarity: number
@@ -1162,6 +1163,7 @@ export type Database = {
         Returns: {
           chunk_id: string
           content: string
+          document_filename: string
           document_id: string
           metadata: Json
           similarity: number
@@ -1176,6 +1178,7 @@ export type Database = {
         Returns: {
           chunk_id: string
           content: string
+          document_filename: string
           document_id: string
           matched_keyword: string
           metadata: Json
