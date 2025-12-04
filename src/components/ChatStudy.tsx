@@ -705,7 +705,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
               {isLoading ? <Square className="w-4 h-4" /> : <ArrowUp className="w-4 h-4" />}
             </Button>
           </div>
-        <p className="text-xs leading-none text-muted-foreground mt-0.5 mb-0 text-center">
+        <p className="text-xs leading-none text-muted-foreground mt-2 mb-1 text-center">
           Pressione Enter para enviar • Shift+Enter para nova linha
         </p>
       </form>
