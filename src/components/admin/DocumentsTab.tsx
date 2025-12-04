@@ -148,20 +148,49 @@ export const DocumentsTab = () => {
     }
   });
 
-  // Extract text from PDF
+  // Extract text from PDF with improved OCR handling
   const extractTextFromPDF = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({
-      data: arrayBuffer
+      data: arrayBuffer,
     }).promise;
     let fullText = "";
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item: any) => item.str).join(" ");
-      fullText += pageText + "\n";
+      
+      // Improved text reconstruction with better spacing
+      let lastY: number | null = null;
+      const pageLines: string[] = [];
+      let currentLine = "";
+      
+      textContent.items.forEach((item: any) => {
+        if (item.str) {
+          // Detect line breaks based on Y position
+          const itemY = item.transform?.[5];
+          if (lastY !== null && itemY !== undefined && Math.abs(itemY - lastY) > 5) {
+            if (currentLine.trim()) {
+              pageLines.push(currentLine.trim());
+            }
+            currentLine = "";
+          }
+          currentLine += item.str + " ";
+          lastY = itemY;
+        }
+      });
+      
+      if (currentLine.trim()) {
+        pageLines.push(currentLine.trim());
+      }
+      
+      fullText += pageLines.join("\n") + "\n\n";
     }
-    return fullText;
+    
+    // Clean up extra whitespace while preserving structure
+    return fullText
+      .replace(/\s+/g, ' ')
+      .replace(/\n\s*\n/g, '\n\n')
+      .trim();
   };
 
   // Poll document status
@@ -325,13 +354,42 @@ export const DocumentsTab = () => {
         });
         if (processError) throw processError;
 
-        // Check for duplicates in results
+        // Process results immediately - handle failures and duplicates
         if (processResult?.results) {
+          // Update UI immediately for failed documents
+          const failures = processResult.results.filter((r: any) => r.status === "failed");
+          failures.forEach((fail: any) => {
+            const fileStatus = initialStatuses.find(s => s.documentId === fail.document_id);
+            if (fileStatus) {
+              setUploadStatuses(prev => prev.map(s => s.documentId === fail.document_id ? {
+                ...s,
+                status: 'failed',
+                progress: 100,
+                details: `❌ ${fail.error || 'Erro desconhecido'}`,
+                error: fail.error
+              } : s));
+            }
+          });
+          
+          // Show toast for failures
+          if (failures.length > 0) {
+            toast.error(`${failures.length} documento(s) falharam na validação`);
+          }
+
+          // Check for duplicates
           const duplicates = processResult.results.filter((r: any) => r.status === "duplicate");
           if (duplicates.length > 0) {
             const dup = duplicates[0];
             const newDoc = documentsData.find(d => d.document_id === dup.document_id);
             if (newDoc) {
+              // Update status to show duplicate
+              setUploadStatuses(prev => prev.map(s => s.documentId === dup.document_id ? {
+                ...s,
+                status: 'failed',
+                progress: 100,
+                details: `⚠️ Duplicata: ${dup.existing_filename}`
+              } : s));
+              
               // Fetch existing document text preview
               const { data: existingDoc } = await supabase
                 .from("documents")

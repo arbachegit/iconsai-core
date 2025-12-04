@@ -21,17 +21,29 @@ function generateContentHash(text: string): string {
   return hash.digest("hex").toString();
 }
 
-// 1. VALIDAÇÃO DE SANIDADE
+// 1. VALIDAÇÃO DE SANIDADE (OTIMIZADA PARA OCR)
 function validateTextSanity(text: string): { valid: boolean; reason?: string } {
-  if (!text || text.length < 100) {
-    return { valid: false, reason: "Texto muito curto (mínimo 100 caracteres)" };
+  if (!text || text.length < 50) {
+    return { valid: false, reason: "Texto muito curto (mínimo 50 caracteres)" };
   }
   
-  const validChars = text.match(/[a-zA-Z0-9\s]/g)?.length || 0;
+  // Contar caracteres válidos incluindo Unicode (acentos, etc.) e pontuação comum
+  // Regex mais permissivo: letras (incluindo acentuadas), números, espaços, pontuação básica
+  const validChars = text.match(/[\p{L}\p{N}\s.,;:!?'"()\-–—]/gu)?.length || 0;
   const ratio = validChars / text.length;
   
-  if (ratio < 0.8) {
-    return { valid: false, reason: "Proporção de caracteres inválida (< 80%)" };
+  // Threshold reduzido de 0.8 para 0.5 para aceitar mais documentos
+  if (ratio < 0.5) {
+    return { 
+      valid: false, 
+      reason: `Proporção de caracteres válidos muito baixa (${Math.round(ratio * 100)}%). Documento pode estar corrompido ou ser digitalização de baixa qualidade.`
+    };
+  }
+  
+  // Verificar se há texto substantivo (não só símbolos/números)
+  const letterCount = text.match(/\p{L}/gu)?.length || 0;
+  if (letterCount < 30) {
+    return { valid: false, reason: "Texto contém poucas letras - pode ser imagem ou tabela sem OCR" };
   }
   
   return { valid: true };
