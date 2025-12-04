@@ -23,7 +23,7 @@ const ContextualSuggestions = memo(({
   if (displaySuggestions.length === 0 || isLoading) return null;
   
   return (
-    <div className="px-4 py-2 border-t border-cyan-400/30 bg-gradient-to-r from-cyan-500/10 to-cyan-600/5">
+    <div className="px-4 py-1 border-t border-cyan-400/30 bg-gradient-to-r from-cyan-500/10 to-cyan-600/5">
       <div className="flex flex-nowrap gap-2 overflow-hidden">
         {displaySuggestions.map((suggestion, index) => (
           <button
