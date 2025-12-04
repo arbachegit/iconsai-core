@@ -65,3 +65,9 @@ verify_jwt = false
 
 [functions.migrate-all-images]
 verify_jwt = false
+
+[functions.extract-pdf-document-ai]
+verify_jwt = false
+
+[functions.generate-image-study]
+verify_jwt = false
