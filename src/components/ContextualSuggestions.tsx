@@ -24,7 +24,7 @@ const ContextualSuggestions = memo(({
   
   return (
     <div className="px-6 py-1">
-      <div className="flex flex-wrap justify-center gap-2 overflow-hidden">
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide max-w-full justify-center">
         {displaySuggestions.map((suggestion, index) => (
           <button
             key={`${suggestion}-${index}`}

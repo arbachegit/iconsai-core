@@ -255,6 +255,7 @@ export function useChatKnowYOU(options: UseChatKnowYOUOptions = {}) {
           await streamChat({
             messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
             onDelta: (chunk) => updateAssistantMessage(chunk),
+            chatType: "health",
             region: userRegion,
             onDone: async () => {
             const extractedSuggestions = extractSuggestions(fullResponse);
