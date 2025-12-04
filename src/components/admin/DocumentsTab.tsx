@@ -376,13 +376,20 @@ export const DocumentsTab = () => {
         if (processError) throw processError;
 
         // Process results immediately - handle failures and duplicates
+        const failedDocIds = new Set<string>();
+        const duplicateDocIds = new Set<string>();
+        
         if (processResult?.results) {
           // Update UI immediately for failed documents
           const failures = processResult.results.filter((r: any) => r.status === "failed");
           failures.forEach((fail: any) => {
-            const fileStatus = initialStatuses.find(s => s.documentId === fail.document_id);
-            if (fileStatus) {
-              setUploadStatuses(prev => prev.map(s => s.documentId === fail.document_id ? {
+            failedDocIds.add(fail.document_id);
+            // Find the fileId from initialStatuses using documentId match from documentsData
+            const docData = documentsData.find(d => d.document_id === fail.document_id);
+            const docIndex = docData ? documentsData.indexOf(docData) : -1;
+            if (docIndex >= 0 && initialStatuses[docIndex]) {
+              const fileId = initialStatuses[docIndex].id;
+              setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
                 ...s,
                 status: 'failed',
                 progress: 100,
@@ -401,15 +408,20 @@ export const DocumentsTab = () => {
           const duplicates = processResult.results.filter((r: any) => r.status === "duplicate");
           if (duplicates.length > 0) {
             const dup = duplicates[0];
+            duplicateDocIds.add(dup.document_id);
             const newDoc = documentsData.find(d => d.document_id === dup.document_id);
             if (newDoc) {
-              // Update status to show duplicate
-              setUploadStatuses(prev => prev.map(s => s.documentId === dup.document_id ? {
-                ...s,
-                status: 'failed',
-                progress: 100,
-                details: `⚠️ Duplicata: ${dup.existing_filename}`
-              } : s));
+              // Find fileId for duplicate
+              const docIndex = documentsData.indexOf(newDoc);
+              if (docIndex >= 0 && initialStatuses[docIndex]) {
+                const fileId = initialStatuses[docIndex].id;
+                setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+                  ...s,
+                  status: 'failed',
+                  progress: 100,
+                  details: `⚠️ Duplicata: ${dup.existing_filename}`
+                } : s));
+              }
               
               // Fetch existing document text preview
               const { data: existingDoc } = await supabase
@@ -441,11 +453,13 @@ export const DocumentsTab = () => {
           }
         }
 
-        // Start polling for each document
+        // Start polling ONLY for documents that didn't fail or get marked as duplicates
         documentsData.forEach((doc, idx) => {
-          const fileId = uploadStatuses.find(s => s.documentId === doc.document_id)?.id;
-          if (fileId) {
-            pollDocumentStatus(doc.document_id, fileId);
+          if (!failedDocIds.has(doc.document_id) && !duplicateDocIds.has(doc.document_id)) {
+            const fileId = initialStatuses[idx]?.id;
+            if (fileId) {
+              pollDocumentStatus(doc.document_id, fileId);
+            }
           }
         });
         toast.success(`${documentsData.length} documento(s) enviado(s) para processamento!`);
