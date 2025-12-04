@@ -42,7 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap } from "lucide-react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
@@ -115,6 +115,45 @@ export const TagsManagementTab = () => {
         ...tag,
         target_chat: tag.documents?.target_chat || null,
       })) as Tag[];
+    },
+  });
+
+  // Fetch ML merge rules
+  const { data: mergeRules, isLoading: isLoadingRules } = useQuery({
+    queryKey: ["tag-merge-rules"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tag_merge_rules")
+        .select("*")
+        .order("merge_count", { ascending: false });
+      if (error) throw error;
+      return data as Array<{
+        id: string;
+        source_tag: string;
+        canonical_tag: string;
+        chat_type: string;
+        created_at: string;
+        created_by: string | null;
+        merge_count: number;
+      }>;
+    },
+  });
+
+  // Delete ML rule mutation
+  const deleteRuleMutation = useMutation({
+    mutationFn: async (ruleId: string) => {
+      const { error } = await supabase
+        .from("tag_merge_rules")
+        .delete()
+        .eq("id", ruleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Regra de aprendizado removida");
+      queryClient.invalidateQueries({ queryKey: ["tag-merge-rules"] });
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao remover regra: ${error.message}`);
     },
   });
 
@@ -776,6 +815,78 @@ export const TagsManagementTab = () => {
             </div>
           )}
         </Card>
+      )}
+
+      {/* Machine Learning Rules Panel */}
+      {mergeRules && mergeRules.length > 0 && (
+        <Collapsible>
+          <Card className="p-4 border-purple-500/50 bg-gradient-to-r from-purple-500/5 to-indigo-500/5">
+            <CollapsibleTrigger className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <Brain className="h-5 w-5 text-purple-400" />
+                <h3 className="font-semibold">Regras de Aprendizado de Máquina</h3>
+                <Badge variant="outline" className="ml-2 bg-purple-500/20 text-purple-300 border-purple-500/30">
+                  {mergeRules.length} regra(s)
+                </Badge>
+                <Badge variant="outline" className="bg-green-500/20 text-green-300 border-green-500/30">
+                  <Zap className="h-3 w-3 mr-1" />
+                  {mergeRules.reduce((sum, r) => sum + (r.merge_count || 0), 0)} aplicações
+                </Badge>
+              </div>
+              <ChevronDown className="h-4 w-4 transition-transform" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                Regras criadas automaticamente quando tags são mescladas. A IA usa estas regras para evitar criar variações duplicadas.
+              </p>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {mergeRules.map((rule) => (
+                  <div 
+                    key={rule.id} 
+                    className="flex items-center justify-between p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs bg-red-500/20 text-red-300 border-red-500/30 line-through">
+                          {rule.source_tag}
+                        </Badge>
+                        <span className="text-purple-400">→</span>
+                        <Badge variant="secondary" className="text-xs bg-green-500/20 text-green-300 border-green-500/30">
+                          {rule.canonical_tag}
+                        </Badge>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {rule.chat_type === "health" ? "🏥 Saúde" : "📚 Estudo"}
+                      </Badge>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-300 border-blue-500/30">
+                              <Zap className="h-3 w-3 mr-1" />
+                              {rule.merge_count || 0}x aplicada
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Número de vezes que esta regra foi usada pela IA
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                      onClick={() => deleteRuleMutation.mutate(rule.id)}
+                      disabled={deleteRuleMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       )}
 
       {/* Filters */}

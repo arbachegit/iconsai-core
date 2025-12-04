@@ -159,20 +159,15 @@ Regras:
     if (appliedRules.length === 0) return;
     
     for (const sourceTag of appliedRules) {
-      await supabase
-        .from("tag_merge_rules")
-        .update({ merge_count: supabase.rpc ? undefined : 1 }) // Will use raw increment below
-        .eq("source_tag", sourceTag)
-        .eq("chat_type", chatType || "health");
-      
-      // Use RPC or direct SQL to increment
-      await supabase.rpc("increment_merge_rule_count", { 
-        p_source_tag: sourceTag, 
-        p_chat_type: chatType || "health" 
-      }).catch(() => {
-        // Fallback: just log if RPC doesn't exist yet
-        console.log(`Would increment count for rule: ${sourceTag}`);
-      });
+      try {
+        await supabase.rpc("increment_merge_rule_count", { 
+          p_source_tag: sourceTag, 
+          p_chat_type: chatType || "health" 
+        });
+        console.log(`Incremented count for ML rule: ${sourceTag}`);
+      } catch (err) {
+        console.log(`Could not increment count for rule: ${sourceTag}`, err);
+      }
     }
   };
     
@@ -233,10 +228,13 @@ Regras:
       }
     }
     
-    console.log(`Tags generated for document ${documentId}`);
+    // Increment usage counts for applied ML rules
+    await incrementAppliedRulesCount();
+    
+    console.log(`Tags generated for document ${documentId}, ${appliedRules.length} ML rules applied`);
     
     return new Response(
-      JSON.stringify({ success: true, tags }),
+      JSON.stringify({ success: true, tags, rulesApplied: appliedRules.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
     
