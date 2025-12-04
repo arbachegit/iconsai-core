@@ -14,21 +14,72 @@ interface MermaidDiagramProps {
 // Sanitize chart to remove problematic characters
 const sanitizeChart = (chart: string): string => {
   let sanitized = chart
-    // Remove parentheses in node labels
+    // 1. Normalize line breaks
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    
+    // 2. Remove emojis and problematic Unicode characters
+    .replace(/[\u{1F600}-\u{1F64F}]/gu, '')  // Emoticons
+    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')  // Misc symbols & pictographs
+    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')  // Transport & map symbols
+    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '')  // Flags
+    .replace(/[\u{2600}-\u{26FF}]/gu, '')    // Misc symbols
+    .replace(/[\u{2700}-\u{27BF}]/gu, '')    // Dingbats
+    .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')  // Supplemental symbols
+    .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')  // Chess symbols
+    .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '')  // Symbols extended-A
+    .replace(/[\u{231A}-\u{231B}]/gu, '')    // Watch, hourglass
+    .replace(/[\u{23E9}-\u{23F3}]/gu, '')    // Media symbols
+    .replace(/[\u{23F8}-\u{23FA}]/gu, '')    // More media
+    .replace(/[\u{25AA}-\u{25AB}]/gu, '')    // Squares
+    .replace(/[\u{25B6}]/gu, '')             // Play button
+    .replace(/[\u{25C0}]/gu, '')             // Reverse button
+    .replace(/[\u{25FB}-\u{25FE}]/gu, '')    // More squares
+    .replace(/[\u{2B05}-\u{2B07}]/gu, '')    // Arrows
+    .replace(/[\u{2B1B}-\u{2B1C}]/gu, '')    // More squares
+    .replace(/[\u{2B50}]/gu, '')             // Star
+    .replace(/[\u{2B55}]/gu, '')             // Circle
+    .replace(/[\u{3030}]/gu, '')             // Wavy dash
+    .replace(/[\u{303D}]/gu, '')             // Part alternation mark
+    .replace(/[\u{3297}]/gu, '')             // Circled ideograph
+    .replace(/[\u{3299}]/gu, '')             // Circled ideograph secret
+    .replace(/[🔴🟢🟡🔵⚪⚫🟠🟣🟤]/gu, '')   // Colored circles
+    
+    // 3. Handle colons in subgraph titles
+    .replace(/subgraph\s+([^\n:]+):/g, 'subgraph $1 -')
+    
+    // 4. Replace parentheses in labels with hyphens
     .replace(/\(([^)]+)\)/g, '-$1-')
-    // Remove question marks
-    .replace(/\?/g, '')
-    // Remove double quotes
+    
+    // 5. Replace slashes with hyphens
+    .replace(/\//g, '-')
+    
+    // 6. Remove all types of quotes
+    .replace(/[""''`´]/g, '')
     .replace(/"/g, '')
-    // Remove nested brackets
+    .replace(/'/g, '')
+    
+    // 7. Remove question marks
+    .replace(/\?/g, '')
+    
+    // 8. Handle nested brackets
     .replace(/\[([^\]]*)\[/g, '[$1')
     .replace(/\]([^\[]*)\]/g, ']$1')
-    // Remove special characters that break Mermaid
+    
+    // 9. Remove other problematic characters
     .replace(/[<>]/g, '')
     .replace(/&/g, 'e')
     .replace(/#/g, '')
     .replace(/;/g, '')
-    .replace(/\|/g, '-');
+    .replace(/\|/g, '-')
+    
+    // 10. Handle colons (but preserve --> arrows)
+    .replace(/(?<!-)(?<!>):(?!:)/g, ' -')
+    
+    // 11. Clean up multiple spaces and hyphens
+    .replace(/--+/g, '--')
+    .replace(/  +/g, ' ')
+    .replace(/- -/g, '-');
   
   // Ensure chart starts with a valid diagram type
   const validStarts = ['graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie', 'gitGraph'];
