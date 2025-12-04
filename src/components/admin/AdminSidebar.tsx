@@ -34,9 +34,10 @@ import {
   Target,
   Cpu,
   Globe,
+  Sparkles,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -115,6 +116,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         { id: "user-usage-logs" as TabType, label: "Log de Uso (Usuários)", icon: Users },
         { id: "document-routing-logs" as TabType, label: "Logs de Roteamento", icon: Route },
         { id: "tag-modification-logs" as TabType, label: "Logs de Mescla Tags", icon: Tags },
+        { id: "suggestion-audit" as TabType, label: "Auditoria Sugestões", icon: Sparkles },
       ]
     },
     {
