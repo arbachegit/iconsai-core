@@ -133,10 +133,52 @@ export const useAdminNotifications = () => {
       )
       .subscribe();
 
+    // Listen for ML chat routing rules
+    const mlRulesChannel = supabase
+      .channel('ml-routing-rules')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_routing_rules'
+        },
+        async (payload) => {
+          await createNotification({
+            type: 'ml_rule_created',
+            title: '🤖 Nova Regra ML',
+            message: `Regra de roteamento criada: "${payload.new.document_filename_pattern}" → ${payload.new.corrected_chat}`,
+            reference_id: payload.new.id
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_routing_rules'
+        },
+        async (payload) => {
+          const rule = payload.new as any;
+          // Notify when rule reaches high confidence (>= 0.8)
+          if (rule.confidence >= 0.8 && (payload.old as any)?.confidence < 0.8) {
+            await createNotification({
+              type: 'ml_rule_high_confidence',
+              title: '🎯 Regra ML Alta Confiança',
+              message: `Regra "${rule.document_filename_pattern}" atingiu ${Math.round(rule.confidence * 100)}% de confiança (${rule.correction_count} correções)`,
+              reference_id: rule.id
+            });
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       channel.unsubscribe();
       docChannel.unsubscribe();
       convChannel.unsubscribe();
+      mlRulesChannel.unsubscribe();
     };
   }, []);
 

@@ -249,6 +249,54 @@ export const DocumentsTab = () => {
       .trim();
   };
 
+  // Get ML-suggested chat based on filename pattern matching
+  const getMLSuggestedChat = async (filename: string): Promise<{ chat: string; confidence: number; pattern: string } | null> => {
+    // Extract pattern from filename
+    const filenamePattern = filename
+      .toLowerCase()
+      .replace(/\.pdf$/i, '')
+      .replace(/[0-9]+/g, '')
+      .replace(/[-_]/g, ' ')
+      .split(' ')
+      .filter(w => w.length > 2)
+      .slice(0, 3)
+      .join(' ')
+      .trim();
+    
+    if (filenamePattern.length <= 3) return null;
+
+    // Query chat_routing_rules for matching patterns with high confidence
+    const { data: rules, error } = await supabase
+      .from("chat_routing_rules")
+      .select("*")
+      .gte("confidence", 0.6) // Only apply rules with >= 60% confidence
+      .order("confidence", { ascending: false });
+    
+    if (error || !rules || rules.length === 0) return null;
+
+    // Find best matching rule
+    for (const rule of rules) {
+      const rulePattern = rule.document_filename_pattern.toLowerCase();
+      const patternWords = rulePattern.split(' ');
+      const filenameWords = filenamePattern.split(' ');
+      
+      // Check if pattern matches (all pattern words found in filename)
+      const matches = patternWords.every(pw => 
+        filenameWords.some(fw => fw.includes(pw) || pw.includes(fw))
+      );
+      
+      if (matches) {
+        return {
+          chat: rule.corrected_chat,
+          confidence: rule.confidence || 0.6,
+          pattern: rule.document_filename_pattern
+        };
+      }
+    }
+
+    return null;
+  };
+
   // Extract text from PDF using Google Document AI (for tables)
   const extractTextWithDocumentAI = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer();
@@ -377,13 +425,34 @@ export const DocumentsTab = () => {
               continue;
             }
 
-            // Phase 2: Uploading
+            // Phase 2: Uploading - Check ML suggestions first
             setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
               ...s,
               status: 'uploading',
-              progress: 40,
-              details: 'Criando registro no banco...'
+              progress: 35,
+              details: 'Verificando regras ML...'
             } : s));
+
+            // Check if there's a ML-suggested chat based on filename pattern
+            const mlSuggestion = await getMLSuggestedChat(file.name);
+            let suggestedChat = "general";
+            
+            if (mlSuggestion) {
+              suggestedChat = mlSuggestion.chat;
+              setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+                ...s,
+                progress: 40,
+                details: `ML sugeriu: ${mlSuggestion.chat} (${Math.round(mlSuggestion.confidence * 100)}%)`
+              } : s));
+              toast.info(`🤖 ML sugeriu "${mlSuggestion.chat}" para "${file.name}" (confiança: ${Math.round(mlSuggestion.confidence * 100)}%)`);
+            } else {
+              setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+                ...s,
+                progress: 40,
+                details: 'Criando registro no banco...'
+              } : s));
+            }
+
             const {
               data: documents,
               error: docError
@@ -392,7 +461,7 @@ export const DocumentsTab = () => {
               original_text: extractedText,
               text_preview: extractedText.substring(0, 500),
               status: "pending",
-              target_chat: "general"
+              target_chat: suggestedChat
             }]).select();
             const document = documents?.[0];
             if (docError || !document) {
