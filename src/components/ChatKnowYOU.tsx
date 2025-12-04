@@ -581,7 +581,7 @@ export default function ChatKnowYOU() {
 
 
       {/* Input Area */}
-      <form onSubmit={handleSubmit} className="pt-4 pb-2 px-6 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
+      <form onSubmit={handleSubmit} className="pt-4 pb-0 px-6 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
         {/* Indicador de voz ativo */}
         {isRecording && <div className="flex items-center gap-2 text-xs mb-2">
             <div className={`w-2 h-2 rounded-full ${voiceStatus === 'waiting' ? 'bg-amber-500' : voiceStatus === 'processing' ? 'bg-blue-500' : 'bg-red-500'} animate-pulse`} />
@@ -631,7 +631,7 @@ export default function ChatKnowYOU() {
               {isLoading ? <Square className="w-5 h-5" /> : <ArrowUp className="w-5 h-5" />}
             </Button>
           </div>
-        <p className="text-xs text-muted-foreground mt-1 text-center">
+        <p className="text-xs leading-none text-muted-foreground mt-0.5 text-center">
           Pressione Enter para enviar • Shift+Enter para nova linha
         </p>
       </form>
