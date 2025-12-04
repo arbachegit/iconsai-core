@@ -18,7 +18,12 @@ interface Message {
 
 const STORAGE_KEY = "knowyou_chat_history";
 
-export function useChatKnowYOU() {
+interface UseChatKnowYOUOptions {
+  userRegion?: string;
+}
+
+export function useChatKnowYOU(options: UseChatKnowYOUOptions = {}) {
+  const { userRegion } = options;
   const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -250,6 +255,7 @@ export function useChatKnowYOU() {
           await streamChat({
             messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
             onDelta: (chunk) => updateAssistantMessage(chunk),
+            region: userRegion,
             onDone: async () => {
             const extractedSuggestions = extractSuggestions(fullResponse);
             if (extractedSuggestions.length > 0) {

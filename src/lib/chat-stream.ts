@@ -6,6 +6,7 @@ interface StreamChatOptions {
   onDone: () => void;
   onError?: (error: Error) => void;
   chatType?: "health" | "study";
+  region?: string; // Região cultural do usuário para adaptação de tom
 }
 
 export async function streamChat({
@@ -14,6 +15,7 @@ export async function streamChat({
   onDone,
   onError,
   chatType = "health",
+  region,
 }: StreamChatOptions) {
   const endpoint = chatType === "study" ? "chat-study" : "chat";
   const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${endpoint}`;
@@ -25,7 +27,7 @@ export async function streamChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, region }),
     });
 
     if (!resp.ok) {

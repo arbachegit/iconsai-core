@@ -17,7 +17,12 @@ interface Message {
 
 const STORAGE_KEY = "knowyou_study_chat_history";
 
-export function useChatStudy() {
+interface UseChatStudyOptions {
+  userRegion?: string;
+}
+
+export function useChatStudy(options: UseChatStudyOptions = {}) {
+  const { userRegion } = options;
   const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -250,6 +255,7 @@ export function useChatStudy() {
             messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
             onDelta: (chunk) => updateAssistantMessage(chunk),
             chatType: "study",
+            region: userRegion,
             onDone: async () => {
               const extractedSuggestions = extractSuggestions(fullResponse);
               if (extractedSuggestions.length > 0) {
