@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap, Eye, Settings2, AlertTriangle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
@@ -72,7 +73,7 @@ export const DocumentsTab = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isBulkReprocessing, setIsBulkReprocessing] = useState(false);
 
-// Duplicate detection states
+  // Duplicate detection states
   const [duplicateInfo, setDuplicateInfo] = useState<{
     newFileName: string;
     existingFileName: string;
@@ -83,6 +84,26 @@ export const DocumentsTab = () => {
     existingTextPreview?: string;
   } | null>(null);
   const [showComparison, setShowComparison] = useState(false);
+
+  // Text preview before processing states
+  const [previewFiles, setPreviewFiles] = useState<Array<{
+    file: File;
+    extractedText: string;
+    charCount: number;
+    wordCount: number;
+    validRatio: number;
+    letterCount: number;
+  }>>([]);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+
+  // Retry with custom validation parameters
+  const [retryDoc, setRetryDoc] = useState<any>(null);
+  const [retryParams, setRetryParams] = useState({
+    minTextLength: 50,
+    validCharRatio: 0.5,
+    minLetterCount: 30
+  });
 
   // Function to highlight text differences between two strings
   const highlightTextDifferences = (text1: string, text2: string): { highlighted1: React.ReactNode; highlighted2: React.ReactNode } => {
@@ -787,7 +808,97 @@ export const DocumentsTab = () => {
     }
   }, []);
 
-  // Download document as PDF
+  // Analyze text quality
+  const analyzeTextQuality = (text: string) => {
+    const validChars = text.match(/[\p{L}\p{N}\s.,;:!?'"()\-–—]/gu)?.length || 0;
+    const letterCount = text.match(/\p{L}/gu)?.length || 0;
+    return {
+      charCount: text.length,
+      wordCount: text.split(/\s+/).filter(w => w.length > 0).length,
+      validRatio: text.length > 0 ? validChars / text.length : 0,
+      letterCount
+    };
+  };
+
+  // Extract and preview files before processing
+  const handlePreviewExtraction = useCallback(async () => {
+    if (selectedFiles.length === 0) return;
+    setIsExtracting(true);
+    
+    const previews: typeof previewFiles = [];
+    for (const file of selectedFiles) {
+      try {
+        const text = await extractTextFromPDF(file);
+        const analysis = analyzeTextQuality(text);
+        previews.push({
+          file,
+          extractedText: text,
+          ...analysis
+        });
+      } catch (error: any) {
+        previews.push({
+          file,
+          extractedText: `Erro na extração: ${error.message}`,
+          charCount: 0,
+          wordCount: 0,
+          validRatio: 0,
+          letterCount: 0
+        });
+      }
+    }
+    
+    setPreviewFiles(previews);
+    setShowPreviewModal(true);
+    setIsExtracting(false);
+  }, [selectedFiles, extractTextFromPDF]);
+
+  // Retry failed document with custom validation parameters
+  const retryWithParamsMutation = useMutation({
+    mutationFn: async ({ docId, params }: { docId: string; params: typeof retryParams }) => {
+      const { data: doc, error: fetchError } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("id", docId)
+        .single();
+      if (fetchError) throw fetchError;
+
+      // Clear old data
+      await supabase.from("document_chunks").delete().eq("document_id", docId);
+      await supabase.from("document_tags").delete().eq("document_id", docId);
+
+      // Reset status
+      await supabase.from("documents").update({
+        status: "pending",
+        error_message: null
+      }).eq("id", docId);
+
+      // Reprocess with custom validation params
+      const { error: processError } = await supabase.functions.invoke("process-bulk-document", {
+        body: {
+          documents_data: [{
+            document_id: docId,
+            full_text: doc.original_text,
+            title: doc.filename
+          }],
+          validation_params: {
+            min_text_length: params.minTextLength,
+            valid_char_ratio: params.validCharRatio,
+            min_letter_count: params.minLetterCount
+          }
+        }
+      });
+      if (processError) throw processError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      toast.success("Documento reprocessado com parâmetros ajustados!");
+      setRetryDoc(null);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao reprocessar: ${error.message}`);
+    }
+  });
+
   const downloadAsPDF = useCallback((doc: any) => {
     try {
       const pdf = new jsPDF();
@@ -1277,15 +1388,33 @@ export const DocumentsTab = () => {
                 </div>)}
             </div>}
 
-          <Button onClick={() => uploadMutation.mutate()} disabled={selectedFiles.length === 0 || uploading} className="w-full" size="lg">
-            {uploading ? <>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              onClick={handlePreviewExtraction} 
+              disabled={selectedFiles.length === 0 || uploading || isExtracting}
+              className="flex-1"
+              size="lg"
+            >
+              {isExtracting ? <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processando {selectedFiles.length} documento(s)...
+                Extraindo texto...
               </> : <>
-                <Upload className="mr-2 h-4 w-4" />
-                Enviar e Processar
+                <Eye className="mr-2 h-4 w-4" />
+                Preview do Texto
               </>}
-          </Button>
+            </Button>
+            
+            <Button onClick={() => uploadMutation.mutate()} disabled={selectedFiles.length === 0 || uploading} className="flex-1" size="lg">
+              {uploading ? <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processando...
+                </> : <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Enviar e Processar
+                </>}
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -1812,21 +1941,39 @@ export const DocumentsTab = () => {
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      {(doc.status === "failed" || doc.status === "pending") && <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={e => {
-                              e.stopPropagation();
-                              reprocessMutation.mutate(doc.id);
-                            }} disabled={reprocessMutation.isPending}>
-                              <RefreshCw className={cn("h-4 w-4", reprocessMutation.isPending && "animate-spin")} />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-sm">Reprocessar documento falhado ou pendente</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>}
+                      {(doc.status === "failed" || doc.status === "pending") && <>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={e => {
+                                e.stopPropagation();
+                                reprocessMutation.mutate(doc.id);
+                              }} disabled={reprocessMutation.isPending}>
+                                <RefreshCw className={cn("h-4 w-4", reprocessMutation.isPending && "animate-spin")} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-sm">Reprocessar documento</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={e => {
+                                e.stopPropagation();
+                                setRetryParams({ minTextLength: 50, validCharRatio: 0.5, minLetterCount: 30 });
+                                setRetryDoc(doc);
+                              }}>
+                                <Settings2 className="h-4 w-4 text-amber-500" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-sm">Reprocessar com parâmetros ajustados</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </>}
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -2447,6 +2594,203 @@ export const DocumentsTab = () => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Text Preview Modal */}
+      <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-primary" />
+              Preview do Texto Extraído
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Revise a qualidade da extração antes de processar
+            </p>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 max-h-[60vh]">
+            <div className="space-y-4 pr-4">
+              {previewFiles.map((preview, idx) => {
+                const isValid = preview.charCount >= 50 && preview.validRatio >= 0.5 && preview.letterCount >= 30;
+                return (
+                  <Card key={idx} className={cn(
+                    "p-4",
+                    isValid ? "border-green-500/30" : "border-red-500/30"
+                  )}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span className="font-medium">{preview.file.name}</span>
+                        {isValid ? (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Válido
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Pode falhar
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-4 gap-2 mb-3 text-xs">
+                      <div className="p-2 bg-muted rounded text-center">
+                        <div className="font-bold">{preview.charCount.toLocaleString()}</div>
+                        <div className="text-muted-foreground">caracteres</div>
+                      </div>
+                      <div className="p-2 bg-muted rounded text-center">
+                        <div className="font-bold">{preview.wordCount.toLocaleString()}</div>
+                        <div className="text-muted-foreground">palavras</div>
+                      </div>
+                      <div className={cn(
+                        "p-2 rounded text-center",
+                        preview.validRatio >= 0.5 ? "bg-green-500/10" : "bg-red-500/10"
+                      )}>
+                        <div className="font-bold">{Math.round(preview.validRatio * 100)}%</div>
+                        <div className="text-muted-foreground">chars válidos</div>
+                      </div>
+                      <div className={cn(
+                        "p-2 rounded text-center",
+                        preview.letterCount >= 30 ? "bg-green-500/10" : "bg-red-500/10"
+                      )}>
+                        <div className="font-bold">{preview.letterCount.toLocaleString()}</div>
+                        <div className="text-muted-foreground">letras</div>
+                      </div>
+                    </div>
+                    
+                    <ScrollArea className="h-32 rounded border bg-muted/30 p-2">
+                      <pre className="text-xs whitespace-pre-wrap font-mono">
+                        {preview.extractedText.substring(0, 2000)}
+                        {preview.extractedText.length > 2000 && "..."}
+                      </pre>
+                    </ScrollArea>
+                  </Card>
+                );
+              })}
+            </div>
+          </ScrollArea>
+          
+          <DialogFooter className="flex gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowPreviewModal(false)}>
+              Fechar
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowPreviewModal(false);
+                uploadMutation.mutate();
+              }} 
+              disabled={uploading}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Processar {previewFiles.length} arquivo(s)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Retry with Custom Parameters Modal */}
+      <Dialog open={!!retryDoc} onOpenChange={open => !open && setRetryDoc(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-amber-500" />
+              Reprocessar com Parâmetros Ajustados
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              "{retryDoc?.filename}" falhou na validação. Ajuste os parâmetros para tentar novamente.
+            </p>
+          </DialogHeader>
+          
+          {retryDoc?.error_message && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <div className="flex items-start gap-2 text-sm">
+                <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                <span className="text-red-400">{retryDoc.error_message}</span>
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-5 py-4">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <Label className="text-sm">Tamanho mínimo do texto</Label>
+                <span className="text-sm font-mono bg-muted px-2 py-1 rounded">{retryParams.minTextLength} chars</span>
+              </div>
+              <Slider
+                value={[retryParams.minTextLength]}
+                onValueChange={([value]) => setRetryParams(p => ({ ...p, minTextLength: value }))}
+                min={10}
+                max={200}
+                step={10}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">Documentos com menos caracteres serão rejeitados</p>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <Label className="text-sm">Proporção de caracteres válidos</Label>
+                <span className="text-sm font-mono bg-muted px-2 py-1 rounded">{Math.round(retryParams.validCharRatio * 100)}%</span>
+              </div>
+              <Slider
+                value={[retryParams.validCharRatio * 100]}
+                onValueChange={([value]) => setRetryParams(p => ({ ...p, validCharRatio: value / 100 }))}
+                min={20}
+                max={90}
+                step={5}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">Textos com muitos caracteres especiais ou corrompidos serão rejeitados</p>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <Label className="text-sm">Mínimo de letras</Label>
+                <span className="text-sm font-mono bg-muted px-2 py-1 rounded">{retryParams.minLetterCount} letras</span>
+              </div>
+              <Slider
+                value={[retryParams.minLetterCount]}
+                onValueChange={([value]) => setRetryParams(p => ({ ...p, minLetterCount: value }))}
+                min={5}
+                max={100}
+                step={5}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">Documentos sem texto substantivo (só números/símbolos) serão rejeitados</p>
+            </div>
+            
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground">
+                <strong>Dica:</strong> Reduza os valores se o documento for uma digitalização de baixa qualidade ou conter muitas tabelas/gráficos.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setRetryDoc(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => retryWithParamsMutation.mutate({ docId: retryDoc.id, params: retryParams })}
+              disabled={retryWithParamsMutation.isPending}
+            >
+              {retryWithParamsMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Reprocessando...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Reprocessar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>;
