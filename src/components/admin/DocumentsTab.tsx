@@ -1179,11 +1179,10 @@ export const DocumentsTab = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[35%]">Nome do Arquivo</TableHead>
-                <TableHead className="w-[15%]">Status</TableHead>
-                <TableHead className="w-[20%]">Progresso</TableHead>
-                <TableHead className="w-[12%]">Chat Destino</TableHead>
-                <TableHead className="w-[18%]">Detalhes</TableHead>
+                <TableHead className="w-[30%]">Nome do Arquivo</TableHead>
+                <TableHead className="w-[12%]">Status</TableHead>
+                <TableHead className="w-[40%]">Progresso</TableHead>
+                <TableHead className="w-[18%]">Chat Destino</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1205,12 +1204,21 @@ export const DocumentsTab = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {fileStatus.status !== 'completed' && fileStatus.status !== 'failed' ? <div className="space-y-1">
-                        <Progress value={fileStatus.progress} className="h-2" />
-                        <span className="text-xs text-muted-foreground">{fileStatus.progress}%</span>
-                      </div> : <span className="text-xs text-muted-foreground">
+                    {fileStatus.status !== 'completed' && fileStatus.status !== 'failed' ? (
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 space-y-1">
+                          <Progress value={fileStatus.progress} className="h-2" />
+                          <span className="text-xs text-muted-foreground">{fileStatus.progress}%</span>
+                        </div>
+                        <span className="text-xs text-primary font-medium whitespace-nowrap animate-pulse">
+                          {fileStatus.details}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
                         {fileStatus.progress}%
-                      </span>}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {fileStatus.targetChat ? <Badge variant="outline" className={getChatBadgeColor(fileStatus.targetChat)}>
@@ -1233,11 +1241,6 @@ export const DocumentsTab = () => {
                           </span>
                         )}
                       </Badge> : <span className="text-xs text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell>
-                    <span className={cn("text-xs", fileStatus.status === 'completed' ? "text-green-600" : fileStatus.status === 'failed' ? "text-destructive" : "text-muted-foreground")}>
-                      {fileStatus.details}
-                    </span>
                   </TableCell>
                 </TableRow>)}
             </TableBody>
