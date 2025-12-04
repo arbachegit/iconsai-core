@@ -29,7 +29,17 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from '@/components/ui/tooltip';
-import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface ChartData {
@@ -77,6 +87,17 @@ const validateProportionData = (data: { value: number }[]): ProportionValidation
   };
 };
 
+// Normalize data to sum to 100%
+const normalizeToPercentage = <T extends { value: number }>(data: T[]): T[] => {
+  const sum = data.reduce((acc, item) => acc + (item.value || 0), 0);
+  if (sum === 0) return data;
+  
+  return data.map(item => ({
+    ...item,
+    value: Number(((item.value / sum) * 100).toFixed(1))
+  }));
+};
+
 const ChartTypeIcon = ({ type }: { type: string }) => {
   switch (type) {
     case 'bar': return <BarChart3 className="h-4 w-4" />;
@@ -88,16 +109,26 @@ const ChartTypeIcon = ({ type }: { type: string }) => {
 };
 
 export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererProps) => {
-  // Validate proportion data
-  const proportionValidation = useMemo(() => validateProportionData(chartData.data), [chartData.data]);
+  // State for normalized data
+  const [normalizedData, setNormalizedData] = useState<typeof chartData.data | null>(null);
+  const [showNormalizeDialog, setShowNormalizeDialog] = useState(false);
+  
+  // Use normalized data if available, otherwise original
+  const displayData = normalizedData || chartData.data;
+  
+  // Validate proportion data based on current display data
+  const proportionValidation = useMemo(() => validateProportionData(displayData), [displayData]);
   
   // Initialize chart type with auto-correction for invalid pie charts
   const [chartType, setChartType] = useState<'bar' | 'line' | 'pie' | 'area'>(() => {
     const requestedType = chartData.type || 'bar';
     // Auto-correct pie to bar if data doesn't sum to 100%
-    if (requestedType === 'pie' && !proportionValidation.isValid) {
-      console.warn(`Gráfico de pizza solicitado mas soma é ${proportionValidation.sum.toFixed(1)}%, usando barras`);
-      return 'bar';
+    if (requestedType === 'pie') {
+      const validation = validateProportionData(chartData.data);
+      if (!validation.isValid) {
+        console.warn(`Gráfico de pizza solicitado mas soma é ${validation.sum.toFixed(1)}%, usando barras`);
+        return 'bar';
+      }
     }
     return requestedType;
   });
@@ -107,9 +138,26 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   const xKey = chartData.xKey || 'name';
   const yKeys = chartData.yKeys || ['value'];
 
+  // Handle pie chart selection with normalization prompt
+  const handlePieSelection = () => {
+    if (proportionValidation.isValid) {
+      setChartType('pie');
+    } else {
+      setShowNormalizeDialog(true);
+    }
+  };
+
+  // Apply normalization and switch to pie
+  const applyNormalization = () => {
+    const normalized = normalizeToPercentage(chartData.data);
+    setNormalizedData(normalized);
+    setChartType('pie');
+    setShowNormalizeDialog(false);
+  };
+
   const exportToCSV = () => {
     const headers = [xKey, ...yKeys].join(',');
-    const rows = chartData.data.map(item => 
+    const rows = displayData.map(item => 
       [item[xKey], ...yKeys.map(k => item[k])].join(',')
     );
     const csvContent = [headers, ...rows].join('\n');
@@ -122,14 +170,14 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   };
 
   const shareViaWhatsApp = () => {
-    const text = `📊 ${chartData.title}\n\n${chartData.data.map(d => `${d[xKey]}: ${d.value}`).join('\n')}`;
+    const text = `📊 ${chartData.title}\n\n${displayData.map(d => `${d[xKey]}: ${d.value}`).join('\n')}`;
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
 
   const shareViaEmail = () => {
     const subject = `Gráfico: ${chartData.title}`;
-    const body = `📊 ${chartData.title}\n\n${chartData.data.map(d => `${d[xKey]}: ${d.value}`).join('\n')}`;
+    const body = `📊 ${chartData.title}\n\n${displayData.map(d => `${d[xKey]}: ${d.value}`).join('\n')}`;
     const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(url, '_blank');
   };
@@ -139,7 +187,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
       case 'bar':
         return (
           <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={chartData.data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+            <BarChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey={xKey} 
@@ -168,7 +216,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
       case 'line':
         return (
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={chartData.data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+            <LineChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey={xKey} 
@@ -206,7 +254,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
-                data={chartData.data}
+                data={displayData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -215,7 +263,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 fill="hsl(var(--primary))"
                 dataKey="value"
               >
-                {chartData.data.map((_, index) => (
+                {displayData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
@@ -235,7 +283,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
       case 'area':
         return (
           <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={chartData.data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+            <AreaChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey={xKey} 
@@ -273,12 +321,30 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
     }
   };
 
+  // Preview of normalized values for dialog
+  const normalizedPreview = useMemo(() => normalizeToPercentage(chartData.data), [chartData.data]);
+
   return (
     <TooltipProvider>
       <div ref={chartRef} className={cn("my-3 rounded-lg border border-border/50 overflow-hidden bg-card", className)}>
         {/* Header with title and controls */}
         <div className="flex items-center justify-between gap-2 px-3 py-2 bg-muted/30 border-b border-border/50">
-          <h4 className="text-sm font-medium truncate">{chartData.title}</h4>
+          <div className="flex items-center gap-2 min-w-0">
+            <h4 className="text-sm font-medium truncate">{chartData.title}</h4>
+            {normalizedData && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded">
+                    <Percent className="h-3 w-3" />
+                    Normalizado
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Valores convertidos para porcentagem (soma = 100%)</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
           
           <div className="flex items-center gap-1">
             {/* Chart Type Selector */}
@@ -300,30 +366,21 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   <TrendingUp className="h-4 w-4 mr-2" /> Linha
                 </DropdownMenuItem>
                 
-                {/* Pizza - condicionalmente habilitado */}
-                {proportionValidation.isValid ? (
-                  <DropdownMenuItem onClick={() => setChartType('pie')}>
-                    <PieChartIcon className="h-4 w-4 mr-2" /> Pizza
-                  </DropdownMenuItem>
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <DropdownMenuItem 
-                          disabled
-                          className="opacity-50 cursor-not-allowed"
-                        >
-                          <PieChartIcon className="h-4 w-4 mr-2" /> 
-                          Pizza
-                          <AlertCircle className="h-3 w-3 ml-auto text-amber-500" />
-                        </DropdownMenuItem>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="left" className="max-w-xs">
-                      <p className="text-sm">{proportionValidation.message}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
+                {/* Pizza - com normalização automática */}
+                <DropdownMenuItem onClick={handlePieSelection}>
+                  <PieChartIcon className="h-4 w-4 mr-2" /> 
+                  Pizza
+                  {!proportionValidation.isValid && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <AlertCircle className="h-3 w-3 ml-auto text-amber-500" />
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-xs">
+                        <p className="text-xs">Soma atual: {proportionValidation.sum.toFixed(1)}% - Será oferecida normalização</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </DropdownMenuItem>
                 
                 {/* Área - sempre habilitado */}
                 <DropdownMenuItem onClick={() => setChartType('area')}>
@@ -360,6 +417,67 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
           {renderChart()}
         </div>
       </div>
+
+      {/* Normalization Confirmation Dialog */}
+      <AlertDialog open={showNormalizeDialog} onOpenChange={setShowNormalizeDialog}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Percent className="h-5 w-5 text-amber-500" />
+              Normalizar para 100%?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  A soma atual dos valores é <strong className="text-foreground">{proportionValidation.sum.toFixed(1)}%</strong>, 
+                  mas gráficos de pizza requerem exatamente 100%.
+                </p>
+                <p>
+                  Deseja converter automaticamente os valores para porcentagens proporcionais?
+                </p>
+                
+                {/* Preview table */}
+                <div className="mt-3 rounded-md border border-border overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-2 py-1.5 text-left font-medium">Categoria</th>
+                        <th className="px-2 py-1.5 text-right font-medium">Original</th>
+                        <th className="px-2 py-1.5 text-right font-medium text-emerald-400">Normalizado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chartData.data.map((item, idx) => (
+                        <tr key={idx} className="border-t border-border/50">
+                          <td className="px-2 py-1.5 truncate max-w-[120px]">{item.name}</td>
+                          <td className="px-2 py-1.5 text-right text-muted-foreground">{item.value}</td>
+                          <td className="px-2 py-1.5 text-right text-emerald-400 font-medium">
+                            {normalizedPreview[idx]?.value}%
+                          </td>
+                        </tr>
+                      ))}
+                      <tr className="border-t border-border bg-muted/30">
+                        <td className="px-2 py-1.5 font-medium">Total</td>
+                        <td className="px-2 py-1.5 text-right text-amber-400 font-medium">
+                          {proportionValidation.sum.toFixed(1)}
+                        </td>
+                        <td className="px-2 py-1.5 text-right text-emerald-400 font-medium">100%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={applyNormalization} className="bg-emerald-600 hover:bg-emerald-700">
+              <Percent className="h-4 w-4 mr-2" />
+              Normalizar e Exibir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   );
 };
