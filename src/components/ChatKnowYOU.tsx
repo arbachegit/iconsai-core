@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Loader2, ImagePlus, Mic, Square, X, ArrowUp, BarChart3 } from "lucide-react";
+import { Loader2, ImagePlus, Mic, Square, X, ArrowUp, BarChart3, ArrowDown } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
@@ -101,6 +101,7 @@ export default function ChatKnowYOU() {
   const [audioVisibility, setAudioVisibility] = useState<{
     [key: number]: boolean;
   }>({});
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const audioMessageRefs = useRef<{
     [key: number]: HTMLDivElement | null;
   }>({});
@@ -154,6 +155,22 @@ export default function ChatKnowYOU() {
       setShowFloatingPlayer(false);
     }
   }, [currentlyPlayingIndex, audioVisibility]);
+
+  // Detectar quando usuário não está no final do scroll
+  useEffect(() => {
+    const viewport = scrollViewportRef.current;
+    if (!viewport) return;
+    
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = viewport;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollButton(!isNearBottom && messages.length > 0);
+    };
+    
+    viewport.addEventListener('scroll', handleScroll);
+    handleScroll(); // Check initial state
+    return () => viewport.removeEventListener('scroll', handleScroll);
+  }, [messages.length]);
 
 
   // Helper function to scroll to bottom
@@ -527,50 +544,68 @@ export default function ChatKnowYOU() {
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="h-[500px] p-6 border-2 border-cyan-400/60 bg-[hsl(var(--chat-container-bg))] rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" ref={scrollRef}>
-        {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
-              <span className="text-4xl font-bold text-primary-foreground">K</span>
-            </div>
-            <h4 className="text-xl font-semibold mb-2">{t('chat.greeting')}</h4>
-            <p className="text-muted-foreground max-w-md">
-              {t('chat.greetingDesc')}
-            </p>
-          </div> : <div className="space-y-4">
-            {/* Disclaimer when document is attached */}
-            {activeDisclaimer && <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                <AlertTitle className="flex items-center justify-between">
-                  {t('documentAttach.disclaimerTitle')}
-                  <Button variant="ghost" size="sm" onClick={detachDocument} className="h-6 w-6 p-0" title={t('documentAttach.removeButton')}>
-                    <X className="h-3 w-3" />
-                  </Button>
-                </AlertTitle>
-                <AlertDescription>
-                  {activeDisclaimer.message}
-                </AlertDescription>
-              </Alert>}
-            
-            {messages.map((msg, idx) => <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`} ref={el => {
-          if (msg.role === "assistant" && msg.audioUrl) {
-            audioMessageRefs.current[idx] = el;
-          }
-        }}>
-                <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right" : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"}`}>
-                  {msg.imageUrl && <img src={msg.imageUrl} alt={t('chat.generatingImage')} className="max-w-full rounded-lg mb-2" />}
-                  <div className="flex items-start gap-2">
-                    <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1" />
+      <div className="relative flex-1">
+        <ScrollArea className="h-[500px] p-6 border-2 border-cyan-400/60 bg-[hsl(var(--chat-container-bg))] rounded-lg m-2 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" ref={scrollRef}>
+          {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
+                <span className="text-4xl font-bold text-primary-foreground">K</span>
+              </div>
+              <h4 className="text-xl font-semibold mb-2">{t('chat.greeting')}</h4>
+              <p className="text-muted-foreground max-w-md">
+                {t('chat.greetingDesc')}
+              </p>
+            </div> : <div className="space-y-4">
+              {/* Disclaimer when document is attached */}
+              {activeDisclaimer && <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <AlertTitle className="flex items-center justify-between">
+                    {t('documentAttach.disclaimerTitle')}
+                    <Button variant="ghost" size="sm" onClick={detachDocument} className="h-6 w-6 p-0" title={t('documentAttach.removeButton')}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </AlertTitle>
+                  <AlertDescription>
+                    {activeDisclaimer.message}
+                  </AlertDescription>
+                </Alert>}
+              
+              {messages.map((msg, idx) => <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`} ref={el => {
+            if (msg.role === "assistant" && msg.audioUrl) {
+              audioMessageRefs.current[idx] = el;
+            }
+          }}>
+                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right" : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"}`}>
+                    {msg.imageUrl && <img src={msg.imageUrl} alt={t('chat.generatingImage')} className="max-w-full rounded-lg mb-2" />}
+                    <div className="flex items-start gap-2">
+                      <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1" />
+                    </div>
+                    
+                    {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} imageUrl={msg.imageUrl} isPlaying={currentlyPlayingIndex === idx} isGeneratingAudio={isGeneratingAudio} currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0} duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} onDownloadImage={msg.imageUrl ? () => handleDownloadImage(msg.imageUrl!, idx) : undefined} />}
                   </div>
-                  
-                  {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} imageUrl={msg.imageUrl} isPlaying={currentlyPlayingIndex === idx} isGeneratingAudio={isGeneratingAudio} currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0} duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} onDownloadImage={msg.imageUrl ? () => handleDownloadImage(msg.imageUrl!, idx) : undefined} />}
-                </div>
-              </div>)}
-              {(isLoading || isGeneratingAudio || isGeneratingImage) && <div className="flex justify-start">
-                  <TypingIndicator isDrawing={isGeneratingImage} />
-                </div>}
-            <div ref={messagesEndRef} />
-          </div>}
-      </ScrollArea>
+                </div>)}
+                {(isLoading || isGeneratingAudio || isGeneratingImage) && <div className="flex justify-start">
+                    <TypingIndicator isDrawing={isGeneratingImage} />
+                  </div>}
+              <div ref={messagesEndRef} />
+            </div>}
+        </ScrollArea>
+        
+        {/* Scroll to Bottom Button */}
+        {showScrollButton && (
+          <button
+            onClick={scrollToBottom}
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 
+                       h-10 w-10 rounded-full bg-white text-black 
+                       shadow-lg hover:shadow-xl 
+                       flex items-center justify-center
+                       transition-all duration-300 hover:scale-110"
+            style={{ animation: 'bounce-gentle 1.5s infinite' }}
+            aria-label="Rolar até o final"
+          >
+            <ArrowDown className="h-5 w-5" />
+          </button>
+        )}
+      </div>
 
 
       {/* Input Area */}

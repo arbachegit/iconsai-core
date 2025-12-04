@@ -199,3 +199,13 @@ All colors MUST be HSL.
     display: none !important;
   }
 }
+
+/* Scroll to bottom button animation */
+@keyframes bounce-gentle {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-6px);
+  }
+}
