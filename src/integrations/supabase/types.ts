@@ -880,6 +880,36 @@ export type Database = {
         }
         Relationships: []
       }
+      regional_tone_rules: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean
+          region_code: string
+          region_name: string
+          tone_rules: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          region_code: string
+          region_name: string
+          tone_rules: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          region_code?: string
+          region_name?: string
+          tone_rules?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       section_audio: {
         Row: {
           audio_url: string

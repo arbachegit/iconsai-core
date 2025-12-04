@@ -11,53 +11,50 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Função para gerar regras de tom cultural baseadas na região
-  function getCulturalToneRules(region: string | undefined): string {
-    const toneRules: Record<string, string> = {
-      "sudeste_sp": `
-🎯 TOM CULTURAL - SUDESTE (SP):
-- Seja CONCISO e DIRETO
-- Use verbos ativos, corte saudações longas
-- Foco em eficiência: vá direto ao ponto
-- Evite rodeios, seja objetivo
-- Exemplo: "Preciso disso pra hoje" → "Prioridade para hoje."
-`,
-      "sudeste_mg": `
-🎯 TOM CULTURAL - SUDESTE (MG):
-- Use tom SUAVE e ACOLHEDOR
-- Pergunte como as coisas estão antes de entrar no assunto
-- Use "nós" em vez de "eu" (coletividade)
-- Não pressione, seja paciente
-- Exemplo: "Preciso disso pra hoje" → "Será que conseguimos ver isso hoje ainda?"
-`,
-      "sul": `
-🎯 TOM CULTURAL - SUL:
-- Mantenha FORMALIDADE e RESPEITO
-- Seja ESTRUTURADO e PONTUAL
-- Use linguagem clara e organizada
-- Demonstre profissionalismo
-- Exemplo: "Não concordo" → "Acredito que precisamos revisar."
-`,
-      "nordeste_norte": `
-🎯 TOM CULTURAL - NORDESTE/NORTE:
-- Seja CALOROSO e AMIGÁVEL
-- Use saudações cordiais
-- Permita estrutura mais NARRATIVA
-- Evite ser "seco" - seja receptivo
-- Exemplo: "Preciso disso pra hoje" → "Meu amigo, vê se consegue me ajudar com isso hoje."
-`,
-      "rio": `
-🎯 TOM CULTURAL - RIO DE JANEIRO:
-- INFORMALIDADE CONTROLADA
-- Tom leve, menos corporativo rígido
-- Pode usar expressões coloquiais moderadas
-- Mantenha o profissionalismo com leveza
-- Exemplo: "Não concordo" → "Cara, acho que por aí não vai rolar."
-`,
-      "default": ""
+  // Initialize Supabase client for fetching regional rules
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+
+  // Função para carregar regras de tom cultural do banco de dados
+  async function getCulturalToneRules(region: string | undefined): Promise<string> {
+    if (!region || region === "default") return "";
+    
+    // Map frontend region codes to database region codes
+    const regionMapping: Record<string, string> = {
+      "sudeste_sp": "sudeste-sp",
+      "sudeste_mg": "sudeste-mg",
+      "sul": "sul",
+      "nordeste_norte": "nordeste",
+      "rio": "sudeste-rj",
+      "norte": "norte",
+      "centro_oeste": "centro-oeste",
+      "default": "default"
     };
     
-    return toneRules[region || "default"] || "";
+    const dbRegionCode = regionMapping[region] || region;
+    
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("regional_tone_rules")
+        .select("region_name, tone_rules")
+        .eq("region_code", dbRegionCode)
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      if (error || !data) {
+        console.log(`No regional rule found for ${dbRegionCode}, using default`);
+        return "";
+      }
+      
+      return `
+🎯 TOM CULTURAL - ${data.region_name.toUpperCase()}:
+${data.tone_rules}
+`;
+    } catch (err) {
+      console.error("Error fetching regional rules:", err);
+      return "";
+    }
   }
 
   // Mensagem para perguntar localização de forma amigável
@@ -308,7 +305,7 @@ Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceito
     }
 
     // Obter regras de tom cultural baseadas na região do usuário
-    const culturalTone = getCulturalToneRules(region);
+    const culturalTone = await getCulturalToneRules(region);
     const isFirstMessage = messages.filter((m: any) => m.role === "user").length <= 1;
     const locationPrompt = getLocationPrompt(region, isFirstMessage);
     console.log(`Using cultural tone for region: ${region || 'default'}`);
