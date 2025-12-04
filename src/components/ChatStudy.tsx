@@ -17,7 +17,8 @@ import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { mapCityToRegion } from "@/lib/region-mapping";
+import { mapCityToRegion, getRegionDisplayName, getRegionToneLabel } from "@/lib/region-mapping";
+import { MapPin } from "lucide-react";
 
 // Memoizado para evitar re-renders durante digitação
 const SentimentIndicator = memo(({
@@ -541,7 +542,16 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
               <div className="absolute w-4 h-4 rounded-full bg-green-500/20 animate-ping" />
             </div>
           </div>
-          <h2 className="text-lg font-bold text-gradient">{t('chat.studyModalTitle')}</h2>
+          <div className="flex flex-col">
+            <h2 className="text-lg font-bold text-gradient">{t('chat.studyModalTitle')}</h2>
+            {/* Region Badge */}
+            {location && userRegion !== "default" && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <MapPin className="w-3 h-3" />
+                <span>{getRegionDisplayName(userRegion)} - {getRegionToneLabel(userRegion)}</span>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <SentimentIndicator sentiment={currentSentiment} />
