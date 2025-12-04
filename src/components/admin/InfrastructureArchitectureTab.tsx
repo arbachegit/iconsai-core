@@ -1,35 +1,108 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   ZoomIn, 
   ZoomOut, 
   RotateCcw, 
   Server, 
-  Database, 
-  Cpu, 
-  HardDrive,
   DollarSign,
   Layers,
-  Info
+  Info,
+  Play,
+  RotateCw,
+  CheckCircle2
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
+type SimulationPhase = 'idle' | 'request' | 'routing' | 'check-adapter' | 'load-adapter' | 'inference' | 'response' | 'complete';
 
 export const InfrastructureArchitectureTab = () => {
   const [zoom, setZoom] = useState(100);
   const [animationKey, setAnimationKey] = useState(0);
+  
+  // Simulation state
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [currentPhase, setCurrentPhase] = useState<SimulationPhase>('idle');
+  const [adapterLoaded, setAdapterLoaded] = useState(false);
 
-  // Restart animations periodically
+  // Restart background animations periodically
   useEffect(() => {
-    const interval = setInterval(() => {
-      setAnimationKey(prev => prev + 1);
-    }, 15000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!isSimulating) {
+      const interval = setInterval(() => {
+        setAnimationKey(prev => prev + 1);
+      }, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [isSimulating]);
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 20, 150));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 20, 60));
   const handleReset = () => setZoom(100);
+
+  const startSimulation = () => {
+    setIsSimulating(true);
+    setCurrentPhase('request');
+    setAdapterLoaded(false);
+
+    // Phase 1: Request arrives (1s)
+    setTimeout(() => setCurrentPhase('routing'), 1000);
+    
+    // Phase 2: Routing to orchestrator (1.5s)
+    setTimeout(() => setCurrentPhase('check-adapter'), 2500);
+    
+    // Phase 3: Check adapter in GPU (1s)
+    setTimeout(() => setCurrentPhase('load-adapter'), 3500);
+    
+    // Phase 4: Load adapter from S3 (1.5s)
+    setTimeout(() => {
+      setAdapterLoaded(true);
+      setCurrentPhase('inference');
+    }, 5000);
+    
+    // Phase 5: Inference (1.5s)
+    setTimeout(() => setCurrentPhase('response'), 6500);
+    
+    // Phase 6: Response (1s)
+    setTimeout(() => {
+      setCurrentPhase('complete');
+      setIsSimulating(false);
+    }, 7500);
+  };
+
+  const resetSimulation = () => {
+    setIsSimulating(false);
+    setCurrentPhase('idle');
+    setAdapterLoaded(false);
+    setAnimationKey(prev => prev + 1);
+  };
+
+  const getPhaseLabel = () => {
+    switch (currentPhase) {
+      case 'request': return '📤 Requisição chegando (company_id: A)';
+      case 'routing': return '🔀 Roteando para orquestrador...';
+      case 'check-adapter': return '🔍 Verificando adapter na GPU...';
+      case 'load-adapter': return '⬇️ Baixando adapter do S3 (~ms)...';
+      case 'inference': return '⚡ Executando inferência isolada...';
+      case 'response': return '📥 Retornando resposta...';
+      case 'complete': return '✅ Requisição completa!';
+      default: return '';
+    }
+  };
+
+  const getPhaseColor = () => {
+    switch (currentPhase) {
+      case 'request': return 'bg-purple-500/20 text-purple-400 border-purple-500';
+      case 'routing': return 'bg-blue-500/20 text-blue-400 border-blue-500';
+      case 'check-adapter': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500';
+      case 'load-adapter': return 'bg-orange-500/20 text-orange-400 border-orange-500';
+      case 'inference': return 'bg-green-500/20 text-green-400 border-green-500';
+      case 'response': return 'bg-purple-500/20 text-purple-400 border-purple-500';
+      case 'complete': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500';
+      default: return '';
+    }
+  };
 
   return (
     <TooltipProvider>
@@ -58,6 +131,36 @@ export const InfrastructureArchitectureTab = () => {
           </div>
         </div>
 
+        {/* Simulation Controls */}
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-4">
+              <Button 
+                onClick={startSimulation} 
+                disabled={isSimulating}
+                className="gap-2"
+              >
+                <Play className="h-4 w-4" />
+                {isSimulating ? 'Simulando...' : 'Simular Requisição'}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={resetSimulation}
+                disabled={currentPhase === 'idle'}
+                className="gap-2"
+              >
+                <RotateCw className="h-4 w-4" />
+                Resetar
+              </Button>
+              {currentPhase !== 'idle' && (
+                <Badge variant="outline" className={getPhaseColor()}>
+                  {getPhaseLabel()}
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Main Architecture SVG */}
         <Card className="overflow-hidden">
           <CardContent className="p-6">
@@ -73,13 +176,6 @@ export const InfrastructureArchitectureTab = () => {
               >
                 {/* Definitions */}
                 <defs>
-                  {/* Animated gradient for data flow */}
-                  <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-                    <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity="1" />
-                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-                  </linearGradient>
-                  
                   {/* Glow filter */}
                   <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                     <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
@@ -88,9 +184,15 @@ export const InfrastructureArchitectureTab = () => {
                       <feMergeNode in="SourceGraphic"/>
                     </feMerge>
                   </filter>
-
-                  {/* Pulse animation */}
-                  <animate id="pulse" attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" />
+                  
+                  {/* Strong glow for active elements */}
+                  <filter id="strongGlow" x="-100%" y="-100%" width="300%" height="300%">
+                    <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
                 </defs>
 
                 {/* Animated Background Grid */}
@@ -125,22 +227,33 @@ export const InfrastructureArchitectureTab = () => {
 
                 {/* ===== USERS SECTION (Purple) ===== */}
                 <g>
-                  {/* User A */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <g className="cursor-pointer">
-                        <rect x="200" y="30" width="140" height="50" rx="8" fill="hsl(271 91% 65% / 0.2)" stroke="hsl(271 91% 65%)" strokeWidth="2">
-                          <animate attributeName="stroke-opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" />
-                        </rect>
-                        <text x="270" y="60" textAnchor="middle" fill="hsl(271 91% 65%)" fontSize="14" fontWeight="600">Empresa A</text>
-                      </g>
-                    </TooltipTrigger>
-                  </Tooltip>
+                  {/* User A - Active during simulation */}
+                  <g className="cursor-pointer" filter={currentPhase === 'request' || currentPhase === 'response' ? 'url(#strongGlow)' : ''}>
+                    <rect 
+                      x="200" y="30" width="140" height="50" rx="8" 
+                      fill={currentPhase === 'request' || currentPhase === 'response' ? 'hsl(271 91% 65% / 0.4)' : 'hsl(271 91% 65% / 0.2)'} 
+                      stroke="hsl(271 91% 65%)" 
+                      strokeWidth={currentPhase === 'request' || currentPhase === 'response' ? '3' : '2'}
+                    >
+                      {currentPhase === 'request' && (
+                        <animate attributeName="stroke-opacity" values="0.5;1;0.5" dur="0.5s" repeatCount="indefinite" />
+                      )}
+                    </rect>
+                    <text x="270" y="60" textAnchor="middle" fill="hsl(271 91% 65%)" fontSize="14" fontWeight="600">Empresa A</text>
+                    {currentPhase === 'request' && (
+                      <text x="270" y="75" textAnchor="middle" fill="hsl(271 91% 65%)" fontSize="10" fontWeight="400">
+                        <animate attributeName="opacity" values="0;1;0" dur="1s" repeatCount="indefinite" />
+                        Enviando...
+                      </text>
+                    )}
+                  </g>
 
-                  {/* User B */}
-                  <g className="cursor-pointer">
+                  {/* User B - Inactive during simulation */}
+                  <g className="cursor-pointer" opacity={currentPhase !== 'idle' ? '0.4' : '1'}>
                     <rect x="560" y="30" width="140" height="50" rx="8" fill="hsl(271 91% 65% / 0.2)" stroke="hsl(271 91% 65%)" strokeWidth="2">
-                      <animate attributeName="stroke-opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.5s" />
+                      {currentPhase === 'idle' && (
+                        <animate attributeName="stroke-opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" begin="0.5s" />
+                      )}
                     </rect>
                     <text x="630" y="60" textAnchor="middle" fill="hsl(271 91% 65%)" fontSize="14" fontWeight="600">Empresa B</text>
                   </g>
@@ -149,131 +262,237 @@ export const InfrastructureArchitectureTab = () => {
                 {/* ===== ARROWS FROM USERS TO API ===== */}
                 <g>
                   {/* Arrow from User A */}
-                  <path d="M270 80 L270 110 L450 110 L450 130" fill="none" stroke="hsl(271 91% 65%)" strokeWidth="2" strokeDasharray="5,5">
-                    <animate attributeName="stroke-dashoffset" values="10;0" dur="1s" repeatCount="indefinite" />
-                  </path>
-                  {/* Arrow from User B */}
-                  <path d="M630 80 L630 110 L450 110 L450 130" fill="none" stroke="hsl(271 91% 65%)" strokeWidth="2" strokeDasharray="5,5">
-                    <animate attributeName="stroke-dashoffset" values="10;0" dur="1s" repeatCount="indefinite" begin="0.3s" />
+                  <path 
+                    d="M270 80 L270 110 L450 110 L450 130" 
+                    fill="none" 
+                    stroke={currentPhase === 'request' ? 'hsl(271 91% 65%)' : 'hsl(271 91% 65% / 0.5)'} 
+                    strokeWidth={currentPhase === 'request' ? '3' : '2'} 
+                    strokeDasharray="5,5"
+                  >
+                    <animate attributeName="stroke-dashoffset" values="10;0" dur="0.5s" repeatCount="indefinite" />
                   </path>
                   
-                  {/* Data packets flowing */}
-                  <circle r="4" fill="hsl(271 91% 65%)">
-                    <animateMotion dur="2s" repeatCount="indefinite" path="M270 80 L270 110 L450 110 L450 130" />
-                  </circle>
-                  <circle r="4" fill="hsl(271 91% 65%)">
-                    <animateMotion dur="2s" repeatCount="indefinite" begin="1s" path="M630 80 L630 110 L450 110 L450 130" />
-                  </circle>
+                  {/* Data packet - Request phase */}
+                  {currentPhase === 'request' && (
+                    <circle r="6" fill="hsl(271 91% 65%)" filter="url(#glow)">
+                      <animateMotion dur="1s" repeatCount="1" path="M270 80 L270 110 L450 110 L450 130" />
+                    </circle>
+                  )}
+                  
+                  {/* Data packet - Response phase (reverse) */}
+                  {currentPhase === 'response' && (
+                    <circle r="6" fill="hsl(142 76% 36%)" filter="url(#glow)">
+                      <animateMotion dur="1s" repeatCount="1" path="M450 130 L450 110 L270 110 L270 80" />
+                    </circle>
+                  )}
                 </g>
 
                 {/* ===== API GATEWAY (Blue) ===== */}
-                <g className="cursor-pointer">
-                  <rect x="300" y="130" width="300" height="60" rx="10" fill="hsl(217 91% 60% / 0.2)" stroke="hsl(217 91% 60%)" strokeWidth="2" />
+                <g className="cursor-pointer" filter={currentPhase === 'routing' ? 'url(#strongGlow)' : ''}>
+                  <rect 
+                    x="300" y="130" width="300" height="60" rx="10" 
+                    fill={currentPhase === 'routing' ? 'hsl(217 91% 60% / 0.4)' : 'hsl(217 91% 60% / 0.2)'} 
+                    stroke="hsl(217 91% 60%)" 
+                    strokeWidth={currentPhase === 'routing' ? '3' : '2'} 
+                  />
                   <text x="450" y="155" textAnchor="middle" fill="hsl(217 91% 60%)" fontSize="16" fontWeight="700">API Gateway</text>
                   <text x="450" y="175" textAnchor="middle" fill="hsl(217 91% 60% / 0.7)" fontSize="12">Load Balancer</text>
+                  {currentPhase === 'routing' && (
+                    <text x="450" y="185" textAnchor="middle" fill="hsl(217 91% 60%)" fontSize="10">
+                      <animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite" />
+                      Processando...
+                    </text>
+                  )}
                 </g>
 
                 {/* Arrow to Orchestrator */}
-                <path d="M450 190 L450 220" fill="none" stroke="hsl(217 91% 60%)" strokeWidth="2" strokeDasharray="5,5">
+                <path 
+                  d="M450 190 L450 220" 
+                  fill="none" 
+                  stroke={currentPhase === 'routing' ? 'hsl(217 91% 60%)' : 'hsl(217 91% 60% / 0.5)'} 
+                  strokeWidth={currentPhase === 'routing' ? '3' : '2'} 
+                  strokeDasharray="5,5"
+                >
                   <animate attributeName="stroke-dashoffset" values="10;0" dur="0.8s" repeatCount="indefinite" />
                 </path>
-                <circle r="4" fill="hsl(217 91% 60%)">
-                  <animateMotion dur="1s" repeatCount="indefinite" path="M450 190 L450 220" />
-                </circle>
+                {currentPhase === 'routing' && (
+                  <circle r="5" fill="hsl(217 91% 60%)" filter="url(#glow)">
+                    <animateMotion dur="0.5s" repeatCount="indefinite" path="M450 190 L450 220" />
+                  </circle>
+                )}
 
                 {/* ===== ORCHESTRATOR (Blue) ===== */}
-                <g className="cursor-pointer">
-                  <rect x="300" y="220" width="300" height="60" rx="10" fill="hsl(217 91% 60% / 0.2)" stroke="hsl(217 91% 60%)" strokeWidth="2" />
+                <g className="cursor-pointer" filter={currentPhase === 'routing' ? 'url(#strongGlow)' : ''}>
+                  <rect 
+                    x="300" y="220" width="300" height="60" rx="10" 
+                    fill={currentPhase === 'routing' ? 'hsl(217 91% 60% / 0.4)' : 'hsl(217 91% 60% / 0.2)'} 
+                    stroke="hsl(217 91% 60%)" 
+                    strokeWidth={currentPhase === 'routing' ? '3' : '2'} 
+                  />
                   <text x="450" y="245" textAnchor="middle" fill="hsl(217 91% 60%)" fontSize="16" fontWeight="700">Orquestrador</text>
                   <text x="450" y="265" textAnchor="middle" fill="hsl(217 91% 60% / 0.7)" fontSize="12">Kubernetes EKS / ECS</text>
                 </g>
 
                 {/* Arrow to GPU Cluster */}
-                <path d="M450 280 L450 310" fill="none" stroke="hsl(142 76% 36%)" strokeWidth="2" strokeDasharray="5,5">
+                <path 
+                  d="M450 280 L450 310" 
+                  fill="none" 
+                  stroke={['check-adapter', 'inference'].includes(currentPhase) ? 'hsl(142 76% 36%)' : 'hsl(142 76% 36% / 0.5)'} 
+                  strokeWidth={['check-adapter', 'inference'].includes(currentPhase) ? '3' : '2'} 
+                  strokeDasharray="5,5"
+                >
                   <animate attributeName="stroke-dashoffset" values="10;0" dur="0.8s" repeatCount="indefinite" />
                 </path>
-                <circle r="4" fill="hsl(142 76% 36%)">
-                  <animateMotion dur="1s" repeatCount="indefinite" path="M450 280 L450 310" />
-                </circle>
+                {currentPhase === 'check-adapter' && (
+                  <circle r="5" fill="hsl(142 76% 36%)" filter="url(#glow)">
+                    <animateMotion dur="0.5s" repeatCount="1" path="M450 280 L450 310" />
+                  </circle>
+                )}
 
                 {/* ===== GPU CLUSTER (Green) ===== */}
-                <g>
+                <g filter={['check-adapter', 'inference'].includes(currentPhase) ? 'url(#glow)' : ''}>
                   {/* Main container */}
-                  <rect x="100" y="310" width="700" height="230" rx="12" fill="hsl(142 76% 36% / 0.1)" stroke="hsl(142 76% 36%)" strokeWidth="2" />
+                  <rect 
+                    x="100" y="310" width="700" height="230" rx="12" 
+                    fill={['check-adapter', 'inference'].includes(currentPhase) ? 'hsl(142 76% 36% / 0.2)' : 'hsl(142 76% 36% / 0.1)'} 
+                    stroke="hsl(142 76% 36%)" 
+                    strokeWidth={['check-adapter', 'inference'].includes(currentPhase) ? '3' : '2'} 
+                  />
                   <text x="450" y="335" textAnchor="middle" fill="hsl(142 76% 36%)" fontSize="14" fontWeight="700">CLUSTER DE INFERÊNCIA GPU NODES - AWS g5.xlarge</text>
 
                   {/* VRAM Container (Cyan) */}
-                  <rect x="130" y="350" width="640" height="130" rx="8" fill="hsl(187 96% 42% / 0.15)" stroke="hsl(187 96% 42%)" strokeWidth="1.5" />
+                  <rect 
+                    x="130" y="350" width="640" height="130" rx="8" 
+                    fill={currentPhase === 'check-adapter' ? 'hsl(187 96% 42% / 0.25)' : 'hsl(187 96% 42% / 0.15)'} 
+                    stroke="hsl(187 96% 42%)" 
+                    strokeWidth={currentPhase === 'check-adapter' ? '2' : '1.5'} 
+                  />
                   <text x="450" y="370" textAnchor="middle" fill="hsl(187 96% 42%)" fontSize="12" fontWeight="600">VRAM - 24GB (NVIDIA A10G)</text>
 
-                  {/* BASE MODEL - Pulsing */}
-                  <g filter="url(#glow)">
-                    <rect x="160" y="385" width="350" height="80" rx="6" fill="hsl(187 96% 42% / 0.25)" stroke="hsl(187 96% 42%)" strokeWidth="2">
-                      <animate attributeName="stroke-width" values="2;4;2" dur="2s" repeatCount="indefinite" />
-                      <animate attributeName="stroke-opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" />
+                  {/* BASE MODEL - Pulsing during inference */}
+                  <g filter={currentPhase === 'inference' ? 'url(#strongGlow)' : 'url(#glow)'}>
+                    <rect 
+                      x="160" y="385" width="350" height="80" rx="6" 
+                      fill={currentPhase === 'inference' ? 'hsl(187 96% 42% / 0.4)' : 'hsl(187 96% 42% / 0.25)'} 
+                      stroke="hsl(187 96% 42%)" 
+                      strokeWidth={currentPhase === 'inference' ? '3' : '2'}
+                    >
+                      {currentPhase === 'inference' && (
+                        <>
+                          <animate attributeName="stroke-width" values="2;4;2" dur="0.5s" repeatCount="indefinite" />
+                          <animate attributeName="stroke-opacity" values="0.5;1;0.5" dur="0.5s" repeatCount="indefinite" />
+                        </>
+                      )}
                     </rect>
                     <text x="335" y="415" textAnchor="middle" fill="hsl(187 96% 42%)" fontSize="16" fontWeight="700">BASE MODEL</text>
                     <text x="335" y="435" textAnchor="middle" fill="hsl(187 96% 42%)" fontSize="13">Llama-3-8B - 16GB VRAM</text>
                     <text x="335" y="455" textAnchor="middle" fill="hsl(187 96% 42% / 0.7)" fontSize="11">Carregado 1x - Compartilhado</text>
+                    {currentPhase === 'inference' && (
+                      <text x="335" y="470" textAnchor="middle" fill="hsl(142 76% 36%)" fontSize="10" fontWeight="600">
+                        <animate attributeName="opacity" values="0;1;0" dur="0.5s" repeatCount="indefinite" />
+                        PROCESSANDO...
+                      </text>
+                    )}
                   </g>
 
                   {/* Inference Slots */}
                   <g>
-                    {/* Slot A - Animated loading */}
-                    <rect x="540" y="385" width="100" height="35" rx="4" fill="hsl(271 91% 65% / 0.3)" stroke="hsl(271 91% 65%)" strokeWidth="1.5">
-                      <animate attributeName="opacity" values="0.3;1;0.3" dur="3s" repeatCount="indefinite" />
+                    {/* Slot A - Active when adapter loaded */}
+                    <rect 
+                      x="540" y="385" width="100" height="35" rx="4" 
+                      fill={adapterLoaded ? 'hsl(271 91% 65% / 0.5)' : 'hsl(271 91% 65% / 0.2)'} 
+                      stroke="hsl(271 91% 65%)" 
+                      strokeWidth={adapterLoaded ? '2' : '1.5'}
+                    >
+                      {currentPhase === 'check-adapter' && !adapterLoaded && (
+                        <animate attributeName="stroke-opacity" values="0.3;1;0.3" dur="0.5s" repeatCount="indefinite" />
+                      )}
                     </rect>
-                    <text x="590" y="408" textAnchor="middle" fill="hsl(271 91% 65%)" fontSize="11" fontWeight="600">Slot A</text>
+                    <text x="590" y="408" textAnchor="middle" fill="hsl(271 91% 65%)" fontSize="11" fontWeight="600">
+                      {adapterLoaded ? 'Adapter A ✓' : 'Slot A'}
+                    </text>
+                    {currentPhase === 'check-adapter' && (
+                      <text x="590" y="415" textAnchor="middle" fill="hsl(271 91% 65%)" fontSize="8">
+                        <animate attributeName="opacity" values="0;1;0" dur="0.5s" repeatCount="indefinite" />
+                        Verificando...
+                      </text>
+                    )}
 
-                    {/* Slot B - Animated loading */}
-                    <rect x="540" y="430" width="100" height="35" rx="4" fill="hsl(271 91% 65% / 0.3)" stroke="hsl(271 91% 65%)" strokeWidth="1.5">
-                      <animate attributeName="opacity" values="0.3;1;0.3" dur="3s" repeatCount="indefinite" begin="1.5s" />
-                    </rect>
-                    <text x="590" y="453" textAnchor="middle" fill="hsl(271 91% 65%)" fontSize="11" fontWeight="600">Slot B</text>
+                    {/* Slot B - Inactive */}
+                    <rect x="540" y="430" width="100" height="35" rx="4" fill="hsl(271 91% 65% / 0.15)" stroke="hsl(271 91% 65% / 0.5)" strokeWidth="1" />
+                    <text x="590" y="453" textAnchor="middle" fill="hsl(271 91% 65% / 0.5)" fontSize="11">Slot B</text>
                   </g>
 
                   {/* Inference Server */}
-                  <rect x="130" y="490" width="640" height="40" rx="6" fill="hsl(142 76% 36% / 0.2)" stroke="hsl(142 76% 36%)" strokeWidth="1.5" />
+                  <rect 
+                    x="130" y="490" width="640" height="40" rx="6" 
+                    fill={currentPhase === 'inference' ? 'hsl(142 76% 36% / 0.3)' : 'hsl(142 76% 36% / 0.2)'} 
+                    stroke="hsl(142 76% 36%)" 
+                    strokeWidth={currentPhase === 'inference' ? '2' : '1.5'} 
+                  />
                   <text x="450" y="515" textAnchor="middle" fill="hsl(142 76% 36%)" fontSize="13" fontWeight="600">Inference Server (vLLM / TGI / LoRAX)</text>
                 </g>
 
                 {/* ===== BIDIRECTIONAL ARROWS TO S3 ===== */}
                 <g>
-                  <path d="M450 540 L450 570" fill="none" stroke="hsl(25 95% 53%)" strokeWidth="2" strokeDasharray="5,5">
+                  <path 
+                    d="M450 540 L450 570" 
+                    fill="none" 
+                    stroke={currentPhase === 'load-adapter' ? 'hsl(25 95% 53%)' : 'hsl(25 95% 53% / 0.5)'} 
+                    strokeWidth={currentPhase === 'load-adapter' ? '3' : '2'} 
+                    strokeDasharray="5,5"
+                  >
                     <animate attributeName="stroke-dashoffset" values="10;0" dur="0.5s" repeatCount="indefinite" />
                   </path>
                   <path d="M430 555 L450 540 L470 555" fill="none" stroke="hsl(25 95% 53%)" strokeWidth="2" />
                   <path d="M430 555 L450 570 L470 555" fill="none" stroke="hsl(25 95% 53%)" strokeWidth="2" />
                   
-                  {/* Dynamic loading indicator */}
-                  <circle r="3" fill="hsl(25 95% 53%)">
-                    <animateMotion dur="0.8s" repeatCount="indefinite" path="M450 540 L450 570" />
-                  </circle>
-                  <circle r="3" fill="hsl(25 95% 53%)">
-                    <animateMotion dur="0.8s" repeatCount="indefinite" begin="0.4s" path="M450 570 L450 540" />
-                  </circle>
+                  {/* Data packet going UP (loading adapter) */}
+                  {currentPhase === 'load-adapter' && (
+                    <circle r="6" fill="hsl(25 95% 53%)" filter="url(#glow)">
+                      <animateMotion dur="0.8s" repeatCount="indefinite" path="M450 580 L450 540" />
+                    </circle>
+                  )}
                   
-                  <text x="520" y="558" fill="hsl(25 95% 53% / 0.8)" fontSize="10">Carregamento Dinâmico</text>
+                  <text x="520" y="558" fill={currentPhase === 'load-adapter' ? 'hsl(25 95% 53%)' : 'hsl(25 95% 53% / 0.6)'} fontSize="10">
+                    {currentPhase === 'load-adapter' ? 'Carregando Adapter...' : 'Carregamento Dinâmico'}
+                  </text>
                 </g>
 
                 {/* ===== S3 STORAGE (Orange) ===== */}
-                <g>
-                  <rect x="100" y="580" width="700" height="100" rx="12" fill="hsl(25 95% 53% / 0.1)" stroke="hsl(25 95% 53%)" strokeWidth="2" />
+                <g filter={currentPhase === 'load-adapter' ? 'url(#glow)' : ''}>
+                  <rect 
+                    x="100" y="580" width="700" height="100" rx="12" 
+                    fill={currentPhase === 'load-adapter' ? 'hsl(25 95% 53% / 0.2)' : 'hsl(25 95% 53% / 0.1)'} 
+                    stroke="hsl(25 95% 53%)" 
+                    strokeWidth={currentPhase === 'load-adapter' ? '3' : '2'} 
+                  />
                   <text x="450" y="605" textAnchor="middle" fill="hsl(25 95% 53%)" fontSize="14" fontWeight="700">ARMAZENAMENTO S3</text>
 
-                  {/* Adapter A */}
-                  <rect x="150" y="620" width="150" height="45" rx="6" fill="hsl(271 91% 65% / 0.2)" stroke="hsl(271 91% 65%)" strokeWidth="1.5">
-                    <animate attributeName="opacity" values="0.7;1;0.7" dur="4s" repeatCount="indefinite" />
+                  {/* Adapter A - Highlighted during load */}
+                  <rect 
+                    x="150" y="620" width="150" height="45" rx="6" 
+                    fill={currentPhase === 'load-adapter' ? 'hsl(271 91% 65% / 0.4)' : 'hsl(271 91% 65% / 0.2)'} 
+                    stroke="hsl(271 91% 65%)" 
+                    strokeWidth={currentPhase === 'load-adapter' ? '3' : '1.5'}
+                  >
+                    {currentPhase === 'load-adapter' && (
+                      <animate attributeName="stroke-opacity" values="0.5;1;0.5" dur="0.3s" repeatCount="indefinite" />
+                    )}
                   </rect>
                   <text x="225" y="640" textAnchor="middle" fill="hsl(271 91% 65%)" fontSize="12" fontWeight="600">Adapter Empresa A</text>
                   <text x="225" y="656" textAnchor="middle" fill="hsl(271 91% 65% / 0.7)" fontSize="10">~100MB (LoRA)</text>
+                  {currentPhase === 'load-adapter' && (
+                    <text x="225" y="668" textAnchor="middle" fill="hsl(25 95% 53%)" fontSize="9">
+                      <animate attributeName="opacity" values="0;1;0" dur="0.5s" repeatCount="indefinite" />
+                      ENVIANDO ↑
+                    </text>
+                  )}
 
-                  {/* Adapter B */}
-                  <rect x="375" y="620" width="150" height="45" rx="6" fill="hsl(271 91% 65% / 0.2)" stroke="hsl(271 91% 65%)" strokeWidth="1.5">
-                    <animate attributeName="opacity" values="0.7;1;0.7" dur="4s" repeatCount="indefinite" begin="2s" />
-                  </rect>
-                  <text x="450" y="640" textAnchor="middle" fill="hsl(271 91% 65%)" fontSize="12" fontWeight="600">Adapter Empresa B</text>
-                  <text x="450" y="656" textAnchor="middle" fill="hsl(271 91% 65% / 0.7)" fontSize="10">~100MB (LoRA)</text>
+                  {/* Adapter B - Dim */}
+                  <rect x="375" y="620" width="150" height="45" rx="6" fill="hsl(271 91% 65% / 0.1)" stroke="hsl(271 91% 65% / 0.4)" strokeWidth="1" />
+                  <text x="450" y="640" textAnchor="middle" fill="hsl(271 91% 65% / 0.5)" fontSize="12">Adapter Empresa B</text>
+                  <text x="450" y="656" textAnchor="middle" fill="hsl(271 91% 65% / 0.4)" fontSize="10">~100MB (LoRA)</text>
 
                   {/* Base Model Weights */}
                   <rect x="600" y="620" width="150" height="45" rx="6" fill="hsl(187 96% 42% / 0.2)" stroke="hsl(187 96% 42%)" strokeWidth="1.5" />
@@ -295,10 +514,73 @@ export const InfrastructureArchitectureTab = () => {
                   <rect x="0" y="82" width="12" height="12" fill="hsl(25 95% 53% / 0.3)" stroke="hsl(25 95% 53%)" strokeWidth="1" rx="2" />
                   <text x="18" y="92" fill="hsl(var(--muted-foreground))" fontSize="10">Storage</text>
                 </g>
+
+                {/* Complete indicator */}
+                {currentPhase === 'complete' && (
+                  <g>
+                    <rect x="350" y="300" width="200" height="50" rx="8" fill="hsl(142 76% 36% / 0.9)" stroke="hsl(142 76% 36%)" strokeWidth="2" filter="url(#strongGlow)">
+                      <animate attributeName="opacity" values="0;1" dur="0.3s" fill="freeze" />
+                    </rect>
+                    <text x="450" y="332" textAnchor="middle" fill="white" fontSize="16" fontWeight="700">
+                      <animate attributeName="opacity" values="0;1" dur="0.3s" fill="freeze" />
+                      ✓ REQUISIÇÃO COMPLETA
+                    </text>
+                  </g>
+                )}
               </svg>
             </div>
           </CardContent>
         </Card>
+
+        {/* Step Progress Indicator */}
+        {currentPhase !== 'idle' && (
+          <Card className="animate-fade-in">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                {[
+                  { phase: 'request', label: 'Requisição', icon: '📤' },
+                  { phase: 'routing', label: 'Roteamento', icon: '🔀' },
+                  { phase: 'check-adapter', label: 'Verificar', icon: '🔍' },
+                  { phase: 'load-adapter', label: 'Carregar', icon: '⬇️' },
+                  { phase: 'inference', label: 'Inferência', icon: '⚡' },
+                  { phase: 'response', label: 'Resposta', icon: '📥' },
+                ].map((step, i, arr) => {
+                  const phases: SimulationPhase[] = ['request', 'routing', 'check-adapter', 'load-adapter', 'inference', 'response', 'complete'];
+                  const currentIndex = phases.indexOf(currentPhase);
+                  const stepIndex = phases.indexOf(step.phase as SimulationPhase);
+                  const isActive = currentPhase === step.phase;
+                  const isComplete = currentIndex > stepIndex || currentPhase === 'complete';
+                  
+                  return (
+                    <div key={step.phase} className="flex items-center">
+                      <div className={`flex flex-col items-center transition-all duration-300 ${isActive ? 'scale-110' : ''}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all duration-300 ${
+                          isComplete ? 'bg-green-500/30 border-2 border-green-500' :
+                          isActive ? 'bg-primary/30 border-2 border-primary animate-pulse' :
+                          'bg-muted/30 border border-border'
+                        }`}>
+                          {isComplete ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : step.icon}
+                        </div>
+                        <span className={`text-xs mt-1 transition-colors ${
+                          isActive ? 'text-primary font-semibold' : 
+                          isComplete ? 'text-green-500' : 
+                          'text-muted-foreground'
+                        }`}>
+                          {step.label}
+                        </span>
+                      </div>
+                      {i < arr.length - 1 && (
+                        <div className={`w-12 h-0.5 mx-2 transition-colors ${
+                          currentIndex > stepIndex ? 'bg-green-500' : 'bg-border'
+                        }`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
