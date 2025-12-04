@@ -56,6 +56,10 @@ export type Database = {
           gmail_api_configured: boolean | null
           gmail_notification_email: string | null
           id: string
+          ml_accuracy_alert_email: string | null
+          ml_accuracy_alert_enabled: boolean | null
+          ml_accuracy_last_alert: string | null
+          ml_accuracy_threshold: number | null
           monthly_report_enabled: boolean | null
           updated_at: string | null
           vimeo_history_url: string | null
@@ -72,6 +76,10 @@ export type Database = {
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
+          ml_accuracy_alert_email?: string | null
+          ml_accuracy_alert_enabled?: boolean | null
+          ml_accuracy_last_alert?: string | null
+          ml_accuracy_threshold?: number | null
           monthly_report_enabled?: boolean | null
           updated_at?: string | null
           vimeo_history_url?: string | null
@@ -88,6 +96,10 @@ export type Database = {
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
+          ml_accuracy_alert_email?: string | null
+          ml_accuracy_alert_enabled?: boolean | null
+          ml_accuracy_last_alert?: string | null
+          ml_accuracy_threshold?: number | null
           monthly_report_enabled?: boolean | null
           updated_at?: string | null
           vimeo_history_url?: string | null

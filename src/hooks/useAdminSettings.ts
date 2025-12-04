@@ -11,6 +11,10 @@ interface AdminSettings {
   alert_enabled: boolean | null;
   alert_threshold: number | null;
   vimeo_history_url: string | null;
+  ml_accuracy_threshold: number | null;
+  ml_accuracy_alert_enabled: boolean | null;
+  ml_accuracy_alert_email: string | null;
+  ml_accuracy_last_alert: string | null;
 }
 
 export const useAdminSettings = () => {
