@@ -218,6 +218,42 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_routing_rules: {
+        Row: {
+          confidence: number | null
+          corrected_chat: string
+          correction_count: number | null
+          created_at: string | null
+          created_by: string | null
+          document_filename_pattern: string
+          id: string
+          suggested_chat: string
+          updated_at: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          corrected_chat: string
+          correction_count?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          document_filename_pattern: string
+          id?: string
+          suggested_chat: string
+          updated_at?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          corrected_chat?: string
+          correction_count?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          document_filename_pattern?: string
+          id?: string
+          suggested_chat?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       conversation_history: {
         Row: {
           chat_type: string | null
@@ -1192,6 +1228,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_chat_routing_rule_count: {
+        Args: {
+          p_corrected_chat: string
+          p_filename_pattern: string
+          p_suggested_chat: string
+        }
+        Returns: undefined
       }
       increment_merge_rule_count: {
         Args: { p_chat_type: string; p_source_tag: string }
