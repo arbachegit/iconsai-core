@@ -44,9 +44,9 @@ export const ImageCacheTab = () => {
   const [generatingSection, setGeneratingSection] = useState<string | null>(null);
   const [generatingTimeline, setGeneratingTimeline] = useState<string | null>(null);
   const [generatingTooltip, setGeneratingTooltip] = useState<string | null>(null);
-  const [isSectionsOpen, setIsSectionsOpen] = useState(true);
-  const [isTimelineOpen, setIsTimelineOpen] = useState(true);
-  const [isTooltipsOpen, setIsTooltipsOpen] = useState(true);
+  const [isSectionsOpen, setIsSectionsOpen] = useState(false);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [isTooltipsOpen, setIsTooltipsOpen] = useState(false);
   const [optimizingImage, setOptimizingImage] = useState<string | null>(null);
   const [zoomImage, setZoomImage] = useState<{ 
     url: string; 
