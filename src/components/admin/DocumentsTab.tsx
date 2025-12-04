@@ -78,6 +78,7 @@ export const DocumentsTab = () => {
     existingFileName: string;
     existingDocId: string;
     newDocId: string;
+    similarityScore?: number;
   } | null>(null);
 
   // RAG Info Modal state
@@ -296,7 +297,8 @@ export const DocumentsTab = () => {
                 newFileName: newDoc.title,
                 existingFileName: dup.existing_filename || "Documento existente",
                 existingDocId: dup.existing_doc_id,
-                newDocId: dup.document_id
+                newDocId: dup.document_id,
+                similarityScore: dup.similarity_score
               });
               toast.warning("Documento duplicado detectado!");
               return; // Stop processing to show modal
@@ -2039,10 +2041,15 @@ export const DocumentsTab = () => {
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm">
-                O arquivo <strong className="text-primary">{duplicateInfo.newFileName}</strong> possui conteúdo idêntico ao documento existente:
+                O arquivo <strong className="text-primary">{duplicateInfo.newFileName}</strong> possui conteúdo {duplicateInfo.similarityScore ? `${duplicateInfo.similarityScore}% similar` : "idêntico"} ao documento existente:
               </p>
               <div className="p-3 bg-muted rounded-lg border border-border">
                 <p className="font-semibold text-sm">{duplicateInfo.existingFileName}</p>
+                {duplicateInfo.similarityScore && (
+                  <Badge variant="secondary" className="mt-2">
+                    {duplicateInfo.similarityScore}% de similaridade
+                  </Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
                 O que deseja fazer?
@@ -2051,7 +2058,7 @@ export const DocumentsTab = () => {
             <DialogFooter className="flex gap-2">
               <Button variant="outline" onClick={handleDiscardDuplicate} className="flex-1">
                 <X className="h-4 w-4 mr-2" />
-                Descartar Novo
+                Excluir Inserção
               </Button>
               <Button variant="destructive" onClick={handleReplaceDuplicate} className="flex-1">
                 <RefreshCw className="h-4 w-4 mr-2" />
