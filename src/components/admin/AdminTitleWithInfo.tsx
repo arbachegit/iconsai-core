@@ -70,14 +70,14 @@ export const AdminTitleWithInfo = ({
             </TooltipContent>
 
             <PopoverContent 
-              className="w-80 bg-card/95 backdrop-blur-sm border-primary/20" 
+              className="w-[420px] max-w-[90vw] bg-card/95 backdrop-blur-sm border-primary/20" 
               side="right"
               align="start"
             >
               <div className="space-y-3">
                 <div className="flex items-start gap-2">
                   <Lightbulb className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-sm mb-2">Sobre esta seção</h4>
                     <div className="text-sm text-muted-foreground leading-relaxed">
                       {infoContent}
