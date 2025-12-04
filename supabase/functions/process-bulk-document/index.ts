@@ -98,6 +98,9 @@ async function generateMetadata(text: string, apiKey: string): Promise<{
   summary: string;
   implementation_status: string;
 }> {
+  // Limite reduzido para evitar respostas truncadas
+  const truncatedText = text.substring(0, 2500);
+  
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -106,28 +109,45 @@ async function generateMetadata(text: string, apiKey: string): Promise<{
     },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
+      max_tokens: 1000,
       messages: [
         {
           role: "system",
-          content: `Analise o documento e retorne APENAS JSON válido:
-{
-  "tags": [
-    {"parent": "Categoria Pai", "children": ["Filho 1", "Filho 2"], "confidence": 0.85}
-  ],
-  "summary": "Resumo de 150-300 palavras...",
-  "implementation_status": "ready|needs_review|incomplete"
-}`
+          content: `Analise e retorne SOMENTE JSON válido (sem markdown, sem texto extra):
+{"tags":[{"parent":"Categoria","children":["Sub1","Sub2"],"confidence":0.8}],"summary":"Resumo curto de 50-100 palavras.","implementation_status":"ready"}`
         },
-        { role: "user", content: text.substring(0, 5000) }
+        { role: "user", content: `Documento:\n${truncatedText}` }
       ],
     }),
   });
   
   const data = await response.json();
-  const content = data.choices[0].message.content
-    .replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  let content = data.choices?.[0]?.message?.content || "";
   
-  return JSON.parse(content);
+  // Limpar markdown e caracteres inválidos
+  content = content
+    .replace(/```json\n?/gi, "")
+    .replace(/```\n?/g, "")
+    .replace(/[\x00-\x1F\x7F]/g, "") // Remove control characters
+    .trim();
+  
+  // Tentar extrair JSON válido
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    content = jsonMatch[0];
+  }
+  
+  try {
+    return JSON.parse(content);
+  } catch (parseError) {
+    console.error("JSON parse error, using fallback:", parseError, "Content:", content.substring(0, 500));
+    // Fallback com valores padrão
+    return {
+      tags: [{ parent: "Documento", children: ["Geral"], confidence: 0.5 }],
+      summary: truncatedText.substring(0, 300) + "...",
+      implementation_status: "needs_review"
+    };
+  }
 }
 
 // 4. CHUNKING
