@@ -42,7 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
@@ -82,6 +82,8 @@ export const TagsManagementTab = () => {
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortColumn, setSortColumn] = useState<"tag_name" | "confidence">("tag_name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [formData, setFormData] = useState({
     tag_name: "",
     tag_type: "",
@@ -122,6 +124,28 @@ export const TagsManagementTab = () => {
   const filteredParentTags = filterSource === "all" 
     ? parentTags 
     : parentTags.filter((t) => t.source === filterSource);
+
+  // Sort tags
+  const sortedParentTags = [...filteredParentTags].sort((a, b) => {
+    if (sortColumn === "tag_name") {
+      const comparison = a.tag_name.localeCompare(b.tag_name);
+      return sortDirection === "asc" ? comparison : -comparison;
+    } else {
+      const aConf = a.confidence ?? 0;
+      const bConf = b.confidence ?? 0;
+      return sortDirection === "asc" ? aConf - bConf : bConf - aConf;
+    }
+  });
+
+  // Handle sort toggle
+  const handleSort = (column: "tag_name" | "confidence") => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
 
   // Levenshtein distance for semantic similarity
   const levenshteinDistance = (a: string, b: string): number => {
@@ -194,9 +218,9 @@ export const TagsManagementTab = () => {
   semanticDuplicates.sort((a, b) => b.similarity - a.similarity);
 
   // Pagination
-  const totalPages = Math.ceil(filteredParentTags.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedParentTags.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedParentTags = filteredParentTags.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedParentTags = sortedParentTags.slice(startIndex, startIndex + itemsPerPage);
 
   // Create tag mutation
   const createTagMutation = useMutation({
@@ -560,154 +584,215 @@ export const TagsManagementTab = () => {
         </div>
       </Card>
 
-      {/* Tags List */}
+      {/* Tags Table */}
       <Card className="p-6">
-        <div className="space-y-4">
-          {paginatedParentTags.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              Nenhuma tag encontrada
-            </div>
-          ) : (
-            paginatedParentTags.map((parent) => (
-              <Collapsible
-                key={parent.id}
-                open={expandedParents.has(parent.id)}
-                onOpenChange={() => toggleExpanded(parent.id)}
-              >
-                <Card className="border-primary/20">
-                  <div className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <CollapsibleTrigger asChild>
-                          <Button variant="ghost" size="sm">
+        <h3 className="text-lg font-semibold mb-4">Tags Extraídas dos Documentos</h3>
+        
+        {paginatedParentTags.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8">
+            Nenhuma tag encontrada
+          </div>
+        ) : (
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40px]"></TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("tag_name")}
+                      className="flex items-center gap-1 -ml-4 hover:bg-transparent"
+                    >
+                      Nome da Tag
+                      {sortColumn === "tag_name" ? (
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="h-4 w-4" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Origem</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("confidence")}
+                      className="flex items-center gap-1 -ml-4 hover:bg-transparent"
+                    >
+                      Confiança
+                      {sortColumn === "confidence" ? (
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="h-4 w-4" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedParentTags.map((parent) => (
+                  <>
+                    <TableRow key={parent.id} className="group">
+                      <TableCell>
+                        {childTagsMap[parent.id]?.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleExpanded(parent.id)}
+                            className="h-6 w-6 p-0"
+                          >
                             <ChevronDown
                               className={`h-4 w-4 transition-transform ${
                                 expandedParents.has(parent.id) ? "rotate-180" : ""
                               }`}
                             />
                           </Button>
-                        </CollapsibleTrigger>
-                        <div>
-                          <div className="font-semibold text-lg">{parent.tag_name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Tipo: {parent.tag_type}
-                          </div>
-                        </div>
-                        <Badge variant={parent.source === "ai" ? "secondary" : "default"}>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">{parent.tag_name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {parent.tag_type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={parent.source === "ai" ? "secondary" : "default"} className="text-xs">
                           {parent.source}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="flex items-center gap-1">
-                                <Badge variant="outline">
-                                  {Math.round((parent.confidence || 0) * 100)}% confiança
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-xs ${
+                                    (parent.confidence || 0) >= 0.7 
+                                      ? "border-green-500/50 text-green-400" 
+                                      : (parent.confidence || 0) >= 0.5 
+                                        ? "border-yellow-500/50 text-yellow-400"
+                                        : "border-red-500/50 text-red-400"
+                                  }`}
+                                >
+                                  {Math.round((parent.confidence || 0) * 100)}%
                                 </Badge>
                                 <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
                               </span>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-[300px]">
                               <p className="font-semibold">Grau de Confiança</p>
-                              <p className="text-sm">Representa a certeza da IA (0-100%) ao classificar este documento com esta tag.</p>
+                              <p className="text-sm">Representa a certeza da IA ao classificar este documento.</p>
                               <ul className="text-sm mt-1 list-disc pl-4">
-                                <li>90-100%: Altamente relevante</li>
-                                <li>70-89%: Relevante</li>
-                                <li>50-69%: Parcialmente relevante</li>
-                                <li>&lt;50%: Baixa relevância</li>
+                                <li className="text-green-400">≥70%: Incluída nos scope_topics</li>
+                                <li className="text-yellow-400">50-69%: Relevância média</li>
+                                <li className="text-red-400">&lt;50%: Baixa relevância</li>
                               </ul>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openCreateDialog(false, parent.id)}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditDialog(parent)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteDialog({ open: true, tagId: parent.id })}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <CollapsibleContent className="mt-4">
-                      {childTagsMap[parent.id]?.length > 0 ? (
-                        <div className="ml-12 space-y-2">
-                          {childTagsMap[parent.id].map((child) => (
-                            <div
-                              key={child.id}
-                              className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openCreateDialog(false, parent.id)}
+                            className="h-7 w-7 p-0"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditDialog(parent)}
+                            className="h-7 w-7 p-0"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeleteDialog({ open: true, tagId: parent.id })}
+                            className="h-7 w-7 p-0"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {/* Child Tags Rows */}
+                    {expandedParents.has(parent.id) && childTagsMap[parent.id]?.map((child) => (
+                      <TableRow key={child.id} className="bg-muted/30 group">
+                        <TableCell></TableCell>
+                        <TableCell className="pl-8 text-sm text-muted-foreground">
+                          ↳ {child.tag_name}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {child.tag_type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={child.source === "ai" ? "secondary" : "default"} className="text-xs">
+                            {child.source}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs ${
+                              (child.confidence || 0) >= 0.7 
+                                ? "border-green-500/50 text-green-400" 
+                                : (child.confidence || 0) >= 0.5 
+                                  ? "border-yellow-500/50 text-yellow-400"
+                                  : "border-red-500/50 text-red-400"
+                            }`}
+                          >
+                            {Math.round((child.confidence || 0) * 100)}%
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditDialog(child)}
+                              className="h-7 w-7 p-0"
                             >
-                              <div className="flex items-center gap-3">
-                                <div className="text-sm font-medium">{child.tag_name}</div>
-                                <Badge variant="outline" className="text-xs">
-                                  {child.tag_type}
-                                </Badge>
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="flex items-center gap-1">
-                                        <Badge variant="outline" className="text-xs">
-                                          {Math.round((child.confidence || 0) * 100)}%
-                                        </Badge>
-                                        <HelpCircle className="h-2.5 w-2.5 text-muted-foreground cursor-help" />
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="max-w-[300px]">
-                                      <p className="font-semibold">Grau de Confiança</p>
-                                      <p className="text-sm">Certeza da IA (0-100%) ao classificar com esta tag.</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openEditDialog(child)}
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setDeleteDialog({ open: true, tagId: child.id })}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="ml-12 text-sm text-muted-foreground">
-                          Nenhuma tag filha
-                        </div>
-                      )}
-                    </CollapsibleContent>
-                  </div>
-                </Card>
-              </Collapsible>
-            ))
-          )}
-        </div>
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteDialog({ open: true, tagId: child.id })}
+                              className="h-7 w-7 p-0"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
         {/* Pagination Controls */}
-        {filteredParentTags.length > 0 && (
+        {sortedParentTags.length > 0 && (
           <div className="flex items-center justify-between mt-6 pt-4 border-t">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Itens por página:</span>
@@ -725,7 +810,7 @@ export const TagsManagementTab = () => {
             
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
-                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredParentTags.length)} de {filteredParentTags.length}
+                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedParentTags.length)} de {sortedParentTags.length}
               </span>
               <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
                 <ChevronLeft className="h-4 w-4" />
