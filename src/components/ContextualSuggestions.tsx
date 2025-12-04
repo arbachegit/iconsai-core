@@ -23,7 +23,7 @@ const ContextualSuggestions = memo(({
   if (displaySuggestions.length === 0 || isLoading) return null;
   
   return (
-    <div className="px-6 py-1.5">
+    <div className="px-6 py-2 -mb-1">
       <div className="flex flex-wrap justify-center gap-2 overflow-hidden">
         {displaySuggestions.map((suggestion, index) => (
           <button
