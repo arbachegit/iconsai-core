@@ -92,14 +92,37 @@ IMPORTANTE: Retorne APENAS a palavra: HEALTH, STUDY ou GENERAL`
   return "general";
 }
 
+// Sanitizar texto para remover estruturas de tabelas e caracteres problemáticos
+function sanitizeTextForAI(text: string): string {
+  return text
+    // Remove linhas que parecem ser bordas de tabelas
+    .replace(/[─│┌┐└┘├┤┬┴┼╔╗╚╝╠╣╦╩╬═║]+/g, " ")
+    // Remove linhas com muitos pipes (tabelas ASCII)
+    .replace(/\|[\s\-|]+\|/g, " ")
+    // Remove sequências de traços/underlines (separadores de tabela)
+    .replace(/[-_=]{3,}/g, " ")
+    // Remove múltiplos espaços/tabs consecutivos (alinhamento de tabela)
+    .replace(/[ \t]{3,}/g, " ")
+    // Remove linhas com padrão de colunas numéricas
+    .replace(/(\d+[\s,.\d]*){5,}/g, "[dados numéricos]")
+    // Remove caracteres especiais que quebram JSON
+    .replace(/[""'']/g, '"')
+    .replace(/[\u2018\u2019\u201C\u201D]/g, '"')
+    // Normaliza quebras de linha
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 // 3. ENRIQUECIMENTO DE METADADOS
 async function generateMetadata(text: string, apiKey: string): Promise<{
   tags: { parent: string; children: string[]; confidence: number }[];
   summary: string;
   implementation_status: string;
 }> {
-  // Limite reduzido para evitar respostas truncadas
-  const truncatedText = text.substring(0, 2500);
+  // Sanitizar e limitar texto
+  const sanitizedText = sanitizeTextForAI(text);
+  const truncatedText = sanitizedText.substring(0, 2000);
   
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
