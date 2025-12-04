@@ -73,6 +73,50 @@ const CHART_COLORS = [
   'hsl(180, 60%, 45%)',
 ];
 
+// Custom Tooltip that displays ALL extra fields from the data object
+const CustomChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload || !payload.length) return null;
+  
+  const dadosOriginais = payload[0].payload;
+  
+  // Get all extra fields (excluding standard chart keys)
+  const standardKeys = ['name', 'value', 'fill', 'stroke'];
+  const extraFields = Object.keys(dadosOriginais)
+    .filter(key => !standardKeys.includes(key) && dadosOriginais[key] !== undefined && dadosOriginais[key] !== null);
+  
+  // Format field name for display (capitalize, replace underscores)
+  const formatFieldName = (key: string) => {
+    return key
+      .replace(/_/g, ' ')
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, str => str.toUpperCase())
+      .trim();
+  };
+
+  return (
+    <div className="bg-popover p-2.5 border border-border rounded-lg shadow-lg min-w-[140px]">
+      <p className="font-semibold text-sm text-foreground mb-1">
+        {label || dadosOriginais.name}
+      </p>
+      <p className="text-primary font-medium">
+        Valor: {typeof dadosOriginais.value === 'number' ? dadosOriginais.value.toLocaleString('pt-BR') : dadosOriginais.value}
+      </p>
+      {extraFields.length > 0 && (
+        <div className="mt-1.5 pt-1.5 border-t border-border/50 space-y-0.5">
+          {extraFields.map(campo => (
+            <p key={campo} className="text-xs text-muted-foreground">
+              <span className="font-medium">{formatFieldName(campo)}:</span>{' '}
+              {typeof dadosOriginais[campo] === 'number' 
+                ? dadosOriginais[campo].toLocaleString('pt-BR') 
+                : dadosOriginais[campo]}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Validate if data sums to 100% (±0.1% tolerance) for proportion charts
 const validateProportionData = (data: { value: number }[]): ProportionValidation => {
   const sum = data.reduce((acc, item) => acc + (item.value || 0), 0);
@@ -222,14 +266,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
-              <RechartsTooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--popover))', 
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  color: 'hsl(var(--popover-foreground))'
-                }}
-              />
+              <RechartsTooltip content={<CustomChartTooltip />} />
               {yKeys.map((key, idx) => (
                 <Bar key={key} dataKey={key} fill={CHART_COLORS[idx % CHART_COLORS.length]} radius={[4, 4, 0, 0]} />
               ))}
@@ -251,14 +288,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
-              <RechartsTooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--popover))', 
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  color: 'hsl(var(--popover-foreground))'
-                }}
-              />
+              <RechartsTooltip content={<CustomChartTooltip />} />
               {yKeys.map((key, idx) => (
                 <Line 
                   key={key} 
@@ -291,14 +321,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
-              <RechartsTooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--popover))', 
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  color: 'hsl(var(--popover-foreground))'
-                }}
-              />
+              <RechartsTooltip content={<CustomChartTooltip />} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -318,14 +341,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
-              <RechartsTooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--popover))', 
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  color: 'hsl(var(--popover-foreground))'
-                }}
-              />
+              <RechartsTooltip content={<CustomChartTooltip />} />
               {yKeys.map((key, idx) => (
                 <Area 
                   key={key} 
