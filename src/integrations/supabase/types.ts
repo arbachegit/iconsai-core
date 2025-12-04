@@ -1000,6 +1000,57 @@ export type Database = {
         }
         Relationships: []
       }
+      suggestion_audit: {
+        Row: {
+          admin_feedback: string | null
+          ai_response_preview: string | null
+          chat_type: string
+          coherence_score: number | null
+          coherence_validated: boolean | null
+          created_at: string | null
+          has_rag_context: boolean | null
+          id: string
+          rag_documents_used: string[] | null
+          session_id: string
+          suggestions_generated: string[] | null
+          user_query: string
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          admin_feedback?: string | null
+          ai_response_preview?: string | null
+          chat_type: string
+          coherence_score?: number | null
+          coherence_validated?: boolean | null
+          created_at?: string | null
+          has_rag_context?: boolean | null
+          id?: string
+          rag_documents_used?: string[] | null
+          session_id: string
+          suggestions_generated?: string[] | null
+          user_query: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          admin_feedback?: string | null
+          ai_response_preview?: string | null
+          chat_type?: string
+          coherence_score?: number | null
+          coherence_validated?: boolean | null
+          created_at?: string | null
+          has_rag_context?: boolean | null
+          id?: string
+          rag_documents_used?: string[] | null
+          session_id?: string
+          suggestions_generated?: string[] | null
+          user_query?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: []
+      }
       suggestion_clicks: {
         Row: {
           chat_type: string

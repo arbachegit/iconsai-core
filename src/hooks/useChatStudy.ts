@@ -6,6 +6,7 @@ import { useAdminSettings } from "./useAdminSettings";
 import { useChatAnalytics } from "./useChatAnalytics";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
+import { saveSuggestionAudit } from "@/lib/suggestion-audit";
 
 interface Message {
   role: "user" | "assistant";
@@ -335,6 +336,16 @@ export function useChatStudy(options: UseChatStudyOptions = {}) {
         const extractedSuggestions = extractSuggestions(fullResponse);
         if (extractedSuggestions.length > 0) {
           setSuggestions(extractedSuggestions);
+          
+          // 📊 Salvar auditoria de sugestões para análise de coerência
+          saveSuggestionAudit({
+            sessionId,
+            chatType: "study",
+            userQuery: input,
+            aiResponsePreview: fullResponse,
+            suggestionsGenerated: extractedSuggestions,
+            hasRagContext: fullResponse.includes("CONTEXTO RELEVANTE"),
+          });
         }
 
         const cleanedResponse = removeSuggestionsFromText(fullResponse);
