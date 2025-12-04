@@ -16,6 +16,7 @@ import {
   ResponsiveContainer,
   Cell,
   Brush,
+  ReferenceLine,
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,7 +42,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { RangeSlider } from '@/components/ui/range-slider';
-import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle, Percent, Copy, Check, Zap, RotateCcw } from 'lucide-react';
+import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle, Percent, Copy, Check, Zap, RotateCcw, Target, Plus, X, Minus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -201,6 +203,30 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   // X-axis range state (index-based filtering)
   const [xRange, setXRange] = useState<[number, number]>([0, displayData.length - 1]);
   
+  // ===== REFERENCE LINES =====
+  interface ReferenceLineConfig {
+    id: string;
+    value: number;
+    label: string;
+    color: string;
+    type: 'average' | 'target' | 'limit';
+  }
+  const [referenceLines, setReferenceLines] = useState<ReferenceLineConfig[]>([]);
+  const [showRefLineForm, setShowRefLineForm] = useState(false);
+  const [newRefLine, setNewRefLine] = useState<{ value: string; label: string; type: 'average' | 'target' | 'limit' }>({ value: '', label: '', type: 'target' });
+  
+  const REFLINE_COLORS: Record<string, string> = {
+    average: 'hsl(150, 60%, 45%)',
+    target: 'hsl(45, 90%, 55%)',
+    limit: 'hsl(0, 70%, 55%)',
+  };
+  
+  const REFLINE_LABELS: Record<string, string> = {
+    average: 'Média',
+    target: 'Meta',
+    limit: 'Limite',
+  };
+  
   // Handler for brush change
   const handleBrushChange = useCallback((brushData: { startIndex?: number; endIndex?: number }) => {
     if (brushData.startIndex !== undefined && brushData.endIndex !== undefined) {
@@ -214,6 +240,32 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
     const endIdx = Math.min(displayData.length - 1, xRange[1]);
     return displayData.slice(startIdx, endIdx + 1);
   }, [displayData, xRange]);
+
+  // Calculate average from filtered data (must be after filteredDisplayData)
+  const dataAverage = useMemo(() => {
+    if (filteredDisplayData.length === 0) return 0;
+    const sum = filteredDisplayData.reduce((acc, d) => acc + (d.value || 0), 0);
+    return Math.round(sum / filteredDisplayData.length);
+  }, [filteredDisplayData]);
+
+  const addReferenceLine = useCallback(() => {
+    const value = newRefLine.type === 'average' ? dataAverage : parseFloat(newRefLine.value);
+    if (isNaN(value)) return;
+    
+    setReferenceLines(prev => [...prev, {
+      id: `ref-${Date.now()}`,
+      value,
+      label: newRefLine.label || REFLINE_LABELS[newRefLine.type],
+      color: REFLINE_COLORS[newRefLine.type],
+      type: newRefLine.type,
+    }]);
+    setNewRefLine({ value: '', label: '', type: 'target' });
+    setShowRefLineForm(false);
+  }, [newRefLine, dataAverage]);
+
+  const removeReferenceLine = useCallback((id: string) => {
+    setReferenceLines(prev => prev.filter(r => r.id !== id));
+  }, []);
 
   // Recalculate Y bounds based on filtered data
   const filteredDataBounds = useMemo(() => {
@@ -342,6 +394,21 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
               {yKeys.map((key, idx) => (
                 <Bar key={key} dataKey={key} fill={CHART_COLORS[idx % CHART_COLORS.length]} radius={[4, 4, 0, 0]} />
               ))}
+              {referenceLines.map((refLine) => (
+                <ReferenceLine
+                  key={refLine.id}
+                  y={refLine.value}
+                  stroke={refLine.color}
+                  strokeDasharray="5 5"
+                  strokeWidth={2}
+                  label={{
+                    value: `${refLine.label}: ${refLine.value}`,
+                    position: 'right',
+                    fill: refLine.color,
+                    fontSize: 10,
+                  }}
+                />
+              ))}
               {showBrush && (
                 <Brush
                   dataKey={xKey}
@@ -383,6 +450,21 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   stroke={CHART_COLORS[idx % CHART_COLORS.length]} 
                   strokeWidth={2}
                   dot={{ fill: CHART_COLORS[idx % CHART_COLORS.length], strokeWidth: 2 }}
+                />
+              ))}
+              {referenceLines.map((refLine) => (
+                <ReferenceLine
+                  key={refLine.id}
+                  y={refLine.value}
+                  stroke={refLine.color}
+                  strokeDasharray="5 5"
+                  strokeWidth={2}
+                  label={{
+                    value: `${refLine.label}: ${refLine.value}`,
+                    position: 'right',
+                    fill: refLine.color,
+                    fontSize: 10,
+                  }}
                 />
               ))}
               {showBrush && (
@@ -450,6 +532,21 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   stroke={CHART_COLORS[idx % CHART_COLORS.length]} 
                   fill={CHART_COLORS[idx % CHART_COLORS.length]}
                   fillOpacity={0.3}
+                />
+              ))}
+              {referenceLines.map((refLine) => (
+                <ReferenceLine
+                  key={refLine.id}
+                  y={refLine.value}
+                  stroke={refLine.color}
+                  strokeDasharray="5 5"
+                  strokeWidth={2}
+                  label={{
+                    value: `${refLine.label}: ${refLine.value}`,
+                    position: 'right',
+                    fill: refLine.color,
+                    fontSize: 10,
+                  }}
                 />
               ))}
               {showBrush && (
@@ -707,6 +804,95 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 </span>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Reference Lines Controls - Only for bar, line, area (not pie) */}
+        {chartType !== 'pie' && (
+          <div className="px-3 py-2 border-b border-border/30 bg-muted/5">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <Target className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Linhas de Referência</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-[10px] gap-1 px-2"
+                onClick={() => setShowRefLineForm(!showRefLineForm)}
+              >
+                {showRefLineForm ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                {showRefLineForm ? 'Fechar' : 'Adicionar'}
+              </Button>
+            </div>
+            
+            {/* Add reference line form */}
+            {showRefLineForm && (
+              <div className="flex items-center gap-2 mb-2 p-2 rounded bg-muted/30">
+                <select
+                  className="h-7 text-xs rounded border border-border bg-background px-2"
+                  value={newRefLine.type}
+                  onChange={(e) => setNewRefLine(prev => ({ 
+                    ...prev, 
+                    type: e.target.value as 'average' | 'target' | 'limit',
+                    value: e.target.value === 'average' ? String(dataAverage) : prev.value
+                  }))}
+                >
+                  <option value="target">Meta</option>
+                  <option value="average">Média ({dataAverage})</option>
+                  <option value="limit">Limite</option>
+                </select>
+                <Input
+                  type="number"
+                  placeholder="Valor"
+                  className="h-7 w-20 text-xs"
+                  value={newRefLine.type === 'average' ? dataAverage : newRefLine.value}
+                  disabled={newRefLine.type === 'average'}
+                  onChange={(e) => setNewRefLine(prev => ({ ...prev, value: e.target.value }))}
+                />
+                <Input
+                  type="text"
+                  placeholder="Label (opcional)"
+                  className="h-7 flex-1 text-xs"
+                  value={newRefLine.label}
+                  onChange={(e) => setNewRefLine(prev => ({ ...prev, label: e.target.value }))}
+                />
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-7 text-xs px-2"
+                  onClick={addReferenceLine}
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+            
+            {/* Active reference lines */}
+            {referenceLines.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {referenceLines.map((refLine) => (
+                  <span
+                    key={refLine.id}
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] rounded-full border"
+                    style={{ 
+                      borderColor: refLine.color, 
+                      backgroundColor: `${refLine.color}20`,
+                      color: refLine.color 
+                    }}
+                  >
+                    <span className="w-2 h-0.5" style={{ backgroundColor: refLine.color }} />
+                    {refLine.label}: {refLine.value}
+                    <button
+                      className="hover:opacity-70 ml-0.5"
+                      onClick={() => removeReferenceLine(refLine.id)}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
