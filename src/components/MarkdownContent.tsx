@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { InteractiveTable } from './InteractiveTable';
+import { ChatChartRenderer, parseChartData } from './ChatChartRenderer';
 
 interface MarkdownContentProps {
   content: string;
@@ -159,8 +160,15 @@ const TableWrapper = ({ children, node, ...props }: any) => {
 };
 
 export const MarkdownContent = ({ content, className }: MarkdownContentProps) => {
+  // Check for CHART_DATA in content
+  const { chartData, cleanedContent } = useMemo(() => parseChartData(content), [content]);
+
   return (
     <div className={cn("prose prose-sm dark:prose-invert max-w-none", className)}>
+      {/* Render chart if present */}
+      {chartData && <ChatChartRenderer chartData={chartData} />}
+      
+      {/* Render markdown content */}
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -185,7 +193,7 @@ export const MarkdownContent = ({ content, className }: MarkdownContentProps) =>
           td: ({ children }) => <td className="px-3 py-2 text-xs">{children}</td>,
         }}
       >
-        {content}
+        {cleanedContent}
       </ReactMarkdown>
     </div>
   );

@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, Download, Filter, X } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Download, Filter, X, MessageCircle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -127,6 +128,19 @@ export const InteractiveTable = ({ data, className }: InteractiveTableProps) => 
     link.click();
   };
 
+  const shareViaWhatsApp = () => {
+    const text = `📊 Tabela\n\n${data.headers.join(' | ')}\n${processedRows.map(row => row.join(' | ')).join('\n')}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const shareViaEmail = () => {
+    const subject = 'Tabela exportada';
+    const body = `📊 Tabela\n\n${data.headers.join(' | ')}\n${processedRows.map(row => row.join(' | ')).join('\n')}`;
+    const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(url, '_blank');
+  };
+
   const hasActiveFilters = Object.values(filters).some(v => v);
 
   const getSortIcon = (colIndex: number) => {
@@ -176,10 +190,17 @@ export const InteractiveTable = ({ data, className }: InteractiveTableProps) => 
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={exportToCSV}>
-              Exportar CSV
+              <Download className="h-4 w-4 mr-2" /> CSV
             </DropdownMenuItem>
             <DropdownMenuItem onClick={exportToExcel}>
-              Exportar Excel
+              <Download className="h-4 w-4 mr-2" /> Excel
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={shareViaWhatsApp}>
+              <MessageCircle className="h-4 w-4 mr-2" /> WhatsApp
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={shareViaEmail}>
+              <Mail className="h-4 w-4 mr-2" /> Email
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

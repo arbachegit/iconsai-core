@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatKnowYOU } from "@/hooks/useChatKnowYOU";
-import { Loader2, ImagePlus, Mic, Square, X, ArrowUp } from "lucide-react";
+import { Loader2, ImagePlus, Mic, Square, X, ArrowUp, BarChart3 } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
@@ -80,6 +80,7 @@ export default function ChatKnowYOU() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   
   const [isImageMode, setIsImageMode] = useState(false);
+  const [isChartMode, setIsChartMode] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
   const [waitingCountdown, setWaitingCountdown] = useState(5);
   
@@ -217,6 +218,13 @@ export default function ChatKnowYOU() {
   };
   const toggleImageMode = () => {
     setIsImageMode(!isImageMode);
+    setIsChartMode(false);
+    setInput("");
+  };
+
+  const toggleChartMode = () => {
+    setIsChartMode(!isChartMode);
+    setIsImageMode(false);
     setInput("");
   };
   
@@ -590,7 +598,7 @@ export default function ChatKnowYOU() {
             e.preventDefault();
             handleSubmit(e);
           }
-        }} placeholder={isTranscribing ? t('chat.transcribing') : isImageMode ? t('chat.placeholderImage') : t('chat.placeholderHealth')} onFocus={e => {
+        }} placeholder={isTranscribing ? t('chat.transcribing') : isImageMode ? t('chat.placeholderImage') : isChartMode ? "Descreva os dados para gerar um gráfico..." : t('chat.placeholderHealth')} onFocus={e => {
           if (isImageMode) {
             e.target.placeholder = t('chat.imageLimitHealth');
           }
@@ -611,6 +619,10 @@ export default function ChatKnowYOU() {
               
               <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} title="Desenhar" className="h-10 w-10 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
                 <ImagePlus className="w-5 h-5" />
+              </Button>
+              
+              <Button type="button" size="icon" variant={isChartMode ? "default" : "ghost"} onClick={toggleChartMode} title="Gráfico" className="h-10 w-10 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
+                <BarChart3 className="w-5 h-5" />
               </Button>
             </div>
             
