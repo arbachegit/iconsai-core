@@ -22,9 +22,19 @@ function generateContentHash(text: string): string {
 }
 
 // 1. VALIDAÇÃO DE SANIDADE (OTIMIZADA PARA OCR)
-function validateTextSanity(text: string): { valid: boolean; reason?: string } {
-  if (!text || text.length < 50) {
-    return { valid: false, reason: "Texto muito curto (mínimo 50 caracteres)" };
+interface ValidationParams {
+  min_text_length?: number;
+  valid_char_ratio?: number;
+  min_letter_count?: number;
+}
+
+function validateTextSanity(text: string, params?: ValidationParams): { valid: boolean; reason?: string } {
+  const minTextLength = params?.min_text_length ?? 50;
+  const minValidCharRatio = params?.valid_char_ratio ?? 0.5;
+  const minLetterCount = params?.min_letter_count ?? 30;
+  
+  if (!text || text.length < minTextLength) {
+    return { valid: false, reason: `Texto muito curto (mínimo ${minTextLength} caracteres, encontrado: ${text?.length || 0})` };
   }
   
   // Contar caracteres válidos incluindo Unicode (acentos, etc.) e pontuação comum
@@ -32,18 +42,17 @@ function validateTextSanity(text: string): { valid: boolean; reason?: string } {
   const validChars = text.match(/[\p{L}\p{N}\s.,;:!?'"()\-–—]/gu)?.length || 0;
   const ratio = validChars / text.length;
   
-  // Threshold reduzido de 0.8 para 0.5 para aceitar mais documentos
-  if (ratio < 0.5) {
+  if (ratio < minValidCharRatio) {
     return { 
       valid: false, 
-      reason: `Proporção de caracteres válidos muito baixa (${Math.round(ratio * 100)}%). Documento pode estar corrompido ou ser digitalização de baixa qualidade.`
+      reason: `Proporção de caracteres válidos muito baixa (${Math.round(ratio * 100)}%, mínimo: ${Math.round(minValidCharRatio * 100)}%). Documento pode estar corrompido ou ser digitalização de baixa qualidade.`
     };
   }
   
   // Verificar se há texto substantivo (não só símbolos/números)
   const letterCount = text.match(/\p{L}/gu)?.length || 0;
-  if (letterCount < 30) {
-    return { valid: false, reason: "Texto contém poucas letras - pode ser imagem ou tabela sem OCR" };
+  if (letterCount < minLetterCount) {
+    return { valid: false, reason: `Texto contém poucas letras (${letterCount}, mínimo: ${minLetterCount}) - pode ser imagem ou tabela sem OCR` };
   }
   
   return { valid: true };
@@ -143,8 +152,12 @@ serve(async (req) => {
   const results: { document_id: string; status: string; error?: string }[] = [];
 
   try {
-    const { documents_data } = await req.json() as { documents_data: DocumentInput[] };
+    const { documents_data, validation_params } = await req.json() as { 
+      documents_data: DocumentInput[];
+      validation_params?: ValidationParams;
+    };
     
+    console.log(`Received ${documents_data.length} document(s), validation_params:`, validation_params);
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -247,8 +260,8 @@ serve(async (req) => {
         
         console.log(`No similar content found for ${doc.document_id}, proceeding with processing...`);
         
-        // 1. VALIDAÇÃO
-        const validation = validateTextSanity(doc.full_text);
+        // 1. VALIDAÇÃO COM PARÂMETROS CUSTOMIZADOS
+        const validation = validateTextSanity(doc.full_text, validation_params);
         if (!validation.valid) {
           await supabase.from("documents").update({
             status: "failed",
