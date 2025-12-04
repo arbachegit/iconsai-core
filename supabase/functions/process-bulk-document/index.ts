@@ -189,10 +189,20 @@ serve(async (req) => {
           const embData = await similarityEmbeddingResponse.json();
           const newDocEmbedding = embData.data[0].embedding;
           
-          // Buscar documentos similares com threshold de 0.90
+          // Buscar threshold configurado do chat_config
+          const { data: configData } = await supabase
+            .from("chat_config")
+            .select("duplicate_similarity_threshold")
+            .limit(1)
+            .single();
+          
+          const duplicateThreshold = configData?.duplicate_similarity_threshold || 0.90;
+          console.log(`Using duplicate similarity threshold: ${duplicateThreshold}`);
+          
+          // Buscar documentos similares com threshold dinâmico
           const { data: similarDocs } = await supabase.rpc('search_documents', {
             query_embedding: newDocEmbedding,
-            match_threshold: 0.90,
+            match_threshold: duplicateThreshold,
             match_count: 1
           });
           
