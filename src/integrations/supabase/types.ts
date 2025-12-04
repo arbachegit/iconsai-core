@@ -1018,6 +1018,60 @@ export type Database = {
         }
         Relationships: []
       }
+      tag_modification_logs: {
+        Row: {
+          chat_type: string | null
+          created_at: string
+          created_by: string | null
+          document_filename: string
+          document_id: string | null
+          id: string
+          merge_rule_id: string | null
+          modification_type: string
+          new_tag_name: string
+          original_tag_name: string
+        }
+        Insert: {
+          chat_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_filename: string
+          document_id?: string | null
+          id?: string
+          merge_rule_id?: string | null
+          modification_type?: string
+          new_tag_name: string
+          original_tag_name: string
+        }
+        Update: {
+          chat_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_filename?: string
+          document_id?: string | null
+          id?: string
+          merge_rule_id?: string | null
+          modification_type?: string
+          new_tag_name?: string
+          original_tag_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tag_modification_logs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_modification_logs_merge_rule_id_fkey"
+            columns: ["merge_rule_id"]
+            isOneToOne: false
+            referencedRelation: "tag_merge_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tooltip_contents: {
         Row: {
           audio_url: string | null
