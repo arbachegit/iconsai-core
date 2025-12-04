@@ -56,13 +56,27 @@ serve(async (req) => {
         if (searchResults?.results && searchResults.results.length > 0) {
           hasRagContext = true;
           console.log(`RAG found ${searchResults.results.length} chunks for health chat, top score: ${searchResults.analytics?.top_score?.toFixed(3) || 'N/A'}`);
+          
+          // Extract unique document titles from results
+          const documentTitles = [...new Set(searchResults.results.map((r: any) => r.metadata?.document_title).filter(Boolean))];
+          const documentList = documentTitles.length > 0 ? `\n📄 DOCUMENTOS ENCONTRADOS: ${documentTitles.join(', ')}\n` : '';
+          
           ragContext = `\n\n📚 CONTEXTO RELEVANTE DOS DOCUMENTOS DE SAÚDE:
-
-${searchResults.results.map((r: any) => r.content).join("\n\n---\n\n")}
+${documentList}
+${searchResults.results.map((r: any) => {
+  const docTitle = r.metadata?.document_title ? `[Fonte: ${r.metadata.document_title}]\n` : '';
+  return docTitle + r.content;
+}).join("\n\n---\n\n")}
 
 ⚠️ IMPORTANTE: O contexto acima é dos DOCUMENTOS OFICIAIS sobre saúde e Hospital Moinhos de Vento. 
 Você DEVE usar este contexto para responder. Se a pergunta está relacionada a algum tópico 
-mencionado no contexto, responda com base nele.\n\n`;
+mencionado no contexto, responda com base nele.
+
+🔴 REGRA IMPORTANTE SOBRE DISPONIBILIDADE DE DOCUMENTOS:
+Se o usuário perguntar "você tem o documento X?" ou "você conhece o documento X?":
+- VERIFIQUE se o documento X aparece na lista "DOCUMENTOS ENCONTRADOS" acima
+- Se SIM: Responda "Sim, tenho informações do documento [nome]" e descreva brevemente o conteúdo
+- Se NÃO: Responda que não encontrou esse documento específico\n\n`;
         }
       } catch (error) {
         console.error("RAG search error:", error);
