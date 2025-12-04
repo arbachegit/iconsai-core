@@ -1,9 +1,28 @@
 import { useState, useEffect } from "react";
 
+const LOCATION_STORAGE_KEY = "knowyou_user_location";
+
 export function useGeolocation() {
-  const [location, setLocation] = useState<string | null>(null);
+  const [location, setLocation] = useState<string | null>(() => {
+    // Load from localStorage on init
+    const saved = localStorage.getItem(LOCATION_STORAGE_KEY);
+    return saved || null;
+  });
   const [permission, setPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Save location to localStorage whenever it changes
+  useEffect(() => {
+    if (location) {
+      localStorage.setItem(LOCATION_STORAGE_KEY, location);
+    }
+  }, [location]);
+
+  // Allow manual location setting (for when user tells us in chat)
+  const setManualLocation = (city: string) => {
+    setLocation(city);
+    setPermission('granted');
+  };
 
   const requestLocation = async () => {
     if (!navigator.geolocation) {
@@ -76,5 +95,5 @@ export function useGeolocation() {
     checkInitialPermission();
   }, []);
 
-  return { location, permission, isLoading, requestLocation };
+  return { location, permission, isLoading, requestLocation, setManualLocation };
 }
