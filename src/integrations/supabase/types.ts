@@ -979,6 +979,42 @@ export type Database = {
         }
         Relationships: []
       }
+      typing_latency_logs: {
+        Row: {
+          avg_latency_ms: number | null
+          component: string
+          created_at: string
+          id: string
+          latency_ms: number
+          max_latency_ms: number | null
+          sample_count: number | null
+          session_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          avg_latency_ms?: number | null
+          component: string
+          created_at?: string
+          id?: string
+          latency_ms: number
+          max_latency_ms?: number | null
+          sample_count?: number | null
+          session_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          avg_latency_ms?: number | null
+          component?: string
+          created_at?: string
+          id?: string
+          latency_ms?: number
+          max_latency_ms?: number | null
+          sample_count?: number | null
+          session_id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       user_activity_logs: {
         Row: {
           action: string
