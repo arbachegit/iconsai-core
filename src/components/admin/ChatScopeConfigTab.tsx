@@ -434,32 +434,32 @@ export function ChatScopeConfigTab() {
                           
                           {allParentTags.length > 0 ? (
                             <div className="border rounded-lg max-h-[300px] overflow-y-auto">
-                              <Table>
+                              <Table className="table-fixed">
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead>
+                                    <TableHead className="w-[55%] px-2">
                                       <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleSort('tag_name')}
-                                        className="h-8 px-2 -ml-2"
+                                        className="h-7 px-1 -ml-1 text-xs"
                                       >
                                         Nome da Tag
-                                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                                        <ArrowUpDown className="ml-1 h-3 w-3" />
                                       </Button>
                                     </TableHead>
-                                    <TableHead>
+                                    <TableHead className="w-[30%] px-2">
                                       <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleSort('confidence')}
-                                        className="h-8 px-2 -ml-2"
+                                        className="h-7 px-1 -ml-1 text-xs"
                                       >
                                         Confiança
-                                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                                        <ArrowUpDown className="ml-1 h-3 w-3" />
                                       </Button>
                                     </TableHead>
-                                    <TableHead className="w-[60px] text-center">Escopo</TableHead>
+                                    <TableHead className="w-[15%] px-1 text-center text-xs">Escopo</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -467,13 +467,13 @@ export function ChatScopeConfigTab() {
                                     const isInScope = tag.avg_confidence >= 0.7;
                                     return (
                                       <TableRow key={idx}>
-                                        <TableCell className="font-medium">
+                                        <TableCell className="font-medium py-2 px-2 text-sm">
                                           {tag.tag_name}
                                           {tag.count > 1 && (
                                             <span className="ml-1 text-xs text-muted-foreground">×{tag.count}</span>
                                           )}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="py-2 px-2">
                                           <Badge 
                                             variant="outline" 
                                             className={`text-xs ${
@@ -487,7 +487,7 @@ export function ChatScopeConfigTab() {
                                             {(tag.avg_confidence * 100).toFixed(0)}%
                                           </Badge>
                                         </TableCell>
-                                        <TableCell className="text-center">
+                                        <TableCell className="text-center py-2 px-1">
                                           <TooltipProvider>
                                             <Tooltip>
                                               <TooltipTrigger asChild>
