@@ -42,7 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, CheckCircle2 } from "lucide-react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie, Legend } from "recharts";
@@ -158,6 +158,57 @@ export const TagsManagementTab = () => {
         confidence: number;
         created_at: string;
       }>;
+    },
+  });
+
+  // Fetch ML routing analytics from document_routing_log
+  const { data: routingAnalytics } = useQuery({
+    queryKey: ["ml-routing-analytics"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("document_routing_log")
+        .select("*")
+        .in("action_type", ["ml_accepted", "ml_rejected", "chat_change"])
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      
+      // Calculate analytics
+      const mlAccepted = data?.filter(d => d.action_type === "ml_accepted").length || 0;
+      const mlRejected = data?.filter(d => d.action_type === "ml_rejected").length || 0;
+      const totalML = mlAccepted + mlRejected;
+      const accuracyRate = totalML > 0 ? (mlAccepted / totalML) * 100 : 0;
+
+      // Group by day for time series
+      const byDay = data?.reduce((acc, item) => {
+        const date = new Date(item.created_at || '').toISOString().split('T')[0];
+        if (!acc[date]) acc[date] = { accepted: 0, rejected: 0 };
+        if (item.action_type === "ml_accepted") acc[date].accepted++;
+        if (item.action_type === "ml_rejected") acc[date].rejected++;
+        return acc;
+      }, {} as Record<string, { accepted: number; rejected: number }>) || {};
+
+      const timeSeriesData = Object.entries(byDay)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .slice(-14) // Last 14 days
+        .map(([date, counts]) => ({
+          date: date.slice(5), // MM-DD format
+          aceitos: counts.accepted,
+          rejeitados: counts.rejected,
+          total: counts.accepted + counts.rejected,
+          taxa: counts.accepted + counts.rejected > 0 
+            ? Math.round((counts.accepted / (counts.accepted + counts.rejected)) * 100) 
+            : 0
+        }));
+
+      return {
+        mlAccepted,
+        mlRejected,
+        totalML,
+        accuracyRate,
+        timeSeriesData,
+        recentLogs: data?.slice(0, 10) || []
+      };
     },
   });
 
@@ -838,6 +889,102 @@ export const TagsManagementTab = () => {
           </div>
         </div>
       </Card>
+
+      {/* ML Accuracy Analytics Dashboard */}
+      {routingAnalytics && routingAnalytics.totalML > 0 && (
+        <Card className="p-6 border-green-500/30 bg-gradient-to-r from-green-500/5 to-emerald-500/5">
+          <div className="flex items-center gap-2 mb-6">
+            <Target className="h-5 w-5 text-green-400" />
+            <h3 className="font-semibold text-lg">Analytics de Acurácia ML - Roteamento de Chat</h3>
+          </div>
+          
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="text-center p-4 bg-background/50 rounded-lg border">
+              <div className="text-3xl font-bold text-green-400">
+                {routingAnalytics.accuracyRate.toFixed(1)}%
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">Taxa de Acerto</div>
+            </div>
+            <div className="text-center p-4 bg-background/50 rounded-lg border">
+              <div className="text-3xl font-bold text-emerald-400">{routingAnalytics.mlAccepted}</div>
+              <div className="text-sm text-muted-foreground mt-1">Aceitos</div>
+            </div>
+            <div className="text-center p-4 bg-background/50 rounded-lg border">
+              <div className="text-3xl font-bold text-red-400">{routingAnalytics.mlRejected}</div>
+              <div className="text-sm text-muted-foreground mt-1">Rejeitados</div>
+            </div>
+            <div className="text-center p-4 bg-background/50 rounded-lg border">
+              <div className="text-3xl font-bold text-cyan-400">{routingAnalytics.totalML}</div>
+              <div className="text-sm text-muted-foreground mt-1">Total Sugestões</div>
+            </div>
+          </div>
+
+          {/* Time series chart */}
+          {routingAnalytics.timeSeriesData.length > 0 && (
+            <div className="p-4 bg-background/30 rounded-lg border mb-4">
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-green-400" />
+                Evolução da Taxa de Acerto (últimos 14 dias)
+              </h4>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={routingAnalytics.timeSeriesData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                    <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        fontSize: '12px'
+                      }}
+                      formatter={(value: number, name: string) => [
+                        value,
+                        name === 'aceitos' ? '✅ Aceitos' : name === 'rejeitados' ? '❌ Rejeitados' : name
+                      ]}
+                    />
+                    <Legend />
+                    <Bar dataKey="aceitos" fill="hsl(142, 71%, 45%)" name="✅ Aceitos" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="rejeitados" fill="hsl(0, 84%, 60%)" name="❌ Rejeitados" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Recent ML decisions */}
+          {routingAnalytics.recentLogs.length > 0 && (
+            <div className="p-4 bg-background/30 rounded-lg border">
+              <h4 className="text-sm font-medium mb-3">Últimas Decisões ML</h4>
+              <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                {routingAnalytics.recentLogs.slice(0, 5).map((log: any, idx: number) => (
+                  <div 
+                    key={idx} 
+                    className={`flex items-center justify-between p-2 rounded text-xs ${
+                      log.action_type === 'ml_accepted' 
+                        ? 'bg-green-500/10 border border-green-500/30' 
+                        : 'bg-red-500/10 border border-red-500/30'
+                    }`}
+                  >
+                    <span className="truncate flex-1">{log.document_name}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {log.original_category} → {log.final_category}
+                      </Badge>
+                      {log.action_type === 'ml_accepted' ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-400" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-400" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Chat Routing ML Rules Panel */}
       {chatRoutingRules && chatRoutingRules.length > 0 && (
