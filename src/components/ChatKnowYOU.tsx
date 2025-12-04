@@ -670,7 +670,7 @@ export default function ChatKnowYOU() {
           if (isImageMode) {
             e.target.placeholder = t('chat.placeholderImage');
           }
-        }} className="min-h-[60px] resize-none w-full pb-14 pr-14 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]" disabled={isLoading || isTranscribing} />
+        }} className="min-h-[44px] resize-none w-full pb-14 pr-14 border-2 border-cyan-400/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.3),0_0_10px_rgba(34,211,238,0.2)]" disabled={isLoading || isTranscribing} />
           
             {/* Esquerda: Mic + Draw lado a lado */}
             <div className="absolute bottom-3 left-3 flex items-center gap-2">
