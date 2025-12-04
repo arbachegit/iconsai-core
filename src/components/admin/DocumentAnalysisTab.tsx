@@ -39,7 +39,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle, Heart, BookOpen, Package, Check, AlertTriangle, X, Plus } from "lucide-react";
+import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle, Heart, BookOpen, Package, Check, AlertTriangle, X, Plus, Trash2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
@@ -214,7 +214,25 @@ export const DocumentAnalysisTab = () => {
     }
   });
 
-  // Group tags by document
+  // Delete tag mutation
+  const deleteTagMutation = useMutation({
+    mutationFn: async (tagId: string) => {
+      // First delete child tags
+      await supabase.from("document_tags").delete().eq("parent_tag_id", tagId);
+      // Then delete the tag itself
+      await supabase.from("document_tags").delete().eq("id", tagId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["document-tags-all"] });
+      queryClient.invalidateQueries({ queryKey: ["unique-tags"] });
+      toast.success("Tag excluída com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao excluir tag: ${error.message}`);
+    }
+  });
+
+
   const tagsByDocument = allTags?.reduce((acc, tag) => {
     if (!acc[tag.document_id]) {
       acc[tag.document_id] = [];
@@ -729,9 +747,29 @@ export const DocumentAnalysisTab = () => {
                             {parentTags.map((parent) => {
                               const children = getChildTags(docTags, parent.id);
                               return (
-                                <div key={parent.id} className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                                <div key={parent.id} className="flex items-start gap-3 p-3 bg-background rounded-lg group">
                                   <div className="flex-shrink-0 min-w-[140px]">
-                                    <Badge variant="default" className="mb-1">{parent.tag_name}</Badge>
+                                    <div className="flex items-center gap-1">
+                                      <Badge variant="default" className="mb-1">{parent.tag_name}</Badge>
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                                              onClick={() => deleteTagMutation.mutate(parent.id)}
+                                              disabled={deleteTagMutation.isPending}
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Excluir tag e filhas</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </div>
                                     <span className="text-xs text-muted-foreground block">
                                       ({parent.tag_type})
                                     </span>
@@ -777,8 +815,15 @@ export const DocumentAnalysisTab = () => {
                                   {children.length > 0 && (
                                     <div className="flex gap-1 flex-wrap">
                                       {children.map((child) => (
-                                        <Badge key={child.id} variant="secondary" className="text-xs">
+                                        <Badge key={child.id} variant="secondary" className="text-xs group/child flex items-center gap-1">
                                           {child.tag_name}
+                                          <button
+                                            className="opacity-0 group-hover/child:opacity-100 transition-opacity hover:text-destructive"
+                                            onClick={() => deleteTagMutation.mutate(child.id)}
+                                            disabled={deleteTagMutation.isPending}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </button>
                                         </Badge>
                                       ))}
                                     </div>
