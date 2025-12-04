@@ -81,6 +81,8 @@ export const DocumentAnalysisTab = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [tagSearchOpen, setTagSearchOpen] = useState<string | null>(null);
   const [tagSearchTerm, setTagSearchTerm] = useState("");
+  const [selectedParentTag, setSelectedParentTag] = useState<string | null>(null);
+  const [selectedChildTags, setSelectedChildTags] = useState<Set<string>>(new Set());
   
   const queryClient = useQueryClient();
 
@@ -111,7 +113,7 @@ export const DocumentAnalysisTab = () => {
     },
   });
 
-  // Fetch unique tag names for autocomplete
+  // Fetch unique parent tag names for autocomplete
   const { data: uniqueTags } = useQuery({
     queryKey: ["unique-tags"],
     queryFn: async () => {
@@ -123,26 +125,92 @@ export const DocumentAnalysisTab = () => {
     }
   });
 
-  // Insert tag mutation
+  // Fetch child tags for a selected parent tag name
+  const { data: childTagsForParent } = useQuery({
+    queryKey: ["child-tags-for-parent", selectedParentTag],
+    queryFn: async () => {
+      if (!selectedParentTag) return [];
+      // Find all parent tag IDs with this name
+      const { data: parentTags } = await supabase
+        .from("document_tags")
+        .select("id")
+        .eq("tag_name", selectedParentTag)
+        .eq("tag_type", "parent");
+      
+      if (!parentTags?.length) return [];
+      
+      // Get all child tags for these parents
+      const parentIds = parentTags.map(t => t.id);
+      const { data: childTags } = await supabase
+        .from("document_tags")
+        .select("tag_name")
+        .in("parent_tag_id", parentIds);
+      
+      return [...new Set(childTags?.map(t => t.tag_name) || [])];
+    },
+    enabled: !!selectedParentTag
+  });
+
+  // Insert parent tag mutation
   const insertTagMutation = useMutation({
     mutationFn: async ({ docId, tagName }: { docId: string; tagName: string }) => {
-      await supabase.from("document_tags").insert({
+      const { data } = await supabase.from("document_tags").insert({
         document_id: docId,
         tag_name: tagName,
         tag_type: "parent",
         source: "admin",
         confidence: 1.0
-      });
+      }).select().single();
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["document-tags-all"] });
       queryClient.invalidateQueries({ queryKey: ["unique-tags"] });
-      toast.success("Tag adicionada com sucesso!");
-      setTagSearchOpen(null);
-      setTagSearchTerm("");
     },
     onError: (error: any) => {
       toast.error(`Erro ao adicionar tag: ${error.message}`);
+    }
+  });
+
+  // Insert tags with children mutation
+  const insertTagsWithChildrenMutation = useMutation({
+    mutationFn: async ({ docId, parentTagName, childTagNames }: { docId: string; parentTagName: string; childTagNames: string[] }) => {
+      // Insert parent tag
+      const { data: parentTag } = await supabase.from("document_tags").insert({
+        document_id: docId,
+        tag_name: parentTagName,
+        tag_type: "parent",
+        source: "admin",
+        confidence: 1.0
+      }).select().single();
+
+      if (!parentTag) throw new Error("Falha ao criar tag pai");
+
+      // Insert child tags
+      if (childTagNames.length > 0) {
+        const childInserts = childTagNames.map(childName => ({
+          document_id: docId,
+          tag_name: childName,
+          tag_type: "child",
+          parent_tag_id: parentTag.id,
+          source: "admin",
+          confidence: 1.0
+        }));
+        await supabase.from("document_tags").insert(childInserts);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["document-tags-all"] });
+      queryClient.invalidateQueries({ queryKey: ["unique-tags"] });
+      queryClient.invalidateQueries({ queryKey: ["child-tags-for-parent"] });
+      toast.success("Tags adicionadas com sucesso!");
+      setTagSearchOpen(null);
+      setTagSearchTerm("");
+      setSelectedParentTag(null);
+      setSelectedChildTags(new Set());
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao adicionar tags: ${error.message}`);
     }
   });
 
@@ -476,58 +544,175 @@ export const DocumentAnalysisTab = () => {
                                   if (!open) {
                                     setTagSearchOpen(null);
                                     setTagSearchTerm("");
+                                    setSelectedParentTag(null);
+                                    setSelectedChildTags(new Set());
                                   }
                                 }}
                               >
-                                <DialogContent className="sm:max-w-[400px]">
+                                <DialogContent className="sm:max-w-[500px]">
                                   <DialogHeader>
                                     <DialogTitle className="flex items-center gap-2">
                                       <Tag className="h-5 w-5" />
-                                      Inserir Tags - {doc.filename}
+                                      {selectedParentTag 
+                                        ? `Selecionar Tags Filhas: ${selectedParentTag}` 
+                                        : `Inserir Tags - ${doc.filename}`
+                                      }
                                     </DialogTitle>
                                   </DialogHeader>
-                                  <Command className="border rounded-lg">
-                                    <CommandInput 
-                                      placeholder="Buscar ou criar tag..." 
-                                      value={tagSearchTerm}
-                                      onValueChange={setTagSearchTerm}
-                                    />
-                                    <CommandList>
-                                      <CommandEmpty>
-                                        {tagSearchTerm.trim() && (
-                                          <Button 
-                                            variant="ghost" 
-                                            className="w-full justify-start"
-                                            onClick={() => insertTagMutation.mutate({ 
-                                              docId: doc.id, 
-                                              tagName: tagSearchTerm.trim() 
-                                            })}
-                                          >
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Criar "{tagSearchTerm}"
-                                          </Button>
-                                        )}
-                                      </CommandEmpty>
-                                      <ScrollArea className="h-[300px]">
-                                        <CommandGroup heading="Tags existentes">
-                                          {uniqueTags
-                                            ?.filter(t => t.toLowerCase().includes(tagSearchTerm.toLowerCase()))
-                                            .map(tag => (
-                                              <CommandItem 
-                                                key={tag}
-                                                onSelect={() => {
-                                                  insertTagMutation.mutate({ docId: doc.id, tagName: tag });
+                                  
+                                  {!selectedParentTag ? (
+                                    // Step 1: Select parent tag
+                                    <Command className="border rounded-lg">
+                                      <CommandInput 
+                                        placeholder="Buscar ou criar tag pai..." 
+                                        value={tagSearchTerm}
+                                        onValueChange={setTagSearchTerm}
+                                      />
+                                      <CommandList>
+                                        <CommandEmpty>
+                                          {tagSearchTerm.trim() && (
+                                            <Button 
+                                              variant="ghost" 
+                                              className="w-full justify-start"
+                                              onClick={() => {
+                                                setSelectedParentTag(tagSearchTerm.trim());
+                                              }}
+                                            >
+                                              <Plus className="h-4 w-4 mr-2" />
+                                              Criar "{tagSearchTerm}" e selecionar filhas
+                                            </Button>
+                                          )}
+                                        </CommandEmpty>
+                                        <ScrollArea className="h-[300px]">
+                                          <CommandGroup heading="Tags Pai existentes">
+                                            {uniqueTags
+                                              ?.filter(t => t.toLowerCase().includes(tagSearchTerm.toLowerCase()))
+                                              .map(tag => (
+                                                <CommandItem 
+                                                  key={tag}
+                                                  onSelect={() => {
+                                                    setSelectedParentTag(tag);
+                                                    setTagSearchTerm("");
+                                                  }}
+                                                >
+                                                  <Tag className="h-4 w-4 mr-2" />
+                                                  {tag}
+                                                  <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
+                                                </CommandItem>
+                                              ))
+                                            }
+                                          </CommandGroup>
+                                        </ScrollArea>
+                                      </CommandList>
+                                    </Command>
+                                  ) : (
+                                    // Step 2: Select child tags
+                                    <div className="space-y-4">
+                                      <div className="flex items-center gap-2">
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm"
+                                          onClick={() => {
+                                            setSelectedParentTag(null);
+                                            setSelectedChildTags(new Set());
+                                          }}
+                                        >
+                                          <ChevronLeft className="h-4 w-4 mr-1" />
+                                          Voltar
+                                        </Button>
+                                        <Badge variant="default">{selectedParentTag}</Badge>
+                                      </div>
+                                      
+                                      {childTagsForParent && childTagsForParent.length > 0 ? (
+                                        <div className="space-y-3">
+                                          <p className="text-sm text-muted-foreground">
+                                            Selecione as tags filhas para incluir:
+                                          </p>
+                                          <ScrollArea className="h-[250px] border rounded-lg p-3">
+                                            <div className="space-y-2">
+                                              {childTagsForParent.map(childTag => (
+                                                <label 
+                                                  key={childTag}
+                                                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                                                >
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={selectedChildTags.has(childTag)}
+                                                    onChange={(e) => {
+                                                      const newSet = new Set(selectedChildTags);
+                                                      if (e.target.checked) {
+                                                        newSet.add(childTag);
+                                                      } else {
+                                                        newSet.delete(childTag);
+                                                      }
+                                                      setSelectedChildTags(newSet);
+                                                    }}
+                                                    className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+                                                  />
+                                                  <span className="text-sm">{childTag}</span>
+                                                </label>
+                                              ))}
+                                            </div>
+                                          </ScrollArea>
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-sm text-muted-foreground">
+                                              {selectedChildTags.size} selecionada(s)
+                                            </span>
+                                            <div className="flex gap-2">
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                  if (selectedChildTags.size === childTagsForParent.length) {
+                                                    setSelectedChildTags(new Set());
+                                                  } else {
+                                                    setSelectedChildTags(new Set(childTagsForParent));
+                                                  }
                                                 }}
                                               >
-                                                <Tag className="h-4 w-4 mr-2" />
-                                                {tag}
-                                              </CommandItem>
-                                            ))
-                                          }
-                                        </CommandGroup>
-                                      </ScrollArea>
-                                    </CommandList>
-                                  </Command>
+                                                {selectedChildTags.size === childTagsForParent.length ? "Desmarcar Todas" : "Selecionar Todas"}
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="text-center py-6 text-muted-foreground">
+                                          <Tag className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                          <p>Nenhuma tag filha encontrada para "{selectedParentTag}"</p>
+                                          <p className="text-xs mt-1">A tag pai será inserida sem filhas</p>
+                                        </div>
+                                      )}
+                                      
+                                      <div className="flex justify-end gap-2 pt-2 border-t">
+                                        <Button 
+                                          variant="outline"
+                                          onClick={() => {
+                                            setTagSearchOpen(null);
+                                            setSelectedParentTag(null);
+                                            setSelectedChildTags(new Set());
+                                          }}
+                                        >
+                                          Cancelar
+                                        </Button>
+                                        <Button 
+                                          onClick={() => {
+                                            insertTagsWithChildrenMutation.mutate({
+                                              docId: doc.id,
+                                              parentTagName: selectedParentTag,
+                                              childTagNames: Array.from(selectedChildTags)
+                                            });
+                                          }}
+                                          disabled={insertTagsWithChildrenMutation.isPending}
+                                        >
+                                          {insertTagsWithChildrenMutation.isPending ? (
+                                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Inserindo...</>
+                                          ) : (
+                                            <><Check className="h-4 w-4 mr-2" /> Inserir Tags</>
+                                          )}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </DialogContent>
                               </Dialog>
                               {/* Contexto/Caixa destacado */}
