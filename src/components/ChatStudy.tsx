@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatStudy } from "@/hooks/useChatStudy";
-import { Loader2, ImagePlus, Mic, Square, X, ArrowUp, BarChart3 } from "lucide-react";
+import { Loader2, ImagePlus, Mic, Square, X, ArrowUp } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
@@ -17,7 +17,6 @@ import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { ChartTypeSelector, ChartType } from "./ChartTypeSelector";
 
 const SentimentIndicator = ({
   sentiment
@@ -80,8 +79,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const [isTranscribing, setIsTranscribing] = useState(false);
 
   const [isImageMode, setIsImageMode] = useState(false);
-  const [isChartMode, setIsChartMode] = useState(false);
-  const [selectedChartType, setSelectedChartType] = useState<ChartType>('bar');
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
   const [waitingCountdown, setWaitingCountdown] = useState(5);
 
@@ -209,17 +206,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
         generateImage(input);
         setInput("");
         setIsImageMode(false);
-      } else if (isChartMode) {
-        // Prefix with chart type preference
-        const chartTypeLabels: Record<ChartType, string> = {
-          bar: 'barras',
-          line: 'linhas',
-          pie: 'pizza',
-          area: 'área'
-        };
-        sendMessage(`[Gráfico de ${chartTypeLabels[selectedChartType]}] ${input}`);
-        setInput("");
-        setIsChartMode(false);
       } else {
         sendMessage(input);
         setInput("");
@@ -231,14 +217,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
 
   const toggleImageMode = () => {
     setIsImageMode(!isImageMode);
-    setIsChartMode(false);
     setInput("");
-  };
-
-  const handleChartTypeSelect = (type: ChartType) => {
-    setSelectedChartType(type);
-    setIsChartMode(true);
-    setIsImageMode(false);
   };
 
   const startRecording = async () => {
@@ -637,8 +616,8 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           backfaceVisibility: 'hidden'
         }} disabled={isLoading || isTranscribing} />
           
-            {/* Esquerda: Mic + Draw + Chart lado a lado */}
-            <div className="absolute bottom-3 left-3 flex items-center gap-1">
+            {/* Esquerda: Mic + Draw lado a lado */}
+            <div className="absolute bottom-3 left-3 flex items-center gap-2">
               <Button type="button" size="icon" variant="ghost" onClick={isRecording ? stopRecording : startRecording} className={`h-10 w-10 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500 bg-red-500/10" : ""}`}>
                 {isRecording ? <Square className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
               </Button>
@@ -646,12 +625,6 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
               <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} title="Desenhar" className="h-10 w-10 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
                 <ImagePlus className="w-5 h-5" />
               </Button>
-              
-              <ChartTypeSelector 
-                value={selectedChartType} 
-                onChange={handleChartTypeSelect} 
-                compact 
-              />
             </div>
             
             {/* Direita: Input (círculo) */}

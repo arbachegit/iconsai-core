@@ -157,32 +157,6 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
      * ---: (direita)
    - O sistema converterá automaticamente para tabela interativa com ordenação e filtros
 
-5. 📊 GRÁFICOS (quando solicitado):
-   - Quando o usuário pedir gráficos, estatísticas visuais ou visualização de dados, gere um bloco CHART_DATA
-   - Formato OBRIGATÓRIO:
-   
-   CHART_DATA: {"type": "bar", "title": "Título do Gráfico", "labels": ["Label1", "Label2", "Label3"], "datasets": [{"name": "Série 1", "values": [10, 20, 30]}]}
-   
-   - Tipos disponíveis: "bar", "line", "pie", "area"
-   - Se o usuário especificar um tipo (ex: "gráfico de pizza"), use esse tipo
-   - Sempre inclua dados numéricos reais e relevantes ao contexto
-
-6. 🔀 DIAGRAMAS MERMAID (quando solicitado):
-   - Quando o usuário pedir fluxogramas, diagramas de processo, ou visualização de fluxos, gere código Mermaid
-   - Formato OBRIGATÓRIO:
-   
-   \`\`\`mermaid
-   graph TD
-       A[Início] --> B[Processo]
-       B --> C{Decisão}
-       C -->|Sim| D[Resultado 1]
-       C -->|Não| E[Resultado 2]
-   \`\`\`
-   
-   - Use graph TD para fluxos verticais, graph LR para horizontais
-   - Evite caracteres especiais nos rótulos (parênteses, aspas, pontos de interrogação)
-   - Tipos: flowchart, sequence, class, state, er, journey
-
 EXEMPLO DE RESPOSTA COMPLETA:
 
 Usuário: "Como prevenir diabetes?"

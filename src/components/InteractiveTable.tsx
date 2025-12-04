@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, Download, Filter, X, MessageCircle, Mail } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Download, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -9,8 +9,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import html2canvas from 'html2canvas';
 
 interface TableData {
   headers: string[];
@@ -29,8 +27,6 @@ export const InteractiveTable = ({ data, className }: InteractiveTableProps) => 
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [filters, setFilters] = useState<Record<number, string>>({});
   const [showFilters, setShowFilters] = useState(false);
-  const tableRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
   // Parse numeric values for proper sorting
   const parseValue = (value: string): number | string => {
@@ -131,31 +127,6 @@ export const InteractiveTable = ({ data, className }: InteractiveTableProps) => 
     link.click();
   };
 
-  const handleShareWhatsApp = async () => {
-    const tableText = [
-      data.headers.join(' | '),
-      '-'.repeat(data.headers.join(' | ').length),
-      ...processedRows.slice(0, 5).map(row => row.join(' | ')),
-      processedRows.length > 5 ? `... e mais ${processedRows.length - 5} linhas` : ''
-    ].filter(Boolean).join('\n');
-    
-    const text = encodeURIComponent(`📊 Tabela\n\n${tableText}\n\nVisualize no KnowYOU!`);
-    window.open(`https://wa.me/?text=${text}`, '_blank');
-    toast({ title: 'Abrindo WhatsApp...' });
-  };
-
-  const handleShareEmail = async () => {
-    const tableText = [
-      data.headers.join(' | '),
-      ...processedRows.slice(0, 10).map(row => row.join(' | ')),
-    ].join('\n');
-    
-    const subject = encodeURIComponent('Tabela do KnowYOU');
-    const body = encodeURIComponent(`Tabela:\n\n${tableText}\n\nVisualize no KnowYOU!`);
-    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
-    toast({ title: 'Abrindo e-mail...' });
-  };
-
   const hasActiveFilters = Object.values(filters).some(v => v);
 
   const getSortIcon = (colIndex: number) => {
@@ -196,32 +167,22 @@ export const InteractiveTable = ({ data, className }: InteractiveTableProps) => 
           )}
         </div>
         
-        <div className="flex items-center gap-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs">
-                <Download className="h-3 w-3 mr-1" />
-                Exportar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={exportToCSV}>
-                Exportar CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportToExcel}>
-                Exportar Excel
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={handleShareWhatsApp} title="WhatsApp">
-            <MessageCircle className="h-3 w-3" />
-          </Button>
-          
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={handleShareEmail} title="E-mail">
-            <Mail className="h-3 w-3" />
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-7 text-xs">
+              <Download className="h-3 w-3 mr-1" />
+              Exportar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={exportToCSV}>
+              Exportar CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportToExcel}>
+              Exportar Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Filter Row */}
