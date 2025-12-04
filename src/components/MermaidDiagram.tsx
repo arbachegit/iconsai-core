@@ -18,15 +18,27 @@ const sanitizeChart = (chart: string): string => {
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     
-    // 2. Replace newlines INSIDE labels [...] and {...} with spaces
+    // 2. Process subgraph titles - remove colons and parentheses completely
+    .replace(/subgraph\s+(.+?)(?=\n)/g, (match) => {
+      return match
+        .replace(/:/g, ' -')
+        .replace(/\(/g, '-')
+        .replace(/\)/g, '-');
+    })
+    
+    // 3. Replace parentheses INSIDE labels [...] and {...} with hyphens FIRST
+    .replace(/\[([^\]]*)\]/g, (match) => match.replace(/\(/g, '-').replace(/\)/g, '-'))
+    .replace(/\{([^\}]*)\}/g, (match) => match.replace(/\(/g, '-').replace(/\)/g, '-'))
+    
+    // 4. Replace newlines INSIDE labels [...] and {...} with spaces
     .replace(/\[([^\]]*)\]/g, (match) => match.replace(/\n/g, ' '))
     .replace(/\{([^\}]*)\}/g, (match) => match.replace(/\n/g, ' '))
     
-    // 3. Replace colons INSIDE labels [...] and {...} with hyphens
+    // 5. Replace colons INSIDE labels [...] and {...} with hyphens
     .replace(/\[([^\]]*)\]/g, (match) => match.replace(/:/g, ' -'))
     .replace(/\{([^\}]*)\}/g, (match) => match.replace(/:/g, ' -'))
     
-    // 4. Remove emojis and problematic Unicode characters
+    // 6. Remove emojis and problematic Unicode characters
     .replace(/[\u{1F600}-\u{1F64F}]/gu, '')  // Emoticons
     .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')  // Misc symbols & pictographs
     .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')  // Transport & map symbols
@@ -53,28 +65,22 @@ const sanitizeChart = (chart: string): string => {
     .replace(/[\u{3299}]/gu, '')             // Circled ideograph secret
     .replace(/[🔴🟢🟡🔵⚪⚫🟠🟣🟤]/gu, '')   // Colored circles
     
-    // 3. Handle colons in subgraph titles
-    .replace(/subgraph\s+([^\n:]+):/g, 'subgraph $1 -')
-    
-    // 4. Replace parentheses in labels with hyphens
-    .replace(/\(([^)]+)\)/g, '-$1-')
-    
-    // 5. Replace slashes with hyphens
+    // 7. Replace slashes with hyphens
     .replace(/\//g, '-')
     
-    // 6. Remove all types of quotes
+    // 8. Remove all types of quotes
     .replace(/[""''`´]/g, '')
     .replace(/"/g, '')
     .replace(/'/g, '')
     
-    // 7. Remove question marks
+    // 9. Remove question marks
     .replace(/\?/g, '')
     
-    // 8. Handle nested brackets
+    // 10. Handle nested brackets
     .replace(/\[([^\]]*)\[/g, '[$1')
     .replace(/\]([^\[]*)\]/g, ']$1')
     
-    // 9. Remove other problematic characters
+    // 11. Remove other problematic characters
     .replace(/[<>]/g, '')
     // Replace & only INSIDE labels [...] or {...}, preserve as junction operator
     .replace(/\[([^\]]*)\]/g, (match) => match.replace(/&/g, 'e'))
@@ -83,10 +89,15 @@ const sanitizeChart = (chart: string): string => {
     .replace(/;/g, '')
     .replace(/\|/g, '-')
     
-    // 10. Handle colons (but preserve --> arrows)
-    .replace(/(?<!-)(?<!>):(?!:)/g, ' -')
+    // 12. Handle remaining colons (compatible without lookbehind)
+    .replace(/:(?!:)/g, (match, offset, str) => {
+      if (offset > 0 && (str[offset-1] === '-' || str[offset-1] === '>')) {
+        return match;
+      }
+      return ' -';
+    })
     
-    // 11. Clean up multiple spaces and hyphens
+    // 13. Clean up multiple spaces and hyphens
     .replace(/--+/g, '--')
     .replace(/  +/g, ' ')
     .replace(/- -/g, '-');
