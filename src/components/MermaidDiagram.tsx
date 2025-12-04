@@ -18,7 +18,15 @@ const sanitizeChart = (chart: string): string => {
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     
-    // 2. Remove emojis and problematic Unicode characters
+    // 2. Replace newlines INSIDE labels [...] and {...} with spaces
+    .replace(/\[([^\]]*)\]/g, (match) => match.replace(/\n/g, ' '))
+    .replace(/\{([^\}]*)\}/g, (match) => match.replace(/\n/g, ' '))
+    
+    // 3. Replace colons INSIDE labels [...] and {...} with hyphens
+    .replace(/\[([^\]]*)\]/g, (match) => match.replace(/:/g, ' -'))
+    .replace(/\{([^\}]*)\}/g, (match) => match.replace(/:/g, ' -'))
+    
+    // 4. Remove emojis and problematic Unicode characters
     .replace(/[\u{1F600}-\u{1F64F}]/gu, '')  // Emoticons
     .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')  // Misc symbols & pictographs
     .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')  // Transport & map symbols
