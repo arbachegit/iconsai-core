@@ -39,7 +39,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle, Percent } from 'lucide-react';
+import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle, Percent, Copy, Check } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export interface ChartData {
@@ -109,9 +110,12 @@ const ChartTypeIcon = ({ type }: { type: string }) => {
 };
 
 export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererProps) => {
+  const { toast } = useToast();
+  
   // State for normalized data
   const [normalizedData, setNormalizedData] = useState<typeof chartData.data | null>(null);
   const [showNormalizeDialog, setShowNormalizeDialog] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   // Use normalized data if available, otherwise original
   const displayData = normalizedData || chartData.data;
@@ -180,6 +184,26 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
     const body = `📊 ${chartData.title}\n\n${displayData.map(d => `${d[xKey]}: ${d.value}`).join('\n')}`;
     const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(url, '_blank');
+  };
+
+  const copyChartData = async () => {
+    const textToCopy = `📊 ${chartData.title}\n\nDados:\n${displayData.map(d => `- ${d[xKey]}: ${d.value}`).join('\n')}\n\nPrompt sugerido para recriar:\n"Crie um gráfico de ${chartType === 'bar' ? 'barras' : chartType === 'line' ? 'linha' : chartType === 'pie' ? 'pizza' : 'área'} mostrando: ${displayData.map(d => `${d[xKey]} (${d.value})`).join(', ')}"`;
+    
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopied(true);
+      toast({
+        title: "Copiado!",
+        description: "Dados do gráfico copiados para a área de transferência",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar os dados",
+        variant: "destructive",
+      });
+    }
   };
 
   const renderChart = () => {
@@ -366,29 +390,28 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   <TrendingUp className="h-4 w-4 mr-2" /> Linha
                 </DropdownMenuItem>
                 
-                {/* Pizza - desabilitado quando dados não somam 100% */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <DropdownMenuItem 
-                        onClick={() => setChartType('pie')}
-                        disabled={!proportionValidation.isValid}
-                        className={cn(!proportionValidation.isValid && "opacity-50 cursor-not-allowed")}
-                      >
-                        <PieChartIcon className="h-4 w-4 mr-2" /> 
-                        Pizza
-                        {!proportionValidation.isValid && (
-                          <AlertCircle className="h-3 w-3 ml-auto text-amber-500" />
-                        )}
-                      </DropdownMenuItem>
-                    </div>
-                  </TooltipTrigger>
-                  {!proportionValidation.isValid && (
+                {/* Pizza - completamente desabilitado quando dados não somam 100% */}
+                {proportionValidation.isValid ? (
+                  <DropdownMenuItem onClick={() => setChartType('pie')}>
+                    <PieChartIcon className="h-4 w-4 mr-2" /> 
+                    Pizza
+                  </DropdownMenuItem>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="relative flex cursor-not-allowed select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none opacity-50">
+                        <PieChartIcon className="h-4 w-4 mr-2 text-muted-foreground" /> 
+                        <span className="text-muted-foreground">Pizza</span>
+                        <AlertCircle className="h-3 w-3 ml-auto text-amber-500" />
+                      </div>
+                    </TooltipTrigger>
                     <TooltipContent side="left" className="max-w-xs">
-                      <p className="text-xs">Soma atual: {proportionValidation.sum.toFixed(1)}% - Requer 100% para gráfico de pizza</p>
+                      <p className="text-xs font-medium text-amber-400">Gráfico de pizza desabilitado</p>
+                      <p className="text-xs mt-1">Soma atual: {proportionValidation.sum.toFixed(1)}%</p>
+                      <p className="text-xs text-muted-foreground">Requer exatamente 100% para este tipo de gráfico.</p>
                     </TooltipContent>
-                  )}
-                </Tooltip>
+                  </Tooltip>
+                )}
                 
                 {/* Área - sempre habilitado */}
                 <DropdownMenuItem onClick={() => setChartType('area')}>
@@ -396,6 +419,27 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Copy Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 w-7 p-0"
+                  onClick={copyChartData}
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-green-500" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Copiar dados e prompt</p>
+              </TooltipContent>
+            </Tooltip>
 
             {/* Export/Share Menu */}
             <DropdownMenu>
