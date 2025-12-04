@@ -23,8 +23,8 @@ const ContextualSuggestions = memo(({
   if (displaySuggestions.length === 0 || isLoading) return null;
   
   return (
-    <div className="px-4 py-0 bg-gradient-to-r from-cyan-500/10 to-cyan-600/5">
-      <div className="flex flex-nowrap gap-1.5 overflow-hidden">
+    <div className="px-6 py-1.5">
+      <div className="flex flex-wrap justify-center gap-2 overflow-hidden">
         {displaySuggestions.map((suggestion, index) => (
           <button
             key={`${suggestion}-${index}`}
