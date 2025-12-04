@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   FileText, 
   Database, 
@@ -16,17 +17,20 @@ import {
   AlertTriangle,
   BookOpen,
   Download,
-  ExternalLink
+  ExternalLink,
+  Lightbulb
 } from "lucide-react";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
+import { ETLExplanationModal } from "./ETLExplanationModal";
 
 export const RagDocumentationTab = () => {
   const [activeSection, setActiveSection] = useState<string>("overview");
+  const [showETLModal, setShowETLModal] = useState(false);
 
   const sections = [
     { id: "overview", title: "Visão Geral", icon: FileText },
     { id: "architecture", title: "Arquitetura", icon: Database },
-    { id: "etl", title: "Pipeline ETL", icon: Code },
+    { id: "etl", title: "Pipeline ETL", icon: Code, hasInfo: true },
     { id: "search", title: "Sistema de Busca", icon: Search },
     { id: "integration", title: "Integração Chats", icon: MessageSquare },
     { id: "functions", title: "Edge Functions", icon: Code },
@@ -78,15 +82,45 @@ export const RagDocumentationTab = () => {
             <ScrollArea className="h-[600px]">
               <div className="space-y-1 p-4">
                 {sections.map((section) => (
-                  <Button
-                    key={section.id}
-                    variant={activeSection === section.id ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                    onClick={() => setActiveSection(section.id)}
-                  >
-                    <section.icon className="h-4 w-4 mr-2" />
-                    {section.title}
-                  </Button>
+                  <div key={section.id} className="flex items-center gap-1">
+                    <Button
+                      variant={activeSection === section.id ? "secondary" : "ghost"}
+                      className="flex-1 justify-start"
+                      onClick={() => setActiveSection(section.id)}
+                    >
+                      <section.icon className="h-4 w-4 mr-2" />
+                      {section.title}
+                    </Button>
+                    {section.hasInfo && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 shrink-0 relative group"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowETLModal(true);
+                              }}
+                            >
+                              <Lightbulb className="h-4 w-4 text-yellow-500 group-hover:text-yellow-400 transition-colors" />
+                              {/* Green pulsating dot */}
+                              <div className="absolute -top-0.5 -right-0.5 z-20">
+                                <div className="relative">
+                                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/50" />
+                                  <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+                                </div>
+                              </div>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            <p>Clique para entender o que é ETL</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                 ))}
               </div>
             </ScrollArea>
@@ -117,6 +151,9 @@ export const RagDocumentationTab = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* ETL Explanation Modal */}
+      <ETLExplanationModal isOpen={showETLModal} onClose={() => setShowETLModal(false)} />
     </div>
   );
 };
