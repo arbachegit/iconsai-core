@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, memo } from "react";
+import { useEffect, useRef, useState, memo, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,6 +16,7 @@ import { AlertTriangle } from "lucide-react";
 import { CopyButton } from "./CopyButton";
 import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
 import { cn } from "@/lib/utils";
+import ContextualSuggestions from "./ContextualSuggestions";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { mapCityToRegion, getRegionDisplayName, getRegionToneLabel } from "@/lib/region-mapping";
 import { MapPin } from "lucide-react";
@@ -111,6 +112,17 @@ export default function ChatKnowYOU() {
   const audioMessageRefs = useRef<{
     [key: number]: HTMLDivElement | null;
   }>({});
+
+  // 🔒 useCallback para não causar re-render do ContextualSuggestions
+  const handleSuggestionClick = useCallback((suggestion: string) => {
+    setInput(suggestion);
+  }, []);
+
+  // 🔒 useMemo para obter última mensagem do assistente
+  const lastAssistantMessage = useMemo(() => {
+    const assistantMessages = messages.filter(m => m.role === 'assistant');
+    return assistantMessages[assistantMessages.length - 1]?.content;
+  }, [messages]);
 
   // Request location on mount
   useEffect(() => {
@@ -621,6 +633,17 @@ export default function ChatKnowYOU() {
           </button>
         )}
       </div>
+
+      {/* Contextual Suggestions - ACIMA do input */}
+      {!isLoading && suggestions.length > 0 && (
+        <ContextualSuggestions
+          suggestions={suggestions}
+          lastAssistantMessage={lastAssistantMessage}
+          isLoading={isLoading}
+          onSuggestionClick={handleSuggestionClick}
+          chatType="health"
+        />
+      )}
 
 
       {/* Input Area */}
