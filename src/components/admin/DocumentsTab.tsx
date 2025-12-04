@@ -72,7 +72,7 @@ export const DocumentsTab = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isBulkReprocessing, setIsBulkReprocessing] = useState(false);
 
-  // Duplicate detection states
+// Duplicate detection states
   const [duplicateInfo, setDuplicateInfo] = useState<{
     newFileName: string;
     existingFileName: string;
@@ -83,6 +83,42 @@ export const DocumentsTab = () => {
     existingTextPreview?: string;
   } | null>(null);
   const [showComparison, setShowComparison] = useState(false);
+
+  // Function to highlight text differences between two strings
+  const highlightTextDifferences = (text1: string, text2: string): { highlighted1: React.ReactNode; highlighted2: React.ReactNode } => {
+    const words1 = text1.split(/\s+/);
+    const words2 = text2.split(/\s+/);
+    const set1 = new Set(words1.map(w => w.toLowerCase()));
+    const set2 = new Set(words2.map(w => w.toLowerCase()));
+    
+    const highlighted1 = words1.map((word, idx) => {
+      const isUnique = !set2.has(word.toLowerCase());
+      return (
+        <span key={idx}>
+          {isUnique ? (
+            <span className="bg-green-500/30 text-green-300 px-0.5 rounded">{word}</span>
+          ) : (
+            word
+          )}{' '}
+        </span>
+      );
+    });
+    
+    const highlighted2 = words2.map((word, idx) => {
+      const isUnique = !set1.has(word.toLowerCase());
+      return (
+        <span key={idx}>
+          {isUnique ? (
+            <span className="bg-amber-500/30 text-amber-300 px-0.5 rounded">{word}</span>
+          ) : (
+            word
+          )}{' '}
+        </span>
+      );
+    });
+    
+    return { highlighted1, highlighted2 };
+  };
 
   // RAG Info Modal state
   const [showRagInfoModal, setShowRagInfoModal] = useState(false);
@@ -2085,37 +2121,55 @@ export const DocumentsTab = () => {
                 {showComparison ? "Ocultar comparação" : "Ver comparação lado-a-lado"}
               </Button>
               
-              {/* Side-by-side comparison */}
-              {showComparison && (
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
-                        Novo
-                      </Badge>
-                      <span className="text-xs text-muted-foreground truncate">{duplicateInfo.newFileName}</span>
+              {/* Side-by-side comparison with highlighted differences */}
+              {showComparison && (() => {
+                const { highlighted1, highlighted2 } = highlightTextDifferences(
+                  duplicateInfo.newTextPreview || "",
+                  duplicateInfo.existingTextPreview || ""
+                );
+                return (
+                  <div className="space-y-3 mt-4">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="w-3 h-3 bg-green-500/30 rounded"></span>
+                        Texto exclusivo do novo
+                      </span>
+                      <span className="inline-flex items-center gap-1 ml-4">
+                        <span className="w-3 h-3 bg-amber-500/30 rounded"></span>
+                        Texto exclusivo do existente
+                      </span>
                     </div>
-                    <ScrollArea className="h-[250px] rounded-lg border border-green-500/30 bg-green-500/5 p-3">
-                      <p className="text-xs font-mono whitespace-pre-wrap text-muted-foreground">
-                        {duplicateInfo.newTextPreview || "Preview não disponível"}
-                      </p>
-                    </ScrollArea>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/30">
-                        Existente
-                      </Badge>
-                      <span className="text-xs text-muted-foreground truncate">{duplicateInfo.existingFileName}</span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
+                            Novo
+                          </Badge>
+                          <span className="text-xs text-muted-foreground truncate">{duplicateInfo.newFileName}</span>
+                        </div>
+                        <ScrollArea className="h-[250px] rounded-lg border border-green-500/30 bg-green-500/5 p-3">
+                          <div className="text-xs font-mono whitespace-pre-wrap text-muted-foreground">
+                            {duplicateInfo.newTextPreview ? highlighted1 : "Preview não disponível"}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/30">
+                            Existente
+                          </Badge>
+                          <span className="text-xs text-muted-foreground truncate">{duplicateInfo.existingFileName}</span>
+                        </div>
+                        <ScrollArea className="h-[250px] rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                          <div className="text-xs font-mono whitespace-pre-wrap text-muted-foreground">
+                            {duplicateInfo.existingTextPreview ? highlighted2 : "Preview não disponível"}
+                          </div>
+                        </ScrollArea>
+                      </div>
                     </div>
-                    <ScrollArea className="h-[250px] rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
-                      <p className="text-xs font-mono whitespace-pre-wrap text-muted-foreground">
-                        {duplicateInfo.existingTextPreview || "Preview não disponível"}
-                      </p>
-                    </ScrollArea>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               
               <p className="text-sm text-muted-foreground">
                 O que deseja fazer?

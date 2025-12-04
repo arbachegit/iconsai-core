@@ -160,6 +160,7 @@ export type Database = {
           chat_type: string
           created_at: string | null
           document_tags_data: Json | null
+          duplicate_similarity_threshold: number | null
           health_issues: Json | null
           health_status: string | null
           id: string
@@ -179,6 +180,7 @@ export type Database = {
           chat_type: string
           created_at?: string | null
           document_tags_data?: Json | null
+          duplicate_similarity_threshold?: number | null
           health_issues?: Json | null
           health_status?: string | null
           id?: string
@@ -198,6 +200,7 @@ export type Database = {
           chat_type?: string
           created_at?: string | null
           document_tags_data?: Json | null
+          duplicate_similarity_threshold?: number | null
           health_issues?: Json | null
           health_status?: string | null
           id?: string

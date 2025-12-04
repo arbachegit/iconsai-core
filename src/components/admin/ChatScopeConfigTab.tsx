@@ -36,6 +36,7 @@ interface ChatConfig {
     count: number;
   }>;
   phonetic_map: Record<string, string>;
+  duplicate_similarity_threshold?: number;
   created_at: string;
   updated_at: string;
 }
@@ -759,6 +760,67 @@ export function ChatScopeConfigTab() {
           Gerencie as delimitações e configurações RAG de cada assistente
         </p>
       </div>
+
+      {/* Duplicate Detection Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="h-5 w-5" />
+            Detecção de Duplicatas
+          </CardTitle>
+          <CardDescription>Configure o threshold de similaridade para detectar documentos duplicados</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Threshold de Similaridade</Label>
+              <Badge variant="outline" className="font-mono">
+                {Math.round((studyConfig?.duplicate_similarity_threshold || 0.90) * 100)}%
+              </Badge>
+            </div>
+            <Slider
+              value={[(studyConfig?.duplicate_similarity_threshold || 0.90) * 100]}
+              onValueChange={(v) => {
+                const threshold = v[0] / 100;
+                if (studyConfig) setStudyConfig({ ...studyConfig, duplicate_similarity_threshold: threshold });
+                if (healthConfig) setHealthConfig({ ...healthConfig, duplicate_similarity_threshold: threshold });
+              }}
+              min={85}
+              max={95}
+              step={1}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>85% (mais restritivo)</span>
+              <span>95% (menos restritivo)</span>
+            </div>
+          </div>
+          
+          {(studyConfig?.duplicate_similarity_threshold || 0.90) < 0.88 && (
+            <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-200">
+                Valores abaixo de 88% podem gerar falsos positivos para documentos com conteúdo similar mas não idêntico.
+              </p>
+            </div>
+          )}
+          
+          <Button
+            onClick={async () => {
+              const threshold = studyConfig?.duplicate_similarity_threshold || 0.90;
+              await updateConfig("study", { duplicate_similarity_threshold: threshold } as any);
+              await updateConfig("health", { duplicate_similarity_threshold: threshold } as any);
+              toast({
+                title: "Configuração salva",
+                description: `Threshold de duplicatas atualizado para ${Math.round(threshold * 100)}%`
+              });
+            }}
+            className="w-full"
+          >
+            Salvar Configuração
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* RAG Test Section */}
       <Card>
