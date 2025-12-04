@@ -28,9 +28,11 @@ import {
   Route,
   TestTube,
   Music,
+  Shield,
+  History,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -84,7 +86,6 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         { id: "rag-metrics" as TabType, label: "Métricas RAG", icon: Database },
         { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
         { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
-        { id: "document-routing-logs" as TabType, label: "Logs de Roteamento", icon: Route },
       ]
     },
     {
@@ -97,6 +98,15 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         { id: "tooltips" as TabType, label: "Tooltips", icon: MessageCircle },
         { id: "images" as TabType, label: "Cache de Imagens", icon: Image },
         { id: "youtube" as TabType, label: "Inserir Vídeos", icon: Youtube },
+      ]
+    },
+    {
+      id: "audit",
+      label: "Auditoria",
+      icon: Shield,
+      items: [
+        { id: "activity-logs" as TabType, label: "Log de Atividades", icon: History },
+        { id: "document-routing-logs" as TabType, label: "Logs de Roteamento", icon: Route },
       ]
     },
     {
