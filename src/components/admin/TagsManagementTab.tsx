@@ -297,6 +297,50 @@ export const TagsManagementTab = () => {
   // Sort by similarity descending
   semanticDuplicates.sort((a, b) => b.similarity - a.similarity);
 
+  // Detect similar child tags within the same parent
+  const similarChildTagsPerParent: {
+    parentId: string;
+    parentName: string;
+    pairs: { tag1: string; tag2: string; id1: string; id2: string; similarity: number }[];
+  }[] = [];
+
+  parentTags.forEach(parent => {
+    const children = childTagsMap[parent.id] || [];
+    if (children.length < 2) return;
+    
+    const pairs: { tag1: string; tag2: string; id1: string; id2: string; similarity: number }[] = [];
+    
+    for (let i = 0; i < children.length; i++) {
+      for (let j = i + 1; j < children.length; j++) {
+        const similarity = calculateSimilarity(children[i].tag_name, children[j].tag_name);
+        // Consider similar if >= 60% match but not exact
+        if (similarity >= 0.6 && similarity < 1) {
+          pairs.push({
+            tag1: children[i].tag_name,
+            tag2: children[j].tag_name,
+            id1: children[i].id,
+            id2: children[j].id,
+            similarity,
+          });
+        }
+      }
+    }
+    
+    if (pairs.length > 0) {
+      pairs.sort((a, b) => b.similarity - a.similarity);
+      similarChildTagsPerParent.push({
+        parentId: parent.id,
+        parentName: parent.tag_name,
+        pairs,
+      });
+    }
+  });
+
+  // Total count of child duplicates
+  const totalChildDuplicates = similarChildTagsPerParent.reduce(
+    (sum, p) => sum + p.pairs.length, 0
+  );
+
   // Pagination
   const totalPages = Math.ceil(sortedParentTags.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -575,14 +619,14 @@ export const TagsManagementTab = () => {
       </div>
 
       {/* Duplicate Detection - Combined Section */}
-      {(duplicateParentTags.length > 0 || semanticDuplicates.length > 0) && (
+      {(duplicateParentTags.length > 0 || semanticDuplicates.length > 0 || similarChildTagsPerParent.length > 0) && (
         <Card className="p-4 border-amber-500/50 bg-amber-500/5">
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
             <h3 className="font-semibold">
               Duplicatas Detectadas
               <Badge variant="outline" className="ml-2">
-                {duplicateParentTags.length + semanticDuplicates.length}
+                {duplicateParentTags.length + semanticDuplicates.length + totalChildDuplicates}
               </Badge>
             </h3>
           </div>
@@ -641,6 +685,57 @@ export const TagsManagementTab = () => {
                     +{semanticDuplicates.length - 15} outras duplicatas semânticas
                   </p>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Similar Child Tags within Same Parent */}
+          {similarChildTagsPerParent.length > 0 && (
+            <div className="mt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge className="text-xs bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+                  <Tags className="h-3 w-3 mr-1" />
+                  Filhas Semelhantes
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  Tags filhas similares dentro do mesmo pai ({totalChildDuplicates})
+                </span>
+              </div>
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {similarChildTagsPerParent.map(({ parentId, parentName, pairs }) => (
+                  <Collapsible key={parentId}>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-cyan-500/10 border border-cyan-500/30 rounded hover:bg-cyan-500/20 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <ChevronDown className="h-4 w-4 transition-transform" />
+                        <span className="font-medium">{parentName}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {pairs.length} par(es)
+                        </Badge>
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pl-6 pt-2 space-y-2">
+                      {pairs.map(({ tag1, tag2, id1, id2, similarity }, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 bg-cyan-500/5 border border-cyan-500/20 rounded">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="secondary" className="text-xs">{tag1}</Badge>
+                            <span className="text-muted-foreground">≈</span>
+                            <Badge variant="secondary" className="text-xs">{tag2}</Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {Math.round(similarity * 100)}%
+                            </Badge>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => openMergeDialog(`${tag1} → ${tag2}`, [id1, id2])}
+                          >
+                            <Merge className="h-4 w-4 mr-1" /> Mesclar
+                          </Button>
+                        </div>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
               </div>
             </div>
           )}
