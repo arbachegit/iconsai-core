@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BarChart,
   Bar,
@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
   Cell,
@@ -23,7 +23,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from '@/components/ui/tooltip';
+import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface ChartData {
@@ -39,6 +45,12 @@ interface ChatChartRendererProps {
   className?: string;
 }
 
+interface ProportionValidation {
+  isValid: boolean;
+  sum: number;
+  message?: string;
+}
+
 const CHART_COLORS = [
   'hsl(var(--primary))',
   'hsl(var(--secondary))',
@@ -49,6 +61,21 @@ const CHART_COLORS = [
   'hsl(280, 60%, 55%)',
   'hsl(180, 60%, 45%)',
 ];
+
+// Validate if data sums to 100% (±0.1% tolerance) for proportion charts
+const validateProportionData = (data: { value: number }[]): ProportionValidation => {
+  const sum = data.reduce((acc, item) => acc + (item.value || 0), 0);
+  const tolerance = 0.1; // ±0.1% tolerance
+  const isValid = Math.abs(sum - 100) <= tolerance;
+  
+  return {
+    isValid,
+    sum,
+    message: !isValid 
+      ? `A soma das variáveis é de ${sum.toFixed(1)}% e deve ser 100% para este tipo de gráfico proporcional.`
+      : undefined
+  };
+};
 
 const ChartTypeIcon = ({ type }: { type: string }) => {
   switch (type) {
@@ -61,7 +88,20 @@ const ChartTypeIcon = ({ type }: { type: string }) => {
 };
 
 export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererProps) => {
-  const [chartType, setChartType] = useState<'bar' | 'line' | 'pie' | 'area'>(chartData.type || 'bar');
+  // Validate proportion data
+  const proportionValidation = useMemo(() => validateProportionData(chartData.data), [chartData.data]);
+  
+  // Initialize chart type with auto-correction for invalid pie charts
+  const [chartType, setChartType] = useState<'bar' | 'line' | 'pie' | 'area'>(() => {
+    const requestedType = chartData.type || 'bar';
+    // Auto-correct pie to bar if data doesn't sum to 100%
+    if (requestedType === 'pie' && !proportionValidation.isValid) {
+      console.warn(`Gráfico de pizza solicitado mas soma é ${proportionValidation.sum.toFixed(1)}%, usando barras`);
+      return 'bar';
+    }
+    return requestedType;
+  });
+  
   const chartRef = React.useRef<HTMLDivElement>(null);
 
   const xKey = chartData.xKey || 'name';
@@ -110,7 +150,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
-              <Tooltip 
+              <RechartsTooltip 
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--popover))', 
                   border: '1px solid hsl(var(--border))',
@@ -139,7 +179,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
-              <Tooltip 
+              <RechartsTooltip 
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--popover))', 
                   border: '1px solid hsl(var(--border))',
@@ -179,7 +219,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip 
+              <RechartsTooltip 
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--popover))', 
                   border: '1px solid hsl(var(--border))',
@@ -206,7 +246,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
-              <Tooltip 
+              <RechartsTooltip 
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--popover))', 
                   border: '1px solid hsl(var(--border))',
@@ -234,64 +274,93 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   };
 
   return (
-    <div ref={chartRef} className={cn("my-3 rounded-lg border border-border/50 overflow-hidden bg-card", className)}>
-      {/* Header with title and controls */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-muted/30 border-b border-border/50">
-        <h4 className="text-sm font-medium truncate">{chartData.title}</h4>
-        
-        <div className="flex items-center gap-1">
-          {/* Chart Type Selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
-                <ChartTypeIcon type={chartType} />
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setChartType('bar')}>
-                <BarChart3 className="h-4 w-4 mr-2" /> Barras
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setChartType('line')}>
-                <TrendingUp className="h-4 w-4 mr-2" /> Linha
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setChartType('pie')}>
-                <PieChartIcon className="h-4 w-4 mr-2" /> Pizza
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setChartType('area')}>
-                <AreaChartIcon className="h-4 w-4 mr-2" /> Área
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <TooltipProvider>
+      <div ref={chartRef} className={cn("my-3 rounded-lg border border-border/50 overflow-hidden bg-card", className)}>
+        {/* Header with title and controls */}
+        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-muted/30 border-b border-border/50">
+          <h4 className="text-sm font-medium truncate">{chartData.title}</h4>
+          
+          <div className="flex items-center gap-1">
+            {/* Chart Type Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+                  <ChartTypeIcon type={chartType} />
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {/* Barras - sempre habilitado */}
+                <DropdownMenuItem onClick={() => setChartType('bar')}>
+                  <BarChart3 className="h-4 w-4 mr-2" /> Barras
+                </DropdownMenuItem>
+                
+                {/* Linha - sempre habilitado */}
+                <DropdownMenuItem onClick={() => setChartType('line')}>
+                  <TrendingUp className="h-4 w-4 mr-2" /> Linha
+                </DropdownMenuItem>
+                
+                {/* Pizza - condicionalmente habilitado */}
+                {proportionValidation.isValid ? (
+                  <DropdownMenuItem onClick={() => setChartType('pie')}>
+                    <PieChartIcon className="h-4 w-4 mr-2" /> Pizza
+                  </DropdownMenuItem>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <DropdownMenuItem 
+                          disabled
+                          className="opacity-50 cursor-not-allowed"
+                        >
+                          <PieChartIcon className="h-4 w-4 mr-2" /> 
+                          Pizza
+                          <AlertCircle className="h-3 w-3 ml-auto text-amber-500" />
+                        </DropdownMenuItem>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="max-w-xs">
+                      <p className="text-sm">{proportionValidation.message}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                
+                {/* Área - sempre habilitado */}
+                <DropdownMenuItem onClick={() => setChartType('area')}>
+                  <AreaChartIcon className="h-4 w-4 mr-2" /> Área
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          {/* Export/Share Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs">
-                <Download className="h-3 w-3 mr-1" />
-                Exportar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={exportToCSV}>
-                <Download className="h-4 w-4 mr-2" /> Download CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={shareViaWhatsApp}>
-                <MessageCircle className="h-4 w-4 mr-2" /> WhatsApp
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={shareViaEmail}>
-                <Mail className="h-4 w-4 mr-2" /> Email
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            {/* Export/Share Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-xs">
+                  <Download className="h-3 w-3 mr-1" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportToCSV}>
+                  <Download className="h-4 w-4 mr-2" /> Download CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={shareViaWhatsApp}>
+                  <MessageCircle className="h-4 w-4 mr-2" /> WhatsApp
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={shareViaEmail}>
+                  <Mail className="h-4 w-4 mr-2" /> Email
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Chart */}
+        <div className="p-3">
+          {renderChart()}
         </div>
       </div>
-
-      {/* Chart */}
-      <div className="p-3">
-        {renderChart()}
-      </div>
-    </div>
+    </TooltipProvider>
   );
 };
 
