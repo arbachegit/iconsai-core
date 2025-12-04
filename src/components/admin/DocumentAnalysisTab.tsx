@@ -30,6 +30,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Command,
@@ -83,6 +93,7 @@ export const DocumentAnalysisTab = () => {
   const [tagSearchTerm, setTagSearchTerm] = useState("");
   const [selectedParentTag, setSelectedParentTag] = useState<string | null>(null);
   const [selectedChildTags, setSelectedChildTags] = useState<Set<string>>(new Set());
+  const [tagToDelete, setTagToDelete] = useState<{ id: string; name: string; isParent: boolean } | null>(null);
   
   const queryClient = useQueryClient();
 
@@ -758,8 +769,7 @@ export const DocumentAnalysisTab = () => {
                                               variant="ghost"
                                               size="icon"
                                               className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                                              onClick={() => deleteTagMutation.mutate(parent.id)}
-                                              disabled={deleteTagMutation.isPending}
+                                              onClick={() => setTagToDelete({ id: parent.id, name: parent.tag_name, isParent: true })}
                                             >
                                               <Trash2 className="h-3 w-3" />
                                             </Button>
@@ -819,8 +829,7 @@ export const DocumentAnalysisTab = () => {
                                           {child.tag_name}
                                           <button
                                             className="opacity-0 group-hover/child:opacity-100 transition-opacity hover:text-destructive"
-                                            onClick={() => deleteTagMutation.mutate(child.id)}
-                                            disabled={deleteTagMutation.isPending}
+                                            onClick={() => setTagToDelete({ id: child.id, name: child.tag_name, isParent: false })}
                                           >
                                             <X className="h-3 w-3" />
                                           </button>
@@ -970,6 +979,51 @@ export const DocumentAnalysisTab = () => {
           </div>
         )}
       </div>
+
+      {/* AlertDialog for tag deletion confirmation */}
+      <AlertDialog open={!!tagToDelete} onOpenChange={(open) => !open && setTagToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Confirmar Exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {tagToDelete?.isParent ? (
+                <>
+                  Tem certeza que deseja excluir a tag <strong>"{tagToDelete?.name}"</strong> e todas as suas tags filhas?
+                  <br /><br />
+                  Esta ação não pode ser desfeita.
+                </>
+              ) : (
+                <>
+                  Tem certeza que deseja excluir a tag filha <strong>"{tagToDelete?.name}"</strong>?
+                  <br /><br />
+                  Esta ação não pode ser desfeita.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (tagToDelete) {
+                  deleteTagMutation.mutate(tagToDelete.id);
+                  setTagToDelete(null);
+                }
+              }}
+            >
+              {deleteTagMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Excluindo...</>
+              ) : (
+                <><Trash2 className="h-4 w-4 mr-2" /> Excluir</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
