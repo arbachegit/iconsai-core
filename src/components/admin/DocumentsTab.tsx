@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap, Eye, Settings2, AlertTriangle, RotateCcw, Table2 as TableIcon } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap, Eye, Settings2, AlertTriangle, RotateCcw, Table2 as TableIcon, Brain } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -116,6 +116,20 @@ export const DocumentsTab = () => {
 
   // Document AI OCR toggle
   const [useDocumentAI, setUseDocumentAI] = useState(false);
+
+  // ML Suggestion approval state
+  const [pendingMLSuggestion, setPendingMLSuggestion] = useState<{
+    fileName: string;
+    suggestedChat: string;
+    confidence: number;
+    pattern: string;
+    fileId: string;
+    documentId?: string;
+    extractedText: string;
+    onAccept: () => void;
+    onReject: (correctedChat: string) => void;
+  } | null>(null);
+  const [mlRejectionChat, setMlRejectionChat] = useState<string>("general");
 
   // Retry with custom validation parameters
   const [retryDoc, setRetryDoc] = useState<any>(null);
@@ -435,16 +449,57 @@ export const DocumentsTab = () => {
 
             // Check if there's a ML-suggested chat based on filename pattern
             const mlSuggestion = await getMLSuggestedChat(file.name);
-            let suggestedChat = "general";
+            let finalChat = "general";
+            let mlDecision: 'accepted' | 'rejected' | null = null;
             
-            if (mlSuggestion) {
-              suggestedChat = mlSuggestion.chat;
+            if (mlSuggestion && mlSuggestion.confidence >= 0.7) {
+              // Show ML suggestion modal for high confidence suggestions
+              const userDecision = await new Promise<{ accepted: boolean; correctedChat?: string }>((resolve) => {
+                setPendingMLSuggestion({
+                  fileName: file.name,
+                  suggestedChat: mlSuggestion.chat,
+                  confidence: mlSuggestion.confidence,
+                  pattern: mlSuggestion.pattern,
+                  fileId: fileId,
+                  extractedText: extractedText,
+                  onAccept: () => resolve({ accepted: true }),
+                  onReject: (correctedChat: string) => resolve({ accepted: false, correctedChat })
+                });
+              });
+
+              if (userDecision.accepted) {
+                finalChat = mlSuggestion.chat;
+                mlDecision = 'accepted';
+                setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+                  ...s,
+                  progress: 40,
+                  details: `✅ ML aceito: ${mlSuggestion.chat}`
+                } : s));
+              } else {
+                finalChat = userDecision.correctedChat || "general";
+                mlDecision = 'rejected';
+                setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+                  ...s,
+                  progress: 40,
+                  details: `❌ ML rejeitado → ${finalChat}`
+                } : s));
+                
+                // Update ML rule with rejection feedback
+                await supabase.rpc('increment_chat_routing_rule_count', {
+                  p_filename_pattern: mlSuggestion.pattern,
+                  p_suggested_chat: mlSuggestion.chat,
+                  p_corrected_chat: finalChat
+                });
+              }
+            } else if (mlSuggestion) {
+              // Auto-apply lower confidence suggestions without modal
+              finalChat = mlSuggestion.chat;
               setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
                 ...s,
                 progress: 40,
                 details: `ML sugeriu: ${mlSuggestion.chat} (${Math.round(mlSuggestion.confidence * 100)}%)`
               } : s));
-              toast.info(`🤖 ML sugeriu "${mlSuggestion.chat}" para "${file.name}" (confiança: ${Math.round(mlSuggestion.confidence * 100)}%)`);
+              toast.info(`🤖 ML aplicou "${mlSuggestion.chat}" para "${file.name}"`);
             } else {
               setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
                 ...s,
@@ -461,7 +516,7 @@ export const DocumentsTab = () => {
               original_text: extractedText,
               text_preview: extractedText.substring(0, 500),
               status: "pending",
-              target_chat: suggestedChat
+              target_chat: finalChat
             }]).select();
             const document = documents?.[0];
             if (docError || !document) {
@@ -472,6 +527,25 @@ export const DocumentsTab = () => {
                 details: 'Erro ao criar registro'
               } : s));
               continue;
+            }
+
+            // Log ML decision if applicable
+            if (mlDecision && mlSuggestion) {
+              await supabase.from("document_routing_log").insert({
+                document_id: document.id,
+                document_name: file.name,
+                original_category: mlSuggestion.chat,
+                final_category: finalChat,
+                action_type: mlDecision === 'accepted' ? 'ml_accepted' : 'ml_rejected',
+                session_id: `admin-${Date.now()}`,
+                scope_changed: mlDecision === 'rejected',
+                metadata: {
+                  ml_suggestion: true,
+                  ml_confidence: mlSuggestion.confidence,
+                  ml_pattern: mlSuggestion.pattern,
+                  decision: mlDecision
+                }
+              });
             }
 
             // Phase 3: Processing
@@ -3449,6 +3523,110 @@ export const DocumentsTab = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setStatusInfoDoc(null)}>
               Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ML Suggestion Approval Modal */}
+      <Dialog open={!!pendingMLSuggestion} onOpenChange={() => {}}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-cyan-400" />
+              Sugestão ML Detectada
+            </DialogTitle>
+          </DialogHeader>
+          
+          {pendingMLSuggestion && (
+            <div className="space-y-4">
+              <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                <p className="text-sm mb-2">
+                  O sistema ML identificou um padrão para:
+                </p>
+                <p className="font-medium truncate">{pendingMLSuggestion.fileName}</p>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <span className="text-sm text-muted-foreground">Chat sugerido:</span>
+                <Badge className={pendingMLSuggestion.suggestedChat === 'health' 
+                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                  : 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                }>
+                  {pendingMLSuggestion.suggestedChat === 'health' ? (
+                    <><Heart className="h-3 w-3 mr-1" /> Health</>
+                  ) : (
+                    <><GraduationCap className="h-3 w-3 mr-1" /> Study</>
+                  )}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <span className="text-sm text-muted-foreground">Confiança:</span>
+                <span className="font-medium text-green-400">
+                  {Math.round(pendingMLSuggestion.confidence * 100)}%
+                </span>
+              </div>
+
+              <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                <strong>Padrão detectado:</strong> "{pendingMLSuggestion.pattern}"
+              </div>
+
+              <div className="border-t pt-4 space-y-3">
+                <p className="text-sm font-medium">Se rejeitar, qual é o chat correto?</p>
+                <Select value={mlRejectionChat} onValueChange={setMlRejectionChat}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="health">
+                      <span className="flex items-center gap-2">
+                        <Heart className="h-4 w-4 text-purple-400" /> Health
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="study">
+                      <span className="flex items-center gap-2">
+                        <GraduationCap className="h-4 w-4 text-blue-400" /> Study
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="general">
+                      <span className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-gray-400" /> General
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                if (pendingMLSuggestion) {
+                  pendingMLSuggestion.onReject(mlRejectionChat);
+                  setPendingMLSuggestion(null);
+                  setMlRejectionChat("general");
+                }
+              }}
+              className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Rejeitar
+            </Button>
+            <Button 
+              onClick={() => {
+                if (pendingMLSuggestion) {
+                  pendingMLSuggestion.onAccept();
+                  setPendingMLSuggestion(null);
+                  setMlRejectionChat("general");
+                }
+              }}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Aceitar
             </Button>
           </DialogFooter>
         </DialogContent>
