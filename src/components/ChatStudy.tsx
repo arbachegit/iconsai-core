@@ -581,8 +581,8 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
       </div>
 
       {/* Messages Area */}
-      <div className="relative flex-1">
-        <ScrollArea className="h-[500px] p-6 border-2 border-cyan-400/60 bg-[hsl(var(--chat-container-bg))] rounded-lg mx-2 mt-2 mb-0 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" ref={scrollRef}>
+      <div className="relative">
+        <ScrollArea className="h-[500px] p-6 border-2 border-cyan-400/60 bg-[hsl(var(--chat-container-bg))] rounded-lg mx-2 mt-2 mb-1 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" ref={scrollRef}>
           {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
               <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
                 <span className="text-4xl font-bold text-primary-foreground">K</span>
