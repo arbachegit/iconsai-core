@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -39,7 +39,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle, Percent, Copy, Check } from 'lucide-react';
+import { RangeSlider } from '@/components/ui/range-slider';
+import { BarChart3, TrendingUp, PieChart as PieChartIcon, AreaChart as AreaChartIcon, Download, MessageCircle, Mail, ChevronDown, AlertCircle, Percent, Copy, Check, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +50,10 @@ export interface ChartData {
   data: { name: string; value: number; [key: string]: any }[];
   xKey?: string;
   yKeys?: string[];
+  axisConfig?: {
+    min?: number;
+    max?: number;
+  };
 }
 
 interface ChatChartRendererProps {
@@ -186,6 +191,43 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   const xKey = chartData.xKey || 'name';
   const yKeys = chartData.yKeys || ['value'];
 
+  // ===== Y-AXIS ZOOM CONTROLS =====
+  // Calculate data bounds for Y-axis
+  const dataBounds = useMemo(() => {
+    const values = displayData.map(d => d.value);
+    const dataMin = Math.min(...values);
+    const dataMax = Math.max(...values);
+    const padding = (dataMax - dataMin) * 0.1 || 5;
+    return {
+      dataMin,
+      dataMax,
+      absoluteMin: 0,
+      absoluteMax: Math.ceil(dataMax + padding)
+    };
+  }, [displayData]);
+
+  // Y-axis domain state
+  const [yDomain, setYDomain] = useState<[number, number]>([0, dataBounds.absoluteMax]);
+  const [isAutoScale, setIsAutoScale] = useState(false);
+
+  // Reset yDomain when data changes or chart type changes
+  useEffect(() => {
+    if (isAutoScale) {
+      const autoMin = Math.max(0, Math.floor(dataBounds.dataMin - 5));
+      setYDomain([autoMin, dataBounds.absoluteMax]);
+    } else {
+      setYDomain([0, dataBounds.absoluteMax]);
+    }
+  }, [dataBounds.absoluteMax, dataBounds.dataMin, chartType]);
+
+  // Handle auto-scale toggle
+  useEffect(() => {
+    if (isAutoScale) {
+      const autoMin = Math.max(0, Math.floor(dataBounds.dataMin - 5));
+      setYDomain([autoMin, dataBounds.absoluteMax]);
+    }
+  }, [isAutoScale, dataBounds]);
+
   // Handle pie chart selection with normalization prompt
   const handlePieSelection = () => {
     if (proportionValidation.isValid) {
@@ -263,6 +305,8 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
               <YAxis 
+                domain={[yDomain[0], yDomain[1]]}
+                allowDataOverflow={true}
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
@@ -285,6 +329,8 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
               <YAxis 
+                domain={[yDomain[0], yDomain[1]]}
+                allowDataOverflow={true}
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
@@ -338,6 +384,8 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
               <YAxis 
+                domain={[yDomain[0], yDomain[1]]}
+                allowDataOverflow={true}
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
@@ -479,6 +527,62 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
             </DropdownMenu>
           </div>
         </div>
+
+        {/* Y-Axis Zoom Controls - Only for bar, line, area (not pie) */}
+        {chartType !== 'pie' && (
+          <div className="px-3 py-2 border-b border-border/30 bg-muted/20">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                Eixo Y:
+              </span>
+              
+              <div className="flex-1 px-2">
+                <RangeSlider
+                  min={dataBounds.absoluteMin}
+                  max={dataBounds.absoluteMax}
+                  step={1}
+                  value={yDomain}
+                  onValueChange={(val) => {
+                    setIsAutoScale(false);
+                    setYDomain(val as [number, number]);
+                  }}
+                  disabled={isAutoScale}
+                  className={cn(isAutoScale && "opacity-50")}
+                />
+              </div>
+              
+              <div className="flex items-center gap-1 text-xs font-mono min-w-[70px]">
+                <span className="text-cyan-400">{yDomain[0]}</span>
+                <span className="text-muted-foreground">-</span>
+                <span className="text-cyan-400">{yDomain[1]}</span>
+              </div>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={isAutoScale ? "default" : "outline"}
+                    size="sm"
+                    className={cn(
+                      "h-6 text-[10px] gap-1 px-2",
+                      isAutoScale && "bg-cyan-600 hover:bg-cyan-700"
+                    )}
+                    onClick={() => setIsAutoScale(!isAutoScale)}
+                  >
+                    <Zap className="h-3 w-3" />
+                    Auto
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">
+                    {isAutoScale 
+                      ? "Desativar auto-ajuste e usar controle manual" 
+                      : "Ativar auto-ajuste para focar nas variações"}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        )}
 
         {/* Chart */}
         <div className="p-3">
