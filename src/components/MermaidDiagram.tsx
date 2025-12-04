@@ -68,7 +68,9 @@ const sanitizeChart = (chart: string): string => {
     
     // 9. Remove other problematic characters
     .replace(/[<>]/g, '')
-    .replace(/&/g, 'e')
+    // Replace & only INSIDE labels [...] or {...}, preserve as junction operator
+    .replace(/\[([^\]]*)\]/g, (match) => match.replace(/&/g, 'e'))
+    .replace(/\{([^\}]*)\}/g, (match) => match.replace(/&/g, 'e'))
     .replace(/#/g, '')
     .replace(/;/g, '')
     .replace(/\|/g, '-')
