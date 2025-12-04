@@ -606,22 +606,17 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
                   </AlertDescription>
                 </Alert>}
               
-              {messages.map((msg, idx) => <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`} ref={el => {
+              {messages.map((msg, idx) => <div key={idx} className={`flex items-end gap-1 ${msg.role === "user" ? "justify-end" : "justify-start"}`} ref={el => {
             if (msg.role === "assistant" && msg.audioUrl) {
               audioMessageRefs.current[idx] = el;
             }
           }}>
+                  {msg.role === "user" && <CopyButton content={msg.content} />}
                   <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right" : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"}`}>
                     {msg.imageUrl && <img src={msg.imageUrl} alt={t('chat.generatingImage')} className="max-w-full rounded-lg mb-2" />}
                     <div className="flex items-start gap-2">
                       <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1" />
                     </div>
-                    
-                    {msg.role === "user" && (
-                      <div className="flex justify-end mt-1">
-                        <CopyButton content={msg.content} />
-                      </div>
-                    )}
                     
                     {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} imageUrl={msg.imageUrl} isPlaying={currentlyPlayingIndex === idx} isGeneratingAudio={isGeneratingAudio} currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0} duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} onDownloadImage={msg.imageUrl ? () => handleDownloadImage(msg.imageUrl!, idx) : undefined} />}
                   </div>
