@@ -20,6 +20,27 @@ function extractKeywords(query: string): string[] {
     .filter(word => word.length > 2 && !stopwords.includes(word));
 }
 
+// Extract potential filename from query
+function extractFilename(query: string): string | null {
+  // Match patterns like "wipo 2017.pdf", "documento.pdf", etc.
+  const patterns = [
+    /["']([^"']+\.pdf)["']/i,  // "filename.pdf" or 'filename.pdf'
+    /:\s*["']?([^"'\s]+\.pdf)["']?/i,  // : filename.pdf
+    /documento[s]?\s+["']?([^"'\s]+\.pdf)["']?/i,  // documento filename.pdf
+    /arquivo[s]?\s+["']?([^"'\s]+\.pdf)["']?/i,  // arquivo filename.pdf
+    /tem\s+(?:o\s+)?["']?([^"'\s]+\.pdf)["']?/i,  // tem filename.pdf
+    /([a-zA-Z0-9_\-\s]+\.pdf)/i  // Generic: any word.pdf pattern
+  ];
+  
+  for (const pattern of patterns) {
+    const match = query.match(pattern);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -30,6 +51,55 @@ serve(async (req) => {
     const { query, targetChat, matchThreshold = 0.15, matchCount = 5, sessionId, useHybridSearch = false } = await req.json();
     
     console.log(`Searching documents for query: "${query}" (target: ${targetChat})`);
+    
+    // Check if query contains a filename - if so, do filename search first
+    const potentialFilename = extractFilename(query);
+    let filenameResults: any[] = [];
+    
+    if (potentialFilename) {
+      console.log(`Detected potential filename in query: "${potentialFilename}"`);
+      
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      // Search documents by filename
+      const { data: matchingDocs } = await supabase
+        .from("documents")
+        .select("id, filename")
+        .eq("status", "completed")
+        .eq("is_readable", true)
+        .or(`and(is_inserted.eq.true,inserted_in_chat.eq.${targetChat}),and(is_inserted.eq.false,target_chat.eq.${targetChat})`)
+        .ilike("filename", `%${potentialFilename.replace('.pdf', '').replace(/\s+/g, '%')}%`);
+      
+      if (matchingDocs && matchingDocs.length > 0) {
+        console.log(`Found ${matchingDocs.length} documents matching filename pattern`);
+        
+        // Get chunks from matching documents
+        const docIds = matchingDocs.map(d => d.id);
+        const { data: chunks } = await supabase
+          .from("document_chunks")
+          .select("id, document_id, content, metadata, word_count")
+          .in("document_id", docIds)
+          .order("chunk_index")
+          .limit(matchCount);
+        
+        if (chunks && chunks.length > 0) {
+          // Map chunks to search result format
+          const docMap = new Map(matchingDocs.map(d => [d.id, d.filename]));
+          filenameResults = chunks.map(chunk => ({
+            chunk_id: chunk.id,
+            document_id: chunk.document_id,
+            content: chunk.content,
+            similarity: 0.95, // High score for exact filename match
+            metadata: chunk.metadata,
+            document_filename: docMap.get(chunk.document_id),
+            search_type: 'filename'
+          }));
+          console.log(`Filename search: ${filenameResults.length} chunks from matching documents`);
+        }
+      }
+    }
     
     // Generate embedding for the query
     const openAIKey = Deno.env.get("OPENAI_API_KEY");
@@ -175,6 +245,23 @@ serve(async (req) => {
           }
         }
       }
+    }
+    
+    // Merge filename results with vector/hybrid results
+    if (filenameResults.length > 0) {
+      console.log(`Merging ${filenameResults.length} filename results with ${results?.length || 0} vector results`);
+      
+      // Create a set of chunk IDs already in filename results
+      const filenameChunkIds = new Set(filenameResults.map(r => r.chunk_id));
+      
+      // Add vector results that aren't duplicates
+      const vectorResultsFiltered = (results || []).filter((r: any) => !filenameChunkIds.has(r.chunk_id));
+      
+      // Combine: filename results first (higher priority), then vector results
+      results = [...filenameResults, ...vectorResultsFiltered].slice(0, matchCount);
+      searchType = 'filename+vector';
+      
+      console.log(`Combined results: ${results.length} chunks`);
     }
     
     // Calcular latência e top score
