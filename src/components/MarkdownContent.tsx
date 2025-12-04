@@ -1,37 +1,157 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
-import { InteractiveTable, parseMarkdownTable } from './InteractiveTable';
+import { InteractiveTable } from './InteractiveTable';
 
 interface MarkdownContentProps {
   content: string;
   className?: string;
 }
 
-// Custom table renderer that captures table HTML and converts to interactive
-const TableWrapper = ({ children }: { children: React.ReactNode }) => {
-  const tableRef = useRef<HTMLTableElement>(null);
-  const [tableData, setTableData] = useState<{ headers: string[]; rows: string[][] } | null>(null);
+// Helper function to extract text content from React children
+const getTextContent = (children: React.ReactNode): string => {
+  if (typeof children === 'string') return children;
+  if (typeof children === 'number') return String(children);
+  if (!children) return '';
+  
+  if (Array.isArray(children)) {
+    return children.map(getTextContent).join('');
+  }
+  
+  if (React.isValidElement(children) && children.props?.children) {
+    return getTextContent(children.props.children);
+  }
+  
+  return '';
+};
 
-  useEffect(() => {
-    if (tableRef.current) {
-      const data = parseMarkdownTable(tableRef.current.outerHTML);
-      if (data && data.rows.length > 0) {
-        setTableData(data);
+// Extract table data from React children
+const extractTableDataFromChildren = (children: React.ReactNode): { headers: string[]; rows: string[][] } | null => {
+  const headers: string[] = [];
+  const rows: string[][] = [];
+  
+  const processChildren = (node: React.ReactNode) => {
+    if (!node) return;
+    
+    if (Array.isArray(node)) {
+      node.forEach(processChildren);
+      return;
+    }
+    
+    if (!React.isValidElement(node)) return;
+    
+    const element = node as React.ReactElement<{ children?: React.ReactNode }>;
+    const type = element.type;
+    
+    // Handle thead
+    if (type === 'thead' || (typeof type === 'function' && (type as any).displayName === 'thead')) {
+      const theadChildren = element.props?.children;
+      if (theadChildren) {
+        processTheadChildren(theadChildren);
       }
     }
+    // Handle tbody
+    else if (type === 'tbody' || (typeof type === 'function' && (type as any).displayName === 'tbody')) {
+      const tbodyChildren = element.props?.children;
+      if (tbodyChildren) {
+        processTbodyChildren(tbodyChildren);
+      }
+    }
+    // Recurse into other elements
+    else if (element.props?.children) {
+      processChildren(element.props.children);
+    }
+  };
+  
+  const processTheadChildren = (node: React.ReactNode) => {
+    if (!node) return;
+    
+    if (Array.isArray(node)) {
+      node.forEach(processTheadChildren);
+      return;
+    }
+    
+    if (!React.isValidElement(node)) return;
+    
+    const element = node as React.ReactElement<{ children?: React.ReactNode }>;
+    const type = element.type;
+    
+    // Handle tr in thead
+    if (type === 'tr' || (typeof type === 'function')) {
+      const trChildren = element.props?.children;
+      if (trChildren) {
+        const cells = Array.isArray(trChildren) ? trChildren : [trChildren];
+        cells.forEach((cell) => {
+          if (React.isValidElement(cell)) {
+            const cellElement = cell as React.ReactElement<{ children?: React.ReactNode }>;
+            const text = getTextContent(cellElement.props?.children);
+            if (text) headers.push(text.trim());
+          }
+        });
+      }
+    } else if (element.props?.children) {
+      processTheadChildren(element.props.children);
+    }
+  };
+  
+  const processTbodyChildren = (node: React.ReactNode) => {
+    if (!node) return;
+    
+    if (Array.isArray(node)) {
+      node.forEach(processTbodyChildren);
+      return;
+    }
+    
+    if (!React.isValidElement(node)) return;
+    
+    const element = node as React.ReactElement<{ children?: React.ReactNode }>;
+    const type = element.type;
+    
+    // Handle tr in tbody
+    if (type === 'tr' || (typeof type === 'function')) {
+      const trChildren = element.props?.children;
+      if (trChildren) {
+        const row: string[] = [];
+        const cells = Array.isArray(trChildren) ? trChildren : [trChildren];
+        cells.forEach((cell) => {
+          if (React.isValidElement(cell)) {
+            const cellElement = cell as React.ReactElement<{ children?: React.ReactNode }>;
+            const text = getTextContent(cellElement.props?.children);
+            row.push(text.trim());
+          }
+        });
+        if (row.length > 0) rows.push(row);
+      }
+    } else if (element.props?.children) {
+      processTbodyChildren(element.props.children);
+    }
+  };
+  
+  processChildren(children);
+  
+  if (headers.length > 0 && rows.length > 0) {
+    return { headers, rows };
+  }
+  
+  return null;
+};
+
+// Custom table renderer - accepts any props from react-markdown
+const TableWrapper = ({ children, node, ...props }: any) => {
+  const tableData = useMemo(() => {
+    return extractTableDataFromChildren(children);
   }, [children]);
 
   // If we parsed the table successfully, render interactive version
-  if (tableData) {
+  if (tableData && tableData.rows.length > 0) {
     return <InteractiveTable data={tableData} />;
   }
 
-  // Fallback: render standard table while parsing
+  // Fallback: render standard table
   return (
     <div className="my-3 overflow-x-auto">
-      <table ref={tableRef} className="w-full text-xs border-collapse">
+      <table className="w-full text-xs border-collapse" {...props}>
         {children}
       </table>
     </div>
