@@ -118,11 +118,7 @@ export default function ChatKnowYOU() {
     setInput(suggestion);
   }, []);
 
-  // 🔒 useMemo para obter última mensagem do assistente
-  const lastAssistantMessage = useMemo(() => {
-    const assistantMessages = messages.filter(m => m.role === 'assistant');
-    return assistantMessages[assistantMessages.length - 1]?.content;
-  }, [messages]);
+  // lastAssistantMessage removido - sugestões vêm 100% do LLM
 
   // Request location on mount
   useEffect(() => {
@@ -638,10 +634,8 @@ export default function ChatKnowYOU() {
       {!isLoading && suggestions.length > 0 && (
         <ContextualSuggestions
           suggestions={suggestions}
-          lastAssistantMessage={lastAssistantMessage}
           isLoading={isLoading}
           onSuggestionClick={handleSuggestionClick}
-          chatType="health"
         />
       )}
 
