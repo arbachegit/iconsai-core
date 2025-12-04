@@ -1538,6 +1538,9 @@ export const DocumentsTab = () => {
                 <p className="text-xs text-muted-foreground">
                   Aceita múltiplos PDFs • Auto-categorização via IA
                 </p>
+                <p className="text-xs text-cyan-400/80 mt-2">
+                  💡 Após selecionar arquivos, use "Preview do Texto" para visualizar antes de processar
+                </p>
               </div>
             </div>
           </div>
