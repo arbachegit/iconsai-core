@@ -19,26 +19,33 @@ const ContextualSuggestions = memo(({
   chatType = 'study'
 }: ContextualSuggestionsProps) => {
   
-  // 🔒 useMemo - só recalcula quando lastAssistantMessage muda
+  // 🔒 useMemo - detecta dados numéricos REAIS na resposta
   const { hasMathContext, mathSuggestions } = useMemo(() => {
     if (!lastAssistantMessage) return { hasMathContext: false, mathSuggestions: [] };
     
-    const mathKeywords = [
-      'gráfico', 'tabela', 'dados', 'média', 'soma', 'total',
-      'ranking', 'rank', 'pontuação', 'score', 'comparar',
-      'calcular', 'integral', 'derivada', 'fórmula', 'equação',
-      'porcentagem', '%', 'estatística', 'análise', 'número',
-      'valor', 'quantidade', 'índice', 'taxa', 'crescimento',
-      'wipo', 'gii', 'inovação'
+    // Padrões que indicam dados numéricos reais
+    const numericPatterns = [
+      /\d+[,.]?\d*\s*%/,           // Percentuais: 45%, 12.5%
+      /\d{1,3}([.,]\d{3})+/,       // Números grandes: 1.000, 45,678
+      /\b\d+[.,]\d+\b/,            // Decimais: 3.14, 0,5
+      /\b[1-9]\d{2,}\b/,           // Números >= 100
+      /R\$\s*[\d.,]+/i,            // Valores monetários
+      /US\$\s*[\d.,]+/i,
+      /\b\d+º|\b\d+ª/,             // Rankings: 1º, 45ª
+      /posição\s*\d+/i,            // "posição 5"
+      /rank\w*\s*\d+/i,            // "ranking 10"
     ];
     
-    const messageLower = lastAssistantMessage.toLowerCase();
-    const hasMath = mathKeywords.some(kw => messageLower.includes(kw));
+    // Verificar se há pelo menos 2 números significativos ou padrões numéricos
+    const hasNumericPatterns = numericPatterns.some(pattern => pattern.test(lastAssistantMessage));
+    const numberMatches = lastAssistantMessage.match(/\b\d+[.,]?\d*\b/g) || [];
+    const significantNumbers = numberMatches.filter(n => parseFloat(n.replace(',', '.')) >= 10);
+    
+    const hasMath = hasNumericPatterns || significantNumbers.length >= 3;
     
     const mathSuggs = hasMath ? [
       "📊 Gerar gráfico com estes dados",
       "📈 Mostrar tendência histórica",
-      "🔢 Calcular média e mediana",
       "📋 Criar tabela comparativa"
     ] : [];
     
