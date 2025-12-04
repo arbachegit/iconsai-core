@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, memo } from "react";
 
 interface AudioControlsProps {
   audioUrl?: string;
@@ -22,7 +22,8 @@ interface AudioControlsProps {
   onCopy?: () => void;
 }
 
-export function AudioControls({
+// Memoizado para evitar re-renders desnecessários durante digitação
+export const AudioControls = memo(function AudioControls({
   audioUrl,
   imageUrl,
   isPlaying,
@@ -186,4 +187,4 @@ export function AudioControls({
       )}
     </div>
   );
-}
+});
