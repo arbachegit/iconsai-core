@@ -11,7 +11,7 @@ interface ExtractedTable {
   markdownTable: string;
 }
 
-const MAX_PAGES_PER_REQUEST = 30;
+const MAX_PAGES_PER_REQUEST = 15; // Non-imageless mode limit is 15 pages
 
 // Get Google Cloud access token using service account
 async function getAccessToken(credentials: any): Promise<string> {
