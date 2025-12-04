@@ -144,7 +144,7 @@ export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
           </div>
 
           {/* Chat Content */}
-          <div className="pt-3 px-3 pb-0 h-[825px]">
+          <div className="p-3 h-[825px]">
             <ChatStudy onClose={handleClose} />
           </div>
         </div>
