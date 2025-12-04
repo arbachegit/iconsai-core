@@ -925,6 +925,18 @@ export const DocumentsTab = () => {
     toast.info("Extração cancelada");
   }, []);
 
+  // Remove file from preview
+  const handleRemovePreviewFile = useCallback((index: number) => {
+    setPreviewFiles(prev => {
+      const newPreviews = prev.filter((_, i) => i !== index);
+      if (newPreviews.length === 0) {
+        setShowPreviewModal(false);
+      }
+      return newPreviews;
+    });
+    toast.info("Arquivo removido do preview");
+  }, []);
+
   // Retry failed document with custom validation parameters
   const retryWithParamsMutation = useMutation({
     mutationFn: async ({ docId, params }: { docId: string; params: typeof retryParams }) => {
@@ -2812,6 +2824,14 @@ export const DocumentsTab = () => {
                           </Badge>
                         )}
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemovePreviewFile(idx)}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                     
                     <div className="grid grid-cols-4 gap-2 mb-3 text-xs">
