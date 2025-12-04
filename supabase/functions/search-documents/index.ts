@@ -20,6 +20,34 @@ function extractKeywords(query: string): string[] {
     .filter(word => word.length > 2 && !stopwords.includes(word));
 }
 
+// Diversify results to ensure representation from multiple documents
+function diversifyResults(results: any[], maxChunksPerDoc: number = 3, totalLimit: number = 20): any[] {
+  if (!results || results.length === 0) return [];
+  
+  const docChunkCounts: Record<string, number> = {};
+  const diversified: any[] = [];
+  
+  // Sort by similarity first to prioritize best matches
+  const sorted = [...results].sort((a, b) => b.similarity - a.similarity);
+  
+  for (const chunk of sorted) {
+    const docId = chunk.document_id;
+    const currentCount = docChunkCounts[docId] || 0;
+    
+    // Only add if document hasn't reached its chunk limit
+    if (currentCount < maxChunksPerDoc) {
+      diversified.push(chunk);
+      docChunkCounts[docId] = currentCount + 1;
+      
+      // Stop if we've reached total limit
+      if (diversified.length >= totalLimit) break;
+    }
+  }
+  
+  console.log(`Diversification: ${results.length} -> ${diversified.length} chunks from ${Object.keys(docChunkCounts).length} unique documents`);
+  return diversified;
+}
+
 // Extract potential filename from query
 function extractFilename(query: string): string | null {
   // Match patterns like "wipo 2017.pdf", "documento.pdf", etc.
@@ -145,7 +173,7 @@ serve(async (req) => {
         query_embedding: queryEmbedding,
         target_chat_filter: targetChat,
         match_threshold: matchThreshold,
-        match_count: matchCount * 2 // Get more results for filtering
+        match_count: matchCount * 3 // Get more results for diversification
       });
       
       if (vectorResults.error) {
@@ -182,7 +210,7 @@ serve(async (req) => {
       const alpha = 0.7; // Weight for vector similarity
       const beta = 0.3;  // Weight for tag matching
       
-      results = vectorResults.data?.map((r: any) => {
+      const scoredResults = vectorResults.data?.map((r: any) => {
         const vectorScore = r.similarity;
         const tagScore = tagScores[r.document_id] || 0;
         const hybridScore = (alpha * vectorScore) + (beta * tagScore);
@@ -193,19 +221,20 @@ serve(async (req) => {
           vector_score: vectorScore,
           tag_score: tagScore
         };
-      })
-      .sort((a: any, b: any) => b.similarity - a.similarity)
-      .slice(0, matchCount);
+      }).sort((a: any, b: any) => b.similarity - a.similarity);
       
+      // Apply diversification to ensure multiple documents are represented
+      results = diversifyResults(scoredResults || [], 3, matchCount);
+
       console.log(`Hybrid search: ${results?.length || 0} results (combined vector + tags)`);
     } else {
-      // Standard vector search
+      // Standard vector search - fetch MORE results for diversification
       console.log(`Attempting vector search with threshold ${matchThreshold}`);
       const searchResults = await supabase.rpc("search_documents", {
         query_embedding: queryEmbedding,
         target_chat_filter: targetChat,
         match_threshold: matchThreshold,
-        match_count: matchCount
+        match_count: matchCount * 3 // Fetch 3x more for diversification pool
       });
       
       results = searchResults.data;
@@ -216,7 +245,10 @@ serve(async (req) => {
         throw error;
       }
       
-      console.log(`Vector search: ${results?.length || 0} matching chunks`);
+      // Apply diversification to ensure multiple documents are represented
+      results = diversifyResults(results || [], 3, matchCount);
+      
+      console.log(`Vector search: ${results?.length || 0} diversified chunks`);
       
       // FALLBACK: If vector search returns 0 results, try keyword-based search
       if (!results || results.length === 0) {
