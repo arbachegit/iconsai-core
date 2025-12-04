@@ -506,6 +506,12 @@ SUGESTÕES: ["Onde posso ver o ACC em ação?", "Como o KnowYOU usa o ACC?", "Qu
 
 Agora responda seguindo este padrão.`;
 
+    // 📊 LOGGING DE AUDITORIA DE COERÊNCIA
+    console.log(`[COHERENCE_AUDIT] Chat: study | Query: "${userQuery.substring(0, 100)}..." | RAG Context: ${hasRagContext ? 'YES' : 'NO'} | Region: ${region || 'default'}`);
+    if (hasRagContext) {
+      console.log(`[COHERENCE_AUDIT] Expected coherent topics from RAG: documents about KnowRISK/KnowYOU/ACC`);
+    }
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
