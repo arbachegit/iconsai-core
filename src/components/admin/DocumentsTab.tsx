@@ -1455,7 +1455,7 @@ export const DocumentsTab = () => {
     }
   });
 
-  // Mutation para alterar destino do chat inserido
+  // Mutation para alterar destino do chat inserido com aprendizado de máquina
   const updateInsertedChatMutation = useMutation({
     mutationFn: async ({
       docId,
@@ -1471,8 +1471,34 @@ export const DocumentsTab = () => {
       }).eq("id", docId);
       if (error) throw error;
 
+      // Buscar dados do documento para extrair padrão do nome
+      const { data: doc } = await supabase.from("documents").select("filename, target_chat").eq("id", docId).single();
+      
+      // Salvar regra de aprendizado de máquina para roteamento de chat
+      // Extrair padrão do nome do arquivo (primeiras palavras significativas)
+      if (doc?.filename) {
+        const filenamePattern = doc.filename
+          .toLowerCase()
+          .replace(/\.pdf$/i, '')
+          .replace(/[0-9]+/g, '')
+          .replace(/[-_]/g, ' ')
+          .split(' ')
+          .filter(w => w.length > 2)
+          .slice(0, 3)
+          .join(' ')
+          .trim();
+        
+        if (filenamePattern.length > 3) {
+          // Usar a function do banco para criar/incrementar regra
+          await supabase.rpc('increment_chat_routing_rule_count', {
+            p_filename_pattern: filenamePattern,
+            p_suggested_chat: previousChat,
+            p_corrected_chat: newChat
+          });
+        }
+      }
+
       // Registrar log de alteração
-      const { data: doc } = await supabase.from("documents").select("filename").eq("id", docId).single();
       await supabase.from("document_routing_log").insert({
         document_id: docId,
         document_name: doc?.filename || 'Documento',
@@ -1486,13 +1512,14 @@ export const DocumentsTab = () => {
           chat_change: true,
           admin_action: true,
           previous_chat: previousChat,
-          new_chat: newChat
+          new_chat: newChat,
+          ml_rule_created: true
         }
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
-      toast.success("Destino do chat atualizado com sucesso!");
+      toast.success("Destino atualizado! Regra de aprendizado criada.");
     },
     onError: (error: any) => {
       toast.error(`Erro ao atualizar destino: ${error.message}`);

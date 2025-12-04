@@ -42,10 +42,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target } from "lucide-react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie, Legend } from "recharts";
 import {
   Tooltip,
   TooltipContent,
@@ -137,6 +137,45 @@ export const TagsManagementTab = () => {
         created_by: string | null;
         merge_count: number;
       }>;
+    },
+  });
+
+  // Fetch chat routing rules
+  const { data: chatRoutingRules } = useQuery({
+    queryKey: ["chat-routing-rules"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("chat_routing_rules")
+        .select("*")
+        .order("correction_count", { ascending: false });
+      if (error) throw error;
+      return data as Array<{
+        id: string;
+        document_filename_pattern: string;
+        suggested_chat: string;
+        corrected_chat: string;
+        correction_count: number;
+        confidence: number;
+        created_at: string;
+      }>;
+    },
+  });
+
+  // Delete chat routing rule mutation
+  const deleteChatRoutingRuleMutation = useMutation({
+    mutationFn: async (ruleId: string) => {
+      const { error } = await supabase
+        .from("chat_routing_rules")
+        .delete()
+        .eq("id", ruleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Regra de roteamento removida");
+      queryClient.invalidateQueries({ queryKey: ["chat-routing-rules"] });
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao remover regra: ${error.message}`);
     },
   });
 
@@ -693,6 +732,238 @@ export const TagsManagementTab = () => {
           </Button>
         </div>
       </div>
+
+      {/* Consolidated Metrics Dashboard */}
+      <Card className="p-6 border-primary/30 bg-gradient-to-r from-primary/5 to-purple-500/5">
+        <div className="flex items-center gap-2 mb-6">
+          <BarChart3 className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold text-lg">Dashboard de Métricas - Sistema de Categorização</h3>
+        </div>
+        
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="text-center p-4 bg-background/50 rounded-lg border">
+            <div className="text-3xl font-bold text-primary">{parentTags.length}</div>
+            <div className="text-sm text-muted-foreground mt-1">Tags Pai</div>
+          </div>
+          <div className="text-center p-4 bg-background/50 rounded-lg border">
+            <div className="text-3xl font-bold text-purple-400">
+              {Object.values(childTagsMap).reduce((sum, arr) => sum + arr.length, 0)}
+            </div>
+            <div className="text-sm text-muted-foreground mt-1">Tags Filhas</div>
+          </div>
+          <div className="text-center p-4 bg-background/50 rounded-lg border">
+            <div className="text-3xl font-bold text-green-400">{mergeRules?.length || 0}</div>
+            <div className="text-sm text-muted-foreground mt-1">Regras ML Tags</div>
+          </div>
+          <div className="text-center p-4 bg-background/50 rounded-lg border">
+            <div className="text-3xl font-bold text-cyan-400">{chatRoutingRules?.length || 0}</div>
+            <div className="text-sm text-muted-foreground mt-1">Regras ML Chat</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+          {/* Tag Distribution by Source */}
+          <div className="p-4 bg-background/30 rounded-lg border">
+            <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <PieChart className="h-4 w-4" />
+              Distribuição por Fonte
+            </h4>
+            <div className="h-[180px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPie>
+                  <Pie
+                    data={[
+                      { name: 'IA', value: parentTags.filter(t => t.source === 'ai').length, fill: 'hsl(262, 83%, 58%)' },
+                      { name: 'Admin', value: parentTags.filter(t => t.source === 'admin').length, fill: 'hsl(142, 71%, 45%)' },
+                      { name: 'Outros', value: parentTags.filter(t => !['ai', 'admin'].includes(t.source || '')).length, fill: 'hsl(220, 70%, 50%)' },
+                    ].filter(d => d.value > 0)}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={60}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  />
+                  <RechartsTooltip />
+                </RechartsPie>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Tag Distribution by Chat */}
+          <div className="p-4 bg-background/30 rounded-lg border">
+            <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Distribuição por Chat
+            </h4>
+            <div className="h-[180px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPie>
+                  <Pie
+                    data={[
+                      { name: 'Saúde', value: parentTags.filter(t => t.target_chat === 'health').length, fill: 'hsl(142, 71%, 45%)' },
+                      { name: 'Estudo', value: parentTags.filter(t => t.target_chat === 'study').length, fill: 'hsl(262, 83%, 58%)' },
+                      { name: 'Não definido', value: parentTags.filter(t => !t.target_chat).length, fill: 'hsl(220, 10%, 50%)' },
+                    ].filter(d => d.value > 0)}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={60}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  />
+                  <RechartsTooltip />
+                </RechartsPie>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* ML Summary Stats */}
+        <div className="mt-4 pt-4 border-t border-border/50">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-4">
+              <span className="text-muted-foreground">
+                <Zap className="h-4 w-4 inline mr-1 text-green-400" />
+                Total aplicações ML Tags: <strong>{mergeRules?.reduce((sum, r) => sum + (r.merge_count || 0), 0) || 0}</strong>
+              </span>
+              <span className="text-muted-foreground">
+                <ArrowRightLeft className="h-4 w-4 inline mr-1 text-cyan-400" />
+                Total correções Chat: <strong>{chatRoutingRules?.reduce((sum, r) => sum + (r.correction_count || 0), 0) || 0}</strong>
+              </span>
+            </div>
+            <span className="text-muted-foreground">
+              Duplicatas pendentes: <strong className="text-amber-400">{duplicateParentTags.length + semanticDuplicates.length}</strong>
+            </span>
+          </div>
+        </div>
+      </Card>
+
+      {/* Chat Routing ML Rules Panel */}
+      {chatRoutingRules && chatRoutingRules.length > 0 && (
+        <Collapsible>
+          <Card className="p-4 border-cyan-500/50 bg-gradient-to-r from-cyan-500/5 to-blue-500/5">
+            <CollapsibleTrigger className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <ArrowRightLeft className="h-5 w-5 text-cyan-400" />
+                <h3 className="font-semibold">Regras de Roteamento de Chat (ML)</h3>
+                <Badge variant="outline" className="ml-2 bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+                  {chatRoutingRules.length} regra(s)
+                </Badge>
+                <Badge variant="outline" className="bg-green-500/20 text-green-300 border-green-500/30">
+                  <Zap className="h-3 w-3 mr-1" />
+                  {chatRoutingRules.reduce((sum, r) => sum + (r.correction_count || 0), 0)} correções
+                </Badge>
+              </div>
+              <ChevronDown className="h-4 w-4 transition-transform" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Regras criadas quando você altera o chat de destino de um documento. O sistema aprende padrões de nomes de arquivo.
+              </p>
+
+              {/* Chart for chat routing efficiency */}
+              {chatRoutingRules.some(r => (r.correction_count || 0) > 0) && (
+                <div className="border border-cyan-500/30 rounded-lg p-4 bg-cyan-500/5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <TrendingUp className="h-4 w-4 text-cyan-400" />
+                    <h4 className="font-medium text-sm">Top 8 padrões mais corrigidos</h4>
+                  </div>
+                  <div className="h-[180px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={chatRoutingRules
+                          .sort((a, b) => (b.correction_count || 0) - (a.correction_count || 0))
+                          .slice(0, 8)
+                          .map(r => ({
+                            name: `${r.document_filename_pattern.slice(0, 12)}${r.document_filename_pattern.length > 12 ? '...' : ''}`,
+                            fullPattern: r.document_filename_pattern,
+                            correções: r.correction_count || 0,
+                            from: r.suggested_chat,
+                            to: r.corrected_chat,
+                            confidence: Math.round((r.confidence || 0) * 100)
+                          }))}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                        <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} width={75} />
+                        <RechartsTooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                            fontSize: '12px'
+                          }}
+                          formatter={(value: number, _name: string, props: any) => [
+                            <span key="value">
+                              <strong>{value}</strong> correções
+                              <br />
+                              <span className="text-muted-foreground text-xs">
+                                "{props.payload.fullPattern}"<br />
+                                {props.payload.from} → {props.payload.to} ({props.payload.confidence}% confiança)
+                              </span>
+                            </span>,
+                            ''
+                          ]}
+                        />
+                        <Bar dataKey="correções" fill="hsl(187, 71%, 45%)" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Rules List */}
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {chatRoutingRules.map((rule) => (
+                  <div 
+                    key={rule.id} 
+                    className="flex items-center justify-between p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <Badge variant="secondary" className="text-xs font-mono">
+                        "{rule.document_filename_pattern}"
+                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs bg-red-500/20 text-red-300 border-red-500/30">
+                          {rule.suggested_chat === "health" ? "🏥 Saúde" : "📚 Estudo"}
+                        </Badge>
+                        <span className="text-cyan-400">→</span>
+                        <Badge variant="secondary" className="text-xs bg-green-500/20 text-green-300 border-green-500/30">
+                          {rule.corrected_chat === "health" ? "🏥 Saúde" : "📚 Estudo"}
+                        </Badge>
+                      </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-300 border-blue-500/30">
+                              {rule.correction_count}x | {Math.round((rule.confidence || 0) * 100)}%
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {rule.correction_count} correções, {Math.round((rule.confidence || 0) * 100)}% confiança
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                      onClick={() => deleteChatRoutingRuleMutation.mutate(rule.id)}
+                      disabled={deleteChatRoutingRuleMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
 
       {/* Duplicate Detection - Combined Section */}
       {(duplicateParentTags.length > 0 || semanticDuplicates.length > 0 || similarChildTagsPerParent.length > 0) && (
