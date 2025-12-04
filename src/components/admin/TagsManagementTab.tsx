@@ -42,7 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import {
@@ -138,8 +138,9 @@ export const TagsManagementTab = () => {
   });
 
   const [filterConfidence, setFilterConfidence] = useState<string>("all");
+  const [searchTagName, setSearchTagName] = useState("");
 
-  // Apply confidence filter
+  // Apply confidence filter and search
   const confidenceFilteredTags = filteredParentTags.filter((t) => {
     if (filterConfidence === "all") return true;
     const conf = t.confidence ?? 0;
@@ -641,6 +642,25 @@ export const TagsManagementTab = () => {
                 <SelectItem value="low">Baixa (&lt;50%)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome da tag..."
+              value={searchTagName}
+              onChange={(e) => setSearchTagName(e.target.value)}
+              className="h-9"
+            />
+            {searchTagName && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setSearchTagName("")}
+                className="h-9 w-9 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </Card>
