@@ -79,7 +79,10 @@ export const DocumentsTab = () => {
     existingDocId: string;
     newDocId: string;
     similarityScore?: number;
+    newTextPreview?: string;
+    existingTextPreview?: string;
   } | null>(null);
+  const [showComparison, setShowComparison] = useState(false);
 
   // RAG Info Modal state
   const [showRagInfoModal, setShowRagInfoModal] = useState(false);
@@ -293,13 +296,30 @@ export const DocumentsTab = () => {
             const dup = duplicates[0];
             const newDoc = documentsData.find(d => d.document_id === dup.document_id);
             if (newDoc) {
+              // Fetch existing document text preview
+              const { data: existingDoc } = await supabase
+                .from("documents")
+                .select("text_preview, original_text")
+                .eq("id", dup.existing_doc_id)
+                .single();
+              
+              // Fetch new document text preview
+              const { data: newDocData } = await supabase
+                .from("documents")
+                .select("text_preview, original_text")
+                .eq("id", dup.document_id)
+                .single();
+              
               setDuplicateInfo({
                 newFileName: newDoc.title,
                 existingFileName: dup.existing_filename || "Documento existente",
                 existingDocId: dup.existing_doc_id,
                 newDocId: dup.document_id,
-                similarityScore: dup.similarity_score
+                similarityScore: dup.similarity_score,
+                newTextPreview: newDocData?.text_preview || newDocData?.original_text?.substring(0, 1000) || "",
+                existingTextPreview: existingDoc?.text_preview || existingDoc?.original_text?.substring(0, 1000) || ""
               });
+              setShowComparison(false);
               toast.warning("Documento duplicado detectado!");
               return; // Stop processing to show modal
             }
@@ -2032,8 +2052,8 @@ export const DocumentsTab = () => {
         </Dialog>}
       
       {/* Duplicate Detection Modal */}
-      {duplicateInfo && <Dialog open={!!duplicateInfo} onOpenChange={() => setDuplicateInfo(null)}>
-          <DialogContent>
+      {duplicateInfo && <Dialog open={!!duplicateInfo} onOpenChange={() => { setDuplicateInfo(null); setShowComparison(false); }}>
+          <DialogContent className={cn("transition-all duration-300", showComparison ? "max-w-4xl" : "max-w-lg")}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 ⚠️ Documento Duplicado Detectado
@@ -2044,13 +2064,59 @@ export const DocumentsTab = () => {
                 O arquivo <strong className="text-primary">{duplicateInfo.newFileName}</strong> possui conteúdo {duplicateInfo.similarityScore ? `${duplicateInfo.similarityScore}% similar` : "idêntico"} ao documento existente:
               </p>
               <div className="p-3 bg-muted rounded-lg border border-border">
-                <p className="font-semibold text-sm">{duplicateInfo.existingFileName}</p>
-                {duplicateInfo.similarityScore && (
-                  <Badge variant="secondary" className="mt-2">
-                    {duplicateInfo.similarityScore}% de similaridade
-                  </Badge>
-                )}
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-sm">{duplicateInfo.existingFileName}</p>
+                  {duplicateInfo.similarityScore && (
+                    <Badge variant="secondary">
+                      {duplicateInfo.similarityScore}% similar
+                    </Badge>
+                  )}
+                </div>
               </div>
+              
+              {/* Toggle comparison button */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowComparison(!showComparison)}
+                className="w-full text-muted-foreground hover:text-foreground"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                {showComparison ? "Ocultar comparação" : "Ver comparação lado-a-lado"}
+              </Button>
+              
+              {/* Side-by-side comparison */}
+              {showComparison && (
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
+                        Novo
+                      </Badge>
+                      <span className="text-xs text-muted-foreground truncate">{duplicateInfo.newFileName}</span>
+                    </div>
+                    <ScrollArea className="h-[250px] rounded-lg border border-green-500/30 bg-green-500/5 p-3">
+                      <p className="text-xs font-mono whitespace-pre-wrap text-muted-foreground">
+                        {duplicateInfo.newTextPreview || "Preview não disponível"}
+                      </p>
+                    </ScrollArea>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/30">
+                        Existente
+                      </Badge>
+                      <span className="text-xs text-muted-foreground truncate">{duplicateInfo.existingFileName}</span>
+                    </div>
+                    <ScrollArea className="h-[250px] rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                      <p className="text-xs font-mono whitespace-pre-wrap text-muted-foreground">
+                        {duplicateInfo.existingTextPreview || "Preview não disponível"}
+                      </p>
+                    </ScrollArea>
+                  </div>
+                </div>
+              )}
+              
               <p className="text-sm text-muted-foreground">
                 O que deseja fazer?
               </p>
