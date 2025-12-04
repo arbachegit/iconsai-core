@@ -66,7 +66,7 @@ const sectionContent: Record<string, {
       { name: "ETL Layer", description: "Processamento de documentos" },
       { name: "Storage Layer", description: "PostgreSQL + pgvector" },
       { name: "Retrieval Layer", description: "Busca híbrida" },
-      { name: "Generation Layer", description: "LLM com contexto" },
+      { name: "Generation Layer", description: "SLM com contexto" },
     ],
     items: ["Upload", "Processo", "Armazena", "Busca", "Gera"],
     color: "secondary"

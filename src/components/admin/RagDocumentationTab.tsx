@@ -177,6 +177,31 @@ const OverviewSection = () => (
       O sistema RAG (Retrieval-Augmented Generation) integrado aos chats KnowYOU permite que os assistentes de IA forneçam respostas fundamentadas em documentos específicos, melhorando significativamente a precisão e relevância das respostas.
     </p>
 
+    {/* Card explicativo LLM vs SLM */}
+    <Card className="p-4 border-amber-500/30 bg-amber-500/5">
+      <div className="flex items-start gap-3">
+        <Lightbulb className="h-5 w-5 text-amber-500 mt-1 shrink-0" />
+        <div>
+          <h4 className="font-medium text-amber-200">LLM vs SLM - Entenda a Diferença</h4>
+          <div className="text-sm text-muted-foreground space-y-2 mt-2">
+            <p>
+              <strong className="text-foreground">LLM</strong> (Large Language Model): Modelos grandes como GPT-4, Gemini Pro. 
+              Mais precisos para tarefas complexas, mas mais caros e lentos.
+            </p>
+            <p>
+              <strong className="text-foreground">SLM</strong> (Small Language Model): Modelos otimizados e especializados. 
+              Mais rápidos, econômicos e eficientes para tarefas específicas.
+            </p>
+            <p className="pt-1 border-t border-amber-500/20">
+              <strong className="text-amber-300">No sistema KnowYOU:</strong> Utilizamos SLMs para tarefas repetitivas 
+              (classificação de documentos, avaliação de legibilidade, sugestão de tags) e podemos escalar para LLMs 
+              quando respostas mais complexas são necessárias.
+            </p>
+          </div>
+        </div>
+      </div>
+    </Card>
+
     <div className="space-y-3">
       <h3 className="font-semibold text-lg">Características Principais</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
