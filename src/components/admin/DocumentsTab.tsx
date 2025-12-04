@@ -517,6 +517,28 @@ export const DocumentsTab = () => {
             pollDocumentStatus(doc.document_id, doc.fileId);
           }
         });
+        
+        // Audit log for upload
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from("user_activity_logs").insert({
+            user_id: user.id,
+            user_email: user.email || "unknown",
+            action_category: "UPLOAD",
+            action: `Upload de ${documentsData.length} documento(s) RAG`,
+            details: {
+              operation: "bulk_upload",
+              documents_uploaded: documentsData.map(d => ({
+                document_id: d.document_id,
+                filename: d.title
+              })),
+              total_count: documentsData.length,
+              use_document_ai: useDocumentAI,
+            },
+            user_agent: navigator.userAgent
+          });
+        }
+        
         toast.success(`${documentsData.length} documento(s) enviado(s) para processamento!`);
       } catch (error: any) {
         console.error("Erro ao processar documentos:", error);
@@ -703,6 +725,10 @@ export const DocumentsTab = () => {
     try {
       const docsToDelete = Array.from(selectedDocs);
       
+      // Get document info before deleting (for audit log)
+      const docsInfo = documents?.filter(d => selectedDocs.has(d.id))
+        .map(d => ({ id: d.id, filename: d.filename, target_chat: d.target_chat })) || [];
+      
       for (const docId of docsToDelete) {
         // Delete all related data first
         await supabase.from("document_chunks").delete().eq("document_id", docId);
@@ -711,6 +737,23 @@ export const DocumentsTab = () => {
         await supabase.from("document_routing_log").delete().eq("document_id", docId);
         // Delete document
         await supabase.from("documents").delete().eq("id", docId);
+      }
+      
+      // Audit log for bulk delete
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("user_activity_logs").insert({
+          user_id: user.id,
+          user_email: user.email || "unknown",
+          action_category: "DELETE",
+          action: `Exclusão em massa de ${docsToDelete.length} documento(s) RAG`,
+          details: {
+            operation: "bulk_delete",
+            documents_deleted: docsInfo,
+            total_count: docsToDelete.length,
+          },
+          user_agent: navigator.userAgent
+        });
       }
       
       toast.success(`${docsToDelete.length} documento(s) excluído(s) com sucesso`);
