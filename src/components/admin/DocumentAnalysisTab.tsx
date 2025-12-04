@@ -86,6 +86,8 @@ export const DocumentAnalysisTab = () => {
   const [filterChat, setFilterChat] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterTagName, setFilterTagName] = useState("");
+  const [tagTypeFilter, setTagTypeFilter] = useState<"all" | "parent" | "child">("all");
   const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -273,7 +275,30 @@ export const DocumentAnalysisTab = () => {
     const matchesChat = filterChat === "all" || doc.target_chat === filterChat;
     const matchesStatus = filterStatus === "all" || doc.implementation_status === filterStatus;
     const matchesSearch = doc.filename.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesChat && matchesStatus && matchesSearch;
+    
+    // Tag filter logic
+    let matchesTag = true;
+    if (filterTagName.trim()) {
+      const docTags = tagsByDocument[doc.id] || [];
+      const searchLower = filterTagName.toLowerCase().trim();
+      
+      if (tagTypeFilter === "parent") {
+        matchesTag = docTags.some(tag => 
+          !tag.parent_tag_id && tag.tag_name.toLowerCase().includes(searchLower)
+        );
+      } else if (tagTypeFilter === "child") {
+        matchesTag = docTags.some(tag => 
+          tag.parent_tag_id && tag.tag_name.toLowerCase().includes(searchLower)
+        );
+      } else {
+        // all - search both parent and child
+        matchesTag = docTags.some(tag => 
+          tag.tag_name.toLowerCase().includes(searchLower)
+        );
+      }
+    }
+    
+    return matchesChat && matchesStatus && matchesSearch && matchesTag;
   }) || [];
 
   // Pagination
@@ -415,9 +440,9 @@ export const DocumentAnalysisTab = () => {
 
       {/* Filters */}
       <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
-            <Label>Buscar</Label>
+            <Label>Buscar Documento</Label>
             <Input
               placeholder="Nome do documento..."
               value={searchTerm}
@@ -425,12 +450,48 @@ export const DocumentAnalysisTab = () => {
             />
           </div>
           <div>
-            <Label>Chat Destino</Label>
-            <Select value={filterChat} onValueChange={setFilterChat}>
-              <SelectTrigger>
+            <Label>Buscar Tag</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Nome da tag..."
+                value={filterTagName}
+                onChange={(e) => setFilterTagName(e.target.value)}
+                className="flex-1"
+              />
+            </div>
+          </div>
+          <div>
+            <Label>Tipo de Tag</Label>
+            <Select value={tagTypeFilter} onValueChange={(v) => setTagTypeFilter(v as "all" | "parent" | "child")}>
+              <SelectTrigger className="bg-background">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border z-50">
+                <SelectItem value="all">
+                  <span className="flex items-center gap-2">
+                    <Tag className="h-3 w-3" /> Todas
+                  </span>
+                </SelectItem>
+                <SelectItem value="parent">
+                  <span className="flex items-center gap-2">
+                    <Package className="h-3 w-3 text-primary" /> Tag Pai
+                  </span>
+                </SelectItem>
+                <SelectItem value="child">
+                  <span className="flex items-center gap-2">
+                    <Tag className="h-3 w-3 text-purple-400" /> Tag Filha
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Chat Destino</Label>
+            <Select value={filterChat} onValueChange={setFilterChat}>
+              <SelectTrigger className="bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="health">Saúde</SelectItem>
                 <SelectItem value="study">Estudo</SelectItem>
@@ -439,12 +500,12 @@ export const DocumentAnalysisTab = () => {
             </Select>
           </div>
           <div>
-            <Label>Status de Implementação</Label>
+            <Label>Status</Label>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-background">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border z-50">
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="ready">Pronto</SelectItem>
                 <SelectItem value="needs_review">Precisa Revisão</SelectItem>
@@ -453,6 +514,42 @@ export const DocumentAnalysisTab = () => {
             </Select>
           </div>
         </div>
+        {(filterTagName || tagTypeFilter !== "all") && (
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+            <span className="text-sm text-muted-foreground">Filtros ativos:</span>
+            {filterTagName && (
+              <Badge variant="secondary" className="gap-1">
+                <Tag className="h-3 w-3" />
+                "{filterTagName}"
+                <button 
+                  onClick={() => setFilterTagName("")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {tagTypeFilter !== "all" && (
+              <Badge variant="outline" className={tagTypeFilter === "parent" ? "border-primary text-primary" : "border-purple-400 text-purple-400"}>
+                {tagTypeFilter === "parent" ? "Tag Pai" : "Tag Filha"}
+                <button 
+                  onClick={() => setTagTypeFilter("all")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => { setFilterTagName(""); setTagTypeFilter("all"); }}
+              className="text-xs"
+            >
+              Limpar filtros de tag
+            </Button>
+          </div>
+        )}
       </Card>
 
       {/* Documents List */}
