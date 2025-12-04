@@ -32,9 +32,10 @@ import {
   History,
   Users,
   Target,
+  Cpu,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -119,6 +120,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
       label: "Sistema",
       icon: Settings,
       items: [
+        { id: "architecture" as TabType, label: "Arquitetura", icon: Cpu },
         { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
         { id: "gmail" as TabType, label: "Gmail", icon: Mail },
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
