@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -140,8 +140,19 @@ export const TagsManagementTab = () => {
   const [filterConfidence, setFilterConfidence] = useState<string>("all");
   const [searchTagName, setSearchTagName] = useState("");
 
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTagName]);
+
   // Apply confidence filter and search
   const confidenceFilteredTags = filteredParentTags.filter((t) => {
+    // Filter by tag name search
+    const searchMatch = !searchTagName.trim() || 
+      t.tag_name.toLowerCase().includes(searchTagName.toLowerCase().trim());
+    
+    if (!searchMatch) return false;
+
     if (filterConfidence === "all") return true;
     const conf = t.confidence ?? 0;
     switch (filterConfidence) {

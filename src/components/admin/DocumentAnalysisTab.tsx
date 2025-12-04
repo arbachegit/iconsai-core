@@ -25,10 +25,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Command,
   CommandEmpty,
@@ -459,18 +461,32 @@ export const DocumentAnalysisTab = () => {
                             </h4>
                             <div className="flex items-center gap-2">
                               {/* INSERIR TAGS Button */}
-                              <Popover open={tagSearchOpen === doc.id} onOpenChange={(open) => {
-                                setTagSearchOpen(open ? doc.id : null);
-                                if (!open) setTagSearchTerm("");
-                              }}>
-                                <PopoverTrigger asChild>
-                                  <Button variant="outline" size="sm" className="gap-2">
-                                    <Plus className="h-4 w-4" />
-                                    INSERIR TAGS
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[250px] p-0" align="end">
-                                  <Command>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="gap-2"
+                                onClick={() => setTagSearchOpen(doc.id)}
+                              >
+                                <Plus className="h-4 w-4" />
+                                INSERIR TAGS
+                              </Button>
+                              <Dialog 
+                                open={tagSearchOpen === doc.id} 
+                                onOpenChange={(open) => {
+                                  if (!open) {
+                                    setTagSearchOpen(null);
+                                    setTagSearchTerm("");
+                                  }
+                                }}
+                              >
+                                <DialogContent className="sm:max-w-[400px]">
+                                  <DialogHeader>
+                                    <DialogTitle className="flex items-center gap-2">
+                                      <Tag className="h-5 w-5" />
+                                      Inserir Tags - {doc.filename}
+                                    </DialogTitle>
+                                  </DialogHeader>
+                                  <Command className="border rounded-lg">
                                     <CommandInput 
                                       placeholder="Buscar ou criar tag..." 
                                       value={tagSearchTerm}
@@ -492,27 +508,28 @@ export const DocumentAnalysisTab = () => {
                                           </Button>
                                         )}
                                       </CommandEmpty>
-                                      <CommandGroup heading="Tags existentes">
-                                        {uniqueTags
-                                          ?.filter(t => t.toLowerCase().includes(tagSearchTerm.toLowerCase()))
-                                          .slice(0, 10)
-                                          .map(tag => (
-                                            <CommandItem 
-                                              key={tag}
-                                              onSelect={() => {
-                                                insertTagMutation.mutate({ docId: doc.id, tagName: tag });
-                                              }}
-                                            >
-                                              <Tag className="h-4 w-4 mr-2" />
-                                              {tag}
-                                            </CommandItem>
-                                          ))
-                                        }
-                                      </CommandGroup>
+                                      <ScrollArea className="h-[300px]">
+                                        <CommandGroup heading="Tags existentes">
+                                          {uniqueTags
+                                            ?.filter(t => t.toLowerCase().includes(tagSearchTerm.toLowerCase()))
+                                            .map(tag => (
+                                              <CommandItem 
+                                                key={tag}
+                                                onSelect={() => {
+                                                  insertTagMutation.mutate({ docId: doc.id, tagName: tag });
+                                                }}
+                                              >
+                                                <Tag className="h-4 w-4 mr-2" />
+                                                {tag}
+                                              </CommandItem>
+                                            ))
+                                          }
+                                        </CommandGroup>
+                                      </ScrollArea>
                                     </CommandList>
                                   </Command>
-                                </PopoverContent>
-                              </Popover>
+                                </DialogContent>
+                              </Dialog>
                               {/* Contexto/Caixa destacado */}
                               <Badge variant="default" className="text-sm px-3 py-1 flex items-center gap-1">
                                 <Package className="h-3 w-3" />
@@ -590,18 +607,32 @@ export const DocumentAnalysisTab = () => {
                         <div className="p-4 bg-muted/30 rounded-lg border border-dashed border-muted-foreground/30">
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">Nenhuma tag atribuída</span>
-                            <Popover open={tagSearchOpen === doc.id} onOpenChange={(open) => {
-                              setTagSearchOpen(open ? doc.id : null);
-                              if (!open) setTagSearchTerm("");
-                            }}>
-                              <PopoverTrigger asChild>
-                                <Button variant="outline" size="sm" className="gap-2">
-                                  <Plus className="h-4 w-4" />
-                                  INSERIR TAGS
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[250px] p-0" align="end">
-                                <Command>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="gap-2"
+                              onClick={() => setTagSearchOpen(doc.id)}
+                            >
+                              <Plus className="h-4 w-4" />
+                              INSERIR TAGS
+                            </Button>
+                            <Dialog 
+                              open={tagSearchOpen === doc.id} 
+                              onOpenChange={(open) => {
+                                if (!open) {
+                                  setTagSearchOpen(null);
+                                  setTagSearchTerm("");
+                                }
+                              }}
+                            >
+                              <DialogContent className="sm:max-w-[400px]">
+                                <DialogHeader>
+                                  <DialogTitle className="flex items-center gap-2">
+                                    <Tag className="h-5 w-5" />
+                                    Inserir Tags - {doc.filename}
+                                  </DialogTitle>
+                                </DialogHeader>
+                                <Command className="border rounded-lg">
                                   <CommandInput 
                                     placeholder="Buscar ou criar tag..." 
                                     value={tagSearchTerm}
@@ -623,27 +654,28 @@ export const DocumentAnalysisTab = () => {
                                         </Button>
                                       )}
                                     </CommandEmpty>
-                                    <CommandGroup heading="Tags existentes">
-                                      {uniqueTags
-                                        ?.filter(t => t.toLowerCase().includes(tagSearchTerm.toLowerCase()))
-                                        .slice(0, 10)
-                                        .map(tag => (
-                                          <CommandItem 
-                                            key={tag}
-                                            onSelect={() => {
-                                              insertTagMutation.mutate({ docId: doc.id, tagName: tag });
-                                            }}
-                                          >
-                                            <Tag className="h-4 w-4 mr-2" />
-                                            {tag}
-                                          </CommandItem>
-                                        ))
-                                      }
-                                    </CommandGroup>
+                                    <ScrollArea className="h-[300px]">
+                                      <CommandGroup heading="Tags existentes">
+                                        {uniqueTags
+                                          ?.filter(t => t.toLowerCase().includes(tagSearchTerm.toLowerCase()))
+                                          .map(tag => (
+                                            <CommandItem 
+                                              key={tag}
+                                              onSelect={() => {
+                                                insertTagMutation.mutate({ docId: doc.id, tagName: tag });
+                                              }}
+                                            >
+                                              <Tag className="h-4 w-4 mr-2" />
+                                              {tag}
+                                            </CommandItem>
+                                          ))
+                                        }
+                                      </CommandGroup>
+                                    </ScrollArea>
                                   </CommandList>
                                 </Command>
-                              </PopoverContent>
-                            </Popover>
+                              </DialogContent>
+                            </Dialog>
                           </div>
                         </div>
                       )}
