@@ -632,17 +632,15 @@ export default function ChatKnowYOU() {
 
       {/* Contextual Suggestions - ACIMA do input */}
       {!isLoading && suggestions.length > 0 && (
-        <div className="-mt-1">
-          <ContextualSuggestions
-            suggestions={suggestions}
-            isLoading={isLoading}
-            onSuggestionClick={handleSuggestionClick}
-          />
-        </div>
+        <ContextualSuggestions
+          suggestions={suggestions}
+          isLoading={isLoading}
+          onSuggestionClick={handleSuggestionClick}
+        />
       )}
 
       {/* Input Area */}
-      <form onSubmit={handleSubmit} className="-mt-0.5 pb-0 px-6 border-t border-border/50 shadow-[0_-2px_12px_rgba(0,0,0,0.2)]">
+      <form onSubmit={handleSubmit} className="pb-0 px-6">
         {/* Indicador de voz ativo */}
         {isRecording && <div className="flex items-center gap-2 text-xs mb-2">
             <div className={`w-2 h-2 rounded-full ${voiceStatus === 'waiting' ? 'bg-amber-500' : voiceStatus === 'processing' ? 'bg-blue-500' : 'bg-red-500'} animate-pulse`} />
