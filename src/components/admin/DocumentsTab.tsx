@@ -107,6 +107,7 @@ export const DocumentsTab = () => {
     totalPages: number;
   } | null>(null);
   const [fileToRemove, setFileToRemove] = useState<number | null>(null);
+  const [queueFileToRemove, setQueueFileToRemove] = useState<number | null>(null);
 
   // Document AI OCR toggle
   const [useDocumentAI, setUseDocumentAI] = useState(false);
@@ -1550,17 +1551,7 @@ export const DocumentsTab = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setSelectedFiles(prev => {
-                        const newFiles = prev.filter((_, i) => i !== idx);
-                        if (newFiles.length === 0) {
-                          toast.info("Todos os arquivos removidos");
-                        } else {
-                          toast.info("Arquivo removido da fila");
-                        }
-                        return newFiles;
-                      });
-                    }}
+                    onClick={() => setQueueFileToRemove(idx)}
                     disabled={uploading || isExtracting}
                     className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 ml-1"
                   >
@@ -3080,6 +3071,42 @@ export const DocumentsTab = () => {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleRemovePreviewFile}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Queue file removal confirmation */}
+      <AlertDialog open={queueFileToRemove !== null} onOpenChange={(open) => !open && setQueueFileToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover arquivo da fila?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {queueFileToRemove !== null && selectedFiles[queueFileToRemove] && (
+                <>O arquivo <strong>{selectedFiles[queueFileToRemove].name}</strong> será removido da fila de upload.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (queueFileToRemove !== null) {
+                  setSelectedFiles(prev => {
+                    const newFiles = prev.filter((_, i) => i !== queueFileToRemove);
+                    if (newFiles.length === 0) {
+                      toast.info("Todos os arquivos removidos");
+                    } else {
+                      toast.info("Arquivo removido da fila");
+                    }
+                    return newFiles;
+                  });
+                  setQueueFileToRemove(null);
+                }
+              }}
               className="bg-red-500 hover:bg-red-600"
             >
               Remover
