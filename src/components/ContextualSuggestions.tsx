@@ -23,14 +23,14 @@ const ContextualSuggestions = memo(({
   if (displaySuggestions.length === 0 || isLoading) return null;
   
   return (
-    <div className="px-4 py-0.5 bg-gradient-to-r from-cyan-500/10 to-cyan-600/5">
-      <div className="flex flex-nowrap gap-2 overflow-hidden">
+    <div className="px-4 py-0 bg-gradient-to-r from-cyan-500/10 to-cyan-600/5">
+      <div className="flex flex-nowrap gap-1.5 overflow-hidden">
         {displaySuggestions.map((suggestion, index) => (
           <button
             key={`${suggestion}-${index}`}
             onClick={() => onSuggestionClick(suggestion)}
             className={cn(
-              "px-3 py-1.5 text-xs rounded-full inline-flex items-center gap-1.5",
+              "px-2.5 py-1 text-xs rounded-full inline-flex items-center gap-1.5",
               "bg-cyan-500/20 text-cyan-300 border border-cyan-400/60",
               "hover:bg-cyan-500 hover:text-cyan-950",
               "hover:scale-105 hover:shadow-[0_0_12px_rgba(34,211,238,0.4)]",
