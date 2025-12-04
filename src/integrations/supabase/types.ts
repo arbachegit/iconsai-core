@@ -1193,6 +1193,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_merge_rule_count: {
+        Args: { p_chat_type: string; p_source_tag: string }
+        Returns: undefined
+      }
       initialize_chat_config_stats: { Args: never; Returns: undefined }
       log_credit_usage: {
         Args: {
