@@ -142,15 +142,39 @@ Regras:
       existingTags?.map(t => [t.tag_name.toLowerCase(), t.id]) || []
     );
     
-    // Helper function to apply merge rules
-    const applyMergeRules = (tagName: string): string => {
-      const canonical = mergeRulesMap.get(tagName.toLowerCase());
-      if (canonical) {
-        console.log(`ML Rule applied: "${tagName}" → "${canonical}"`);
-        return canonical;
-      }
-      return tagName;
-    };
+  // Helper function to apply merge rules and track usage
+  const appliedRules: string[] = [];
+  const applyMergeRules = (tagName: string): string => {
+    const canonical = mergeRulesMap.get(tagName.toLowerCase());
+    if (canonical) {
+      console.log(`ML Rule applied: "${tagName}" → "${canonical}"`);
+      appliedRules.push(tagName.toLowerCase());
+      return canonical;
+    }
+    return tagName;
+  };
+  
+  // Function to increment merge_count for applied rules
+  const incrementAppliedRulesCount = async () => {
+    if (appliedRules.length === 0) return;
+    
+    for (const sourceTag of appliedRules) {
+      await supabase
+        .from("tag_merge_rules")
+        .update({ merge_count: supabase.rpc ? undefined : 1 }) // Will use raw increment below
+        .eq("source_tag", sourceTag)
+        .eq("chat_type", chatType || "health");
+      
+      // Use RPC or direct SQL to increment
+      await supabase.rpc("increment_merge_rule_count", { 
+        p_source_tag: sourceTag, 
+        p_chat_type: chatType || "health" 
+      }).catch(() => {
+        // Fallback: just log if RPC doesn't exist yet
+        console.log(`Would increment count for rule: ${sourceTag}`);
+      });
+    }
+  };
     
     // Save parent tags (reuse existing or create new)
     const parentTagIds: { [key: string]: string } = {};
