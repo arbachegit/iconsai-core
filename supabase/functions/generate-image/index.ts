@@ -6,6 +6,56 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Keywords genéricas de saúde que SEMPRE são permitidas no chat health
+// Independente das tags do RAG, estas palavras são intrinsecamente relacionadas à saúde
+const healthGenericKeywords = [
+  // Anatomia geral
+  "anatomia", "corpo", "humano", "órgão", "órgãos", "sistema",
+  "crânio", "cabeça", "cérebro", "encéfalo", "neurônio", "nervo", "nervos",
+  "coração", "cardíaco", "cardiovascular", "vascular", "artéria", "veia", "sangue",
+  "pulmão", "pulmões", "respiratório", "respiração", "brônquio",
+  "fígado", "hepatico", "vesícula", "bile",
+  "rim", "rins", "renal", "urinário", "bexiga",
+  "estômago", "intestino", "digestivo", "digestão", "esôfago",
+  "osso", "ossos", "esqueleto", "coluna", "vertebra", "articulação",
+  "músculo", "músculos", "muscular", "tendão",
+  "pele", "derme", "epiderme", "cutâneo",
+  "olho", "olhos", "visão", "retina", "córnea",
+  "ouvido", "audição", "auditivo", "tímpano",
+  // Termos médicos gerais
+  "saúde", "médico", "medicina", "hospital", "clínica", "consultório",
+  "paciente", "tratamento", "terapia", "diagnóstico", "exame",
+  "doença", "enfermidade", "patologia", "sintoma", "sintomas",
+  "cirurgia", "procedimento", "operação", "cirúrgico",
+  "enfermagem", "enfermeiro", "enfermeira",
+  "farmácia", "medicamento", "remédio", "droga", "fármaco",
+  "vacina", "imunização", "imunidade",
+  "bem-estar", "nutrição", "dieta", "alimentação",
+  "fisioterapia", "reabilitação",
+  "saúde mental", "psicologia", "psiquiatria",
+  "prevenção", "preventivo", "screening",
+  // Especialidades
+  "cardiologia", "neurologia", "ortopedia", "pediatria", "geriatria",
+  "oncologia", "câncer", "tumor", "neoplasia",
+  "ginecologia", "obstetrícia", "gestação", "gravidez",
+  "urologia", "dermatologia", "oftalmologia", "otorrinolaringologia",
+  // Exames e procedimentos
+  "raio-x", "tomografia", "ressonância", "ultrassom", "ecografia",
+  "biópsia", "endoscopia", "colonoscopia",
+  "hemograma", "glicemia", "colesterol",
+  // Hospital Moinhos de Vento específico
+  "moinhos", "vento", "hospital moinhos"
+];
+
+// Keywords genéricas para o chat study (IA, KnowRISK, ACC)
+const studyGenericKeywords = [
+  "ia", "inteligência artificial", "machine learning", "aprendizado de máquina",
+  "knowrisk", "knowyou", "acc", "arquitetura cognitiva", "comportamental",
+  "turing", "chatgpt", "gpt", "llm", "modelo de linguagem",
+  "rede neural", "deep learning", "algoritmo", "automação",
+  "cognição", "cognitivo", "comportamento", "metodologia"
+];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -58,15 +108,25 @@ serve(async (req) => {
       );
     }
 
-    // Construir lista de keywords permitidas a partir do banco
+    // Construir lista de keywords permitidas
     const allowedKeywords: string[] = [];
     
-    // Adicionar scope_topics (tags parent com alta confiança)
+    // 1. PRIMEIRO: Adicionar keywords genéricas baseadas no tipo de chat
+    // Estas são SEMPRE permitidas, independente das tags RAG
+    if (chatType === "health") {
+      allowedKeywords.push(...healthGenericKeywords);
+      console.log(`✅ Adicionadas ${healthGenericKeywords.length} keywords genéricas de saúde`);
+    } else if (chatType === "study") {
+      allowedKeywords.push(...studyGenericKeywords);
+      console.log(`✅ Adicionadas ${studyGenericKeywords.length} keywords genéricas de estudo`);
+    }
+    
+    // 2. DEPOIS: Adicionar scope_topics (tags parent com alta confiança) do RAG
     if (configData?.scope_topics && Array.isArray(configData.scope_topics)) {
       allowedKeywords.push(...configData.scope_topics.map((t: string) => t.toLowerCase()));
     }
     
-    // Adicionar todas as tags (parent e child) do document_tags_data
+    // 3. POR ÚLTIMO: Adicionar todas as tags (parent e child) do document_tags_data
     if (configData?.document_tags_data && Array.isArray(configData.document_tags_data)) {
       configData.document_tags_data.forEach((tag: { tag_name: string }) => {
         if (tag.tag_name) {
@@ -75,7 +135,7 @@ serve(async (req) => {
       });
     }
 
-    // Se não houver keywords configuradas, rejeitar
+    // Se não houver keywords configuradas (improvável com as genéricas), rejeitar
     if (allowedKeywords.length === 0) {
       console.log("❌ Nenhum escopo configurado para o chat:", chatType);
       return new Response(
@@ -97,9 +157,12 @@ serve(async (req) => {
       promptLower.includes(keyword)
     );
 
+    // Log detalhado para debug
+    const matchedKeywords = allowedKeywords.filter(keyword => promptLower.includes(keyword));
+    
     if (!containsAllowedKeyword) {
       console.log(`❌ Prompt rejeitado (fora do escopo ${chatType}):`, prompt);
-      console.log("Keywords permitidas:", allowedKeywords.slice(0, 20), "...");
+      console.log("Keywords permitidas (amostra):", allowedKeywords.slice(0, 30), "...");
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -116,6 +179,7 @@ serve(async (req) => {
     }
 
     console.log(`✅ Prompt aprovado (${chatType}):`, prompt);
+    console.log(`   Keywords correspondentes: [${matchedKeywords.join(", ")}]`);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
