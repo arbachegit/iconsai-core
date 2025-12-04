@@ -61,6 +61,7 @@ interface Tag {
   document_id: string;
   parent_tag_id: string | null;
   created_at: string;
+  target_chat?: string | null;
 }
 
 export const TagsManagementTab = () => {
@@ -94,17 +95,25 @@ export const TagsManagementTab = () => {
 
   const queryClient = useQueryClient();
 
-  // Fetch all tags
+  // Fetch all tags with document target_chat
   const { data: allTags, isLoading } = useQuery({
     queryKey: ["all-tags"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("document_tags")
-        .select("*")
+        .select(`
+          *,
+          documents:document_id (target_chat)
+        `)
         .order("tag_name", { ascending: true });
 
       if (error) throw error;
-      return data as Tag[];
+      
+      // Flatten the target_chat from nested documents object
+      return (data || []).map((tag: any) => ({
+        ...tag,
+        target_chat: tag.documents?.target_chat || null,
+      })) as Tag[];
     },
   });
 
@@ -618,6 +627,7 @@ export const TagsManagementTab = () => {
                   </TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Origem</TableHead>
+                  <TableHead>Chat</TableHead>
                   <TableHead>
                     <Button
                       variant="ghost"
@@ -669,6 +679,20 @@ export const TagsManagementTab = () => {
                         <Badge variant={parent.source === "ai" ? "secondary" : "default"} className="text-xs">
                           {parent.source}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {parent.target_chat && (
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs ${
+                              parent.target_chat === "health" 
+                                ? "border-emerald-500/50 text-emerald-400" 
+                                : "border-blue-500/50 text-blue-400"
+                            }`}
+                          >
+                            {parent.target_chat === "health" ? "Saúde" : "Estudo"}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <TooltipProvider>
@@ -747,6 +771,20 @@ export const TagsManagementTab = () => {
                           <Badge variant={child.source === "ai" ? "secondary" : "default"} className="text-xs">
                             {child.source}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {child.target_chat && (
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${
+                                child.target_chat === "health" 
+                                  ? "border-emerald-500/50 text-emerald-400" 
+                                  : "border-blue-500/50 text-blue-400"
+                              }`}
+                            >
+                              {child.target_chat === "health" ? "Saúde" : "Estudo"}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge 
