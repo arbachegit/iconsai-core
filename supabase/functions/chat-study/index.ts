@@ -135,6 +135,96 @@ Sua meta é CLAREZA. Seja um guia prático. Evite floreios desnecessários, EXCE
 `;
   }
 
+  // Protocolo de Interpretação Matemática e Científica
+  function getMathematicalInterpretationProtocol(): string {
+    return `
+# 🧮 PROTOCOLO DE INTERPRETAÇÃO MATEMÁTICA E CIENTÍFICA
+
+Ao receber inputs que envolvam cálculos, fórmulas, estatísticas, rankings ou lógica abstrata, ative o seguinte processo:
+
+## 1. ANÁLISE SEMÂNTICA (Parser)
+ANTES de resolver, declare explicitamente:
+- Identifique as variáveis e atribua definições claras
+- Se houver ambiguidade, pergunte ou declare qual padrão assume
+- Converta texto corrido em notação formal
+
+**Exemplo:**
+Input: "Calcule a força se massa é 10 e aceleração é 5"
+→ Interpretação: m = 10 kg, a = 5 m/s², objetivo: F
+
+## 2. PADRONIZAÇÃO DE NOTAÇÃO
+- Use formatação clara para fórmulas e expressões matemáticas
+- Use símbolos: ×, ÷, √, π, ∑, ∫, ≠, ≤, ≥, ², ³
+- NUNCA escreva "x ao quadrado" - escreva x²
+- Para frações complexas, use notação clara: (a + b) / (c + d)
+
+## 3. VERIFICAÇÃO DE UNIDADES
+- Verifique compatibilidade dimensional
+- Se unidades não fornecidas, assuma SI e declare
+- Alerte se operação dimensional inválida (ex: somar metros com segundos)
+
+## 4. EXECUÇÃO STEP-BY-STEP
+- MOSTRE a dedução lógica, não pule para resposta
+- Para cálculos complexos, apresente cada etapa
+- Resultado final sempre com unidade quando aplicável
+
+## 5. 📊 GERAÇÃO DE DADOS PARA GRÁFICOS COM METADADOS
+
+**REGRA CRÍTICA:** Quando o usuário fornecer dados que incluam RANKINGS, POSIÇÕES, CATEGORIAS ou outros METADADOS além de nome/valor:
+
+**Estrutura de dados EXPANDIDA obrigatória:**
+Cada objeto em "data" DEVE incluir TODOS os campos mencionados pelo usuário:
+
+✅ CORRETO (com rank):
+CHART_DATA: {"type":"line","title":"Evolução de Pontuação","data":[
+  {"name":"2017","value":67.69,"rank":1},
+  {"name":"2018","value":68.40,"rank":1},
+  {"name":"2019","value":67.24,"rank":2}
+]}
+
+✅ CORRETO (com categoria e posição):
+CHART_DATA: {"type":"bar","title":"Desempenho por Ano","data":[
+  {"name":"2020","value":85.5,"rank":3,"categoria":"Excelente"},
+  {"name":"2021","value":92.1,"rank":1,"categoria":"Excepcional"}
+]}
+
+❌ ERRADO (omitindo rank mencionado pelo usuário):
+CHART_DATA: {"type":"line","title":"Pontuação","data":[
+  {"name":"2017","value":67.69},
+  {"name":"2018","value":68.40}
+]}
+
+**Campos extras comuns a incluir quando mencionados:**
+- rank / posição / position
+- categoria / category
+- ano / year (se diferente de name)
+- percentual / percentage
+- variação / change
+- meta / target
+
+O sistema exibirá automaticamente no tooltip: "67.69 (Rank: 1, Categoria: Excelente)"
+
+## EXEMPLO COMPLETO:
+
+**Input:** "A integral de 1/x de 1 a e"
+
+**Resposta:**
+> **Interpretação:**
+> Calcular ∫₁ᵉ (1/x) dx
+>
+> **Fórmula:**
+> A primitiva de 1/x é ln|x|
+>
+> **Resolução:**
+> ∫₁ᵉ (1/x) dx = [ln(x)]₁ᵉ = ln(e) - ln(1)
+>
+> **Cálculo:**
+> ln(e) = 1, ln(1) = 0
+>
+> **Resultado:** = 1
+`;
+  }
+
   try {
     const { messages, region } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -228,6 +318,7 @@ Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceito
 ${culturalTone}
 ${locationPrompt}
 ${getAdaptiveResponseProtocol()}
+${getMathematicalInterpretationProtocol()}
 ${ragContext}
 
 ⚠️ INSTRUÇÃO CRÍTICA - LEIA ATENTAMENTE:
@@ -329,8 +420,10 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    
    - Tipos disponíveis: "bar", "line", "pie", "area"
    - Cada item em "data" DEVE ter "name" (string) e "value" (número)
+   - **IMPORTANTE:** Se o usuário mencionar RANK, POSIÇÃO, CATEGORIA ou outros metadados, INCLUA esses campos no objeto:
+     {"name":"2017","value":67.69,"rank":1,"categoria":"Excelente"}
    - Para múltiplas séries, adicione mais campos numéricos e use "yKeys": ["value", "value2"]
-   - O sistema renderizará automaticamente o gráfico interativo com opções de exportação
+   - O sistema renderizará automaticamente o gráfico interativo com tooltip mostrando TODOS os campos
 
 EXEMPLO:
 
