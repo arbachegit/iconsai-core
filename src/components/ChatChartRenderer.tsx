@@ -366,21 +366,29 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   <TrendingUp className="h-4 w-4 mr-2" /> Linha
                 </DropdownMenuItem>
                 
-                {/* Pizza - com normalização automática */}
-                <DropdownMenuItem onClick={handlePieSelection}>
-                  <PieChartIcon className="h-4 w-4 mr-2" /> 
-                  Pizza
+                {/* Pizza - desabilitado quando dados não somam 100% */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <DropdownMenuItem 
+                        onClick={() => setChartType('pie')}
+                        disabled={!proportionValidation.isValid}
+                        className={cn(!proportionValidation.isValid && "opacity-50 cursor-not-allowed")}
+                      >
+                        <PieChartIcon className="h-4 w-4 mr-2" /> 
+                        Pizza
+                        {!proportionValidation.isValid && (
+                          <AlertCircle className="h-3 w-3 ml-auto text-amber-500" />
+                        )}
+                      </DropdownMenuItem>
+                    </div>
+                  </TooltipTrigger>
                   {!proportionValidation.isValid && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <AlertCircle className="h-3 w-3 ml-auto text-amber-500" />
-                      </TooltipTrigger>
-                      <TooltipContent side="left" className="max-w-xs">
-                        <p className="text-xs">Soma atual: {proportionValidation.sum.toFixed(1)}% - Será oferecida normalização</p>
-                      </TooltipContent>
-                    </Tooltip>
+                    <TooltipContent side="left" className="max-w-xs">
+                      <p className="text-xs">Soma atual: {proportionValidation.sum.toFixed(1)}% - Requer 100% para gráfico de pizza</p>
+                    </TooltipContent>
                   )}
-                </DropdownMenuItem>
+                </Tooltip>
                 
                 {/* Área - sempre habilitado */}
                 <DropdownMenuItem onClick={() => setChartType('area')}>
