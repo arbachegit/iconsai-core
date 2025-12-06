@@ -22,6 +22,7 @@ export interface TagManagementEventInput {
     | 'reassign_orphan' 
     | 'reject_duplicate' 
     | 'adopt_orphan'
+    | 'delete_orphan'
     | 'export_taxonomy'
     | 'import_taxonomy';
   user_decision: {
@@ -34,6 +35,7 @@ export interface TagManagementEventInput {
     source_tags_removed?: string[];
     imported_count?: number;
     exported_count?: number;
+    action?: string;
   };
   rationale?: string;
   similarity_score?: number;
