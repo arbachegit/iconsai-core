@@ -271,7 +271,15 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent side="right" className="font-medium">
-                            {item.label}
+                            {item.id === "activity-logs" ? (
+                              <div>
+                                <span className="font-bold">Log de Atividades</span>
+                                <br />
+                                <span className="text-xs text-muted-foreground">(admin)</span>
+                              </div>
+                            ) : (
+                              item.label
+                            )}
                           </TooltipContent>
                         </Tooltip>
                       );
