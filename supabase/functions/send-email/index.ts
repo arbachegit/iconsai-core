@@ -13,8 +13,81 @@ interface EmailRequest {
   replyTo?: string;
 }
 
+interface TokenResponse {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+}
+
+async function getAccessToken(): Promise<string> {
+  const clientId = Deno.env.get("GMAIL_CLIENT_ID");
+  const clientSecret = Deno.env.get("GMAIL_CLIENT_SECRET");
+  const refreshToken = Deno.env.get("GMAIL_REFRESH_TOKEN");
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error("Gmail OAuth credentials not configured");
+  }
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to refresh access token: ${errorText}`);
+  }
+
+  const data: TokenResponse = await response.json();
+  return data.access_token;
+}
+
+function createEmailContent(to: string, subject: string, body: string, replyTo?: string): string {
+  const boundary = "boundary_" + Date.now();
+  
+  let headers = [
+    `To: ${to}`,
+    `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
+    `MIME-Version: 1.0`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+  ];
+
+  if (replyTo) {
+    headers.push(`Reply-To: ${replyTo}`);
+  }
+
+  const plainText = body.replace(/<[^>]*>/g, '');
+
+  const emailContent = [
+    ...headers,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    btoa(unescape(encodeURIComponent(plainText))),
+    '',
+    `--${boundary}`,
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    btoa(unescape(encodeURIComponent(body))),
+    '',
+    `--${boundary}--`,
+  ].join('\r\n');
+
+  return btoa(emailContent).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -22,18 +95,15 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { to, subject, body, replyTo }: EmailRequest = await req.json();
 
-    // Input validation
     if (!to || !subject || !body) {
       throw new Error("Campos obrigatórios: to, subject, body");
     }
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(to)) {
       throw new Error("Email inválido");
     }
 
-    // Length validation
     if (subject.length > 200) {
       throw new Error("Assunto muito longo (máximo 200 caracteres)");
     }
@@ -42,44 +112,36 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Corpo muito longo (máximo 10000 caracteres)");
     }
 
-    console.log("[Resend] Processing email request to:", to);
+    console.log("[Gmail] Processing email request to:", to);
 
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    if (!RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY not configured");
-    }
+    const accessToken = await getAccessToken();
+    console.log("[Gmail] Access token obtained successfully");
 
-    const emailPayload: any = {
-      from: "KnowYOU <onboarding@resend.dev>",
-      to: [to],
-      subject: subject,
-      html: body,
-    };
+    const rawEmail = createEmailContent(to, subject, body, replyTo);
 
-    if (replyTo && emailRegex.test(replyTo)) {
-      emailPayload.reply_to = replyTo;
-    }
-
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(emailPayload),
-    });
-
-    const data = await response.json();
+    const response = await fetch(
+      "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ raw: rawEmail }),
+      }
+    );
 
     if (!response.ok) {
-      console.error("[Resend] Error sending email:", data);
-      throw new Error(data.message || "Failed to send email");
+      const errorData = await response.text();
+      console.error("[Gmail] Error sending email:", errorData);
+      throw new Error(`Failed to send email: ${errorData}`);
     }
 
-    console.log("[Resend] Email sent successfully:", data);
+    const result = await response.json();
+    console.log("[Gmail] Email sent successfully:", result.id);
 
     return new Response(
-      JSON.stringify({ success: true, message: "Email enviado com sucesso", id: data?.id }),
+      JSON.stringify({ success: true, message: "Email enviado com sucesso", id: result.id }),
       {
         status: 200,
         headers: {
@@ -89,7 +151,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error: any) {
-    console.error("[Resend] Error in send-email function:", error);
+    console.error("[Gmail] Error in send-email function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
