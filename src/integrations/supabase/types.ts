@@ -838,6 +838,36 @@ export type Database = {
         }
         Relationships: []
       }
+      password_recovery_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          is_used: boolean | null
+          used_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          is_used?: boolean | null
+          used_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          is_used?: boolean | null
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       podcast_contents: {
         Row: {
           created_at: string | null
