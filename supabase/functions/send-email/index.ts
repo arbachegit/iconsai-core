@@ -46,7 +46,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailPayload: any = {
-      from: "KnowYOU <onboarding@resend.dev>",
+      from: "KnowYOU <noreply@knowyou.app>",
       to: [to],
       subject: subject,
       html: body,
