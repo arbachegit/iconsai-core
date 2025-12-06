@@ -200,7 +200,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       label: "Auditoria",
       icon: Shield,
       items: [
-        { id: "activity-logs" as TabType, label: "Log de Atividades", icon: History },
+        { id: "activity-logs" as TabType, label: "Log de Atividades (admin)", icon: History },
         { id: "user-usage-logs" as TabType, label: "Log de Uso (Usuários)", icon: Users },
         { id: "document-routing-logs" as TabType, label: "Logs de Roteamento", icon: Route },
         { id: "tag-modification-logs" as TabType, label: "Logs de Mescla Tags", icon: Tags },
