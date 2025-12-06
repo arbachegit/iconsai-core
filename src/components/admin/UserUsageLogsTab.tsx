@@ -508,10 +508,10 @@ export const UserUsageLogsTab = () => {
       {/* Table */}
       <ScrollArea className="h-[500px] border rounded-lg">
         <div className="w-full">
-        {/* Header Row - CSS Grid Unificado de 6 colunas */}
-          <div className="grid grid-cols-[minmax(140px,1.5fr)_1fr_1fr_0.8fr_0.8fr_80px] gap-4 sticky top-0 bg-muted z-10 border-b">
+          {/* Header Row - CSS Grid fixo */}
+          <div className="grid grid-cols-[100px_160px_90px_60px_60px_1fr_40px] sticky top-0 bg-muted z-10 border-b">
             <div 
-              className="px-3 py-3 font-bold text-muted-foreground uppercase tracking-wider text-xs cursor-pointer hover:bg-muted-foreground/10"
+              className="px-2 py-3 font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
               onClick={() => handleSort("started_at")}
             >
               <div className="flex items-center gap-1">
@@ -519,7 +519,7 @@ export const UserUsageLogsTab = () => {
               </div>
             </div>
             <div 
-              className="px-3 py-3 font-bold text-muted-foreground uppercase tracking-wider text-xs cursor-pointer hover:bg-muted-foreground/10"
+              className="px-2 py-3 font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
               onClick={() => handleSort("user_name")}
             >
               <div className="flex items-center gap-1">
@@ -527,7 +527,7 @@ export const UserUsageLogsTab = () => {
               </div>
             </div>
             <div 
-              className="px-3 py-3 font-bold text-muted-foreground uppercase tracking-wider text-xs cursor-pointer hover:bg-muted-foreground/10"
+              className="px-2 py-3 font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
               onClick={() => handleSort("chat_type")}
             >
               <div className="flex items-center gap-1">
@@ -535,7 +535,7 @@ export const UserUsageLogsTab = () => {
               </div>
             </div>
             <div 
-              className="px-3 py-3 text-center font-bold text-muted-foreground uppercase tracking-wider text-xs cursor-pointer hover:bg-muted-foreground/10"
+              className="px-2 py-3 text-center font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
               onClick={() => handleSort("message_count")}
             >
               <div className="flex items-center justify-center gap-1">
@@ -543,16 +543,17 @@ export const UserUsageLogsTab = () => {
               </div>
             </div>
             <div 
-              className="px-3 py-3 text-center font-bold text-muted-foreground uppercase tracking-wider text-xs cursor-pointer hover:bg-muted-foreground/10"
+              className="px-2 py-3 text-center font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
               onClick={() => handleSort("audio_plays")}
             >
               <div className="flex items-center justify-center gap-1">
                 Áudios {getSortIcon("audio_plays")}
               </div>
             </div>
-            <div className="px-3 py-3 text-center font-bold text-muted-foreground uppercase tracking-wider text-xs">
+            <div className="px-2 py-3 font-bold text-foreground uppercase tracking-wide text-xs">
               Tópicos
             </div>
+            <div className="px-2 py-3"></div>
           </div>
 
           {/* Data Rows - Mesmo CSS Grid */}
@@ -568,16 +569,13 @@ export const UserUsageLogsTab = () => {
             sortedLogs?.map((log) => (
               <Collapsible key={log.id} open={expandedRows.has(log.id)}>
                 <div
-                  className="grid grid-cols-[minmax(140px,1.5fr)_1fr_1fr_0.8fr_0.8fr_80px] gap-4 border-b cursor-pointer hover:bg-muted/50"
+                  className="grid grid-cols-[100px_160px_90px_60px_60px_1fr_40px] border-b cursor-pointer hover:bg-muted/50"
                   onClick={() => toggleRow(log.id)}
                 >
-                  {/* DATA/HORA - Left aligned */}
-                  <div className="px-3 py-3 font-mono text-xs flex items-center">
+                  <div className="px-2 py-3 font-mono text-xs flex items-center">
                     {format(new Date(log.started_at), "dd/MM HH:mm", { locale: ptBR })}
                   </div>
-                  
-                  {/* USUÁRIO - Left aligned */}
-                  <div className="px-3 py-3 flex items-center">
+                  <div className="px-2 py-3 flex items-center">
                     <div className="flex items-center gap-2">
                       <span className="truncate">{log.user_name || "Anônimo"}</span>
                       {isAdmin(log.user_name) && (
@@ -588,30 +586,34 @@ export const UserUsageLogsTab = () => {
                       )}
                     </div>
                   </div>
-                  
-                  {/* CHAT - Left aligned */}
-                  <div className="px-3 py-3 flex items-center">
-                    {getChatBadge(log.chat_type)}
-                  </div>
-                  
-                  {/* MSGS - Center aligned */}
-                  <div className="px-3 py-3 flex items-center justify-center">
-                    <div className="flex items-center gap-1">
+                  <div className="px-2 py-3 flex items-center">{getChatBadge(log.chat_type)}</div>
+                  <div className="px-2 py-3 text-center flex items-center justify-center">
+                    <div className="flex items-center justify-center gap-1">
                       <MessageSquare className="w-3 h-3 text-muted-foreground" />
                       {log.message_count || 0}
                     </div>
                   </div>
-                  
-                  {/* ÁUDIOS - Center aligned */}
-                  <div className="px-3 py-3 flex items-center justify-center">
-                    <div className="flex items-center gap-1">
+                  <div className="px-2 py-3 text-center flex items-center justify-center">
+                    <div className="flex items-center justify-center gap-1">
                       <Volume2 className="w-3 h-3 text-muted-foreground" />
                       {log.audio_plays || 0}
                     </div>
                   </div>
-                  
-                  {/* TÓPICOS - Chevron centralizado */}
-                  <div className="px-3 py-3 flex items-center justify-center">
+                  <div className="px-2 py-3 flex items-center">
+                    <div className="flex flex-wrap gap-1">
+                      {(log.topics || []).slice(0, 3).map((topic: string, idx: number) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {topic}
+                        </Badge>
+                      ))}
+                      {(log.topics || []).length > 3 && (
+                        <Badge variant="secondary" className="text-xs">
+                          +{(log.topics || []).length - 3}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="px-2 py-3 flex items-center justify-center">
                     <ChevronDown
                       className={`w-4 h-4 transition-transform ${
                         expandedRows.has(log.id) ? "rotate-180" : ""
@@ -622,19 +624,6 @@ export const UserUsageLogsTab = () => {
                 <CollapsibleContent>
                   <div className="bg-muted/30 py-4 border-b">
                     <div className="space-y-3 px-4">
-                      {/* Tópicos movidos para área expandida */}
-                      {(log.topics || []).length > 0 && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-sm text-muted-foreground shrink-0">Tópicos:</span>
-                          <div className="flex flex-wrap gap-1">
-                            {(log.topics || []).map((topic: string, idx: number) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
-                                {topic}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                       <div className="flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <Clock className="w-4 h-4" />
