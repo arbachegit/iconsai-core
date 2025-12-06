@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -47,6 +49,24 @@ interface AdminSidebarProps {
 export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<string[]>(["quick-access"]);
+  const [pendingMessagesCount, setPendingMessagesCount] = useState(0);
+
+  useEffect(() => {
+    const fetchPendingMessages = async () => {
+      const { count } = await supabase
+        .from("contact_messages")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+      
+      setPendingMessagesCount(count || 0);
+    };
+
+    fetchPendingMessages();
+
+    // Atualizar a cada 30 segundos
+    const interval = setInterval(fetchPendingMessages, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("admin_authenticated");
@@ -162,6 +182,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
                   {category.items.map((item) => {
                     const Icon = item.icon;
                     const isActive = activeTab === item.id;
+                    const showBadge = item.id === "contact-messages" && pendingMessagesCount > 0;
 
                     return (
                       <Button
@@ -172,6 +193,11 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
                       >
                         <Icon className="w-4 h-4" />
                         {item.label}
+                        {showBadge && (
+                          <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
+                            {pendingMessagesCount}
+                          </Badge>
+                        )}
                       </Button>
                     );
                   })}
