@@ -62,7 +62,7 @@ const AdminLogin = () => {
         title: "Login realizado",
         description: "Bem-vindo ao painel administrativo.",
       });
-      navigate("/portal");
+      navigate("/admin");
     } catch (error: any) {
       toast({
         title: "Erro ao fazer login",
