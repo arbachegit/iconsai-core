@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, ArrowLeft, Home } from "lucide-react";
+import { Lock, ArrowLeft, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -215,13 +215,14 @@ const AdminLogin = () => {
           )}
 
           {/* Botão retornar ao App */}
-          <div className="w-full pt-4 border-t border-primary/10">
+          <div className="w-full pt-2 border-t border-primary/10">
             <Link to="/">
               <Button
                 variant="ghost"
-                className="w-full text-muted-foreground hover:text-foreground"
+                size="sm"
+                className="w-full text-muted-foreground hover:text-foreground text-xs"
               >
-                <Home className="w-4 h-4 mr-2" />
+                <Zap className="w-3 h-3 mr-1" />
                 Retornar ao App
               </Button>
             </Link>
