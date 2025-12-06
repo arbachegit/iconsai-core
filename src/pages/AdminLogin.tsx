@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, ArrowLeft, Zap, KeyRound, Loader2, Eye, EyeOff } from "lucide-react";
+import { Lock, ArrowLeft, Zap, KeyRound, Loader2, Eye, EyeOff, Check, X, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,6 +22,11 @@ const logPasswordRecoveryAttempt = async (email: string, action: string, success
   }
 };
 
+const validateEmailFormat = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,8 +35,23 @@ const AdminLogin = () => {
   const [resetEmail, setResetEmail] = useState("");
   const [isResetting, setIsResetting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isEmailValid, setIsEmailValid] = useState<boolean | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Validate email format in real-time
+  useEffect(() => {
+    if (resetEmail.length === 0) {
+      setIsEmailValid(null);
+      setEmailError(null);
+      return;
+    }
+    
+    const isValid = validateEmailFormat(resetEmail);
+    setIsEmailValid(isValid);
+    setEmailError(isValid ? null : "Formato de email inválido");
+  }, [resetEmail]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,9 +96,20 @@ const AdminLogin = () => {
 
   const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isEmailValid) {
+      toast({
+        title: "Email inválido",
+        description: "Por favor, insira um email válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsResetting(true);
 
     try {
+      // First check if the email exists in auth.users via Edge Function
       const response = await supabase.functions.invoke('send-recovery-code', {
         body: { email: resetEmail }
       });
@@ -88,6 +119,16 @@ const AdminLogin = () => {
       }
 
       const data = response.data;
+
+      if (data.error === 'email_not_found') {
+        setEmailError("Email não registrado no sistema");
+        toast({
+          title: "Email não encontrado",
+          description: "Este email não está registrado no sistema.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       if (data.error) {
         toast({
@@ -211,20 +252,37 @@ const AdminLogin = () => {
                   <label className="text-sm font-medium text-muted-foreground">
                     Email
                   </label>
-                  <Input
-                    type="email"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    placeholder="seu-email@exemplo.com"
-                    className="bg-background/50"
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      placeholder="seu-email@exemplo.com"
+                      className={`bg-background/50 pr-10 ${
+                        isEmailValid === false ? 'border-red-500 focus:border-red-500' : 
+                        isEmailValid === true ? 'border-green-500 focus:border-green-500' : ''
+                      }`}
+                      required
+                    />
+                    {resetEmail.length > 0 && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {isEmailValid === true && <Check className="h-4 w-4 text-green-500" />}
+                        {isEmailValid === false && <X className="h-4 w-4 text-red-500" />}
+                      </div>
+                    )}
+                  </div>
+                  {emailError && (
+                    <div className="flex items-center gap-1 text-xs text-red-500">
+                      <AlertCircle className="h-3 w-3" />
+                      {emailError}
+                    </div>
+                  )}
                 </div>
 
                 <Button
                   type="submit"
                   className="w-full bg-gradient-primary"
-                  disabled={isResetting}
+                  disabled={isResetting || !isEmailValid}
                 >
                   {isResetting ? (
                     <>
