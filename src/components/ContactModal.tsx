@@ -1,97 +1,100 @@
-import { useState } from "react";
-import { Mail, User, MessageSquare, Send, X, Loader2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { useState, useMemo } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { Mail, Send, Loader2, User, MessageSquare, CheckCircle2, XCircle, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface ContactModalProps {
-  trigger: React.ReactNode;
+  children: React.ReactNode;
 }
 
-export const ContactModal = ({ trigger }: ContactModalProps) => {
-  const [open, setOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    subject: "",
-    message: "",
-  });
-  const { toast } = useToast();
+const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+export const ContactModal = ({ children }: ContactModalProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
+
+  const isEmailValid = useMemo(() => validateEmail(email), [email]);
+  const showEmailError = emailTouched && email.length > 0 && !isEmailValid;
+  const showEmailSuccess = emailTouched && email.length > 0 && isEmailValid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.subject || !formData.message) {
+    if (!isEmailValid) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos.",
+        title: "Email inválido",
+        description: "Por favor, insira um endereço de email válido.",
         variant: "destructive",
       });
       return;
     }
-
-    setIsLoading(true);
+    
+    setIsSending(true);
 
     try {
-      // Get the configured notification email from admin settings
       const { data: settings } = await supabase
-        .from("admin_settings")
-        .select("gmail_notification_email")
+        .from('admin_settings')
+        .select('gmail_notification_email')
         .single();
 
-      const toEmail = settings?.gmail_notification_email || "suporte@knowyou.app";
+      const recipientEmail = settings?.gmail_notification_email || 'suporte@knowyou.app';
 
-      const { error } = await supabase.functions.invoke("send-email", {
+      const { error } = await supabase.functions.invoke('send-email', {
         body: {
-          to: toEmail,
-          subject: `[Contato KnowYOU] ${formData.subject}`,
-          body: `
-De: ${formData.email}
-Assunto: ${formData.subject}
-
-Mensagem:
-${formData.message}
-
----
-Enviado via formulário de contato KnowYOU
-          `.trim(),
+          to: recipientEmail,
+          subject: `[Contato KnowYOU] ${subject}`,
+          html: `
+            <h2>Nova mensagem de contato</h2>
+            <p><strong>De:</strong> ${email}</p>
+            <p><strong>Assunto:</strong> ${subject}</p>
+            <hr />
+            <p>${message.replace(/\n/g, '<br />')}</p>
+          `,
+          replyTo: email,
         },
       });
 
       if (error) throw error;
 
       toast({
-        title: "Mensagem enviada",
-        description: "Sua mensagem foi enviada com sucesso. Retornaremos em breve!",
+        title: "Mensagem enviada!",
+        description: "Entraremos em contato em breve.",
       });
 
-      setFormData({ email: "", subject: "", message: "" });
-      setOpen(false);
+      setEmail("");
+      setSubject("");
+      setMessage("");
+      setEmailTouched(false);
+      setIsOpen(false);
     } catch (error) {
-      console.error("Error sending contact email:", error);
+      console.error('Error sending email:', error);
       toast({
         title: "Erro ao enviar",
-        description: "Não foi possível enviar sua mensagem. Tente novamente mais tarde.",
+        description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsSending(false);
     }
   };
 
+  const isFormValid = isEmailValid && subject.trim() && message.trim();
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-md border-primary/20">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl text-gradient">
@@ -106,15 +109,35 @@ Enviado via formulário de contato KnowYOU
               <User className="h-4 w-4" />
               Seu Email
             </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="seu@email.com"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="bg-background/50 border-primary/20 focus:border-primary/50"
-              disabled={isLoading}
-            />
+            <div className="relative">
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => setEmailTouched(true)}
+                className={`bg-background/50 pr-10 transition-colors ${
+                  showEmailError 
+                    ? 'border-destructive focus:border-destructive' 
+                    : showEmailSuccess 
+                      ? 'border-green-500 focus:border-green-500' 
+                      : 'border-primary/20 focus:border-primary/50'
+                }`}
+                disabled={isSending}
+              />
+              {showEmailSuccess && (
+                <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+              )}
+              {showEmailError && (
+                <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />
+              )}
+            </div>
+            {showEmailError && (
+              <p className="text-xs text-destructive mt-1">
+                Por favor, insira um email válido (ex: nome@dominio.com)
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -126,10 +149,10 @@ Enviado via formulário de contato KnowYOU
               id="subject"
               type="text"
               placeholder="Qual o assunto da sua mensagem?"
-              value={formData.subject}
-              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
               className="bg-background/50 border-primary/20 focus:border-primary/50"
-              disabled={isLoading}
+              disabled={isSending}
             />
           </div>
 
@@ -141,10 +164,10 @@ Enviado via formulário de contato KnowYOU
             <Textarea
               id="message"
               placeholder="Escreva sua mensagem aqui..."
-              value={formData.message}
-              onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
               className="bg-background/50 border-primary/20 focus:border-primary/50 min-h-[120px] resize-none"
-              disabled={isLoading}
+              disabled={isSending}
             />
           </div>
 
@@ -152,8 +175,8 @@ Enviado via formulário de contato KnowYOU
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setOpen(false)}
-              disabled={isLoading}
+              onClick={() => setIsOpen(false)}
+              disabled={isSending}
               className="gap-2"
             >
               <X className="h-4 w-4" />
@@ -161,10 +184,10 @@ Enviado via formulário de contato KnowYOU
             </Button>
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={isSending || !isFormValid}
               className="gap-2 bg-primary hover:bg-primary/90"
             >
-              {isLoading ? (
+              {isSending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Send className="h-4 w-4" />

@@ -223,14 +223,12 @@ const Index = () => {
               <p className="text-sm text-muted-foreground">
                 {t('footer.tagline')}
               </p>
-              <ContactModal
-                trigger={
-                  <button className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors mx-auto mt-2">
-                    <Mail className="h-4 w-4" />
-                    Fale conosco
-                  </button>
-                }
-              />
+              <ContactModal>
+                <button className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors mx-auto mt-2">
+                  <Mail className="h-4 w-4" />
+                  Fale conosco
+                </button>
+              </ContactModal>
               <p className="text-xs text-muted-foreground">
                 {t('footer.copyright')}
               </p>
