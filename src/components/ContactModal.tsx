@@ -137,7 +137,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
         body: {
           to: recipientEmail,
           subject: `[Contato KnowYOU] ${subject}`,
-          html: `
+          body: `
             <h2>Nova mensagem de contato</h2>
             <p><strong>De:</strong> ${email}</p>
             <p><strong>Assunto:</strong> ${subject}</p>
