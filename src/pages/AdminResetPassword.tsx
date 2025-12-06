@@ -72,6 +72,39 @@ const AdminResetPassword = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const validatePassword = (pwd: string): { valid: boolean; message: string } => {
+    if (pwd.length < 8) {
+      return { valid: false, message: "A senha deve ter pelo menos 8 caracteres." };
+    }
+    if (!/[0-9]/.test(pwd)) {
+      return { valid: false, message: "A senha deve conter pelo menos um número." };
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(pwd)) {
+      return { valid: false, message: "A senha deve conter pelo menos um caractere especial (!@#$%...)." };
+    }
+    if (!/[A-Z]/.test(pwd)) {
+      return { valid: false, message: "A senha deve conter pelo menos uma letra maiúscula." };
+    }
+    if (!/[a-z]/.test(pwd)) {
+      return { valid: false, message: "A senha deve conter pelo menos uma letra minúscula." };
+    }
+    return { valid: true, message: "" };
+  };
+
+  const getPasswordStrength = (pwd: string): { level: number; label: string; color: string } => {
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (pwd.length >= 12) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(pwd)) score++;
+    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
+
+    if (score <= 2) return { level: score, label: "Fraca", color: "bg-red-500" };
+    if (score <= 3) return { level: score, label: "Média", color: "bg-amber-500" };
+    if (score <= 4) return { level: score, label: "Forte", color: "bg-lime-500" };
+    return { level: score, label: "Muito Forte", color: "bg-green-500" };
+  };
+
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -84,16 +117,15 @@ const AdminResetPassword = () => {
       return;
     }
 
-    if (password.length < 6) {
+    const validation = validatePassword(password);
+    if (!validation.valid) {
       toast({
-        title: "Senha muito curta",
-        description: "A senha deve ter pelo menos 6 caracteres.",
+        title: "Senha inválida",
+        description: validation.message,
         variant: "destructive",
       });
       return;
     }
-
-    setIsLoading(true);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -276,7 +308,7 @@ const AdminResetPassword = () => {
                   placeholder="Digite sua nova senha"
                   className="bg-background/50 pr-10"
                   required
-                  minLength={6}
+                  minLength={8}
                 />
                 <button
                   type="button"
@@ -286,6 +318,26 @@ const AdminResetPassword = () => {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {password && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all ${getPasswordStrength(password).color}`} 
+                        style={{ width: `${(getPasswordStrength(password).level / 5) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground">{getPasswordStrength(password).label}</span>
+                  </div>
+                  <ul className="text-xs text-muted-foreground space-y-0.5">
+                    <li className={password.length >= 8 ? "text-green-500" : ""}>• Mínimo 8 caracteres</li>
+                    <li className={/[A-Z]/.test(password) ? "text-green-500" : ""}>• Uma letra maiúscula</li>
+                    <li className={/[a-z]/.test(password) ? "text-green-500" : ""}>• Uma letra minúscula</li>
+                    <li className={/[0-9]/.test(password) ? "text-green-500" : ""}>• Um número</li>
+                    <li className={/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(password) ? "text-green-500" : ""}>• Um caractere especial</li>
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
