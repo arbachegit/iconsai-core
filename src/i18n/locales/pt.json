@@ -322,6 +322,9 @@
     "emailError": "Por favor, insira um email válido (ex: nome@dominio.com)",
     "subjectError": "O assunto deve ter pelo menos 3 caracteres",
     "messageError": "A mensagem deve ter pelo menos 10 caracteres",
-    "button": "Fale conosco"
+    "button": "Fale conosco",
+    "rateLimitTitle": "Aguarde um momento",
+    "rateLimitDescription": "Você poderá enviar outra mensagem em {{seconds}} segundos",
+    "cooldownMessage": "Aguarde {{seconds}}s"
   }
 }

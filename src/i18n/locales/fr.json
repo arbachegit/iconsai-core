@@ -323,6 +323,9 @@
     "emailError": "Veuillez entrer un email valide (ex: nom@domaine.com)",
     "subjectError": "Le sujet doit contenir au moins 3 caractères",
     "messageError": "Le message doit contenir au moins 10 caractères",
-    "button": "Nous contacter"
+    "button": "Nous contacter",
+    "rateLimitTitle": "Veuillez patienter",
+    "rateLimitDescription": "Vous pourrez envoyer un autre message dans {{seconds}} secondes",
+    "cooldownMessage": "Attendre {{seconds}}s"
   }
 }
