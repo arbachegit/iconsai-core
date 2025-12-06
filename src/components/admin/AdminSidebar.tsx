@@ -225,20 +225,18 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
     <TooltipProvider delayDuration={0}>
       <>
         <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-card border-r border-primary/20 flex flex-col h-screen transition-all duration-300`}>
-          <div className={`${isCollapsed ? 'p-3' : 'p-6'} border-b border-primary/20 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-            {!isCollapsed && (
-              <div>
-                <h1 className="text-xl font-bold text-gradient">Admin Panel</h1>
-                <p className="text-sm text-muted-foreground mt-1">KnowYOU</p>
-              </div>
-            )}
+        <div className={`${isCollapsed ? 'p-3' : 'p-6'} border-b border-primary/20 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+            <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
+              <h1 className="text-xl font-bold text-gradient whitespace-nowrap">Admin Panel</h1>
+              <p className="text-sm text-muted-foreground mt-1 whitespace-nowrap">KnowYOU</p>
+            </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={onToggleCollapse}
               className="shrink-0"
             >
-              {isCollapsed ? <Menu className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+              <Menu className={`w-5 h-5 transition-transform duration-300 ease-in-out ${isCollapsed ? 'rotate-90' : 'rotate-0'}`} />
             </Button>
           </div>
 
@@ -306,8 +304,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                             className={`w-full justify-start gap-3 ${isActive ? "bg-gradient-primary" : ""}`}
                             onClick={() => onTabChange(item.id)}
                           >
-                            <Icon className="w-4 h-4" />
-                            {item.label}
+                            <Icon className="w-4 h-4 shrink-0" />
+                            <span className="transition-opacity duration-300 ease-in-out">
+                              {item.label}
+                            </span>
                             {showBadge && (
                               <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
                                 {pendingMessagesCount}
@@ -378,8 +378,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                 className="w-full justify-start gap-3"
                 onClick={() => navigate("/docs")}
               >
-                <BookOpen className="w-4 h-4" />
-                Documentação
+                <BookOpen className="w-4 h-4 shrink-0" />
+                <span className="transition-opacity duration-300 ease-in-out">Documentação</span>
               </Button>
 
               <Button
@@ -387,8 +387,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                 className="w-full justify-start gap-3 text-primary hover:!text-black"
                 onClick={() => navigate("/")}
               >
-                <ArrowLeft className="w-4 h-4" />
-                Voltar ao APP
+                <ArrowLeft className="w-4 h-4 shrink-0" />
+                <span className="transition-opacity duration-300 ease-in-out">Voltar ao APP</span>
               </Button>
 
               <Button
@@ -396,8 +396,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                 className="w-full justify-start gap-3 text-destructive hover:text-destructive"
                 onClick={handleLogout}
               >
-                <LogOut className="w-4 h-4" />
-                Sair
+                <LogOut className="w-4 h-4 shrink-0" />
+                <span className="transition-opacity duration-300 ease-in-out">Sair</span>
               </Button>
             </>
           )}
