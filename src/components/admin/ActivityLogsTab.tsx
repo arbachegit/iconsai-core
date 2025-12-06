@@ -372,8 +372,8 @@ export const ActivityLogsTab = () => {
 
   return (
     <div className="space-y-6">
-      <AdminTitleWithInfo
-        title="Log de Atividades"
+        <AdminTitleWithInfo
+          title="Log de Atividades (admin)"
         level="h1"
         tooltipText="Histórico completo de ações administrativas"
         infoContent={`Sistema de auditoria que registra automaticamente todas as ações realizadas por administradores no painel.
