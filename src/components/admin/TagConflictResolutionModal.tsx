@@ -1,0 +1,485 @@
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2, Merge, AlertTriangle, ArrowRight, Users, Sparkles } from "lucide-react";
+import { logTagManagementEvent, calculateTimeSinceModalOpen } from "@/lib/tag-management-logger";
+
+interface Tag {
+  id: string;
+  tag_name: string;
+  tag_type: string;
+  confidence: number | null;
+  source: string | null;
+  document_id: string;
+  parent_tag_id: string | null;
+  created_at: string;
+  target_chat?: string | null;
+}
+
+interface ChildTag {
+  id: string;
+  tag_name: string;
+  parent_tag_id: string;
+}
+
+interface ConflictResolutionModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  conflictType: 'parent' | 'child' | 'semantic';
+  tags: Tag[];
+  childTagsMap: Record<string, Tag[]>;
+  parentTags: Tag[];
+  similarityScore?: number;
+  onComplete?: () => void;
+}
+
+export const TagConflictResolutionModal = ({
+  open,
+  onOpenChange,
+  conflictType,
+  tags,
+  childTagsMap,
+  parentTags,
+  similarityScore,
+  onComplete
+}: ConflictResolutionModalProps) => {
+  const [selectedTargetId, setSelectedTargetId] = useState<string>("");
+  const [selectedParentId, setSelectedParentId] = useState<string>("");
+  const [coherentChildren, setCoherentChildren] = useState<Set<string>>(new Set());
+  const [orphanChildren, setOrphanChildren] = useState<Set<string>>(new Set());
+  const [rationale, setRationale] = useState("");
+  const [modalOpenTime] = useState(Date.now());
+  const queryClient = useQueryClient();
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (open && tags.length > 0) {
+      setSelectedTargetId(tags[0].id);
+      setRationale("");
+      
+      if (conflictType === 'parent' && tags.length > 1) {
+        // Pre-select all children as coherent by default
+        const allChildrenIds = new Set<string>();
+        tags.slice(1).forEach(tag => {
+          const children = childTagsMap[tag.id] || [];
+          children.forEach(child => allChildrenIds.add(child.id));
+        });
+        setCoherentChildren(allChildrenIds);
+        setOrphanChildren(new Set());
+      }
+    }
+  }, [open, tags, conflictType, childTagsMap]);
+
+  const mergeMutation = useMutation({
+    mutationFn: async () => {
+      const targetTag = tags.find(t => t.id === selectedTargetId);
+      const sourceTags = tags.filter(t => t.id !== selectedTargetId);
+      
+      if (!targetTag) throw new Error("Tag alvo não encontrada");
+
+      const timeToDecision = calculateTimeSinceModalOpen(modalOpenTime);
+
+      if (conflictType === 'child') {
+        // Child merge: must select a parent
+        if (!selectedParentId) throw new Error("Selecione um parent tag");
+        
+        const parentTag = parentTags.find(p => p.id === selectedParentId);
+        
+        // Move all children to selected parent
+        for (const tag of tags) {
+          await supabase
+            .from("document_tags")
+            .update({ parent_tag_id: selectedParentId })
+            .eq("id", tag.id);
+        }
+        
+        // Delete source tags (keep only target)
+        await supabase
+          .from("document_tags")
+          .delete()
+          .in("id", sourceTags.map(t => t.id));
+
+        // Create ML rule
+        for (const source of sourceTags) {
+          if (source.tag_name.toLowerCase() !== targetTag.tag_name.toLowerCase()) {
+            await supabase
+              .from("tag_merge_rules")
+              .upsert({
+                source_tag: source.tag_name,
+                canonical_tag: targetTag.tag_name,
+                chat_type: targetTag.target_chat || "health",
+                created_by: "admin"
+              }, { onConflict: "source_tag,chat_type" });
+          }
+        }
+
+        // Log event
+        await logTagManagementEvent({
+          input_state: {
+            tags_involved: tags.map(t => ({
+              id: t.id,
+              name: t.tag_name,
+              type: 'child',
+              parent_id: t.parent_tag_id
+            })),
+            similarity_score: similarityScore,
+            detection_type: conflictType === 'child' ? 'child_similarity' : 'semantic'
+          },
+          action_type: 'merge_child',
+          user_decision: {
+            target_tag_id: targetTag.id,
+            target_tag_name: targetTag.tag_name,
+            target_parent_id: selectedParentId,
+            target_parent_name: parentTag?.tag_name,
+            source_tags_removed: sourceTags.map(t => t.id)
+          },
+          rationale,
+          similarity_score: similarityScore,
+          time_to_decision_ms: timeToDecision
+        });
+
+      } else if (conflictType === 'parent' || conflictType === 'semantic') {
+        // Parent merge: coherence check for children
+        const coherentChildrenArr = Array.from(coherentChildren);
+        const orphanChildrenArr = Array.from(orphanChildren);
+
+        // Move coherent children to target
+        if (coherentChildrenArr.length > 0) {
+          await supabase
+            .from("document_tags")
+            .update({ parent_tag_id: targetTag.id })
+            .in("id", coherentChildrenArr);
+        }
+
+        // Orphan incoherent children (set parent_tag_id to null)
+        if (orphanChildrenArr.length > 0) {
+          await supabase
+            .from("document_tags")
+            .update({ parent_tag_id: null })
+            .in("id", orphanChildrenArr);
+        }
+
+        // Delete source parent tags
+        await supabase
+          .from("document_tags")
+          .delete()
+          .in("id", sourceTags.map(t => t.id));
+
+        // Create ML rules
+        for (const source of sourceTags) {
+          if (source.tag_name.toLowerCase() !== targetTag.tag_name.toLowerCase()) {
+            await supabase
+              .from("tag_merge_rules")
+              .upsert({
+                source_tag: source.tag_name,
+                canonical_tag: targetTag.tag_name,
+                chat_type: targetTag.target_chat || "health",
+                created_by: "admin"
+              }, { onConflict: "source_tag,chat_type" });
+          }
+        }
+
+        // Log event
+        await logTagManagementEvent({
+          input_state: {
+            tags_involved: tags.map(t => ({
+              id: t.id,
+              name: t.tag_name,
+              type: 'parent',
+              children: (childTagsMap[t.id] || []).map(c => ({ id: c.id, name: c.tag_name }))
+            })),
+            similarity_score: similarityScore,
+            detection_type: conflictType === 'parent' ? 'exact' : 'semantic'
+          },
+          action_type: 'merge_parent',
+          user_decision: {
+            target_tag_id: targetTag.id,
+            target_tag_name: targetTag.tag_name,
+            moved_children: coherentChildrenArr,
+            orphaned_children: orphanChildrenArr,
+            source_tags_removed: sourceTags.map(t => t.id)
+          },
+          rationale,
+          similarity_score: similarityScore,
+          time_to_decision_ms: timeToDecision
+        });
+      }
+    },
+    onSuccess: () => {
+      toast.success("Tags unificadas com sucesso! Regra ML criada.");
+      queryClient.invalidateQueries({ queryKey: ["all-tags"] });
+      queryClient.invalidateQueries({ queryKey: ["tag-merge-rules"] });
+      onOpenChange(false);
+      onComplete?.();
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao unificar: ${error.message}`);
+    },
+  });
+
+  const handleRejectDuplicate = async () => {
+    const timeToDecision = calculateTimeSinceModalOpen(modalOpenTime);
+    
+    await logTagManagementEvent({
+      input_state: {
+        tags_involved: tags.map(t => ({
+          id: t.id,
+          name: t.tag_name,
+          type: t.parent_tag_id ? 'child' : 'parent'
+        })),
+        similarity_score: similarityScore,
+        detection_type: conflictType === 'parent' ? 'exact' : conflictType === 'semantic' ? 'semantic' : 'child_similarity'
+      },
+      action_type: 'reject_duplicate',
+      user_decision: {},
+      rationale,
+      similarity_score: similarityScore,
+      time_to_decision_ms: timeToDecision
+    });
+
+    toast.info("Duplicata rejeitada. Decisão registrada para aprendizado.");
+    onOpenChange(false);
+  };
+
+  const toggleCoherent = (childId: string) => {
+    setCoherentChildren(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(childId)) {
+        newSet.delete(childId);
+        setOrphanChildren(p => new Set(p).add(childId));
+      } else {
+        newSet.add(childId);
+        setOrphanChildren(p => {
+          const ns = new Set(p);
+          ns.delete(childId);
+          return ns;
+        });
+      }
+      return newSet;
+    });
+  };
+
+  // Get all children from source tags (for parent merge)
+  const sourceChildren: ChildTag[] = [];
+  if (conflictType === 'parent' || conflictType === 'semantic') {
+    tags.filter(t => t.id !== selectedTargetId).forEach(tag => {
+      const children = childTagsMap[tag.id] || [];
+      children.forEach(child => {
+        sourceChildren.push({
+          id: child.id,
+          tag_name: child.tag_name,
+          parent_tag_id: tag.id
+        });
+      });
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Merge className="h-5 w-5 text-purple-400" />
+            Resolução de Conflito - {conflictType === 'child' ? 'Tags Filhas' : conflictType === 'semantic' ? 'Similaridade Semântica' : 'Tags Pai'}
+          </DialogTitle>
+          <DialogDescription>
+            {similarityScore && (
+              <Badge variant="outline" className="mb-2 bg-amber-500/20 text-amber-300 border-amber-500/30">
+                {Math.round(similarityScore * 100)}% similaridade
+              </Badge>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          {/* Tags envolvidas */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Tags Envolvidas:</Label>
+            <div className="flex flex-wrap gap-2">
+              {tags.map(tag => (
+                <Badge 
+                  key={tag.id} 
+                  variant={tag.id === selectedTargetId ? "default" : "secondary"}
+                  className={tag.id === selectedTargetId ? "bg-green-500/20 text-green-300 border-green-500/30" : ""}
+                >
+                  {tag.tag_name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Seleção da tag alvo */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Tag Alvo (será mantida):</Label>
+            <Select value={selectedTargetId} onValueChange={setSelectedTargetId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a tag alvo..." />
+              </SelectTrigger>
+              <SelectContent>
+                {tags.map(tag => (
+                  <SelectItem key={tag.id} value={tag.id}>
+                    {tag.tag_name} ({tag.source || "N/A"})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Para merge de child tags: forçar seleção de parent */}
+          {conflictType === 'child' && (
+            <div className="border border-blue-500/30 rounded-lg p-4 bg-blue-500/5">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="h-4 w-4 text-blue-400" />
+                <Label className="text-sm font-medium">Selecione o Parent Tag Destino:</Label>
+              </div>
+              <Select value={selectedParentId} onValueChange={setSelectedParentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um parent tag..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {parentTags.map(parent => (
+                    <SelectItem key={parent.id} value={parent.id}>
+                      {parent.tag_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-2">
+                A tag unificada será movida para este parent.
+              </p>
+            </div>
+          )}
+
+          {/* Para merge de parent tags: Coherence Check */}
+          {(conflictType === 'parent' || conflictType === 'semantic') && sourceChildren.length > 0 && (
+            <div className="border border-orange-500/30 rounded-lg p-4 bg-orange-500/5">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="h-4 w-4 text-orange-400" />
+                <Label className="text-sm font-medium">Verificação de Coerência - Tags Filhas:</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Selecione quais filhas devem migrar para o parent alvo. As não selecionadas irão para a "Zona de Órfãs".
+              </p>
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {sourceChildren.map(child => {
+                  const isCoherent = coherentChildren.has(child.id);
+                  const parentTag = tags.find(t => t.id === child.parent_tag_id);
+                  
+                  return (
+                    <div 
+                      key={child.id} 
+                      className={`flex items-center justify-between p-2 rounded border ${
+                        isCoherent 
+                          ? 'bg-green-500/10 border-green-500/30' 
+                          : 'bg-orange-500/10 border-orange-500/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={isCoherent}
+                          onCheckedChange={() => toggleCoherent(child.id)}
+                        />
+                        <span className="text-sm">{child.tag_name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          de: {parentTag?.tag_name}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs">
+                        <ArrowRight className="h-3 w-3" />
+                        <span className={isCoherent ? "text-green-400" : "text-orange-400"}>
+                          {isCoherent ? tags.find(t => t.id === selectedTargetId)?.tag_name : "Órfãs"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="flex gap-4 mt-3 text-xs">
+                <span className="text-green-400">
+                  Migrar: {coherentChildren.size}
+                </span>
+                <span className="text-orange-400">
+                  Órfãs: {orphanChildren.size}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Campo de rationale */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">
+              Justificativa (opcional - para treinamento ML):
+            </Label>
+            <Textarea
+              value={rationale}
+              onChange={(e) => setRationale(e.target.value)}
+              placeholder="Por que você está unificando estas tags? Ex: 'São sinônimos no contexto médico'"
+              className="h-20"
+            />
+          </div>
+
+          {/* ML Info Box */}
+          <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <Sparkles className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
+              <div className="text-sm">
+                <strong className="text-purple-300">Aprendizado de Máquina:</strong>
+                <p className="text-muted-foreground mt-1">
+                  Sua decisão será registrada para treinar o modelo de detecção de duplicatas.
+                  A IA aprenderá a usar sempre a tag padronizada.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={handleRejectDuplicate}>
+            Não são Duplicatas
+          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => mergeMutation.mutate()}
+            disabled={mergeMutation.isPending || (conflictType === 'child' && !selectedParentId)}
+          >
+            {mergeMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Unificando...
+              </>
+            ) : (
+              <>
+                <Merge className="h-4 w-4 mr-2" />
+                Unificar Tags
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};

@@ -562,6 +562,7 @@ export type Database = {
           id: string
           parent_tag_id: string | null
           source: string | null
+          synonyms: string[] | null
           tag_name: string
           tag_type: string
         }
@@ -572,6 +573,7 @@ export type Database = {
           id?: string
           parent_tag_id?: string | null
           source?: string | null
+          synonyms?: string[] | null
           tag_name: string
           tag_type: string
         }
@@ -582,6 +584,7 @@ export type Database = {
           id?: string
           parent_tag_id?: string | null
           source?: string | null
+          synonyms?: string[] | null
           tag_name?: string
           tag_type?: string
         }
@@ -1218,6 +1221,45 @@ export type Database = {
           timestamp?: string
           triggered_by_email?: string
           triggered_by_user_id?: string | null
+        }
+        Relationships: []
+      }
+      tag_management_events: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          input_state: Json
+          rationale: string | null
+          session_id: string | null
+          similarity_score: number | null
+          time_to_decision_ms: number | null
+          user_decision: Json
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          input_state: Json
+          rationale?: string | null
+          session_id?: string | null
+          similarity_score?: number | null
+          time_to_decision_ms?: number | null
+          user_decision: Json
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          input_state?: Json
+          rationale?: string | null
+          session_id?: string | null
+          similarity_score?: number | null
+          time_to_decision_ms?: number | null
+          user_decision?: Json
         }
         Relationships: []
       }
