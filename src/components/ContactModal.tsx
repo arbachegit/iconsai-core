@@ -27,6 +27,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
   const [subjectTouched, setSubjectTouched] = useState(false);
@@ -45,6 +46,17 @@ export const ContactModal = ({ children }: ContactModalProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Honeypot anti-spam check - silently reject if filled
+    if (honeypot) {
+      console.log('Spam detected via honeypot');
+      toast({
+        title: t('contact.successTitle'),
+        description: t('contact.successDescription'),
+      });
+      setIsOpen(false);
+      return;
+    }
     
     if (!isEmailValid) {
       toast({
@@ -90,6 +102,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
       setEmail("");
       setSubject("");
       setMessage("");
+      setHoneypot("");
       setEmailTouched(false);
       setSubjectTouched(false);
       setMessageTouched(false);
@@ -120,6 +133,20 @@ export const ContactModal = ({ children }: ContactModalProps) => {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          {/* Honeypot field - invisible to users, catches bots */}
+          <div className="absolute -left-[9999px] opacity-0 h-0 w-0 overflow-hidden" aria-hidden="true">
+            <label htmlFor="website">Website</label>
+            <input
+              type="text"
+              id="website"
+              name="website"
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </div>
+          
           <div className="space-y-2">
             <Label htmlFor="email" className="flex items-center gap-2 text-sm text-muted-foreground">
               <User className="h-4 w-4" />
