@@ -97,7 +97,7 @@ serve(async (req) => {
         .select("id, filename")
         .eq("status", "completed")
         .eq("is_readable", true)
-        .or(`and(is_inserted.eq.true,inserted_in_chat.eq.${targetChat}),and(is_inserted.eq.false,target_chat.eq.${targetChat})`)
+        .or(`and(is_inserted.eq.true,or(inserted_in_chat.eq.${targetChat},inserted_in_chat.eq.both)),and(is_inserted.eq.false,or(target_chat.eq.${targetChat},target_chat.eq.both))`)
         .ilike("filename", `%${potentialFilename.replace('.pdf', '').replace(/\s+/g, '%')}%`);
       
       if (matchingDocs && matchingDocs.length > 0) {

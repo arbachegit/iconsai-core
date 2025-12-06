@@ -1536,6 +1536,8 @@ export const DocumentsTab = () => {
         return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
       case 'STUDY':
         return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      case 'BOTH':
+        return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
       case 'GENERAL':
         return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
       default:
@@ -1977,6 +1979,12 @@ export const DocumentsTab = () => {
                             STUDY
                           </span>
                         )}
+                        {fileStatus.targetChat === 'both' && (
+                          <span className="flex items-center gap-1.5">
+                            <Boxes className="h-3.5 w-3.5" />
+                            BOTH
+                          </span>
+                        )}
                         {fileStatus.targetChat === 'general' && (
                           <span className="flex items-center gap-1.5">
                             <FileText className="h-3.5 w-3.5" />
@@ -2031,6 +2039,7 @@ export const DocumentsTab = () => {
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="health">Health</SelectItem>
                     <SelectItem value="study">Study</SelectItem>
+                    <SelectItem value="both">Both</SelectItem>
                     <SelectItem value="general">General</SelectItem>
                   </SelectContent>
                 </Select>
@@ -2360,7 +2369,7 @@ export const DocumentsTab = () => {
                         </div>
                         
                         {/* Botões de ação - apenas se não estiver inserido */}
-                        {!doc.is_inserted && <div className="grid grid-cols-2 gap-2">
+                        {!doc.is_inserted && <div className="grid grid-cols-3 gap-2">
                             <Button size="sm" variant="outline" onClick={() => manualInsertMutation.mutate({
                         docId: doc.id,
                         targetChat: 'health'
@@ -2374,6 +2383,13 @@ export const DocumentsTab = () => {
                       })} className="flex items-center gap-2" disabled={manualInsertMutation.isPending}>
                               <GraduationCap className="h-4 w-4 text-blue-500" />
                               Study
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => manualInsertMutation.mutate({
+                        docId: doc.id,
+                        targetChat: 'both'
+                      })} className="flex items-center gap-2" disabled={manualInsertMutation.isPending}>
+                              <Boxes className="h-4 w-4 text-emerald-500" />
+                              Both
                             </Button>
                           </div>}
                         
@@ -2427,6 +2443,12 @@ export const DocumentsTab = () => {
                             <div className="flex items-center gap-2">
                               <GraduationCap className="h-3 w-3 text-purple-500" />
                               <span>study</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="both">
+                            <div className="flex items-center gap-2">
+                              <Boxes className="h-3 w-3 text-emerald-500" />
+                              <span>both</span>
                             </div>
                           </SelectItem>
                         </SelectContent>

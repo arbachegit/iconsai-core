@@ -293,13 +293,15 @@
     "removeButton": "Remove document"
   },
   "documentRouting": {
-    "title": "📄 Document Requires Destination Definition",
+    "title": "Document Requires Destination Definition",
     "description": "The document \"{{filename}}\" was classified as General. Choose where to apply it to activate appropriate guardrails:",
     "suggestedTags": "Suggested tags:",
     "health": "Health",
     "healthDesc": "Health and medicine",
     "study": "Study",
     "studyDesc": "KnowRISK and ACC",
+    "both": "Both",
+    "bothDesc": "Both chats",
     "general": "General",
     "generalDesc": "Keep as is"
   },
