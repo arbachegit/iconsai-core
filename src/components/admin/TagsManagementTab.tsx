@@ -124,7 +124,6 @@ export const TagsManagementTab = () => {
   
   // Import taxonomy state
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const tagsFileInputRef = useRef<HTMLInputElement>(null);
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
   const [importData, setImportData] = useState<{
     parentCount: number;
@@ -681,9 +680,9 @@ export const TagsManagementTab = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedParentTags = sortedParentTags.slice(startIndex, startIndex + itemsPerPage);
 
-  // Build taxonomy data object
-  const buildTaxonomyData = () => {
-    return {
+  // Export taxonomy JSON
+  const handleExportTaxonomy = async () => {
+    const taxonomy = {
       version: "1.0",
       exported_at: new Date().toISOString(),
       taxonomy: parentTags.map(parent => ({
@@ -700,131 +699,24 @@ export const TagsManagementTab = () => {
       merge_rules: mergeRules || [],
       orphaned_children: orphanedTags.map(t => ({ id: t.id, name: t.tag_name }))
     };
-  };
-
-  // Export taxonomy in multiple formats
-  const handleExportTaxonomy = async (format: ExportFormat = 'json') => {
-    const taxonomy = buildTaxonomyData();
     
-    if (format === 'json') {
-      const blob = new Blob([JSON.stringify(taxonomy, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `taxonomy-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } else {
-      // Convert taxonomy to flat format for CSV/Excel/PDF
-      const flatData = taxonomy.taxonomy.flatMap(parent => {
-        const parentRow = {
-          tipo: 'Parent',
-          nome: parent.name,
-          pai: '-',
-          sinonimos: (parent.synonyms || []).join('; '),
-          filhos: parent.children.length.toString()
-        };
-        const childRows = parent.children.map(child => ({
-          tipo: 'Child',
-          nome: child.name,
-          pai: parent.name,
-          sinonimos: (child.synonyms || []).join('; '),
-          filhos: '-'
-        }));
-        return [parentRow, ...childRows];
-      });
-
-      const columns = [
-        { key: 'tipo', label: 'Tipo' },
-        { key: 'nome', label: 'Nome' },
-        { key: 'pai', label: 'Tag Pai' },
-        { key: 'sinonimos', label: 'Sinônimos' },
-        { key: 'filhos', label: 'Qtd Filhos' },
-      ];
-
-      await exportData({
-        filename: 'taxonomy',
-        data: flatData,
-        format,
-        columns,
-      });
-    }
+    const blob = new Blob([JSON.stringify(taxonomy, null, 2)], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `taxonomy-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
     
     await logTagManagementEvent({
       input_state: { tags_involved: [] },
       action_type: 'export_taxonomy',
-      user_decision: { exported_count: parentTags.length, format }
+      user_decision: { exported_count: parentTags.length }
     });
     
-    toast.success(`Taxonomia exportada em formato ${format.toUpperCase()}!`);
-  };
-
-  // Handle import tags file selection (simple tag list)
-  const handleImportTags = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file extension
-    if (!file.name.toLowerCase().endsWith('.json')) {
-      toast.error("Apenas arquivos JSON são aceitos para importação de tags");
-      if (tagsFileInputRef.current) tagsFileInputRef.current.value = '';
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const jsonData = JSON.parse(e.target?.result as string);
-        
-        // Validate it's an array of tags
-        if (!Array.isArray(jsonData)) {
-          toast.error("O arquivo JSON deve conter um array de tags");
-          return;
-        }
-
-        // Validate each tag has required fields
-        const validTags = jsonData.filter((tag: any) => 
-          tag && (tag.tag_name || tag.name) && (tag.tag_type || tag.type)
-        );
-
-        if (validTags.length === 0) {
-          toast.error("Nenhuma tag válida encontrada. Cada tag precisa de 'tag_name' e 'tag_type'");
-          return;
-        }
-
-        // Transform to standard format and show in import preview
-        const parentCount = validTags.filter((t: any) => !t.parent_tag_id && !t.parent_id).length;
-        const childCount = validTags.filter((t: any) => t.parent_tag_id || t.parent_id).length;
-
-        setImportData({
-          parentCount,
-          childCount,
-          rulesCount: 0,
-          rawData: { taxonomy: validTags.map((t: any) => ({
-            name: t.tag_name || t.name,
-            type: t.tag_type || t.type || 'parent',
-            children: []
-          })) },
-          parents: validTags
-            .filter((t: any) => !t.parent_tag_id && !t.parent_id)
-            .map((t: any) => ({ name: t.tag_name || t.name, childCount: 0 })),
-          validationErrors: [],
-          validationWarnings: validTags.length < jsonData.length ? 
-            [`${jsonData.length - validTags.length} tags ignoradas por falta de campos obrigatórios`] : [],
-          conflicts: []
-        });
-        setImportPreviewOpen(true);
-        
-      } catch (err) {
-        toast.error("Erro ao ler arquivo JSON. Verifique o formato.");
-      }
-    };
-    reader.readAsText(file);
-    
-    // Reset input
-    if (tagsFileInputRef.current) tagsFileInputRef.current.value = '';
+    toast.success("Taxonomia exportada com sucesso!");
   };
 
   // Open conflict resolution modal
@@ -1485,43 +1377,18 @@ export const TagsManagementTab = () => {
             className="hidden" 
             onChange={handleImportTaxonomy} 
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Exportar Taxonomia
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleExportTaxonomy('json')}>
-                <FileJson className="h-4 w-4 mr-2" /> JSON
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExportTaxonomy('csv')}>
-                <FileText className="h-4 w-4 mr-2" /> CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExportTaxonomy('xlsx')}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExportTaxonomy('pdf')}>
-                <FileDown className="h-4 w-4 mr-2" /> PDF
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button variant="outline" size="sm" onClick={handleExportTaxonomy}>
+            <Download className="h-4 w-4 mr-2" />
+            Exportar Taxonomia
+          </Button>
         </div>
         
         {/* Linha 2: Tags */}
         <div className="flex gap-4">
-          <Button variant="outline" size="sm" onClick={() => tagsFileInputRef.current?.click()}>
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4 mr-2" />
             Importar Tags
           </Button>
-          <input 
-            type="file" 
-            ref={tagsFileInputRef} 
-            accept=".json" 
-            className="hidden" 
-            onChange={handleImportTags} 
-          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -1530,14 +1397,14 @@ export const TagsManagementTab = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleExport('json')}>
-                <FileJson className="h-4 w-4 mr-2" /> JSON
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport('csv')}>
                 <FileText className="h-4 w-4 mr-2" /> CSV
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport('xlsx')}>
                 <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('json')}>
+                <FileJson className="h-4 w-4 mr-2" /> JSON
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport('pdf')}>
                 <FileDown className="h-4 w-4 mr-2" /> PDF
