@@ -118,6 +118,7 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         { id: "tag-modification-logs" as TabType, label: "Logs de Mescla Tags", icon: Tags },
         { id: "suggestion-audit" as TabType, label: "Auditoria Sugestões", icon: Sparkles },
         { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
+        { id: "contact-messages" as TabType, label: "Mensagens Contato", icon: MessageSquare },
       ]
     },
     {
@@ -128,7 +129,6 @@ export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
         { id: "architecture" as TabType, label: "Arquitetura", icon: Cpu },
         { id: "gmail" as TabType, label: "Gmail", icon: Mail },
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
-        { id: "contact-messages" as TabType, label: "Mensagens Contato", icon: MessageSquare },
       ]
     }
   ];
