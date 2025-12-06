@@ -17,7 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { AlertTriangle, ChevronDown, FolderOpen, Loader2, ArrowRight, Users } from "lucide-react";
+import { AlertTriangle, ChevronDown, FolderOpen, Loader2, ArrowRight, Users, Trash2 } from "lucide-react";
 import { logTagManagementEvent } from "@/lib/tag-management-logger";
 
 interface OrphanedTag {
@@ -44,8 +44,11 @@ interface OrphanedTagsPanelProps {
 export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPanelProps) => {
   const [isOpen, setIsOpen] = useState(true);
   const [selectedParents, setSelectedParents] = useState<Record<string, string>>({});
-  const [reassigningId, setReassigningId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [processingType, setProcessingType] = useState<'adopt' | 'delete' | null>(null);
   const queryClient = useQueryClient();
+
+  const isProcessing = processingId !== null;
 
   const reassignMutation = useMutation({
     mutationFn: async ({ tagId, newParentId, tagName, parentName }: { 
@@ -63,7 +66,6 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
 
       if (error) throw error;
 
-      // Log the event for ML training
       await logTagManagementEvent({
         input_state: {
           tags_involved: [{
@@ -86,11 +88,50 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
     onSuccess: () => {
       toast.success("Tag reatribuída com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["all-tags"] });
-      setReassigningId(null);
+      setProcessingId(null);
+      setProcessingType(null);
     },
     onError: (error: Error) => {
       toast.error(`Erro ao reatribuir tag: ${error.message}`);
-      setReassigningId(null);
+      setProcessingId(null);
+      setProcessingType(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async ({ tagId, tagName }: { tagId: string; tagName: string }) => {
+      const startTime = Date.now();
+      
+      const { error } = await supabase
+        .from("document_tags")
+        .delete()
+        .eq("id", tagId);
+
+      if (error) throw error;
+
+      await logTagManagementEvent({
+        input_state: {
+          tags_involved: [{ id: tagId, name: tagName, type: 'child', parent_id: null }]
+        },
+        action_type: 'delete_orphan',
+        user_decision: {
+          target_tag_id: tagId,
+          target_tag_name: tagName,
+          action: 'permanently_deleted'
+        },
+        time_to_decision_ms: Date.now() - startTime
+      });
+    },
+    onSuccess: () => {
+      toast.success("Tag órfã excluída permanentemente!");
+      queryClient.invalidateQueries({ queryKey: ["all-tags"] });
+      setProcessingId(null);
+      setProcessingType(null);
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao excluir tag: ${error.message}`);
+      setProcessingId(null);
+      setProcessingType(null);
     },
   });
 
@@ -104,13 +145,20 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
     const parentTag = parentTags.find(p => p.id === newParentId);
     if (!parentTag) return;
 
-    setReassigningId(tag.id);
+    setProcessingId(tag.id);
+    setProcessingType('adopt');
     reassignMutation.mutate({ 
       tagId: tag.id, 
       newParentId,
       tagName: tag.tag_name,
       parentName: parentTag.tag_name
     });
+  };
+
+  const handleDelete = (tag: OrphanedTag) => {
+    setProcessingId(tag.id);
+    setProcessingType('delete');
+    deleteMutation.mutate({ tagId: tag.id, tagName: tag.tag_name });
   };
 
   if (orphanedTags.length === 0) {
@@ -134,10 +182,10 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
 
         <CollapsibleContent className="mt-4">
           <p className="text-sm text-muted-foreground mb-4">
-            Tags filhas sem parent válido. Reatribua-as a um parent tag existente.
+            Tags filhas sem parent válido. Reatribua-as a um parent tag existente ou exclua permanentemente.
           </p>
 
-          <div className="space-y-3 max-h-[300px] overflow-y-auto">
+          <div className={`space-y-3 max-h-[300px] overflow-y-auto transition-opacity ${isProcessing ? 'opacity-60' : ''}`}>
             {orphanedTags.map((tag) => (
               <div 
                 key={tag.id} 
@@ -155,6 +203,7 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
                   <Select
                     value={selectedParents[tag.id] || ""}
                     onValueChange={(value) => setSelectedParents(prev => ({ ...prev, [tag.id]: value }))}
+                    disabled={isProcessing}
                   >
                     <SelectTrigger className="w-[180px] h-8 text-xs">
                       <SelectValue placeholder="Selecionar parent..." />
@@ -172,16 +221,30 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
                     size="sm"
                     variant="outline"
                     onClick={() => handleReassign(tag)}
-                    disabled={!selectedParents[tag.id] || reassigningId === tag.id}
+                    disabled={!selectedParents[tag.id] || isProcessing}
                     className="h-8 px-3 text-xs border-green-500/50 text-green-400 hover:bg-green-500/20"
                   >
-                    {reassigningId === tag.id ? (
+                    {processingId === tag.id && processingType === 'adopt' ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
                       <>
                         <ArrowRight className="h-3 w-3 mr-1" />
                         Adotar
                       </>
+                    )}
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDelete(tag)}
+                    disabled={isProcessing}
+                    className="h-8 w-8 p-0 border-red-500/50 text-red-400 hover:bg-red-500/20"
+                  >
+                    {processingId === tag.id && processingType === 'delete' ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3 w-3" />
                     )}
                   </Button>
                 </div>
