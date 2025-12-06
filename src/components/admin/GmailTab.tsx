@@ -1,16 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Send } from "lucide-react";
+import { Mail, Send, Settings } from "lucide-react";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 
 export const GmailTab = () => {
   const { settings, updateSettings } = useAdminSettings();
   const { toast } = useToast();
-  const [email, setEmail] = useState(settings?.gmail_notification_email || "");
+  const [email, setEmail] = useState("");
+  const [isConfigured, setIsConfigured] = useState(false);
+
+  useEffect(() => {
+    if (settings?.gmail_notification_email) {
+      setEmail(settings.gmail_notification_email);
+      setIsConfigured(true);
+    }
+  }, [settings]);
 
   const handleSave = async () => {
     try {
@@ -18,6 +27,8 @@ export const GmailTab = () => {
         gmail_notification_email: email,
         gmail_api_configured: !!email,
       });
+
+      setIsConfigured(true);
 
       toast({
         title: "Configuração salva",
@@ -32,13 +43,15 @@ export const GmailTab = () => {
     }
   };
 
+  const handleEdit = () => {
+    setIsConfigured(false);
+  };
+
   const handleTestEmail = () => {
     toast({
       title: "Email de teste enviado",
       description: "Verifique sua caixa de entrada.",
     });
-
-    // In production, this would call the send-email edge function
   };
 
   return (
@@ -67,9 +80,16 @@ export const GmailTab = () => {
             <Mail className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-foreground mb-2">
-              Email de Notificações
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-foreground">
+                Email de Notificações
+              </h2>
+              {isConfigured && email && (
+                <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                  Configurado
+                </Badge>
+              )}
+            </div>
             <p className="text-muted-foreground text-sm">
               Receba alertas quando houver novas conversas no chat KnowYOU.
             </p>
@@ -87,19 +107,27 @@ export const GmailTab = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="seu@email.com"
               className="bg-background/50"
+              disabled={isConfigured}
             />
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={handleSave} className="gap-2">
-              <Mail className="w-4 h-4" />
-              Salvar
-            </Button>
+            {isConfigured ? (
+              <Button onClick={handleEdit} variant="outline" className="gap-2">
+                <Settings className="w-4 h-4" />
+                Configurar
+              </Button>
+            ) : (
+              <Button onClick={handleSave} className="gap-2">
+                <Mail className="w-4 h-4" />
+                Salvar
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={handleTestEmail}
               className="gap-2"
-              disabled={!email}
+              disabled={!email || !isConfigured}
             >
               <Send className="w-4 h-4" />
               Enviar Teste
