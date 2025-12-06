@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, ArrowLeft, Zap } from "lucide-react";
+import { Lock, ArrowLeft, Zap, KeyRound, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -73,30 +73,46 @@ const AdminLogin = () => {
     }
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsResetting(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/admin/reset-password`,
+      const response = await supabase.functions.invoke('send-recovery-code', {
+        body: { email: resetEmail }
       });
 
-      if (error) throw error;
+      if (response.error) {
+        throw new Error(response.error.message || 'Erro ao enviar código');
+      }
 
-      await logPasswordRecoveryAttempt(resetEmail, "Solicitação de recuperação de senha", true);
+      const data = response.data;
+
+      if (data.error) {
+        toast({
+          title: "Erro",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await logPasswordRecoveryAttempt(resetEmail, 'Código de recuperação solicitado', true);
 
       toast({
-        title: "Email enviado",
-        description: "Verifique sua caixa de entrada para redefinir sua senha.",
+        title: "Código enviado",
+        description: "Verifique seu email para o código de recuperação",
       });
-      setShowForgotPassword(false);
-      setResetEmail("");
-    } catch (error: any) {
-      await logPasswordRecoveryAttempt(resetEmail, "Falha na solicitação de recuperação", false);
+
+      // Navigate to reset page with email
+      navigate(`/admin/reset-password?email=${encodeURIComponent(resetEmail)}`);
+
+    } catch (err: any) {
+      console.error("Error requesting recovery code:", err);
+      await logPasswordRecoveryAttempt(resetEmail, 'Falha ao solicitar código', false);
       toast({
-        title: "Erro ao enviar email",
-        description: error.message,
+        title: "Erro",
+        description: err.message || "Erro ao solicitar código de recuperação",
         variant: "destructive",
       });
     } finally {
@@ -109,7 +125,11 @@ const AdminLogin = () => {
       <Card className="w-full max-w-md p-8 bg-card/50 backdrop-blur-sm border-primary/20">
         <div className="flex flex-col items-center space-y-6">
           <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center">
-            <Lock className="w-8 h-8 text-white" />
+            {showForgotPassword ? (
+              <KeyRound className="w-8 h-8 text-white" />
+            ) : (
+              <Lock className="w-8 h-8 text-white" />
+            )}
           </div>
 
           {!showForgotPassword ? (
@@ -172,11 +192,11 @@ const AdminLogin = () => {
               <div className="text-center">
                 <h1 className="text-2xl font-bold text-foreground">Recuperar Senha</h1>
                 <p className="text-muted-foreground mt-2">
-                  Digite seu email para receber o link de recuperação
+                  Digite seu email para receber um código de recuperação
                 </p>
               </div>
 
-              <form onSubmit={handleResetPassword} className="w-full space-y-4">
+              <form onSubmit={handleRequestCode} className="w-full space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">
                     Email
@@ -196,7 +216,14 @@ const AdminLogin = () => {
                   className="w-full bg-gradient-primary"
                   disabled={isResetting}
                 >
-                  {isResetting ? "Enviando..." : "Enviar Link de Recuperação"}
+                  {isResetting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Enviando código...
+                    </>
+                  ) : (
+                    "Enviar Código"
+                  )}
                 </Button>
               </form>
 

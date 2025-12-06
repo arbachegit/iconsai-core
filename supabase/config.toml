@@ -74,3 +74,12 @@ verify_jwt = false
 
 [functions.analyze-deterministic]
 verify_jwt = false
+
+[functions.send-recovery-code]
+verify_jwt = false
+
+[functions.verify-recovery-code]
+verify_jwt = false
+
+[functions.reset-password-with-token]
+verify_jwt = false

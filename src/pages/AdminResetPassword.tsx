@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { KeyRound, Eye, EyeOff, Clock, RefreshCw } from "lucide-react";
+import { KeyRound, Eye, EyeOff, RefreshCw, Loader2, Check, X, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const logPasswordRecoveryEvent = async (email: string, action: string, success: boolean, details?: Record<string, any>) => {
@@ -22,264 +22,214 @@ const logPasswordRecoveryEvent = async (email: string, action: string, success: 
 };
 
 const AdminResetPassword = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const email = searchParams.get('email') || '';
+  
+  const [code, setCode] = useState("");
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+  const [codeValidated, setCodeValidated] = useState(false);
+  const [validationToken, setValidationToken] = useState("");
+  
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isValidSession, setIsValidSession] = useState<boolean | null>(null);
-  const [isExpired, setIsExpired] = useState(false);
-  const [resendEmail, setResendEmail] = useState("");
-  const [isResending, setIsResending] = useState(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const [isResetting, setIsResetting] = useState(false);
+  
+  const [isResendingCode, setIsResendingCode] = useState(false);
 
   useEffect(() => {
-    const checkSession = async () => {
-      // Check URL for error parameters (expired/invalid token)
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const errorDescription = hashParams.get("error_description");
-      
-      if (errorDescription) {
-        const isExpiredError = errorDescription.toLowerCase().includes("expired") ||
-                               errorDescription.toLowerCase().includes("invalid");
-        setIsExpired(isExpiredError);
-        setIsValidSession(false);
+    if (!email) {
+      toast({
+        title: "Email não informado",
+        description: "Por favor, solicite a recuperação de senha novamente.",
+        variant: "destructive",
+      });
+      navigate('/admin/login');
+    }
+  }, [email, navigate, toast]);
+
+  const validatePassword = (pwd: string) => {
+    const hasLength = pwd.length >= 8;
+    const hasNumber = /\d/.test(pwd);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
+    const hasUppercase = /[A-Z]/.test(pwd);
+    const hasLowercase = /[a-z]/.test(pwd);
+    
+    return { hasLength, hasNumber, hasSpecial, hasUppercase, hasLowercase };
+  };
+
+  const getPasswordStrength = (pwd: string) => {
+    const checks = validatePassword(pwd);
+    const passed = Object.values(checks).filter(Boolean).length;
+    
+    if (passed <= 2) return { level: 1, label: "Fraca", color: "bg-red-500" };
+    if (passed <= 3) return { level: 2, label: "Média", color: "bg-amber-500" };
+    if (passed <= 4) return { level: 3, label: "Boa", color: "bg-blue-500" };
+    return { level: 4, label: "Forte", color: "bg-green-500" };
+  };
+
+  const handleValidateCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsValidatingCode(true);
+
+    try {
+      const response = await supabase.functions.invoke('verify-recovery-code', {
+        body: { email, code }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const data = response.data;
+
+      if (!data.valid) {
+        toast({
+          title: "Código inválido",
+          description: data.error || "O código informado é inválido ou expirou.",
+          variant: "destructive",
+        });
         return;
       }
 
-      // Check for valid session
-      const { data: { session } } = await supabase.auth.getSession();
+      setValidationToken(data.token);
+      setCodeValidated(true);
       
-      if (!session) {
-        setIsExpired(true);
-        setIsValidSession(false);
-      } else {
-        setIsValidSession(true);
-      }
-    };
+      toast({
+        title: "Código validado",
+        description: "Agora você pode definir sua nova senha.",
+      });
 
-    checkSession();
-
-    // Listen for auth state changes (recovery token processed)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setIsValidSession(true);
-        setIsExpired(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const validatePassword = (pwd: string): { valid: boolean; message: string } => {
-    if (pwd.length < 8) {
-      return { valid: false, message: "A senha deve ter pelo menos 8 caracteres." };
+    } catch (err: any) {
+      console.error("Error validating code:", err);
+      toast({
+        title: "Erro",
+        description: err.message || "Erro ao validar código",
+        variant: "destructive",
+      });
+    } finally {
+      setIsValidatingCode(false);
     }
-    if (!/[0-9]/.test(pwd)) {
-      return { valid: false, message: "A senha deve conter pelo menos um número." };
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(pwd)) {
-      return { valid: false, message: "A senha deve conter pelo menos um caractere especial (!@#$%...)." };
-    }
-    if (!/[A-Z]/.test(pwd)) {
-      return { valid: false, message: "A senha deve conter pelo menos uma letra maiúscula." };
-    }
-    if (!/[a-z]/.test(pwd)) {
-      return { valid: false, message: "A senha deve conter pelo menos uma letra minúscula." };
-    }
-    return { valid: true, message: "" };
-  };
-
-  const getPasswordStrength = (pwd: string): { level: number; label: string; color: string } => {
-    let score = 0;
-    if (pwd.length >= 8) score++;
-    if (pwd.length >= 12) score++;
-    if (/[0-9]/.test(pwd)) score++;
-    if (/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(pwd)) score++;
-    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
-
-    if (score <= 2) return { level: score, label: "Fraca", color: "bg-red-500" };
-    if (score <= 3) return { level: score, label: "Média", color: "bg-amber-500" };
-    if (score <= 4) return { level: score, label: "Forte", color: "bg-lime-500" };
-    return { level: score, label: "Muito Forte", color: "bg-green-500" };
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       toast({
-        title: "Senhas não coincidem",
-        description: "Por favor, verifique se as senhas são iguais.",
+        title: "Senhas não conferem",
+        description: "A senha e a confirmação devem ser iguais.",
         variant: "destructive",
       });
       return;
     }
 
-    const validation = validatePassword(password);
-    if (!validation.valid) {
+    const checks = validatePassword(password);
+    if (!checks.hasLength || !checks.hasNumber || !checks.hasSpecial || !checks.hasUppercase || !checks.hasLowercase) {
       toast({
-        title: "Senha inválida",
-        description: validation.message,
+        title: "Senha fraca",
+        description: "A senha deve ter pelo menos 8 caracteres, incluindo maiúscula, minúscula, número e caractere especial.",
         variant: "destructive",
       });
       return;
     }
+
+    setIsResetting(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userEmail = session?.user?.email || "unknown";
-
-      const { error } = await supabase.auth.updateUser({
-        password: password,
+      const response = await supabase.functions.invoke('reset-password-with-token', {
+        body: { email, token: validationToken, newPassword: password }
       });
 
-      if (error) throw error;
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
 
-      await logPasswordRecoveryEvent(userEmail, "Senha redefinida com sucesso", true);
+      const data = response.data;
+
+      if (!data.success) {
+        toast({
+          title: "Erro",
+          description: data.error || "Erro ao redefinir senha",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await logPasswordRecoveryEvent(email, 'Senha redefinida com sucesso', true);
 
       toast({
-        title: "Senha atualizada",
-        description: "Sua senha foi redefinida com sucesso.",
+        title: "Senha redefinida",
+        description: "Sua senha foi alterada com sucesso. Faça login com a nova senha.",
       });
-      
-      await supabase.auth.signOut();
-      navigate("/admin/login");
-    } catch (error: any) {
-      const { data: { session } } = await supabase.auth.getSession();
-      await logPasswordRecoveryEvent(session?.user?.email || "unknown", "Falha ao redefinir senha", false, { error: error.message });
+
+      navigate('/admin/login');
+
+    } catch (err: any) {
+      console.error("Error resetting password:", err);
+      await logPasswordRecoveryEvent(email, 'Falha ao redefinir senha', false, { error: err.message });
       toast({
-        title: "Erro ao redefinir senha",
-        description: error.message,
+        title: "Erro",
+        description: err.message || "Erro ao redefinir senha",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsResetting(false);
     }
   };
 
-  const handleResendLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!resendEmail) {
-      toast({
-        title: "Email obrigatório",
-        description: "Por favor, digite seu email.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsResending(true);
+  const handleResendCode = async () => {
+    setIsResendingCode(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
-        redirectTo: `${window.location.origin}/admin/reset-password`,
+      const response = await supabase.functions.invoke('send-recovery-code', {
+        body: { email }
       });
 
-      if (error) throw error;
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
 
-      await logPasswordRecoveryEvent(resendEmail, "Novo link de recuperação solicitado (link expirado)", true);
+      const data = response.data;
+
+      if (data.error) {
+        toast({
+          title: "Erro",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
 
       toast({
-        title: "Novo link enviado",
-        description: "Verifique sua caixa de entrada. O link expira em 1 hora.",
+        title: "Código reenviado",
+        description: "Verifique seu email para o novo código.",
       });
-      setResendEmail("");
-    } catch (error: any) {
-      await logPasswordRecoveryEvent(resendEmail, "Falha ao solicitar novo link", false, { error: error.message });
+
+      // Reset state
+      setCode("");
+      setCodeValidated(false);
+      setValidationToken("");
+
+    } catch (err: any) {
+      console.error("Error resending code:", err);
       toast({
-        title: "Erro ao enviar",
-        description: error.message,
+        title: "Erro",
+        description: err.message || "Erro ao reenviar código",
         variant: "destructive",
       });
     } finally {
-      setIsResending(false);
+      setIsResendingCode(false);
     }
   };
 
-  // Loading state
-  if (isValidSession === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md p-8 bg-card/50 backdrop-blur-sm border-primary/20">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-muted-foreground">Verificando link...</p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  const passwordChecks = validatePassword(password);
+  const passwordStrength = getPasswordStrength(password);
 
-  // Expired/Invalid link state
-  if (isExpired || !isValidSession) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md p-8 bg-card/50 backdrop-blur-sm border-primary/20">
-          <div className="flex flex-col items-center space-y-6">
-            <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center">
-              <Clock className="w-8 h-8 text-amber-500" />
-            </div>
-
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-foreground">Link Expirado</h1>
-              <p className="text-muted-foreground mt-2">
-                O link de recuperação expirou ou é inválido.
-                <br />
-                <span className="text-sm">Os links de recuperação são válidos por 1 hora.</span>
-              </p>
-            </div>
-
-            <form onSubmit={handleResendLink} className="w-full space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  Digite seu email para receber um novo link
-                </label>
-                <Input
-                  type="email"
-                  value={resendEmail}
-                  onChange={(e) => setResendEmail(e.target.value)}
-                  placeholder="seu-email@exemplo.com"
-                  className="bg-background/50"
-                  required
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-gradient-primary"
-                disabled={isResending}
-              >
-                {isResending ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Enviar Novo Link
-                  </>
-                )}
-              </Button>
-            </form>
-
-            <button
-              type="button"
-              onClick={() => navigate("/admin/login")}
-              className="text-sm text-primary hover:text-primary/80 hover:underline transition-colors"
-            >
-              Voltar ao login
-            </button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  // Valid session - show password reset form
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md p-8 bg-card/50 backdrop-blur-sm border-primary/20">
@@ -291,10 +241,50 @@ const AdminResetPassword = () => {
           <div className="text-center">
             <h1 className="text-2xl font-bold text-foreground">Redefinir Senha</h1>
             <p className="text-muted-foreground mt-2">
-              Digite sua nova senha abaixo
+              {codeValidated 
+                ? "Digite sua nova senha abaixo" 
+                : `Insira o código enviado para ${email}`
+              }
             </p>
           </div>
 
+          {/* Code validation form */}
+          <form onSubmit={handleValidateCode} className="w-full space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">
+                Código de Recuperação
+              </label>
+              <Input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                required
+                disabled={codeValidated}
+                className="text-center text-2xl tracking-widest font-mono bg-background/50"
+                maxLength={6}
+              />
+            </div>
+
+            {!codeValidated && (
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-primary" 
+                disabled={isValidatingCode || code.length !== 6}
+              >
+                {isValidatingCode ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Validando...
+                  </>
+                ) : (
+                  "Validar Código"
+                )}
+              </Button>
+            )}
+          </form>
+
+          {/* Password reset form */}
           <form onSubmit={handleResetPassword} className="w-full space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">
@@ -305,40 +295,58 @@ const AdminResetPassword = () => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Digite sua nova senha"
-                  className="bg-background/50 pr-10"
+                  placeholder="••••••••"
                   required
-                  minLength={8}
+                  disabled={!codeValidated}
+                  className="bg-background/50 pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  disabled={!codeValidated}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {password && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full transition-all ${getPasswordStrength(password).color}`} 
-                        style={{ width: `${(getPasswordStrength(password).level / 5) * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground">{getPasswordStrength(password).label}</span>
-                  </div>
-                  <ul className="text-xs text-muted-foreground space-y-0.5">
-                    <li className={password.length >= 8 ? "text-green-500" : ""}>• Mínimo 8 caracteres</li>
-                    <li className={/[A-Z]/.test(password) ? "text-green-500" : ""}>• Uma letra maiúscula</li>
-                    <li className={/[a-z]/.test(password) ? "text-green-500" : ""}>• Uma letra minúscula</li>
-                    <li className={/[0-9]/.test(password) ? "text-green-500" : ""}>• Um número</li>
-                    <li className={/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(password) ? "text-green-500" : ""}>• Um caractere especial</li>
-                  </ul>
-                </div>
-              )}
             </div>
+
+            {password && codeValidated && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all ${passwordStrength.color}`}
+                      style={{ width: `${passwordStrength.level * 25}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground">{passwordStrength.label}</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-1 text-xs">
+                  <div className={`flex items-center gap-1 ${passwordChecks.hasLength ? 'text-green-500' : 'text-muted-foreground'}`}>
+                    {passwordChecks.hasLength ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                    8+ caracteres
+                  </div>
+                  <div className={`flex items-center gap-1 ${passwordChecks.hasUppercase ? 'text-green-500' : 'text-muted-foreground'}`}>
+                    {passwordChecks.hasUppercase ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                    Maiúscula
+                  </div>
+                  <div className={`flex items-center gap-1 ${passwordChecks.hasLowercase ? 'text-green-500' : 'text-muted-foreground'}`}>
+                    {passwordChecks.hasLowercase ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                    Minúscula
+                  </div>
+                  <div className={`flex items-center gap-1 ${passwordChecks.hasNumber ? 'text-green-500' : 'text-muted-foreground'}`}>
+                    {passwordChecks.hasNumber ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                    Número
+                  </div>
+                  <div className={`flex items-center gap-1 ${passwordChecks.hasSpecial ? 'text-green-500' : 'text-muted-foreground'}`}>
+                    {passwordChecks.hasSpecial ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                    Caractere especial
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">
@@ -349,29 +357,73 @@ const AdminResetPassword = () => {
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirme sua nova senha"
-                  className="bg-background/50 pr-10"
+                  placeholder="••••••••"
                   required
-                  minLength={6}
+                  disabled={!codeValidated}
+                  className="bg-background/50 pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  disabled={!codeValidated}
                 >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-xs text-destructive">As senhas não conferem</p>
+              )}
             </div>
 
-            <Button
-              type="submit"
-              className="w-full bg-gradient-primary"
-              disabled={isLoading}
+            <Button 
+              type="submit" 
+              className="w-full bg-gradient-primary" 
+              disabled={!codeValidated || isResetting || password !== confirmPassword}
             >
-              {isLoading ? "Atualizando..." : "Redefinir Senha"}
+              {isResetting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Redefinindo...
+                </>
+              ) : (
+                "Redefinir Senha"
+              )}
             </Button>
           </form>
+
+          {/* Resend code option */}
+          <div className="w-full text-center space-y-2">
+            <p className="text-sm text-muted-foreground">Não recebeu o código?</p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleResendCode}
+              disabled={isResendingCode}
+              className="w-full"
+            >
+              {isResendingCode ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Reenviando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Reenviar Código
+                </>
+              )}
+            </Button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate("/admin/login")}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Voltar ao login
+          </button>
         </div>
       </Card>
     </div>
