@@ -1,13 +1,14 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -19,11 +20,13 @@ import {
   CheckCircle, 
   XCircle, 
   Clock, 
-  TrendingUp,
   MessageSquare,
   Calendar,
   Download,
-  RefreshCw
+  RefreshCw,
+  Reply,
+  Send,
+  Bell
 } from "lucide-react";
 
 export const ContactMessagesTab = () => {
@@ -33,6 +36,11 @@ export const ContactMessagesTab = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [replyDialogOpen, setReplyDialogOpen] = useState(false);
+  const [replyToMessage, setReplyToMessage] = useState<any>(null);
+  const [replySubject, setReplySubject] = useState("");
+  const [replyContent, setReplyContent] = useState("");
+  const [isSendingReply, setIsSendingReply] = useState(false);
 
   const { data: messages, isLoading, refetch } = useQuery({
     queryKey: ['contact-messages'],
@@ -46,6 +54,35 @@ export const ContactMessagesTab = () => {
       return data;
     }
   });
+
+  // Real-time subscription for new messages
+  useEffect(() => {
+    const channel = supabase
+      .channel('contact-messages-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'contact_messages'
+        },
+        (payload) => {
+          console.log('[REALTIME] New contact message:', payload);
+          queryClient.invalidateQueries({ queryKey: ['contact-messages'] });
+          
+          toast({
+            title: "📬 Nova mensagem de contato!",
+            description: `De: ${payload.new.email} - ${payload.new.subject}`,
+            duration: 8000,
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, toast]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -119,8 +156,72 @@ export const ContactMessagesTab = () => {
         return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30"><Clock className="w-3 h-3 mr-1" /> Pendente</Badge>;
       case 'failed':
         return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><XCircle className="w-3 h-3 mr-1" /> Falhou</Badge>;
+      case 'replied':
+        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30"><Reply className="w-3 h-3 mr-1" /> Respondido</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const openReplyDialog = (msg: any) => {
+    setReplyToMessage(msg);
+    setReplySubject(`Re: ${msg.subject}`);
+    setReplyContent("");
+    setReplyDialogOpen(true);
+  };
+
+  const handleSendReply = async () => {
+    if (!replyToMessage || !replyContent.trim()) return;
+    
+    setIsSendingReply(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: replyToMessage.email,
+          subject: replySubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <p>${replyContent.replace(/\n/g, '<br>')}</p>
+              <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
+              <p style="color: #666; font-size: 12px;">
+                Em resposta à sua mensagem: "${replyToMessage.subject}"
+              </p>
+            </div>
+          `,
+        },
+      });
+
+      if (error) throw error;
+
+      // Update message status to 'replied'
+      await supabase
+        .from('contact_messages')
+        .update({ 
+          status: 'replied',
+          metadata: {
+            ...replyToMessage.metadata,
+            replied_at: new Date().toISOString(),
+            reply_subject: replySubject
+          }
+        })
+        .eq('id', replyToMessage.id);
+
+      queryClient.invalidateQueries({ queryKey: ['contact-messages'] });
+      
+      toast({ title: "Resposta enviada com sucesso!" });
+      setReplyDialogOpen(false);
+      setReplyToMessage(null);
+      setReplySubject("");
+      setReplyContent("");
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      toast({ 
+        title: "Erro ao enviar resposta", 
+        description: "Tente novamente mais tarde",
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSendingReply(false);
     }
   };
 
@@ -302,10 +403,11 @@ export const ContactMessagesTab = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
+                      <div className="flex gap-1 justify-end">
                         <Button
                           variant="ghost"
                           size="icon"
+                          title="Ver detalhes"
                           onClick={() => setSelectedMessage(msg)}
                         >
                           <Eye className="w-4 h-4" />
@@ -313,6 +415,16 @@ export const ContactMessagesTab = () => {
                         <Button
                           variant="ghost"
                           size="icon"
+                          title="Responder"
+                          className="text-blue-500 hover:text-blue-600"
+                          onClick={() => openReplyDialog(msg)}
+                        >
+                          <Reply className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Excluir"
                           className="text-destructive hover:text-destructive"
                           onClick={() => deleteMutation.mutate(msg.id)}
                         >
@@ -382,8 +494,88 @@ export const ContactMessagesTab = () => {
                   </div>
                 </div>
               )}
+              
+              <div className="pt-4 border-t">
+                <Button 
+                  onClick={() => {
+                    setSelectedMessage(null);
+                    openReplyDialog(selectedMessage);
+                  }}
+                  className="w-full"
+                >
+                  <Reply className="w-4 h-4 mr-2" />
+                  Responder esta mensagem
+                </Button>
+              </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reply Dialog */}
+      <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Reply className="w-5 h-5 text-primary" />
+              Responder Mensagem
+            </DialogTitle>
+          </DialogHeader>
+          
+          {replyToMessage && (
+            <div className="space-y-4">
+              <div className="bg-muted/30 p-3 rounded-lg text-sm">
+                <p className="text-muted-foreground">Respondendo para:</p>
+                <p className="font-medium">{replyToMessage.email}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Assunto</label>
+                <Input
+                  value={replySubject}
+                  onChange={(e) => setReplySubject(e.target.value)}
+                  placeholder="Assunto do email"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Mensagem</label>
+                <Textarea
+                  value={replyContent}
+                  onChange={(e) => setReplyContent(e.target.value)}
+                  placeholder="Digite sua resposta..."
+                  className="min-h-[150px]"
+                />
+              </div>
+              
+              <div className="bg-muted/30 p-3 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">Mensagem original:</p>
+                <p className="text-sm italic">"{replyToMessage.message.substring(0, 200)}{replyToMessage.message.length > 200 ? '...' : ''}"</p>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReplyDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSendReply} 
+              disabled={isSendingReply || !replyContent.trim()}
+            >
+              {isSendingReply ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Enviar Resposta
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
