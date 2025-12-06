@@ -105,6 +105,27 @@ export const ContactModal = ({ children }: ContactModalProps) => {
     setIsSending(true);
 
     try {
+      // Save contact message to database first
+      const { data: contactMessage, error: insertError } = await supabase
+        .from('contact_messages')
+        .insert({
+          email,
+          subject,
+          message,
+          status: 'pending',
+          metadata: {
+            user_agent: navigator.userAgent,
+            language: navigator.language,
+            timestamp: new Date().toISOString()
+          }
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error saving contact message:', insertError);
+      }
+
       const { data: settings } = await supabase
         .from('admin_settings')
         .select('gmail_notification_email')
@@ -126,6 +147,17 @@ export const ContactModal = ({ children }: ContactModalProps) => {
           replyTo: email,
         },
       });
+
+      // Update contact message status
+      if (contactMessage?.id) {
+        await supabase
+          .from('contact_messages')
+          .update({ 
+            status: error ? 'failed' : 'sent',
+            sent_at: error ? null : new Date().toISOString()
+          })
+          .eq('id', contactMessage.id);
+      }
 
       if (error) throw error;
 
