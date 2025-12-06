@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Mail, Send, Loader2, User, MessageSquare, CheckCircle2, XCircle, X } from "lucide-react";
+import { Mail, Send, Loader2, User, MessageSquare, CheckCircle2, XCircle, X, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -20,6 +20,7 @@ const validateEmail = (email: string): boolean => {
 
 const MAX_SUBJECT_LENGTH = 100;
 const MAX_MESSAGE_LENGTH = 1000;
+const RATE_LIMIT_SECONDS = 60;
 
 export const ContactModal = ({ children }: ContactModalProps) => {
   const { t } = useTranslation();
@@ -32,6 +33,8 @@ export const ContactModal = ({ children }: ContactModalProps) => {
   const [emailTouched, setEmailTouched] = useState(false);
   const [subjectTouched, setSubjectTouched] = useState(false);
   const [messageTouched, setMessageTouched] = useState(false);
+  const [lastSubmitTime, setLastSubmitTime] = useState<number | null>(null);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   const isEmailValid = useMemo(() => validateEmail(email), [email]);
   const isSubjectValid = subject.trim().length >= 3;
@@ -44,8 +47,39 @@ export const ContactModal = ({ children }: ContactModalProps) => {
   const showMessageError = messageTouched && !isMessageValid;
   const showMessageSuccess = messageTouched && isMessageValid;
 
+  // Rate limiting cooldown timer
+  useEffect(() => {
+    if (!lastSubmitTime) return;
+    
+    const updateCooldown = () => {
+      const elapsed = Math.floor((Date.now() - lastSubmitTime) / 1000);
+      const remaining = Math.max(0, RATE_LIMIT_SECONDS - elapsed);
+      setCooldownRemaining(remaining);
+      
+      if (remaining === 0) {
+        setLastSubmitTime(null);
+      }
+    };
+    
+    updateCooldown();
+    const interval = setInterval(updateCooldown, 1000);
+    return () => clearInterval(interval);
+  }, [lastSubmitTime]);
+
+  const isRateLimited = cooldownRemaining > 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Rate limiting check
+    if (isRateLimited) {
+      toast({
+        title: t('contact.rateLimitTitle'),
+        description: t('contact.rateLimitDescription', { seconds: cooldownRemaining }),
+        variant: "destructive",
+      });
+      return;
+    }
     
     // Honeypot anti-spam check - silently reject if filled
     if (honeypot) {
@@ -66,7 +100,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
       });
       return;
     }
-    
+
     setIsSending(true);
 
     try {
@@ -93,6 +127,9 @@ export const ContactModal = ({ children }: ContactModalProps) => {
       });
 
       if (error) throw error;
+
+      // Set rate limit after successful send
+      setLastSubmitTime(Date.now());
 
       toast({
         title: t('contact.successTitle'),
@@ -287,15 +324,20 @@ export const ContactModal = ({ children }: ContactModalProps) => {
             </Button>
             <Button
               type="submit"
-              disabled={isSending || !isFormValid}
+              disabled={isSending || !isFormValid || isRateLimited}
               className="gap-2 bg-primary hover:bg-primary/90"
             >
               {isSending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isRateLimited ? (
+                <Clock className="h-4 w-4" />
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              {t('contact.send')}
+              {isRateLimited 
+                ? t('contact.cooldownMessage', { seconds: cooldownRemaining })
+                : t('contact.send')
+              }
             </Button>
           </div>
         </form>
