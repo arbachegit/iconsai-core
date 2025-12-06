@@ -26,7 +26,8 @@ import {
   Tag, 
   Image,
   Loader2,
-  ClipboardList
+  ClipboardList,
+  KeyRound
 } from "lucide-react";
 import { exportData } from "@/lib/export-utils";
 import { toast } from "sonner";
@@ -45,6 +46,7 @@ const CATEGORY_CONFIG: Record<string, { color: string; icon: React.ComponentType
   TAG: { color: "bg-orange-500", icon: Tag },
   IMAGE: { color: "bg-emerald-500", icon: Image },
   NAVIGATION: { color: "bg-slate-500", icon: ClipboardList },
+  PASSWORD_RECOVERY: { color: "bg-yellow-500", icon: KeyRound },
 };
 
 const PERIOD_OPTIONS = [
