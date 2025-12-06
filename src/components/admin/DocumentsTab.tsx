@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap, Eye, Settings2, AlertTriangle, RotateCcw, Table2 as TableIcon, Brain } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap, Eye, Settings2, AlertTriangle, RotateCcw, Table2 as TableIcon, Brain, Tags } from "lucide-react";
+import { DocumentTagEnrichmentModal, SelectedTag } from "./DocumentTagEnrichmentModal";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -113,6 +114,17 @@ export const DocumentsTab = () => {
   } | null>(null);
   const [fileToRemove, setFileToRemove] = useState<number | null>(null);
   const [queueFileToRemove, setQueueFileToRemove] = useState<number | null>(null);
+
+  // Tag enrichment modal state
+  const [tagEnrichmentModal, setTagEnrichmentModal] = useState<{
+    open: boolean;
+    fileIndex: number;
+    fileName: string;
+  } | null>(null);
+  const [fileEnrichments, setFileEnrichments] = useState<Map<number, {
+    selectedTags: SelectedTag[];
+    additionalContext: string;
+  }>>(new Map());
 
   // Document AI OCR toggle
   const [useDocumentAI, setUseDocumentAI] = useState(false);
@@ -412,6 +424,14 @@ export const DocumentsTab = () => {
           full_text: string;
           title: string;
           fileId: string;
+          preSelectedTags: Array<{
+            id: string;
+            name: string;
+            type: 'parent' | 'child';
+            parentId?: string | null;
+            parentName?: string | null;
+          }>;
+          additionalContext: string;
         }> = [];
 
         // Process each file
@@ -556,11 +576,23 @@ export const DocumentsTab = () => {
               details: 'Aguardando processamento...',
               documentId: document.id
             } : s));
+            // Get enrichment data if available
+            const enrichment = fileEnrichments.get(i);
+            
             documentsData.push({
               document_id: document.id,
               full_text: extractedText,
               title: file.name,
-              fileId: fileId
+              fileId: fileId,
+              // Include enrichment data
+              preSelectedTags: enrichment?.selectedTags.map(t => ({
+                id: t.id,
+                name: t.name,
+                type: t.type,
+                parentId: t.parentId,
+                parentName: t.parentName
+              })) || [],
+              additionalContext: enrichment?.additionalContext || ""
             });
           } catch (error: any) {
             setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
@@ -581,7 +613,13 @@ export const DocumentsTab = () => {
           error: processError
         } = await supabase.functions.invoke("process-bulk-document", {
           body: {
-            documents_data: documentsData
+            documents_data: documentsData.map(d => ({
+              document_id: d.document_id,
+              full_text: d.full_text,
+              title: d.title,
+              preSelectedTags: d.preSelectedTags,
+              additionalContext: d.additionalContext
+            }))
           }
         });
         if (processError) throw processError;
@@ -1821,12 +1859,34 @@ export const DocumentsTab = () => {
                   <FileText className="h-4 w-4" />
                   <span className="text-sm flex-1 truncate">{file.name}</span>
                   <Badge variant="outline">{(file.size / 1024).toFixed(2)} KB</Badge>
+                  
+                  {/* Enrichment indicator */}
+                  {fileEnrichments.has(idx) && (
+                    <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/20">
+                      <Tags className="h-3 w-3 mr-1" />
+                      {fileEnrichments.get(idx)?.selectedTags.length}
+                    </Badge>
+                  )}
+                  
+                  {/* Tag enrichment button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setTagEnrichmentModal({ open: true, fileIndex: idx, fileName: file.name })}
+                    disabled={uploading || isExtracting}
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10"
+                    title="Enriquecer com tags"
+                  >
+                    <Tags className="h-4 w-4" />
+                  </Button>
+                  
+                  {/* Delete button */}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setQueueFileToRemove(idx)}
                     disabled={uploading || isExtracting}
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 ml-1"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -3653,5 +3713,27 @@ export const DocumentsTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Tag Enrichment Modal */}
+      {tagEnrichmentModal && (
+        <DocumentTagEnrichmentModal
+          open={tagEnrichmentModal.open}
+          onOpenChange={(open) => {
+            if (!open) setTagEnrichmentModal(null);
+          }}
+          fileName={tagEnrichmentModal.fileName}
+          fileIndex={tagEnrichmentModal.fileIndex}
+          initialTags={fileEnrichments.get(tagEnrichmentModal.fileIndex)?.selectedTags}
+          initialContext={fileEnrichments.get(tagEnrichmentModal.fileIndex)?.additionalContext}
+          onSave={(data) => {
+            setFileEnrichments(prev => {
+              const newMap = new Map(prev);
+              newMap.set(tagEnrichmentModal.fileIndex, data);
+              return newMap;
+            });
+            setTagEnrichmentModal(null);
+          }}
+        />
+      )}
     </div>;
 };
