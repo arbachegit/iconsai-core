@@ -375,8 +375,24 @@ export const ActivityLogsTab = () => {
       <AdminTitleWithInfo
         title="Log de Atividades"
         level="h1"
-        tooltipText="Histórico de ações administrativas"
-        infoContent="Visualize e audite todas as ações dos administradores incluindo logins, exclusões, configurações e uploads de documentos."
+        tooltipText="Histórico completo de ações administrativas"
+        infoContent={`Sistema de auditoria que registra automaticamente todas as ações realizadas por administradores no painel.
+
+**Atividades monitoradas:**
+• **LOGIN/LOGOUT** - Acessos e saídas do painel admin
+• **CONFIG** - Alterações em configurações do sistema
+• **CONTENT** - Edições de conteúdo das seções e tooltips
+• **DOCUMENT/UPLOAD** - Upload e processamento de documentos RAG
+• **DELETE** - Exclusões de documentos, mensagens ou registros
+• **RAG** - Operações no sistema de busca semântica
+• **TAG** - Criação, merge e modificação de tags
+• **IMAGE** - Geração e otimização de imagens
+• **VERSION** - Registros de versionamento do sistema
+• **EXPORT** - Exportações de dados (CSV, JSON)
+• **NAVIGATION** - Navegação entre seções do admin
+• **PASSWORD_RECOVERY** - Solicitações de recuperação de senha
+
+Cada registro inclui data/hora, usuário, categoria, descrição da ação e detalhes técnicos (browser, IP).`}
       />
 
       {/* Metrics Dashboard */}
