@@ -29,8 +29,21 @@ import {
   Send,
   Bell,
   FileText,
-  ChevronDown
+  ChevronDown,
+  Plus,
+  Edit,
+  Settings
 } from "lucide-react";
+
+interface ReplyTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  content: string;
+  variables_used: string[];
+  is_active: boolean;
+  display_order: number;
+}
 
 export const ContactMessagesTab = () => {
   const { toast } = useToast();
@@ -44,87 +57,181 @@ export const ContactMessagesTab = () => {
   const [replySubject, setReplySubject] = useState("");
   const [replyContent, setReplyContent] = useState("");
   const [isSendingReply, setIsSendingReply] = useState(false);
+  
+  // Template management state
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<ReplyTemplate | null>(null);
+  const [templateName, setTemplateName] = useState("");
+  const [templateSubject, setTemplateSubject] = useState("");
+  const [templateContent, setTemplateContent] = useState("");
 
-  // Pre-defined reply templates
-  const replyTemplates = [
-    {
-      name: "Agradecimento",
-      subject: "Obrigado pelo seu contato!",
-      content: `Olá,
-
-Agradecemos pelo seu contato! Recebemos sua mensagem e estamos analisando.
-
-Retornaremos em breve com mais informações.
-
-Atenciosamente,
-Equipe KnowRISK`
-    },
-    {
-      name: "Informações adicionais",
-      subject: "Re: Solicitação de informações",
-      content: `Olá,
-
-Obrigado por entrar em contato conosco!
-
-Para melhor atendê-lo(a), precisamos de algumas informações adicionais:
-- [Informação 1]
-- [Informação 2]
-
-Aguardamos seu retorno.
-
-Atenciosamente,
-Equipe KnowRISK`
-    },
-    {
-      name: "Agendamento",
-      subject: "Agendamento de demonstração",
-      content: `Olá,
-
-Ficamos felizes com seu interesse no KnowYOU!
-
-Gostaríamos de agendar uma demonstração personalizada. Por favor, indique sua disponibilidade para uma reunião online.
-
-Horários sugeridos:
-- Segunda a sexta, das 9h às 18h
-
-Aguardamos sua confirmação.
-
-Atenciosamente,
-Equipe KnowRISK`
-    },
-    {
-      name: "Suporte técnico",
-      subject: "Re: Suporte Técnico",
-      content: `Olá,
-
-Agradecemos por reportar esta questão.
-
-Nossa equipe técnica já está analisando o problema e retornará com uma solução em breve.
-
-Caso precise de assistência imediata, por favor entre em contato através de nossos canais de suporte.
-
-Atenciosamente,
-Equipe de Suporte KnowRISK`
-    },
-    {
-      name: "Parceria comercial",
-      subject: "Re: Proposta de Parceria",
-      content: `Olá,
-
-Obrigado pelo interesse em estabelecer uma parceria com a KnowRISK!
-
-Analisamos sua proposta com atenção. Para dar continuidade, gostaríamos de agendar uma reunião para discutir os detalhes.
-
-Por favor, indique sua disponibilidade.
-
-Atenciosamente,
-Equipe Comercial KnowRISK`
-    }
+  // Available variables for templates
+  const availableVariables = [
+    { key: 'nome', description: 'Nome extraído do email (antes do @)' },
+    { key: 'email', description: 'Email do remetente' },
+    { key: 'assunto', description: 'Assunto da mensagem original' },
   ];
 
-  const applyTemplate = (template: typeof replyTemplates[0]) => {
-    setReplySubject(template.subject);
-    setReplyContent(template.content);
+  // Fetch templates from database
+  const { data: templates, isLoading: templatesLoading } = useQuery({
+    queryKey: ['reply-templates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reply_templates')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+      
+      if (error) throw error;
+      return data as ReplyTemplate[];
+    }
+  });
+
+  // Replace variables in template
+  const replaceVariables = (text: string, message: any) => {
+    if (!message) return text;
+    
+    const nome = message.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+    
+    return text
+      .replace(/\{\{nome\}\}/gi, nome)
+      .replace(/\{\{email\}\}/gi, message.email)
+      .replace(/\{\{assunto\}\}/gi, message.subject);
+  };
+
+  const applyTemplate = (template: ReplyTemplate) => {
+    if (!replyToMessage) return;
+    setReplySubject(replaceVariables(template.subject, replyToMessage));
+    setReplyContent(replaceVariables(template.content, replyToMessage));
+  };
+
+  // Template CRUD mutations
+  const createTemplateMutation = useMutation({
+    mutationFn: async (template: { name: string; subject: string; content: string }) => {
+      const variablesUsed = [];
+      if (template.content.includes('{{nome}}') || template.subject.includes('{{nome}}')) variablesUsed.push('nome');
+      if (template.content.includes('{{email}}') || template.subject.includes('{{email}}')) variablesUsed.push('email');
+      if (template.content.includes('{{assunto}}') || template.subject.includes('{{assunto}}')) variablesUsed.push('assunto');
+      
+      const { error } = await supabase
+        .from('reply_templates')
+        .insert({
+          name: template.name,
+          subject: template.subject,
+          content: template.content,
+          variables_used: variablesUsed,
+          display_order: (templates?.length || 0) + 1
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reply-templates'] });
+      toast({ title: "Template criado com sucesso" });
+      closeTemplateDialog();
+    },
+    onError: () => {
+      toast({ title: "Erro ao criar template", variant: "destructive" });
+    }
+  });
+
+  const updateTemplateMutation = useMutation({
+    mutationFn: async (template: { id: string; name: string; subject: string; content: string }) => {
+      const variablesUsed = [];
+      if (template.content.includes('{{nome}}') || template.subject.includes('{{nome}}')) variablesUsed.push('nome');
+      if (template.content.includes('{{email}}') || template.subject.includes('{{email}}')) variablesUsed.push('email');
+      if (template.content.includes('{{assunto}}') || template.subject.includes('{{assunto}}')) variablesUsed.push('assunto');
+      
+      const { error } = await supabase
+        .from('reply_templates')
+        .update({
+          name: template.name,
+          subject: template.subject,
+          content: template.content,
+          variables_used: variablesUsed
+        })
+        .eq('id', template.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reply-templates'] });
+      toast({ title: "Template atualizado com sucesso" });
+      closeTemplateDialog();
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar template", variant: "destructive" });
+    }
+  });
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('reply_templates')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reply-templates'] });
+      toast({ title: "Template excluído com sucesso" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao excluir template", variant: "destructive" });
+    }
+  });
+
+  const openCreateTemplate = () => {
+    setEditingTemplate(null);
+    setTemplateName("");
+    setTemplateSubject("");
+    setTemplateContent("");
+    setTemplateDialogOpen(true);
+  };
+
+  const openEditTemplate = (template: ReplyTemplate) => {
+    setEditingTemplate(template);
+    setTemplateName(template.name);
+    setTemplateSubject(template.subject);
+    setTemplateContent(template.content);
+    setTemplateDialogOpen(true);
+  };
+
+  const closeTemplateDialog = () => {
+    setTemplateDialogOpen(false);
+    setEditingTemplate(null);
+    setTemplateName("");
+    setTemplateSubject("");
+    setTemplateContent("");
+  };
+
+  const handleSaveTemplate = () => {
+    if (!templateName.trim() || !templateSubject.trim() || !templateContent.trim()) {
+      toast({ title: "Preencha todos os campos", variant: "destructive" });
+      return;
+    }
+    
+    if (editingTemplate) {
+      updateTemplateMutation.mutate({
+        id: editingTemplate.id,
+        name: templateName,
+        subject: templateSubject,
+        content: templateContent
+      });
+    } else {
+      createTemplateMutation.mutate({
+        name: templateName,
+        subject: templateSubject,
+        content: templateContent
+      });
+    }
+  };
+
+  const insertVariable = (variable: string, field: 'subject' | 'content') => {
+    const tag = `{{${variable}}}`;
+    if (field === 'subject') {
+      setTemplateSubject(prev => prev + tag);
+    } else {
+      setTemplateContent(prev => prev + tag);
+    }
   };
 
   const { data: messages, isLoading, refetch } = useQuery({
@@ -616,32 +723,80 @@ Equipe Comercial KnowRISK`
 
               {/* Template selector */}
               <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  Templates de Resposta
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Templates de Resposta
+                  </label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={openCreateTemplate}
+                    className="text-xs"
+                  >
+                    <Settings className="w-3 h-3 mr-1" />
+                    Gerenciar
+                  </Button>
+                </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between">
-                      Selecionar template...
+                    <Button variant="outline" className="w-full justify-between" disabled={templatesLoading}>
+                      {templatesLoading ? "Carregando..." : "Selecionar template..."}
                       <ChevronDown className="w-4 h-4 ml-2" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-[400px]">
-                    <DropdownMenuLabel>Templates disponíveis</DropdownMenuLabel>
+                    <DropdownMenuLabel className="flex items-center justify-between">
+                      Templates disponíveis
+                      <Badge variant="outline" className="text-xs">
+                        Variáveis: {"{{nome}}, {{email}}, {{assunto}}"}
+                      </Badge>
+                    </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {replyTemplates.map((template, index) => (
+                    {templates?.map((template) => (
                       <DropdownMenuItem
-                        key={index}
+                        key={template.id}
                         onClick={() => applyTemplate(template)}
                         className="flex flex-col items-start gap-1 py-2 cursor-pointer"
                       >
-                        <span className="font-medium">{template.name}</span>
+                        <div className="flex items-center gap-2 w-full justify-between">
+                          <span className="font-medium">{template.name}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditTemplate(template);
+                            }}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </div>
                         <span className="text-xs text-muted-foreground truncate max-w-full">
                           {template.content.substring(0, 60)}...
                         </span>
+                        {template.variables_used?.length > 0 && (
+                          <div className="flex gap-1 mt-1">
+                            {template.variables_used.map(v => (
+                              <Badge key={v} variant="secondary" className="text-[10px] px-1 py-0">
+                                {`{{${v}}}`}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
                       </DropdownMenuItem>
                     ))}
+                    {(!templates || templates.length === 0) && (
+                      <div className="p-3 text-center text-sm text-muted-foreground">
+                        Nenhum template disponível
+                      </div>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={openCreateTemplate} className="cursor-pointer">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Criar novo template
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -689,6 +844,120 @@ Equipe Comercial KnowRISK`
                 <>
                   <Send className="w-4 h-4 mr-2" />
                   Enviar Resposta
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Management Dialog */}
+      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              {editingTemplate ? "Editar Template" : "Criar Novo Template"}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Variables helper */}
+            <div className="bg-primary/10 p-3 rounded-lg">
+              <p className="text-sm font-medium mb-2">Variáveis disponíveis (clique para inserir):</p>
+              <div className="flex gap-2 flex-wrap">
+                {availableVariables.map(v => (
+                  <div key={v.key} className="flex flex-col">
+                    <div className="flex gap-1">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => insertVariable(v.key, 'subject')}
+                        title={`Inserir no assunto: ${v.description}`}
+                      >
+                        {`{{${v.key}}}`} → Assunto
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => insertVariable(v.key, 'content')}
+                        title={`Inserir no conteúdo: ${v.description}`}
+                      >
+                        {`{{${v.key}}}`} → Conteúdo
+                      </Button>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground mt-0.5">{v.description}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nome do Template</label>
+              <Input
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder="Ex: Agradecimento, Suporte, etc."
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Assunto do Email</label>
+              <Input
+                value={templateSubject}
+                onChange={(e) => setTemplateSubject(e.target.value)}
+                placeholder="Ex: Obrigado pelo seu contato, {{nome}}!"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Conteúdo do Email</label>
+              <Textarea
+                value={templateContent}
+                onChange={(e) => setTemplateContent(e.target.value)}
+                placeholder="Olá {{nome}},&#10;&#10;Agradecemos pelo seu contato sobre &quot;{{assunto}}&quot;...&#10;&#10;Atenciosamente,&#10;Equipe KnowRISK"
+                className="min-h-[200px] font-mono text-sm"
+              />
+            </div>
+
+            {editingTemplate && (
+              <div className="pt-2 border-t">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    if (confirm("Tem certeza que deseja excluir este template?")) {
+                      deleteTemplateMutation.mutate(editingTemplate.id);
+                      closeTemplateDialog();
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir Template
+                </Button>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={closeTemplateDialog}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSaveTemplate}
+              disabled={createTemplateMutation.isPending || updateTemplateMutation.isPending}
+            >
+              {(createTemplateMutation.isPending || updateTemplateMutation.isPending) ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  {editingTemplate ? "Atualizar" : "Criar Template"}
                 </>
               )}
             </Button>
