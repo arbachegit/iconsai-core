@@ -69,6 +69,7 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -215,7 +216,12 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen flex bg-background">
-      <AdminSidebar activeTab={activeTab} onTabChange={handleTabChange} />
+      <AdminSidebar 
+        activeTab={activeTab} 
+        onTabChange={handleTabChange} 
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+      />
       
       <main className="flex-1 overflow-y-auto">
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
