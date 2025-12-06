@@ -215,7 +215,7 @@ const AdminLogin = () => {
           )}
 
           {/* Botão retornar ao App */}
-          <div className="w-full pt-2 border-t border-primary/10">
+          <div className="w-full pt-1 border-t border-primary/10">
             <Link to="/">
               <Button
                 variant="ghost"
