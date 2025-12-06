@@ -42,9 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, CheckCircle2, Bell, Mail, Settings, FolderOpen, FolderTree, Tag, Activity, Clock, XCircle, FileCheck, Info, Eye, Lightbulb } from "lucide-react";
-import { TagDeleteMLModal } from "./TagDeleteMLModal";
-import { MLInsightsPanel } from "./MLInsightsPanel";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, CheckCircle2, Bell, Mail, Settings, FolderOpen, FolderTree, Tag, Activity, Clock, XCircle, FileCheck, Info, Eye } from "lucide-react";
 import { useRef } from "react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
@@ -139,14 +137,6 @@ export const TagsManagementTab = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [mlEventsOpen, setMlEventsOpen] = useState(false);
   const [mlEventsTimeRange, setMlEventsTimeRange] = useState<number>(30); // days
-  
-  // Delete ML modal state
-  const [deleteMLModal, setDeleteMLModal] = useState<{
-    open: boolean;
-    type: 'parent' | 'child' | 'orphan';
-    tags: Tag[];
-    similarityScore?: number;
-  }>({ open: false, type: 'parent', tags: [] });
   
   // Sync state with admin settings
   useEffect(() => {
@@ -1520,80 +1510,9 @@ export const TagsManagementTab = () => {
                 {mlEvents?.total || 0} eventos
               </Badge>
             </div>
-            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              {/* Export Button */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8">
-                    <Download className="h-4 w-4 mr-1" />
-                    Exportar
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => {
-                    if (!mlEvents?.recentEvents) return;
-                    exportData({
-                      filename: `ml-events-${mlEventsTimeRange}dias`,
-                      data: mlEvents.recentEvents.map((e: any) => {
-                        const decision = typeof e.user_decision === 'string' ? JSON.parse(e.user_decision) : e.user_decision;
-                        return {
-                          'Data': new Date(e.created_at).toLocaleString('pt-BR'),
-                          'Ação': e.action_type,
-                          'Tags Envolvidas': e.input_state?.tags_involved?.map((t: any) => t.name).join(', ') || '-',
-                          'Decisão': decision?.target_tag_name || decision?.action || '-',
-                          'Justificativa': e.rationale || '-',
-                          'Similaridade': e.similarity_score ? `${Math.round(e.similarity_score * 100)}%` : '-',
-                          'Tempo Decisão': e.time_to_decision_ms ? `${e.time_to_decision_ms}ms` : '-'
-                        };
-                      }),
-                      format: 'csv'
-                    });
-                    toast.success("Eventos ML exportados em CSV!");
-                  }}>
-                    <FileText className="h-4 w-4 mr-2" /> CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    if (!mlEvents?.recentEvents) return;
-                    exportData({
-                      filename: `ml-events-${mlEventsTimeRange}dias`,
-                      data: mlEvents.recentEvents.map((e: any) => {
-                        const decision = typeof e.user_decision === 'string' ? JSON.parse(e.user_decision) : e.user_decision;
-                        return {
-                          'Data': new Date(e.created_at).toLocaleString('pt-BR'),
-                          'Ação': e.action_type,
-                          'Tags Envolvidas': e.input_state?.tags_involved?.map((t: any) => t.name).join(', ') || '-',
-                          'Decisão': decision?.target_tag_name || decision?.action || '-',
-                          'Justificativa': e.rationale || '-',
-                          'Similaridade': e.similarity_score ? `${Math.round(e.similarity_score * 100)}%` : '-',
-                          'Tempo Decisão': e.time_to_decision_ms ? `${e.time_to_decision_ms}ms` : '-'
-                        };
-                      }),
-                      format: 'xlsx'
-                    });
-                    toast.success("Eventos ML exportados em Excel!");
-                  }}>
-                    <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    if (!mlEvents?.recentEvents) return;
-                    const jsonContent = JSON.stringify(mlEvents.recentEvents, null, 2);
-                    const blob = new Blob([jsonContent], { type: 'application/json' });
-                    const url = window.URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `ml-events-${mlEventsTimeRange}dias-${new Date().toISOString().split('T')[0]}.json`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-                    toast.success("Eventos ML exportados em JSON!");
-                  }}>
-                    <FileJson className="h-4 w-4 mr-2" /> JSON
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <div className="flex items-center gap-2">
               <Select value={mlEventsTimeRange.toString()} onValueChange={(v) => setMlEventsTimeRange(Number(v))}>
-                <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectTrigger className="w-[140px] h-8 text-xs" onClick={(e) => e.stopPropagation()}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1815,20 +1734,6 @@ export const TagsManagementTab = () => {
                   </Table>
                 </div>
               </div>
-            )}
-
-            {/* ML Insights Panel */}
-            {mlEvents && mlEvents.total > 0 && (
-              <MLInsightsPanel
-                mergeRules={mergeRules || []}
-                mlEvents={mlEvents?.recentEvents || []}
-                onApplySuggestion={(insight) => {
-                  toast.info(`Sugestão "${insight.title}" selecionada para aplicação.`);
-                }}
-                onIgnoreSuggestion={(insight) => {
-                  toast.info(`Sugestão "${insight.title}" ignorada.`);
-                }}
-              />
             )}
 
             {/* Empty State */}
@@ -2222,22 +2127,9 @@ export const TagsManagementTab = () => {
                       <span className="text-sm font-medium">"{tag_name}"</span>
                       <Badge variant="outline" className="text-xs">{count}x</Badge>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button size="sm" variant="outline" onClick={() => openMergeDialog(tag_name, ids)}>
-                        <Merge className="h-4 w-4 mr-1" /> Unificar
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
-                        onClick={() => {
-                          const tagsToDelete = (allTags || []).filter(t => ids.includes(t.id));
-                          setDeleteMLModal({ open: true, type: 'parent', tags: tagsToDelete });
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Button size="sm" variant="outline" onClick={() => openMergeDialog(tag_name, ids)}>
+                      <Merge className="h-4 w-4 mr-1" /> Unificar
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -2265,22 +2157,9 @@ export const TagsManagementTab = () => {
                         {Math.round(similarity * 100)}% similar
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button size="sm" variant="outline" onClick={() => openMergeDialog(`${tag1} → ${tag2}`, ids)}>
-                        <Merge className="h-4 w-4 mr-1" /> Mesclar
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
-                        onClick={() => {
-                          const tagsToDelete = (allTags || []).filter(t => ids.includes(t.id));
-                          setDeleteMLModal({ open: true, type: 'parent', tags: tagsToDelete, similarityScore: similarity });
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Button size="sm" variant="outline" onClick={() => openMergeDialog(`${tag1} → ${tag2}`, ids)}>
+                      <Merge className="h-4 w-4 mr-1" /> Mesclar
+                    </Button>
                   </div>
                 ))}
                 {semanticDuplicates.length > 15 && (
@@ -2327,26 +2206,13 @@ export const TagsManagementTab = () => {
                               {Math.round(similarity * 100)}%
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => openMergeDialog(`${tag1} → ${tag2}`, [id1, id2])}
-                            >
-                              <Merge className="h-4 w-4 mr-1" /> Mesclar
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
-                              onClick={() => {
-                                const tagsToDelete = (allTags || []).filter(t => [id1, id2].includes(t.id));
-                                setDeleteMLModal({ open: true, type: 'child', tags: tagsToDelete, similarityScore: similarity });
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => openMergeDialog(`${tag1} → ${tag2}`, [id1, id2])}
+                          >
+                            <Merge className="h-4 w-4 mr-1" /> Mesclar
+                          </Button>
                         </div>
                       ))}
                     </CollapsibleContent>
@@ -3143,16 +3009,7 @@ export const TagsManagementTab = () => {
         onComplete={() => setConflictModal({ open: false, type: 'parent', tags: [] })}
       />
 
-      {/* Tag Delete ML Modal */}
-      <TagDeleteMLModal
-        open={deleteMLModal.open}
-        onOpenChange={(open) => setDeleteMLModal(prev => ({ ...prev, open }))}
-        deleteType={deleteMLModal.type}
-        tags={deleteMLModal.tags}
-        similarityScore={deleteMLModal.similarityScore}
-        onComplete={() => setDeleteMLModal({ open: false, type: 'parent', tags: [] })}
-      />
-
+      {/* Import Preview Modal - Enhanced */}
       <Dialog open={importPreviewOpen} onOpenChange={setImportPreviewOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
