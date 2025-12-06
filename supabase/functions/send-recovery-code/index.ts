@@ -79,11 +79,10 @@ serve(async (req) => {
 
     const userExists = userData.users.some(u => u.email?.toLowerCase() === email.toLowerCase());
     if (!userExists) {
-      // Don't reveal if user exists - return success anyway
       console.log(`User not found for email: ${email}`);
       return new Response(
-        JSON.stringify({ success: true, message: "Se o email existir, um código será enviado" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "email_not_found", message: "Email não registrado no sistema" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

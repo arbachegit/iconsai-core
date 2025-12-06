@@ -315,16 +315,53 @@ const AdminResetPassword = () => {
               <label className="text-sm font-medium text-muted-foreground">
                 Código de Recuperação
               </label>
-              <Input
-                type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-                required
-                disabled={codeValidated || timeRemaining === 0}
-                className="text-center text-2xl tracking-widest font-mono bg-background/50"
-                maxLength={6}
-              />
+              <div className="flex justify-center gap-2">
+                {[0, 1, 2, 3, 4, 5].map((index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={code[index] || ''}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      if (value) {
+                        const newCode = code.split('');
+                        newCode[index] = value;
+                        setCode(newCode.join('').slice(0, 6));
+                        // Auto-focus next input
+                        if (index < 5 && value) {
+                          const nextInput = document.querySelector(`input[data-code-index="${index + 1}"]`) as HTMLInputElement;
+                          nextInput?.focus();
+                        }
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace' && !code[index] && index > 0) {
+                        const prevInput = document.querySelector(`input[data-code-index="${index - 1}"]`) as HTMLInputElement;
+                        prevInput?.focus();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                      setCode(pastedData);
+                    }}
+                    data-code-index={index}
+                    disabled={codeValidated || timeRemaining === 0}
+                    className={`
+                      w-12 h-14 text-center text-2xl font-mono font-bold
+                      rounded-lg border-2 outline-none transition-all duration-200
+                      ${codeValidated 
+                        ? 'bg-green-500/20 border-green-500 text-green-400' 
+                        : timeRemaining === 0
+                          ? 'bg-muted/50 border-muted text-muted-foreground cursor-not-allowed'
+                          : 'bg-white border-gray-300 text-gray-900 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),inset_0_-2px_4px_rgba(255,255,255,0.5)] focus:border-primary focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.15),0_0_0_3px_rgba(139,92,246,0.2)]'
+                      }
+                    `}
+                  />
+                ))}
+              </div>
             </div>
 
             {!codeValidated && (
