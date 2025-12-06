@@ -507,196 +507,180 @@ export const UserUsageLogsTab = () => {
 
       {/* Table */}
       <ScrollArea className="h-[500px] border rounded-lg">
-        <Table className="w-full">
-          <colgroup>
-            <col style={{ width: '100px' }} />
-            <col style={{ width: '160px' }} />
-            <col style={{ width: '90px' }} />
-            <col style={{ width: '60px' }} />
-            <col style={{ width: '60px' }} />
-            <col />
-            <col style={{ width: '40px' }} />
-          </colgroup>
-          <TableHeader className="sticky top-0 bg-muted z-10">
-            <TableRow>
-              <TableHead 
-                className="px-2 font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
-                onClick={() => handleSort("started_at")}
-              >
-                <div className="flex items-center gap-1">
-                  Data/Hora {getSortIcon("started_at")}
+        <div className="w-full">
+          {/* Header Row - CSS Grid fixo */}
+          <div className="grid grid-cols-[100px_160px_90px_60px_60px_1fr_40px] sticky top-0 bg-muted z-10 border-b">
+            <div 
+              className="px-2 py-3 font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+              onClick={() => handleSort("started_at")}
+            >
+              <div className="flex items-center gap-1">
+                Data/Hora {getSortIcon("started_at")}
+              </div>
+            </div>
+            <div 
+              className="px-2 py-3 font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+              onClick={() => handleSort("user_name")}
+            >
+              <div className="flex items-center gap-1">
+                Usuário {getSortIcon("user_name")}
+              </div>
+            </div>
+            <div 
+              className="px-2 py-3 font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+              onClick={() => handleSort("chat_type")}
+            >
+              <div className="flex items-center gap-1">
+                Chat {getSortIcon("chat_type")}
+              </div>
+            </div>
+            <div 
+              className="px-2 py-3 text-center font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+              onClick={() => handleSort("message_count")}
+            >
+              <div className="flex items-center justify-center gap-1">
+                Msgs {getSortIcon("message_count")}
+              </div>
+            </div>
+            <div 
+              className="px-2 py-3 text-center font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+              onClick={() => handleSort("audio_plays")}
+            >
+              <div className="flex items-center justify-center gap-1">
+                Áudios {getSortIcon("audio_plays")}
+              </div>
+            </div>
+            <div className="px-2 py-3 font-bold text-foreground uppercase tracking-wide text-xs">
+              Tópicos
+            </div>
+            <div className="px-2 py-3"></div>
+          </div>
+
+          {/* Data Rows - Mesmo CSS Grid */}
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Carregando...
+            </div>
+          ) : sortedLogs?.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum registro encontrado
+            </div>
+          ) : (
+            sortedLogs?.map((log) => (
+              <Collapsible key={log.id} open={expandedRows.has(log.id)}>
+                <div
+                  className="grid grid-cols-[100px_160px_90px_60px_60px_1fr_40px] border-b cursor-pointer hover:bg-muted/50"
+                  onClick={() => toggleRow(log.id)}
+                >
+                  <div className="px-2 py-3 font-mono text-xs flex items-center">
+                    {format(new Date(log.started_at), "dd/MM HH:mm", { locale: ptBR })}
+                  </div>
+                  <div className="px-2 py-3 flex items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate">{log.user_name || "Anônimo"}</span>
+                      {isAdmin(log.user_name) && (
+                        <Badge variant="outline" className="text-amber-500 border-amber-500/50 gap-1 shrink-0">
+                          <Crown className="w-3 h-3" />
+                          Admin
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="px-2 py-3 flex items-center">{getChatBadge(log.chat_type)}</div>
+                  <div className="px-2 py-3 text-center flex items-center justify-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <MessageSquare className="w-3 h-3 text-muted-foreground" />
+                      {log.message_count || 0}
+                    </div>
+                  </div>
+                  <div className="px-2 py-3 text-center flex items-center justify-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Volume2 className="w-3 h-3 text-muted-foreground" />
+                      {log.audio_plays || 0}
+                    </div>
+                  </div>
+                  <div className="px-2 py-3 flex items-center">
+                    <div className="flex flex-wrap gap-1">
+                      {(log.topics || []).slice(0, 3).map((topic: string, idx: number) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {topic}
+                        </Badge>
+                      ))}
+                      {(log.topics || []).length > 3 && (
+                        <Badge variant="secondary" className="text-xs">
+                          +{(log.topics || []).length - 3}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="px-2 py-3 flex items-center justify-center">
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform ${
+                        expandedRows.has(log.id) ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
                 </div>
-              </TableHead>
-              <TableHead 
-                className="px-2 font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
-                onClick={() => handleSort("user_name")}
-              >
-                <div className="flex items-center gap-1">
-                  Usuário {getSortIcon("user_name")}
-                </div>
-              </TableHead>
-              <TableHead 
-                className="px-2 font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
-                onClick={() => handleSort("chat_type")}
-              >
-                <div className="flex items-center gap-1">
-                  Chat {getSortIcon("chat_type")}
-                </div>
-              </TableHead>
-              <TableHead 
-                className="px-2 text-center font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
-                onClick={() => handleSort("message_count")}
-              >
-                <div className="flex items-center justify-center gap-1">
-                  Msgs {getSortIcon("message_count")}
-                </div>
-              </TableHead>
-              <TableHead 
-                className="px-2 text-center font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
-                onClick={() => handleSort("audio_plays")}
-              >
-                <div className="flex items-center justify-center gap-1">
-                  Áudios {getSortIcon("audio_plays")}
-                </div>
-              </TableHead>
-              <TableHead className="px-2 font-bold text-foreground uppercase tracking-wide text-xs">
-                Tópicos
-              </TableHead>
-              <TableHead className="px-2"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  Carregando...
-                </TableCell>
-              </TableRow>
-            ) : sortedLogs?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  Nenhum registro encontrado
-                </TableCell>
-              </TableRow>
-            ) : (
-              sortedLogs?.map((log) => (
-                <Collapsible key={log.id} open={expandedRows.has(log.id)}>
-                  <TableRow
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => toggleRow(log.id)}
-                  >
-                    <TableCell className="px-2 font-mono text-xs">
-                      {format(new Date(log.started_at), "dd/MM HH:mm", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell className="px-2">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate">{log.user_name || "Anônimo"}</span>
-                        {isAdmin(log.user_name) && (
-                          <Badge variant="outline" className="text-amber-500 border-amber-500/50 gap-1 shrink-0">
-                            <Crown className="w-3 h-3" />
-                            Admin
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-2">{getChatBadge(log.chat_type)}</TableCell>
-                    <TableCell className="px-2 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <MessageSquare className="w-3 h-3 text-muted-foreground" />
-                        {log.message_count || 0}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-2 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Volume2 className="w-3 h-3 text-muted-foreground" />
-                        {log.audio_plays || 0}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-2">
-                      <div className="flex flex-wrap gap-1">
-                        {(log.topics || []).slice(0, 3).map((topic: string, idx: number) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {topic}
-                          </Badge>
-                        ))}
-                        {(log.topics || []).length > 3 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{(log.topics || []).length - 3}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-2">
-                      <ChevronDown
-                        className={`w-4 h-4 transition-transform ${
-                          expandedRows.has(log.id) ? "rotate-180" : ""
-                        }`}
-                      />
-                    </TableCell>
-                  </TableRow>
-                  <CollapsibleContent asChild>
-                    <TableRow className="bg-muted/30">
-                      <TableCell colSpan={7} className="py-4">
-                        <div className="space-y-3 px-4">
-                          <div className="flex items-center gap-4 text-sm">
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Clock className="w-4 h-4" />
-                              Última interação:{" "}
-                              {log.last_interaction
-                                ? format(new Date(log.last_interaction), "dd/MM/yyyy HH:mm", {
-                                    locale: ptBR,
-                                  })
-                                : "N/A"}
-                            </div>
-                          </div>
-                          {log.first_message && (
-                            <div className="text-sm">
-                              <span className="text-muted-foreground">Primeira mensagem: </span>
-                              <span className="italic">"{log.first_message}..."</span>
-                            </div>
-                          )}
-                          {log.conversation_title && (
-                            <div className="text-sm">
-                              <span className="text-muted-foreground">Título da conversa: </span>
-                              <span>{log.conversation_title}</span>
-                            </div>
-                          )}
-                          {Array.isArray(log.messages) && log.messages.length > 0 && (
-                            <div className="mt-2">
-                              <div className="text-sm font-medium mb-2">
-                                Mensagens ({log.messages.length}):
-                              </div>
-                              <ScrollArea className="h-[150px] border rounded p-2 bg-background">
-                                <div className="space-y-2">
-                                  {log.messages.map((msg: any, idx: number) => (
-                                    <div
-                                      key={idx}
-                                      className={`text-xs p-2 rounded ${
-                                        msg.role === "user"
-                                          ? "bg-primary/10 ml-4"
-                                          : "bg-muted mr-4"
-                                      }`}
-                                    >
-                                      <span className="font-medium">
-                                        {msg.role === "user" ? "Usuário" : "Assistente"}:
-                                      </span>{" "}
-                                      {msg.content?.substring(0, 200)}
-                                      {msg.content?.length > 200 && "..."}
-                                    </div>
-                                  ))}
-                                </div>
-                              </ScrollArea>
-                            </div>
-                          )}
+                <CollapsibleContent>
+                  <div className="bg-muted/30 py-4 border-b">
+                    <div className="space-y-3 px-4">
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Clock className="w-4 h-4" />
+                          Última interação:{" "}
+                          {log.last_interaction
+                            ? format(new Date(log.last_interaction), "dd/MM/yyyy HH:mm", {
+                                locale: ptBR,
+                              })
+                            : "N/A"}
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  </CollapsibleContent>
-                </Collapsible>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                      </div>
+                      {log.first_message && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Primeira mensagem: </span>
+                          <span className="italic">"{log.first_message}..."</span>
+                        </div>
+                      )}
+                      {log.conversation_title && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Título da conversa: </span>
+                          <span>{log.conversation_title}</span>
+                        </div>
+                      )}
+                      {Array.isArray(log.messages) && log.messages.length > 0 && (
+                        <div className="mt-2">
+                          <div className="text-sm font-medium mb-2">
+                            Mensagens ({log.messages.length}):
+                          </div>
+                          <ScrollArea className="h-[150px] border rounded p-2 bg-background">
+                            <div className="space-y-2">
+                              {log.messages.map((msg: any, idx: number) => (
+                                <div
+                                  key={idx}
+                                  className={`text-xs p-2 rounded ${
+                                    msg.role === "user"
+                                      ? "bg-primary/10 ml-4"
+                                      : "bg-muted mr-4"
+                                  }`}
+                                >
+                                  <span className="font-medium">
+                                    {msg.role === "user" ? "Usuário" : "Assistente"}:
+                                  </span>{" "}
+                                  {msg.content?.substring(0, 200)}
+                                  {msg.content?.length > 200 && "..."}
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ))
+          )}
+        </div>
       </ScrollArea>
 
       {/* Footer */}
