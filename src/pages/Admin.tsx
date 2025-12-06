@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { DashboardTab } from "@/components/admin/DashboardTab";
@@ -13,7 +13,6 @@ import { YouTubeCacheTab } from "@/components/admin/YouTubeCacheTab";
 import { DocumentsTab } from "@/components/admin/DocumentsTab";
 import { RagMetricsTab } from "@/components/admin/RagMetricsTab";
 import { VersionControlTab } from "@/components/admin/VersionControlTab";
-import { TagsManagementTab } from "@/components/admin/TagsManagementTab";
 import { DocumentAnalysisTab } from "@/components/admin/DocumentAnalysisTab";
 import { DocumentRoutingLogsTab } from "@/components/admin/DocumentRoutingLogsTab";
 import { RagDiagnosticsTab } from "@/components/admin/RagDiagnosticsTab";
@@ -31,6 +30,8 @@ import { SuggestionAuditTab } from "@/components/admin/SuggestionAuditTab";
 import { ContactMessagesTab } from "@/components/admin/ContactMessagesTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+import { TagsManagementTab } from "@/components/admin/TagsManagementTab";
 
 type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages";
 
