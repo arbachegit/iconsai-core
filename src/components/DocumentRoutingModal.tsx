@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, GraduationCap, Settings } from "lucide-react";
+import { Heart, GraduationCap, Settings, Boxes } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface DocumentRoutingModalProps {
@@ -12,7 +12,7 @@ interface DocumentRoutingModalProps {
     filename: string;
     suggestedTags: string[];
   } | null;
-  onRedirect: (category: 'health' | 'study' | 'general') => void;
+  onRedirect: (category: 'health' | 'study' | 'both' | 'general') => void;
 }
 
 export function DocumentRoutingModal({
@@ -25,7 +25,7 @@ export function DocumentRoutingModal({
   
   if (!document) return null;
 
-  const handleRedirect = (category: 'health' | 'study' | 'general') => {
+  const handleRedirect = (category: 'health' | 'study' | 'both' | 'general') => {
     onRedirect(category);
     onOpenChange(false);
   };
@@ -57,7 +57,7 @@ export function DocumentRoutingModal({
         )}
         
         {/* Redirect options */}
-        <div className="grid grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-2 gap-4 mt-4">
           <Button
             onClick={() => handleRedirect('health')}
             variant="outline"
@@ -79,6 +79,18 @@ export function DocumentRoutingModal({
             <span className="text-sm font-semibold">{t('documentRouting.study')}</span>
             <span className="text-xs text-muted-foreground text-center">
               {t('documentRouting.studyDesc')}
+            </span>
+          </Button>
+          
+          <Button
+            onClick={() => handleRedirect('both')}
+            variant="outline"
+            className="flex flex-col items-center gap-2 h-auto py-4"
+          >
+            <Boxes className="h-6 w-6 text-emerald-500" />
+            <span className="text-sm font-semibold">{t('documentRouting.both')}</span>
+            <span className="text-xs text-muted-foreground text-center">
+              {t('documentRouting.bothDesc')}
             </span>
           </Button>
           

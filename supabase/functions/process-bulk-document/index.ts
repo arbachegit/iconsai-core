@@ -74,9 +74,10 @@ async function classifyTargetChat(text: string, apiKey: string): Promise<string>
           content: `Você é um classificador de documentos. Analise o texto e classifique em UMA das categorias:
 - HEALTH: Documentos sobre saúde, medicina, hospitais, tratamentos, Hospital Moinhos de Vento
 - STUDY: Documentos sobre KnowRISK, KnowYOU, ACC, tecnologia da empresa
+- BOTH: Documentos relevantes para AMBOS os contextos (saúde E tecnologia/empresa)
 - GENERAL: Outros documentos
 
-IMPORTANTE: Retorne APENAS a palavra: HEALTH, STUDY ou GENERAL`
+IMPORTANTE: Retorne APENAS a palavra: HEALTH, STUDY, BOTH ou GENERAL`
         },
         { role: "user", content: `Classifique:\n\n${text.substring(0, 3000)}` }
       ],
@@ -86,7 +87,7 @@ IMPORTANTE: Retorne APENAS a palavra: HEALTH, STUDY ou GENERAL`
   const data = await response.json();
   const classification = data.choices[0].message.content.trim().toUpperCase();
   
-  if (["HEALTH", "STUDY", "GENERAL"].includes(classification)) {
+  if (["HEALTH", "STUDY", "BOTH", "GENERAL"].includes(classification)) {
     return classification.toLowerCase();
   }
   return "general";
@@ -326,8 +327,8 @@ serve(async (req) => {
         const targetChat = await classifyTargetChat(doc.full_text, lovableKey);
         console.log(`Document ${doc.document_id} classified as: ${targetChat}`);
         
-        // ✨ AUTO-INSERÇÃO para Health/Study
-        const isAutoInserted = targetChat === 'health' || targetChat === 'study';
+        // ✨ AUTO-INSERÇÃO para Health/Study/Both
+        const isAutoInserted = targetChat === 'health' || targetChat === 'study' || targetChat === 'both';
         console.log(`Auto-insertion for ${doc.document_id}: ${isAutoInserted ? `YES (${targetChat})` : 'NO (general)'}`);
         
         // 3. ENRIQUECIMENTO

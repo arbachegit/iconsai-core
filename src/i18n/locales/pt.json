@@ -292,15 +292,17 @@
     "removeButton": "Remover documento"
   },
   "documentRouting": {
-    "title": "📄 Documento Requer Definição de Destino",
-    "description": "O documento \"{{filename}}\" foi classificado como General. Escolha onde aplicá-lo para ativar os guardrails apropriados:",
+    "title": "Documento Requer Definicao de Destino",
+    "description": "O documento \"{{filename}}\" foi classificado como General. Escolha onde aplica-lo para ativar os guardrails apropriados:",
     "suggestedTags": "Tags sugeridas:",
     "health": "Health",
-    "healthDesc": "Saúde e medicina",
+    "healthDesc": "Saude e medicina",
     "study": "Study",
     "studyDesc": "KnowRISK e ACC",
+    "both": "Both",
+    "bothDesc": "Ambos os chats",
     "general": "General",
-    "generalDesc": "Manter como está"
+    "generalDesc": "Manter como esta"
   },
   "contact": {
     "title": "Fale Conosco",
