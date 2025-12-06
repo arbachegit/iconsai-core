@@ -24,10 +24,19 @@ export const ContactModal = ({ children }: ContactModalProps) => {
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
+  const [subjectTouched, setSubjectTouched] = useState(false);
+  const [messageTouched, setMessageTouched] = useState(false);
 
   const isEmailValid = useMemo(() => validateEmail(email), [email]);
+  const isSubjectValid = subject.trim().length >= 3;
+  const isMessageValid = message.trim().length >= 10;
+
   const showEmailError = emailTouched && email.length > 0 && !isEmailValid;
   const showEmailSuccess = emailTouched && email.length > 0 && isEmailValid;
+  const showSubjectError = subjectTouched && !isSubjectValid;
+  const showSubjectSuccess = subjectTouched && isSubjectValid;
+  const showMessageError = messageTouched && !isMessageValid;
+  const showMessageSuccess = messageTouched && isMessageValid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +86,8 @@ export const ContactModal = ({ children }: ContactModalProps) => {
       setSubject("");
       setMessage("");
       setEmailTouched(false);
+      setSubjectTouched(false);
+      setMessageTouched(false);
       setIsOpen(false);
     } catch (error) {
       console.error('Error sending email:', error);
@@ -90,7 +101,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
     }
   };
 
-  const isFormValid = isEmailValid && subject.trim() && message.trim();
+  const isFormValid = isEmailValid && isSubjectValid && isMessageValid;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -145,15 +156,35 @@ export const ContactModal = ({ children }: ContactModalProps) => {
               <MessageSquare className="h-4 w-4" />
               Assunto
             </Label>
-            <Input
-              id="subject"
-              type="text"
-              placeholder="Qual o assunto da sua mensagem?"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="bg-background/50 border-primary/20 focus:border-primary/50"
-              disabled={isSending}
-            />
+            <div className="relative">
+              <Input
+                id="subject"
+                type="text"
+                placeholder="Qual o assunto da sua mensagem?"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                onBlur={() => setSubjectTouched(true)}
+                className={`bg-background/50 pr-10 transition-colors ${
+                  showSubjectError 
+                    ? 'border-destructive focus:border-destructive' 
+                    : showSubjectSuccess 
+                      ? 'border-green-500 focus:border-green-500' 
+                      : 'border-primary/20 focus:border-primary/50'
+                }`}
+                disabled={isSending}
+              />
+              {showSubjectSuccess && (
+                <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+              )}
+              {showSubjectError && (
+                <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />
+              )}
+            </div>
+            {showSubjectError && (
+              <p className="text-xs text-destructive mt-1">
+                O assunto deve ter pelo menos 3 caracteres
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -161,14 +192,34 @@ export const ContactModal = ({ children }: ContactModalProps) => {
               <Mail className="h-4 w-4" />
               Mensagem
             </Label>
-            <Textarea
-              id="message"
-              placeholder="Escreva sua mensagem aqui..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="bg-background/50 border-primary/20 focus:border-primary/50 min-h-[120px] resize-none"
-              disabled={isSending}
-            />
+            <div className="relative">
+              <Textarea
+                id="message"
+                placeholder="Escreva sua mensagem aqui..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onBlur={() => setMessageTouched(true)}
+                className={`bg-background/50 min-h-[120px] resize-none pr-10 transition-colors ${
+                  showMessageError 
+                    ? 'border-destructive focus:border-destructive' 
+                    : showMessageSuccess 
+                      ? 'border-green-500 focus:border-green-500' 
+                      : 'border-primary/20 focus:border-primary/50'
+                }`}
+                disabled={isSending}
+              />
+              {showMessageSuccess && (
+                <CheckCircle2 className="absolute right-3 top-3 h-4 w-4 text-green-500" />
+              )}
+              {showMessageError && (
+                <XCircle className="absolute right-3 top-3 h-4 w-4 text-destructive" />
+              )}
+            </div>
+            {showMessageError && (
+              <p className="text-xs text-destructive mt-1">
+                A mensagem deve ter pelo menos 10 caracteres
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
