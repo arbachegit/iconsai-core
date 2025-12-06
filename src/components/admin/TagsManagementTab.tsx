@@ -1072,6 +1072,14 @@ export const TagsManagementTab = () => {
     });
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   const handleExport = async (format: ExportFormat) => {
     const exportColumns = [
       { key: 'tag_name', label: 'Nome da Tag' },
@@ -1114,14 +1122,6 @@ export const TagsManagementTab = () => {
       toast.error("Erro ao exportar dados");
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   // Schema validation function
   const validateTaxonomySchema = (data: any): { isValid: boolean; errors: string[]; warnings: string[] } => {
