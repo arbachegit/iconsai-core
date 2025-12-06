@@ -139,11 +139,33 @@ export const ContactModal = ({ children }: ContactModalProps) => {
           to: recipientEmail,
           subject: `[Contato KnowYOU] ${subject}`,
           body: `
-            <h2>Nova mensagem de contato</h2>
-            <p><strong>De:</strong> ${email}</p>
-            <p><strong>Assunto:</strong> ${subject}</p>
-            <hr />
-            <p>${message.replace(/\n/g, '<br />')}</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
+              <!-- Header com Logo -->
+              <div style="text-align: center; padding: 24px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
+                <img src="https://knowyou.app/knowrisk-logo.png" alt="KnowYOU" style="height: 50px; max-width: 200px;" />
+              </div>
+              
+              <!-- Corpo -->
+              <div style="padding: 30px; background: #ffffff;">
+                <h2 style="color: #1e3a5f; margin-top: 0;">Nova mensagem de contato</h2>
+                <p style="color: #334155;"><strong>De:</strong> ${email}</p>
+                <p style="color: #334155;"><strong>Assunto:</strong> ${subject}</p>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+                  <p style="color: #334155; margin: 0; white-space: pre-line;">${message.replace(/\n/g, '<br />')}</p>
+                </div>
+              </div>
+              
+              <!-- Footer -->
+              <div style="text-align: center; padding: 20px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
+                <p style="color: #64748b; font-size: 12px; margin: 0;">
+                  © ${new Date().getFullYear()} KnowYOU - Todos os direitos reservados.
+                </p>
+                <p style="margin: 8px 0 0 0;">
+                  <a href="https://knowyou.app" style="color: #0ea5e9; font-size: 12px; text-decoration: none;">knowyou.app</a>
+                </p>
+              </div>
+            </div>
           `,
           replyTo: email,
         },
@@ -155,21 +177,37 @@ export const ContactModal = ({ children }: ContactModalProps) => {
           to: email,
           subject: `Recebemos sua mensagem - ${subject}`,
           body: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #0ea5e9;">Obrigado por entrar em contato!</h2>
-              <p>Olá,</p>
-              <p>Recebemos sua mensagem e nossa equipe entrará em contato em breve.</p>
-              <hr style="border: 1px solid #e2e8f0; margin: 20px 0;" />
-              <p><strong>Resumo da sua mensagem:</strong></p>
-              <p><strong>Assunto:</strong> ${subject}</p>
-              <p style="background: #f8fafc; padding: 15px; border-radius: 8px; white-space: pre-line;">${message}</p>
-              <hr style="border: 1px solid #e2e8f0; margin: 20px 0;" />
-              <p style="color: #64748b; font-size: 12px;">
-                Esta é uma mensagem automática. Por favor, não responda a este email.
-              </p>
-              <p style="color: #64748b; font-size: 12px;">
-                © ${new Date().getFullYear()} KnowYOU - Todos os direitos reservados.
-              </p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
+              <!-- Header com Logo -->
+              <div style="text-align: center; padding: 24px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
+                <img src="https://knowyou.app/knowrisk-logo.png" alt="KnowYOU" style="height: 50px; max-width: 200px;" />
+              </div>
+              
+              <!-- Corpo -->
+              <div style="padding: 30px; background: #ffffff;">
+                <h2 style="color: #0ea5e9; margin-top: 0;">Obrigado por entrar em contato!</h2>
+                <p style="color: #334155;">Olá,</p>
+                <p style="color: #334155;">Recebemos sua mensagem e nossa equipe entrará em contato em breve.</p>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                <p style="color: #334155;"><strong>Resumo da sua mensagem:</strong></p>
+                <p style="color: #334155;"><strong>Assunto:</strong> ${subject}</p>
+                <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+                  <p style="color: #334155; margin: 0; white-space: pre-line;">${message}</p>
+                </div>
+              </div>
+              
+              <!-- Footer -->
+              <div style="text-align: center; padding: 20px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
+                <p style="color: #64748b; font-size: 12px; margin: 0;">
+                  Esta é uma mensagem automática. Por favor, não responda a este email.
+                </p>
+                <p style="color: #64748b; font-size: 12px; margin: 8px 0 0 0;">
+                  © ${new Date().getFullYear()} KnowYOU - Todos os direitos reservados.
+                </p>
+                <p style="margin: 8px 0 0 0;">
+                  <a href="https://knowyou.app" style="color: #0ea5e9; font-size: 12px; text-decoration: none;">knowyou.app</a>
+                </p>
+              </div>
             </div>
           `,
         },

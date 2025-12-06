@@ -372,12 +372,30 @@ export const ContactMessagesTab = () => {
           to: replyToMessage.email,
           subject: replySubject,
           body: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <p>${replyContent.replace(/\n/g, '<br>')}</p>
-              <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
-              <p style="color: #666; font-size: 12px;">
-                Em resposta à sua mensagem: "${replyToMessage.subject}"
-              </p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
+              <!-- Header com Logo -->
+              <div style="text-align: center; padding: 24px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
+                <img src="https://knowyou.app/knowrisk-logo.png" alt="KnowYOU" style="height: 50px; max-width: 200px;" />
+              </div>
+              
+              <!-- Corpo -->
+              <div style="padding: 30px; background: #ffffff;">
+                <div style="color: #334155;">${replyContent.replace(/\n/g, '<br>')}</div>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                <p style="color: #64748b; font-size: 12px; font-style: italic;">
+                  Em resposta à sua mensagem: "${replyToMessage.subject}"
+                </p>
+              </div>
+              
+              <!-- Footer -->
+              <div style="text-align: center; padding: 20px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
+                <p style="color: #64748b; font-size: 12px; margin: 0;">
+                  © ${new Date().getFullYear()} KnowYOU - Todos os direitos reservados.
+                </p>
+                <p style="margin: 8px 0 0 0;">
+                  <a href="https://knowyou.app" style="color: #0ea5e9; font-size: 12px; text-decoration: none;">knowyou.app</a>
+                </p>
+              </div>
             </div>
           `,
         },
