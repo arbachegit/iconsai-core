@@ -376,25 +376,37 @@ export const ActivityLogsTab = () => {
         title="Log de Atividades (Admin)"
         level="h1"
         tooltipText="Histórico completo de ações administrativas"
-        infoContent={`**Sobre esta seção**
-
-Sistema de rastreamento automático de atividades no painel administrativo.
-
-✅ **Implementado**
-• **LOGIN** — Logins e tentativas falhas
-• **LOGOUT** — Logout com duração da sessão
-• **CONFIG** — Alterações de áudio/alertas
-• **USER** — Criação e gestão de usuários
-• **CONTENT** — Atualizações de conteúdo
-• **NAVIGATION** — Navegação no Admin Panel
-
-⚠️ **Em Desenvolvimento**
-• **DOCUMENT** — Upload/exclusão de docs
-• **TAG** — Criação/edição de tags
-• Indicadores econômicos, Podcasts, Mídia
-• Configurações regionais, Cache de imagens
-
-Cada registro inclui: Data/hora, Usuário, Categoria, Ação e Detalhes técnicos (JSON).`}
+        infoContent={
+          <div className="space-y-3">
+            <p className="text-sm">Sistema de rastreamento automático de atividades no painel administrativo.</p>
+            
+            <div>
+              <p className="font-semibold text-emerald-400 mb-1">Implementado</p>
+              <ul className="space-y-0.5 text-sm">
+                <li><span className="font-semibold text-emerald-400">LOGIN</span> — Logins e tentativas falhas</li>
+                <li><span className="font-semibold text-emerald-400">LOGOUT</span> — Logout com duração da sessão</li>
+                <li><span className="font-semibold text-emerald-400">CONFIG</span> — Alterações de áudio/alertas</li>
+                <li><span className="font-semibold text-emerald-400">USER</span> — Criação e gestão de usuários</li>
+                <li><span className="font-semibold text-emerald-400">CONTENT</span> — Atualizações de conteúdo</li>
+                <li><span className="font-semibold text-emerald-400">NAVIGATION</span> — Navegação no Admin Panel</li>
+              </ul>
+            </div>
+            
+            <div>
+              <p className="font-semibold text-amber-400 mb-1">Em Desenvolvimento</p>
+              <ul className="space-y-0.5 text-sm">
+                <li><span className="font-semibold text-amber-400">DOCUMENT</span> — Upload/exclusão de docs</li>
+                <li><span className="font-semibold text-amber-400">TAG</span> — Criação/edição de tags</li>
+                <li>Indicadores econômicos, Podcasts, Mídia</li>
+                <li>Configurações regionais, Cache de imagens</li>
+              </ul>
+            </div>
+            
+            <p className="text-xs text-muted-foreground/80">
+              Cada registro inclui: Data/hora, Usuário, Categoria, Ação e Detalhes técnicos (JSON).
+            </p>
+          </div>
+        }
       />
 
       {/* Metrics Dashboard */}
