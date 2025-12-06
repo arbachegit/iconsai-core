@@ -35,6 +35,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
   const [messageTouched, setMessageTouched] = useState(false);
   const [lastSubmitTime, setLastSubmitTime] = useState<number | null>(null);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const isEmailValid = useMemo(() => validateEmail(email), [email]);
   const isSubjectValid = subject.trim().length >= 3;
@@ -131,11 +132,10 @@ export const ContactModal = ({ children }: ContactModalProps) => {
       // Set rate limit after successful send
       setLastSubmitTime(Date.now());
 
-      toast({
-        title: t('contact.successTitle'),
-        description: t('contact.successDescription'),
-      });
-
+      // Show success animation
+      setShowSuccess(true);
+      
+      // Reset form
       setEmail("");
       setSubject("");
       setMessage("");
@@ -143,7 +143,16 @@ export const ContactModal = ({ children }: ContactModalProps) => {
       setEmailTouched(false);
       setSubjectTouched(false);
       setMessageTouched(false);
-      setIsOpen(false);
+      
+      // Close modal after animation
+      setTimeout(() => {
+        setShowSuccess(false);
+        setIsOpen(false);
+        toast({
+          title: t('contact.successTitle'),
+          description: t('contact.successDescription'),
+        });
+      }, 2000);
     } catch (error) {
       console.error('Error sending email:', error);
       toast({
@@ -159,17 +168,68 @@ export const ContactModal = ({ children }: ContactModalProps) => {
   const isFormValid = isEmailValid && isSubjectValid && isMessageValid;
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!showSuccess) setIsOpen(open);
+    }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-md border-primary/20">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl text-gradient">
-            <Mail className="h-5 w-5 text-primary" />
-            {t('contact.title')}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-md border-primary/20 overflow-hidden">
+        {showSuccess ? (
+          <div className="flex flex-col items-center justify-center py-12 animate-fade-in">
+            {/* Animated checkmark circle */}
+            <div className="relative w-24 h-24 mb-6">
+              <svg 
+                className="w-24 h-24" 
+                viewBox="0 0 100 100"
+              >
+                {/* Circle */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  className="animate-[circle-draw_0.6s_ease-out_forwards]"
+                  style={{
+                    strokeDasharray: 283,
+                    strokeDashoffset: 283,
+                    animation: 'circle-draw 0.6s ease-out forwards'
+                  }}
+                />
+                {/* Checkmark */}
+                <path
+                  d="M30 50 L45 65 L70 35"
+                  fill="none"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    strokeDasharray: 60,
+                    strokeDashoffset: 60,
+                    animation: 'check-draw 0.4s ease-out 0.5s forwards'
+                  }}
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-foreground mb-2 animate-fade-in" style={{ animationDelay: '0.6s' }}>
+              {t('contact.successTitle')}
+            </h3>
+            <p className="text-muted-foreground text-center animate-fade-in" style={{ animationDelay: '0.8s' }}>
+              {t('contact.successDescription')}
+            </p>
+          </div>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl text-gradient">
+                <Mail className="h-5 w-5 text-primary" />
+                {t('contact.title')}
+              </DialogTitle>
+            </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           {/* Honeypot field - invisible to users, catches bots */}
           <div className="absolute -left-[9999px] opacity-0 h-0 w-0 overflow-hidden" aria-hidden="true">
             <label htmlFor="website">Website</label>
@@ -341,6 +401,8 @@ export const ContactModal = ({ children }: ContactModalProps) => {
             </Button>
           </div>
         </form>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
