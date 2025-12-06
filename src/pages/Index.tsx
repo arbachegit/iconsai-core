@@ -6,10 +6,11 @@ import { MediaCarousel } from "@/components/MediaCarousel";
 import { DigitalExclusionSection } from "@/components/DigitalExclusionSection";
 import TuringLegacy from "@/components/TuringLegacy";
 import { Link } from "react-router-dom";
-import { Brain } from "lucide-react";
+import { Brain, Mail } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
 import { FloatingChatButton } from "@/components/FloatingChatButton";
 import { ScrollToTopButton } from "@/components/ScrollToTopButton";
+import { ContactModal } from "@/components/ContactModal";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import { useYouTubeAutoPreload } from "@/hooks/useYouTubeAutoPreload";
@@ -222,6 +223,14 @@ const Index = () => {
               <p className="text-sm text-muted-foreground">
                 {t('footer.tagline')}
               </p>
+              <ContactModal
+                trigger={
+                  <button className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors mx-auto mt-2">
+                    <Mail className="h-4 w-4" />
+                    Fale conosco
+                  </button>
+                }
+              />
               <p className="text-xs text-muted-foreground">
                 {t('footer.copyright')}
               </p>
