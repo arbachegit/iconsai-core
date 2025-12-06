@@ -73,7 +73,7 @@ const playNotificationSound = () => {
 
 export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleCollapse }: AdminSidebarProps) => {
   const navigate = useNavigate();
-  const [openSections, setOpenSections] = useState<string[]>(["quick-access"]);
+  const [openSections, setOpenSections] = useState<string[]>([]);
   const [pendingMessagesCount, setPendingMessagesCount] = useState(0);
   const previousCountRef = useRef(0);
 
