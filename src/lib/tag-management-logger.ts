@@ -23,6 +23,8 @@ export interface TagManagementEventInput {
     | 'reject_duplicate' 
     | 'adopt_orphan'
     | 'delete_orphan'
+    | 'delete_parent'
+    | 'delete_child'
     | 'export_taxonomy'
     | 'import_taxonomy';
   user_decision: {
