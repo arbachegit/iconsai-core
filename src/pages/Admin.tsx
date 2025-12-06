@@ -69,7 +69,10 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('admin_sidebar_collapsed');
+    return saved === 'true';
+  });
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -100,6 +103,11 @@ const Admin = () => {
     }
     setActiveTab(newTab);
   };
+
+  // Persistir estado do sidebar no localStorage
+  useEffect(() => {
+    localStorage.setItem('admin_sidebar_collapsed', String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
 
   useEffect(() => {
     const checkAuth = async () => {
