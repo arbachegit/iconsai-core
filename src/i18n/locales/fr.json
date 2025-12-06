@@ -302,5 +302,27 @@
     "studyDesc": "KnowRISK et ACC",
     "general": "Général",
     "generalDesc": "Garder tel quel"
+  },
+  "contact": {
+    "title": "Nous Contacter",
+    "emailLabel": "Votre Email",
+    "emailPlaceholder": "votre@email.com",
+    "subjectLabel": "Sujet",
+    "subjectPlaceholder": "Quel est le sujet de votre message?",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Écrivez votre message ici...",
+    "cancel": "Annuler",
+    "send": "Envoyer",
+    "sending": "Envoi en cours...",
+    "successTitle": "Message envoyé!",
+    "successDescription": "Nous vous répondrons bientôt.",
+    "errorTitle": "Erreur d'envoi",
+    "errorDescription": "Veuillez réessayer plus tard.",
+    "invalidEmailTitle": "Email invalide",
+    "invalidEmailDescription": "Veuillez entrer une adresse email valide.",
+    "emailError": "Veuillez entrer un email valide (ex: nom@domaine.com)",
+    "subjectError": "Le sujet doit contenir au moins 3 caractères",
+    "messageError": "Le message doit contenir au moins 10 caractères",
+    "button": "Nous contacter"
   }
 }

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ const validateEmail = (email: string): boolean => {
 };
 
 export const ContactModal = ({ children }: ContactModalProps) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
@@ -43,8 +45,8 @@ export const ContactModal = ({ children }: ContactModalProps) => {
     
     if (!isEmailValid) {
       toast({
-        title: "Email inválido",
-        description: "Por favor, insira um endereço de email válido.",
+        title: t('contact.invalidEmailTitle'),
+        description: t('contact.invalidEmailDescription'),
         variant: "destructive",
       });
       return;
@@ -78,8 +80,8 @@ export const ContactModal = ({ children }: ContactModalProps) => {
       if (error) throw error;
 
       toast({
-        title: "Mensagem enviada!",
-        description: "Entraremos em contato em breve.",
+        title: t('contact.successTitle'),
+        description: t('contact.successDescription'),
       });
 
       setEmail("");
@@ -92,8 +94,8 @@ export const ContactModal = ({ children }: ContactModalProps) => {
     } catch (error) {
       console.error('Error sending email:', error);
       toast({
-        title: "Erro ao enviar",
-        description: "Tente novamente mais tarde.",
+        title: t('contact.errorTitle'),
+        description: t('contact.errorDescription'),
         variant: "destructive",
       });
     } finally {
@@ -110,7 +112,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl text-gradient">
             <Mail className="h-5 w-5 text-primary" />
-            Fale Conosco
+            {t('contact.title')}
           </DialogTitle>
         </DialogHeader>
 
@@ -118,13 +120,13 @@ export const ContactModal = ({ children }: ContactModalProps) => {
           <div className="space-y-2">
             <Label htmlFor="email" className="flex items-center gap-2 text-sm text-muted-foreground">
               <User className="h-4 w-4" />
-              Seu Email
+              {t('contact.emailLabel')}
             </Label>
             <div className="relative">
               <Input
                 id="email"
                 type="email"
-                placeholder="seu@email.com"
+                placeholder={t('contact.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onBlur={() => setEmailTouched(true)}
@@ -146,7 +148,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
             </div>
             {showEmailError && (
               <p className="text-xs text-destructive mt-1">
-                Por favor, insira um email válido (ex: nome@dominio.com)
+                {t('contact.emailError')}
               </p>
             )}
           </div>
@@ -154,13 +156,13 @@ export const ContactModal = ({ children }: ContactModalProps) => {
           <div className="space-y-2">
             <Label htmlFor="subject" className="flex items-center gap-2 text-sm text-muted-foreground">
               <MessageSquare className="h-4 w-4" />
-              Assunto
+              {t('contact.subjectLabel')}
             </Label>
             <div className="relative">
               <Input
                 id="subject"
                 type="text"
-                placeholder="Qual o assunto da sua mensagem?"
+                placeholder={t('contact.subjectPlaceholder')}
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 onBlur={() => setSubjectTouched(true)}
@@ -182,7 +184,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
             </div>
             {showSubjectError && (
               <p className="text-xs text-destructive mt-1">
-                O assunto deve ter pelo menos 3 caracteres
+                {t('contact.subjectError')}
               </p>
             )}
           </div>
@@ -190,12 +192,12 @@ export const ContactModal = ({ children }: ContactModalProps) => {
           <div className="space-y-2">
             <Label htmlFor="message" className="flex items-center gap-2 text-sm text-muted-foreground">
               <Mail className="h-4 w-4" />
-              Mensagem
+              {t('contact.messageLabel')}
             </Label>
             <div className="relative">
               <Textarea
                 id="message"
-                placeholder="Escreva sua mensagem aqui..."
+                placeholder={t('contact.messagePlaceholder')}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onBlur={() => setMessageTouched(true)}
@@ -217,7 +219,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
             </div>
             {showMessageError && (
               <p className="text-xs text-destructive mt-1">
-                A mensagem deve ter pelo menos 10 caracteres
+                {t('contact.messageError')}
               </p>
             )}
           </div>
@@ -231,7 +233,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
               className="gap-2"
             >
               <X className="h-4 w-4" />
-              Cancelar
+              {t('contact.cancel')}
             </Button>
             <Button
               type="submit"
@@ -243,7 +245,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              Enviar
+              {t('contact.send')}
             </Button>
           </div>
         </form>

@@ -301,5 +301,27 @@
     "studyDesc": "KnowRISK e ACC",
     "general": "General",
     "generalDesc": "Manter como está"
+  },
+  "contact": {
+    "title": "Fale Conosco",
+    "emailLabel": "Seu Email",
+    "emailPlaceholder": "seu@email.com",
+    "subjectLabel": "Assunto",
+    "subjectPlaceholder": "Qual o assunto da sua mensagem?",
+    "messageLabel": "Mensagem",
+    "messagePlaceholder": "Escreva sua mensagem aqui...",
+    "cancel": "Cancelar",
+    "send": "Enviar",
+    "sending": "Enviando...",
+    "successTitle": "Mensagem enviada!",
+    "successDescription": "Entraremos em contato em breve.",
+    "errorTitle": "Erro ao enviar",
+    "errorDescription": "Tente novamente mais tarde.",
+    "invalidEmailTitle": "Email inválido",
+    "invalidEmailDescription": "Por favor, insira um endereço de email válido.",
+    "emailError": "Por favor, insira um email válido (ex: nome@dominio.com)",
+    "subjectError": "O assunto deve ter pelo menos 3 caracteres",
+    "messageError": "A mensagem deve ter pelo menos 10 caracteres",
+    "button": "Fale conosco"
   }
 }
