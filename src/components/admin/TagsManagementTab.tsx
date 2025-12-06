@@ -42,7 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, CheckCircle2, Bell, Mail, Settings } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, CheckCircle2, Bell, Mail, Settings, FolderOpen } from "lucide-react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie, Legend } from "recharts";
@@ -54,6 +54,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { OrphanedTagsPanel } from "./OrphanedTagsPanel";
+import { TagConflictResolutionModal } from "./TagConflictResolutionModal";
+import { logTagManagementEvent } from "@/lib/tag-management-logger";
 
 interface Tag {
   id: string;
@@ -65,6 +68,7 @@ interface Tag {
   parent_tag_id: string | null;
   created_at: string;
   target_chat?: string | null;
+  synonyms?: string[] | null;
 }
 
 export const TagsManagementTab = () => {
@@ -105,6 +109,14 @@ export const TagsManagementTab = () => {
   const [mlAlertEmail, setMlAlertEmail] = useState<string>("");
   const [mlAlertEnabled, setMlAlertEnabled] = useState<boolean>(false);
   const [isTestingAlert, setIsTestingAlert] = useState<boolean>(false);
+  
+  // Conflict resolution modal state
+  const [conflictModal, setConflictModal] = useState<{
+    open: boolean;
+    type: 'parent' | 'child' | 'semantic';
+    tags: Tag[];
+    similarityScore?: number;
+  }>({ open: false, type: 'parent', tags: [] });
   
   // Sync state with admin settings
   useEffect(() => {
@@ -529,10 +541,62 @@ export const TagsManagementTab = () => {
     (sum, p) => sum + p.pairs.length, 0
   );
 
+  // Detect orphaned child tags (children without valid parent)
+  const orphanedTags = allTags?.filter(tag => {
+    if (!tag.parent_tag_id) return false; // Not a child
+    const parentExists = parentTags.some(p => p.id === tag.parent_tag_id);
+    return !parentExists;
+  }) || [];
+
   // Pagination
   const totalPages = Math.ceil(sortedParentTags.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedParentTags = sortedParentTags.slice(startIndex, startIndex + itemsPerPage);
+
+  // Export taxonomy JSON
+  const handleExportTaxonomy = async () => {
+    const taxonomy = {
+      version: "1.0",
+      exported_at: new Date().toISOString(),
+      taxonomy: parentTags.map(parent => ({
+        id: parent.id,
+        name: parent.tag_name,
+        type: "parent",
+        synonyms: parent.synonyms || [],
+        children: (childTagsMap[parent.id] || []).map(child => ({
+          id: child.id,
+          name: child.tag_name,
+          synonyms: child.synonyms || []
+        }))
+      })),
+      merge_rules: mergeRules || [],
+      orphaned_children: orphanedTags.map(t => ({ id: t.id, name: t.tag_name }))
+    };
+    
+    const blob = new Blob([JSON.stringify(taxonomy, null, 2)], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `taxonomy-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    await logTagManagementEvent({
+      input_state: { tags_involved: [] },
+      action_type: 'export_taxonomy',
+      user_decision: { exported_count: parentTags.length }
+    });
+    
+    toast.success("Taxonomia exportada com sucesso!");
+  };
+
+  // Open conflict resolution modal
+  const openConflictModal = (type: 'parent' | 'child' | 'semantic', tagIds: string[], similarity?: number) => {
+    const tagsForModal = allTags?.filter(t => tagIds.includes(t.id)) || [];
+    setConflictModal({ open: true, type, tags: tagsForModal, similarityScore: similarity });
+  };
 
   // Create tag mutation
   const createTagMutation = useMutation({
@@ -845,6 +909,10 @@ export const TagsManagementTab = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportTaxonomy}>
+            <FolderOpen className="h-4 w-4 mr-2" />
+            Exportar Taxonomia
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -873,6 +941,12 @@ export const TagsManagementTab = () => {
           </Button>
         </div>
       </div>
+
+      {/* Orphaned Tags Panel */}
+      <OrphanedTagsPanel 
+        orphanedTags={orphanedTags} 
+        parentTags={parentTags.map(p => ({ id: p.id, tag_name: p.tag_name }))} 
+      />
 
       {/* Consolidated Metrics Dashboard */}
       <Card className="p-6 border-primary/30 bg-gradient-to-r from-primary/5 to-purple-500/5">
@@ -2228,6 +2302,18 @@ export const TagsManagementTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Conflict Resolution Modal */}
+      <TagConflictResolutionModal
+        open={conflictModal.open}
+        onOpenChange={(open) => setConflictModal(prev => ({ ...prev, open }))}
+        conflictType={conflictModal.type}
+        tags={conflictModal.tags}
+        childTagsMap={childTagsMap}
+        parentTags={parentTags}
+        similarityScore={conflictModal.similarityScore}
+        onComplete={() => setConflictModal({ open: false, type: 'parent', tags: [] })}
+      />
     </div>
   );
 };
