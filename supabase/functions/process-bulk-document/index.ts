@@ -8,10 +8,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface PreSelectedTag {
+  id: string;
+  name: string;
+  type: 'parent' | 'child';
+  parentId?: string | null;
+  parentName?: string | null;
+}
+
 interface DocumentInput {
   document_id: string;
   full_text: string;
   title: string;
+  preSelectedTags?: PreSelectedTag[];
+  additionalContext?: string;
 }
 
 // 0. GERAÇÃO DE HASH SHA256
@@ -332,11 +342,64 @@ serve(async (req) => {
         console.log(`Auto-insertion for ${doc.document_id}: ${isAutoInserted ? `YES (${targetChat})` : 'NO (general)'}`);
         
         // 3. ENRIQUECIMENTO
-        const metadata = await generateMetadata(doc.full_text, lovableKey);
+        // Prepend additional context to text if provided
+        const textForMetadata = doc.additionalContext 
+          ? `CONTEXTO ADICIONAL DO ADMIN:\n${doc.additionalContext}\n\n---\n\n${doc.full_text}`
+          : doc.full_text;
+        const metadata = await generateMetadata(textForMetadata, lovableKey);
         console.log(`Metadata generated for ${doc.document_id}`);
         
-        // Save tags
+        // Save pre-selected tags first (from admin enrichment)
+        const savedPreSelectedParentIds: { [tagName: string]: string } = {};
+        if (doc.preSelectedTags && doc.preSelectedTags.length > 0) {
+          console.log(`Saving ${doc.preSelectedTags.length} pre-selected tags for ${doc.document_id}`);
+          
+          // Save parent tags first
+          const parentTags = doc.preSelectedTags.filter(t => t.type === 'parent');
+          for (const tag of parentTags) {
+            const { data: insertedTag } = await supabase.from("document_tags").insert({
+              document_id: doc.document_id,
+              tag_name: tag.name,
+              tag_type: "parent",
+              confidence: 1.0, // Manual selection = 100% confidence
+              source: "admin"
+            }).select().single();
+            
+            if (insertedTag) {
+              savedPreSelectedParentIds[tag.name.toLowerCase()] = insertedTag.id;
+            }
+          }
+          
+          // Save child tags with parent reference
+          const childTags = doc.preSelectedTags.filter(t => t.type === 'child');
+          for (const tag of childTags) {
+            const parentId = tag.parentName 
+              ? savedPreSelectedParentIds[tag.parentName.toLowerCase()] 
+              : null;
+            
+            await supabase.from("document_tags").insert({
+              document_id: doc.document_id,
+              tag_name: tag.name,
+              tag_type: "child",
+              parent_tag_id: parentId,
+              confidence: 1.0, // Manual selection = 100% confidence
+              source: "admin"
+            });
+          }
+        }
+        
+        // Save AI-generated tags (avoid duplicates with pre-selected)
+        const preSelectedTagNames = new Set(
+          (doc.preSelectedTags || []).map(t => t.name.toLowerCase())
+        );
+        
         for (const tag of metadata.tags) {
+          // Skip if parent tag was already pre-selected
+          if (preSelectedTagNames.has(tag.parent.toLowerCase())) {
+            console.log(`Skipping duplicate AI tag: ${tag.parent}`);
+            continue;
+          }
+          
           const { data: parentTag } = await supabase.from("document_tags").insert({
             document_id: doc.document_id,
             tag_name: tag.parent,
@@ -347,6 +410,12 @@ serve(async (req) => {
           
           if (parentTag) {
             for (const child of tag.children) {
+              // Skip if child was already pre-selected
+              if (preSelectedTagNames.has(child.toLowerCase())) {
+                console.log(`Skipping duplicate AI child tag: ${child}`);
+                continue;
+              }
+              
               await supabase.from("document_tags").insert({
                 document_id: doc.document_id,
                 tag_name: child,
