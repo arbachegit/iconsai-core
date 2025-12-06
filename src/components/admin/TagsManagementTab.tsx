@@ -42,7 +42,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, CheckCircle2, Bell, Mail, Settings, FolderOpen } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, CheckCircle2, Bell, Mail, Settings, FolderOpen, FolderTree, Tag } from "lucide-react";
+import { useRef } from "react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie, Legend } from "recharts";
@@ -117,6 +118,18 @@ export const TagsManagementTab = () => {
     tags: Tag[];
     similarityScore?: number;
   }>({ open: false, type: 'parent', tags: [] });
+  
+  // Import taxonomy state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [importData, setImportData] = useState<{
+    parentCount: number;
+    childCount: number;
+    rulesCount: number;
+    rawData: any;
+  } | null>(null);
+  const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
+  const [isImporting, setIsImporting] = useState(false);
   
   // Sync state with admin settings
   useEffect(() => {
@@ -888,6 +901,140 @@ export const TagsManagementTab = () => {
     }
   };
 
+  // Handle import taxonomy file selection
+  const handleImportTaxonomy = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const jsonData = JSON.parse(e.target?.result as string);
+        
+        // Validate schema
+        if (!jsonData.version || !jsonData.taxonomy) {
+          toast.error("Arquivo JSON inválido: falta 'version' ou 'taxonomy'");
+          return;
+        }
+
+        // Count items
+        const parentCount = jsonData.taxonomy?.length || 0;
+        const childCount = jsonData.taxonomy?.reduce((sum: number, parent: any) => 
+          sum + (parent.children?.length || 0), 0) || 0;
+        const rulesCount = jsonData.merge_rules?.length || 0;
+
+        setImportData({
+          parentCount,
+          childCount,
+          rulesCount,
+          rawData: jsonData
+        });
+        setImportPreviewOpen(true);
+      } catch (err) {
+        toast.error("Erro ao ler arquivo JSON");
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Execute import
+  const executeImport = async () => {
+    if (!importData?.rawData) return;
+    
+    setIsImporting(true);
+    try {
+      const { taxonomy, merge_rules } = importData.rawData;
+      
+      // If replace mode, delete existing tags first
+      if (importMode === 'replace') {
+        const { error: deleteError } = await supabase
+          .from("document_tags")
+          .delete()
+          .neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all
+        
+        if (deleteError) throw deleteError;
+      }
+
+      // Get a valid document_id for the tags
+      const { data: docs } = await supabase
+        .from("documents")
+        .select("id")
+        .limit(1);
+      
+      const defaultDocId = docs?.[0]?.id;
+      if (!defaultDocId) {
+        toast.error("Nenhum documento encontrado para vincular tags");
+        return;
+      }
+
+      // Import parent tags
+      for (const parent of taxonomy || []) {
+        const { data: parentData, error: parentError } = await supabase
+          .from("document_tags")
+          .upsert({
+            tag_name: parent.name,
+            tag_type: 'parent',
+            source: 'import',
+            confidence: parent.confidence || 0.85,
+            document_id: defaultDocId,
+            synonyms: parent.synonyms || []
+          }, { onConflict: 'tag_name,document_id' })
+          .select()
+          .single();
+
+        if (parentError && !parentError.message.includes('duplicate')) {
+          console.error("Error importing parent:", parentError);
+          continue;
+        }
+
+        // Import children for this parent
+        const parentId = parentData?.id;
+        if (parentId && parent.children) {
+          for (const child of parent.children) {
+            await supabase
+              .from("document_tags")
+              .upsert({
+                tag_name: child.name,
+                tag_type: 'child',
+                source: 'import',
+                confidence: child.confidence || 0.80,
+                document_id: defaultDocId,
+                parent_tag_id: parentId,
+                synonyms: child.synonyms || []
+              }, { onConflict: 'tag_name,document_id' });
+          }
+        }
+      }
+
+      // Import merge rules
+      for (const rule of merge_rules || []) {
+        await supabase
+          .from("tag_merge_rules")
+          .upsert({
+            source_tag: rule.source_tag,
+            canonical_tag: rule.canonical_tag,
+            chat_type: rule.chat_type || 'health',
+            merge_count: rule.merge_count || 1
+          }, { onConflict: 'source_tag,canonical_tag,chat_type' });
+      }
+
+      toast.success(`Taxonomia importada: ${importData.parentCount} parents, ${importData.childCount} children`);
+      queryClient.invalidateQueries({ queryKey: ["all-tags"] });
+      queryClient.invalidateQueries({ queryKey: ["tag-merge-rules"] });
+      setImportPreviewOpen(false);
+      setImportData(null);
+    } catch (error: any) {
+      toast.error(`Erro na importação: ${error.message}`);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -896,12 +1043,133 @@ export const TagsManagementTab = () => {
             title="Gerenciamento de Tags"
             level="h2"
             icon={Tags}
-            tooltipText="CRUD completo de tags"
+            tooltipText="Sistema de categorização hierárquica"
             infoContent={
-              <>
-                <p>Gerencie tags hierárquicas do sistema RAG.</p>
-                <p className="mt-2">Crie, edite, delete e unifique tags parent/child para categorização de documentos.</p>
-              </>
+              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                {/* Introdução */}
+                <div>
+                  <h5 className="font-bold text-primary mb-2">Sistema de Gerenciamento de Tags</h5>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Controle centralizado da taxonomia hierárquica (Parent/Child) usada para 
+                    categorizar documentos no sistema RAG e definir escopos de busca.
+                  </p>
+                </div>
+
+                {/* Estrutura Hierárquica */}
+                <div className="bg-muted/30 rounded-lg p-3">
+                  <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <FolderTree className="h-4 w-4 text-primary" />
+                    Estrutura Hierárquica
+                  </h5>
+                  <div className="text-xs space-y-2">
+                    <div className="flex items-start gap-2">
+                      <Tags className="h-3.5 w-3.5 text-purple-400 mt-0.5 flex-shrink-0" />
+                      <span><strong>Tags Parent (Pai)</strong> - Categorias principais (ex: Saúde, Tecnologia)</span>
+                    </div>
+                    <div className="flex items-start gap-2 ml-4">
+                      <Tag className="h-3.5 w-3.5 text-cyan-400 mt-0.5 flex-shrink-0" />
+                      <span><strong>Tags Child (Filha)</strong> - Subcategorias vinculadas a um pai (ex: Cardiologia, IA)</span>
+                    </div>
+                    <div className="flex items-start gap-2 ml-4">
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+                      <span><strong>Tags Órfãs</strong> - Filhas sem pai atribuído (requerem adoção ou exclusão)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sistema de Detecção de Duplicatas */}
+                <div>
+                  <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <Search className="h-4 w-4 text-primary" />
+                    Detecção Semântica de Duplicatas
+                  </h5>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-primary/10">
+                        <tr>
+                          <th className="px-2 py-1.5 text-left font-semibold">Tipo</th>
+                          <th className="px-2 py-1.5 text-left font-semibold">Threshold</th>
+                          <th className="px-2 py-1.5 text-left font-semibold">Exemplo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        <tr>
+                          <td className="px-2 py-1.5 font-medium text-primary">Exato</td>
+                          <td className="px-2 py-1.5">100%</td>
+                          <td className="px-2 py-1.5">"Saúde" = "Saúde"</td>
+                        </tr>
+                        <tr className="bg-muted/20">
+                          <td className="px-2 py-1.5 font-medium text-primary">Semântico Parent</td>
+                          <td className="px-2 py-1.5">70%+</td>
+                          <td className="px-2 py-1.5">"Financeiro" ~ "Finanças"</td>
+                        </tr>
+                        <tr>
+                          <td className="px-2 py-1.5 font-medium text-primary">Semântico Child</td>
+                          <td className="px-2 py-1.5">60%+</td>
+                          <td className="px-2 py-1.5">"Cardiologia" ~ "Cardio"</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Fluxos de Merge */}
+                <div className="bg-muted/30 rounded-lg p-3">
+                  <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <Merge className="h-4 w-4 text-primary" />
+                    Fluxos de Unificação (Merge)
+                  </h5>
+                  <div className="text-xs space-y-3">
+                    <div className="bg-card/50 rounded p-2">
+                      <div className="font-semibold text-cyan-400 mb-1">Merge de Tags Child</div>
+                      <p className="text-muted-foreground">Unifica filhas e força seleção do Parent destino</p>
+                    </div>
+                    <div className="bg-card/50 rounded p-2">
+                      <div className="font-semibold text-purple-400 mb-1">Merge de Tags Parent</div>
+                      <p className="text-muted-foreground">Coherence Check: escolhe quais filhos migram ou viram órfãs</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ML Learning Loop */}
+                <div>
+                  <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-primary" />
+                    Aprendizado de Máquina (ML)
+                  </h5>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Cada decisão de merge/reject é logada em <code className="bg-primary/20 px-1 rounded">tag_management_events</code> para treinar futuros modelos de detecção de duplicatas.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-card/50 rounded p-2 text-center">
+                      <Zap className="h-4 w-4 text-green-400 mx-auto mb-1" />
+                      <div className="text-muted-foreground">Regras de Merge</div>
+                    </div>
+                    <div className="bg-card/50 rounded p-2 text-center">
+                      <ArrowRightLeft className="h-4 w-4 text-cyan-400 mx-auto mb-1" />
+                      <div className="text-muted-foreground">Regras de Roteamento</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Import/Export */}
+                <div className="bg-muted/30 rounded-lg p-3">
+                  <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <FolderOpen className="h-4 w-4 text-primary" />
+                    Importar / Exportar Taxonomia
+                  </h5>
+                  <div className="text-xs space-y-2 text-muted-foreground">
+                    <div className="flex items-start gap-2">
+                      <Download className="h-3.5 w-3.5 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span><strong>Exportar</strong> - Baixa JSON completo com hierarquia, sinônimos e regras ML</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Upload className="h-3.5 w-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <span><strong>Importar</strong> - Carrega JSON, valida schema, oferece preview antes de aplicar</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             }
           />
           <p className="text-muted-foreground mt-1">
@@ -909,6 +1177,17 @@ export const TagsManagementTab = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importar Taxonomia
+          </Button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            accept=".json" 
+            className="hidden" 
+            onChange={handleImportTaxonomy} 
+          />
           <Button variant="outline" size="sm" onClick={handleExportTaxonomy}>
             <FolderOpen className="h-4 w-4 mr-2" />
             Exportar Taxonomia
@@ -2314,6 +2593,85 @@ export const TagsManagementTab = () => {
         similarityScore={conflictModal.similarityScore}
         onComplete={() => setConflictModal({ open: false, type: 'parent', tags: [] })}
       />
+
+      {/* Import Preview Modal */}
+      <Dialog open={importPreviewOpen} onOpenChange={setImportPreviewOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5 text-primary" />
+              Preview de Importação de Taxonomia
+            </DialogTitle>
+            <DialogDescription>
+              Revise os dados a serem importados antes de confirmar
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="p-4 bg-muted/30 rounded-lg border">
+                <div className="text-2xl font-bold text-primary">{importData?.parentCount || 0}</div>
+                <div className="text-sm text-muted-foreground">Tags Parent</div>
+              </div>
+              <div className="p-4 bg-muted/30 rounded-lg border">
+                <div className="text-2xl font-bold text-purple-400">{importData?.childCount || 0}</div>
+                <div className="text-sm text-muted-foreground">Tags Child</div>
+              </div>
+              <div className="p-4 bg-muted/30 rounded-lg border">
+                <div className="text-2xl font-bold text-green-400">{importData?.rulesCount || 0}</div>
+                <div className="text-sm text-muted-foreground">Regras ML</div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Modo de Importação</Label>
+              <Select value={importMode} onValueChange={(v: 'merge' | 'replace') => setImportMode(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="merge">
+                    <div className="flex items-center gap-2">
+                      <Merge className="h-4 w-4" />
+                      Mesclar com existentes
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="replace">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-400" />
+                      Substituir tudo
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {importMode === 'replace' && (
+                <p className="text-xs text-amber-400">
+                  Todas as tags existentes serão removidas antes da importação
+                </p>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportPreviewOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={executeImport} disabled={isImporting}>
+              {isImporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Importando...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Confirmar Importação
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
