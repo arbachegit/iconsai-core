@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -46,27 +47,89 @@ interface AdminSidebarProps {
   onTabChange: (tab: TabType) => void;
 }
 
+// Função para tocar som de notificação
+const playNotificationSound = () => {
+  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  
+  oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+  oscillator.frequency.setValueAtTime(1047, audioContext.currentTime + 0.1); // C6
+  
+  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+  
+  oscillator.start(audioContext.currentTime);
+  oscillator.stop(audioContext.currentTime + 0.3);
+};
+
 export const AdminSidebar = ({ activeTab, onTabChange }: AdminSidebarProps) => {
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<string[]>(["quick-access"]);
   const [pendingMessagesCount, setPendingMessagesCount] = useState(0);
+  const previousCountRef = useRef(0);
+
+  const fetchPendingMessages = useCallback(async () => {
+    const { count } = await supabase
+      .from("contact_messages")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending");
+    
+    const newCount = count || 0;
+    
+    // Tocar som apenas se houver nova mensagem (count aumentou)
+    if (newCount > previousCountRef.current && previousCountRef.current > 0) {
+      playNotificationSound();
+      toast.info("Nova mensagem de contato recebida!", {
+        description: "Clique em 'Mensagens Contato' para visualizar.",
+      });
+    }
+    
+    previousCountRef.current = newCount;
+    setPendingMessagesCount(newCount);
+  }, []);
 
   useEffect(() => {
-    const fetchPendingMessages = async () => {
-      const { count } = await supabase
-        .from("contact_messages")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "pending");
-      
-      setPendingMessagesCount(count || 0);
-    };
-
     fetchPendingMessages();
 
-    // Atualizar a cada 30 segundos
-    const interval = setInterval(fetchPendingMessages, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    // Subscrição realtime para novas mensagens
+    const channel = supabase
+      .channel('contact-messages-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'contact_messages'
+        },
+        () => {
+          playNotificationSound();
+          toast.info("Nova mensagem de contato recebida!", {
+            description: "Clique em 'Mensagens Contato' para visualizar.",
+          });
+          fetchPendingMessages();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'contact_messages'
+        },
+        () => {
+          fetchPendingMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchPendingMessages]);
 
   const handleLogout = () => {
     localStorage.removeItem("admin_authenticated");
