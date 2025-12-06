@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -27,10 +27,16 @@ import {
   Image,
   Loader2,
   ClipboardList,
-  KeyRound
+  KeyRound,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { exportData } from "@/lib/export-utils";
 import { toast } from "sonner";
+
+type SortColumn = "created_at" | "user_email" | "action_category" | "action";
+type SortDirection = "asc" | "desc" | null;
 
 const CATEGORY_CONFIG: Record<string, { color: string; icon: React.ComponentType<{ className?: string }> }> = {
   LOGIN: { color: "bg-green-500", icon: LogIn },
@@ -61,6 +67,8 @@ export const ActivityLogsTab = () => {
   const [periodFilter, setPeriodFilter] = useState<string>("7days");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
   const getDateFilter = () => {
     const now = new Date();
@@ -153,6 +161,53 @@ export const ActivityLogsTab = () => {
 
   const categories = Object.keys(CATEGORY_CONFIG);
 
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else if (sortDirection === "desc") {
+        setSortColumn(null);
+        setSortDirection(null);
+      } else {
+        setSortDirection("asc");
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  const getSortIcon = (column: SortColumn) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="w-4 h-4 ml-1 opacity-50" />;
+    }
+    if (sortDirection === "asc") {
+      return <ArrowUp className="w-4 h-4 ml-1" />;
+    }
+    return <ArrowDown className="w-4 h-4 ml-1" />;
+  };
+
+  const sortedLogs = useMemo(() => {
+    if (!logs || !sortColumn || !sortDirection) return logs;
+
+    return [...logs].sort((a, b) => {
+      let aValue: any = a[sortColumn];
+      let bValue: any = b[sortColumn];
+
+      if (sortColumn === "created_at") {
+        aValue = new Date(aValue || 0).getTime();
+        bValue = new Date(bValue || 0).getTime();
+      } else {
+        aValue = (aValue || "").toString().toLowerCase();
+        bValue = (bValue || "").toString().toLowerCase();
+      }
+
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [logs, sortColumn, sortDirection]);
+
   return (
     <div className="space-y-6">
       <AdminTitleWithInfo
@@ -216,17 +271,49 @@ export const ActivityLogsTab = () => {
             <>
               <div className="rounded-md border overflow-hidden">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="bg-muted/50">
                     <TableRow>
-                      <TableHead className="w-[150px]">Data/Hora</TableHead>
-                      <TableHead className="w-[200px]">Usuário</TableHead>
-                      <TableHead className="w-[120px]">Categoria</TableHead>
-                      <TableHead>Ação</TableHead>
+                      <TableHead 
+                        className="w-[150px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
+                        onClick={() => handleSort("created_at")}
+                      >
+                        <div className="flex items-center font-semibold text-foreground">
+                          Data/Hora
+                          {getSortIcon("created_at")}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="w-[200px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
+                        onClick={() => handleSort("user_email")}
+                      >
+                        <div className="flex items-center font-semibold text-foreground">
+                          Usuário
+                          {getSortIcon("user_email")}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="w-[120px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
+                        onClick={() => handleSort("action_category")}
+                      >
+                        <div className="flex items-center font-semibold text-foreground">
+                          Categoria
+                          {getSortIcon("action_category")}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer select-none hover:bg-muted/80 transition-colors"
+                        onClick={() => handleSort("action")}
+                      >
+                        <div className="flex items-center font-semibold text-foreground">
+                          Ação
+                          {getSortIcon("action")}
+                        </div>
+                      </TableHead>
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {logs.map((log) => (
+                    {sortedLogs?.map((log) => (
                       <Collapsible key={log.id} asChild open={expandedRows.has(log.id)}>
                         <>
                           <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => toggleRow(log.id)}>
