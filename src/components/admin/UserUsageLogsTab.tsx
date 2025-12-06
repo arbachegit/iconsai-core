@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Users, Download, Search, ChevronDown, MessageSquare, Volume2, GraduationCap, Heart, Clock } from "lucide-react";
-import { format, subDays, subHours } from "date-fns";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { 
+  Users, Download, Search, ChevronDown, MessageSquare, Volume2, 
+  GraduationCap, Heart, Clock, ArrowUpDown, ArrowUp, ArrowDown,
+  Crown, BarChart3, CalendarIcon
+} from "lucide-react";
+import { format, subDays, subHours, startOfDay, endOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { exportData } from "@/lib/export-utils";
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
+  ResponsiveContainer, Cell 
+} from "recharts";
+import { cn } from "@/lib/utils";
 
 const PERIOD_OPTIONS = [
   { value: "today", label: "Hoje" },
@@ -21,16 +33,30 @@ const PERIOD_OPTIONS = [
   { value: "all", label: "Todo o período" },
 ];
 
+const CHART_PERIOD_OPTIONS = [
+  { value: "today", label: "Hoje (por hora)" },
+  { value: "30days", label: "Últimos 30 dias" },
+  { value: "custom", label: "Data específica" },
+];
+
 const CHAT_TYPE_CONFIG: Record<string, { color: string; icon: React.ElementType; label: string }> = {
   study: { color: "bg-blue-500", icon: GraduationCap, label: "Estudo" },
   health: { color: "bg-emerald-500", icon: Heart, label: "Saúde" },
 };
+
+type SortField = "started_at" | "user_name" | "chat_type" | "message_count" | "audio_plays";
+type SortDirection = "asc" | "desc";
 
 export const UserUsageLogsTab = () => {
   const [chatFilter, setChatFilter] = useState<string>("all");
   const [periodFilter, setPeriodFilter] = useState<string>("7days");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [sortField, setSortField] = useState<SortField>("started_at");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [chartPeriod, setChartPeriod] = useState<string>("today");
+  const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const getDateFilter = () => {
     switch (periodFilter) {
@@ -45,11 +71,24 @@ export const UserUsageLogsTab = () => {
     }
   };
 
+  // Fetch admin users
+  const { data: adminUsers } = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+      if (error) throw error;
+      return data?.map(r => r.user_id) || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Fetch chat analytics with conversation history
   const { data: usageLogs, isLoading } = useQuery({
     queryKey: ["user-usage-logs", chatFilter, periodFilter, searchQuery],
     queryFn: async () => {
-      // Fetch chat analytics
       let analyticsQuery = supabase
         .from("chat_analytics")
         .select("*")
@@ -67,7 +106,6 @@ export const UserUsageLogsTab = () => {
       const { data: analytics, error: analyticsError } = await analyticsQuery;
       if (analyticsError) throw analyticsError;
 
-      // Fetch conversation history to enrich data
       let conversationsQuery = supabase
         .from("conversation_history")
         .select("session_id, chat_type, messages, title, created_at")
@@ -84,7 +122,6 @@ export const UserUsageLogsTab = () => {
       const { data: conversations, error: convError } = await conversationsQuery;
       if (convError) throw convError;
 
-      // Merge data by session_id
       const conversationsMap = new Map(
         conversations?.map((c) => [c.session_id, c]) || []
       );
@@ -102,7 +139,6 @@ export const UserUsageLogsTab = () => {
         };
       });
 
-      // Apply chat filter
       if (chatFilter !== "all") {
         return enrichedData.filter((d) => d.chat_type === chatFilter);
       }
@@ -111,6 +147,123 @@ export const UserUsageLogsTab = () => {
     },
     staleTime: 30 * 1000,
   });
+
+  // Sorted logs
+  const sortedLogs = useMemo(() => {
+    if (!usageLogs) return [];
+    
+    return [...usageLogs].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortField) {
+        case "started_at":
+          comparison = new Date(a.started_at).getTime() - new Date(b.started_at).getTime();
+          break;
+        case "user_name":
+          comparison = (a.user_name || "").localeCompare(b.user_name || "");
+          break;
+        case "chat_type":
+          comparison = (a.chat_type || "").localeCompare(b.chat_type || "");
+          break;
+        case "message_count":
+          comparison = (a.message_count || 0) - (b.message_count || 0);
+          break;
+        case "audio_plays":
+          comparison = (a.audio_plays || 0) - (b.audio_plays || 0);
+          break;
+      }
+      
+      return sortDirection === "desc" ? -comparison : comparison;
+    });
+  }, [usageLogs, sortField, sortDirection]);
+
+  // Activity intensity data for chart
+  const activityChartData = useMemo(() => {
+    if (!usageLogs?.length) return [];
+
+    const filterDate = chartPeriod === "custom" && customDate 
+      ? customDate 
+      : chartPeriod === "today" 
+        ? new Date() 
+        : null;
+
+    if (chartPeriod === "today" || (chartPeriod === "custom" && customDate)) {
+      // Group by hour
+      const hourlyData: Record<number, number> = {};
+      for (let i = 0; i < 24; i++) hourlyData[i] = 0;
+
+      const targetDay = filterDate ? startOfDay(filterDate) : startOfDay(new Date());
+      const targetDayEnd = endOfDay(filterDate || new Date());
+
+      usageLogs.forEach(log => {
+        const logDate = new Date(log.started_at);
+        if (logDate >= targetDay && logDate <= targetDayEnd) {
+          const hour = logDate.getHours();
+          hourlyData[hour] += (log.message_count || 0) + (log.audio_plays || 0) + 1;
+        }
+      });
+
+      return Object.entries(hourlyData).map(([hour, count]) => ({
+        label: `${hour.padStart(2, '0')}h`,
+        value: count,
+        hour: parseInt(hour),
+      }));
+    } else if (chartPeriod === "30days") {
+      // Group by day
+      const dailyData: Record<string, number> = {};
+      const today = new Date();
+      
+      for (let i = 29; i >= 0; i--) {
+        const date = subDays(today, i);
+        dailyData[format(date, "dd/MM")] = 0;
+      }
+
+      const thirtyDaysAgo = subDays(today, 30);
+
+      usageLogs.forEach(log => {
+        const logDate = new Date(log.started_at);
+        if (logDate >= thirtyDaysAgo) {
+          const key = format(logDate, "dd/MM");
+          if (dailyData[key] !== undefined) {
+            dailyData[key] += (log.message_count || 0) + (log.audio_plays || 0) + 1;
+          }
+        }
+      });
+
+      return Object.entries(dailyData).map(([label, value]) => ({
+        label,
+        value,
+      }));
+    }
+
+    return [];
+  }, [usageLogs, chartPeriod, customDate]);
+
+  const maxActivityValue = useMemo(() => {
+    return Math.max(...activityChartData.map(d => d.value), 1);
+  }, [activityChartData]);
+
+  const peakActivity = useMemo(() => {
+    if (!activityChartData.length) return null;
+    const peak = activityChartData.reduce((max, curr) => curr.value > max.value ? curr : max);
+    return peak.value > 0 ? peak : null;
+  }, [activityChartData]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-50" />;
+    return sortDirection === "asc" 
+      ? <ArrowUp className="w-3 h-3 ml-1" /> 
+      : <ArrowDown className="w-3 h-3 ml-1" />;
+  };
 
   const toggleRow = (id: string) => {
     setExpandedRows((prev) => {
@@ -125,9 +278,9 @@ export const UserUsageLogsTab = () => {
   };
 
   const handleExportCSV = () => {
-    if (!usageLogs?.length) return;
+    if (!sortedLogs?.length) return;
 
-    const csvData = usageLogs.map((log) => ({
+    const csvData = sortedLogs.map((log) => ({
       data_hora: format(new Date(log.started_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
       usuario: log.user_name || "Anônimo",
       chat: log.chat_type,
@@ -156,8 +309,20 @@ export const UserUsageLogsTab = () => {
     );
   };
 
-  // Calculate totals
-  const totals = usageLogs?.reduce(
+  const isAdmin = (userName: string | null) => {
+    // Check if user name matches known admin pattern
+    return userName?.toLowerCase().includes("fernando") || 
+           userName?.toLowerCase().includes("admin");
+  };
+
+  const getBarColor = (value: number) => {
+    const intensity = value / maxActivityValue;
+    if (intensity >= 0.7) return "hsl(var(--destructive))";
+    if (intensity >= 0.4) return "hsl(45, 93%, 47%)"; // amber
+    return "hsl(142, 76%, 36%)"; // green
+  };
+
+  const totals = sortedLogs?.reduce(
     (acc, log) => ({
       sessions: acc.sessions + 1,
       messages: acc.messages + (log.message_count || 0),
@@ -222,7 +387,7 @@ export const UserUsageLogsTab = () => {
           />
         </div>
 
-        <Button variant="outline" onClick={handleExportCSV} disabled={!usageLogs?.length}>
+        <Button variant="outline" onClick={handleExportCSV} disabled={!sortedLogs?.length}>
           <Download className="w-4 h-4 mr-2" />
           Exportar CSV
         </Button>
@@ -244,17 +409,150 @@ export const UserUsageLogsTab = () => {
         </div>
       </div>
 
+      {/* Activity Intensity Chart */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              Intensidade de Atividades
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Select value={chartPeriod} onValueChange={(v) => {
+                setChartPeriod(v);
+                if (v !== "custom") setCustomDate(undefined);
+              }}>
+                <SelectTrigger className="w-[180px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHART_PERIOD_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {chartPeriod === "custom" && (
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 gap-2">
+                      <CalendarIcon className="w-4 h-4" />
+                      {customDate ? format(customDate, "dd/MM/yyyy") : "Escolher data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={customDate}
+                      onSelect={(date) => {
+                        setCustomDate(date);
+                        setCalendarOpen(false);
+                      }}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {activityChartData.length > 0 ? (
+            <>
+              <div className="h-[180px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={activityChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="label" 
+                      tick={{ fontSize: 10 }} 
+                      className="fill-muted-foreground"
+                      interval={chartPeriod === "30days" ? 2 : 1}
+                    />
+                    <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: "hsl(var(--card))", 
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "6px"
+                      }}
+                      labelStyle={{ color: "hsl(var(--foreground))" }}
+                    />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {activityChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={getBarColor(entry.value)} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {peakActivity && (
+                <div className="mt-2 text-sm text-center text-muted-foreground">
+                  <span className="font-medium text-foreground">Pico:</span>{" "}
+                  {peakActivity.label} ({peakActivity.value} atividades)
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="h-[180px] flex items-center justify-center text-muted-foreground">
+              Nenhuma atividade no período selecionado
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Table */}
       <ScrollArea className="h-[500px] border rounded-lg">
         <Table>
-          <TableHeader className="sticky top-0 bg-background z-10">
+          <TableHeader className="sticky top-0 bg-muted z-10">
             <TableRow>
-              <TableHead className="w-[140px]">Data/Hora</TableHead>
-              <TableHead>Usuário</TableHead>
-              <TableHead className="w-[100px]">Chat</TableHead>
-              <TableHead className="w-[80px] text-center">Msgs</TableHead>
-              <TableHead className="w-[80px] text-center">Áudios</TableHead>
-              <TableHead>Tópicos</TableHead>
+              <TableHead 
+                className="w-[140px] font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+                onClick={() => handleSort("started_at")}
+              >
+                <div className="flex items-center">
+                  Data/Hora {getSortIcon("started_at")}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+                onClick={() => handleSort("user_name")}
+              >
+                <div className="flex items-center">
+                  Usuário {getSortIcon("user_name")}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="w-[100px] font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+                onClick={() => handleSort("chat_type")}
+              >
+                <div className="flex items-center">
+                  Chat {getSortIcon("chat_type")}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="w-[80px] text-center font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+                onClick={() => handleSort("message_count")}
+              >
+                <div className="flex items-center justify-center">
+                  Msgs {getSortIcon("message_count")}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="w-[80px] text-center font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+                onClick={() => handleSort("audio_plays")}
+              >
+                <div className="flex items-center justify-center">
+                  Áudios {getSortIcon("audio_plays")}
+                </div>
+              </TableHead>
+              <TableHead className="font-bold text-foreground uppercase tracking-wide text-xs">
+                Tópicos
+              </TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -265,14 +563,14 @@ export const UserUsageLogsTab = () => {
                   Carregando...
                 </TableCell>
               </TableRow>
-            ) : usageLogs?.length === 0 ? (
+            ) : sortedLogs?.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Nenhum registro encontrado
                 </TableCell>
               </TableRow>
             ) : (
-              usageLogs?.map((log) => (
+              sortedLogs?.map((log) => (
                 <Collapsible key={log.id} open={expandedRows.has(log.id)}>
                   <TableRow
                     className="cursor-pointer hover:bg-muted/50"
@@ -281,7 +579,17 @@ export const UserUsageLogsTab = () => {
                     <TableCell className="font-mono text-xs">
                       {format(new Date(log.started_at), "dd/MM HH:mm", { locale: ptBR })}
                     </TableCell>
-                    <TableCell>{log.user_name || "Anônimo"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {log.user_name || "Anônimo"}
+                        {isAdmin(log.user_name) && (
+                          <Badge variant="outline" className="text-amber-500 border-amber-500/50 gap-1">
+                            <Crown className="w-3 h-3" />
+                            Admin
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{getChatBadge(log.chat_type)}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
