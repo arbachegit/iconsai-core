@@ -42,11 +42,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, CheckCircle2, Bell, Mail, Settings, FolderOpen, FolderTree, Tag } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, CheckCircle2, Bell, Mail, Settings, FolderOpen, FolderTree, Tag, Activity, Clock, XCircle, FileCheck, Info, Eye } from "lucide-react";
 import { useRef } from "react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie, Legend, LineChart, Line, Area, AreaChart } from "recharts";
 import { Switch } from "@/components/ui/switch";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import {
@@ -58,6 +58,7 @@ import {
 import { OrphanedTagsPanel } from "./OrphanedTagsPanel";
 import { TagConflictResolutionModal } from "./TagConflictResolutionModal";
 import { logTagManagementEvent } from "@/lib/tag-management-logger";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Tag {
   id: string;
@@ -127,9 +128,15 @@ export const TagsManagementTab = () => {
     childCount: number;
     rulesCount: number;
     rawData: any;
+    parents: { name: string; childCount: number }[];
+    validationErrors: string[];
+    validationWarnings: string[];
+    conflicts: { name: string; type: 'parent' | 'child'; existingId: string }[];
   } | null>(null);
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
   const [isImporting, setIsImporting] = useState(false);
+  const [mlEventsOpen, setMlEventsOpen] = useState(false);
+  const [mlEventsTimeRange, setMlEventsTimeRange] = useState<number>(30); // days
   
   // Sync state with admin settings
   useEffect(() => {
@@ -252,6 +259,103 @@ export const TagsManagementTab = () => {
         accuracyRate,
         timeSeriesData,
         recentLogs: data?.slice(0, 10) || []
+      };
+    },
+  });
+
+  // Fetch ML management events for dashboard
+  const { data: mlEvents } = useQuery({
+    queryKey: ["ml-management-events", mlEventsTimeRange],
+    queryFn: async () => {
+      const startDate = new Date(Date.now() - mlEventsTimeRange * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("tag_management_events")
+        .select("*")
+        .gte("created_at", startDate)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      
+      // Aggregate by action_type
+      const byType = (data || []).reduce((acc, e) => {
+        acc[e.action_type] = (acc[e.action_type] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      // Calculate avg decision time per type
+      const avgTimeByType = (data || []).reduce((acc, e) => {
+        if (e.time_to_decision_ms) {
+          if (!acc[e.action_type]) acc[e.action_type] = { total: 0, count: 0 };
+          acc[e.action_type].total += e.time_to_decision_ms;
+          acc[e.action_type].count += 1;
+        }
+        return acc;
+      }, {} as Record<string, { total: number; count: number }>);
+      
+      // Group by day for time series
+      const byDay = (data || []).reduce((acc, item) => {
+        const date = new Date(item.created_at || '').toISOString().split('T')[0];
+        if (!acc[date]) acc[date] = { adoptions: 0, merges: 0, deletes: 0, exports: 0, imports: 0, rejects: 0 };
+        if (item.action_type === 'adopt_orphan') acc[date].adoptions++;
+        if (item.action_type?.includes('merge')) acc[date].merges++;
+        if (item.action_type === 'delete_orphan') acc[date].deletes++;
+        if (item.action_type === 'export_taxonomy') acc[date].exports++;
+        if (item.action_type === 'import_taxonomy') acc[date].imports++;
+        if (item.action_type === 'reject_duplicate') acc[date].rejects++;
+        return acc;
+      }, {} as Record<string, { adoptions: number; merges: number; deletes: number; exports: number; imports: number; rejects: number }>);
+
+      const timeSeriesData = Object.entries(byDay)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .slice(-14) // Last 14 days
+        .map(([date, counts]) => ({
+          date: date.slice(5), // MM-DD format
+          ...counts,
+          total: counts.adoptions + counts.merges + counts.deletes + counts.exports + counts.imports + counts.rejects
+        }));
+
+      // Pie chart data
+      const pieData = Object.entries(byType).map(([name, value]) => {
+        const labels: Record<string, { label: string; color: string }> = {
+          'adopt_orphan': { label: 'Adoções', color: 'hsl(262, 83%, 58%)' },
+          'merge_parent': { label: 'Merge Parent', color: 'hsl(187, 71%, 45%)' },
+          'merge_child': { label: 'Merge Child', color: 'hsl(220, 70%, 50%)' },
+          'delete_orphan': { label: 'Exclusões', color: 'hsl(0, 72%, 51%)' },
+          'export_taxonomy': { label: 'Exports', color: 'hsl(142, 71%, 45%)' },
+          'import_taxonomy': { label: 'Imports', color: 'hsl(38, 92%, 50%)' },
+          'reject_duplicate': { label: 'Rejeições', color: 'hsl(330, 81%, 60%)' },
+          'reassign_orphan': { label: 'Reassignments', color: 'hsl(280, 65%, 60%)' }
+        };
+        return {
+          name: labels[name]?.label || name,
+          value,
+          fill: labels[name]?.color || 'hsl(220, 10%, 50%)'
+        };
+      }).filter(d => d.value > 0);
+
+      // Bar chart data for decision time
+      const decisionTimeData = Object.entries(avgTimeByType).map(([type, { total, count }]) => {
+        const labels: Record<string, string> = {
+          'adopt_orphan': 'Adoção',
+          'merge_parent': 'Merge P.',
+          'merge_child': 'Merge C.',
+          'delete_orphan': 'Exclusão',
+          'reject_duplicate': 'Rejeição'
+        };
+        return {
+          name: labels[type] || type,
+          avgTime: Math.round(total / count),
+          count
+        };
+      });
+
+      return {
+        total: data?.length || 0,
+        byType,
+        recentEvents: data?.slice(0, 15) || [],
+        timeSeriesData,
+        pieData,
+        decisionTimeData
       };
     },
   });
@@ -901,6 +1005,40 @@ export const TagsManagementTab = () => {
     }
   };
 
+  // Schema validation function
+  const validateTaxonomySchema = (data: any): { isValid: boolean; errors: string[]; warnings: string[] } => {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    
+    // Required fields
+    if (!data.version) errors.push("Campo 'version' ausente");
+    if (!data.taxonomy) errors.push("Campo 'taxonomy' ausente");
+    if (data.taxonomy && !Array.isArray(data.taxonomy)) errors.push("'taxonomy' deve ser um array");
+    
+    // Validate each parent
+    data.taxonomy?.forEach((parent: any, i: number) => {
+      if (!parent.name) errors.push(`Parent ${i+1}: campo 'name' ausente`);
+      if (parent.children && !Array.isArray(parent.children)) {
+        errors.push(`Parent '${parent.name}': 'children' deve ser um array`);
+      }
+      // Validate children
+      parent.children?.forEach((child: any, j: number) => {
+        if (!child.name) errors.push(`Parent '${parent.name}' -> Child ${j+1}: campo 'name' ausente`);
+      });
+    });
+    
+    // Validate merge rules if present
+    if (data.merge_rules && !Array.isArray(data.merge_rules)) {
+      warnings.push("'merge_rules' deve ser um array");
+    }
+    data.merge_rules?.forEach((rule: any, i: number) => {
+      if (!rule.source_tag) warnings.push(`Regra ML ${i+1}: 'source_tag' ausente`);
+      if (!rule.canonical_tag) warnings.push(`Regra ML ${i+1}: 'canonical_tag' ausente`);
+    });
+    
+    return { isValid: errors.length === 0, errors, warnings };
+  };
+
   // Handle import taxonomy file selection
   const handleImportTaxonomy = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -912,9 +1050,10 @@ export const TagsManagementTab = () => {
         const jsonData = JSON.parse(e.target?.result as string);
         
         // Validate schema
-        if (!jsonData.version || !jsonData.taxonomy) {
-          toast.error("Arquivo JSON inválido: falta 'version' ou 'taxonomy'");
-          return;
+        const validation = validateTaxonomySchema(jsonData);
+        
+        if (!validation.isValid) {
+          toast.error(`Arquivo JSON inválido: ${validation.errors[0]}`);
         }
 
         // Count items
@@ -922,16 +1061,43 @@ export const TagsManagementTab = () => {
         const childCount = jsonData.taxonomy?.reduce((sum: number, parent: any) => 
           sum + (parent.children?.length || 0), 0) || 0;
         const rulesCount = jsonData.merge_rules?.length || 0;
+        
+        // Build parents list for preview
+        const parents = (jsonData.taxonomy || []).map((p: any) => ({
+          name: p.name || 'Sem nome',
+          childCount: p.children?.length || 0
+        }));
+        
+        // Detect conflicts with existing tags
+        const conflicts: { name: string; type: 'parent' | 'child'; existingId: string }[] = [];
+        (jsonData.taxonomy || []).forEach((parent: any) => {
+          const existingParent = parentTags.find(t => t.tag_name.toLowerCase() === parent.name?.toLowerCase());
+          if (existingParent) {
+            conflicts.push({ name: parent.name, type: 'parent', existingId: existingParent.id });
+          }
+          (parent.children || []).forEach((child: any) => {
+            const existingChild = allTags?.find(t => 
+              t.tag_name.toLowerCase() === child.name?.toLowerCase() && t.parent_tag_id
+            );
+            if (existingChild) {
+              conflicts.push({ name: child.name, type: 'child', existingId: existingChild.id });
+            }
+          });
+        });
 
         setImportData({
           parentCount,
           childCount,
           rulesCount,
-          rawData: jsonData
+          rawData: jsonData,
+          parents,
+          validationErrors: validation.errors,
+          validationWarnings: validation.warnings,
+          conflicts
         });
         setImportPreviewOpen(true);
       } catch (err) {
-        toast.error("Erro ao ler arquivo JSON");
+        toast.error("Erro ao ler arquivo JSON - formato inválido");
       }
     };
     reader.readAsText(file);
@@ -1332,6 +1498,255 @@ export const TagsManagementTab = () => {
           </div>
         </div>
       </Card>
+
+      {/* ML Events Dashboard - Tag Management Training Data */}
+      <Collapsible open={mlEventsOpen} onOpenChange={setMlEventsOpen}>
+        <Card className="p-4 border-indigo-500/30 bg-gradient-to-r from-indigo-500/5 to-violet-500/5">
+          <CollapsibleTrigger className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-indigo-400" />
+              <h3 className="font-semibold text-lg">Dashboard de Eventos ML - Treinamento</h3>
+              <Badge variant="outline" className="ml-2 bg-indigo-500/20 text-indigo-300 border-indigo-500/30">
+                {mlEvents?.total || 0} eventos
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={mlEventsTimeRange.toString()} onValueChange={(v) => setMlEventsTimeRange(Number(v))}>
+                <SelectTrigger className="w-[140px] h-8 text-xs" onClick={(e) => e.stopPropagation()}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">Últimos 7 dias</SelectItem>
+                  <SelectItem value="30">Últimos 30 dias</SelectItem>
+                  <SelectItem value="90">Últimos 90 dias</SelectItem>
+                </SelectContent>
+              </Select>
+              <ChevronDown className={`h-4 w-4 transition-transform ${mlEventsOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="mt-6 space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-5 gap-4">
+              <div className="text-center p-4 bg-background/50 rounded-lg border">
+                <div className="text-2xl font-bold text-indigo-400">{mlEvents?.total || 0}</div>
+                <div className="text-xs text-muted-foreground mt-1">Total Eventos</div>
+              </div>
+              <div className="text-center p-4 bg-background/50 rounded-lg border">
+                <div className="text-2xl font-bold text-purple-400">{mlEvents?.byType?.['adopt_orphan'] || 0}</div>
+                <div className="text-xs text-muted-foreground mt-1">Adoções</div>
+              </div>
+              <div className="text-center p-4 bg-background/50 rounded-lg border">
+                <div className="text-2xl font-bold text-cyan-400">
+                  {(mlEvents?.byType?.['merge_parent'] || 0) + (mlEvents?.byType?.['merge_child'] || 0)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">Merges</div>
+              </div>
+              <div className="text-center p-4 bg-background/50 rounded-lg border">
+                <div className="text-2xl font-bold text-red-400">{mlEvents?.byType?.['delete_orphan'] || 0}</div>
+                <div className="text-xs text-muted-foreground mt-1">Exclusões</div>
+              </div>
+              <div className="text-center p-4 bg-background/50 rounded-lg border">
+                <div className="text-2xl font-bold text-amber-400">{mlEvents?.byType?.['reject_duplicate'] || 0}</div>
+                <div className="text-xs text-muted-foreground mt-1">Rejeições</div>
+              </div>
+            </div>
+
+            {/* Charts Row */}
+            <div className="grid grid-cols-2 gap-6">
+              {/* Pie Chart - Distribution by Action Type */}
+              {mlEvents?.pieData && mlEvents.pieData.length > 0 && (
+                <div className="p-4 bg-background/30 rounded-lg border">
+                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <PieChart className="h-4 w-4 text-indigo-400" />
+                    Distribuição por Tipo de Ação
+                  </h4>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPie>
+                        <Pie
+                          data={mlEvents.pieData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={70}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {mlEvents.pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip />
+                      </RechartsPie>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Bar Chart - Average Decision Time */}
+              {mlEvents?.decisionTimeData && mlEvents.decisionTimeData.length > 0 && (
+                <div className="p-4 bg-background/30 rounded-lg border">
+                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-indigo-400" />
+                    Tempo Médio de Decisão (ms)
+                  </h4>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={mlEvents.decisionTimeData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                        <RechartsTooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                            fontSize: '12px'
+                          }}
+                          formatter={(value: number, _name: string, props: any) => [
+                            `${value}ms (${props.payload.count} decisões)`,
+                            'Tempo médio'
+                          ]}
+                        />
+                        <Bar dataKey="avgTime" fill="hsl(239, 84%, 67%)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Time Series Chart */}
+            {mlEvents?.timeSeriesData && mlEvents.timeSeriesData.length > 0 && (
+              <div className="p-4 bg-background/30 rounded-lg border">
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-indigo-400" />
+                  Evolução Temporal de Eventos
+                </h4>
+                <div className="h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={mlEvents.timeSeriesData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                      <RechartsTooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                      />
+                      <Area type="monotone" dataKey="adoptions" stackId="1" stroke="hsl(262, 83%, 58%)" fill="hsl(262, 83%, 58%)" fillOpacity={0.6} name="Adoções" />
+                      <Area type="monotone" dataKey="merges" stackId="1" stroke="hsl(187, 71%, 45%)" fill="hsl(187, 71%, 45%)" fillOpacity={0.6} name="Merges" />
+                      <Area type="monotone" dataKey="deletes" stackId="1" stroke="hsl(0, 72%, 51%)" fill="hsl(0, 72%, 51%)" fillOpacity={0.6} name="Exclusões" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex items-center justify-center gap-4 mt-2 text-xs">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(262, 83%, 58%)' }}></span> Adoções
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(187, 71%, 45%)' }}></span> Merges
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(0, 72%, 51%)' }}></span> Exclusões
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Recent Events Table */}
+            {mlEvents?.recentEvents && mlEvents.recentEvents.length > 0 && (
+              <div className="p-4 bg-background/30 rounded-lg border">
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <FileCheck className="h-4 w-4 text-indigo-400" />
+                  Últimos Eventos de Treinamento
+                </h4>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[140px]">Data/Hora</TableHead>
+                        <TableHead>Ação</TableHead>
+                        <TableHead>Detalhes</TableHead>
+                        <TableHead className="text-right w-[100px]">Tempo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mlEvents.recentEvents.slice(0, 10).map((event: any) => {
+                        const actionLabels: Record<string, { label: string; color: string }> = {
+                          'adopt_orphan': { label: 'Adoção', color: 'text-purple-400' },
+                          'merge_parent': { label: 'Merge Parent', color: 'text-cyan-400' },
+                          'merge_child': { label: 'Merge Child', color: 'text-blue-400' },
+                          'delete_orphan': { label: 'Exclusão', color: 'text-red-400' },
+                          'export_taxonomy': { label: 'Export', color: 'text-green-400' },
+                          'import_taxonomy': { label: 'Import', color: 'text-amber-400' },
+                          'reject_duplicate': { label: 'Rejeição', color: 'text-pink-400' },
+                          'reassign_orphan': { label: 'Reassign', color: 'text-violet-400' }
+                        };
+                        const action = actionLabels[event.action_type] || { label: event.action_type, color: 'text-muted-foreground' };
+                        
+                        // Extract details from user_decision
+                        let details = '-';
+                        try {
+                          const decision = typeof event.user_decision === 'string' 
+                            ? JSON.parse(event.user_decision) 
+                            : event.user_decision;
+                          if (decision.target_tag_name) {
+                            details = `→ ${decision.target_tag_name}`;
+                          } else if (decision.exported_count) {
+                            details = `${decision.exported_count} tags`;
+                          } else if (decision.imported_count) {
+                            details = `${decision.imported_count} tags`;
+                          }
+                        } catch (e) {
+                          // Ignore parse errors
+                        }
+
+                        return (
+                          <TableRow key={event.id}>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {new Date(event.created_at).toLocaleString('pt-BR', { 
+                                day: '2-digit', 
+                                month: '2-digit', 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={`text-xs ${action.color}`}>
+                                {action.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm truncate max-w-[200px]">
+                              {details}
+                            </TableCell>
+                            <TableCell className="text-right text-xs text-muted-foreground">
+                              {event.time_to_decision_ms ? `${event.time_to_decision_ms}ms` : '-'}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {(!mlEvents || mlEvents.total === 0) && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Activity className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p>Nenhum evento de treinamento ML registrado no período selecionado.</p>
+                <p className="text-xs mt-1">Eventos são criados ao realizar merge, adoção ou exclusão de tags.</p>
+              </div>
+            )}
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* ML Accuracy Analytics Dashboard */}
       {routingAnalytics && routingAnalytics.totalML > 0 && (
@@ -2594,20 +3009,21 @@ export const TagsManagementTab = () => {
         onComplete={() => setConflictModal({ open: false, type: 'parent', tags: [] })}
       />
 
-      {/* Import Preview Modal */}
+      {/* Import Preview Modal - Enhanced */}
       <Dialog open={importPreviewOpen} onOpenChange={setImportPreviewOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5 text-primary" />
               Preview de Importação de Taxonomia
             </DialogTitle>
             <DialogDescription>
-              Revise os dados a serem importados antes de confirmar
+              Revise os dados e validação antes de confirmar
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="space-y-4 flex-1 overflow-y-auto pr-2">
+            {/* Stats Cards */}
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="p-4 bg-muted/30 rounded-lg border">
                 <div className="text-2xl font-bold text-primary">{importData?.parentCount || 0}</div>
@@ -2622,7 +3038,97 @@ export const TagsManagementTab = () => {
                 <div className="text-sm text-muted-foreground">Regras ML</div>
               </div>
             </div>
+
+            {/* Validation Errors */}
+            {importData?.validationErrors && importData.validationErrors.length > 0 && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <XCircle className="h-4 w-4 text-red-400" />
+                  <span className="font-semibold text-red-400">Erros de Validação ({importData.validationErrors.length})</span>
+                </div>
+                <ul className="text-xs space-y-1 text-red-300 max-h-24 overflow-y-auto">
+                  {importData.validationErrors.map((err, i) => (
+                    <li key={i} className="flex items-start gap-1">
+                      <span className="text-red-400">-</span>
+                      {err}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Validation Warnings */}
+            {importData?.validationWarnings && importData.validationWarnings.length > 0 && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-400" />
+                  <span className="font-semibold text-amber-400">Avisos ({importData.validationWarnings.length})</span>
+                </div>
+                <ul className="text-xs space-y-1 text-amber-300 max-h-24 overflow-y-auto">
+                  {importData.validationWarnings.map((warn, i) => (
+                    <li key={i} className="flex items-start gap-1">
+                      <span className="text-amber-400">-</span>
+                      {warn}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Conflicts Detected */}
+            {importData?.conflicts && importData.conflicts.length > 0 && (
+              <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="h-4 w-4 text-purple-400" />
+                  <span className="font-semibold text-purple-400">Conflitos com Existentes ({importData.conflicts.length})</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Tags que já existem no sistema. No modo "Mesclar", serão atualizadas.
+                </p>
+                <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                  {importData.conflicts.slice(0, 20).map((conflict, i) => (
+                    <Badge key={i} variant="outline" className={`text-xs ${conflict.type === 'parent' ? 'border-purple-400/50 text-purple-300' : 'border-cyan-400/50 text-cyan-300'}`}>
+                      {conflict.name}
+                    </Badge>
+                  ))}
+                  {importData.conflicts.length > 20 && (
+                    <Badge variant="outline" className="text-xs">+{importData.conflicts.length - 20} mais</Badge>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tags Preview List */}
+            {importData?.parents && importData.parents.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-muted/20 rounded-lg border hover:bg-muted/30 transition-colors">
+                  <Eye className="h-4 w-4" />
+                  <span className="font-medium text-sm">Preview de Tags a Importar</span>
+                  <ChevronDown className="h-4 w-4 ml-auto" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2">
+                  <ScrollArea className="h-48 rounded-lg border p-2">
+                    <div className="space-y-2">
+                      {importData.parents.map((parent, i) => (
+                        <div key={i} className="p-2 bg-muted/20 rounded">
+                          <div className="flex items-center gap-2">
+                            <FolderTree className="h-3.5 w-3.5 text-purple-400" />
+                            <span className="font-medium text-sm">{parent.name}</span>
+                            {parent.childCount > 0 && (
+                              <Badge variant="outline" className="text-xs">
+                                {parent.childCount} filha{parent.childCount > 1 ? 's' : ''}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
             
+            {/* Import Mode Selection */}
             <div className="space-y-2">
               <Label>Modo de Importação</Label>
               <Select value={importMode} onValueChange={(v: 'merge' | 'replace') => setImportMode(v)}>
@@ -2652,11 +3158,14 @@ export const TagsManagementTab = () => {
             </div>
           </div>
           
-          <DialogFooter>
+          <DialogFooter className="mt-4 pt-4 border-t">
             <Button variant="outline" onClick={() => setImportPreviewOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={executeImport} disabled={isImporting}>
+            <Button 
+              onClick={executeImport} 
+              disabled={isImporting || (importData?.validationErrors?.length || 0) > 0}
+            >
               {isImporting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
