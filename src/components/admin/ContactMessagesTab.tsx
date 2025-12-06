@@ -371,7 +371,7 @@ export const ContactMessagesTab = () => {
         body: {
           to: replyToMessage.email,
           subject: replySubject,
-          html: `
+          body: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <p>${replyContent.replace(/\n/g, '<br>')}</p>
               <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
