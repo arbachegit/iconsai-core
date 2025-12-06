@@ -18,6 +18,9 @@ const validateEmail = (email: string): boolean => {
   return emailRegex.test(email);
 };
 
+const MAX_SUBJECT_LENGTH = 100;
+const MAX_MESSAGE_LENGTH = 1000;
+
 export const ContactModal = ({ children }: ContactModalProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -164,8 +167,9 @@ export const ContactModal = ({ children }: ContactModalProps) => {
                 type="text"
                 placeholder={t('contact.subjectPlaceholder')}
                 value={subject}
-                onChange={(e) => setSubject(e.target.value)}
+                onChange={(e) => setSubject(e.target.value.slice(0, MAX_SUBJECT_LENGTH))}
                 onBlur={() => setSubjectTouched(true)}
+                maxLength={MAX_SUBJECT_LENGTH}
                 className={`bg-background/50 pr-10 transition-colors ${
                   showSubjectError 
                     ? 'border-destructive focus:border-destructive' 
@@ -182,11 +186,20 @@ export const ContactModal = ({ children }: ContactModalProps) => {
                 <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />
               )}
             </div>
-            {showSubjectError && (
-              <p className="text-xs text-destructive mt-1">
-                {t('contact.subjectError')}
-              </p>
-            )}
+            <div className="flex justify-between items-center">
+              {showSubjectError ? (
+                <p className="text-xs text-destructive">
+                  {t('contact.subjectError')}
+                </p>
+              ) : <span />}
+              <span className={`text-xs ${
+                MAX_SUBJECT_LENGTH - subject.length <= 10 
+                  ? 'text-destructive' 
+                  : 'text-muted-foreground'
+              }`}>
+                {MAX_SUBJECT_LENGTH - subject.length}
+              </span>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -199,8 +212,9 @@ export const ContactModal = ({ children }: ContactModalProps) => {
                 id="message"
                 placeholder={t('contact.messagePlaceholder')}
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
                 onBlur={() => setMessageTouched(true)}
+                maxLength={MAX_MESSAGE_LENGTH}
                 className={`bg-background/50 min-h-[120px] resize-none pr-10 transition-colors ${
                   showMessageError 
                     ? 'border-destructive focus:border-destructive' 
@@ -217,11 +231,20 @@ export const ContactModal = ({ children }: ContactModalProps) => {
                 <XCircle className="absolute right-3 top-3 h-4 w-4 text-destructive" />
               )}
             </div>
-            {showMessageError && (
-              <p className="text-xs text-destructive mt-1">
-                {t('contact.messageError')}
-              </p>
-            )}
+            <div className="flex justify-between items-center">
+              {showMessageError ? (
+                <p className="text-xs text-destructive">
+                  {t('contact.messageError')}
+                </p>
+              ) : <span />}
+              <span className={`text-xs ${
+                MAX_MESSAGE_LENGTH - message.length <= 50 
+                  ? 'text-destructive' 
+                  : 'text-muted-foreground'
+              }`}>
+                {MAX_MESSAGE_LENGTH - message.length}
+              </span>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
