@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, ArrowLeft } from "lucide-react";
+import { Lock, ArrowLeft, Home } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 const logPasswordRecoveryAttempt = async (email: string, action: string, success: boolean) => {
@@ -212,6 +213,19 @@ const AdminLogin = () => {
               </button>
             </>
           )}
+
+          {/* Botão retornar ao App */}
+          <div className="w-full pt-4 border-t border-primary/10">
+            <Link to="/">
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground hover:text-foreground"
+              >
+                <Home className="w-4 h-4 mr-2" />
+                Retornar ao App
+              </Button>
+            </Link>
+          </div>
         </div>
       </Card>
     </div>
