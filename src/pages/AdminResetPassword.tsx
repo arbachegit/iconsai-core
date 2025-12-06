@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { KeyRound, Eye, EyeOff, RefreshCw, Loader2, Check, X, ArrowLeft } from "lucide-react";
+import { KeyRound, Eye, EyeOff, RefreshCw, Loader2, Check, X, ArrowLeft, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+
+const CODE_EXPIRY_MINUTES = 15;
 
 const logPasswordRecoveryEvent = async (email: string, action: string, success: boolean, details?: Record<string, any>) => {
   try {
@@ -40,6 +42,49 @@ const AdminResetPassword = () => {
   const [isResetting, setIsResetting] = useState(false);
   
   const [isResendingCode, setIsResendingCode] = useState(false);
+  
+  // Timer state
+  const [timeRemaining, setTimeRemaining] = useState(CODE_EXPIRY_MINUTES * 60);
+  const [timerActive, setTimerActive] = useState(true);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const formatTime = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }, []);
+
+  const getTimerColor = useCallback(() => {
+    if (timeRemaining <= 60) return "text-red-500";
+    if (timeRemaining <= 180) return "text-amber-500";
+    return "text-emerald-500";
+  }, [timeRemaining]);
+
+  // Timer effect
+  useEffect(() => {
+    if (!timerActive || codeValidated) return;
+
+    timerRef.current = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          setTimerActive(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [timerActive, codeValidated]);
+
+  // Reset timer when code is resent
+  const resetTimer = useCallback(() => {
+    setTimeRemaining(CODE_EXPIRY_MINUTES * 60);
+    setTimerActive(true);
+  }, []);
 
   useEffect(() => {
     if (!email) {
@@ -210,10 +255,11 @@ const AdminResetPassword = () => {
         description: "Verifique seu email para o novo código.",
       });
 
-      // Reset state
+      // Reset state and timer
       setCode("");
       setCodeValidated(false);
       setValidationToken("");
+      resetTimer();
 
     } catch (err: any) {
       console.error("Error resending code:", err);
@@ -248,6 +294,21 @@ const AdminResetPassword = () => {
             </p>
           </div>
 
+          {/* Timer display */}
+          {!codeValidated && timerActive && (
+            <div className={`flex items-center gap-2 text-sm ${getTimerColor()}`}>
+              <Clock className="w-4 h-4" />
+              <span>Código expira em: <span className="font-mono font-bold">{formatTime(timeRemaining)}</span></span>
+            </div>
+          )}
+
+          {!codeValidated && !timerActive && timeRemaining === 0 && (
+            <div className="flex items-center gap-2 text-sm text-red-500">
+              <Clock className="w-4 h-4" />
+              <span>Código expirado. Solicite um novo código.</span>
+            </div>
+          )}
+
           {/* Code validation form */}
           <form onSubmit={handleValidateCode} className="w-full space-y-4">
             <div className="space-y-2">
@@ -260,7 +321,7 @@ const AdminResetPassword = () => {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000"
                 required
-                disabled={codeValidated}
+                disabled={codeValidated || timeRemaining === 0}
                 className="text-center text-2xl tracking-widest font-mono bg-background/50"
                 maxLength={6}
               />
@@ -270,7 +331,7 @@ const AdminResetPassword = () => {
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-primary" 
-                disabled={isValidatingCode || code.length !== 6}
+                disabled={isValidatingCode || code.length !== 6 || timeRemaining === 0}
               >
                 {isValidatingCode ? (
                   <>
