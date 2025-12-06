@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -26,7 +27,9 @@ import {
   RefreshCw,
   Reply,
   Send,
-  Bell
+  Bell,
+  FileText,
+  ChevronDown
 } from "lucide-react";
 
 export const ContactMessagesTab = () => {
@@ -41,6 +44,88 @@ export const ContactMessagesTab = () => {
   const [replySubject, setReplySubject] = useState("");
   const [replyContent, setReplyContent] = useState("");
   const [isSendingReply, setIsSendingReply] = useState(false);
+
+  // Pre-defined reply templates
+  const replyTemplates = [
+    {
+      name: "Agradecimento",
+      subject: "Obrigado pelo seu contato!",
+      content: `Olá,
+
+Agradecemos pelo seu contato! Recebemos sua mensagem e estamos analisando.
+
+Retornaremos em breve com mais informações.
+
+Atenciosamente,
+Equipe KnowRISK`
+    },
+    {
+      name: "Informações adicionais",
+      subject: "Re: Solicitação de informações",
+      content: `Olá,
+
+Obrigado por entrar em contato conosco!
+
+Para melhor atendê-lo(a), precisamos de algumas informações adicionais:
+- [Informação 1]
+- [Informação 2]
+
+Aguardamos seu retorno.
+
+Atenciosamente,
+Equipe KnowRISK`
+    },
+    {
+      name: "Agendamento",
+      subject: "Agendamento de demonstração",
+      content: `Olá,
+
+Ficamos felizes com seu interesse no KnowYOU!
+
+Gostaríamos de agendar uma demonstração personalizada. Por favor, indique sua disponibilidade para uma reunião online.
+
+Horários sugeridos:
+- Segunda a sexta, das 9h às 18h
+
+Aguardamos sua confirmação.
+
+Atenciosamente,
+Equipe KnowRISK`
+    },
+    {
+      name: "Suporte técnico",
+      subject: "Re: Suporte Técnico",
+      content: `Olá,
+
+Agradecemos por reportar esta questão.
+
+Nossa equipe técnica já está analisando o problema e retornará com uma solução em breve.
+
+Caso precise de assistência imediata, por favor entre em contato através de nossos canais de suporte.
+
+Atenciosamente,
+Equipe de Suporte KnowRISK`
+    },
+    {
+      name: "Parceria comercial",
+      subject: "Re: Proposta de Parceria",
+      content: `Olá,
+
+Obrigado pelo interesse em estabelecer uma parceria com a KnowRISK!
+
+Analisamos sua proposta com atenção. Para dar continuidade, gostaríamos de agendar uma reunião para discutir os detalhes.
+
+Por favor, indique sua disponibilidade.
+
+Atenciosamente,
+Equipe Comercial KnowRISK`
+    }
+  ];
+
+  const applyTemplate = (template: typeof replyTemplates[0]) => {
+    setReplySubject(template.subject);
+    setReplyContent(template.content);
+  };
 
   const { data: messages, isLoading, refetch } = useQuery({
     queryKey: ['contact-messages'],
@@ -527,6 +612,38 @@ export const ContactMessagesTab = () => {
               <div className="bg-muted/30 p-3 rounded-lg text-sm">
                 <p className="text-muted-foreground">Respondendo para:</p>
                 <p className="font-medium">{replyToMessage.email}</p>
+              </div>
+
+              {/* Template selector */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Templates de Resposta
+                </label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      Selecionar template...
+                      <ChevronDown className="w-4 h-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[400px]">
+                    <DropdownMenuLabel>Templates disponíveis</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {replyTemplates.map((template, index) => (
+                      <DropdownMenuItem
+                        key={index}
+                        onClick={() => applyTemplate(template)}
+                        className="flex flex-col items-start gap-1 py-2 cursor-pointer"
+                      >
+                        <span className="font-medium">{template.name}</span>
+                        <span className="text-xs text-muted-foreground truncate max-w-full">
+                          {template.content.substring(0, 60)}...
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               
               <div className="space-y-2">
