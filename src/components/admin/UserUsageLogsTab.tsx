@@ -507,53 +507,53 @@ export const UserUsageLogsTab = () => {
 
       {/* Table */}
       <ScrollArea className="h-[500px] border rounded-lg">
-        <Table>
+        <Table className="table-fixed w-full">
           <TableHeader className="sticky top-0 bg-muted z-10">
             <TableRow>
               <TableHead 
-                className="w-[140px] font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+                className="w-[120px] px-3 font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
                 onClick={() => handleSort("started_at")}
               >
-                <div className="flex items-center">
+                <div className="flex items-center gap-1">
                   Data/Hora {getSortIcon("started_at")}
                 </div>
               </TableHead>
               <TableHead 
-                className="font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+                className="w-[180px] px-3 font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
                 onClick={() => handleSort("user_name")}
               >
-                <div className="flex items-center">
+                <div className="flex items-center gap-1">
                   Usuário {getSortIcon("user_name")}
                 </div>
               </TableHead>
               <TableHead 
-                className="w-[100px] font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+                className="w-[100px] px-3 font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
                 onClick={() => handleSort("chat_type")}
               >
-                <div className="flex items-center">
+                <div className="flex items-center gap-1">
                   Chat {getSortIcon("chat_type")}
                 </div>
               </TableHead>
               <TableHead 
-                className="w-[80px] text-center font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+                className="w-[70px] px-2 text-center font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
                 onClick={() => handleSort("message_count")}
               >
-                <div className="flex items-center justify-center">
+                <div className="flex items-center justify-center gap-1">
                   Msgs {getSortIcon("message_count")}
                 </div>
               </TableHead>
               <TableHead 
-                className="w-[80px] text-center font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
+                className="w-[70px] px-2 text-center font-bold text-foreground uppercase tracking-wide text-xs cursor-pointer hover:bg-muted-foreground/10"
                 onClick={() => handleSort("audio_plays")}
               >
-                <div className="flex items-center justify-center">
+                <div className="flex items-center justify-center gap-1">
                   Áudios {getSortIcon("audio_plays")}
                 </div>
               </TableHead>
-              <TableHead className="font-bold text-foreground uppercase tracking-wide text-xs">
+              <TableHead className="px-3 font-bold text-foreground uppercase tracking-wide text-xs">
                 Tópicos
               </TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[40px] px-2"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -576,35 +576,35 @@ export const UserUsageLogsTab = () => {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => toggleRow(log.id)}
                   >
-                    <TableCell className="font-mono text-xs">
+                    <TableCell className="w-[120px] px-3 font-mono text-xs">
                       {format(new Date(log.started_at), "dd/MM HH:mm", { locale: ptBR })}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="w-[180px] px-3">
                       <div className="flex items-center gap-2">
-                        {log.user_name || "Anônimo"}
+                        <span className="truncate">{log.user_name || "Anônimo"}</span>
                         {isAdmin(log.user_name) && (
-                          <Badge variant="outline" className="text-amber-500 border-amber-500/50 gap-1">
+                          <Badge variant="outline" className="text-amber-500 border-amber-500/50 gap-1 shrink-0">
                             <Crown className="w-3 h-3" />
                             Admin
                           </Badge>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{getChatBadge(log.chat_type)}</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="w-[100px] px-3">{getChatBadge(log.chat_type)}</TableCell>
+                    <TableCell className="w-[70px] px-2 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <MessageSquare className="w-3 h-3 text-muted-foreground" />
                         {log.message_count || 0}
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="w-[70px] px-2 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Volume2 className="w-3 h-3 text-muted-foreground" />
                         {log.audio_plays || 0}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
+                    <TableCell className="px-3">
+                      <div className="flex flex-wrap gap-1">
                         {(log.topics || []).slice(0, 3).map((topic: string, idx: number) => (
                           <Badge key={idx} variant="outline" className="text-xs">
                             {topic}
@@ -617,7 +617,7 @@ export const UserUsageLogsTab = () => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="w-[40px] px-2">
                       <ChevronDown
                         className={`w-4 h-4 transition-transform ${
                           expandedRows.has(log.id) ? "rotate-180" : ""
