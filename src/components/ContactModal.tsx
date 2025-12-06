@@ -140,9 +140,9 @@ export const ContactModal = ({ children }: ContactModalProps) => {
           subject: `[Contato KnowYOU] ${subject}`,
           body: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
-              <!-- Header com Logo -->
-              <div style="text-align: center; padding: 24px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
-                <img src="https://knowyou.app/knowrisk-logo.png" alt="KnowYOU" style="height: 50px; max-width: 200px;" />
+              <!-- Header -->
+              <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
+                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">Health AI App</h1>
               </div>
               
               <!-- Corpo -->
@@ -157,12 +157,9 @@ export const ContactModal = ({ children }: ContactModalProps) => {
               </div>
               
               <!-- Footer -->
-              <div style="text-align: center; padding: 20px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
+              <div style="text-align: center; padding: 16px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
                 <p style="color: #64748b; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} KnowYOU - Todos os direitos reservados.
-                </p>
-                <p style="margin: 8px 0 0 0;">
-                  <a href="https://knowyou.app" style="color: #0ea5e9; font-size: 12px; text-decoration: none;">knowyou.app</a>
+                  © ${new Date().getFullYear()} Health AI App
                 </p>
               </div>
             </div>
@@ -178,9 +175,9 @@ export const ContactModal = ({ children }: ContactModalProps) => {
           subject: `Recebemos sua mensagem - ${subject}`,
           body: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
-              <!-- Header com Logo -->
-              <div style="text-align: center; padding: 24px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
-                <img src="https://knowyou.app/knowrisk-logo.png" alt="KnowYOU" style="height: 50px; max-width: 200px;" />
+              <!-- Header -->
+              <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
+                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">Health AI App</h1>
               </div>
               
               <!-- Corpo -->
@@ -197,15 +194,9 @@ export const ContactModal = ({ children }: ContactModalProps) => {
               </div>
               
               <!-- Footer -->
-              <div style="text-align: center; padding: 20px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
+              <div style="text-align: center; padding: 16px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
                 <p style="color: #64748b; font-size: 12px; margin: 0;">
-                  Esta é uma mensagem automática. Por favor, não responda a este email.
-                </p>
-                <p style="color: #64748b; font-size: 12px; margin: 8px 0 0 0;">
-                  © ${new Date().getFullYear()} KnowYOU - Todos os direitos reservados.
-                </p>
-                <p style="margin: 8px 0 0 0;">
-                  <a href="https://knowyou.app" style="color: #0ea5e9; font-size: 12px; text-decoration: none;">knowyou.app</a>
+                  © ${new Date().getFullYear()} Health AI App
                 </p>
               </div>
             </div>
