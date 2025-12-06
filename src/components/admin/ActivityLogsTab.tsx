@@ -1,15 +1,17 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
   Search, 
@@ -30,13 +32,22 @@ import {
   KeyRound,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  BarChart3,
+  Users,
+  Tags,
+  CalendarIcon,
+  TrendingUp
 } from "lucide-react";
 import { exportData } from "@/lib/export-utils";
 import { toast } from "sonner";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 type SortColumn = "created_at" | "user_email" | "action_category" | "action";
 type SortDirection = "asc" | "desc" | null;
+type ChartView = "daily" | "users" | "categories";
+type MetricsPeriod = "today" | "7days" | "30days" | "custom";
 
 const CATEGORY_CONFIG: Record<string, { color: string; icon: React.ComponentType<{ className?: string }> }> = {
   LOGIN: { color: "bg-green-500", icon: LogIn },
@@ -55,6 +66,23 @@ const CATEGORY_CONFIG: Record<string, { color: string; icon: React.ComponentType
   PASSWORD_RECOVERY: { color: "bg-yellow-500", icon: KeyRound },
 };
 
+const CATEGORY_COLORS: Record<string, string> = {
+  LOGIN: "#22c55e",
+  LOGOUT: "#6b7280",
+  DELETE: "#ef4444",
+  CONFIG: "#3b82f6",
+  CONTENT: "#a855f7",
+  DOCUMENT: "#f59e0b",
+  UPLOAD: "#84cc16",
+  RAG: "#06b6d4",
+  EXPORT: "#6366f1",
+  VERSION: "#ec4899",
+  TAG: "#f97316",
+  IMAGE: "#10b981",
+  NAVIGATION: "#64748b",
+  PASSWORD_RECOVERY: "#eab308",
+};
+
 const PERIOD_OPTIONS = [
   { value: "today", label: "Hoje" },
   { value: "7days", label: "Últimos 7 dias" },
@@ -69,6 +97,15 @@ export const ActivityLogsTab = () => {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  
+  // Metrics dashboard state
+  const [chartView, setChartView] = useState<ChartView>("daily");
+  const [metricsPeriod, setMetricsPeriod] = useState<MetricsPeriod>("30days");
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const getDateFilter = () => {
     const now = new Date();
@@ -82,6 +119,29 @@ export const ActivityLogsTab = () => {
       default:
         return null;
     }
+  };
+
+  const getMetricsDateFilter = () => {
+    const now = new Date();
+    switch (metricsPeriod) {
+      case "today":
+        return startOfDay(now).toISOString();
+      case "7days":
+        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      case "30days":
+        return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      case "custom":
+        return customDateRange.from ? startOfDay(customDateRange.from).toISOString() : null;
+      default:
+        return null;
+    }
+  };
+
+  const getMetricsEndDateFilter = () => {
+    if (metricsPeriod === "custom" && customDateRange.to) {
+      return endOfDay(customDateRange.to).toISOString();
+    }
+    return null;
   };
 
   const { data: logs, isLoading } = useQuery({
@@ -111,6 +171,74 @@ export const ActivityLogsTab = () => {
       return data || [];
     },
   });
+
+  // Fetch metrics data
+  const { data: metricsLogs } = useQuery({
+    queryKey: ["activity-logs-metrics", metricsPeriod, customDateRange],
+    queryFn: async () => {
+      let query = supabase
+        .from("user_activity_logs")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      const dateFilter = getMetricsDateFilter();
+      if (dateFilter) {
+        query = query.gte("created_at", dateFilter);
+      }
+
+      const endDateFilter = getMetricsEndDateFilter();
+      if (endDateFilter) {
+        query = query.lte("created_at", endDateFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Process metrics data
+  const metricsData = useMemo(() => {
+    if (!metricsLogs) return { daily: [], users: [], categories: [] };
+
+    // Activities by day
+    const dailyMap = new Map<string, number>();
+    metricsLogs.forEach(log => {
+      const day = format(new Date(log.created_at!), "dd/MM", { locale: ptBR });
+      dailyMap.set(day, (dailyMap.get(day) || 0) + 1);
+    });
+    const daily = Array.from(dailyMap.entries())
+      .map(([date, count]) => ({ date, count }))
+      .reverse()
+      .slice(-30);
+
+    // Most active users
+    const usersMap = new Map<string, number>();
+    metricsLogs.forEach(log => {
+      const email = log.user_email || "Desconhecido";
+      usersMap.set(email, (usersMap.get(email) || 0) + 1);
+    });
+    const users = Array.from(usersMap.entries())
+      .map(([email, count]) => ({ email: email.split("@")[0], fullEmail: email, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Categories frequency
+    const categoriesMap = new Map<string, number>();
+    metricsLogs.forEach(log => {
+      const category = log.action_category || "OUTROS";
+      categoriesMap.set(category, (categoriesMap.get(category) || 0) + 1);
+    });
+    const categories = Array.from(categoriesMap.entries())
+      .map(([category, count]) => ({ 
+        category, 
+        count,
+        fill: CATEGORY_COLORS[category] || "#94a3b8"
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    return { daily, users, categories };
+  }, [metricsLogs]);
 
   const toggleRow = (id: string) => {
     setExpandedRows(prev => {
@@ -208,6 +336,40 @@ export const ActivityLogsTab = () => {
     });
   }, [logs, sortColumn, sortDirection]);
 
+  const handleDateSelect = (range: { from?: Date; to?: Date } | undefined) => {
+    if (range) {
+      setCustomDateRange({ from: range.from, to: range.to });
+      if (range.from && range.to) {
+        setIsCalendarOpen(false);
+      }
+    }
+  };
+
+  const getPeriodLabel = () => {
+    switch (metricsPeriod) {
+      case "today":
+        return "Hoje";
+      case "7days":
+        return "Últimos 7 dias";
+      case "30days":
+        return "Últimos 30 dias";
+      case "custom":
+        if (customDateRange.from && customDateRange.to) {
+          return `${format(customDateRange.from, "dd/MM")} - ${format(customDateRange.to, "dd/MM")}`;
+        }
+        return "Selecionar data";
+      default:
+        return "Últimos 30 dias";
+    }
+  };
+
+  const chartConfig = {
+    count: {
+      label: "Atividades",
+      color: "hsl(var(--primary))",
+    },
+  };
+
   return (
     <div className="space-y-6">
       <AdminTitleWithInfo
@@ -217,6 +379,234 @@ export const ActivityLogsTab = () => {
         infoContent="Visualize e audite todas as ações dos administradores incluindo logins, exclusões, configurações e uploads de documentos."
       />
 
+      {/* Metrics Dashboard */}
+      <Card className="bg-gradient-to-br from-primary/5 via-background to-primary/10 border-primary/20">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              <CardTitle className="text-lg">Métricas de Atividade</CardTitle>
+              <Badge variant="secondary" className="ml-2">
+                {metricsLogs?.length || 0} registros
+              </Badge>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Period filter buttons */}
+              <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
+                <Button
+                  variant={metricsPeriod === "today" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setMetricsPeriod("today")}
+                  className="h-7 text-xs"
+                >
+                  Hoje
+                </Button>
+                <Button
+                  variant={metricsPeriod === "7days" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setMetricsPeriod("7days")}
+                  className="h-7 text-xs"
+                >
+                  7 dias
+                </Button>
+                <Button
+                  variant={metricsPeriod === "30days" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setMetricsPeriod("30days")}
+                  className="h-7 text-xs"
+                >
+                  30 dias
+                </Button>
+              </div>
+
+              {/* Custom date picker */}
+              <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={metricsPeriod === "custom" ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => setMetricsPeriod("custom")}
+                  >
+                    <CalendarIcon className="w-3 h-3" />
+                    {metricsPeriod === "custom" && customDateRange.from && customDateRange.to
+                      ? `${format(customDateRange.from, "dd/MM")} - ${format(customDateRange.to, "dd/MM")}`
+                      : "Data específica"
+                    }
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 pointer-events-auto" align="end">
+                  <Calendar
+                    mode="range"
+                    selected={{ from: customDateRange.from, to: customDateRange.to }}
+                    onSelect={handleDateSelect}
+                    numberOfMonths={2}
+                    locale={ptBR}
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {/* Chart view toggle */}
+          <div className="flex items-center gap-2 mt-4">
+            <Button
+              variant={chartView === "daily" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setChartView("daily")}
+              className="gap-1"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Por Dia
+            </Button>
+            <Button
+              variant={chartView === "users" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setChartView("users")}
+              className="gap-1"
+            >
+              <Users className="w-4 h-4" />
+              Usuários
+            </Button>
+            <Button
+              variant={chartView === "categories" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setChartView("categories")}
+              className="gap-1"
+            >
+              <Tags className="w-4 h-4" />
+              Categorias
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <div className="h-[300px] w-full">
+            {chartView === "daily" && (
+              <ChartContainer config={chartConfig} className="h-full w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={metricsData.daily} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="fill-muted-foreground"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="fill-muted-foreground"
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar 
+                      dataKey="count" 
+                      fill="hsl(var(--primary))" 
+                      radius={[4, 4, 0, 0]}
+                      name="Atividades"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            )}
+
+            {chartView === "users" && (
+              <ChartContainer config={chartConfig} className="h-full w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={metricsData.users} 
+                    layout="vertical" 
+                    margin={{ top: 10, right: 30, left: 80, bottom: 10 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={true} vertical={false} />
+                    <XAxis 
+                      type="number"
+                      tick={{ fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="fill-muted-foreground"
+                    />
+                    <YAxis 
+                      type="category"
+                      dataKey="email"
+                      tick={{ fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="fill-muted-foreground"
+                      width={75}
+                    />
+                    <ChartTooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-background border rounded-lg p-2 shadow-lg">
+                              <p className="text-sm font-medium">{payload[0].payload.fullEmail}</p>
+                              <p className="text-sm text-muted-foreground">{payload[0].value} atividades</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar 
+                      dataKey="count" 
+                      fill="hsl(var(--primary))" 
+                      radius={[0, 4, 4, 0]}
+                      name="Atividades"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            )}
+
+            {chartView === "categories" && (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={metricsData.categories}
+                    dataKey="count"
+                    nameKey="category"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={({ category, percent }) => `${category} (${(percent * 100).toFixed(0)}%)`}
+                    labelLine={true}
+                  >
+                    {metricsData.categories.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-background border rounded-lg p-2 shadow-lg">
+                            <p className="text-sm font-medium">{payload[0].name}</p>
+                            <p className="text-sm text-muted-foreground">{payload[0].value} atividades</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Legend 
+                    layout="vertical" 
+                    align="right" 
+                    verticalAlign="middle"
+                    wrapperStyle={{ fontSize: '12px' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Activity Table */}
       <Card>
         <CardHeader className="pb-4">
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
@@ -271,13 +661,13 @@ export const ActivityLogsTab = () => {
             <>
               <div className="rounded-md border overflow-hidden">
                 <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow>
+                  <TableHeader className="bg-muted">
+                    <TableRow className="border-b-2 border-border">
                       <TableHead 
                         className="w-[150px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
                         onClick={() => handleSort("created_at")}
                       >
-                        <div className="flex items-center font-semibold text-foreground">
+                        <div className="flex items-center font-bold text-foreground text-sm uppercase tracking-wide">
                           Data/Hora
                           {getSortIcon("created_at")}
                         </div>
@@ -286,7 +676,7 @@ export const ActivityLogsTab = () => {
                         className="w-[200px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
                         onClick={() => handleSort("user_email")}
                       >
-                        <div className="flex items-center font-semibold text-foreground">
+                        <div className="flex items-center font-bold text-foreground text-sm uppercase tracking-wide">
                           Usuário
                           {getSortIcon("user_email")}
                         </div>
@@ -295,7 +685,7 @@ export const ActivityLogsTab = () => {
                         className="w-[120px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
                         onClick={() => handleSort("action_category")}
                       >
-                        <div className="flex items-center font-semibold text-foreground">
+                        <div className="flex items-center font-bold text-foreground text-sm uppercase tracking-wide">
                           Categoria
                           {getSortIcon("action_category")}
                         </div>
@@ -304,7 +694,7 @@ export const ActivityLogsTab = () => {
                         className="cursor-pointer select-none hover:bg-muted/80 transition-colors"
                         onClick={() => handleSort("action")}
                       >
-                        <div className="flex items-center font-semibold text-foreground">
+                        <div className="flex items-center font-bold text-foreground text-sm uppercase tracking-wide">
                           Ação
                           {getSortIcon("action")}
                         </div>
