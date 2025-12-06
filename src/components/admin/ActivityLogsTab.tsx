@@ -372,27 +372,29 @@ export const ActivityLogsTab = () => {
 
   return (
     <div className="space-y-6">
-        <AdminTitleWithInfo
-          title="Log de Atividades (admin)"
+      <AdminTitleWithInfo
+        title="Log de Atividades (Admin)"
         level="h1"
         tooltipText="Histórico completo de ações administrativas"
-        infoContent={`Sistema de auditoria que registra automaticamente todas as ações realizadas por administradores no painel.
+        infoContent={`**Sobre esta seção**
 
-**Atividades monitoradas:**
-• **LOGIN/LOGOUT** - Acessos e saídas do painel admin
-• **CONFIG** - Alterações em configurações do sistema
-• **CONTENT** - Edições de conteúdo das seções e tooltips
-• **DOCUMENT/UPLOAD** - Upload e processamento de documentos RAG
-• **DELETE** - Exclusões de documentos, mensagens ou registros
-• **RAG** - Operações no sistema de busca semântica
-• **TAG** - Criação, merge e modificação de tags
-• **IMAGE** - Geração e otimização de imagens
-• **VERSION** - Registros de versionamento do sistema
-• **EXPORT** - Exportações de dados (CSV, JSON)
-• **NAVIGATION** - Navegação entre seções do admin
-• **PASSWORD_RECOVERY** - Solicitações de recuperação de senha
+Sistema de rastreamento automático de atividades no painel administrativo.
 
-Cada registro inclui data/hora, usuário, categoria, descrição da ação e detalhes técnicos (browser, IP).`}
+✅ **Implementado**
+• **LOGIN** — Logins e tentativas falhas
+• **LOGOUT** — Logout com duração da sessão
+• **CONFIG** — Alterações de áudio/alertas
+• **USER** — Criação e gestão de usuários
+• **CONTENT** — Atualizações de conteúdo
+• **NAVIGATION** — Navegação no Admin Panel
+
+⚠️ **Em Desenvolvimento**
+• **DOCUMENT** — Upload/exclusão de docs
+• **TAG** — Criação/edição de tags
+• Indicadores econômicos, Podcasts, Mídia
+• Configurações regionais, Cache de imagens
+
+Cada registro inclui: Data/hora, Usuário, Categoria, Ação e Detalhes técnicos (JSON).`}
       />
 
       {/* Metrics Dashboard */}
