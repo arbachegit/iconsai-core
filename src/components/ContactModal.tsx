@@ -133,6 +133,7 @@ export const ContactModal = ({ children }: ContactModalProps) => {
 
       const recipientEmail = settings?.gmail_notification_email || 'suporte@knowyou.app';
 
+      // Send notification to support team
       const { error } = await supabase.functions.invoke('send-email', {
         body: {
           to: recipientEmail,
@@ -145,6 +146,32 @@ export const ContactModal = ({ children }: ContactModalProps) => {
             <p>${message.replace(/\n/g, '<br />')}</p>
           `,
           replyTo: email,
+        },
+      });
+
+      // Send confirmation email to the client
+      await supabase.functions.invoke('send-email', {
+        body: {
+          to: email,
+          subject: `Recebemos sua mensagem - ${subject}`,
+          body: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #0ea5e9;">Obrigado por entrar em contato!</h2>
+              <p>Olá,</p>
+              <p>Recebemos sua mensagem e nossa equipe entrará em contato em breve.</p>
+              <hr style="border: 1px solid #e2e8f0; margin: 20px 0;" />
+              <p><strong>Resumo da sua mensagem:</strong></p>
+              <p><strong>Assunto:</strong> ${subject}</p>
+              <p style="background: #f8fafc; padding: 15px; border-radius: 8px; white-space: pre-line;">${message}</p>
+              <hr style="border: 1px solid #e2e8f0; margin: 20px 0;" />
+              <p style="color: #64748b; font-size: 12px;">
+                Esta é uma mensagem automática. Por favor, não responda a este email.
+              </p>
+              <p style="color: #64748b; font-size: 12px;">
+                © ${new Date().getFullYear()} KnowYOU - Todos os direitos reservados.
+              </p>
+            </div>
+          `,
         },
       });
 
