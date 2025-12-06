@@ -34,11 +34,71 @@ import { useToast } from "@/hooks/use-toast";
 
 type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages";
 
+// Mapping de tab para nome legível
+const TAB_LABELS: Record<TabType, string> = {
+  "dashboard": "Dashboard",
+  "chat": "Chat Config",
+  "tooltips": "Tooltips",
+  "gmail": "Gmail",
+  "analytics": "Analytics",
+  "conversations": "Conversas",
+  "images": "Cache de Imagens",
+  "youtube": "Inserir Vídeos",
+  "documents": "RAG Documentos",
+  "rag-metrics": "Métricas RAG",
+  "version-control": "Versionamento",
+  "tags": "Gerenciar Tags",
+  "document-analysis": "Análise Documentos",
+  "document-routing-logs": "Logs de Roteamento",
+  "rag-diagnostics": "Diagnóstico RAG",
+  "chat-scope-config": "Delimitações",
+  "rag-documentation": "Documentação RAG",
+  "content-management": "Seções Landing Page",
+  "podcasts": "Podcasts",
+  "activity-logs": "Log de Atividades",
+  "user-usage-logs": "Log de Uso (Usuários)",
+  "tag-modification-logs": "Logs de Mescla Tags",
+  "deterministic-analysis": "Fala Determinística",
+  "architecture": "Arquitetura",
+  "regional-config": "Configurações Regionais",
+  "suggestion-audit": "Auditoria Sugestões",
+  "contact-messages": "Mensagens Contato",
+};
+
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [isLoading, setIsLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Função para logar navegação
+  const logNavigation = async (fromTab: TabType, toTab: TabType, email: string) => {
+    try {
+      await supabase.from("user_activity_logs").insert({
+        user_email: email,
+        action_category: "NAVIGATION",
+        action: `Navegou de "${TAB_LABELS[fromTab]}" para "${TAB_LABELS[toTab]}"`,
+        details: {
+          from_tab: fromTab,
+          to_tab: toTab,
+          from_label: TAB_LABELS[fromTab],
+          to_label: TAB_LABELS[toTab],
+        },
+        user_agent: navigator.userAgent,
+      });
+    } catch (error) {
+      console.error("Error logging navigation:", error);
+    }
+  };
+
+  // Handler de mudança de tab com logging
+  const handleTabChange = (newTab: TabType) => {
+    if (newTab !== activeTab && userEmail) {
+      logNavigation(activeTab, newTab, userEmail);
+    }
+    setActiveTab(newTab);
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -49,6 +109,8 @@ const Admin = () => {
           navigate("/admin/login");
           return;
         }
+
+        setUserEmail(user.email || null);
 
         // Check if user has admin role
         const { data: roleData } = await supabase
@@ -153,7 +215,7 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen flex bg-background">
-      <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <AdminSidebar activeTab={activeTab} onTabChange={handleTabChange} />
       
       <main className="flex-1 overflow-y-auto">
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
