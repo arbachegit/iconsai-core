@@ -7,6 +7,20 @@ import { useToast } from "@/hooks/use-toast";
 import { KeyRound, Eye, EyeOff, Clock, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+const logPasswordRecoveryEvent = async (email: string, action: string, success: boolean, details?: Record<string, any>) => {
+  try {
+    await supabase.from("user_activity_logs").insert({
+      user_email: email,
+      action,
+      action_category: "PASSWORD_RECOVERY",
+      details: { success, timestamp: new Date().toISOString(), ...details },
+      user_agent: navigator.userAgent,
+    });
+  } catch (error) {
+    console.error("Failed to log password recovery event:", error);
+  }
+};
+
 const AdminResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -82,11 +96,16 @@ const AdminResetPassword = () => {
     setIsLoading(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email || "unknown";
+
       const { error } = await supabase.auth.updateUser({
         password: password,
       });
 
       if (error) throw error;
+
+      await logPasswordRecoveryEvent(userEmail, "Senha redefinida com sucesso", true);
 
       toast({
         title: "Senha atualizada",
@@ -96,6 +115,8 @@ const AdminResetPassword = () => {
       await supabase.auth.signOut();
       navigate("/admin/login");
     } catch (error: any) {
+      const { data: { session } } = await supabase.auth.getSession();
+      await logPasswordRecoveryEvent(session?.user?.email || "unknown", "Falha ao redefinir senha", false, { error: error.message });
       toast({
         title: "Erro ao redefinir senha",
         description: error.message,
@@ -127,12 +148,15 @@ const AdminResetPassword = () => {
 
       if (error) throw error;
 
+      await logPasswordRecoveryEvent(resendEmail, "Novo link de recuperação solicitado (link expirado)", true);
+
       toast({
         title: "Novo link enviado",
         description: "Verifique sua caixa de entrada. O link expira em 1 hora.",
       });
       setResendEmail("");
     } catch (error: any) {
+      await logPasswordRecoveryEvent(resendEmail, "Falha ao solicitar novo link", false, { error: error.message });
       toast({
         title: "Erro ao enviar",
         description: error.message,

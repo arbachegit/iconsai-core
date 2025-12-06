@@ -7,6 +7,20 @@ import { useToast } from "@/hooks/use-toast";
 import { Lock, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+const logPasswordRecoveryAttempt = async (email: string, action: string, success: boolean) => {
+  try {
+    await supabase.from("user_activity_logs").insert({
+      user_email: email,
+      action,
+      action_category: "PASSWORD_RECOVERY",
+      details: { success, timestamp: new Date().toISOString() },
+      user_agent: navigator.userAgent,
+    });
+  } catch (error) {
+    console.error("Failed to log password recovery attempt:", error);
+  }
+};
+
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,6 +83,8 @@ const AdminLogin = () => {
 
       if (error) throw error;
 
+      await logPasswordRecoveryAttempt(resetEmail, "Solicitação de recuperação de senha", true);
+
       toast({
         title: "Email enviado",
         description: "Verifique sua caixa de entrada para redefinir sua senha.",
@@ -76,6 +92,7 @@ const AdminLogin = () => {
       setShowForgotPassword(false);
       setResetEmail("");
     } catch (error: any) {
+      await logPasswordRecoveryAttempt(resetEmail, "Falha na solicitação de recuperação", false);
       toast({
         title: "Erro ao enviar email",
         description: error.message,
