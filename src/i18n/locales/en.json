@@ -302,5 +302,27 @@
     "studyDesc": "KnowRISK and ACC",
     "general": "General",
     "generalDesc": "Keep as is"
+  },
+  "contact": {
+    "title": "Contact Us",
+    "emailLabel": "Your Email",
+    "emailPlaceholder": "your@email.com",
+    "subjectLabel": "Subject",
+    "subjectPlaceholder": "What is your message about?",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Write your message here...",
+    "cancel": "Cancel",
+    "send": "Send",
+    "sending": "Sending...",
+    "successTitle": "Message sent!",
+    "successDescription": "We will get back to you soon.",
+    "errorTitle": "Error sending",
+    "errorDescription": "Please try again later.",
+    "invalidEmailTitle": "Invalid email",
+    "invalidEmailDescription": "Please enter a valid email address.",
+    "emailError": "Please enter a valid email (e.g., name@domain.com)",
+    "subjectError": "Subject must be at least 3 characters",
+    "messageError": "Message must be at least 10 characters",
+    "button": "Contact us"
   }
 }
