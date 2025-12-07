@@ -245,3 +245,5 @@ export const ChatConfigTab = () => {
     </div>
   );
 };
+
+export default ChatConfigTab;

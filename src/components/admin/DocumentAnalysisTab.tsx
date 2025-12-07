@@ -1206,3 +1206,5 @@ export const DocumentAnalysisTab = () => {
     </div>
   );
 };
+
+export default DocumentAnalysisTab;

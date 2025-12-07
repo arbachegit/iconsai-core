@@ -391,3 +391,5 @@ export const ConversationsTab = () => {
     </div>
   );
 };
+
+export default ConversationsTab;

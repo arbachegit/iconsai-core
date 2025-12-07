@@ -379,3 +379,5 @@ export const RagDiagnosticsTab = () => {
     </div>
   );
 };
+
+export default RagDiagnosticsTab;

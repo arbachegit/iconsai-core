@@ -1176,3 +1176,5 @@ export function ChatScopeConfigTab() {
       </div>
     </div>;
 }
+
+export default ChatScopeConfigTab;
