@@ -1343,7 +1343,7 @@ export const TagsManagementTab = () => {
         {/* Lado Esquerdo - Grid 2x2 */}
         <div className="grid grid-cols-2 gap-2">
           {/* Linha 1: Taxonomia */}
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+          <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4 mr-2" />
             Importar Taxonomia
           </Button>
@@ -1354,7 +1354,7 @@ export const TagsManagementTab = () => {
             className="hidden" 
             onChange={handleImportTaxonomy} 
           />
-          <Button variant="outline" size="sm" onClick={handleExportTaxonomy}>
+          <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleExportTaxonomy}>
             <Download className="h-4 w-4 mr-2" />
             Exportar Taxonomia
           </Button>
