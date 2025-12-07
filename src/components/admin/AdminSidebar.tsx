@@ -208,6 +208,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "suggestion-audit" as TabType, label: "Auditoria Sugestões", icon: Sparkles },
         { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
         { id: "contact-messages" as TabType, label: "Mensagens Contato", icon: MessageSquare },
+        { id: "documentation-sync" as TabType, label: "Sincronizar Docs", icon: RefreshCw },
       ]
     },
     {
@@ -218,7 +219,6 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "architecture" as TabType, label: "Arquitetura", icon: Cpu },
         { id: "gmail" as TabType, label: "Gmail", icon: Mail },
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
-        { id: "documentation-sync" as TabType, label: "Sincronizar Docs", icon: RefreshCw },
       ]
     }
   ];
