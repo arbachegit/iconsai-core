@@ -193,6 +193,136 @@ function detectTypo(tag1: string, tag2: string): boolean {
   return false;
 }
 
+// Dicionário de sinônimos em português (baseado em estrutura WordNet-like)
+const portugueseSynonyms: Record<string, string[]> = {
+  // Healthcare - Termos médicos
+  'doenca': ['enfermidade', 'patologia', 'molestia', 'mal', 'afeccao'],
+  'tratamento': ['terapia', 'cura', 'intervencao', 'procedimento'],
+  'medico': ['doutor', 'clinico', 'facultativo', 'profissional de saude'],
+  'hospital': ['clinica', 'unidade de saude', 'centro medico', 'nosocômio'],
+  'paciente': ['doente', 'enfermo', 'cliente', 'usuario'],
+  'remedio': ['medicamento', 'farmaco', 'droga', 'medicina'],
+  'sintoma': ['sinal', 'manifestacao', 'indicador'],
+  'dor': ['algias', 'sofrimento', 'incomodo', 'desconforto'],
+  'exame': ['teste', 'avaliacao', 'analise', 'investigacao'],
+  'consulta': ['atendimento', 'visita', 'encontro'],
+  'cirurgia': ['operacao', 'intervencao cirurgica', 'procedimento cirurgico'],
+  'diagnostico': ['avaliacao', 'parecer', 'laudo'],
+  'prognostico': ['previsao', 'expectativa', 'perspectiva'],
+  'receita': ['prescricao', 'formula'],
+  'vacina': ['imunizante', 'inoculacao'],
+  'febre': ['hipertermia', 'pirexia', 'temperatura elevada'],
+  'infeccao': ['contaminacao', 'sepse'],
+  'alergia': ['hipersensibilidade', 'reacao alergica'],
+  'inflamacao': ['flogose', 'processo inflamatorio'],
+  'hemorragia': ['sangramento', 'perda sanguinea'],
+  'ferida': ['lesao', 'machucado', 'corte', 'ferimento'],
+  'fratura': ['quebra', 'ruptura ossea'],
+  'gravidez': ['gestacao', 'prenhez'],
+  'parto': ['nascimento', 'delivery', 'parturicao'],
+  'obito': ['morte', 'falecimento', 'oximo letalis'],
+  
+  // Healthcare - Anatomia
+  'coracao': ['miocardio', 'orgao cardiaco'],
+  'cerebro': ['encefalo', 'massa encefalica'],
+  'pulmao': ['orgao pulmonar', 'aparelho respiratorio'],
+  'estomago': ['ventriculo', 'orgao gastrico'],
+  'intestino': ['tubo digestivo', 'alca intestinal'],
+  'figado': ['hepatico', 'orgao hepatico'],
+  'rim': ['renal', 'orgao renal'],
+  'osso': ['estrutura ossea', 'tecido osseo'],
+  'musculo': ['tecido muscular', 'fibra muscular'],
+  'sangue': ['fluido sanguineo', 'tecido hematico'],
+  'pele': ['cútis', 'derme', 'tegumento', 'epiderme'],
+  'cabeca': ['cranio', 'calota craniana'],
+  'olho': ['globo ocular', 'orgao visual'],
+  'orelha': ['ouvido', 'pavilhao auricular'],
+  'boca': ['cavidade oral', 'cavidade bucal'],
+  'dente': ['elemento dental', 'odonto'],
+  
+  // Termos gerais de negócio
+  'relatorio': ['informe', 'parecer', 'documento'],
+  'analise': ['avaliacao', 'estudo', 'exame', 'investigacao'],
+  'processo': ['procedimento', 'tramite', 'fluxo'],
+  'gestao': ['administracao', 'gerenciamento', 'gerencia'],
+  'equipe': ['time', 'grupo', 'pessoal', 'staff'],
+  'cliente': ['consumidor', 'usuario', 'comprador'],
+  'fornecedor': ['provedor', 'abastecedor', 'distribuidor'],
+  'custo': ['despesa', 'gasto', 'dispendio'],
+  'faturamento': ['receita', 'entrada', 'ganho'],
+  'lucro': ['ganho', 'rendimento', 'beneficio'],
+  'prejuizo': ['perda', 'deficit', 'dano'],
+  'contrato': ['acordo', 'pacto', 'convenio'],
+  'pagamento': ['quitacao', 'liquidacao', 'remessa'],
+  'compra': ['aquisicao', 'obtencao'],
+  'venda': ['comercializacao', 'alienacao'],
+  'estoque': ['inventario', 'deposito', 'armazenamento'],
+  'produto': ['mercadoria', 'item', 'artigo'],
+  'servico': ['prestacao', 'atendimento'],
+  'qualidade': ['excelencia', 'padrao'],
+  'problema': ['questao', 'dificuldade', 'obstáculo', 'entrave'],
+  'solucao': ['resolucao', 'resposta', 'alternativa'],
+  'objetivo': ['meta', 'alvo', 'finalidade', 'proposito'],
+  'resultado': ['desfecho', 'efeito', 'consequencia'],
+  'reuniao': ['encontro', 'assembleia', 'junta'],
+  'projeto': ['empreendimento', 'iniciativa', 'plano'],
+  'tarefa': ['atividade', 'incumbencia', 'atribuicao'],
+  'prazo': ['deadline', 'termo', 'limite'],
+  
+  // Tecnologia
+  'sistema': ['plataforma', 'solucao', 'aplicacao'],
+  'dados': ['informacoes', 'registros'],
+  'usuario': ['utilizador', 'operador'],
+  'erro': ['falha', 'bug', 'defeito', 'problema'],
+  'atualizacao': ['update', 'upgrade', 'revisao'],
+  'configuracao': ['setup', 'parametrizacao', 'ajuste'],
+  'seguranca': ['protecao', 'salvaguarda'],
+  'acesso': ['entrada', 'permissao', 'autorizacao'],
+  'arquivo': ['ficheiro', 'documento', 'file'],
+  'pasta': ['diretorio', 'folder'],
+  'backup': ['copia de seguranca', 'salvaguarda'],
+  'rede': ['network', 'malha'],
+  
+  // Adjetivos comuns
+  'importante': ['relevante', 'significativo', 'essencial', 'crucial'],
+  'urgente': ['emergencial', 'prioritario', 'imediato'],
+  'cronico': ['persistente', 'prolongado', 'continuo'],
+  'agudo': ['intenso', 'severo', 'grave'],
+  'normal': ['regular', 'comum', 'habitual', 'padrao'],
+  'anormal': ['atipico', 'irregular', 'anomalo'],
+  'alto': ['elevado', 'aumentado'],
+  'baixo': ['reduzido', 'diminuido'],
+  'grande': ['extenso', 'amplo', 'vasto'],
+  'pequeno': ['reduzido', 'diminuto', 'menor'],
+};
+
+// Detectar sinonímia baseada em dicionário de sinônimos PT
+function detectSynonymy(tag1: string, tag2: string): boolean {
+  const n1 = normalize(tag1);
+  const n2 = normalize(tag2);
+  
+  // Verificar se são sinônimos diretos
+  for (const [term, synonyms] of Object.entries(portugueseSynonyms)) {
+    const normalizedTerm = normalize(term);
+    const normalizedSynonyms = synonyms.map(s => normalize(s));
+    
+    // Caso 1: tag1 é o termo principal e tag2 está nos sinônimos
+    if (n1 === normalizedTerm && normalizedSynonyms.includes(n2)) {
+      return true;
+    }
+    // Caso 2: tag2 é o termo principal e tag1 está nos sinônimos
+    if (n2 === normalizedTerm && normalizedSynonyms.includes(n1)) {
+      return true;
+    }
+    // Caso 3: Ambos estão na lista de sinônimos (são sinônimos entre si)
+    if (normalizedSynonyms.includes(n1) && normalizedSynonyms.includes(n2)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 // Dicionário expandido de equivalências PT-EN para healthcare e termos gerais
 const languageEquivalents: Record<string, string[]> = {
   // Healthcare - Core Terms
@@ -383,6 +513,13 @@ export function suggestMergeReasons(tag1: string, tag2: string): SuggestedReason
   
   const explanations: string[] = [];
   let confidence = 0;
+  
+  // 0. Verificar sinonímia (dicionário de sinônimos PT)
+  if (detectSynonymy(tag1, tag2)) {
+    reasons.synonymy = true;
+    explanations.push(`Detectada sinonímia: "${tag1}" ↔ "${tag2}"`);
+    confidence += 0.88;
+  }
   
   // 1. Verificar variação gramatical (plural/singular)
   if (detectPluralPattern(tag1, tag2)) {
