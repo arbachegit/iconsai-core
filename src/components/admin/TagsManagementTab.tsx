@@ -25,6 +25,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -137,6 +148,21 @@ export const TagsManagementTab = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [mlEventsOpen, setMlEventsOpen] = useState(false);
   const [mlEventsTimeRange, setMlEventsTimeRange] = useState<number>(30); // days
+  
+  // Delete confirmation modal state
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    open: boolean;
+    ids: string[];
+    tagName: string;
+    isGeneric: boolean;
+    doesNotFitCategories: boolean;
+  }>({
+    open: false,
+    ids: [],
+    tagName: '',
+    isGeneric: false,
+    doesNotFitCategories: false,
+  });
   
   // Sync state with admin settings
   useEffect(() => {
@@ -435,11 +461,20 @@ export const TagsManagementTab = () => {
     }
   };
 
-  // Handle delete duplicate tags
-  const handleDeleteDuplicateTags = async (ids: string[], tagName: string) => {
-    if (!confirm(`Deseja excluir as ${ids.length} ocorrências de "${tagName}"? Esta ação não pode ser desfeita.`)) {
-      return;
-    }
+  // Open delete confirmation modal
+  const openDeleteConfirmModal = (ids: string[], tagName: string) => {
+    setDeleteConfirmModal({
+      open: true,
+      ids,
+      tagName,
+      isGeneric: false,
+      doesNotFitCategories: false,
+    });
+  };
+
+  // Confirm delete duplicate tags (called after modal confirmation)
+  const confirmDeleteDuplicateTags = async () => {
+    const { ids, tagName, isGeneric, doesNotFitCategories } = deleteConfirmModal;
     
     try {
       const { error } = await supabase
@@ -449,15 +484,33 @@ export const TagsManagementTab = () => {
         
       if (error) throw error;
       
+      const reasons: string[] = [];
+      if (isGeneric) reasons.push('Termo genérico');
+      if (doesNotFitCategories) reasons.push('Não se encaixa nas categorias');
+      
       await logTagManagementEvent({
         input_state: { tags_involved: ids.map(id => ({ id, name: tagName, type: 'parent' as const })) },
         action_type: 'delete_orphan',
-        user_decision: { action: 'delete_duplicates', source_tags_removed: ids },
-        rationale: `Exclusão de ${ids.length} duplicatas: ${tagName}`,
+        user_decision: { 
+          action: 'delete_duplicates', 
+          source_tags_removed: ids,
+          reason_generic: isGeneric,
+          reason_no_fit_categories: doesNotFitCategories,
+        },
+        rationale: `Exclusão de ${ids.length} duplicatas: ${tagName}. Motivos: ${reasons.join(', ')}`,
       });
       
       toast.success(`${ids.length} tags excluídas com sucesso`);
       queryClient.invalidateQueries({ queryKey: ['all-tags'] });
+      
+      // Close modal and reset state
+      setDeleteConfirmModal({
+        open: false,
+        ids: [],
+        tagName: '',
+        isGeneric: false,
+        doesNotFitCategories: false,
+      });
     } catch (error: any) {
       toast.error(`Erro ao excluir tags: ${error.message}`);
     }
@@ -2240,7 +2293,7 @@ export const TagsManagementTab = () => {
                         size="sm" 
                         variant="ghost" 
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDeleteDuplicateTags(ids, tag_name)}
+                        onClick={() => openDeleteConfirmModal(ids, tag_name)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -2280,7 +2333,7 @@ export const TagsManagementTab = () => {
                         size="sm" 
                         variant="ghost" 
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDeleteDuplicateTags(ids, `${tag1} / ${tag2}`)}
+                        onClick={() => openDeleteConfirmModal(ids, `${tag1} / ${tag2}`)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -2343,7 +2396,7 @@ export const TagsManagementTab = () => {
                               size="sm" 
                               variant="ghost" 
                               className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => handleDeleteDuplicateTags([id1, id2], `${tag1} / ${tag2}`)}
+                              onClick={() => openDeleteConfirmModal([id1, id2], `${tag1} / ${tag2}`)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -3316,6 +3369,85 @@ export const TagsManagementTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Modal with Required Justification */}
+      <AlertDialog 
+        open={deleteConfirmModal.open} 
+        onOpenChange={(open) => !open && setDeleteConfirmModal(prev => ({ ...prev, open: false }))}
+      >
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Confirmar Exclusão de Tag
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>
+                  Você está prestes a excluir <strong>{deleteConfirmModal.ids.length}</strong> ocorrência(s) de "<strong>{deleteConfirmModal.tagName}</strong>".
+                </p>
+                
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                  <p className="text-amber-200 text-sm font-medium mb-3">
+                    ⚠️ Para confirmar a exclusão, selecione pelo menos um motivo:
+                  </p>
+                  
+                  <div className="space-y-3">
+                    {/* Option 1: Generic term */}
+                    <div className="flex items-start gap-3 p-2 rounded bg-background/50">
+                      <Checkbox
+                        id="reason-generic"
+                        checked={deleteConfirmModal.isGeneric}
+                        onCheckedChange={(checked) => 
+                          setDeleteConfirmModal(prev => ({ ...prev, isGeneric: checked === true }))
+                        }
+                      />
+                      <label 
+                        htmlFor="reason-generic" 
+                        className="text-sm text-foreground cursor-pointer leading-relaxed"
+                      >
+                        Está deletando porque o <strong>termo é genérico</strong> e não serve como TAG
+                      </label>
+                    </div>
+                    
+                    {/* Option 2: Does not fit categories */}
+                    <div className="flex items-start gap-3 p-2 rounded bg-background/50">
+                      <Checkbox
+                        id="reason-no-fit"
+                        checked={deleteConfirmModal.doesNotFitCategories}
+                        onCheckedChange={(checked) => 
+                          setDeleteConfirmModal(prev => ({ ...prev, doesNotFitCategories: checked === true }))
+                        }
+                      />
+                      <label 
+                        htmlFor="reason-no-fit" 
+                        className="text-sm text-foreground cursor-pointer leading-relaxed"
+                      >
+                        Está deletando porque o <strong>termo não se encaixa</strong> a nenhuma das categorias dos documentos inseridos
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-xs text-muted-foreground">
+                  Esta ação é <strong>irreversível</strong> e será registrada no log de atividades.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteDuplicateTags}
+              disabled={!deleteConfirmModal.isGeneric && !deleteConfirmModal.doesNotFitCategories}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir Tag
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
