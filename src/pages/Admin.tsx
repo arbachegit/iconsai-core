@@ -37,6 +37,7 @@ const SuggestionAuditTab = lazy(() => import("@/components/admin/SuggestionAudit
 const ContactMessagesTab = lazy(() => import("@/components/admin/ContactMessagesTab").then(m => ({ default: m.ContactMessagesTab })));
 const DocumentationSyncTab = lazy(() => import("@/components/admin/DocumentationSyncTab").then(m => ({ default: m.DocumentationSyncTab })));
 const TagsManagementTab = lazy(() => import("@/components/admin/TagsManagementTab").then(m => ({ default: m.TagsManagementTab })));
+const MLDashboardTab = lazy(() => import("@/components/admin/MLDashboardTab").then(m => ({ default: m.MLDashboardTab })));
 
 // Loading fallback component
 const TabLoadingFallback = () => (
@@ -45,7 +46,7 @@ const TabLoadingFallback = () => (
   </div>
 );
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -77,6 +78,7 @@ const TAB_LABELS: Record<TabType, string> = {
   "suggestion-audit": "Auditoria Sugestões",
   "contact-messages": "Mensagens Contato",
   "documentation-sync": "Sincronizar Docs",
+  "ml-dashboard": "Machine Learning ML",
 };
 
 const Admin = () => {
@@ -210,6 +212,7 @@ const Admin = () => {
         case "documentation-sync": return <DocumentationSyncTab />;
         case "images": return <ImageCacheTab />;
         case "youtube": return <YouTubeCacheTab />;
+        case "ml-dashboard": return <MLDashboardTab />;
         default: return <DashboardTab />;
       }
     })();

@@ -44,7 +44,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -206,6 +206,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "document-routing-logs" as TabType, label: "Logs de Roteamento", icon: Route },
         { id: "tag-modification-logs" as TabType, label: "Logs de Mescla Tags", icon: Tags },
         { id: "suggestion-audit" as TabType, label: "Auditoria Sugestões", icon: Sparkles },
+        { id: "ml-dashboard" as TabType, label: "Machine Learning ML", icon: Brain },
         { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
         { id: "contact-messages" as TabType, label: "Mensagens Contato", icon: MessageSquare },
         { id: "documentation-sync" as TabType, label: "Sincronizar Docs", icon: RefreshCw },
