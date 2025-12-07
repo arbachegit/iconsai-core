@@ -44,7 +44,7 @@ interface VirtualizedTagsTableProps {
   onSort: (column: "tag_name" | "confidence" | "target_chat") => void;
   onCreateChild: (parentId: string) => void;
   onEdit: (tag: Tag) => void;
-  onDelete: (ids: string[], tagName: string) => void;
+  onDelete: (ids: string[], tagName: string, documentId?: string) => void;
 }
 
 export const VirtualizedTagsTable = memo(({
@@ -315,7 +315,7 @@ export const VirtualizedTagsTable = memo(({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onDelete([tag.id], tag.tag_name)}
+                      onClick={() => onDelete([tag.id], tag.tag_name, tag.document_id)}
                       className="h-7 w-7 p-0"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
