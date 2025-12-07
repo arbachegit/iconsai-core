@@ -37,6 +37,8 @@ export interface TagManagementEventInput {
     exported_count?: number;
     action?: string;
     format?: string;
+    // Auto-suggestion tracking
+    auto_suggestion_used?: 'accepted' | 'modified' | 'ignored' | 'none';
     // Data Science merge reasons (7 motivos de unificação)
     merge_reasons?: {
       synonymy?: boolean;             // Sinonímia - mesmo significado

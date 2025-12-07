@@ -398,6 +398,10 @@ export const TagsManagementTab = () => {
       };
       
       let totalMergesWithReasons = 0;
+      let autoSuggestionAccepted = 0;
+      let autoSuggestionModified = 0;
+      let autoSuggestionIgnored = 0;
+      
       (data || []).forEach(event => {
         if (event.action_type?.includes('merge') && event.user_decision) {
           const decision = typeof event.user_decision === 'string' 
@@ -413,6 +417,17 @@ export const TagsManagementTab = () => {
             if (decision.merge_reasons.typo) mergeReasonsCounts.typo++;
             if (decision.merge_reasons.languageEquivalence) mergeReasonsCounts.languageEquivalence++;
             if (decision.merge_reasons.generalization) mergeReasonsCounts.generalization++;
+            
+            // Track auto-suggestion usage
+            if (decision.auto_suggestion_used !== undefined) {
+              if (decision.auto_suggestion_used === 'accepted') {
+                autoSuggestionAccepted++;
+              } else if (decision.auto_suggestion_used === 'modified') {
+                autoSuggestionModified++;
+              } else if (decision.auto_suggestion_used === 'ignored') {
+                autoSuggestionIgnored++;
+              }
+            }
           }
         }
       });
@@ -436,6 +451,17 @@ export const TagsManagementTab = () => {
         }))
         .filter(d => d.count > 0);
 
+      // Auto-suggestion stats
+      const autoSuggestionStats = {
+        accepted: autoSuggestionAccepted,
+        modified: autoSuggestionModified,
+        ignored: autoSuggestionIgnored,
+        total: autoSuggestionAccepted + autoSuggestionModified + autoSuggestionIgnored,
+        acceptanceRate: (autoSuggestionAccepted + autoSuggestionModified + autoSuggestionIgnored) > 0
+          ? Math.round((autoSuggestionAccepted / (autoSuggestionAccepted + autoSuggestionModified + autoSuggestionIgnored)) * 100)
+          : 0
+      };
+
       return {
         total: data?.length || 0,
         byType,
@@ -444,7 +470,8 @@ export const TagsManagementTab = () => {
         pieData,
         decisionTimeData,
         mergeReasonsData,
-        totalMergesWithReasons
+        totalMergesWithReasons,
+        autoSuggestionStats
       };
     },
   });
@@ -1907,6 +1934,62 @@ export const TagsManagementTab = () => {
                   <p className="text-xs text-muted-foreground">
                     <strong className="text-cyan-300">Taxonomia DS:</strong> Sinonímia, Variação Gramatical (Lematização), 
                     Variação de Grafia, Siglas/Acrônimos, Erros de Digitação, Equivalência de Idioma, Generalização Hierárquica.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Auto-Suggestion Statistics */}
+            {mlEvents?.autoSuggestionStats && mlEvents.autoSuggestionStats.total > 0 && (
+              <div className="p-4 bg-background/30 rounded-lg border border-purple-500/20">
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-400" />
+                  Estatísticas de Auto-Sugestão (Heurísticas)
+                  <Badge variant="outline" className="ml-2 text-xs bg-purple-500/10 text-purple-300 border-purple-500/30">
+                    {mlEvents.autoSuggestionStats.total} merges analisados
+                  </Badge>
+                </h4>
+                
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-center">
+                    <div className="text-2xl font-bold text-green-400">{mlEvents.autoSuggestionStats.accepted}</div>
+                    <div className="text-xs text-muted-foreground">Aceitas</div>
+                    <div className="text-[10px] text-green-400/80">100% como sugerido</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-center">
+                    <div className="text-2xl font-bold text-amber-400">{mlEvents.autoSuggestionStats.modified}</div>
+                    <div className="text-xs text-muted-foreground">Modificadas</div>
+                    <div className="text-[10px] text-amber-400/80">Ajustadas pelo admin</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-center">
+                    <div className="text-2xl font-bold text-red-400">{mlEvents.autoSuggestionStats.ignored}</div>
+                    <div className="text-xs text-muted-foreground">Ignoradas</div>
+                    <div className="text-[10px] text-red-400/80">Seleção manual</div>
+                  </div>
+                </div>
+                
+                {/* Acceptance Rate Bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">Taxa de Aceitação</span>
+                    <span className={`font-medium ${
+                      mlEvents.autoSuggestionStats.acceptanceRate >= 70 ? 'text-green-400' :
+                      mlEvents.autoSuggestionStats.acceptanceRate >= 40 ? 'text-amber-400' : 'text-red-400'
+                    }`}>
+                      {mlEvents.autoSuggestionStats.acceptanceRate}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-500 ${
+                        mlEvents.autoSuggestionStats.acceptanceRate >= 70 ? 'bg-green-500' :
+                        mlEvents.autoSuggestionStats.acceptanceRate >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${mlEvents.autoSuggestionStats.acceptanceRate}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Quanto maior a taxa, melhor a precisão das heurísticas (Levenshtein, regex plural, detecção de siglas).
                   </p>
                 </div>
               </div>
