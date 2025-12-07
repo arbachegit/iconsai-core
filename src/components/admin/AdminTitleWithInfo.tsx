@@ -38,10 +38,10 @@ export const AdminTitleWithInfo = ({
   };
 
   return (
-    <div className={cn("flex items-center gap-3", className)}>
-      {Icon && <Icon className={cn(iconSizes[level], "text-primary")} />}
+    <div className={cn("flex items-center gap-2", className)}>
+      {Icon && <Icon className={cn(iconSizes[level], "text-primary flex-shrink-0")} />}
       
-      <HeadingTag className={headingClasses[level]}>
+      <HeadingTag className={cn(headingClasses[level], "leading-none")}>
         {title}
       </HeadingTag>
 
