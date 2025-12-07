@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 
 interface Tag {
   id: string;
@@ -63,6 +64,12 @@ export const DuplicatesPanel = memo(({
   onDelete,
   onRejectDuplicate,
 }: DuplicatesPanelProps) => {
+  const [openSections, setOpenSections] = useState({
+    exact: true,
+    semantic: true,
+    children: true,
+  });
+
   const totalChildDuplicates = similarChildTagsPerParent.reduce(
     (sum, p) => sum + p.pairs.length, 0
   );
@@ -83,14 +90,22 @@ export const DuplicatesPanel = memo(({
         </h3>
       </div>
       
-      {/* Exact Duplicates */}
+      {/* Exact Duplicates - Collapsible */}
       {duplicateParentTags.length > 0 && (
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Badge variant="destructive" className="text-xs">Exatas</Badge>
-            <span className="text-sm text-muted-foreground">Tags com nome idêntico</span>
-          </div>
-          <div className="space-y-2">
+        <Collapsible 
+          open={openSections.exact} 
+          onOpenChange={(open) => setOpenSections(prev => ({ ...prev, exact: open }))}
+          className="mb-4"
+        >
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-red-500/10 border border-red-500/30 rounded hover:bg-red-500/20 transition-colors cursor-pointer">
+            <div className="flex items-center gap-2">
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", !openSections.exact && "-rotate-90")} />
+              <Badge variant="destructive" className="text-xs">Exatas</Badge>
+              <span className="text-sm text-muted-foreground">Tags com nome idêntico</span>
+              <Badge variant="outline" className="text-xs">{duplicateParentTags.length}</Badge>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 space-y-2">
             {duplicateParentTags.map(({ tag_name, count, ids }) => (
               <div key={tag_name} className="flex items-center justify-between p-2 bg-red-500/10 border border-red-500/30 rounded">
                 <div className="flex items-center gap-2">
@@ -120,21 +135,29 @@ export const DuplicatesPanel = memo(({
                 </div>
               </div>
             ))}
-          </div>
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
-      {/* Semantic Duplicates */}
+      {/* Semantic Duplicates - Collapsible */}
       {semanticDuplicates.length > 0 && (
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Badge className="text-xs bg-purple-500/20 text-purple-300 border-purple-500/30">
-              <Sparkles className="h-3 w-3 mr-1" />
-              Semânticas
-            </Badge>
-            <span className="text-sm text-muted-foreground">Tags com significado similar</span>
-          </div>
-          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+        <Collapsible 
+          open={openSections.semantic} 
+          onOpenChange={(open) => setOpenSections(prev => ({ ...prev, semantic: open }))}
+          className="mb-4"
+        >
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-purple-500/10 border border-purple-500/30 rounded hover:bg-purple-500/20 transition-colors cursor-pointer">
+            <div className="flex items-center gap-2">
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", !openSections.semantic && "-rotate-90")} />
+              <Badge className="text-xs bg-purple-500/20 text-purple-300 border-purple-500/30">
+                <Sparkles className="h-3 w-3 mr-1" />
+                Semânticas
+              </Badge>
+              <span className="text-sm text-muted-foreground">Tags com significado similar</span>
+              <Badge variant="outline" className="text-xs">{semanticDuplicates.length}</Badge>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 space-y-2 max-h-[300px] overflow-y-auto">
             {semanticDuplicates.slice(0, 15).map(({ tag1, tag2, similarity, ids }, idx) => (
               <div key={idx} className="flex items-center justify-between p-2 bg-purple-500/10 border border-purple-500/30 rounded">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -173,23 +196,30 @@ export const DuplicatesPanel = memo(({
                 +{semanticDuplicates.length - 15} outras duplicatas semânticas
               </p>
             )}
-          </div>
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
-      {/* Similar Child Tags */}
+      {/* Similar Child Tags - Collapsible */}
       {similarChildTagsPerParent.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Badge className="text-xs bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
-              <Tags className="h-3 w-3 mr-1" />
-              Filhas Semelhantes
-            </Badge>
-            <span className="text-sm text-muted-foreground">
-              Tags filhas similares dentro do mesmo pai ({totalChildDuplicates})
-            </span>
-          </div>
-          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+        <Collapsible 
+          open={openSections.children} 
+          onOpenChange={(open) => setOpenSections(prev => ({ ...prev, children: open }))}
+        >
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-cyan-500/10 border border-cyan-500/30 rounded hover:bg-cyan-500/20 transition-colors cursor-pointer">
+            <div className="flex items-center gap-2">
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", !openSections.children && "-rotate-90")} />
+              <Badge className="text-xs bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+                <Tags className="h-3 w-3 mr-1" />
+                Filhas Semelhantes
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                Tags filhas similares dentro do mesmo pai
+              </span>
+              <Badge variant="outline" className="text-xs">{totalChildDuplicates}</Badge>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 space-y-3 max-h-[400px] overflow-y-auto">
             {similarChildTagsPerParent.map(({ parentId, parentName, pairs }) => (
               <Collapsible key={parentId}>
                 <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-cyan-500/10 border border-cyan-500/30 rounded hover:bg-cyan-500/20 transition-colors">
@@ -242,8 +272,8 @@ export const DuplicatesPanel = memo(({
                 </CollapsibleContent>
               </Collapsible>
             ))}
-          </div>
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
     </Card>
   );
