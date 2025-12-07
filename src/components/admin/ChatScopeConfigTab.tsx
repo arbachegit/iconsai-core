@@ -34,6 +34,7 @@ interface ChatConfig {
     tag_type: "parent" | "child";
     avg_confidence: number;
     count: number;
+    parent_tag_name?: string;
   }>;
   phonetic_map: Record<string, string>;
   duplicate_similarity_threshold?: number;
@@ -405,7 +406,17 @@ export function ChatScopeConfigTab() {
                       
                       const allParentTags = config.document_tags_data
                         .filter(t => t.tag_type === "parent")
-                        .filter(t => !searchTerm || t.tag_name.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .filter(t => {
+                          if (!searchTerm) return true;
+                          const term = searchTerm.toLowerCase();
+                          // Match direto no nome do pai
+                          if (t.tag_name.toLowerCase().includes(term)) return true;
+                          // Match em qualquer filho deste pai
+                          const hasMatchingChild = config.document_tags_data
+                            .filter(c => c.tag_type === "child" && c.parent_tag_name === t.tag_name)
+                            .some(c => c.tag_name.toLowerCase().includes(term));
+                          return hasMatchingChild;
+                        })
                         .sort((a, b) => {
                           if (sortColumn === 'tag_name') {
                             const result = a.tag_name.localeCompare(b.tag_name, 'pt-BR');
@@ -536,7 +547,13 @@ export function ChatScopeConfigTab() {
                       const searchTerm = config.chat_type === "study" ? studySearchTerm : healthSearchTerm;
                       const allChildTags = config.document_tags_data
                         .filter(t => t.tag_type === "child")
-                        .filter(t => !searchTerm || t.tag_name.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .filter(t => {
+                          if (!searchTerm) return true;
+                          const term = searchTerm.toLowerCase();
+                          // Match no nome do filho OU no nome do pai
+                          return t.tag_name.toLowerCase().includes(term) || 
+                                 (t.parent_tag_name && t.parent_tag_name.toLowerCase().includes(term));
+                        })
                         .sort((a, b) => a.tag_name.localeCompare(b.tag_name, 'pt-BR'));
                       const totalChildTags = config.document_tags_data.filter(t => t.tag_type === "child").length;
                       if (totalChildTags === 0) return null;
@@ -549,7 +566,12 @@ export function ChatScopeConfigTab() {
                           <div className="p-3 bg-muted/50 rounded-lg max-h-40 overflow-y-auto">
                             <div className="flex flex-wrap gap-1.5">
                               {allChildTags.map((tag, idx) => (
-                                <Badge key={idx} variant="secondary" className="text-xs">
+                                <Badge key={idx} variant="secondary" className="text-xs flex items-center gap-1">
+                                  {tag.parent_tag_name && (
+                                    <span className="text-muted-foreground text-[10px]">
+                                      {tag.parent_tag_name} →
+                                    </span>
+                                  )}
                                   {tag.tag_name}
                                 </Badge>
                               ))}
