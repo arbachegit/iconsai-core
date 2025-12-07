@@ -1407,12 +1407,6 @@ export const TagsManagementTab = () => {
         </Button>
       </div>
 
-      {/* Orphaned Tags Panel */}
-      <OrphanedTagsPanel 
-        orphanedTags={orphanedTags} 
-        parentTags={parentTags.map(p => ({ id: p.id, tag_name: p.tag_name }))} 
-      />
-
       {/* Consolidated Metrics Dashboard */}
       <Card className="p-6 border-primary/30 bg-gradient-to-r from-primary/5 to-purple-500/5">
         <div className="flex items-center gap-2 mb-6">
@@ -2119,6 +2113,12 @@ export const TagsManagementTab = () => {
           </Card>
         </Collapsible>
       )}
+
+      {/* Orphaned Tags Panel */}
+      <OrphanedTagsPanel 
+        orphanedTags={orphanedTags} 
+        parentTags={parentTags.map(p => ({ id: p.id, tag_name: p.tag_name }))} 
+      />
 
       {/* Duplicate Detection - Combined Section */}
       {(duplicateParentTags.length > 0 || semanticDuplicates.length > 0 || similarChildTagsPerParent.length > 0) && (
