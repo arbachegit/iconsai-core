@@ -1107,7 +1107,12 @@ export const parseChartData = (content: string): { chartData: ChartData | null; 
       if (jsonStart !== -1 && jsonEnd !== -1) {
         const jsonStr = content.slice(jsonStart, jsonEnd);
         const chartData = JSON.parse(jsonStr) as ChartData;
-        const cleanedContent = content.replace(/CHART_DATA:\s*\{[\s\S]*?\}\s*(?=\n|$)/, '').trim();
+        // Use calculated indices to remove entire CHART_DATA block (not regex)
+        const chartDataMarkerIndex = content.indexOf('CHART_DATA:');
+        const cleanedContent = (
+          content.slice(0, chartDataMarkerIndex) + 
+          content.slice(jsonEnd)
+        ).trim();
         return { chartData, cleanedContent };
       }
     } catch (e) {
