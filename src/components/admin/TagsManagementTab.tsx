@@ -104,6 +104,7 @@ export const TagsManagementTab = () => {
   const [filterSource, setFilterSource] = useState<string>("all");
   const [filterChat, setFilterChat] = useState<string>("all");
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortColumn, setSortColumn] = useState<"tag_name" | "confidence" | "target_chat">("tag_name");
@@ -782,6 +783,7 @@ export const TagsManagementTab = () => {
     paginatedParentTags,
     totalPages,
     childTagsCount,
+    documentCountByTagName,
   } = useTagsData({
     allTags,
     filterSource,
@@ -854,6 +856,33 @@ export const TagsManagementTab = () => {
       return newSet;
     });
   }, []);
+
+  // Toggle select single tag - memoized
+  const toggleSelectTag = useCallback((tagId: string) => {
+    setSelectedTags(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(tagId)) {
+        newSet.delete(tagId);
+      } else {
+        newSet.add(tagId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Select/Deselect all tags - memoized
+  const handleSelectAll = useCallback((selected: boolean) => {
+    if (selected) {
+      const allIds: string[] = [];
+      sortedParentTags.forEach(parent => {
+        allIds.push(parent.id);
+        (childTagsMap[parent.id] || []).forEach(child => allIds.push(child.id));
+      });
+      setSelectedTags(new Set(allIds));
+    } else {
+      setSelectedTags(new Set());
+    }
+  }, [sortedParentTags, childTagsMap]);
 
   const startIndex = (currentPage - 1) * itemsPerPage;
 
@@ -2750,6 +2779,42 @@ export const TagsManagementTab = () => {
           </span>
         </div>
         
+        {/* Bulk Actions Bar */}
+        {selectedTags.size > 0 && (
+          <div className="bg-muted/50 border rounded-lg p-3 mb-4 flex items-center justify-between animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="text-sm">
+                {selectedTags.size} tag(s) selecionada(s)
+              </Badge>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setSelectedTags(new Set())}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Limpar seleção
+              </Button>
+            </div>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => {
+                // Get unique tag names from selected tags
+                const selectedTagData = allTags?.filter(t => selectedTags.has(t.id)) || [];
+                const uniqueTagNames = [...new Set(selectedTagData.map(t => t.tag_name))];
+                
+                // Open bulk delete modal
+                toast.info(`${uniqueTagNames.length} tag(s) únicas selecionadas para exclusão em massa`, {
+                  description: "Use o modal de exclusão individual para cada tag ou selecione uma de cada vez."
+                });
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir Selecionadas
+            </Button>
+          </div>
+        )}
+        
         <VirtualizedTagsTable
           parentTags={sortedParentTags}
           childTagsMap={childTagsMap}
@@ -2757,11 +2822,15 @@ export const TagsManagementTab = () => {
           sortColumn={sortColumn}
           sortDirection={sortDirection}
           searchTagName={debouncedSearchTagName}
+          selectedTags={selectedTags}
+          documentCountMap={documentCountByTagName}
           onToggleExpanded={toggleExpanded}
           onSort={handleSort}
           onCreateChild={(parentId) => openCreateDialog(false, parentId)}
           onEdit={openEditDialog}
           onDelete={openDeleteConfirmModal}
+          onToggleSelect={toggleSelectTag}
+          onSelectAll={handleSelectAll}
         />
       </Card>
 
