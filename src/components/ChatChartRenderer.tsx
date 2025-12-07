@@ -1078,47 +1078,73 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   );
 };
 
-// Parse CHART_DATA from text content
-export const parseChartData = (content: string): { chartData: ChartData | null; cleanedContent: string } => {
-  const chartRegex = /CHART_DATA:\s*(\{[\s\S]*?\})\s*(?=\n|$)/;
-  const match = content.match(chartRegex);
+// Parse single CHART_DATA block using brace-balancing
+const extractChartBlock = (content: string, startSearchIndex: number): { chartData: ChartData; jsonStart: number; jsonEnd: number } | null => {
+  const markerIndex = content.indexOf('CHART_DATA:', startSearchIndex);
+  if (markerIndex === -1) return null;
   
-  if (match) {
-    try {
-      // Use brace-balancing to extract complete JSON
-      const startIndex = content.indexOf('CHART_DATA:') + 'CHART_DATA:'.length;
-      let braceCount = 0;
-      let jsonStart = -1;
-      let jsonEnd = -1;
-      
-      for (let i = startIndex; i < content.length; i++) {
-        if (content[i] === '{') {
-          if (jsonStart === -1) jsonStart = i;
-          braceCount++;
-        } else if (content[i] === '}') {
-          braceCount--;
-          if (braceCount === 0 && jsonStart !== -1) {
-            jsonEnd = i + 1;
-            break;
-          }
-        }
+  const startIndex = markerIndex + 'CHART_DATA:'.length;
+  let braceCount = 0;
+  let jsonStart = -1;
+  let jsonEnd = -1;
+  
+  for (let i = startIndex; i < content.length; i++) {
+    if (content[i] === '{') {
+      if (jsonStart === -1) jsonStart = i;
+      braceCount++;
+    } else if (content[i] === '}') {
+      braceCount--;
+      if (braceCount === 0 && jsonStart !== -1) {
+        jsonEnd = i + 1;
+        break;
       }
-      
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        const jsonStr = content.slice(jsonStart, jsonEnd);
-        const chartData = JSON.parse(jsonStr) as ChartData;
-        // Use calculated indices to remove entire CHART_DATA block (not regex)
-        const chartDataMarkerIndex = content.indexOf('CHART_DATA:');
-        const cleanedContent = (
-          content.slice(0, chartDataMarkerIndex) + 
-          content.slice(jsonEnd)
-        ).trim();
-        return { chartData, cleanedContent };
-      }
-    } catch (e) {
-      console.error('Error parsing chart data:', e);
     }
   }
   
-  return { chartData: null, cleanedContent: content };
+  if (jsonStart === -1 || jsonEnd === -1) return null;
+  
+  try {
+    const jsonStr = content.slice(jsonStart, jsonEnd);
+    const chartData = JSON.parse(jsonStr) as ChartData;
+    return { chartData, jsonStart: markerIndex, jsonEnd };
+  } catch (e) {
+    console.error('Error parsing chart data:', e);
+    return null;
+  }
+};
+
+// Parse CHART_DATA from text content (supports multiple charts)
+export const parseChartData = (content: string): { chartData: ChartData | null; cleanedContent: string; allCharts?: ChartData[] } => {
+  const allCharts: ChartData[] = [];
+  const blocksToRemove: { start: number; end: number }[] = [];
+  
+  let searchIndex = 0;
+  while (searchIndex < content.length) {
+    const block = extractChartBlock(content, searchIndex);
+    if (!block) break;
+    
+    allCharts.push(block.chartData);
+    blocksToRemove.push({ start: block.jsonStart, end: block.jsonEnd });
+    searchIndex = block.jsonEnd;
+  }
+  
+  if (allCharts.length === 0) {
+    return { chartData: null, cleanedContent: content };
+  }
+  
+  // Remove all CHART_DATA blocks from content (in reverse order to preserve indices)
+  let cleanedContent = content;
+  for (let i = blocksToRemove.length - 1; i >= 0; i--) {
+    const block = blocksToRemove[i];
+    cleanedContent = (
+      cleanedContent.slice(0, block.start) + 
+      cleanedContent.slice(block.end)
+    ).trim();
+  }
+  
+  return { 
+    chartData: allCharts[0], // First chart for backward compatibility
+    cleanedContent,
+    allCharts // All charts for components that support multiple
+  };
 };
