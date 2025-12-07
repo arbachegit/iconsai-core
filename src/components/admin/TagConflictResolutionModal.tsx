@@ -128,6 +128,7 @@ export const TagConflictResolutionModal = ({
   const [orphanChildren, setOrphanChildren] = useState<Set<string>>(new Set());
   const [rationale, setRationale] = useState("");
   const [modalOpenTime] = useState(Date.now());
+  const [autoSuggestionApplied, setAutoSuggestionApplied] = useState(false);
   const [mergeReasons, setMergeReasons] = useState<MergeReasons>({
     synonymy: false,
     grammaticalVariation: false,
@@ -162,7 +163,23 @@ export const TagConflictResolutionModal = ({
   // Aplicar auto-sugestão
   const applyAutoSuggestion = () => {
     setMergeReasons(autoSuggestion.reasons);
+    setAutoSuggestionApplied(true);
     toast.success("Motivos auto-detectados aplicados!");
+  };
+
+  // Determinar status de uso da auto-sugestão
+  const getAutoSuggestionUsageStatus = (): 'accepted' | 'modified' | 'ignored' | 'none' => {
+    if (autoSuggestion.confidence === 0) return 'none';
+    if (!autoSuggestionApplied) return 'ignored';
+    
+    // Verificar se os motivos foram modificados após aplicar
+    const currentReasons = Object.entries(mergeReasons).filter(([_, v]) => v).map(([k]) => k).sort();
+    const suggestedReasons = Object.entries(autoSuggestion.reasons).filter(([_, v]) => v).map(([k]) => k).sort();
+    
+    if (JSON.stringify(currentReasons) === JSON.stringify(suggestedReasons)) {
+      return 'accepted';
+    }
+    return 'modified';
   };
 
   // Reset state when modal opens
@@ -170,6 +187,7 @@ export const TagConflictResolutionModal = ({
     if (open && tags.length > 0) {
       setSelectedTargetId(tags[0].id);
       setRationale("");
+      setAutoSuggestionApplied(false);
       setMergeReasons({
         synonymy: false,
         grammaticalVariation: false,
@@ -275,7 +293,8 @@ export const TagConflictResolutionModal = ({
             target_parent_id: selectedParentId,
             target_parent_name: parentTag?.tag_name,
             source_tags_removed: sourceTags.map(t => t.id),
-            merge_reasons: mergeReasons
+            merge_reasons: mergeReasons,
+            auto_suggestion_used: getAutoSuggestionUsageStatus()
           },
           rationale: finalRationale,
           similarity_score: similarityScore,
@@ -341,7 +360,8 @@ export const TagConflictResolutionModal = ({
             target_tag_name: targetTag.tag_name,
             moved_children: coherentChildrenArr,
             orphaned_children: orphanChildrenArr,
-            source_tags_removed: sourceTags.map(t => t.id)
+            source_tags_removed: sourceTags.map(t => t.id),
+            auto_suggestion_used: getAutoSuggestionUsageStatus()
           },
           rationale,
           similarity_score: similarityScore,
