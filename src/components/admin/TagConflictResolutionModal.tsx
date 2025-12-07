@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Merge, AlertTriangle, ArrowRight, Users, Sparkles, ClipboardList } from "lucide-react";
+import { Loader2, Merge, AlertTriangle, ArrowRight, Users, Sparkles, ClipboardList, Wand2 } from "lucide-react";
 import { logTagManagementEvent, calculateTimeSinceModalOpen } from "@/lib/tag-management-logger";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { suggestMergeReasonsForTags, type SuggestedReasons } from "@/lib/merge-reason-heuristics";
 
 // Configuração dos 7 motivos de unificação baseados em Data Science
 const MERGE_REASONS_CONFIG = [
@@ -137,6 +138,32 @@ export const TagConflictResolutionModal = ({
     generalization: false,
   });
   const queryClient = useQueryClient();
+
+  // Auto-sugestão de motivos baseada em heurísticas
+  const autoSuggestion = useMemo<SuggestedReasons>(() => {
+    if (tags.length < 2) {
+      return {
+        reasons: {
+          synonymy: false,
+          grammaticalVariation: false,
+          spellingVariation: false,
+          acronym: false,
+          typo: false,
+          languageEquivalence: false,
+          generalization: false,
+        },
+        confidence: 0,
+        explanations: []
+      };
+    }
+    return suggestMergeReasonsForTags(tags.map(t => t.tag_name));
+  }, [tags]);
+
+  // Aplicar auto-sugestão
+  const applyAutoSuggestion = () => {
+    setMergeReasons(autoSuggestion.reasons);
+    toast.success("Motivos auto-detectados aplicados!");
+  };
 
   // Reset state when modal opens
   useEffect(() => {
@@ -467,14 +494,51 @@ export const TagConflictResolutionModal = ({
 
               {/* Seção de Motivos de Unificação - 7 razões baseadas em Data Science */}
               <div className="border-t border-blue-500/20 pt-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <ClipboardList className="h-4 w-4 text-purple-400" />
-                  <Label className="text-sm font-medium">Por que estas tags estão sendo unificadas?</Label>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4 text-purple-400" />
+                    <Label className="text-sm font-medium">Por que estas tags estão sendo unificadas?</Label>
+                  </div>
+                  
+                  {/* Botão de Auto-Sugestão */}
+                  {autoSuggestion.confidence > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={applyAutoSuggestion}
+                      className="h-7 gap-1.5 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border-purple-500/40 hover:border-purple-400 text-purple-300 hover:text-purple-200"
+                    >
+                      <Wand2 className="h-3.5 w-3.5" />
+                      Auto-detectar
+                      <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px] bg-cyan-500/30 text-cyan-200">
+                        {Math.round(autoSuggestion.confidence * 100)}%
+                      </Badge>
+                    </Button>
+                  )}
                 </div>
+                
+                {/* Explicações da auto-sugestão */}
+                {autoSuggestion.explanations.length > 0 && (
+                  <div className="mb-3 p-2 rounded bg-cyan-500/10 border border-cyan-500/30">
+                    <p className="text-xs text-cyan-300 font-medium mb-1 flex items-center gap-1">
+                      <Wand2 className="h-3 w-3" />
+                      Heurísticas detectadas:
+                    </p>
+                    <ul className="text-xs text-muted-foreground space-y-0.5">
+                      {autoSuggestion.explanations.map((exp, idx) => (
+                        <li key={idx} className="flex items-start gap-1">
+                          <span className="text-cyan-400">•</span>
+                          {exp}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
                 <p className="text-xs text-muted-foreground mb-3">
                   Selecione pelo menos um motivo para o treinamento de ML:
                 </p>
-                <ScrollArea className="h-[280px] pr-2">
+                <ScrollArea className="h-[240px] pr-2">
                   <div className="space-y-3">
                     {MERGE_REASONS_CONFIG.map((reason) => (
                       <div
