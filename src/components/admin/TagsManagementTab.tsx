@@ -1202,10 +1202,9 @@ export const TagsManagementTab = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <AdminTitleWithInfo
+        <AdminTitleWithInfo
             title="Gerenciamento de Tags"
             level="h2"
             icon={Tags}
@@ -1338,10 +1337,6 @@ export const TagsManagementTab = () => {
               </div>
             }
           />
-          <p className="text-muted-foreground mt-1">
-            CRUD completo para tags hierárquicas do sistema RAG
-          </p>
-        </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4 mr-2" />
