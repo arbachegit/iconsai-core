@@ -162,6 +162,9 @@ export const TagsManagementTab = () => {
     tagType: 'parent' | 'child';
     totalInstances: number; // Total instances of this tag name across all documents
     isLoadingCount: boolean;
+    deleteScope: 'single' | 'all'; // NEW: Scope of deletion
+    documentId?: string;           // NEW: Document ID for single deletion
+    documentFilename?: string;     // NEW: Document filename for UI
     reasons: {
       generic: boolean;        // Stopwords
       outOfDomain: boolean;    // Irrelevância de domínio
@@ -180,6 +183,9 @@ export const TagsManagementTab = () => {
     tagType: 'parent',
     totalInstances: 0,
     isLoadingCount: false,
+    deleteScope: 'all',
+    documentId: undefined,
+    documentFilename: undefined,
     reasons: {
       generic: false,
       outOfDomain: false,
@@ -593,7 +599,7 @@ export const TagsManagementTab = () => {
   };
 
   // Open delete confirmation modal - fetches count of all instances
-  const openDeleteConfirmModal = async (ids: string[], tagName: string) => {
+  const openDeleteConfirmModal = async (ids: string[], tagName: string, documentId?: string) => {
     // Determine if it's a parent or child tag
     const tag = allTags?.find(t => ids.includes(t.id));
     const tagType: 'parent' | 'child' = tag?.parent_tag_id ? 'child' : 'parent';
@@ -606,6 +612,9 @@ export const TagsManagementTab = () => {
       tagType,
       totalInstances: 0,
       isLoadingCount: true,
+      deleteScope: 'all', // Default to delete all
+      documentId,
+      documentFilename: undefined,
       reasons: {
         generic: false,
         outOfDomain: false,
@@ -619,64 +628,30 @@ export const TagsManagementTab = () => {
       },
     });
     
-    // Fetch total count of tags with this name across all documents
-    const { count, error } = await supabase
-      .from('document_tags')
-      .select('*', { count: 'exact', head: true })
-      .eq('tag_name', tagName);
+    // Fetch total count of tags with this name and document filename in parallel
+    const [countResult, docResult] = await Promise.all([
+      supabase
+        .from('document_tags')
+        .select('*', { count: 'exact', head: true })
+        .eq('tag_name', tagName),
+      documentId 
+        ? supabase.from('documents').select('filename').eq('id', documentId).single()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
       
-    if (!error) {
-      setDeleteConfirmModal(prev => ({
-        ...prev,
-        totalInstances: count || 0,
-        isLoadingCount: false,
-      }));
-    } else {
-      setDeleteConfirmModal(prev => ({
-        ...prev,
-        totalInstances: ids.length,
-        isLoadingCount: false,
-      }));
-    }
+    setDeleteConfirmModal(prev => ({
+      ...prev,
+      totalInstances: countResult.count || ids.length,
+      documentFilename: docResult.data?.filename,
+      isLoadingCount: false,
+    }));
   };
 
-  // Confirm delete tags - deletes ALL instances of the tag by name
+  // Confirm delete tags - respects scope (single or all)
   const confirmDeleteTags = async () => {
-    const { tagName, tagType, totalInstances, reasons } = deleteConfirmModal;
+    const { tagName, tagType, totalInstances, reasons, deleteScope, ids, documentFilename } = deleteConfirmModal;
     
     try {
-      // If deleting a parent tag, first orphan all child tags that reference it
-      if (tagType === 'parent') {
-        // Find all parent tag IDs with this name
-        const { data: parentTagsToDelete } = await supabase
-          .from('document_tags')
-          .select('id')
-          .eq('tag_name', tagName)
-          .eq('tag_type', 'parent');
-          
-        if (parentTagsToDelete && parentTagsToDelete.length > 0) {
-          const parentIds = parentTagsToDelete.map(p => p.id);
-          
-          // Move child tags to Orphaned Zone (set parent_tag_id to null)
-          const { error: orphanError } = await supabase
-            .from('document_tags')
-            .update({ parent_tag_id: null })
-            .in('parent_tag_id', parentIds);
-            
-          if (orphanError) {
-            console.warn('Warning: Could not orphan child tags:', orphanError);
-          }
-        }
-      }
-      
-      // Delete ALL instances of this tag by name
-      const { error } = await supabase
-        .from('document_tags')
-        .delete()
-        .eq('tag_name', tagName);
-        
-      if (error) throw error;
-      
       // Build readable reasons list
       const reasonLabels: string[] = [];
       if (reasons.generic) reasonLabels.push('Termo genérico (Stopwords)');
@@ -689,20 +664,78 @@ export const TagsManagementTab = () => {
       if (reasons.isolatedVerb) reasonLabels.push('Verbo isolado');
       if (reasons.pii) reasonLabels.push('Dado sensível (PII)');
       
-      await logTagManagementEvent({
-        input_state: { 
-          tags_involved: [{ id: 'all', name: tagName, type: tagType }],
-        },
-        action_type: 'delete_orphan',
-        user_decision: { 
-          action: `delete_all_instances_${totalInstances}`, 
-          source_tags_removed: [tagName],
-          deletion_reasons: reasons,
-        },
-        rationale: `Exclusão de TODAS as ${totalInstances} instância(s) de "${tagName}". Motivos: ${reasonLabels.join(', ')}`,
-      });
+      if (deleteScope === 'single') {
+        // Delete only the specific instance by ID
+        const { error } = await supabase
+          .from('document_tags')
+          .delete()
+          .in('id', ids);
+          
+        if (error) throw error;
+        
+        await logTagManagementEvent({
+          input_state: { 
+            tags_involved: [{ id: ids[0], name: tagName, type: tagType }],
+          },
+          action_type: 'delete_orphan',
+          user_decision: { 
+            action: 'delete_single_instance', 
+            source_tags_removed: [tagName],
+            deletion_reasons: reasons,
+          },
+          rationale: `Exclusão de instância única de "${tagName}" do documento "${documentFilename || 'unknown'}". Motivos: ${reasonLabels.join(', ')}`,
+        });
+        
+        toast.success(`Tag "${tagName}" removida deste documento`);
+      } else {
+        // Delete ALL instances (existing behavior)
+        // If deleting a parent tag, first orphan all child tags that reference it
+        if (tagType === 'parent') {
+          const { data: parentTagsToDelete } = await supabase
+            .from('document_tags')
+            .select('id')
+            .eq('tag_name', tagName)
+            .eq('tag_type', 'parent');
+            
+          if (parentTagsToDelete && parentTagsToDelete.length > 0) {
+            const parentIds = parentTagsToDelete.map(p => p.id);
+            
+            // Move child tags to Orphaned Zone
+            const { error: orphanError } = await supabase
+              .from('document_tags')
+              .update({ parent_tag_id: null })
+              .in('parent_tag_id', parentIds);
+              
+            if (orphanError) {
+              console.warn('Warning: Could not orphan child tags:', orphanError);
+            }
+          }
+        }
+        
+        // Delete ALL instances of this tag by name
+        const { error } = await supabase
+          .from('document_tags')
+          .delete()
+          .eq('tag_name', tagName);
+          
+        if (error) throw error;
+        
+        await logTagManagementEvent({
+          input_state: { 
+            tags_involved: [{ id: 'all', name: tagName, type: tagType }],
+          },
+          action_type: 'delete_orphan',
+          user_decision: { 
+            action: `delete_all_instances_${totalInstances}`, 
+            source_tags_removed: [tagName],
+            deletion_reasons: reasons,
+          },
+          rationale: `Exclusão de TODAS as ${totalInstances} instância(s) de "${tagName}". Motivos: ${reasonLabels.join(', ')}`,
+        });
+        
+        toast.success(`Tag "${tagName}" removida de ${totalInstances} documento(s)`);
+      }
       
-      toast.success(`Tag "${tagName}" removida de ${totalInstances} documento(s)`);
       queryClient.invalidateQueries({ queryKey: ['all-tags'] });
       queryClient.invalidateQueries({ queryKey: ['chat-config'] });
       
@@ -714,6 +747,9 @@ export const TagsManagementTab = () => {
         tagType: 'parent',
         totalInstances: 0,
         isLoadingCount: false,
+        deleteScope: 'all',
+        documentId: undefined,
+        documentFilename: undefined,
         reasons: {
           generic: false,
           outOfDomain: false,
@@ -3006,27 +3042,80 @@ export const TagsManagementTab = () => {
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Calculando documentos afetados...</span>
                   </div>
-                ) : deleteConfirmModal.totalInstances > 1 ? (
-                  <div className="space-y-2">
+                ) : (
+                  <div className="space-y-3">
                     <p>
                       Você está prestes a excluir a tag "<strong>{deleteConfirmModal.tagName}</strong>".
                     </p>
-                    <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-                      <p className="text-destructive text-sm font-semibold flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4" />
-                        Esta tag será removida de {deleteConfirmModal.totalInstances} documento(s)
-                      </p>
-                    </div>
-                    {deleteConfirmModal.tagType === 'parent' && (
+                    
+                    {deleteConfirmModal.totalInstances > 1 && (
+                      <div className="p-3 bg-muted/50 border border-border rounded-lg">
+                        <p className="text-sm font-medium mb-2">Escolha o escopo da exclusão:</p>
+                        <div className="space-y-2">
+                          {/* Option: Single instance only */}
+                          {deleteConfirmModal.documentId && (
+                            <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                              deleteConfirmModal.deleteScope === 'single' 
+                                ? 'border-primary bg-primary/10' 
+                                : 'border-border hover:bg-muted/30'
+                            }`}>
+                              <input 
+                                type="radio" 
+                                name="deleteScope" 
+                                value="single"
+                                checked={deleteConfirmModal.deleteScope === 'single'}
+                                onChange={() => setDeleteConfirmModal(prev => ({ ...prev, deleteScope: 'single' }))}
+                                className="mt-0.5"
+                              />
+                              <div>
+                                <span className="font-medium text-sm text-foreground">Apenas deste documento</span>
+                                <p className="text-xs text-muted-foreground">
+                                  Remove "{deleteConfirmModal.tagName}" apenas de "{deleteConfirmModal.documentFilename || 'documento selecionado'}"
+                                </p>
+                              </div>
+                            </label>
+                          )}
+                          
+                          {/* Option: All instances */}
+                          <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                            deleteConfirmModal.deleteScope === 'all' 
+                              ? 'border-destructive bg-destructive/10' 
+                              : 'border-destructive/50 hover:bg-destructive/5'
+                          }`}>
+                            <input 
+                              type="radio" 
+                              name="deleteScope" 
+                              value="all"
+                              checked={deleteConfirmModal.deleteScope === 'all'}
+                              onChange={() => setDeleteConfirmModal(prev => ({ ...prev, deleteScope: 'all' }))}
+                              className="mt-0.5"
+                            />
+                            <div>
+                              <span className="font-medium text-sm text-destructive">Todas as {deleteConfirmModal.totalInstances} ocorrências</span>
+                              <p className="text-xs text-muted-foreground">
+                                Remove "{deleteConfirmModal.tagName}" de TODOS os documentos
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {deleteConfirmModal.deleteScope === 'all' && deleteConfirmModal.totalInstances > 1 && (
+                      <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                        <p className="text-destructive text-sm font-semibold flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4" />
+                          Esta tag será removida de {deleteConfirmModal.totalInstances} documento(s)
+                        </p>
+                      </div>
+                    )}
+                    
+                    {deleteConfirmModal.tagType === 'parent' && deleteConfirmModal.deleteScope === 'all' && (
                       <p className="text-xs text-muted-foreground">
                         Tags filhas associadas serão movidas para a Zona de Órfãos.
                       </p>
                     )}
                   </div>
-                ) : (
-                  <p>
-                    Você está prestes a excluir a tag "<strong>{deleteConfirmModal.tagName}</strong>".
-                  </p>
                 )}
                 
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
