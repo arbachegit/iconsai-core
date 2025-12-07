@@ -1434,6 +1434,21 @@ export const TagsManagementTab = () => {
 
   return (
     <div className="space-y-4">
+      {/* Banner informativo - ML movido para Auditoria */}
+      <div className="p-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/30 rounded-lg flex items-center gap-3">
+        <Brain className="h-5 w-5 text-indigo-400 flex-shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm text-muted-foreground">
+            <strong className="text-indigo-300">Métricas de Machine Learning</strong> foram movidas para{" "}
+            <strong className="text-indigo-300">Auditoria → Machine Learning ML</strong> para melhor organização e governança.
+          </p>
+        </div>
+        <Badge variant="outline" className="bg-indigo-500/20 text-indigo-300 border-indigo-500/30 flex-shrink-0">
+          <ArrowRightLeft className="h-3 w-3 mr-1" />
+          Realocado
+        </Badge>
+      </div>
+
       {/* Título */}
       <AdminTitleWithInfo
         title="Gerenciamento de Tags"

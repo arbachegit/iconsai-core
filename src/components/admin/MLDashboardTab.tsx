@@ -70,7 +70,8 @@ import {
   Pie, 
   Legend, 
   Area, 
-  AreaChart 
+  AreaChart,
+  ReferenceLine
 } from "recharts";
 
 export const MLDashboardTab = () => {
@@ -181,7 +182,11 @@ export const MLDashboardTab = () => {
         .map(([date, counts]) => ({
           date: date.slice(5),
           ...counts,
-          total: counts.adoptions + counts.merges + counts.deletes + counts.exports + counts.imports + counts.rejects
+          total: counts.adoptions + counts.merges + counts.deletes + counts.exports + counts.imports + counts.rejects,
+          // Calculate daily accuracy percentage
+          accuracyDaily: counts.adoptions + counts.deletes > 0 
+            ? Math.round((counts.adoptions / (counts.adoptions + counts.deletes)) * 100) 
+            : null
         }));
 
       // Pie chart data
@@ -478,6 +483,65 @@ export const MLDashboardTab = () => {
             Quanto maior a taxa, melhor a precisão da IA na categorização automática de documentos.
           </p>
         </div>
+
+        {/* Trend Chart - Percentual de Aprendizado ao Longo do Tempo */}
+        {mlEvents?.timeSeriesData && mlEvents.timeSeriesData.filter((d: { accuracyDaily: number | null }) => d.accuracyDaily !== null).length >= 3 && (
+          <div className="mt-6 p-4 bg-background/30 rounded-lg border border-emerald-500/20">
+            <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-emerald-400" />
+              Tendência do Percentual de Aprendizado
+              <Badge variant="outline" className="ml-2 text-xs bg-emerald-500/10 text-emerald-300 border-emerald-500/30">
+                Últimos 14 dias
+              </Badge>
+            </h4>
+            <div className="h-[160px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={mlEvents.timeSeriesData.filter((d: { accuracyDaily: number | null }) => d.accuracyDaily !== null)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                  <YAxis 
+                    domain={[0, 100]} 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={10}
+                    tickFormatter={(v) => `${v}%`}
+                  />
+                  <RechartsTooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px'
+                    }}
+                    formatter={(value: number) => [`${value}%`, 'Percentual de Aprendizado']}
+                  />
+                  <defs>
+                    <linearGradient id="accuracyGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
+                  <Area 
+                    type="monotone" 
+                    dataKey="accuracyDaily" 
+                    stroke="hsl(142, 71%, 45%)" 
+                    fill="url(#accuracyGradient)"
+                    strokeWidth={2}
+                    name="% Aprendizado"
+                  />
+                  <ReferenceLine 
+                    y={70} 
+                    stroke="hsl(38, 92%, 50%)" 
+                    strokeDasharray="5 5" 
+                    label={{ value: 'Meta 70%', fill: 'hsl(38, 92%, 50%)', fontSize: 10, position: 'right' }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Evolução diária do percentual de acertos da IA. A linha pontilhada indica a meta de 70% de precisão.
+            </p>
+          </div>
+        )}
       </Card>
 
       {/* ML EVENTS DASHBOARD - TREINAMENTO (MOVED WITHOUT MODIFICATION) */}
