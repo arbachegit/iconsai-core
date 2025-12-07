@@ -655,6 +655,57 @@ export type Database = {
           },
         ]
       }
+      documentation_sync_log: {
+        Row: {
+          changes_detected: Json | null
+          completed_at: string | null
+          created_at: string
+          current_phase: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          phases_completed: Json | null
+          progress: number | null
+          started_at: string
+          status: string
+          sync_id: string
+          trigger_type: string
+          triggered_by: string | null
+        }
+        Insert: {
+          changes_detected?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          current_phase?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          phases_completed?: Json | null
+          progress?: number | null
+          started_at?: string
+          status: string
+          sync_id: string
+          trigger_type: string
+          triggered_by?: string | null
+        }
+        Update: {
+          changes_detected?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          current_phase?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          phases_completed?: Json | null
+          progress?: number | null
+          started_at?: string
+          status?: string
+          sync_id?: string
+          trigger_type?: string
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       documentation_versions: {
         Row: {
           author: string | null
