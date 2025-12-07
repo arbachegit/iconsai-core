@@ -37,6 +37,16 @@ export interface TagManagementEventInput {
     exported_count?: number;
     action?: string;
     format?: string;
+    // Data Science merge reasons (7 motivos de unificação)
+    merge_reasons?: {
+      synonymy?: boolean;             // Sinonímia - mesmo significado
+      grammaticalVariation?: boolean; // Variação Gramatical (Singular/Plural) - Lematização
+      spellingVariation?: boolean;    // Variação de Grafia ou Formatação
+      acronym?: boolean;              // Siglas e Extensões (Acrônimos)
+      typo?: boolean;                 // Erro de Digitação (Typos)
+      languageEquivalence?: boolean;  // Equivalência de Idioma (bilíngue)
+      generalization?: boolean;       // Generalização (Agrupamento Hierárquico)
+    };
     // Data Science deletion reasons
     deletion_reasons?: {
       generic?: boolean;        // Stopwords - alta frequência sem valor preditivo

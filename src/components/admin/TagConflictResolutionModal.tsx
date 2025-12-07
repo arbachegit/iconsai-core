@@ -22,8 +22,65 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Merge, AlertTriangle, ArrowRight, Users, Sparkles } from "lucide-react";
+import { Loader2, Merge, AlertTriangle, ArrowRight, Users, Sparkles, ClipboardList } from "lucide-react";
 import { logTagManagementEvent, calculateTimeSinceModalOpen } from "@/lib/tag-management-logger";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+// Configuração dos 7 motivos de unificação baseados em Data Science
+const MERGE_REASONS_CONFIG = [
+  {
+    key: 'synonymy' as const,
+    label: 'Sinonímia (Mesmo significado)',
+    description: 'Palavras diferentes que representam o mesmo conceito',
+    examples: '"Staff" → "Equipe", "Veículo" → "Automóvel"'
+  },
+  {
+    key: 'grammaticalVariation' as const,
+    label: 'Variação Gramatical (Singular vs. Plural)',
+    description: 'Lematização - reduzir à forma base',
+    examples: '"Faturas" → "Fatura", "Projetos" → "Projeto"'
+  },
+  {
+    key: 'spellingVariation' as const,
+    label: 'Variação de Grafia ou Formatação',
+    description: 'Acentos, hífens, maiúsculas/minúsculas',
+    examples: '"e-mail" = "Email" = "E-mail", "relatorio" → "Relatório"'
+  },
+  {
+    key: 'acronym' as const,
+    label: 'Siglas e Extensões (Acrônimos)',
+    description: 'Alguns usam sigla, outros nome completo',
+    examples: '"RH" → "Recursos Humanos", "TI" → "Tecnologia da Informação"'
+  },
+  {
+    key: 'typo' as const,
+    label: 'Erro de Digitação (Typos)',
+    description: 'Tag criada com erro óbvio, mas conceito válido',
+    examples: '"Finaceiro" → "Financeiro"'
+  },
+  {
+    key: 'languageEquivalence' as const,
+    label: 'Equivalência de Idioma',
+    description: 'Documentos bilíngues - mesmo assunto em línguas diferentes',
+    examples: '"Sales" → "Vendas", "Budget" → "Orçamento"'
+  },
+  {
+    key: 'generalization' as const,
+    label: 'Generalização (Agrupamento Hierárquico)',
+    description: 'Tags muito específicas que precisam subir nível na taxonomia',
+    examples: '"NF Janeiro", "NF Fevereiro" → "Nota Fiscal"'
+  }
+];
+
+interface MergeReasons {
+  synonymy: boolean;
+  grammaticalVariation: boolean;
+  spellingVariation: boolean;
+  acronym: boolean;
+  typo: boolean;
+  languageEquivalence: boolean;
+  generalization: boolean;
+}
 
 interface Tag {
   id: string;
@@ -70,6 +127,15 @@ export const TagConflictResolutionModal = ({
   const [orphanChildren, setOrphanChildren] = useState<Set<string>>(new Set());
   const [rationale, setRationale] = useState("");
   const [modalOpenTime] = useState(Date.now());
+  const [mergeReasons, setMergeReasons] = useState<MergeReasons>({
+    synonymy: false,
+    grammaticalVariation: false,
+    spellingVariation: false,
+    acronym: false,
+    typo: false,
+    languageEquivalence: false,
+    generalization: false,
+  });
   const queryClient = useQueryClient();
 
   // Reset state when modal opens
@@ -77,6 +143,15 @@ export const TagConflictResolutionModal = ({
     if (open && tags.length > 0) {
       setSelectedTargetId(tags[0].id);
       setRationale("");
+      setMergeReasons({
+        synonymy: false,
+        grammaticalVariation: false,
+        spellingVariation: false,
+        acronym: false,
+        typo: false,
+        languageEquivalence: false,
+        generalization: false,
+      });
       
       if (conflictType === 'parent' && tags.length > 1) {
         // Pre-select all children as coherent by default
@@ -90,6 +165,25 @@ export const TagConflictResolutionModal = ({
       }
     }
   }, [open, tags, conflictType, childTagsMap]);
+
+  // Check if at least one merge reason is selected (for child merges)
+  const hasSelectedMergeReason = Object.values(mergeReasons).some(v => v);
+
+  // Build rationale string from selected merge reasons
+  const buildMergeRationale = () => {
+    const reasons: string[] = [];
+    if (mergeReasons.synonymy) reasons.push('Sinonímia');
+    if (mergeReasons.grammaticalVariation) reasons.push('Variação Gramatical (Lematização)');
+    if (mergeReasons.spellingVariation) reasons.push('Variação de Grafia');
+    if (mergeReasons.acronym) reasons.push('Sigla/Acrônimo');
+    if (mergeReasons.typo) reasons.push('Erro de Digitação');
+    if (mergeReasons.languageEquivalence) reasons.push('Equivalência de Idioma');
+    if (mergeReasons.generalization) reasons.push('Generalização Hierárquica');
+    
+    return reasons.length > 0 
+      ? `Unificação: ${reasons.join(', ')}${rationale ? `. ${rationale}` : ''}`
+      : rationale;
+  };
 
   const mergeMutation = useMutation({
     mutationFn: async () => {
@@ -134,7 +228,8 @@ export const TagConflictResolutionModal = ({
           }
         }
 
-        // Log event
+        // Log event with merge reasons
+        const finalRationale = buildMergeRationale();
         await logTagManagementEvent({
           input_state: {
             tags_involved: tags.map(t => ({
@@ -152,9 +247,10 @@ export const TagConflictResolutionModal = ({
             target_tag_name: targetTag.tag_name,
             target_parent_id: selectedParentId,
             target_parent_name: parentTag?.tag_name,
-            source_tags_removed: sourceTags.map(t => t.id)
+            source_tags_removed: sourceTags.map(t => t.id),
+            merge_reasons: mergeReasons
           },
-          rationale,
+          rationale: finalRationale,
           similarity_score: similarityScore,
           time_to_decision_ms: timeToDecision
         });
@@ -346,7 +442,7 @@ export const TagConflictResolutionModal = ({
             </Select>
           </div>
 
-          {/* Para merge de child tags: forçar seleção de parent */}
+          {/* Para merge de child tags: forçar seleção de parent + motivos de unificação */}
           {conflictType === 'child' && (
             <div className="border border-blue-500/30 rounded-lg p-4 bg-blue-500/5">
               <div className="flex items-center gap-2 mb-3">
@@ -365,9 +461,56 @@ export const TagConflictResolutionModal = ({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground mt-2 mb-4">
                 A tag unificada será movida para este parent.
               </p>
+
+              {/* Seção de Motivos de Unificação - 7 razões baseadas em Data Science */}
+              <div className="border-t border-blue-500/20 pt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <ClipboardList className="h-4 w-4 text-purple-400" />
+                  <Label className="text-sm font-medium">Por que estas tags estão sendo unificadas?</Label>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Selecione pelo menos um motivo para o treinamento de ML:
+                </p>
+                <ScrollArea className="h-[280px] pr-2">
+                  <div className="space-y-3">
+                    {MERGE_REASONS_CONFIG.map((reason) => (
+                      <div
+                        key={reason.key}
+                        className={`p-3 rounded-lg border transition-colors cursor-pointer ${
+                          mergeReasons[reason.key]
+                            ? 'bg-purple-500/15 border-purple-500/40'
+                            : 'bg-muted/30 border-border/50 hover:border-purple-500/30'
+                        }`}
+                        onClick={() => setMergeReasons(prev => ({ ...prev, [reason.key]: !prev[reason.key] }))}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={mergeReasons[reason.key]}
+                            onCheckedChange={(checked) => 
+                              setMergeReasons(prev => ({ ...prev, [reason.key]: !!checked }))
+                            }
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium">{reason.label}</span>
+                            <p className="text-xs text-muted-foreground mt-1">{reason.description}</p>
+                            <p className="text-xs text-cyan-400/80 mt-1">Ex: {reason.examples}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+                {!hasSelectedMergeReason && (
+                  <p className="text-xs text-amber-400 mt-3 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Escolha ao menos um motivo para unificar
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -464,7 +607,7 @@ export const TagConflictResolutionModal = ({
           </Button>
           <Button
             onClick={() => mergeMutation.mutate()}
-            disabled={mergeMutation.isPending || (conflictType === 'child' && !selectedParentId)}
+            disabled={mergeMutation.isPending || (conflictType === 'child' && (!selectedParentId || !hasSelectedMergeReason))}
           >
             {mergeMutation.isPending ? (
               <>
