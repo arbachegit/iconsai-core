@@ -670,43 +670,80 @@ export const TagsManagementTab = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedParentTags = sortedParentTags.slice(startIndex, startIndex + itemsPerPage);
 
-  // Export taxonomy JSON
-  const handleExportTaxonomy = async () => {
-    const taxonomy = {
-      version: "1.0",
-      exported_at: new Date().toISOString(),
-      taxonomy: parentTags.map(parent => ({
-        id: parent.id,
-        name: parent.tag_name,
-        type: "parent",
-        synonyms: parent.synonyms || [],
-        children: (childTagsMap[parent.id] || []).map(child => ({
-          id: child.id,
-          name: child.tag_name,
-          synonyms: child.synonyms || []
-        }))
-      })),
-      merge_rules: mergeRules || [],
-      orphaned_children: orphanedTags.map(t => ({ id: t.id, name: t.tag_name }))
-    };
-    
-    const blob = new Blob([JSON.stringify(taxonomy, null, 2)], { type: 'application/json' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `taxonomy-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+  // Export taxonomy with multiple formats
+  const handleExportTaxonomy = async (format: ExportFormat) => {
+    // Prepare tabular data for CSV, Excel, PDF
+    const taxonomyData = parentTags.flatMap(parent => {
+      const children = childTagsMap[parent.id] || [];
+      if (children.length === 0) {
+        return [{
+          parent_name: parent.tag_name,
+          child_name: '-',
+          parent_synonyms: (parent.synonyms || []).join(', ') || '-',
+          child_synonyms: '-',
+        }];
+      }
+      return children.map(child => ({
+        parent_name: parent.tag_name,
+        child_name: child.tag_name,
+        parent_synonyms: (parent.synonyms || []).join(', ') || '-',
+        child_synonyms: (child.synonyms || []).join(', ') || '-',
+      }));
+    });
+
+    const taxonomyColumns = [
+      { key: 'parent_name', label: 'Tag Pai' },
+      { key: 'child_name', label: 'Tag Filha' },
+      { key: 'parent_synonyms', label: 'Sinônimos (Pai)' },
+      { key: 'child_synonyms', label: 'Sinônimos (Filha)' },
+    ];
+
+    if (format === 'json') {
+      // JSON: hierarchical structure for reimport
+      const taxonomy = {
+        version: "1.0",
+        exported_at: new Date().toISOString(),
+        taxonomy: parentTags.map(parent => ({
+          id: parent.id,
+          name: parent.tag_name,
+          type: "parent",
+          synonyms: parent.synonyms || [],
+          children: (childTagsMap[parent.id] || []).map(child => ({
+            id: child.id,
+            name: child.tag_name,
+            synonyms: child.synonyms || []
+          }))
+        })),
+        merge_rules: mergeRules || [],
+        orphaned_children: orphanedTags.map(t => ({ id: t.id, name: t.tag_name }))
+      };
+      
+      const blob = new Blob([JSON.stringify(taxonomy, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `taxonomy-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } else {
+      // CSV, Excel, PDF: tabular format
+      await exportData({
+        filename: 'taxonomy',
+        data: taxonomyData,
+        format,
+        columns: taxonomyColumns,
+      });
+    }
     
     await logTagManagementEvent({
       input_state: { tags_involved: [] },
       action_type: 'export_taxonomy',
-      user_decision: { exported_count: parentTags.length }
+      user_decision: { exported_count: parentTags.length, format }
     });
     
-    toast.success("Taxonomia exportada com sucesso!");
+    toast.success(`Taxonomia exportada em ${format.toUpperCase()}!`);
   };
 
   // Open conflict resolution modal
@@ -1354,10 +1391,28 @@ export const TagsManagementTab = () => {
             className="hidden" 
             onChange={handleImportTaxonomy} 
           />
-          <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleExportTaxonomy}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar Taxonomia
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full justify-start">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar Taxonomia
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-popover border">
+              <DropdownMenuItem onClick={() => handleExportTaxonomy('json')}>
+                <FileJson className="h-4 w-4 mr-2" /> JSON (Estrutura Completa)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportTaxonomy('xlsx')}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportTaxonomy('csv')}>
+                <FileText className="h-4 w-4 mr-2" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportTaxonomy('pdf')}>
+                <FileDown className="h-4 w-4 mr-2" /> PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           
           {/* Linha 2: Tags individuais */}
           <DropdownMenu>

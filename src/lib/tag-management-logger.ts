@@ -36,6 +36,7 @@ export interface TagManagementEventInput {
     imported_count?: number;
     exported_count?: number;
     action?: string;
+    format?: string;
   };
   rationale?: string;
   similarity_score?: number;
