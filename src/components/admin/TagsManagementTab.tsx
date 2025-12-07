@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -70,6 +70,15 @@ import { OrphanedTagsPanel } from "./OrphanedTagsPanel";
 import { TagConflictResolutionModal } from "./TagConflictResolutionModal";
 import { logTagManagementEvent } from "@/lib/tag-management-logger";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useDebounce } from "@/hooks/useDebounce";
+
+// Optimized sub-components
+import { TagsTable } from "./tags/TagsTable";
+import { DuplicatesPanel } from "./tags/DuplicatesPanel";
+import { MetricsDashboard } from "./tags/MetricsDashboard";
+import { TagFilters } from "./tags/TagFilters";
+import { useTagsData } from "./tags/useTagsData";
+import { useSimilarityCalculations } from "./tags/useSimilarityCalculations";
 
 interface Tag {
   id: string;
@@ -191,7 +200,7 @@ export const TagsManagementTab = () => {
     }
   }, [adminSettings]);
 
-  // Fetch all tags with document target_chat
+  // Fetch all tags with document target_chat - with staleTime for caching
   const { data: allTags, isLoading } = useQuery({
     queryKey: ["all-tags"],
     queryFn: async () => {
@@ -212,9 +221,11 @@ export const TagsManagementTab = () => {
         document_filename: tag.documents?.filename || null,
       })) as (Tag & { document_filename: string | null })[];
     },
+    staleTime: 2 * 60 * 1000, // 2 minutes cache
+    gcTime: 5 * 60 * 1000, // 5 minutes garbage collection
   });
 
-  // Fetch ML merge rules
+  // Fetch ML merge rules - with staleTime
   const { data: mergeRules, isLoading: isLoadingRules } = useQuery({
     queryKey: ["tag-merge-rules"],
     queryFn: async () => {
@@ -233,9 +244,11 @@ export const TagsManagementTab = () => {
         merge_count: number;
       }>;
     },
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
-  // Fetch chat routing rules
+  // Fetch chat routing rules - with staleTime
   const { data: chatRoutingRules } = useQuery({
     queryKey: ["chat-routing-rules"],
     queryFn: async () => {
@@ -254,6 +267,8 @@ export const TagsManagementTab = () => {
         created_at: string;
       }>;
     },
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
   // Fetch ML routing analytics from document_routing_log
@@ -307,9 +322,10 @@ export const TagsManagementTab = () => {
     },
   });
 
-  // Fetch ML management events for dashboard
+  // Fetch ML management events for dashboard - only when panel is open
   const { data: mlEvents } = useQuery({
     queryKey: ["ml-management-events", mlEventsTimeRange],
+    enabled: mlEventsOpen, // Only fetch when panel is open
     queryFn: async () => {
       const startDate = new Date(Date.now() - mlEventsTimeRange * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
