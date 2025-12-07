@@ -117,6 +117,7 @@ export const TagsManagementTab = () => {
   const [isTestingAlert, setIsTestingAlert] = useState<boolean>(false);
   const [isMlAlertConfigured, setIsMlAlertConfigured] = useState<boolean>(false);
   const [isSavingMlConfig, setIsSavingMlConfig] = useState<boolean>(false);
+  const [isEnablingEdit, setIsEnablingEdit] = useState<boolean>(false);
   
   // Conflict resolution modal state
   const [conflictModal, setConflictModal] = useState<{
@@ -537,8 +538,11 @@ export const TagsManagementTab = () => {
   };
 
   // Edit ML alert configuration (unlock fields)
-  const handleEditMlAlertConfig = () => {
+  const handleEditMlAlertConfig = async () => {
+    setIsEnablingEdit(true);
+    await new Promise(resolve => setTimeout(resolve, 300));
     setIsMlAlertConfigured(false);
+    setIsEnablingEdit(false);
   };
 
   // Test ML alert (calls edge function)
@@ -2309,9 +2313,19 @@ export const TagsManagementTab = () => {
                   onClick={handleEditMlAlertConfig}
                   variant="outline"
                   className="flex-1"
+                  disabled={isEnablingEdit}
                 >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Configurar
+                  {isEnablingEdit ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Habilitando...
+                    </>
+                  ) : (
+                    <>
+                      <Settings className="h-4 w-4 mr-2" />
+                      Configurar
+                    </>
+                  )}
                 </Button>
               ) : (
                 <Button 
