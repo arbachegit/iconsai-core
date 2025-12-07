@@ -666,27 +666,37 @@ export const TagsManagementTab = () => {
     }
   };
 
-  // Group tags by parent
-  const parentTags = allTags?.filter((t) => !t.parent_tag_id) || [];
-  const childTagsMap = allTags?.reduce((acc, tag) => {
-    if (tag.parent_tag_id) {
-      if (!acc[tag.parent_tag_id]) {
-        acc[tag.parent_tag_id] = [];
-      }
-      acc[tag.parent_tag_id].push(tag);
-    }
-    return acc;
-  }, {} as Record<string, Tag[]>) || {};
-
-  // Filter by source and chat
-  const filteredParentTags = parentTags.filter((t) => {
-    const sourceMatch = filterSource === "all" || t.source === filterSource;
-    const chatMatch = filterChat === "all" || t.target_chat === filterChat;
-    return sourceMatch && chatMatch;
-  });
-
   const [filterConfidence, setFilterConfidence] = useState<string>("all");
   const [searchTagName, setSearchTagName] = useState("");
+
+  // Use memoized hook for all tag calculations
+  const {
+    parentTags,
+    childTagsMap,
+    sortedParentTags,
+    paginatedParentTags,
+    totalPages,
+    childTagsCount,
+  } = useTagsData({
+    allTags,
+    filterSource,
+    filterChat,
+    filterConfidence,
+    searchTagName,
+    sortColumn,
+    sortDirection,
+    currentPage,
+    itemsPerPage,
+  });
+
+  // Use memoized similarity calculations from hook
+  const { 
+    duplicateParentTags, 
+    semanticDuplicates, 
+    similarChildTagsPerParent, 
+    totalChildDuplicates,
+    orphanedTags 
+  } = useSimilarityCalculations(allTags, parentTags, childTagsMap);
 
   // Reset page when search changes
   useEffect(() => {
@@ -717,77 +727,30 @@ export const TagsManagementTab = () => {
     }
   }, [searchTagName, parentTags, childTagsMap]);
 
-  // Apply confidence filter and search (including child tags)
-  const confidenceFilteredTags = filteredParentTags.filter((parentTag) => {
-    const searchLower = searchTagName.toLowerCase().trim();
-    
-    // Check if parent tag matches search
-    const parentMatch = !searchTagName.trim() || 
-      parentTag.tag_name.toLowerCase().includes(searchLower);
-    
-    // Check if any child tag matches search
-    const childTags = childTagsMap[parentTag.id] || [];
-    const childMatch = childTags.some(child => 
-      child.tag_name.toLowerCase().includes(searchLower)
-    );
-    
-    // Show parent if it matches OR if any child matches
-    if (!searchTagName.trim() || parentMatch || childMatch) {
-      // Apply confidence filter
-      if (filterConfidence === "all") return true;
-      const conf = parentTag.confidence ?? 0;
-      switch (filterConfidence) {
-        case "high": return conf >= 0.7;
-        case "medium": return conf >= 0.5 && conf < 0.7;
-        case "low": return conf < 0.5;
-        default: return true;
-      }
-    }
-    
-    return false;
-  });
-
-  // Sort tags
-  const sortedParentTags = [...confidenceFilteredTags].sort((a, b) => {
-    if (sortColumn === "tag_name") {
-      const comparison = a.tag_name.localeCompare(b.tag_name);
-      return sortDirection === "asc" ? comparison : -comparison;
-    } else if (sortColumn === "confidence") {
-      const aConf = a.confidence ?? 0;
-      const bConf = b.confidence ?? 0;
-      return sortDirection === "asc" ? aConf - bConf : bConf - aConf;
-    } else if (sortColumn === "target_chat") {
-      const aChat = a.target_chat || "";
-      const bChat = b.target_chat || "";
-      const comparison = aChat.localeCompare(bChat);
-      return sortDirection === "asc" ? comparison : -comparison;
-    }
-    return 0;
-  });
-
-  // Handle sort toggle
-  const handleSort = (column: "tag_name" | "confidence" | "target_chat") => {
+  // Handle sort toggle - memoized
+  const handleSort = useCallback((column: "tag_name" | "confidence" | "target_chat") => {
     if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
     } else {
       setSortColumn(column);
       setSortDirection("asc");
     }
-  };
+  }, [sortColumn]);
 
-  // Use memoized similarity calculations from hook
-  const { 
-    duplicateParentTags, 
-    semanticDuplicates, 
-    similarChildTagsPerParent, 
-    totalChildDuplicates,
-    orphanedTags 
-  } = useSimilarityCalculations(allTags, parentTags, childTagsMap);
+  // Toggle expanded - memoized
+  const toggleExpanded = useCallback((parentId: string) => {
+    setExpandedParents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(parentId)) {
+        newSet.delete(parentId);
+      } else {
+        newSet.add(parentId);
+      }
+      return newSet;
+    });
+  }, []);
 
-  // Pagination
-  const totalPages = Math.ceil(sortedParentTags.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedParentTags = sortedParentTags.slice(startIndex, startIndex + itemsPerPage);
 
   // Export taxonomy with multiple formats
   const handleExportTaxonomy = async (format: ExportFormat) => {
@@ -1077,17 +1040,6 @@ export const TagsManagementTab = () => {
     }
   };
 
-  const toggleExpanded = (parentId: string) => {
-    setExpandedParents((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(parentId)) {
-        newSet.delete(parentId);
-      } else {
-        newSet.add(parentId);
-      }
-      return newSet;
-    });
-  };
 
   if (isLoading) {
     return (
@@ -2671,339 +2623,35 @@ export const TagsManagementTab = () => {
         </Collapsible>
       )}
 
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="flex items-center gap-6 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Label>Origem:</Label>
-            <Select value={filterSource} onValueChange={setFilterSource}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="ai">IA</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label>Chat:</Label>
-            <Select value={filterChat} onValueChange={setFilterChat}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="health">Saúde</SelectItem>
-                <SelectItem value="study">Estudo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label>Confiança:</Label>
-            <Select value={filterConfidence} onValueChange={setFilterConfidence}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="high">Alta (≥70%)</SelectItem>
-                <SelectItem value="medium">Média (50-69%)</SelectItem>
-                <SelectItem value="low">Baixa (&lt;50%)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome da tag..."
-              value={searchTagName}
-              onChange={(e) => setSearchTagName(e.target.value)}
-              className="h-9"
-            />
-            {searchTagName && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setSearchTagName("")}
-                className="h-9 w-9 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
+      {/* Filters - Optimized Component */}
+      <TagFilters
+        filterSource={filterSource}
+        filterChat={filterChat}
+        filterConfidence={filterConfidence}
+        searchTagName={searchTagName}
+        onFilterSourceChange={setFilterSource}
+        onFilterChatChange={setFilterChat}
+        onFilterConfidenceChange={setFilterConfidence}
+        onSearchChange={setSearchTagName}
+      />
 
-      {/* Tags Table */}
+      {/* Tags Table - Optimized Component */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Tags Extraídas dos Documentos</h3>
         
-        {paginatedParentTags.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8">
-            Nenhuma tag encontrada
-          </div>
-        ) : (
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40px]"></TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("tag_name")}
-                      className="flex items-center gap-1 -ml-4 hover:bg-transparent"
-                    >
-                      Nome da Tag
-                      {sortColumn === "tag_name" ? (
-                        sortDirection === "asc" ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Button>
-                  </TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Origem</TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("target_chat")}
-                      className="flex items-center gap-1 -ml-4 hover:bg-transparent"
-                    >
-                      Chat
-                      {sortColumn === "target_chat" ? (
-                        sortDirection === "asc" ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("confidence")}
-                      className="flex items-center gap-1 -ml-4 hover:bg-transparent"
-                    >
-                      Confiança
-                      {sortColumn === "confidence" ? (
-                        sortDirection === "asc" ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedParentTags.map((parent) => (
-                  <>
-                    <TableRow key={parent.id} className="group">
-                      <TableCell>
-                        {childTagsMap[parent.id]?.length > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleExpanded(parent.id)}
-                            className="h-6 w-6 p-0"
-                          >
-                            <ChevronDown
-                              className={`h-4 w-4 transition-transform ${
-                                expandedParents.has(parent.id) ? "rotate-180" : ""
-                              }`}
-                            />
-                          </Button>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium">{parent.tag_name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {parent.tag_type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={parent.source === "ai" ? "secondary" : "default"} className="text-xs">
-                          {parent.source}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {parent.target_chat && (
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs ${
-                              parent.target_chat === "health" 
-                                ? "border-emerald-500/50 text-emerald-400" 
-                                : "border-blue-500/50 text-blue-400"
-                            }`}
-                          >
-                            {parent.target_chat === "health" ? "Saúde" : "Estudo"}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="flex items-center gap-1">
-                                <Badge 
-                                  variant="outline" 
-                                  className={`text-xs ${
-                                    (parent.confidence || 0) >= 0.7 
-                                      ? "border-green-500/50 text-green-400" 
-                                      : (parent.confidence || 0) >= 0.5 
-                                        ? "border-yellow-500/50 text-yellow-400"
-                                        : "border-red-500/50 text-red-400"
-                                  }`}
-                                >
-                                  {Math.round((parent.confidence || 0) * 100)}%
-                                </Badge>
-                                <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-[300px]">
-                              <p className="font-semibold">Grau de Confiança</p>
-                              <p className="text-sm">Representa a certeza da IA ao classificar este documento.</p>
-                              <ul className="text-sm mt-1 list-disc pl-4">
-                                <li className="text-green-400">≥70%: Incluída nos scope_topics</li>
-                                <li className="text-yellow-400">50-69%: Relevância média</li>
-                                <li className="text-red-400">&lt;50%: Baixa relevância</li>
-                              </ul>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openCreateDialog(false, parent.id)}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditDialog(parent)}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openDeleteConfirmModal([parent.id], parent.tag_name)}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    {/* Child Tags Rows */}
-                    {expandedParents.has(parent.id) && childTagsMap[parent.id]?.map((child) => {
-                      const searchLower = searchTagName.toLowerCase().trim();
-                      const childMatchesSearch = searchLower && child.tag_name.toLowerCase().includes(searchLower);
-                      
-                      return (
-                      <TableRow 
-                        key={child.id} 
-                        className={`group ${childMatchesSearch ? 'bg-yellow-500/20 border-l-2 border-yellow-400' : 'bg-muted/30'}`}
-                      >
-                        <TableCell></TableCell>
-                        <TableCell className="pl-8 text-sm">
-                          <span className={childMatchesSearch ? 'text-yellow-300 font-medium' : 'text-muted-foreground'}>
-                            ↳ {child.tag_name}
-                            {childMatchesSearch && (
-                              <Badge variant="outline" className="ml-2 text-xs bg-yellow-500/20 text-yellow-300 border-yellow-500/50">
-                                match
-                              </Badge>
-                            )}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            {child.tag_type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={child.source === "ai" ? "secondary" : "default"} className="text-xs">
-                            {child.source}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {child.target_chat && (
-                            <Badge 
-                              variant="outline" 
-                              className={`text-xs ${
-                                child.target_chat === "health" 
-                                  ? "border-emerald-500/50 text-emerald-400" 
-                                  : "border-blue-500/50 text-blue-400"
-                              }`}
-                            >
-                              {child.target_chat === "health" ? "Saúde" : "Estudo"}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs ${
-                              (child.confidence || 0) >= 0.7 
-                                ? "border-green-500/50 text-green-400" 
-                                : (child.confidence || 0) >= 0.5 
-                                  ? "border-yellow-500/50 text-yellow-400"
-                                  : "border-red-500/50 text-red-400"
-                            }`}
-                          >
-                            {Math.round((child.confidence || 0) * 100)}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEditDialog(child)}
-                              className="h-7 w-7 p-0"
-                            >
-                              <Edit className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openDeleteConfirmModal([child.id], child.tag_name)}
-                              className="h-7 w-7 p-0"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                    })}
-
-                  </>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+        <TagsTable
+          paginatedParentTags={paginatedParentTags}
+          childTagsMap={childTagsMap}
+          expandedParents={expandedParents}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          searchTagName={searchTagName}
+          onToggleExpanded={toggleExpanded}
+          onSort={handleSort}
+          onCreateChild={(parentId) => openCreateDialog(false, parentId)}
+          onEdit={openEditDialog}
+          onDelete={openDeleteConfirmModal}
+        />
 
         {/* Pagination Controls */}
         {sortedParentTags.length > 0 && (
