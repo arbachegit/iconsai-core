@@ -159,6 +159,9 @@ export const TagsManagementTab = () => {
     open: boolean;
     ids: string[];
     tagName: string;
+    tagType: 'parent' | 'child';
+    totalInstances: number; // Total instances of this tag name across all documents
+    isLoadingCount: boolean;
     reasons: {
       generic: boolean;        // Stopwords
       outOfDomain: boolean;    // Irrelevância de domínio
@@ -174,6 +177,9 @@ export const TagsManagementTab = () => {
     open: false,
     ids: [],
     tagName: '',
+    tagType: 'parent',
+    totalInstances: 0,
+    isLoadingCount: false,
     reasons: {
       generic: false,
       outOfDomain: false,
@@ -586,12 +592,20 @@ export const TagsManagementTab = () => {
     }
   };
 
-  // Open delete confirmation modal
-  const openDeleteConfirmModal = (ids: string[], tagName: string) => {
+  // Open delete confirmation modal - fetches count of all instances
+  const openDeleteConfirmModal = async (ids: string[], tagName: string) => {
+    // Determine if it's a parent or child tag
+    const tag = allTags?.find(t => ids.includes(t.id));
+    const tagType: 'parent' | 'child' = tag?.parent_tag_id ? 'child' : 'parent';
+    
+    // Open modal immediately with loading state
     setDeleteConfirmModal({
       open: true,
       ids,
       tagName,
+      tagType,
+      totalInstances: 0,
+      isLoadingCount: true,
       reasons: {
         generic: false,
         outOfDomain: false,
@@ -604,17 +618,62 @@ export const TagsManagementTab = () => {
         pii: false,
       },
     });
+    
+    // Fetch total count of tags with this name across all documents
+    const { count, error } = await supabase
+      .from('document_tags')
+      .select('*', { count: 'exact', head: true })
+      .eq('tag_name', tagName);
+      
+    if (!error) {
+      setDeleteConfirmModal(prev => ({
+        ...prev,
+        totalInstances: count || 0,
+        isLoadingCount: false,
+      }));
+    } else {
+      setDeleteConfirmModal(prev => ({
+        ...prev,
+        totalInstances: ids.length,
+        isLoadingCount: false,
+      }));
+    }
   };
 
-  // Confirm delete tags (called after modal confirmation)
+  // Confirm delete tags - deletes ALL instances of the tag by name
   const confirmDeleteTags = async () => {
-    const { ids, tagName, reasons } = deleteConfirmModal;
+    const { tagName, tagType, totalInstances, reasons } = deleteConfirmModal;
     
     try {
+      // If deleting a parent tag, first orphan all child tags that reference it
+      if (tagType === 'parent') {
+        // Find all parent tag IDs with this name
+        const { data: parentTagsToDelete } = await supabase
+          .from('document_tags')
+          .select('id')
+          .eq('tag_name', tagName)
+          .eq('tag_type', 'parent');
+          
+        if (parentTagsToDelete && parentTagsToDelete.length > 0) {
+          const parentIds = parentTagsToDelete.map(p => p.id);
+          
+          // Move child tags to Orphaned Zone (set parent_tag_id to null)
+          const { error: orphanError } = await supabase
+            .from('document_tags')
+            .update({ parent_tag_id: null })
+            .in('parent_tag_id', parentIds);
+            
+          if (orphanError) {
+            console.warn('Warning: Could not orphan child tags:', orphanError);
+          }
+        }
+      }
+      
+      // Delete ALL instances of this tag by name
       const { error } = await supabase
         .from('document_tags')
         .delete()
-        .in('id', ids);
+        .eq('tag_name', tagName);
         
       if (error) throw error;
       
@@ -631,24 +690,30 @@ export const TagsManagementTab = () => {
       if (reasons.pii) reasonLabels.push('Dado sensível (PII)');
       
       await logTagManagementEvent({
-        input_state: { tags_involved: ids.map(id => ({ id, name: tagName, type: 'parent' as const })) },
+        input_state: { 
+          tags_involved: [{ id: 'all', name: tagName, type: tagType }],
+        },
         action_type: 'delete_orphan',
         user_decision: { 
-          action: 'delete_tags', 
-          source_tags_removed: ids,
+          action: `delete_all_instances_${totalInstances}`, 
+          source_tags_removed: [tagName],
           deletion_reasons: reasons,
         },
-        rationale: `Exclusão de ${ids.length} tag(s): ${tagName}. Motivos: ${reasonLabels.join(', ')}`,
+        rationale: `Exclusão de TODAS as ${totalInstances} instância(s) de "${tagName}". Motivos: ${reasonLabels.join(', ')}`,
       });
       
-      toast.success(`${ids.length} tag(s) excluída(s) com sucesso`);
+      toast.success(`Tag "${tagName}" removida de ${totalInstances} documento(s)`);
       queryClient.invalidateQueries({ queryKey: ['all-tags'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-config'] });
       
       // Close modal and reset state
       setDeleteConfirmModal({
         open: false,
         ids: [],
         tagName: '',
+        tagType: 'parent',
+        totalInstances: 0,
+        isLoadingCount: false,
         reasons: {
           generic: false,
           outOfDomain: false,
@@ -2936,9 +3001,33 @@ export const TagsManagementTab = () => {
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-4">
-                <p>
-                  Você está prestes a excluir <strong>{deleteConfirmModal.ids.length}</strong> ocorrência(s) de "<strong>{deleteConfirmModal.tagName}</strong>".
-                </p>
+                {deleteConfirmModal.isLoadingCount ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Calculando documentos afetados...</span>
+                  </div>
+                ) : deleteConfirmModal.totalInstances > 1 ? (
+                  <div className="space-y-2">
+                    <p>
+                      Você está prestes a excluir a tag "<strong>{deleteConfirmModal.tagName}</strong>".
+                    </p>
+                    <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                      <p className="text-destructive text-sm font-semibold flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        Esta tag será removida de {deleteConfirmModal.totalInstances} documento(s)
+                      </p>
+                    </div>
+                    {deleteConfirmModal.tagType === 'parent' && (
+                      <p className="text-xs text-muted-foreground">
+                        Tags filhas associadas serão movidas para a Zona de Órfãos.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p>
+                    Você está prestes a excluir a tag "<strong>{deleteConfirmModal.tagName}</strong>".
+                  </p>
+                )}
                 
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
                   <p className="text-amber-200 text-sm font-medium mb-3">
