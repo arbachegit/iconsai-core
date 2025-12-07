@@ -16,8 +16,11 @@ import {
   RefreshCw,
   Search,
   Sparkles,
-  AlertTriangle
+  AlertTriangle,
+  Lightbulb
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -224,7 +227,82 @@ export const SuggestionAuditTab = () => {
       {/* Audits Table */}
       <Card className="border-primary/20">
         <CardHeader>
-          <CardTitle className="text-lg">Registros de Auditoria</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg">Registros de Auditoria</CardTitle>
+            
+            {/* Ícone de Explicação - Padrão AdminTitleWithInfo */}
+            <TooltipProvider>
+              <Tooltip>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <TooltipTrigger asChild>
+                      <button 
+                        className="relative w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        aria-label="Informações sobre Auditoria de Sugestões"
+                      >
+                        <Lightbulb className="w-4 h-4 text-primary" />
+                        {/* Bolinha verde pulsante */}
+                        <div className="absolute -top-1 -right-1 pointer-events-none">
+                          <div className="relative">
+                            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/50" />
+                            <div className="absolute inset-0 rounded-full bg-green-400 animate-ping" />
+                          </div>
+                        </div>
+                      </button>
+                    </TooltipTrigger>
+                  </PopoverTrigger>
+                  
+                  <TooltipContent side="right" sideOffset={5}>
+                    <p className="text-sm max-w-[250px]">Clique para saber mais sobre a Auditoria de Sugestões</p>
+                  </TooltipContent>
+
+                  <PopoverContent 
+                    className="w-[480px] max-w-[90vw] bg-card/95 backdrop-blur-sm border-primary/20" 
+                    side="right"
+                    align="start"
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-2">
+                        <Lightbulb className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                        <h4 className="font-semibold text-base">O que são Registros de Auditoria?</h4>
+                      </div>
+                      
+                      <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+                        <p>
+                          <strong className="text-foreground">Definição:</strong> Os Registros de Auditoria capturam todas as sugestões 
+                          geradas pela IA durante conversas, permitindo análise de qualidade e coerência contextual.
+                        </p>
+                        
+                        <div>
+                          <strong className="text-foreground">Como funciona:</strong>
+                          <ul className="list-disc list-inside mt-1 space-y-1">
+                            <li>Cada interação do chat gera um registro automático</li>
+                            <li>São capturados: query do usuário, resposta da IA, sugestões geradas e contexto RAG</li>
+                            <li>Administradores podem validar a coerência das sugestões (score 0-10)</li>
+                            <li>Feedbacks são armazenados para melhoria contínua do sistema</li>
+                          </ul>
+                        </div>
+                        
+                        <div>
+                          <strong className="text-foreground">Funcionalidades:</strong>
+                          <ul className="list-disc list-inside mt-1 space-y-1">
+                            <li><span className="text-emerald-500">✓ Validar Coerente:</span> Sugestões alinhadas ao contexto</li>
+                            <li><span className="text-red-500">✗ Marcar Incoerente:</span> Sugestões fora do contexto</li>
+                            <li><span className="text-amber-500">⏳ Pendente:</span> Aguardando revisão manual</li>
+                          </ul>
+                        </div>
+                        
+                        <p>
+                          <strong className="text-foreground">Objetivo:</strong> Criar memória institucional de qualidade de sugestões, 
+                          permitindo treinamento ML e melhoria contínua do protocolo de coerência contextual.
+                        </p>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
