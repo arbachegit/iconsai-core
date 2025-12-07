@@ -1,11 +1,32 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+
+// Password validation requirements matching AdminResetPassword.tsx
+const validatePassword = (password: string) => {
+  return {
+    minLength: password.length >= 8,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+  };
+};
+
+const getPasswordStrength = (password: string): { strength: string; color: string } => {
+  const validation = validatePassword(password);
+  const score = Object.values(validation).filter(Boolean).length;
+  
+  if (score <= 2) return { strength: "Fraca", color: "text-red-500" };
+  if (score <= 3) return { strength: "Média", color: "text-yellow-500" };
+  if (score <= 4) return { strength: "Forte", color: "text-blue-500" };
+  return { strength: "Muito Forte", color: "text-green-500" };
+};
 
 const AdminSignup = () => {
   const [email, setEmail] = useState("");
@@ -14,6 +35,10 @@ const AdminSignup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const passwordValidation = useMemo(() => validatePassword(password), [password]);
+  const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
+  const isPasswordValid = Object.values(passwordValidation).every(Boolean);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,10 +52,10 @@ const AdminSignup = () => {
       return;
     }
 
-    if (password.length < 6) {
+    if (!isPasswordValid) {
       toast({
-        title: "Senha muito curta",
-        description: "A senha deve ter pelo menos 6 caracteres.",
+        title: "Senha não atende aos requisitos",
+        description: "A senha deve ter pelo menos 8 caracteres, incluindo maiúsculas, minúsculas, números e caracteres especiais.",
         variant: "destructive",
       });
       return;
@@ -111,11 +136,73 @@ const AdminSignup = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Mínimo 8 caracteres com complexidade"
                 className="bg-background/50"
                 required
-                minLength={6}
+                minLength={8}
               />
+              {password && (
+                <div className="space-y-2 mt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Força:</span>
+                    <span className={`text-sm font-medium ${passwordStrength.color}`}>
+                      {passwordStrength.strength}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-xs">
+                    <div className="flex items-center gap-1">
+                      {passwordValidation.minLength ? (
+                        <Check className="w-3 h-3 text-green-500" />
+                      ) : (
+                        <X className="w-3 h-3 text-red-500" />
+                      )}
+                      <span className={passwordValidation.minLength ? "text-green-500" : "text-muted-foreground"}>
+                        8+ caracteres
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {passwordValidation.hasUppercase ? (
+                        <Check className="w-3 h-3 text-green-500" />
+                      ) : (
+                        <X className="w-3 h-3 text-red-500" />
+                      )}
+                      <span className={passwordValidation.hasUppercase ? "text-green-500" : "text-muted-foreground"}>
+                        Maiúscula
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {passwordValidation.hasLowercase ? (
+                        <Check className="w-3 h-3 text-green-500" />
+                      ) : (
+                        <X className="w-3 h-3 text-red-500" />
+                      )}
+                      <span className={passwordValidation.hasLowercase ? "text-green-500" : "text-muted-foreground"}>
+                        Minúscula
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {passwordValidation.hasNumber ? (
+                        <Check className="w-3 h-3 text-green-500" />
+                      ) : (
+                        <X className="w-3 h-3 text-red-500" />
+                      )}
+                      <span className={passwordValidation.hasNumber ? "text-green-500" : "text-muted-foreground"}>
+                        Número
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 col-span-2">
+                      {passwordValidation.hasSpecial ? (
+                        <Check className="w-3 h-3 text-green-500" />
+                      ) : (
+                        <X className="w-3 h-3 text-red-500" />
+                      )}
+                      <span className={passwordValidation.hasSpecial ? "text-green-500" : "text-muted-foreground"}>
+                        Caractere especial (!@#$%^&*)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -129,7 +216,7 @@ const AdminSignup = () => {
                 placeholder="Digite a senha novamente"
                 className="bg-background/50"
                 required
-                minLength={6}
+                minLength={8}
               />
             </div>
 
