@@ -775,126 +775,14 @@ export const TagsManagementTab = () => {
     }
   };
 
-  // Levenshtein distance for semantic similarity
-  const levenshteinDistance = (a: string, b: string): number => {
-    const matrix: number[][] = [];
-    for (let i = 0; i <= b.length; i++) {
-      matrix[i] = [i];
-    }
-    for (let j = 0; j <= a.length; j++) {
-      matrix[0][j] = j;
-    }
-    for (let i = 1; i <= b.length; i++) {
-      for (let j = 1; j <= a.length; j++) {
-        if (b.charAt(i - 1) === a.charAt(j - 1)) {
-          matrix[i][j] = matrix[i - 1][j - 1];
-        } else {
-          matrix[i][j] = Math.min(
-            matrix[i - 1][j - 1] + 1,
-            matrix[i][j - 1] + 1,
-            matrix[i - 1][j] + 1
-          );
-        }
-      }
-    }
-    return matrix[b.length][a.length];
-  };
-
-  const calculateSimilarity = (a: string, b: string): number => {
-    const normalized1 = a.toLowerCase().replace(/[^a-záàâãéêíóôõúç\s]/gi, '').trim();
-    const normalized2 = b.toLowerCase().replace(/[^a-záàâãéêíóôõúç\s]/gi, '').trim();
-    const maxLen = Math.max(normalized1.length, normalized2.length);
-    if (maxLen === 0) return 1;
-    const distance = levenshteinDistance(normalized1, normalized2);
-    return 1 - (distance / maxLen);
-  };
-
-  // Detect exact duplicates
-  const duplicateParentTags = parentTags.reduce((acc, tag) => {
-    const existing = acc.find((item) => item.tag_name === tag.tag_name);
-    if (existing) {
-      existing.count += 1;
-      existing.ids.push(tag.id);
-    } else {
-      acc.push({ tag_name: tag.tag_name, count: 1, ids: [tag.id] });
-    }
-    return acc;
-  }, [] as { tag_name: string; count: number; ids: string[] }[]).filter((item) => item.count > 1);
-
-  // Detect semantic duplicates (similar but not identical)
-  const semanticDuplicates: { tag1: string; tag2: string; similarity: number; ids: string[] }[] = [];
-  const uniqueTagNames = [...new Set(parentTags.map(t => t.tag_name))];
-  
-  for (let i = 0; i < uniqueTagNames.length; i++) {
-    for (let j = i + 1; j < uniqueTagNames.length; j++) {
-      const similarity = calculateSimilarity(uniqueTagNames[i], uniqueTagNames[j]);
-      // Consider similar if >= 70% match but not exact
-      if (similarity >= 0.7 && similarity < 1) {
-        const tag1Ids = parentTags.filter(t => t.tag_name === uniqueTagNames[i]).map(t => t.id);
-        const tag2Ids = parentTags.filter(t => t.tag_name === uniqueTagNames[j]).map(t => t.id);
-        semanticDuplicates.push({
-          tag1: uniqueTagNames[i],
-          tag2: uniqueTagNames[j],
-          similarity,
-          ids: [...tag1Ids, ...tag2Ids],
-        });
-      }
-    }
-  }
-
-  // Sort by similarity descending
-  semanticDuplicates.sort((a, b) => b.similarity - a.similarity);
-
-  // Detect similar child tags within the same parent
-  const similarChildTagsPerParent: {
-    parentId: string;
-    parentName: string;
-    pairs: { tag1: string; tag2: string; id1: string; id2: string; similarity: number }[];
-  }[] = [];
-
-  parentTags.forEach(parent => {
-    const children = childTagsMap[parent.id] || [];
-    if (children.length < 2) return;
-    
-    const pairs: { tag1: string; tag2: string; id1: string; id2: string; similarity: number }[] = [];
-    
-    for (let i = 0; i < children.length; i++) {
-      for (let j = i + 1; j < children.length; j++) {
-        const similarity = calculateSimilarity(children[i].tag_name, children[j].tag_name);
-        // Consider similar if >= 60% match but not exact
-        if (similarity >= 0.6 && similarity < 1) {
-          pairs.push({
-            tag1: children[i].tag_name,
-            tag2: children[j].tag_name,
-            id1: children[i].id,
-            id2: children[j].id,
-            similarity,
-          });
-        }
-      }
-    }
-    
-    if (pairs.length > 0) {
-      pairs.sort((a, b) => b.similarity - a.similarity);
-      similarChildTagsPerParent.push({
-        parentId: parent.id,
-        parentName: parent.tag_name,
-        pairs,
-      });
-    }
-  });
-
-  // Total count of child duplicates
-  const totalChildDuplicates = similarChildTagsPerParent.reduce(
-    (sum, p) => sum + p.pairs.length, 0
-  );
-
-  // Detect orphaned child tags (children without valid parent)
-  const orphanedTags = allTags?.filter(tag => {
-    if (!tag.parent_tag_id) return false; // Not a child
-    const parentExists = parentTags.some(p => p.id === tag.parent_tag_id);
-    return !parentExists;
-  }) || [];
+  // Use memoized similarity calculations from hook
+  const { 
+    duplicateParentTags, 
+    semanticDuplicates, 
+    similarChildTagsPerParent, 
+    totalChildDuplicates,
+    orphanedTags 
+  } = useSimilarityCalculations(allTags, parentTags, childTagsMap);
 
   // Pagination
   const totalPages = Math.ceil(sortedParentTags.length / itemsPerPage);
@@ -978,10 +866,27 @@ export const TagsManagementTab = () => {
   };
 
   // Open conflict resolution modal
-  const openConflictModal = (type: 'parent' | 'child' | 'semantic', tagIds: string[], similarity?: number) => {
+  const openConflictModal = useCallback((type: 'parent' | 'child' | 'semantic', tagIds: string[], similarity?: number) => {
     const tagsForModal = allTags?.filter(t => tagIds.includes(t.id)) || [];
     setConflictModal({ open: true, type, tags: tagsForModal, similarityScore: similarity });
-  };
+  }, [allTags]);
+
+  // Reject duplicate (log decision without merging)
+  const handleRejectDuplicate = useCallback(async (ids: string[], tagName: string, type: 'parent' | 'semantic' | 'child') => {
+    await logTagManagementEvent({
+      input_state: {
+        tags_involved: ids.map(id => ({ id, name: tagName, type: type === 'parent' ? 'parent' as const : 'child' as const })),
+        detection_type: type === 'parent' ? 'exact' : type === 'semantic' ? 'semantic' : 'child_similarity'
+      },
+      action_type: 'reject_duplicate',
+      user_decision: { 
+        action: 'reject_duplicate',
+        source_tags_removed: [] // No tags removed when rejecting
+      },
+      rationale: `Duplicata rejeitada diretamente da lista: ${tagName} (tipo: ${type})`,
+    });
+    toast.info("Duplicata rejeitada. Decisão registrada para ML.");
+  }, []);
 
   // Create tag mutation
   const createTagMutation = useMutation({
@@ -2508,159 +2413,15 @@ export const TagsManagementTab = () => {
         parentTags={parentTags.map(p => ({ id: p.id, tag_name: p.tag_name }))} 
       />
 
-      {/* Duplicate Detection - Combined Section */}
-      {(duplicateParentTags.length > 0 || semanticDuplicates.length > 0 || similarChildTagsPerParent.length > 0) && (
-        <Card className="p-4 border-amber-500/50 bg-amber-500/5">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
-            <h3 className="font-semibold">
-              Duplicatas Detectadas
-              <Badge variant="outline" className="ml-2">
-                {duplicateParentTags.length + semanticDuplicates.length + totalChildDuplicates}
-              </Badge>
-            </h3>
-          </div>
-          
-          {/* Exact Duplicates */}
-          {duplicateParentTags.length > 0 && (
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Badge variant="destructive" className="text-xs">Exatas</Badge>
-                <span className="text-sm text-muted-foreground">Tags com nome idêntico</span>
-              </div>
-              <div className="space-y-2">
-                {duplicateParentTags.map(({ tag_name, count, ids }) => (
-                  <div key={tag_name} className="flex items-center justify-between p-2 bg-red-500/10 border border-red-500/30 rounded">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">"{tag_name}"</span>
-                      <Badge variant="outline" className="text-xs">{count}x</Badge>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button size="sm" variant="outline" onClick={() => openConflictModal('parent', ids)}>
-                        <Merge className="h-4 w-4 mr-1" /> Unificar
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => openDeleteConfirmModal(ids, tag_name)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Semantic Duplicates */}
-          {semanticDuplicates.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Badge className="text-xs bg-purple-500/20 text-purple-300 border-purple-500/30">
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  Semânticas
-                </Badge>
-                <span className="text-sm text-muted-foreground">Tags com significado similar</span>
-              </div>
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {semanticDuplicates.slice(0, 15).map(({ tag1, tag2, similarity, ids }, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2 bg-purple-500/10 border border-purple-500/30 rounded">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium">"{tag1}"</span>
-                      <span className="text-muted-foreground">≈</span>
-                      <span className="text-sm font-medium">"{tag2}"</span>
-                      <Badge variant="outline" className="text-xs">
-                        {Math.round(similarity * 100)}% similar
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button size="sm" variant="outline" onClick={() => openConflictModal('semantic', ids, similarity)}>
-                        <Merge className="h-4 w-4 mr-1" /> Mesclar
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => openDeleteConfirmModal(ids, `${tag1} / ${tag2}`)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {semanticDuplicates.length > 15 && (
-                  <p className="text-xs text-muted-foreground text-center pt-2">
-                    +{semanticDuplicates.length - 15} outras duplicatas semânticas
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Similar Child Tags within Same Parent */}
-          {similarChildTagsPerParent.length > 0 && (
-            <div className="mt-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Badge className="text-xs bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
-                  <Tags className="h-3 w-3 mr-1" />
-                  Filhas Semelhantes
-                </Badge>
-                <span className="text-sm text-muted-foreground">
-                  Tags filhas similares dentro do mesmo pai ({totalChildDuplicates})
-                </span>
-              </div>
-              <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                {similarChildTagsPerParent.map(({ parentId, parentName, pairs }) => (
-                  <Collapsible key={parentId}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full p-2 bg-cyan-500/10 border border-cyan-500/30 rounded hover:bg-cyan-500/20 transition-colors">
-                      <div className="flex items-center gap-2">
-                        <ChevronDown className="h-4 w-4 transition-transform" />
-                        <span className="font-medium">{parentName}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {pairs.length} par(es)
-                        </Badge>
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pl-6 pt-2 space-y-2">
-                      {pairs.map(({ tag1, tag2, id1, id2, similarity }, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2 bg-cyan-500/5 border border-cyan-500/20 rounded">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="secondary" className="text-xs">{tag1}</Badge>
-                            <span className="text-muted-foreground">≈</span>
-                            <Badge variant="secondary" className="text-xs">{tag2}</Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {Math.round(similarity * 100)}%
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => openConflictModal('child', [id1, id2], similarity)}
-                            >
-                              <Merge className="h-4 w-4 mr-1" /> Mesclar
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => openDeleteConfirmModal([id1, id2], `${tag1} / ${tag2}`)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))}
-              </div>
-            </div>
-          )}
-        </Card>
-      )}
+      {/* Duplicate Detection Panel */}
+      <DuplicatesPanel
+        duplicateParentTags={duplicateParentTags}
+        semanticDuplicates={semanticDuplicates}
+        similarChildTagsPerParent={similarChildTagsPerParent}
+        onOpenConflictModal={openConflictModal}
+        onDelete={openDeleteConfirmModal}
+        onRejectDuplicate={handleRejectDuplicate}
+      />
 
       {/* Machine Learning Rules Panel */}
       {mergeRules && mergeRules.length > 0 && (

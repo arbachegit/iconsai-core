@@ -3,7 +3,23 @@ import { useMemo } from "react";
 interface Tag {
   id: string;
   tag_name: string;
+  tag_type: string;
+  confidence: number | null;
+  source: string | null;
+  document_id: string;
   parent_tag_id: string | null;
+  created_at?: string;
+}
+
+export interface OrphanedTag {
+  id: string;
+  tag_name: string;
+  tag_type: string;
+  confidence: number | null;
+  source: string | null;
+  document_id: string;
+  parent_tag_id: string | null;
+  created_at: string;
 }
 
 export interface DuplicateGroup {
@@ -162,21 +178,38 @@ export function useSimilarityCalculations(
     return results;
   }, [parentTags, childTagsMap]);
 
+  // Total count of child duplicates
+  const totalChildDuplicates = useMemo(() => {
+    return similarChildTagsPerParent.reduce((sum, p) => sum + p.pairs.length, 0);
+  }, [similarChildTagsPerParent]);
+
   // Detect orphaned child tags
-  const orphanedTags = useMemo(() => {
+  const orphanedTags = useMemo((): OrphanedTag[] => {
     if (!allTags) return [];
     
-    return allTags.filter(tag => {
-      if (!tag.parent_tag_id) return false;
-      const parentExists = parentTags.some(p => p.id === tag.parent_tag_id);
-      return !parentExists;
-    });
+    return allTags
+      .filter(tag => {
+        if (!tag.parent_tag_id) return false;
+        const parentExists = parentTags.some(p => p.id === tag.parent_tag_id);
+        return !parentExists && tag.created_at; // Ensure created_at exists
+      })
+      .map(tag => ({
+        id: tag.id,
+        tag_name: tag.tag_name,
+        tag_type: tag.tag_type,
+        confidence: tag.confidence,
+        source: tag.source,
+        document_id: tag.document_id,
+        parent_tag_id: tag.parent_tag_id,
+        created_at: tag.created_at || new Date().toISOString(),
+      }));
   }, [allTags, parentTags]);
 
   return {
     duplicateParentTags,
     semanticDuplicates,
     similarChildTagsPerParent,
+    totalChildDuplicates,
     orphanedTags,
   };
 }
