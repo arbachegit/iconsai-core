@@ -17,6 +17,18 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertTriangle, ChevronDown, FolderOpen, Loader2, ArrowRight, Users, Trash2 } from "lucide-react";
 import { logTagManagementEvent } from "@/lib/tag-management-logger";
 
@@ -41,11 +53,56 @@ interface OrphanedTagsPanelProps {
   parentTags: ParentTag[];
 }
 
+interface DeletionReasons {
+  generic: boolean;
+  outOfDomain: boolean;
+  properName: boolean;
+  isYear: boolean;
+  isPhrase: boolean;
+  typo: boolean;
+  variation: boolean;
+  isolatedVerb: boolean;
+  pii: boolean;
+}
+
+const DELETION_REASONS_CONFIG = [
+  { key: 'generic' as const, title: 'Termo genérico', description: 'Stopwords que não agregam valor de predição' },
+  { key: 'outOfDomain' as const, title: 'Não se encaixa nas categorias', description: 'Irrelevância de domínio (Out-of-domain)' },
+  { key: 'properName' as const, title: 'Nome próprio', description: 'Alta cardinalidade - cria matriz esparsa' },
+  { key: 'isYear' as const, title: 'É um ano', description: 'Dados temporais devem ser variáveis contínuas' },
+  { key: 'isPhrase' as const, title: 'É uma frase, não palavra-chave', description: 'Ensina IA a detectar length excessivo' },
+  { key: 'typo' as const, title: 'Erro de digitação/grafia', description: 'Sugere fuzzy matching para correções futuras' },
+  { key: 'variation' as const, title: 'Variação (Plural/Singular/Sinônimo)', description: 'Ensina lemmatization - reduzir à raiz' },
+  { key: 'isolatedVerb' as const, title: 'Verbo/Ação isolada', description: 'Verbos soltos não classificam - precisam substantivo' },
+  { key: 'pii' as const, title: 'Dado sensível (PII)', description: 'CPF, Telefone, E-mail - bloquear por segurança' },
+];
+
+const DEFAULT_REASONS: DeletionReasons = {
+  generic: false,
+  outOfDomain: false,
+  properName: false,
+  isYear: false,
+  isPhrase: false,
+  typo: false,
+  variation: false,
+  isolatedVerb: false,
+  pii: false,
+};
+
 export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPanelProps) => {
   const [isOpen, setIsOpen] = useState(true);
   const [selectedParents, setSelectedParents] = useState<Record<string, string>>({});
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [processingType, setProcessingType] = useState<'adopt' | 'delete' | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{
+    open: boolean;
+    tag: OrphanedTag | null;
+    reasons: DeletionReasons;
+  }>({
+    open: false,
+    tag: null,
+    reasons: { ...DEFAULT_REASONS },
+  });
   const queryClient = useQueryClient();
 
   const isProcessing = processingId !== null;
@@ -99,7 +156,17 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async ({ tagId, tagName }: { tagId: string; tagName: string }) => {
+    mutationFn: async ({ 
+      tagId, 
+      tagName,
+      deletion_reasons,
+      rationale
+    }: { 
+      tagId: string; 
+      tagName: string;
+      deletion_reasons: DeletionReasons;
+      rationale: string;
+    }) => {
       const startTime = Date.now();
       
       const { error } = await supabase
@@ -117,8 +184,10 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
         user_decision: {
           target_tag_id: tagId,
           target_tag_name: tagName,
-          action: 'permanently_deleted'
+          action: 'permanently_deleted',
+          deletion_reasons
         },
+        rationale,
         time_to_decision_ms: Date.now() - startTime
       });
     },
@@ -155,104 +224,210 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
     });
   };
 
-  const handleDelete = (tag: OrphanedTag) => {
+  const openDeleteModal = (tag: OrphanedTag) => {
+    setDeleteModal({
+      open: true,
+      tag,
+      reasons: { ...DEFAULT_REASONS },
+    });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteModal.tag) return;
+    
+    const { tag, reasons } = deleteModal;
+    
+    // Construir rationale baseado nos motivos selecionados
+    const selectedReasonLabels: string[] = [];
+    if (reasons.generic) selectedReasonLabels.push('Termo genérico (Stopwords)');
+    if (reasons.outOfDomain) selectedReasonLabels.push('Irrelevância de domínio');
+    if (reasons.properName) selectedReasonLabels.push('Nome próprio (High Cardinality)');
+    if (reasons.isYear) selectedReasonLabels.push('Dado temporal (Ano)');
+    if (reasons.isPhrase) selectedReasonLabels.push('Frase (Length excessivo)');
+    if (reasons.typo) selectedReasonLabels.push('Erro de grafia');
+    if (reasons.variation) selectedReasonLabels.push('Variação (Plural/Sinônimo)');
+    if (reasons.isolatedVerb) selectedReasonLabels.push('Verbo isolado');
+    if (reasons.pii) selectedReasonLabels.push('Dado sensível (PII)');
+    
+    const rationale = `Exclusão de tag órfã: ${tag.tag_name}. Motivos: ${selectedReasonLabels.join(', ')}`;
+    
     setProcessingId(tag.id);
     setProcessingType('delete');
-    deleteMutation.mutate({ tagId: tag.id, tagName: tag.tag_name });
+    
+    deleteMutation.mutate({ 
+      tagId: tag.id, 
+      tagName: tag.tag_name,
+      deletion_reasons: reasons,
+      rationale
+    });
+    
+    setDeleteModal(prev => ({ ...prev, open: false }));
   };
+
+  const hasSelectedReason = Object.values(deleteModal.reasons).some(v => v);
 
   if (orphanedTags.length === 0) {
     return null;
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card className="p-4 border-orange-500/50 bg-gradient-to-r from-orange-500/5 to-amber-500/5">
-        <CollapsibleTrigger className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2">
-            <FolderOpen className="h-5 w-5 text-orange-400" />
-            <h3 className="font-semibold">Zona de Tags Órfãs</h3>
-            <Badge variant="outline" className="ml-2 bg-orange-500/20 text-orange-300 border-orange-500/30">
-              <Users className="h-3 w-3 mr-1" />
-              {orphanedTags.length} órfã(s)
-            </Badge>
-          </div>
-          <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-        </CollapsibleTrigger>
+    <>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <Card className="p-4 border-orange-500/50 bg-gradient-to-r from-orange-500/5 to-amber-500/5">
+          <CollapsibleTrigger className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="h-5 w-5 text-orange-400" />
+              <h3 className="font-semibold">Zona de Tags Órfãs</h3>
+              <Badge variant="outline" className="ml-2 bg-orange-500/20 text-orange-300 border-orange-500/30">
+                <Users className="h-3 w-3 mr-1" />
+                {orphanedTags.length} órfã(s)
+              </Badge>
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+          </CollapsibleTrigger>
 
-        <CollapsibleContent className="mt-4">
-          <p className="text-sm text-muted-foreground mb-4">
-            Tags filhas sem parent válido. Reatribua-as a um parent tag existente ou exclua permanentemente.
-          </p>
+          <CollapsibleContent className="mt-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Tags filhas sem parent válido. Reatribua-as a um parent tag existente ou exclua permanentemente.
+            </p>
 
-          <div className={`space-y-3 max-h-[300px] overflow-y-auto transition-opacity ${isProcessing ? 'opacity-60' : ''}`}>
-            {orphanedTags.map((tag) => (
-              <div 
-                key={tag.id} 
-                className="flex items-center justify-between gap-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg"
-              >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <AlertTriangle className="h-4 w-4 text-orange-400 shrink-0" />
-                  <span className="text-sm font-medium truncate">{tag.tag_name}</span>
-                  <Badge variant="secondary" className="text-xs shrink-0">
-                    {tag.source || "N/A"}
-                  </Badge>
+            <div className={`space-y-3 max-h-[300px] overflow-y-auto transition-opacity ${isProcessing ? 'opacity-60' : ''}`}>
+              {orphanedTags.map((tag) => (
+                <div 
+                  key={tag.id} 
+                  className="flex items-center justify-between gap-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <AlertTriangle className="h-4 w-4 text-orange-400 shrink-0" />
+                    <span className="text-sm font-medium truncate">{tag.tag_name}</span>
+                    <Badge variant="secondary" className="text-xs shrink-0">
+                      {tag.source || "N/A"}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={selectedParents[tag.id] || ""}
+                      onValueChange={(value) => setSelectedParents(prev => ({ ...prev, [tag.id]: value }))}
+                      disabled={isProcessing}
+                    >
+                      <SelectTrigger className="w-[180px] h-8 text-xs">
+                        <SelectValue placeholder="Selecionar parent..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {parentTags.map((parent) => (
+                          <SelectItem key={parent.id} value={parent.id} className="text-xs">
+                            {parent.tag_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleReassign(tag)}
+                      disabled={!selectedParents[tag.id] || isProcessing}
+                      className="h-8 px-3 text-xs border-green-500/50 text-green-400 hover:bg-green-500/20"
+                    >
+                      {processingId === tag.id && processingType === 'adopt' ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <>
+                          <ArrowRight className="h-3 w-3 mr-1" />
+                          Adotar
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openDeleteModal(tag)}
+                      disabled={isProcessing}
+                      className="h-8 w-8 p-0 border-red-500/50 text-red-400 hover:bg-red-500/20"
+                    >
+                      {processingId === tag.id && processingType === 'delete' ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={selectedParents[tag.id] || ""}
-                    onValueChange={(value) => setSelectedParents(prev => ({ ...prev, [tag.id]: value }))}
-                    disabled={isProcessing}
-                  >
-                    <SelectTrigger className="w-[180px] h-8 text-xs">
-                      <SelectValue placeholder="Selecionar parent..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {parentTags.map((parent) => (
-                        <SelectItem key={parent.id} value={parent.id} className="text-xs">
-                          {parent.tag_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+      {/* Modal de Confirmação de Exclusão com 9 Motivos */}
+      <AlertDialog open={deleteModal.open} onOpenChange={(open) => setDeleteModal(prev => ({ ...prev, open }))}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Confirmar Exclusão de Tag Órfã
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está prestes a excluir permanentemente: <strong className="text-foreground">"{deleteModal.tag?.tag_name}"</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleReassign(tag)}
-                    disabled={!selectedParents[tag.id] || isProcessing}
-                    className="h-8 px-3 text-xs border-green-500/50 text-green-400 hover:bg-green-500/20"
-                  >
-                    {processingId === tag.id && processingType === 'adopt' ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <>
-                        <ArrowRight className="h-3 w-3 mr-1" />
-                        Adotar
-                      </>
-                    )}
-                  </Button>
+          <div className="py-4">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-medium">Selecione pelo menos um motivo para excluir:</span>
+            </div>
 
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(tag)}
-                    disabled={isProcessing}
-                    className="h-8 w-8 p-0 border-red-500/50 text-red-400 hover:bg-red-500/20"
+            <ScrollArea className="h-[280px] pr-4">
+              <div className="space-y-2">
+                {DELETION_REASONS_CONFIG.map((reason) => (
+                  <div 
+                    key={reason.key}
+                    className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors"
                   >
-                    {processingId === tag.id && processingType === 'delete' ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-3 w-3" />
-                    )}
-                  </Button>
-                </div>
+                    <Checkbox
+                      id={`orphan-reason-${reason.key}`}
+                      checked={deleteModal.reasons[reason.key]}
+                      onCheckedChange={(checked) =>
+                        setDeleteModal(prev => ({
+                          ...prev,
+                          reasons: { ...prev.reasons, [reason.key]: checked === true }
+                        }))
+                      }
+                      className="mt-0.5"
+                    />
+                    <label htmlFor={`orphan-reason-${reason.key}`} className="cursor-pointer flex-1">
+                      <span className="font-medium text-sm text-foreground">{reason.title}</span>
+                      <p className="text-xs text-muted-foreground mt-0.5">{reason.description}</p>
+                    </label>
+                  </div>
+                ))}
               </div>
-            ))}
+            </ScrollArea>
+
+            {!hasSelectedReason && (
+              <p className="text-xs text-amber-500 mt-3 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Escolha ao menos um motivo para habilitar a exclusão
+              </p>
+            )}
           </div>
-        </CollapsibleContent>
-      </Card>
-    </Collapsible>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={!hasSelectedReason}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir Tag
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
