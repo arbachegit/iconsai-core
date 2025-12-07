@@ -435,6 +435,34 @@ export const TagsManagementTab = () => {
     }
   };
 
+  // Handle delete duplicate tags
+  const handleDeleteDuplicateTags = async (ids: string[], tagName: string) => {
+    if (!confirm(`Deseja excluir as ${ids.length} ocorrências de "${tagName}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('document_tags')
+        .delete()
+        .in('id', ids);
+        
+      if (error) throw error;
+      
+      await logTagManagementEvent({
+        input_state: { tags_involved: ids.map(id => ({ id, name: tagName, type: 'parent' as const })) },
+        action_type: 'delete_orphan',
+        user_decision: { action: 'delete_duplicates', source_tags_removed: ids },
+        rationale: `Exclusão de ${ids.length} duplicatas: ${tagName}`,
+      });
+      
+      toast.success(`${ids.length} tags excluídas com sucesso`);
+      queryClient.invalidateQueries({ queryKey: ['all-tags'] });
+    } catch (error: any) {
+      toast.error(`Erro ao excluir tags: ${error.message}`);
+    }
+  };
+
   // Group tags by parent
   const parentTags = allTags?.filter((t) => !t.parent_tag_id) || [];
   const childTagsMap = allTags?.reduce((acc, tag) => {
@@ -2204,9 +2232,19 @@ export const TagsManagementTab = () => {
                       <span className="text-sm font-medium">"{tag_name}"</span>
                       <Badge variant="outline" className="text-xs">{count}x</Badge>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => openMergeDialog(tag_name, ids)}>
-                      <Merge className="h-4 w-4 mr-1" /> Unificar
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="outline" onClick={() => openMergeDialog(tag_name, ids)}>
+                        <Merge className="h-4 w-4 mr-1" /> Unificar
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeleteDuplicateTags(ids, tag_name)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -2234,9 +2272,19 @@ export const TagsManagementTab = () => {
                         {Math.round(similarity * 100)}% similar
                       </Badge>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => openMergeDialog(`${tag1} → ${tag2}`, ids)}>
-                      <Merge className="h-4 w-4 mr-1" /> Mesclar
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="outline" onClick={() => openMergeDialog(`${tag1} → ${tag2}`, ids)}>
+                        <Merge className="h-4 w-4 mr-1" /> Mesclar
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeleteDuplicateTags(ids, `${tag1} / ${tag2}`)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
                 {semanticDuplicates.length > 15 && (
@@ -2283,13 +2331,23 @@ export const TagsManagementTab = () => {
                               {Math.round(similarity * 100)}%
                             </Badge>
                           </div>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => openMergeDialog(`${tag1} → ${tag2}`, [id1, id2])}
-                          >
-                            <Merge className="h-4 w-4 mr-1" /> Mesclar
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => openMergeDialog(`${tag1} → ${tag2}`, [id1, id2])}
+                            >
+                              <Merge className="h-4 w-4 mr-1" /> Mesclar
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleDeleteDuplicateTags([id1, id2], `${tag1} / ${tag2}`)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </CollapsibleContent>
