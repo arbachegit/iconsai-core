@@ -10,6 +10,49 @@ import {
 } from './merge-reason-heuristics';
 
 describe('Merge Reason Heuristics', () => {
+
+  describe('Synonymy Detection (synonymy)', () => {
+    it('should detect medical synonyms - doenca/enfermidade', () => {
+      const result = suggestMergeReasons('Doença', 'Enfermidade');
+      expect(result.reasons.synonymy).toBe(true);
+    });
+
+    it('should detect medical synonyms - medico/doutor', () => {
+      const result = suggestMergeReasons('Médico', 'Doutor');
+      expect(result.reasons.synonymy).toBe(true);
+    });
+
+    it('should detect medical synonyms - remedio/medicamento', () => {
+      const result = suggestMergeReasons('Remédio', 'Medicamento');
+      expect(result.reasons.synonymy).toBe(true);
+    });
+
+    it('should detect business synonyms - gestao/administracao', () => {
+      const result = suggestMergeReasons('Gestão', 'Administração');
+      expect(result.reasons.synonymy).toBe(true);
+    });
+
+    it('should detect business synonyms - cliente/consumidor', () => {
+      const result = suggestMergeReasons('Cliente', 'Consumidor');
+      expect(result.reasons.synonymy).toBe(true);
+    });
+
+    it('should detect tech synonyms - erro/falha', () => {
+      const result = suggestMergeReasons('Erro', 'Falha');
+      expect(result.reasons.synonymy).toBe(true);
+    });
+
+    it('should detect synonyms within the same group', () => {
+      const result = suggestMergeReasons('Enfermidade', 'Patologia');
+      expect(result.reasons.synonymy).toBe(true);
+    });
+
+    it('should have high confidence for synonym detection', () => {
+      const result = suggestMergeReasons('Doença', 'Enfermidade');
+      expect(result.confidence).toBeGreaterThanOrEqual(0.85);
+    });
+  });
+
   
   describe('Plural/Singular Detection (grammaticalVariation)', () => {
     it('should detect simple -s plural', () => {
