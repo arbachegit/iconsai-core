@@ -667,9 +667,13 @@ export const TagsManagementTab = () => {
   };
 
   const [filterConfidence, setFilterConfidence] = useState<string>("all");
-  const [searchTagName, setSearchTagName] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  
+  // Debounce search input by 300ms for performance
+  const debouncedSearchTagName = useDebounce(searchInput, 300);
+  const isSearching = searchInput !== debouncedSearchTagName;
 
-  // Use memoized hook for all tag calculations
+  // Use memoized hook for all tag calculations - using debounced search
   const {
     parentTags,
     childTagsMap,
@@ -682,7 +686,7 @@ export const TagsManagementTab = () => {
     filterSource,
     filterChat,
     filterConfidence,
-    searchTagName,
+    searchTagName: debouncedSearchTagName,
     sortColumn,
     sortDirection,
     currentPage,
@@ -698,15 +702,15 @@ export const TagsManagementTab = () => {
     orphanedTags 
   } = useSimilarityCalculations(allTags, parentTags, childTagsMap);
 
-  // Reset page when search changes
+  // Reset page when debounced search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTagName]);
+  }, [debouncedSearchTagName]);
 
-  // Auto-expand parents with matching children when searching
+  // Auto-expand parents with matching children when searching (using debounced value)
   useEffect(() => {
-    if (searchTagName.trim()) {
-      const searchLower = searchTagName.toLowerCase().trim();
+    if (debouncedSearchTagName.trim()) {
+      const searchLower = debouncedSearchTagName.toLowerCase().trim();
       const parentsWithMatchingChildren = new Set<string>();
       
       parentTags.forEach(parent => {
@@ -725,7 +729,7 @@ export const TagsManagementTab = () => {
         return newSet;
       });
     }
-  }, [searchTagName, parentTags, childTagsMap]);
+  }, [debouncedSearchTagName, parentTags, childTagsMap]);
 
   // Handle sort toggle - memoized
   const handleSort = useCallback((column: "tag_name" | "confidence" | "target_chat") => {
@@ -2623,16 +2627,17 @@ export const TagsManagementTab = () => {
         </Collapsible>
       )}
 
-      {/* Filters - Optimized Component */}
+      {/* Filters - Optimized Component with Debounce */}
       <TagFilters
         filterSource={filterSource}
         filterChat={filterChat}
         filterConfidence={filterConfidence}
-        searchTagName={searchTagName}
+        searchInputValue={searchInput}
+        isSearching={isSearching}
         onFilterSourceChange={setFilterSource}
         onFilterChatChange={setFilterChat}
         onFilterConfidenceChange={setFilterConfidence}
-        onSearchChange={setSearchTagName}
+        onSearchChange={setSearchInput}
       />
 
       {/* Tags Table - Optimized Component */}
@@ -2645,7 +2650,7 @@ export const TagsManagementTab = () => {
           expandedParents={expandedParents}
           sortColumn={sortColumn}
           sortDirection={sortDirection}
-          searchTagName={searchTagName}
+          searchTagName={debouncedSearchTagName}
           onToggleExpanded={toggleExpanded}
           onSort={handleSort}
           onCreateChild={(parentId) => openCreateDialog(false, parentId)}
@@ -3180,3 +3185,5 @@ export const TagsManagementTab = () => {
     </div>
   );
 };
+
+export default TagsManagementTab;

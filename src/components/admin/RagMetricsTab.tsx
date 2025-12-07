@@ -668,3 +668,5 @@ export const RagMetricsTab = () => {
     </div>
   );
 };
+
+export default RagMetricsTab;

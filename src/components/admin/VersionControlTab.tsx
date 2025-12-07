@@ -626,3 +626,5 @@ export const VersionControlTab = () => {
     </div>
   );
 };
+
+export default VersionControlTab;

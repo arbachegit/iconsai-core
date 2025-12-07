@@ -3737,3 +3737,5 @@ export const DocumentsTab = () => {
       )}
     </div>;
 };
+
+export default DocumentsTab;

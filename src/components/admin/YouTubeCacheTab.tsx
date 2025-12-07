@@ -517,3 +517,5 @@ export const YouTubeCacheTab = () => {
     </div>
   );
 };
+
+export default YouTubeCacheTab;

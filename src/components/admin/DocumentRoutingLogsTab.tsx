@@ -182,3 +182,5 @@ export const DocumentRoutingLogsTab = () => {
     </div>
   );
 };
+
+export default DocumentRoutingLogsTab;

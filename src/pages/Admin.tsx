@@ -1,38 +1,49 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { DashboardTab } from "@/components/admin/DashboardTab";
 import { NotificationsPanel } from "@/components/admin/NotificationsPanel";
-import { ChatConfigTab } from "@/components/admin/ChatConfigTab";
-import { TooltipsTab } from "@/components/admin/TooltipsTab";
-import { GmailTab } from "@/components/admin/GmailTab";
-import { AnalyticsTab } from "@/components/admin/AnalyticsTab";
-import { ConversationsTab } from "@/components/admin/ConversationsTab";
-import { ImageCacheTab } from "@/components/admin/ImageCacheTab";
-import { YouTubeCacheTab } from "@/components/admin/YouTubeCacheTab";
-import { DocumentsTab } from "@/components/admin/DocumentsTab";
-import { RagMetricsTab } from "@/components/admin/RagMetricsTab";
-import { VersionControlTab } from "@/components/admin/VersionControlTab";
-import { DocumentAnalysisTab } from "@/components/admin/DocumentAnalysisTab";
-import { DocumentRoutingLogsTab } from "@/components/admin/DocumentRoutingLogsTab";
-import { RagDiagnosticsTab } from "@/components/admin/RagDiagnosticsTab";
-import { ChatScopeConfigTab } from "@/components/admin/ChatScopeConfigTab";
-import { RagDocumentationTab } from "@/components/admin/RagDocumentationTab";
-import { PodcastManagementTab } from "@/components/admin/PodcastManagementTab";
-import { ContentManagementTab } from "@/components/admin/ContentManagementTab";
-import { ActivityLogsTab } from "@/components/admin/ActivityLogsTab";
-import { UserUsageLogsTab } from "@/components/admin/UserUsageLogsTab";
-import { TagModificationLogsTab } from "@/components/admin/TagModificationLogsTab";
-import { DeterministicAnalysisTab } from "@/components/admin/DeterministicAnalysisTab";
-import { InfrastructureArchitectureTab } from "@/components/admin/InfrastructureArchitectureTab";
-import { RegionalConfigTab } from "@/components/admin/RegionalConfigTab";
-import { SuggestionAuditTab } from "@/components/admin/SuggestionAuditTab";
-import { ContactMessagesTab } from "@/components/admin/ContactMessagesTab";
-import { DocumentationSyncTab } from "@/components/admin/DocumentationSyncTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-import { TagsManagementTab } from "@/components/admin/TagsManagementTab";
+// Eager load only DashboardTab (first view)
+import { DashboardTab } from "@/components/admin/DashboardTab";
+
+// Lazy load all other tabs for better initial bundle size
+const ChatConfigTab = lazy(() => import("@/components/admin/ChatConfigTab").then(m => ({ default: m.ChatConfigTab })));
+const TooltipsTab = lazy(() => import("@/components/admin/TooltipsTab").then(m => ({ default: m.TooltipsTab })));
+const GmailTab = lazy(() => import("@/components/admin/GmailTab").then(m => ({ default: m.GmailTab })));
+const AnalyticsTab = lazy(() => import("@/components/admin/AnalyticsTab").then(m => ({ default: m.AnalyticsTab })));
+const ConversationsTab = lazy(() => import("@/components/admin/ConversationsTab").then(m => ({ default: m.ConversationsTab })));
+const ImageCacheTab = lazy(() => import("@/components/admin/ImageCacheTab").then(m => ({ default: m.ImageCacheTab })));
+const YouTubeCacheTab = lazy(() => import("@/components/admin/YouTubeCacheTab").then(m => ({ default: m.YouTubeCacheTab })));
+const DocumentsTab = lazy(() => import("@/components/admin/DocumentsTab").then(m => ({ default: m.DocumentsTab })));
+const RagMetricsTab = lazy(() => import("@/components/admin/RagMetricsTab").then(m => ({ default: m.RagMetricsTab })));
+const VersionControlTab = lazy(() => import("@/components/admin/VersionControlTab").then(m => ({ default: m.VersionControlTab })));
+const DocumentAnalysisTab = lazy(() => import("@/components/admin/DocumentAnalysisTab").then(m => ({ default: m.DocumentAnalysisTab })));
+const DocumentRoutingLogsTab = lazy(() => import("@/components/admin/DocumentRoutingLogsTab").then(m => ({ default: m.DocumentRoutingLogsTab })));
+const RagDiagnosticsTab = lazy(() => import("@/components/admin/RagDiagnosticsTab").then(m => ({ default: m.RagDiagnosticsTab })));
+const ChatScopeConfigTab = lazy(() => import("@/components/admin/ChatScopeConfigTab").then(m => ({ default: m.ChatScopeConfigTab })));
+const RagDocumentationTab = lazy(() => import("@/components/admin/RagDocumentationTab").then(m => ({ default: m.RagDocumentationTab })));
+const PodcastManagementTab = lazy(() => import("@/components/admin/PodcastManagementTab").then(m => ({ default: m.PodcastManagementTab })));
+const ContentManagementTab = lazy(() => import("@/components/admin/ContentManagementTab").then(m => ({ default: m.ContentManagementTab })));
+const ActivityLogsTab = lazy(() => import("@/components/admin/ActivityLogsTab").then(m => ({ default: m.ActivityLogsTab })));
+const UserUsageLogsTab = lazy(() => import("@/components/admin/UserUsageLogsTab").then(m => ({ default: m.UserUsageLogsTab })));
+const TagModificationLogsTab = lazy(() => import("@/components/admin/TagModificationLogsTab").then(m => ({ default: m.TagModificationLogsTab })));
+const DeterministicAnalysisTab = lazy(() => import("@/components/admin/DeterministicAnalysisTab").then(m => ({ default: m.DeterministicAnalysisTab })));
+const InfrastructureArchitectureTab = lazy(() => import("@/components/admin/InfrastructureArchitectureTab").then(m => ({ default: m.InfrastructureArchitectureTab })));
+const RegionalConfigTab = lazy(() => import("@/components/admin/RegionalConfigTab").then(m => ({ default: m.RegionalConfigTab })));
+const SuggestionAuditTab = lazy(() => import("@/components/admin/SuggestionAuditTab").then(m => ({ default: m.SuggestionAuditTab })));
+const ContactMessagesTab = lazy(() => import("@/components/admin/ContactMessagesTab").then(m => ({ default: m.ContactMessagesTab })));
+const DocumentationSyncTab = lazy(() => import("@/components/admin/DocumentationSyncTab").then(m => ({ default: m.DocumentationSyncTab })));
+const TagsManagementTab = lazy(() => import("@/components/admin/TagsManagementTab").then(m => ({ default: m.TagsManagementTab })));
+
+// Loading fallback component
+const TabLoadingFallback = () => (
+  <div className="flex items-center justify-center h-64">
+    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+  </div>
+);
 
 type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync";
 
@@ -165,66 +176,49 @@ const Admin = () => {
   }
 
   const renderTab = () => {
-    switch (activeTab) {
-      case "dashboard":
-        return <DashboardTab />;
-      case "chat":
-        return <ChatConfigTab />;
-      case "tooltips":
-        return <TooltipsTab />;
-      case "conversations":
-        return <ConversationsTab />;
-      case "gmail":
-        return <GmailTab />;
-      case "analytics":
-        return <AnalyticsTab />;
-      case "documents":
-        return <DocumentsTab />;
-      case "rag-metrics":
-        return <RagMetricsTab />;
-      case "version-control":
-        return <VersionControlTab />;
-      case "tags":
-        return <TagsManagementTab />;
-      case "document-analysis":
-        return <DocumentAnalysisTab />;
-      case "document-routing-logs":
-        return <DocumentRoutingLogsTab />;
-      case "rag-diagnostics":
-        return <RagDiagnosticsTab />;
-      case "chat-scope-config":
-        return <ChatScopeConfigTab />;
-      case "rag-documentation":
-        return <RagDocumentationTab />;
-      case "content-management":
-        return <ContentManagementTab />;
-      case "podcasts":
-        return <PodcastManagementTab />;
-      case "activity-logs":
-        return <ActivityLogsTab />;
-      case "user-usage-logs":
-        return <UserUsageLogsTab />;
-      case "tag-modification-logs":
-        return <TagModificationLogsTab />;
-      case "deterministic-analysis":
-        return <DeterministicAnalysisTab />;
-      case "architecture":
-        return <InfrastructureArchitectureTab />;
-      case "regional-config":
-        return <RegionalConfigTab />;
-      case "suggestion-audit":
-        return <SuggestionAuditTab />;
-      case "contact-messages":
-        return <ContactMessagesTab />;
-      case "documentation-sync":
-        return <DocumentationSyncTab />;
-      case "images":
-        return <ImageCacheTab />;
-      case "youtube":
-        return <YouTubeCacheTab />;
-      default:
-        return <DashboardTab />;
+    // Dashboard is eagerly loaded, all others use Suspense
+    if (activeTab === "dashboard") {
+      return <DashboardTab />;
     }
+
+    const LazyComponent = (() => {
+      switch (activeTab) {
+        case "chat": return <ChatConfigTab />;
+        case "tooltips": return <TooltipsTab />;
+        case "conversations": return <ConversationsTab />;
+        case "gmail": return <GmailTab />;
+        case "analytics": return <AnalyticsTab />;
+        case "documents": return <DocumentsTab />;
+        case "rag-metrics": return <RagMetricsTab />;
+        case "version-control": return <VersionControlTab />;
+        case "tags": return <TagsManagementTab />;
+        case "document-analysis": return <DocumentAnalysisTab />;
+        case "document-routing-logs": return <DocumentRoutingLogsTab />;
+        case "rag-diagnostics": return <RagDiagnosticsTab />;
+        case "chat-scope-config": return <ChatScopeConfigTab />;
+        case "rag-documentation": return <RagDocumentationTab />;
+        case "content-management": return <ContentManagementTab />;
+        case "podcasts": return <PodcastManagementTab />;
+        case "activity-logs": return <ActivityLogsTab />;
+        case "user-usage-logs": return <UserUsageLogsTab />;
+        case "tag-modification-logs": return <TagModificationLogsTab />;
+        case "deterministic-analysis": return <DeterministicAnalysisTab />;
+        case "architecture": return <InfrastructureArchitectureTab />;
+        case "regional-config": return <RegionalConfigTab />;
+        case "suggestion-audit": return <SuggestionAuditTab />;
+        case "contact-messages": return <ContactMessagesTab />;
+        case "documentation-sync": return <DocumentationSyncTab />;
+        case "images": return <ImageCacheTab />;
+        case "youtube": return <YouTubeCacheTab />;
+        default: return <DashboardTab />;
+      }
+    })();
+
+    return (
+      <Suspense fallback={<TabLoadingFallback />}>
+        {LazyComponent}
+      </Suspense>
+    );
   };
 
   return (

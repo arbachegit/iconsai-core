@@ -167,3 +167,5 @@ export const GmailTab = () => {
     </div>
   );
 };
+
+export default GmailTab;
