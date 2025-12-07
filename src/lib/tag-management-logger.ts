@@ -37,8 +37,18 @@ export interface TagManagementEventInput {
     exported_count?: number;
     action?: string;
     format?: string;
-    reason_generic?: boolean;
-    reason_no_fit_categories?: boolean;
+    // Data Science deletion reasons
+    deletion_reasons?: {
+      generic?: boolean;        // Stopwords - alta frequência sem valor preditivo
+      outOfDomain?: boolean;    // Irrelevância de domínio (Out-of-domain)
+      properName?: boolean;     // Alta cardinalidade (High Cardinality)
+      isYear?: boolean;         // Dados temporais devem ser contínuos
+      isPhrase?: boolean;       // Length excessivo - frase, não palavra-chave
+      typo?: boolean;           // Erro de digitação/grafia - fuzzy matching
+      variation?: boolean;      // Variação Plural/Singular/Sinônimo - Lemmatization
+      isolatedVerb?: boolean;   // Verbo/Ação isolada sem substantivo
+      pii?: boolean;            // Dado sensível (PII) - CPF, Telefone, E-mail
+    };
   };
   rationale?: string;
   similarity_score?: number;

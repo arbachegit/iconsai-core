@@ -90,10 +90,7 @@ export const TagsManagementTab = () => {
     tag: null,
     isParent: true,
   });
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; tagId: string | null }>({
-    open: false,
-    tagId: null,
-  });
+  // deleteDialog state removed - now using deleteConfirmModal with justification
   const [mergeDialog, setMergeDialog] = useState<{ open: boolean; tagName: string; ids: string[] }>({
     open: false,
     tagName: "",
@@ -149,19 +146,37 @@ export const TagsManagementTab = () => {
   const [mlEventsOpen, setMlEventsOpen] = useState(false);
   const [mlEventsTimeRange, setMlEventsTimeRange] = useState<number>(30); // days
   
-  // Delete confirmation modal state
+  // Delete confirmation modal state with 9 Data Science reasons
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
     open: boolean;
     ids: string[];
     tagName: string;
-    isGeneric: boolean;
-    doesNotFitCategories: boolean;
+    reasons: {
+      generic: boolean;        // Stopwords
+      outOfDomain: boolean;    // Irrelevância de domínio
+      properName: boolean;     // Alta cardinalidade
+      isYear: boolean;         // Dados temporais
+      isPhrase: boolean;       // Length excessivo
+      typo: boolean;           // Erro de grafia
+      variation: boolean;      // Plural/Singular/Sinônimo
+      isolatedVerb: boolean;   // Verbo isolado
+      pii: boolean;            // Dado sensível
+    };
   }>({
     open: false,
     ids: [],
     tagName: '',
-    isGeneric: false,
-    doesNotFitCategories: false,
+    reasons: {
+      generic: false,
+      outOfDomain: false,
+      properName: false,
+      isYear: false,
+      isPhrase: false,
+      typo: false,
+      variation: false,
+      isolatedVerb: false,
+      pii: false,
+    },
   });
   
   // Sync state with admin settings
@@ -467,14 +482,23 @@ export const TagsManagementTab = () => {
       open: true,
       ids,
       tagName,
-      isGeneric: false,
-      doesNotFitCategories: false,
+      reasons: {
+        generic: false,
+        outOfDomain: false,
+        properName: false,
+        isYear: false,
+        isPhrase: false,
+        typo: false,
+        variation: false,
+        isolatedVerb: false,
+        pii: false,
+      },
     });
   };
 
-  // Confirm delete duplicate tags (called after modal confirmation)
-  const confirmDeleteDuplicateTags = async () => {
-    const { ids, tagName, isGeneric, doesNotFitCategories } = deleteConfirmModal;
+  // Confirm delete tags (called after modal confirmation)
+  const confirmDeleteTags = async () => {
+    const { ids, tagName, reasons } = deleteConfirmModal;
     
     try {
       const { error } = await supabase
@@ -484,23 +508,30 @@ export const TagsManagementTab = () => {
         
       if (error) throw error;
       
-      const reasons: string[] = [];
-      if (isGeneric) reasons.push('Termo genérico');
-      if (doesNotFitCategories) reasons.push('Não se encaixa nas categorias');
+      // Build readable reasons list
+      const reasonLabels: string[] = [];
+      if (reasons.generic) reasonLabels.push('Termo genérico (Stopwords)');
+      if (reasons.outOfDomain) reasonLabels.push('Irrelevância de domínio');
+      if (reasons.properName) reasonLabels.push('Nome próprio (High Cardinality)');
+      if (reasons.isYear) reasonLabels.push('Dado temporal (Ano)');
+      if (reasons.isPhrase) reasonLabels.push('Frase (Length excessivo)');
+      if (reasons.typo) reasonLabels.push('Erro de grafia');
+      if (reasons.variation) reasonLabels.push('Variação (Plural/Sinônimo)');
+      if (reasons.isolatedVerb) reasonLabels.push('Verbo isolado');
+      if (reasons.pii) reasonLabels.push('Dado sensível (PII)');
       
       await logTagManagementEvent({
         input_state: { tags_involved: ids.map(id => ({ id, name: tagName, type: 'parent' as const })) },
         action_type: 'delete_orphan',
         user_decision: { 
-          action: 'delete_duplicates', 
+          action: 'delete_tags', 
           source_tags_removed: ids,
-          reason_generic: isGeneric,
-          reason_no_fit_categories: doesNotFitCategories,
+          deletion_reasons: reasons,
         },
-        rationale: `Exclusão de ${ids.length} duplicatas: ${tagName}. Motivos: ${reasons.join(', ')}`,
+        rationale: `Exclusão de ${ids.length} tag(s): ${tagName}. Motivos: ${reasonLabels.join(', ')}`,
       });
       
-      toast.success(`${ids.length} tags excluídas com sucesso`);
+      toast.success(`${ids.length} tag(s) excluída(s) com sucesso`);
       queryClient.invalidateQueries({ queryKey: ['all-tags'] });
       
       // Close modal and reset state
@@ -508,8 +539,17 @@ export const TagsManagementTab = () => {
         open: false,
         ids: [],
         tagName: '',
-        isGeneric: false,
-        doesNotFitCategories: false,
+        reasons: {
+          generic: false,
+          outOfDomain: false,
+          properName: false,
+          isYear: false,
+          isPhrase: false,
+          typo: false,
+          variation: false,
+          isolatedVerb: false,
+          pii: false,
+        },
       });
     } catch (error: any) {
       toast.error(`Erro ao excluir tags: ${error.message}`);
@@ -887,7 +927,8 @@ export const TagsManagementTab = () => {
     },
   });
 
-  // Delete tag mutation
+  // Delete tag mutation (used by confirmDeleteTags via direct supabase call)
+  // Keeping for potential future use but removing dialog reference
   const deleteTagMutation = useMutation({
     mutationFn: async (tagId: string) => {
       const { error } = await supabase
@@ -900,7 +941,6 @@ export const TagsManagementTab = () => {
     onSuccess: () => {
       toast.success("Tag deletada com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["all-tags"] });
-      setDeleteDialog({ open: false, tagId: null });
     },
     onError: (error: any) => {
       toast.error(`Erro ao deletar tag: ${error.message}`);
@@ -2896,7 +2936,7 @@ export const TagsManagementTab = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setDeleteDialog({ open: true, tagId: parent.id })}
+                            onClick={() => openDeleteConfirmModal([parent.id], parent.tag_name)}
                             className="h-7 w-7 p-0"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -2976,7 +3016,7 @@ export const TagsManagementTab = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setDeleteDialog({ open: true, tagId: child.id })}
+                              onClick={() => openDeleteConfirmModal([child.id], child.tag_name)}
                               className="h-7 w-7 p-0"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -3096,36 +3136,7 @@ export const TagsManagementTab = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
-      <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, tagId: null })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar Exclusão</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja deletar esta tag? Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, tagId: null })}>
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleteDialog.tagId && deleteTagMutation.mutate(deleteDialog.tagId)}
-              disabled={deleteTagMutation.isPending}
-            >
-              {deleteTagMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deletando...
-                </>
-              ) : (
-                "Deletar"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Delete Dialog - Removed, now using deleteConfirmModal with justification */}
 
       {/* Merge Tags Dialog */}
       <Dialog open={mergeDialog.open} onOpenChange={(open) => !open && setMergeDialog({ open: false, tagName: "", ids: [] })}>
@@ -3370,12 +3381,12 @@ export const TagsManagementTab = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Modal with Required Justification */}
+      {/* Delete Confirmation Modal with 9 Data Science Justification Options */}
       <AlertDialog 
         open={deleteConfirmModal.open} 
         onOpenChange={(open) => !open && setDeleteConfirmModal(prev => ({ ...prev, open: false }))}
       >
-        <AlertDialogContent className="max-w-md">
+        <AlertDialogContent className="max-w-lg max-h-[90vh]">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-destructive">
               <Trash2 className="h-5 w-5" />
@@ -3392,42 +3403,197 @@ export const TagsManagementTab = () => {
                     ⚠️ Para confirmar a exclusão, selecione pelo menos um motivo:
                   </p>
                   
-                  <div className="space-y-3">
-                    {/* Option 1: Generic term */}
-                    <div className="flex items-start gap-3 p-2 rounded bg-background/50">
-                      <Checkbox
-                        id="reason-generic"
-                        checked={deleteConfirmModal.isGeneric}
-                        onCheckedChange={(checked) => 
-                          setDeleteConfirmModal(prev => ({ ...prev, isGeneric: checked === true }))
-                        }
-                      />
-                      <label 
-                        htmlFor="reason-generic" 
-                        className="text-sm text-foreground cursor-pointer leading-relaxed"
-                      >
-                        Está deletando porque o <strong>termo é genérico</strong> e não serve como TAG
-                      </label>
+                  <ScrollArea className="h-[320px] pr-3">
+                    <div className="space-y-2">
+                      {/* 1. Termo genérico (Stopwords) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="reason-generic"
+                          checked={deleteConfirmModal.reasons.generic}
+                          onCheckedChange={(checked) => 
+                            setDeleteConfirmModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, generic: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="reason-generic" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">Termo genérico</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Stopwords que não agregam valor de predição
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 2. Não se encaixa nas categorias (Out-of-domain) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="reason-out-of-domain"
+                          checked={deleteConfirmModal.reasons.outOfDomain}
+                          onCheckedChange={(checked) => 
+                            setDeleteConfirmModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, outOfDomain: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="reason-out-of-domain" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">Não se encaixa nas categorias</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Irrelevância de domínio (Out-of-domain)
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 3. Nome próprio (High Cardinality) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="reason-proper-name"
+                          checked={deleteConfirmModal.reasons.properName}
+                          onCheckedChange={(checked) => 
+                            setDeleteConfirmModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, properName: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="reason-proper-name" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">Nome próprio</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Alta cardinalidade - cria matriz esparsa
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 4. É um ano (Dados temporais) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="reason-is-year"
+                          checked={deleteConfirmModal.reasons.isYear}
+                          onCheckedChange={(checked) => 
+                            setDeleteConfirmModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, isYear: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="reason-is-year" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">É um ano</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Dados temporais devem ser variáveis contínuas
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 5. É uma frase (Length excessivo) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="reason-is-phrase"
+                          checked={deleteConfirmModal.reasons.isPhrase}
+                          onCheckedChange={(checked) => 
+                            setDeleteConfirmModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, isPhrase: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="reason-is-phrase" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">É uma frase, não palavra-chave</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Ensina IA a detectar length excessivo
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 6. Erro de digitação/grafia (Fuzzy matching) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="reason-typo"
+                          checked={deleteConfirmModal.reasons.typo}
+                          onCheckedChange={(checked) => 
+                            setDeleteConfirmModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, typo: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="reason-typo" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">Erro de digitação/grafia</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Sugere fuzzy matching para correções futuras
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 7. Variação Plural/Singular/Sinônimo (Lemmatization) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="reason-variation"
+                          checked={deleteConfirmModal.reasons.variation}
+                          onCheckedChange={(checked) => 
+                            setDeleteConfirmModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, variation: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="reason-variation" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">Variação (Plural/Singular/Sinônimo)</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Ensina lemmatization - reduzir à raiz
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 8. Verbo/Ação isolada */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="reason-isolated-verb"
+                          checked={deleteConfirmModal.reasons.isolatedVerb}
+                          onCheckedChange={(checked) => 
+                            setDeleteConfirmModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, isolatedVerb: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="reason-isolated-verb" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">Verbo/Ação isolada</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Verbos soltos não classificam - precisam substantivo
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 9. Dado sensível (PII) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="reason-pii"
+                          checked={deleteConfirmModal.reasons.pii}
+                          onCheckedChange={(checked) => 
+                            setDeleteConfirmModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, pii: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="reason-pii" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm text-red-400">Dado sensível (PII)</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            CPF, Telefone, E-mail - bloquear por segurança
+                          </p>
+                        </label>
+                      </div>
                     </div>
-                    
-                    {/* Option 2: Does not fit categories */}
-                    <div className="flex items-start gap-3 p-2 rounded bg-background/50">
-                      <Checkbox
-                        id="reason-no-fit"
-                        checked={deleteConfirmModal.doesNotFitCategories}
-                        onCheckedChange={(checked) => 
-                          setDeleteConfirmModal(prev => ({ ...prev, doesNotFitCategories: checked === true }))
-                        }
-                      />
-                      <label 
-                        htmlFor="reason-no-fit" 
-                        className="text-sm text-foreground cursor-pointer leading-relaxed"
-                      >
-                        Está deletando porque o <strong>termo não se encaixa</strong> a nenhuma das categorias dos documentos inseridos
-                      </label>
-                    </div>
-                  </div>
+                  </ScrollArea>
                 </div>
+                
+                {!Object.values(deleteConfirmModal.reasons).some(v => v) && (
+                  <p className="text-xs text-amber-400 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Escolha ao menos um motivo para excluir
+                  </p>
+                )}
                 
                 <p className="text-xs text-muted-foreground">
                   Esta ação é <strong>irreversível</strong> e será registrada no log de atividades.
@@ -3438,8 +3604,8 @@ export const TagsManagementTab = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmDeleteDuplicateTags}
-              disabled={!deleteConfirmModal.isGeneric && !deleteConfirmModal.doesNotFitCategories}
+              onClick={confirmDeleteTags}
+              disabled={!Object.values(deleteConfirmModal.reasons).some(v => v)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Trash2 className="h-4 w-4 mr-2" />
