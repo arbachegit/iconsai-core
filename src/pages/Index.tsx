@@ -6,7 +6,7 @@ import { MediaCarousel } from "@/components/MediaCarousel";
 import { DigitalExclusionSection } from "@/components/DigitalExclusionSection";
 import TuringLegacy from "@/components/TuringLegacy";
 import { Link } from "react-router-dom";
-import { Brain, Mail } from "lucide-react";
+import { Brain, Mail, Sparkles } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
 import { FloatingChatButton } from "@/components/FloatingChatButton";
 import { ScrollToTopButton } from "@/components/ScrollToTopButton";
@@ -219,6 +219,10 @@ const Index = () => {
               <div className="flex items-center justify-center gap-3">
                 <img src={knowriskLogo} alt="KnowRisk" className="h-8 w-auto" />
                 <span className="text-lg font-bold text-gradient">KnowYOU</span>
+                <div className="inline-flex items-center gap-2 bg-card/50 backdrop-blur-sm px-4 py-2 rounded-full border border-primary/20">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-sm text-muted-foreground">Power by Fernando Arbache</span>
+                </div>
               </div>
               <p className="text-sm text-muted-foreground">
                 {t('footer.tagline')}
