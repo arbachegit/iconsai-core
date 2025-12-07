@@ -1339,44 +1339,68 @@ export const TagsManagementTab = () => {
       />
 
       {/* Botões de Ação */}
-      <div className="flex gap-2 flex-wrap">
-        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-          <Upload className="h-4 w-4 mr-2" />
-          Importar Taxonomia
-        </Button>
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          accept=".json" 
-          className="hidden" 
-          onChange={handleImportTaxonomy} 
-        />
-        <Button variant="outline" size="sm" onClick={handleExportTaxonomy}>
-          <FolderOpen className="h-4 w-4 mr-2" />
-          Exportar Taxonomia
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => handleExport('csv')}>
-              <FileText className="h-4 w-4 mr-2" /> CSV
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('xlsx')}>
-              <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('json')}>
-              <FileJson className="h-4 w-4 mr-2" /> JSON
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('pdf')}>
-              <FileDown className="h-4 w-4 mr-2" /> PDF
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="flex justify-between items-start">
+        {/* Lado Esquerdo - Grid 2x2 */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Linha 1: Taxonomia */}
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importar Taxonomia
+          </Button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            accept=".json" 
+            className="hidden" 
+            onChange={handleImportTaxonomy} 
+          />
+          <Button variant="outline" size="sm" onClick={handleExportTaxonomy}>
+            <Download className="h-4 w-4 mr-2" />
+            Exportar Taxonomia
+          </Button>
+          
+          {/* Linha 2: Tags individuais */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full justify-start">
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Tag
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-popover border">
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                <FileJson className="h-4 w-4 mr-2" /> JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" /> CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full justify-start">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar Tag
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-popover border">
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <FileText className="h-4 w-4 mr-2" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('json')}>
+                <FileJson className="h-4 w-4 mr-2" /> JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <FileDown className="h-4 w-4 mr-2" /> PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        
+        {/* Lado Direito - Criar Tag Pai */}
         <Button onClick={() => openCreateDialog(true)} className="gap-2">
           <Plus className="h-4 w-4" />
           Criar Tag Pai
