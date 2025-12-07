@@ -10,16 +10,6 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 
-interface Tag {
-  id: string;
-  tag_name: string;
-  tag_type: string;
-  confidence: number | null;
-  source: string | null;
-  document_id: string;
-  parent_tag_id: string | null;
-}
-
 interface DuplicateGroup {
   tag_name: string;
   count: number;
@@ -64,18 +54,9 @@ export const DuplicatesPanel = memo(({
   onDelete,
   onRejectDuplicate,
 }: DuplicatesPanelProps) => {
-  // Estado para tags individuais expandidas
-  const [openExactTags, setOpenExactTags] = useState<Set<string>>(new Set());
+  // Estados apenas para seções que precisam de collapsible
   const [openSemanticTags, setOpenSemanticTags] = useState<Set<string>>(new Set());
   const [openChildParents, setOpenChildParents] = useState<Set<string>>(new Set());
-
-  const toggleExactTag = (tagName: string) => {
-    setOpenExactTags(prev => {
-      const newSet = new Set(prev);
-      newSet.has(tagName) ? newSet.delete(tagName) : newSet.add(tagName);
-      return newSet;
-    });
-  };
 
   const toggleSemanticTag = (key: string) => {
     setOpenSemanticTags(prev => {
@@ -113,7 +94,7 @@ export const DuplicatesPanel = memo(({
         </h3>
       </div>
       
-      {/* Exact Duplicates - Seção sempre visível, tags individuais colapsáveis */}
+      {/* Exact Duplicates - Botões sempre visíveis (não precisa colapsar) */}
       {duplicateParentTags.length > 0 && (
         <div className="mb-4">
           <div className="flex items-center gap-2 p-2 bg-red-500/10 border border-red-500/30 rounded-t">
@@ -123,45 +104,33 @@ export const DuplicatesPanel = memo(({
           </div>
           <div className="border border-t-0 border-red-500/30 rounded-b divide-y divide-red-500/20">
             {duplicateParentTags.map(({ tag_name, count, ids }) => (
-              <Collapsible 
-                key={tag_name}
-                open={openExactTags.has(tag_name)}
-                onOpenChange={() => toggleExactTag(tag_name)}
-              >
-                <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-red-500/10 transition-colors cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <ChevronDown className={cn(
-                      "h-4 w-4 transition-transform duration-200",
-                      !openExactTags.has(tag_name) && "-rotate-90"
-                    )} />
-                    <span className="text-sm font-medium">"{tag_name}"</span>
-                    <Badge variant="outline" className="text-xs">{count}x</Badge>
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="px-2 pb-2">
-                  <div className="flex items-center gap-1 pl-6">
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
-                      onClick={() => onRejectDuplicate(ids, tag_name, 'parent')}
-                    >
-                      <XCircle className="h-4 w-4 mr-1" /> Não Unificar
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => onOpenConflictModal('parent', ids)}>
-                      <Merge className="h-4 w-4 mr-1" /> Unificar
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => onDelete(ids, tag_name)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+              <div key={tag_name} className="flex items-center justify-between p-2 hover:bg-red-500/5 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">"{tag_name}"</span>
+                  <Badge variant="outline" className="text-xs">{count}x</Badge>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
+                    onClick={() => onRejectDuplicate(ids, tag_name, 'parent')}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" /> Não Unificar
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => onOpenConflictModal('parent', ids)}>
+                    <Merge className="h-4 w-4 mr-1" /> Unificar
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => onDelete(ids, tag_name)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
         </div>
