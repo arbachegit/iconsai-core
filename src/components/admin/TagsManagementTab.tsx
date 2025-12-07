@@ -1400,11 +1400,13 @@ export const TagsManagementTab = () => {
           </DropdownMenu>
         </div>
         
-        {/* Lado Direito - Criar Tag Pai */}
-        <Button onClick={() => openCreateDialog(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Criar Tag Pai
-        </Button>
+        {/* Lado Direito - Criar Tag Pai alinhado com linha 2 */}
+        <div className="flex flex-col justify-end" style={{ height: 'calc(2 * 32px + 8px)' }}>
+          <Button onClick={() => openCreateDialog(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Criar Tag Pai
+          </Button>
+        </div>
       </div>
 
       {/* Consolidated Metrics Dashboard */}
