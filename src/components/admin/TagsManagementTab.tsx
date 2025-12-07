@@ -115,6 +115,7 @@ export const TagsManagementTab = () => {
   const [mlAlertEmail, setMlAlertEmail] = useState<string>("");
   const [mlAlertEnabled, setMlAlertEnabled] = useState<boolean>(false);
   const [isTestingAlert, setIsTestingAlert] = useState<boolean>(false);
+  const [isMlAlertConfigured, setIsMlAlertConfigured] = useState<boolean>(false);
   
   // Conflict resolution modal state
   const [conflictModal, setConflictModal] = useState<{
@@ -181,6 +182,10 @@ export const TagsManagementTab = () => {
       setMlAlertThreshold((adminSettings.ml_accuracy_threshold || 0.70) * 100);
       setMlAlertEmail(adminSettings.ml_accuracy_alert_email || adminSettings.alert_email || "");
       setMlAlertEnabled(adminSettings.ml_accuracy_alert_enabled || false);
+      // Mark as configured if settings exist in database
+      if (adminSettings.ml_accuracy_alert_email || adminSettings.ml_accuracy_threshold) {
+        setIsMlAlertConfigured(true);
+      }
     }
   }, [adminSettings]);
 
@@ -521,9 +526,15 @@ export const TagsManagementTab = () => {
         ml_accuracy_alert_email: mlAlertEmail || null,
       });
       toast.success("Configurações de alerta ML salvas!");
+      setIsMlAlertConfigured(true);
     } catch (error: any) {
       toast.error(`Erro ao salvar configurações: ${error.message}`);
     }
+  };
+
+  // Edit ML alert configuration (unlock fields)
+  const handleEditMlAlertConfig = () => {
+    setIsMlAlertConfigured(false);
   };
 
   // Test ML alert (calls edge function)
@@ -2225,6 +2236,7 @@ export const TagsManagementTab = () => {
                   value={mlAlertThreshold}
                   onChange={(e) => setMlAlertThreshold(Number(e.target.value))}
                   className="w-24"
+                  disabled={isMlAlertConfigured}
                 />
                 <span className="text-sm text-muted-foreground">
                   Alerta quando taxa &lt; {mlAlertThreshold}%
@@ -2243,6 +2255,7 @@ export const TagsManagementTab = () => {
                   value={mlAlertEmail}
                   onChange={(e) => setMlAlertEmail(e.target.value)}
                   className="flex-1"
+                  disabled={isMlAlertConfigured}
                 />
               </div>
             </div>
@@ -2287,12 +2300,23 @@ export const TagsManagementTab = () => {
             </div>
 
             <div className="flex gap-2">
-              <Button 
-                onClick={handleSaveMlAlertConfig}
-                className="flex-1"
-              >
-                Salvar Configurações
-              </Button>
+              {isMlAlertConfigured ? (
+                <Button 
+                  onClick={handleEditMlAlertConfig}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configurar
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleSaveMlAlertConfig}
+                  className="flex-1"
+                >
+                  Salvar Configurações
+                </Button>
+              )}
               <Button 
                 variant="outline"
                 onClick={handleTestMlAlert}
