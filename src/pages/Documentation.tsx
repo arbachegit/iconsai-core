@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
 import { MermaidZoomModal } from '@/components/MermaidZoomModal';
+import { IconSelector } from '@/components/admin/IconSelector';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -468,6 +469,33 @@ const Documentation = () => {
   const [animSortField, setAnimSortField] = useState<"className" | "category" | "origin">("className");
   const [animSortDirection, setAnimSortDirection] = useState<"asc" | "desc">("asc");
 
+  // Icon Library search and filter
+  const [iconLibrarySearch, setIconLibrarySearch] = useState<string>("");
+  const [iconLibraryCategory, setIconLibraryCategory] = useState<string>("all");
+  
+  // Icon Components demo state
+  const [demoSelectedIcon, setDemoSelectedIcon] = useState<string>("");
+
+  // Get unique categories for icon library filter
+  const iconCategories = useMemo(() => {
+    const categories = [...new Set(ICONS_DATA.map(icon => icon.category))];
+    return categories.sort();
+  }, []);
+
+  // Filter icons based on search and category
+  const filteredIcons = useMemo(() => {
+    return ICONS_DATA.filter(icon => {
+      const matchesSearch = iconLibrarySearch === "" || 
+        icon.name.toLowerCase().includes(iconLibrarySearch.toLowerCase()) ||
+        icon.description.toLowerCase().includes(iconLibrarySearch.toLowerCase()) ||
+        icon.category.toLowerCase().includes(iconLibrarySearch.toLowerCase());
+      
+      const matchesCategory = iconLibraryCategory === "all" || icon.category === iconLibraryCategory;
+      
+      return matchesSearch && matchesCategory;
+    });
+  }, [iconLibrarySearch, iconLibraryCategory]);
+
   // Fetch changelog versions
   const { data: versions } = useQuery({
     queryKey: ["documentation-versions"],
@@ -627,11 +655,11 @@ const Documentation = () => {
     }
   };
 
-  // Memoized filtered and sorted data
-  const iconCategories = [...new Set(ICONS_DATA.map(i => i.category))].sort();
+  // Memoized filtered and sorted data for UI Reference
+  const uiRefIconCategories = [...new Set(ICONS_DATA.map(i => i.category))].sort();
   const animCategories = [...new Set(ANIMATIONS_DATA.map(a => a.category))].sort();
 
-  const filteredIcons = (() => {
+  const uiRefFilteredIcons = (() => {
     let filtered = [...ICONS_DATA];
     
     if (iconCategoryFilter !== "all") {
@@ -1785,7 +1813,7 @@ await supabase.functions.invoke("process-bulk-document", {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas ({ICONS_DATA.length})</SelectItem>
-                      {iconCategories.map(cat => (
+                      {uiRefIconCategories.map(cat => (
                         <SelectItem key={cat} value={cat}>
                           {cat} ({ICONS_DATA.filter(i => i.category === cat).length})
                         </SelectItem>
@@ -1802,7 +1830,7 @@ await supabase.functions.invoke("process-bulk-document", {
                 )}
                 
                 <span className="text-sm text-muted-foreground ml-auto">
-                  Exibindo {filteredIcons.length} de {ICONS_DATA.length} ícones
+                  Exibindo {uiRefFilteredIcons.length} de {ICONS_DATA.length} ícones
                 </span>
               </div>
 
@@ -1856,7 +1884,7 @@ await supabase.functions.invoke("process-bulk-document", {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredIcons.map((iconData, index) => {
+                    {uiRefFilteredIcons.map((iconData, index) => {
                       const IconComponent = iconData.component;
                       return (
                         <TableRow key={`${iconData.name}-${index}`}>
@@ -2171,14 +2199,43 @@ theme: {
                 Esta biblioteca é rastreada automaticamente a partir de todas as páginas (usuário, admin e superadmin).
               </p>
               
+              {/* Campo de busca e filtros */}
+              <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome ou descrição..."
+                    value={iconLibrarySearch}
+                    onChange={(e) => setIconLibrarySearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={iconLibraryCategory} onValueChange={setIconLibraryCategory}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Filtrar por categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as categorias</SelectItem>
+                    {iconCategories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Contagem de resultados */}
+              <div className="mb-4 text-sm text-muted-foreground">
+                Exibindo {filteredIcons.length} de {ICONS_DATA.length} ícones
+              </div>
+              
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                {ICONS_DATA.map((iconData, index) => {
+                {filteredIcons.map((iconData, index) => {
                   const IconComponent = iconData.component;
                   return (
                     <div
                       key={`${iconData.name}-${index}`}
-                      className="flex flex-col items-center p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group"
-                      title={iconData.description}
+                      className="flex flex-col items-center p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group cursor-pointer"
+                      title={`${iconData.description}\n\nUso: import { ${iconData.name} } from 'lucide-react'`}
                     >
                       <IconComponent className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
                       <span className="text-[10px] text-center text-muted-foreground truncate w-full">{iconData.name}</span>
@@ -2187,6 +2244,13 @@ theme: {
                   );
                 })}
               </div>
+
+              {filteredIcons.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum ícone encontrado para "{iconLibrarySearch}"</p>
+                </div>
+              )}
             </Card>
           </section>
 
@@ -2206,6 +2270,54 @@ theme: {
               <p className="text-muted-foreground">
                 Componente de seleção de ícones para uso no admin panel. Permite busca, filtro por categoria e preview visual.
               </p>
+
+              {/* Preview Interativo */}
+              <div className="pt-4 border-t">
+                <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                  <Play className="h-4 w-4 text-primary" />
+                  Preview Interativo
+                </h4>
+                <div className="bg-muted/50 rounded-lg p-6 border">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div className="flex-1">
+                      <label className="text-sm font-medium mb-2 block">Selecione um ícone:</label>
+                      <IconSelector 
+                        value={demoSelectedIcon}
+                        onSelect={(iconName) => setDemoSelectedIcon(iconName)}
+                        placeholder="Clique para selecionar"
+                      />
+                    </div>
+                    <div className="flex items-center gap-4 pt-4 sm:pt-6">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground mb-2">Ícone selecionado:</p>
+                        <div className="flex items-center justify-center gap-2 p-3 bg-background rounded-lg border min-w-[120px]">
+                          {demoSelectedIcon ? (
+                            <>
+                              {(() => {
+                                const DemoIcon = icons[demoSelectedIcon as keyof typeof icons];
+                                return DemoIcon ? <DemoIcon className="h-6 w-6 text-primary" /> : null;
+                              })()}
+                              <span className="text-sm font-mono">{demoSelectedIcon}</span>
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">Nenhum</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {demoSelectedIcon && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="text-xs text-muted-foreground mb-2">Código para usar este ícone:</p>
+                      <pre className="bg-background p-3 rounded text-xs overflow-x-auto border">
+{`import { ${demoSelectedIcon} } from 'lucide-react';
+
+<${demoSelectedIcon} className="h-6 w-6" />`}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               <div className="pt-4 border-t">
                 <h4 className="text-sm font-semibold mb-2">Como usar:</h4>
