@@ -690,36 +690,46 @@ export const TagsManagementTab = () => {
         toast.success(`Tag "${tagName}" removida deste documento`);
       } else {
         // Delete ALL instances (existing behavior)
-        // If deleting a parent tag, first orphan all child tags that reference it
-        if (tagType === 'parent') {
-          const { data: parentTagsToDelete } = await supabase
-            .from('document_tags')
-            .select('id')
-            .eq('tag_name', tagName)
-            .eq('tag_type', 'parent');
-            
-          if (parentTagsToDelete && parentTagsToDelete.length > 0) {
-            const parentIds = parentTagsToDelete.map(p => p.id);
-            
-            // Move child tags to Orphaned Zone
-            const { error: orphanError } = await supabase
+        
+        // Check if this is a semantic duplicate (composite name with " / ")
+        const isSemanticDuplicate = tagName.includes(' / ');
+        const tagNamesToDelete = isSemanticDuplicate 
+          ? tagName.split(' / ').map(n => n.trim())
+          : [tagName];
+        
+        // For each tag name to delete
+        for (const nameToDelete of tagNamesToDelete) {
+          // If deleting a parent tag, first orphan all child tags that reference it
+          if (tagType === 'parent') {
+            const { data: parentTagsToDelete } = await supabase
               .from('document_tags')
-              .update({ parent_tag_id: null })
-              .in('parent_tag_id', parentIds);
+              .select('id')
+              .eq('tag_name', nameToDelete)
+              .eq('tag_type', 'parent');
               
-            if (orphanError) {
-              console.warn('Warning: Could not orphan child tags:', orphanError);
+            if (parentTagsToDelete && parentTagsToDelete.length > 0) {
+              const parentIds = parentTagsToDelete.map(p => p.id);
+              
+              // Move child tags to Orphaned Zone
+              const { error: orphanError } = await supabase
+                .from('document_tags')
+                .update({ parent_tag_id: null })
+                .in('parent_tag_id', parentIds);
+                
+              if (orphanError) {
+                console.warn('Warning: Could not orphan child tags:', orphanError);
+              }
             }
           }
-        }
-        
-        // Delete ALL instances of this tag by name
-        const { error } = await supabase
-          .from('document_tags')
-          .delete()
-          .eq('tag_name', tagName);
           
-        if (error) throw error;
+          // Delete ALL instances of this tag by name
+          const { error } = await supabase
+            .from('document_tags')
+            .delete()
+            .eq('tag_name', nameToDelete);
+            
+          if (error) throw error;
+        }
         
         await logTagManagementEvent({
           input_state: { 
