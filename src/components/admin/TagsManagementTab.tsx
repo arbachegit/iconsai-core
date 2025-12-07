@@ -116,6 +116,7 @@ export const TagsManagementTab = () => {
   const [mlAlertEnabled, setMlAlertEnabled] = useState<boolean>(false);
   const [isTestingAlert, setIsTestingAlert] = useState<boolean>(false);
   const [isMlAlertConfigured, setIsMlAlertConfigured] = useState<boolean>(false);
+  const [isSavingMlConfig, setIsSavingMlConfig] = useState<boolean>(false);
   
   // Conflict resolution modal state
   const [conflictModal, setConflictModal] = useState<{
@@ -519,6 +520,7 @@ export const TagsManagementTab = () => {
 
   // Save ML alert configuration
   const handleSaveMlAlertConfig = async () => {
+    setIsSavingMlConfig(true);
     try {
       await updateSettings({
         ml_accuracy_threshold: mlAlertThreshold / 100,
@@ -529,6 +531,8 @@ export const TagsManagementTab = () => {
       setIsMlAlertConfigured(true);
     } catch (error: any) {
       toast.error(`Erro ao salvar configurações: ${error.message}`);
+    } finally {
+      setIsSavingMlConfig(false);
     }
   };
 
@@ -2313,8 +2317,16 @@ export const TagsManagementTab = () => {
                 <Button 
                   onClick={handleSaveMlAlertConfig}
                   className="flex-1"
+                  disabled={isSavingMlConfig}
                 >
-                  Salvar Configurações
+                  {isSavingMlConfig ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    "Salvar Configurações"
+                  )}
                 </Button>
               )}
               <Button 
