@@ -36,6 +36,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
+import { MLFlowDiagram } from "./MLFlowDiagram";
 import { 
   Activity, 
   Bell, 
@@ -405,8 +406,27 @@ export const MLDashboardTab = () => {
       <AdminTitleWithInfo
         title="Machine Learning - Auditoria"
         level="h1"
-        tooltipText="Dashboard de ML"
-        infoContent="Dashboard consolidado de métricas e configurações de Machine Learning para governança de tags e roteamento de documentos."
+        tooltipText="Ver ciclo de aprendizado ML"
+        infoContent={
+          <div className="space-y-4">
+            <p className="text-sm">
+              Dashboard consolidado de métricas e configurações de Machine Learning 
+              para governança de tags e roteamento de documentos.
+            </p>
+            
+            <MLFlowDiagram />
+            
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p className="font-semibold text-foreground">Como funciona:</p>
+              <ol className="list-decimal list-inside space-y-0.5 pl-1">
+                <li>Admin unifica/corrige tags</li>
+                <li>Regra é armazenada em <code className="text-primary">tag_merge_rules</code></li>
+                <li>IA consulta regras antes de sugerir</li>
+                <li>Sugestões futuras já vêm corrigidas</li>
+              </ol>
+            </div>
+          </div>
+        }
       />
 
       {/* SCORECARD DE DESEMPENHO DE TAGS (NEW) */}

@@ -70,7 +70,7 @@ export const AdminTitleWithInfo = ({
             </TooltipContent>
 
             <PopoverContent 
-              className="w-[420px] max-w-[90vw] bg-card/95 backdrop-blur-sm border-primary/20" 
+              className="w-[520px] max-w-[95vw] bg-card/95 backdrop-blur-sm border-primary/20" 
               side="right"
               align="start"
             >
