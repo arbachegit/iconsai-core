@@ -127,6 +127,20 @@ export function useTagsData({
     return Object.values(childTagsMap).reduce((sum, arr) => sum + arr.length, 0);
   }, [childTagsMap]);
 
+  // Document count per tag name - how many unique documents each tag appears in
+  const documentCountByTagName = useMemo(() => {
+    const countMap: Record<string, number> = {};
+    allTags?.forEach(tag => {
+      if (!countMap[tag.tag_name]) {
+        const docsWithThisTag = new Set(
+          allTags.filter(t => t.tag_name === tag.tag_name).map(t => t.document_id)
+        );
+        countMap[tag.tag_name] = docsWithThisTag.size;
+      }
+    });
+    return countMap;
+  }, [allTags]);
+
   return {
     parentTags,
     childTagsMap,
@@ -134,5 +148,6 @@ export function useTagsData({
     paginatedParentTags,
     totalPages,
     childTagsCount,
+    documentCountByTagName,
   };
 }

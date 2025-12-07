@@ -2,13 +2,14 @@ import React, { memo, useRef, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ChevronDown, Plus, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, HelpCircle } from "lucide-react";
+import { ChevronDown, Plus, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, HelpCircle, Files } from "lucide-react";
 
 interface Tag {
   id: string;
@@ -40,11 +41,15 @@ interface VirtualizedTagsTableProps {
   sortColumn: "tag_name" | "confidence" | "target_chat";
   sortDirection: "asc" | "desc";
   searchTagName: string;
+  selectedTags: Set<string>;
+  documentCountMap: Record<string, number>;
   onToggleExpanded: (parentId: string) => void;
   onSort: (column: "tag_name" | "confidence" | "target_chat") => void;
   onCreateChild: (parentId: string) => void;
   onEdit: (tag: Tag) => void;
   onDelete: (ids: string[], tagName: string, documentId?: string) => void;
+  onToggleSelect: (tagId: string) => void;
+  onSelectAll: (selected: boolean) => void;
 }
 
 export const VirtualizedTagsTable = memo(({
@@ -54,14 +59,31 @@ export const VirtualizedTagsTable = memo(({
   sortColumn,
   sortDirection,
   searchTagName,
+  selectedTags,
+  documentCountMap,
   onToggleExpanded,
   onSort,
   onCreateChild,
   onEdit,
   onDelete,
+  onToggleSelect,
+  onSelectAll,
 }: VirtualizedTagsTableProps) => {
   const parentRef = useRef<HTMLDivElement>(null);
   const searchLower = searchTagName.toLowerCase().trim();
+
+  // Calculate if all visible tags are selected
+  const allTagIds = useMemo(() => {
+    const ids: string[] = [];
+    parentTags.forEach(parent => {
+      ids.push(parent.id);
+      (childTagsMap[parent.id] || []).forEach(child => ids.push(child.id));
+    });
+    return ids;
+  }, [parentTags, childTagsMap]);
+
+  const allSelected = allTagIds.length > 0 && allTagIds.every(id => selectedTags.has(id));
+  const someSelected = allTagIds.some(id => selectedTags.has(id)) && !allSelected;
 
   // Flatten parent + child tags into single array for virtualization
   const flattenedRows = useMemo(() => {
@@ -126,6 +148,18 @@ export const VirtualizedTagsTable = memo(({
     <div className="border rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center bg-muted/50 border-b text-sm font-medium text-muted-foreground">
+        <div className="w-[40px] p-3 flex justify-center">
+          <Checkbox
+            checked={allSelected}
+            ref={(el) => {
+              if (el) {
+                (el as any).indeterminate = someSelected;
+              }
+            }}
+            onCheckedChange={(checked) => onSelectAll(checked === true)}
+            aria-label="Selecionar todas as tags"
+          />
+        </div>
         <div className="w-[40px] p-3"></div>
         <div className="flex-1 p-3">
           <Button
@@ -179,18 +213,28 @@ export const VirtualizedTagsTable = memo(({
             const row = flattenedRows[virtualRow.index];
             const isParent = row.type === 'parent';
             const tag = row.tag;
+            const docCount = documentCountMap[tag.tag_name] || 1;
 
             return (
               <div
                 key={row.id}
                 className={`absolute top-0 left-0 w-full flex items-center border-b group hover:bg-muted/30 transition-colors ${
                   row.matchesSearch ? 'bg-yellow-500/20 border-l-2 border-l-yellow-400' : ''
-                } ${!isParent ? 'bg-muted/30' : ''}`}
+                } ${!isParent ? 'bg-muted/30' : ''} ${selectedTags.has(tag.id) ? 'bg-primary/10' : ''}`}
                 style={{
                   height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
               >
+                {/* Checkbox */}
+                <div className="w-[40px] p-3 flex justify-center">
+                  <Checkbox
+                    checked={selectedTags.has(tag.id)}
+                    onCheckedChange={() => onToggleSelect(tag.id)}
+                    aria-label={`Selecionar ${tag.tag_name}`}
+                  />
+                </div>
+
                 {/* Expand Button */}
                 <div className="w-[40px] p-3 flex justify-center">
                   {isParent && row.hasChildren && (
@@ -209,10 +253,21 @@ export const VirtualizedTagsTable = memo(({
                   )}
                 </div>
 
-                {/* Tag Name */}
+                {/* Tag Name with Document Count Badge */}
                 <div className="flex-1 p-3">
                   {isParent ? (
-                    <span className="font-medium">{tag.tag_name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{tag.tag_name}</span>
+                      {docCount > 1 && (
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30"
+                        >
+                          <Files className="h-3 w-3 mr-1" />
+                          {docCount} docs
+                        </Badge>
+                      )}
+                    </div>
                   ) : (
                     <span className={`pl-5 text-sm ${row.matchesSearch ? 'text-yellow-300 font-medium' : 'text-muted-foreground'}`}>
                       ↳ {tag.tag_name}
