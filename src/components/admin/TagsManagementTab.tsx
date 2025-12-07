@@ -386,13 +386,65 @@ export const TagsManagementTab = () => {
         };
       });
 
+      // Aggregate merge reasons from user_decision
+      const mergeReasonsCounts = {
+        synonymy: 0,
+        grammaticalVariation: 0,
+        spellingVariation: 0,
+        acronym: 0,
+        typo: 0,
+        languageEquivalence: 0,
+        generalization: 0
+      };
+      
+      let totalMergesWithReasons = 0;
+      (data || []).forEach(event => {
+        if (event.action_type?.includes('merge') && event.user_decision) {
+          const decision = typeof event.user_decision === 'string' 
+            ? JSON.parse(event.user_decision) 
+            : event.user_decision;
+          
+          if (decision.merge_reasons) {
+            totalMergesWithReasons++;
+            if (decision.merge_reasons.synonymy) mergeReasonsCounts.synonymy++;
+            if (decision.merge_reasons.grammaticalVariation) mergeReasonsCounts.grammaticalVariation++;
+            if (decision.merge_reasons.spellingVariation) mergeReasonsCounts.spellingVariation++;
+            if (decision.merge_reasons.acronym) mergeReasonsCounts.acronym++;
+            if (decision.merge_reasons.typo) mergeReasonsCounts.typo++;
+            if (decision.merge_reasons.languageEquivalence) mergeReasonsCounts.languageEquivalence++;
+            if (decision.merge_reasons.generalization) mergeReasonsCounts.generalization++;
+          }
+        }
+      });
+      
+      // Bar chart data for merge reasons
+      const mergeReasonsLabels: Record<string, { label: string; color: string }> = {
+        synonymy: { label: 'Sinonímia', color: 'hsl(262, 83%, 58%)' },
+        grammaticalVariation: { label: 'Gram. (Sing/Pl)', color: 'hsl(187, 71%, 45%)' },
+        spellingVariation: { label: 'Grafia', color: 'hsl(220, 70%, 50%)' },
+        acronym: { label: 'Siglas', color: 'hsl(38, 92%, 50%)' },
+        typo: { label: 'Typos', color: 'hsl(0, 72%, 51%)' },
+        languageEquivalence: { label: 'Idioma', color: 'hsl(142, 71%, 45%)' },
+        generalization: { label: 'Generalização', color: 'hsl(330, 81%, 60%)' }
+      };
+      
+      const mergeReasonsData = Object.entries(mergeReasonsCounts)
+        .map(([key, count]) => ({
+          name: mergeReasonsLabels[key]?.label || key,
+          count,
+          fill: mergeReasonsLabels[key]?.color || 'hsl(220, 10%, 50%)'
+        }))
+        .filter(d => d.count > 0);
+
       return {
         total: data?.length || 0,
         byType,
         recentEvents: data?.slice(0, 15) || [],
         timeSeriesData,
         pieData,
-        decisionTimeData
+        decisionTimeData,
+        mergeReasonsData,
+        totalMergesWithReasons
       };
     },
   });
@@ -1808,7 +1860,58 @@ export const TagsManagementTab = () => {
               </div>
             )}
 
-            {/* Recent Events Table */}
+            {/* Merge Reasons Distribution Chart */}
+            {mlEvents?.mergeReasonsData && mlEvents.mergeReasonsData.length > 0 && (
+              <div className="p-4 bg-background/30 rounded-lg border border-cyan-500/20">
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Merge className="h-4 w-4 text-cyan-400" />
+                  Motivos de Unificação (Data Science)
+                  <Badge variant="outline" className="ml-2 text-xs bg-cyan-500/10 text-cyan-300 border-cyan-500/30">
+                    {mlEvents.totalMergesWithReasons} merges categorizados
+                  </Badge>
+                </h4>
+                <div className="h-[220px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={mlEvents.mergeReasonsData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                      <YAxis 
+                        type="category" 
+                        dataKey="name" 
+                        stroke="hsl(var(--muted-foreground))" 
+                        fontSize={11} 
+                        width={100}
+                        tick={{ fill: 'hsl(var(--foreground))' }}
+                      />
+                      <RechartsTooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                        formatter={(value: number) => [`${value} ocorrências`, 'Contagem']}
+                      />
+                      <Bar 
+                        dataKey="count" 
+                        radius={[0, 4, 4, 0]}
+                      >
+                        {mlEvents.mergeReasonsData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-3 p-2 bg-cyan-500/5 rounded-lg border border-cyan-500/10">
+                  <p className="text-xs text-muted-foreground">
+                    <strong className="text-cyan-300">Taxonomia DS:</strong> Sinonímia, Variação Gramatical (Lematização), 
+                    Variação de Grafia, Siglas/Acrônimos, Erros de Digitação, Equivalência de Idioma, Generalização Hierárquica.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {mlEvents?.recentEvents && mlEvents.recentEvents.length > 0 && (
               <div className="p-4 bg-background/30 rounded-lg border">
                 <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
