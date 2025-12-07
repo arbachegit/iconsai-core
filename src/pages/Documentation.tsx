@@ -15,7 +15,16 @@ import {
   Mail, Youtube, Music, Image, BarChart3, Brain, Languages,
   LogOut, Tags, ArrowRight, ArrowUp, ChevronDown, ChevronLeft,
   ChevronRight, X, Home, Baby, Users, GraduationCap, Rocket,
-  Bot, Sparkles, Lightbulb, Crown, Cat, Snowflake, Skull, ArrowUpDown, Filter
+  Bot, Sparkles, Lightbulb, Crown, Cat, Snowflake, Skull, ArrowUpDown, Filter,
+  // Additional icons for complete library
+  ArrowDown, ChevronUp, PanelLeft, MoreHorizontal, StopCircle, RotateCcw, RotateCw,
+  Edit3, Pencil, Copy, Plus, Minus, Merge, ZoomIn, ZoomOut, Target, Wand2,
+  AlertCircle, AlertTriangle, Info, HelpCircle, Dot, Activity, Bell, Radio,
+  Video, FileDown, TrendingUp, TrendingDown, Percent, FileSpreadsheet, FileJson,
+  ClipboardList, Table2, Package, Boxes, Tag, Settings, Settings2, Key, KeyRound,
+  Network, Cpu, Zap, Layers, Layout, Shapes, Component, User, Heart, BookOpen, Type,
+  GripVertical, GripHorizontal, Eye, EyeOff, Paperclip, Smile, Frown, Meh, MapPin,
+  icons, LucideIcon
 } from 'lucide-react';
 import { MermaidDiagram } from '@/components/MermaidDiagram';
 import { MermaidZoomModal } from '@/components/MermaidZoomModal';
@@ -34,29 +43,38 @@ import { cn } from '@/lib/utils';
 
 // Sections data structure
 const sections = [
-  { id: 'menu-principal', title: 'Menu Principal', icon: FileText },
-  { id: 'database', title: 'Database', icon: Database },
-  { id: 'backend', title: 'Backend', icon: Server },
-  { id: 'frontend', title: 'Frontend', icon: Code },
-  { id: 'ui-reference', title: 'Referência UI', icon: Palette },
-  { id: 'changelog', title: 'Changelog', icon: History },
+  { id: 'menu-principal', title: 'Menu Principal', icon: FileText, hasSeparator: false },
+  { id: 'database', title: 'Database', icon: Database, hasSeparator: false },
+  { id: 'backend', title: 'Backend', icon: Server, hasSeparator: false },
+  { id: 'frontend', title: 'Frontend', icon: Code, hasSeparator: false },
+  { id: 'ui-reference', title: 'Referência UI', icon: Palette, hasSeparator: false },
+  { id: 'changelog', title: 'Changelog', icon: History, hasSeparator: false },
+  // Separated sections below changelog
+  { id: 'icon-library', title: 'Biblioteca de Ícones', icon: Shapes, hasSeparator: true },
+  { id: 'icon-components', title: 'Componentes de Ícones', icon: Component, hasSeparator: false },
 ];
 
-// Icons reference data
+// Icons reference data - Complete list of all icons used in the application
 const ICONS_DATA = [
   // Navegação
   { name: 'ArrowLeft', component: ArrowLeft, description: 'Voltar à página anterior', category: 'Navegação', origin: 'Lucide-React' },
   { name: 'ArrowRight', component: ArrowRight, description: 'Avançar, continuar, próximo', category: 'Navegação', origin: 'Lucide-React' },
   { name: 'ArrowUp', component: ArrowUp, description: 'Voltar ao topo da página', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'ArrowDown', component: ArrowDown, description: 'Rolar para baixo', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'ArrowUpDown', component: ArrowUpDown, description: 'Ordenar/alternar direção', category: 'Navegação', origin: 'Lucide-React' },
   { name: 'ChevronDown', component: ChevronDown, description: 'Expandir conteúdo colapsável', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'ChevronUp', component: ChevronUp, description: 'Colapsar conteúdo', category: 'Navegação', origin: 'Lucide-React' },
   { name: 'ChevronLeft', component: ChevronLeft, description: 'Navegação anterior em carrossel', category: 'Navegação', origin: 'Lucide-React' },
   { name: 'ChevronRight', component: ChevronRight, description: 'Navegação próxima em carrossel', category: 'Navegação', origin: 'Lucide-React' },
   { name: 'Menu', component: Menu, description: 'Abrir menu mobile hamburger', category: 'Navegação', origin: 'Lucide-React' },
   { name: 'X', component: X, description: 'Fechar modal/drawer/painel', category: 'Navegação', origin: 'Lucide-React' },
   { name: 'Home', component: Home, description: 'Ir para página inicial', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'PanelLeft', component: PanelLeft, description: 'Sidebar toggle', category: 'Navegação', origin: 'Lucide-React' },
+  { name: 'MoreHorizontal', component: MoreHorizontal, description: 'Menu de opções', category: 'Navegação', origin: 'Lucide-React' },
   // Ação
   { name: 'Play', component: Play, description: 'Iniciar reprodução de áudio', category: 'Ação', origin: 'Lucide-React' },
   { name: 'Square', component: Square, description: 'Parar reprodução de áudio', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'StopCircle', component: StopCircle, description: 'Parar processo', category: 'Ação', origin: 'Lucide-React' },
   { name: 'Download', component: Download, description: 'Baixar arquivo/áudio', category: 'Ação', origin: 'Lucide-React' },
   { name: 'Upload', component: Upload, description: 'Enviar arquivo (drag & drop)', category: 'Ação', origin: 'Lucide-React' },
   { name: 'Send', component: Send, description: 'Enviar mensagem no chat', category: 'Ação', origin: 'Lucide-React' },
@@ -64,27 +82,61 @@ const ICONS_DATA = [
   { name: 'ImagePlus', component: ImagePlus, description: 'Gerar imagem (modo draw)', category: 'Ação', origin: 'Lucide-React' },
   { name: 'Search', component: Search, description: 'Buscar/filtrar conteúdo', category: 'Ação', origin: 'Lucide-React' },
   { name: 'RefreshCw', component: RefreshCw, description: 'Reprocessar documento', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'RotateCcw', component: RotateCcw, description: 'Desfazer/restaurar versão', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'RotateCw', component: RotateCw, description: 'Refazer ação', category: 'Ação', origin: 'Lucide-React' },
   { name: 'Trash2', component: Trash2, description: 'Excluir item', category: 'Ação', origin: 'Lucide-React' },
   { name: 'Edit2', component: Edit2, description: 'Editar conteúdo', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Edit3', component: Edit3, description: 'Editar alternativo', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Pencil', component: Pencil, description: 'Edição de texto', category: 'Ação', origin: 'Lucide-React' },
   { name: 'Save', component: Save, description: 'Salvar alterações', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Copy', component: Copy, description: 'Copiar para clipboard', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Plus', component: Plus, description: 'Adicionar novo item', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Minus', component: Minus, description: 'Remover/decrementar', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Merge', component: Merge, description: 'Mesclar tags/itens', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Filter', component: Filter, description: 'Filtrar resultados', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Maximize2', component: Maximize2, description: 'Expandir/zoom', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'ZoomIn', component: ZoomIn, description: 'Aumentar zoom', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'ZoomOut', component: ZoomOut, description: 'Diminuir zoom', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Target', component: Target, description: 'Foco/objetivo', category: 'Ação', origin: 'Lucide-React' },
+  { name: 'Wand2', component: Wand2, description: 'Auto-detectar/magia IA', category: 'Ação', origin: 'Lucide-React' },
   // Status
   { name: 'Loader2', component: Loader2, description: 'Indicador de carregamento', category: 'Status', origin: 'Lucide-React' },
   { name: 'Check', component: Check, description: 'Confirmação/seleção', category: 'Status', origin: 'Lucide-React' },
   { name: 'CheckCircle2', component: CheckCircle2, description: 'Documento processado com sucesso', category: 'Status', origin: 'Lucide-React' },
   { name: 'XCircle', component: XCircle, description: 'Erro/falha no processamento', category: 'Status', origin: 'Lucide-React' },
+  { name: 'AlertCircle', component: AlertCircle, description: 'Aviso/atenção', category: 'Status', origin: 'Lucide-React' },
+  { name: 'AlertTriangle', component: AlertTriangle, description: 'Alerta crítico', category: 'Status', origin: 'Lucide-React' },
   { name: 'Clock', component: Clock, description: 'Pendente/aguardando', category: 'Status', origin: 'Lucide-React' },
+  { name: 'Info', component: Info, description: 'Informação adicional', category: 'Status', origin: 'Lucide-React' },
+  { name: 'HelpCircle', component: HelpCircle, description: 'Ajuda/tooltip', category: 'Status', origin: 'Lucide-React' },
+  { name: 'Dot', component: Dot, description: 'Indicador de ponto', category: 'Status', origin: 'Lucide-React' },
+  { name: 'Activity', component: Activity, description: 'Atividade/monitoramento', category: 'Status', origin: 'Lucide-React' },
   // Comunicação
   { name: 'MessageCircle', component: MessageCircle, description: 'Botão flutuante de chat', category: 'Comunicação', origin: 'Lucide-React' },
   { name: 'MessageSquare', component: MessageSquare, description: 'Configuração de chat', category: 'Comunicação', origin: 'Lucide-React' },
   { name: 'Mail', component: Mail, description: 'Configuração de email', category: 'Comunicação', origin: 'Lucide-React' },
+  { name: 'Bell', component: Bell, description: 'Notificações', category: 'Comunicação', origin: 'Lucide-React' },
+  { name: 'Radio', component: Radio, description: 'Transmissão/broadcast', category: 'Comunicação', origin: 'Lucide-React' },
   // Mídia
   { name: 'Youtube', component: Youtube, description: 'Cache de vídeos YouTube', category: 'Mídia', origin: 'Lucide-React' },
+  { name: 'Video', component: Video, description: 'Conteúdo de vídeo', category: 'Mídia', origin: 'Lucide-React' },
   { name: 'Music', component: Music, description: 'Embed de podcast Spotify', category: 'Mídia', origin: 'Lucide-React' },
   { name: 'Image', component: Image, description: 'Cache de imagens geradas', category: 'Mídia', origin: 'Lucide-React' },
+  { name: 'FileDown', component: FileDown, description: 'Download de arquivo', category: 'Mídia', origin: 'Lucide-React' },
   // Data
   { name: 'BarChart3', component: BarChart3, description: 'Métricas e analytics', category: 'Data', origin: 'Lucide-React' },
+  { name: 'TrendingUp', component: TrendingUp, description: 'Tendência positiva', category: 'Data', origin: 'Lucide-React' },
+  { name: 'TrendingDown', component: TrendingDown, description: 'Tendência negativa', category: 'Data', origin: 'Lucide-React' },
+  { name: 'Percent', component: Percent, description: 'Porcentagem', category: 'Data', origin: 'Lucide-React' },
   { name: 'Database', component: Database, description: 'Métricas RAG/banco de dados', category: 'Data', origin: 'Lucide-React' },
   { name: 'FileText', component: FileText, description: 'Documento/tooltip', category: 'Data', origin: 'Lucide-React' },
+  { name: 'FileCode', component: FileCode, description: 'Código/documentação técnica', category: 'Data', origin: 'Lucide-React' },
+  { name: 'FileSpreadsheet', component: FileSpreadsheet, description: 'Exportar Excel', category: 'Data', origin: 'Lucide-React' },
+  { name: 'FileJson', component: FileJson, description: 'Exportar JSON', category: 'Data', origin: 'Lucide-React' },
+  { name: 'ClipboardList', component: ClipboardList, description: 'Logs/listagem', category: 'Data', origin: 'Lucide-React' },
+  { name: 'Table2', component: Table2, description: 'Visualização de tabela', category: 'Data', origin: 'Lucide-React' },
+  { name: 'Package', component: Package, description: 'Documento empacotado', category: 'Data', origin: 'Lucide-React' },
+  { name: 'Boxes', component: Boxes, description: 'Múltiplos documentos (both)', category: 'Data', origin: 'Lucide-React' },
   // Sistema
   { name: 'Brain', component: Brain, description: 'Acesso ao painel admin', category: 'Sistema', origin: 'Lucide-React' },
   { name: 'Languages', component: Languages, description: 'Seletor de idioma', category: 'Sistema', origin: 'Lucide-React' },
@@ -94,20 +146,48 @@ const ICONS_DATA = [
   { name: 'LogOut', component: LogOut, description: 'Sair do sistema', category: 'Sistema', origin: 'Lucide-React' },
   { name: 'GitBranch', component: GitBranch, description: 'Controle de versão', category: 'Sistema', origin: 'Lucide-React' },
   { name: 'Tags', component: Tags, description: 'Gerenciamento de tags', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Tag', component: Tag, description: 'Tag individual', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Settings', component: Settings, description: 'Configurações gerais', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Settings2', component: Settings2, description: 'Configurações avançadas', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Key', component: Key, description: 'Chave/autenticação', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'KeyRound', component: KeyRound, description: 'Chave de recuperação', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Shield', component: Shield, description: 'Segurança/proteção', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Globe', component: Globe, description: 'Globalização/idiomas', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Network', component: Network, description: 'Conexões/rede', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Cpu', component: Cpu, description: 'Processamento/hardware', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Zap', component: Zap, description: 'Performance/velocidade', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Layers', component: Layers, description: 'Camadas/níveis', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Layout', component: Layout, description: 'Layout/estrutura', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Shapes', component: Shapes, description: 'Formas/componentes', category: 'Sistema', origin: 'Lucide-React' },
+  { name: 'Component', component: Component, description: 'Componente reutilizável', category: 'Sistema', origin: 'Lucide-React' },
   // Temático (AI History)
-  { name: 'Clock', component: Clock, description: 'Era: O Sonho (Antes 1950)', category: 'Temático', origin: 'Lucide-React' },
   { name: 'Baby', component: Baby, description: 'Era: Nascimento (Anos 50)', category: 'Temático', origin: 'Lucide-React' },
   { name: 'Users', component: Users, description: 'Era: Infância (Anos 60-80)', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'User', component: User, description: 'Usuário individual', category: 'Temático', origin: 'Lucide-React' },
   { name: 'GraduationCap', component: GraduationCap, description: 'Era: Fase Adulta (90s-2000s)', category: 'Temático', origin: 'Lucide-React' },
   { name: 'Rocket', component: Rocket, description: 'Era: Revolução Generativa', category: 'Temático', origin: 'Lucide-React' },
   { name: 'Bot', component: Bot, description: 'Marcos de IA (chatbots, Siri)', category: 'Temático', origin: 'Lucide-React' },
-  { name: 'Sparkles', component: Sparkles, description: 'Momentos históricos', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Sparkles', component: Sparkles, description: 'Momentos históricos/mágica', category: 'Temático', origin: 'Lucide-React' },
   { name: 'Lightbulb', component: Lightbulb, description: 'Insights/descobertas', category: 'Temático', origin: 'Lucide-React' },
   { name: 'Crown', component: Crown, description: 'Vitórias (Deep Blue, AlphaGo)', category: 'Temático', origin: 'Lucide-React' },
   { name: 'Cat', component: Cat, description: 'Deep Learning YouTube', category: 'Temático', origin: 'Lucide-React' },
   { name: 'Palette', component: Palette, description: 'Era ChatGPT/Gemini criativa', category: 'Temático', origin: 'Lucide-React' },
   { name: 'Snowflake', component: Snowflake, description: 'Inverno da IA', category: 'Temático', origin: 'Lucide-React' },
   { name: 'Skull', component: Skull, description: 'Exterminador do Futuro', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Heart', component: Heart, description: 'Saúde/Healthcare', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'BookOpen', component: BookOpen, description: 'Estudo/Educação', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'History', component: History, description: 'Histórico/Timeline', category: 'Temático', origin: 'Lucide-React' },
+  { name: 'Type', component: Type, description: 'Tipografia/Texto', category: 'Temático', origin: 'Lucide-React' },
+  // Interação
+  { name: 'GripVertical', component: GripVertical, description: 'Arrastar verticalmente', category: 'Interação', origin: 'Lucide-React' },
+  { name: 'GripHorizontal', component: GripHorizontal, description: 'Arrastar horizontalmente', category: 'Interação', origin: 'Lucide-React' },
+  { name: 'Eye', component: Eye, description: 'Visualizar/mostrar', category: 'Interação', origin: 'Lucide-React' },
+  { name: 'EyeOff', component: EyeOff, description: 'Ocultar/esconder', category: 'Interação', origin: 'Lucide-React' },
+  { name: 'Paperclip', component: Paperclip, description: 'Anexar documento', category: 'Interação', origin: 'Lucide-React' },
+  { name: 'Smile', component: Smile, description: 'Sentimento positivo', category: 'Interação', origin: 'Lucide-React' },
+  { name: 'Frown', component: Frown, description: 'Sentimento negativo', category: 'Interação', origin: 'Lucide-React' },
+  { name: 'Meh', component: Meh, description: 'Sentimento neutro', category: 'Interação', origin: 'Lucide-React' },
+  { name: 'MapPin', component: MapPin, description: 'Localização', category: 'Interação', origin: 'Lucide-React' },
 ];
 
 // Animations reference data
@@ -851,19 +931,23 @@ const Documentation = () => {
         {sections.map((section) => {
           const Icon = section.icon;
           return (
-            <button
-              key={section.id}
-              onClick={() => scrollToSection(section.id)}
-              className={cn(
-                "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2",
-                activeSection === section.id
-                  ? "bg-primary text-primary-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            <div key={section.id}>
+              {section.hasSeparator && (
+                <div className="my-3 border-t border-border" />
               )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{section.title}</span>
-            </button>
+              <button
+                onClick={() => scrollToSection(section.id)}
+                className={cn(
+                  "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2",
+                  activeSection === section.id
+                    ? "bg-primary text-primary-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{section.title}</span>
+              </button>
+            </div>
           );
         })}
       </nav>
@@ -2066,6 +2150,119 @@ theme: {
                   <p>Carregando histórico...</p>
                 </div>
               )}
+            </Card>
+          </section>
+
+          {/* ===== BIBLIOTECA DE ÍCONES ===== */}
+          <section id="icon-library" className="scroll-mt-20 space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold flex items-center gap-3">
+                <Shapes className="h-8 w-8 text-primary" />
+                Biblioteca de Ícones
+              </h2>
+              <Badge variant="outline">{ICONS_DATA.length} ícones</Badge>
+            </div>
+
+            <BackToIndex />
+
+            <Card className="p-6">
+              <p className="text-muted-foreground mb-4">
+                Lista completa de todos os ícones Lucide-React utilizados na aplicação, organizados por categoria.
+                Esta biblioteca é rastreada automaticamente a partir de todas as páginas (usuário, admin e superadmin).
+              </p>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                {ICONS_DATA.map((iconData, index) => {
+                  const IconComponent = iconData.component;
+                  return (
+                    <div
+                      key={`${iconData.name}-${index}`}
+                      className="flex flex-col items-center p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group"
+                      title={iconData.description}
+                    >
+                      <IconComponent className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
+                      <span className="text-[10px] text-center text-muted-foreground truncate w-full">{iconData.name}</span>
+                      <Badge variant="secondary" className="text-[8px] mt-1 px-1">{iconData.category}</Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </section>
+
+          {/* ===== COMPONENTES DE ÍCONES ===== */}
+          <section id="icon-components" className="scroll-mt-20 space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold flex items-center gap-3">
+                <Component className="h-8 w-8 text-primary" />
+                Componentes de Ícones
+              </h2>
+            </div>
+
+            <BackToIndex />
+
+            <Card className="p-6 space-y-4">
+              <h3 className="text-xl font-semibold">IconSelector - Componente Reutilizável</h3>
+              <p className="text-muted-foreground">
+                Componente de seleção de ícones para uso no admin panel. Permite busca, filtro por categoria e preview visual.
+              </p>
+
+              <div className="pt-4 border-t">
+                <h4 className="text-sm font-semibold mb-2">Como usar:</h4>
+                <pre className="bg-muted p-4 rounded text-xs overflow-x-auto">
+{`import { IconSelector } from '@/components/admin/IconSelector';
+
+// Uso básico
+const [selectedIcon, setSelectedIcon] = useState<string>('');
+
+<IconSelector 
+  value={selectedIcon}
+  onSelect={(iconName) => setSelectedIcon(iconName)}
+  placeholder="Selecionar ícone"
+/>
+
+// Com valor inicial
+<IconSelector 
+  value="Heart"
+  onSelect={handleIconChange}
+/>`}
+                </pre>
+              </div>
+
+              <div className="pt-4 border-t">
+                <h4 className="text-sm font-semibold mb-2">Props disponíveis:</h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Prop</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Descrição</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell><code>value</code></TableCell>
+                      <TableCell>string</TableCell>
+                      <TableCell>Nome do ícone selecionado</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell><code>onSelect</code></TableCell>
+                      <TableCell>(iconName: string) =&gt; void</TableCell>
+                      <TableCell>Callback ao selecionar ícone</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell><code>placeholder</code></TableCell>
+                      <TableCell>string</TableCell>
+                      <TableCell>Texto placeholder do botão</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell><code>disabled</code></TableCell>
+                      <TableCell>boolean</TableCell>
+                      <TableCell>Desabilita o seletor</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
             </Card>
           </section>
         </div>
