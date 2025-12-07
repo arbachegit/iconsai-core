@@ -73,7 +73,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDebounce } from "@/hooks/useDebounce";
 
 // Optimized sub-components
-import { TagsTable } from "./tags/TagsTable";
+import { VirtualizedTagsTable } from "./tags/VirtualizedTagsTable";
 import { DuplicatesPanel } from "./tags/DuplicatesPanel";
 import { MetricsDashboard } from "./tags/MetricsDashboard";
 import { TagFilters } from "./tags/TagFilters";
@@ -2640,12 +2640,17 @@ export const TagsManagementTab = () => {
         onSearchChange={setSearchInput}
       />
 
-      {/* Tags Table - Optimized Component */}
+      {/* Tags Table - Virtualized Component */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Tags Extraídas dos Documentos</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Tags Extraídas dos Documentos</h3>
+          <span className="text-sm text-muted-foreground">
+            {sortedParentTags.length} tags pai
+          </span>
+        </div>
         
-        <TagsTable
-          paginatedParentTags={paginatedParentTags}
+        <VirtualizedTagsTable
+          parentTags={sortedParentTags}
           childTagsMap={childTagsMap}
           expandedParents={expandedParents}
           sortColumn={sortColumn}
@@ -2657,37 +2662,6 @@ export const TagsManagementTab = () => {
           onEdit={openEditDialog}
           onDelete={openDeleteConfirmModal}
         />
-
-        {/* Pagination Controls */}
-        {sortedParentTags.length > 0 && (
-          <div className="flex items-center justify-between mt-6 pt-4 border-t">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Itens por página:</span>
-              <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
-                <SelectTrigger className="w-[80px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedParentTags.length)} de {sortedParentTags.length}
-              </span>
-              <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
       </Card>
 
       {/* Edit/Create Dialog */}
