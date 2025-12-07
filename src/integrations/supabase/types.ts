@@ -53,6 +53,8 @@ export type Database = {
           chat_audio_enabled: boolean | null
           created_at: string | null
           daily_report_enabled: boolean | null
+          doc_sync_alert_email: string | null
+          doc_sync_time: string | null
           gmail_api_configured: boolean | null
           gmail_notification_email: string | null
           id: string
@@ -73,6 +75,8 @@ export type Database = {
           chat_audio_enabled?: boolean | null
           created_at?: string | null
           daily_report_enabled?: boolean | null
+          doc_sync_alert_email?: string | null
+          doc_sync_time?: string | null
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
@@ -93,6 +97,8 @@ export type Database = {
           chat_audio_enabled?: boolean | null
           created_at?: string | null
           daily_report_enabled?: boolean | null
+          doc_sync_alert_email?: string | null
+          doc_sync_time?: string | null
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
