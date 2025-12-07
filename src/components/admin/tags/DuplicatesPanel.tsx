@@ -65,9 +65,9 @@ export const DuplicatesPanel = memo(({
   onRejectDuplicate,
 }: DuplicatesPanelProps) => {
   const [openSections, setOpenSections] = useState({
-    exact: true,
-    semantic: true,
-    children: true,
+    exact: false,
+    semantic: false,
+    children: false,
   });
 
   const totalChildDuplicates = similarChildTagsPerParent.reduce(
