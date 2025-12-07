@@ -91,11 +91,7 @@ export const TagsManagementTab = () => {
     isParent: true,
   });
   // deleteDialog state removed - now using deleteConfirmModal with justification
-  const [mergeDialog, setMergeDialog] = useState<{ open: boolean; tagName: string; ids: string[] }>({
-    open: false,
-    tagName: "",
-    ids: [],
-  });
+  // mergeDialog removed - now using TagConflictResolutionModal with justification reasons
   const [filterSource, setFilterSource] = useState<string>("all");
   const [filterChat, setFilterChat] = useState<string>("all");
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
@@ -1011,52 +1007,14 @@ export const TagsManagementTab = () => {
       queryClient.invalidateQueries({ queryKey: ["all-tags"] });
       queryClient.invalidateQueries({ queryKey: ["tag-modification-logs"] });
       queryClient.invalidateQueries({ queryKey: ["tag-modification-logs-for-indicators"] });
-      setMergeDialog({ open: false, tagName: "", ids: [] });
+      // merge dialog state removed - modal closes automatically via TagConflictResolutionModal
     },
     onError: (error: any) => {
       toast.error(`Erro ao unificar tags: ${error.message}`);
     },
   });
 
-  const openMergeDialog = (tagName: string, ids: string[]) => {
-    setMergeDialog({ open: true, tagName, ids });
-  };
-
-  const handleMerge = () => {
-    if (mergeDialog.ids.length < 2) {
-      toast.error("Selecione pelo menos 2 tags para unificar");
-      return;
-    }
-    
-    // Get all tag names for the IDs being merged
-    const tagsBeingMerged = allTags?.filter(t => mergeDialog.ids.includes(t.id)) || [];
-    const targetTag = tagsBeingMerged[0];
-    const sourceTags = tagsBeingMerged.slice(1);
-    
-    if (!targetTag) {
-      toast.error("Tag alvo não encontrada");
-      return;
-    }
-    
-    // Determine chat type from the tag's target_chat field
-    const chatType = targetTag.target_chat || "health";
-    
-    // Get unique documents affected by this merge
-    const documentsAffected = [...new Map(
-      sourceTags
-        .filter(t => t.document_id && t.document_filename)
-        .map(t => [t.document_id, { document_id: t.document_id, document_filename: t.document_filename! }])
-    ).values()];
-    
-    mergeTagsMutation.mutate({ 
-      targetTagId: targetTag.id, 
-      sourceTagIds: sourceTags.map(t => t.id),
-      sourceTagNames: sourceTags.map(t => t.tag_name),
-      targetTagName: targetTag.tag_name,
-      chatType,
-      documentsAffected
-    });
-  };
+  // openMergeDialog and handleMerge removed - now using TagConflictResolutionModal with 7 justification reasons
 
   const resetForm = () => {
     setFormData({
@@ -2326,7 +2284,7 @@ export const TagsManagementTab = () => {
                       <Badge variant="outline" className="text-xs">{count}x</Badge>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button size="sm" variant="outline" onClick={() => openMergeDialog(tag_name, ids)}>
+                      <Button size="sm" variant="outline" onClick={() => openConflictModal('parent', ids)}>
                         <Merge className="h-4 w-4 mr-1" /> Unificar
                       </Button>
                       <Button 
@@ -2366,7 +2324,7 @@ export const TagsManagementTab = () => {
                       </Badge>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button size="sm" variant="outline" onClick={() => openMergeDialog(`${tag1} → ${tag2}`, ids)}>
+                      <Button size="sm" variant="outline" onClick={() => openConflictModal('semantic', ids, similarity)}>
                         <Merge className="h-4 w-4 mr-1" /> Mesclar
                       </Button>
                       <Button 
@@ -2428,7 +2386,7 @@ export const TagsManagementTab = () => {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => openMergeDialog(`${tag1} → ${tag2}`, [id1, id2])}
+                              onClick={() => openConflictModal('child', [id1, id2], similarity)}
                             >
                               <Merge className="h-4 w-4 mr-1" /> Mesclar
                             </Button>
@@ -3138,63 +3096,7 @@ export const TagsManagementTab = () => {
 
       {/* Delete Dialog - Removed, now using deleteConfirmModal with justification */}
 
-      {/* Merge Tags Dialog */}
-      <Dialog open={mergeDialog.open} onOpenChange={(open) => !open && setMergeDialog({ open: false, tagName: "", ids: [] })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-400" />
-              Unificar Tags + Aprendizado de Máquina
-            </DialogTitle>
-            <DialogDescription>
-              Você está prestes a unificar todas as ocorrências de "{mergeDialog.tagName}". 
-              <br /><br />
-              <strong>O que acontecerá:</strong>
-              <ul className="list-disc pl-5 mt-2">
-                <li>A tag mais antiga será mantida como padrão</li>
-                <li>Todas as tags filhas serão movidas para a tag mantida</li>
-                <li>As tags duplicadas serão removidas</li>
-              </ul>
-              <br />
-              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 mt-2">
-                <div className="flex items-start gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
-                  <div className="text-sm">
-                    <strong className="text-purple-300">Aprendizado de Máquina:</strong>
-                    <p className="text-muted-foreground mt-1">
-                      Ao mesclar, uma regra será criada automaticamente para impedir que a IA 
-                      gere estas variações no futuro. A IA aprenderá a usar sempre a tag padronizada.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <br />
-              Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMergeDialog({ open: false, tagName: "", ids: [] })}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleMerge}
-              disabled={mergeTagsMutation.isPending}
-            >
-              {mergeTagsMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Unificando...
-                </>
-              ) : (
-                <>
-                  <Merge className="h-4 w-4 mr-2" />
-                  Unificar
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Old Merge Tags Dialog removed - now using TagConflictResolutionModal with 7 justification reasons */}
 
       {/* Conflict Resolution Modal */}
       <TagConflictResolutionModal
