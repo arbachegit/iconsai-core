@@ -7,7 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { useAdminSettings } from '@/hooks/useAdminSettings';
 import { 
   RefreshCw, 
   CheckCircle2, 
@@ -26,7 +29,10 @@ import {
   TrendingUp,
   TrendingDown,
   BarChart3,
-  Activity
+  Activity,
+  Settings,
+  Save,
+  Mail
 } from 'lucide-react';
 import {
   AreaChart,
@@ -100,6 +106,22 @@ export const DocumentationSyncTab: React.FC = () => {
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  
+  // Configuration states
+  const { settings, updateSettings } = useAdminSettings();
+  const [isEditingConfig, setIsEditingConfig] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(false);
+  const [syncTime, setSyncTime] = useState('03:00');
+  const [alertEmail, setAlertEmail] = useState('');
+  
+  // Sync settings from database when loaded
+  useEffect(() => {
+    if (settings) {
+      setSyncTime(settings.doc_sync_time || '03:00');
+      setAlertEmail(settings.doc_sync_alert_email || '');
+    }
+  }, [settings]);
 
   // Calculate stats from all logs
   const syncStats = useMemo<SyncStats>(() => {
@@ -437,6 +459,113 @@ export const DocumentationSyncTab: React.FC = () => {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Configuration Card */}
+      <Card className="bg-gradient-to-br from-card/80 to-card border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-primary" />
+            Configurações de Gestão de Documentos
+          </CardTitle>
+          <CardDescription>
+            Configure o horário de sincronização automática e o e-mail para receber alertas de falhas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Sync Time */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Horário de Sincronização
+              </Label>
+              <Input
+                type="time"
+                value={syncTime}
+                onChange={(e) => setSyncTime(e.target.value)}
+                disabled={!isEditingConfig}
+                className="border-blue-400/60 focus:border-blue-500"
+              />
+              <p className="text-xs text-muted-foreground">
+                Horário diário para sincronização automática
+              </p>
+            </div>
+            
+            {/* Alert Email */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                E-mail para Alertas
+              </Label>
+              <Input
+                type="email"
+                placeholder="admin@exemplo.com"
+                value={alertEmail}
+                onChange={(e) => setAlertEmail(e.target.value)}
+                disabled={!isEditingConfig}
+                className="border-blue-400/60 focus:border-blue-500"
+              />
+              <p className="text-xs text-muted-foreground">
+                Receba notificações quando a sincronização falhar
+              </p>
+            </div>
+          </div>
+          
+          {/* Toggle Button */}
+          <Button
+            onClick={async () => {
+              if (isEditingConfig) {
+                // Save configuration
+                setIsSavingConfig(true);
+                try {
+                  await updateSettings({
+                    doc_sync_time: syncTime,
+                    doc_sync_alert_email: alertEmail || null
+                  });
+                  toast.success('Configurações salvas com sucesso!');
+                  setIsEditingConfig(false);
+                } catch (error) {
+                  console.error('Error saving config:', error);
+                  toast.error('Erro ao salvar configurações');
+                } finally {
+                  setIsSavingConfig(false);
+                }
+              } else {
+                // Enable editing
+                setIsLoadingConfig(true);
+                await new Promise(resolve => setTimeout(resolve, 300));
+                setIsLoadingConfig(false);
+                setIsEditingConfig(true);
+              }
+            }}
+            disabled={isSavingConfig || isLoadingConfig}
+            variant={isEditingConfig ? "default" : "outline"}
+            className="w-full sm:w-auto"
+          >
+            {isSavingConfig ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : isLoadingConfig ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Carregando...
+              </>
+            ) : isEditingConfig ? (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Salvar Configurações
+              </>
+            ) : (
+              <>
+                <Settings className="w-4 h-4 mr-2" />
+                Configurar
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 

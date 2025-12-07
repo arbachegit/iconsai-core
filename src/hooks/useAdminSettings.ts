@@ -15,6 +15,8 @@ interface AdminSettings {
   ml_accuracy_alert_enabled: boolean | null;
   ml_accuracy_alert_email: string | null;
   ml_accuracy_last_alert: string | null;
+  doc_sync_time: string | null;
+  doc_sync_alert_email: string | null;
 }
 
 export const useAdminSettings = () => {
