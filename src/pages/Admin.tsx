@@ -28,12 +28,13 @@ import { InfrastructureArchitectureTab } from "@/components/admin/Infrastructure
 import { RegionalConfigTab } from "@/components/admin/RegionalConfigTab";
 import { SuggestionAuditTab } from "@/components/admin/SuggestionAuditTab";
 import { ContactMessagesTab } from "@/components/admin/ContactMessagesTab";
+import { DocumentationSyncTab } from "@/components/admin/DocumentationSyncTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 import { TagsManagementTab } from "@/components/admin/TagsManagementTab";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -64,6 +65,7 @@ const TAB_LABELS: Record<TabType, string> = {
   "regional-config": "Configurações Regionais",
   "suggestion-audit": "Auditoria Sugestões",
   "contact-messages": "Mensagens Contato",
+  "documentation-sync": "Sincronizar Docs",
 };
 
 const Admin = () => {
@@ -214,6 +216,8 @@ const Admin = () => {
         return <SuggestionAuditTab />;
       case "contact-messages":
         return <ContactMessagesTab />;
+      case "documentation-sync":
+        return <DocumentationSyncTab />;
       case "images":
         return <ImageCacheTab />;
       case "youtube":
