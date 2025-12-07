@@ -41,6 +41,12 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import { Grid3X3, List } from 'lucide-react';
 
 // Sections data structure
 const sections = [
@@ -472,9 +478,31 @@ const Documentation = () => {
   // Icon Library search and filter
   const [iconLibrarySearch, setIconLibrarySearch] = useState<string>("");
   const [iconLibraryCategory, setIconLibraryCategory] = useState<string>("all");
+  const [iconViewMode, setIconViewMode] = useState<'grid' | 'table'>(() => {
+    const saved = localStorage.getItem('iconLibraryViewMode');
+    return (saved === 'table' || saved === 'grid') ? saved : 'grid';
+  });
   
   // Icon Components demo state
   const [demoSelectedIcon, setDemoSelectedIcon] = useState<string>("");
+  const [demoDisabled, setDemoDisabled] = useState<boolean>(false);
+  const [demoPlaceholder, setDemoPlaceholder] = useState<string>("Clique para selecionar");
+  const [demoClassName, setDemoClassName] = useState<string>("");
+
+  // Persist icon view mode
+  useEffect(() => {
+    localStorage.setItem('iconLibraryViewMode', iconViewMode);
+  }, [iconViewMode]);
+
+  // Copy full icon code
+  const copyFullIconCode = (iconName: string) => {
+    const code = `import { ${iconName} } from 'lucide-react';
+
+// Uso
+<${iconName} className="h-4 w-4" />`;
+    navigator.clipboard.writeText(code);
+    toast.success('Código completo copiado!');
+  };
 
   // Get unique categories for icon library filter
   const iconCategories = useMemo(() => {
@@ -2199,28 +2227,43 @@ theme: {
                 Esta biblioteca é rastreada automaticamente a partir de todas as páginas (usuário, admin e superadmin).
               </p>
               
-              {/* Campo de busca e filtros */}
-              <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por nome ou descrição..."
-                    value={iconLibrarySearch}
-                    onChange={(e) => setIconLibrarySearch(e.target.value)}
-                    className="pl-10"
-                  />
+              {/* Campo de busca, filtros e toggle de visualização */}
+              <div className="flex flex-col gap-3 mb-6">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por nome, descrição ou categoria..."
+                      value={iconLibrarySearch}
+                      onChange={(e) => setIconLibrarySearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={iconLibraryCategory} onValueChange={setIconLibraryCategory}>
+                    <SelectTrigger className="w-full sm:w-48">
+                      <SelectValue placeholder="Filtrar por categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as categorias</SelectItem>
+                      {iconCategories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <ToggleGroup 
+                    type="single" 
+                    value={iconViewMode} 
+                    onValueChange={(value) => value && setIconViewMode(value as 'grid' | 'table')}
+                    className="border rounded-lg"
+                  >
+                    <ToggleGroupItem value="grid" aria-label="Visualização em grid" className="px-3">
+                      <Grid3X3 className="h-4 w-4" />
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="table" aria-label="Visualização em tabela" className="px-3">
+                      <List className="h-4 w-4" />
+                    </ToggleGroupItem>
+                  </ToggleGroup>
                 </div>
-                <Select value={iconLibraryCategory} onValueChange={setIconLibraryCategory}>
-                  <SelectTrigger className="w-full sm:w-48">
-                    <SelectValue placeholder="Filtrar por categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as categorias</SelectItem>
-                    {iconCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               {/* Contagem de resultados */}
@@ -2228,22 +2271,102 @@ theme: {
                 Exibindo {filteredIcons.length} de {ICONS_DATA.length} ícones
               </div>
               
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                {filteredIcons.map((iconData, index) => {
-                  const IconComponent = iconData.component;
-                  return (
-                    <div
-                      key={`${iconData.name}-${index}`}
-                      className="flex flex-col items-center p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group cursor-pointer"
-                      title={`${iconData.description}\n\nUso: import { ${iconData.name} } from 'lucide-react'`}
-                    >
-                      <IconComponent className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
-                      <span className="text-[10px] text-center text-muted-foreground truncate w-full">{iconData.name}</span>
-                      <Badge variant="secondary" className="text-[8px] mt-1 px-1">{iconData.category}</Badge>
-                    </div>
-                  );
-                })}
-              </div>
+              {/* Visualização GRID */}
+              {iconViewMode === 'grid' && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                  {filteredIcons.map((iconData, index) => {
+                    const IconComponent = iconData.component;
+                    return (
+                      <HoverCard key={`${iconData.name}-${index}`} openDelay={200} closeDelay={100}>
+                        <HoverCardTrigger asChild>
+                          <div
+                            className="flex flex-col items-center p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group cursor-pointer"
+                          >
+                            <IconComponent className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
+                            <span className="text-[10px] text-center text-muted-foreground truncate w-full">{iconData.name}</span>
+                            <Badge variant="secondary" className="text-[8px] mt-1 px-1">{iconData.category}</Badge>
+                          </div>
+                        </HoverCardTrigger>
+                        <HoverCardContent className="w-72 p-4" side="top">
+                          <div className="flex items-start gap-4">
+                            <div className="bg-primary/10 p-3 rounded-lg">
+                              <IconComponent className="h-12 w-12 text-primary" />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <h4 className="font-semibold text-sm">{iconData.name}</h4>
+                              <Badge variant="outline" className="text-[10px]">{iconData.category}</Badge>
+                              <p className="text-xs text-muted-foreground mt-2">{iconData.description}</p>
+                            </div>
+                          </div>
+                          <div className="mt-3 pt-3 border-t">
+                            <pre className="bg-muted p-2 rounded text-[10px] overflow-x-auto mb-2">
+                              {`import { ${iconData.name} } from 'lucide-react';`}
+                            </pre>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="w-full text-xs h-7"
+                              onClick={() => copyFullIconCode(iconData.name)}
+                            >
+                              <Copy className="h-3 w-3 mr-1" />
+                              Copiar código completo
+                            </Button>
+                          </div>
+                        </HoverCardContent>
+                      </HoverCard>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Visualização TABELA */}
+              {iconViewMode === 'table' && (
+                <div className="rounded-lg border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">Ícone</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Categoria</TableHead>
+                        <TableHead className="hidden md:table-cell">Descrição</TableHead>
+                        <TableHead className="w-24 text-right">Ação</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredIcons.map((iconData, index) => {
+                        const IconComponent = iconData.component;
+                        return (
+                          <TableRow key={`${iconData.name}-${index}`}>
+                            <TableCell>
+                              <div className="flex items-center justify-center bg-muted/50 rounded-lg p-2 w-10 h-10">
+                                <IconComponent className="h-5 w-5 text-primary" />
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">{iconData.name}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-[10px]">{iconData.category}</Badge>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                              {iconData.description}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-8"
+                                onClick={() => copyFullIconCode(iconData.name)}
+                              >
+                                <Copy className="h-3 w-3 mr-1" />
+                                Copiar
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
 
               {filteredIcons.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">
@@ -2271,51 +2394,112 @@ theme: {
                 Componente de seleção de ícones para uso no admin panel. Permite busca, filtro por categoria e preview visual.
               </p>
 
-              {/* Preview Interativo */}
+              {/* Preview Interativo com Controles */}
               <div className="pt-4 border-t">
                 <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
                   <Play className="h-4 w-4 text-primary" />
-                  Preview Interativo
+                  Preview Interativo com Controles de Props
                 </h4>
                 <div className="bg-muted/50 rounded-lg p-6 border">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <div className="flex-1">
-                      <label className="text-sm font-medium mb-2 block">Selecione um ícone:</label>
-                      <IconSelector 
-                        value={demoSelectedIcon}
-                        onSelect={(iconName) => setDemoSelectedIcon(iconName)}
-                        placeholder="Clique para selecionar"
-                      />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Controles */}
+                    <div className="space-y-4">
+                      <h5 className="text-sm font-medium text-muted-foreground">Controles</h5>
+                      
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="demo-disabled" className="text-sm">Desabilitado</Label>
+                        <Switch 
+                          id="demo-disabled"
+                          checked={demoDisabled}
+                          onCheckedChange={setDemoDisabled}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="demo-placeholder" className="text-sm">Placeholder</Label>
+                        <Input
+                          id="demo-placeholder"
+                          value={demoPlaceholder}
+                          onChange={(e) => setDemoPlaceholder(e.target.value)}
+                          placeholder="Texto do placeholder"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="demo-classname" className="text-sm">className</Label>
+                        <Input
+                          id="demo-classname"
+                          value={demoClassName}
+                          onChange={(e) => setDemoClassName(e.target.value)}
+                          placeholder="Ex: w-full"
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 pt-4 sm:pt-6">
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground mb-2">Ícone selecionado:</p>
-                        <div className="flex items-center justify-center gap-2 p-3 bg-background rounded-lg border min-w-[120px]">
-                          {demoSelectedIcon ? (
-                            <>
-                              {(() => {
-                                const DemoIcon = icons[demoSelectedIcon as keyof typeof icons];
-                                return DemoIcon ? <DemoIcon className="h-6 w-6 text-primary" /> : null;
-                              })()}
-                              <span className="text-sm font-mono">{demoSelectedIcon}</span>
-                            </>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">Nenhum</span>
-                          )}
+
+                    {/* Preview Live */}
+                    <div className="space-y-4">
+                      <h5 className="text-sm font-medium text-muted-foreground">Preview Live</h5>
+                      
+                      <div className="bg-background rounded-lg p-4 border min-h-[100px]">
+                        <label className="text-sm font-medium mb-2 block">Selecione um ícone:</label>
+                        <IconSelector 
+                          value={demoSelectedIcon}
+                          onSelect={(iconName) => setDemoSelectedIcon(iconName)}
+                          placeholder={demoPlaceholder}
+                          disabled={demoDisabled}
+                          className={demoClassName}
+                        />
+                        
+                        <div className="mt-4 pt-4 border-t">
+                          <p className="text-xs text-muted-foreground mb-2">Ícone selecionado:</p>
+                          <div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
+                            {demoSelectedIcon ? (
+                              <>
+                                {(() => {
+                                  const DemoIcon = icons[demoSelectedIcon as keyof typeof icons];
+                                  return DemoIcon ? <DemoIcon className="h-5 w-5 text-primary" /> : null;
+                                })()}
+                                <span className="text-sm font-mono">{demoSelectedIcon}</span>
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">Nenhum</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                  {demoSelectedIcon && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="text-xs text-muted-foreground mb-2">Código para usar este ícone:</p>
-                      <pre className="bg-background p-3 rounded text-xs overflow-x-auto border">
-{`import { ${demoSelectedIcon} } from 'lucide-react';
 
-<${demoSelectedIcon} className="h-6 w-6" />`}
-                      </pre>
+                  {/* Código gerado dinamicamente */}
+                  <div className="mt-6 pt-4 border-t">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-muted-foreground">Código gerado com as props aplicadas:</p>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          const code = `<IconSelector 
+  value={selectedIcon}
+  onSelect={setSelectedIcon}
+  placeholder="${demoPlaceholder}"${demoDisabled ? '\n  disabled={true}' : ''}${demoClassName ? `\n  className="${demoClassName}"` : ''}
+/>`;
+                          navigator.clipboard.writeText(code);
+                          toast.success('Código copiado!');
+                        }}
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copiar
+                      </Button>
                     </div>
-                  )}
+                    <pre className="bg-background p-3 rounded text-xs overflow-x-auto border">
+{`<IconSelector 
+  value={selectedIcon}
+  onSelect={setSelectedIcon}
+  placeholder="${demoPlaceholder}"${demoDisabled ? '\n  disabled={true}' : ''}${demoClassName ? `\n  className="${demoClassName}"` : ''}
+/>`}
+                    </pre>
+                  </div>
                 </div>
               </div>
 
