@@ -1,23 +1,59 @@
-import { FileText, Brain, FolderTree, User, Check, X, Database, BarChart3 } from "lucide-react";
+import { useState } from "react";
+import { FileText, Brain, FolderTree, User, Check, X, Database } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface TaxonomyHierarchySimulationDiagramProps {
   activityLevel?: number;
 }
 
+type SimulationPath = "neutral" | "accept" | "reject";
+
 export const TaxonomyHierarchySimulationDiagram = ({ 
   activityLevel = 0.5 
 }: TaxonomyHierarchySimulationDiagramProps) => {
+  const [selectedPath, setSelectedPath] = useState<SimulationPath>("neutral");
   const animationDuration = Math.max(2, 5 - activityLevel * 3);
 
   return (
-    <div className="w-full">
-      <div className="text-center mb-4">
-        <h4 className="text-sm font-semibold text-foreground">
+    <div className="w-full space-y-4">
+      {/* Action Buttons */}
+      <div className="flex items-center justify-center gap-3">
+        <Button
+          variant={selectedPath === "accept" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSelectedPath(selectedPath === "accept" ? "neutral" : "accept")}
+          className={`gap-2 ${
+            selectedPath === "accept" 
+              ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500" 
+              : "border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+          }`}
+        >
+          <Check className="w-4 h-4" />
+          Aceitar
+        </Button>
+        <Button
+          variant={selectedPath === "reject" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSelectedPath(selectedPath === "reject" ? "neutral" : "reject")}
+          className={`gap-2 ${
+            selectedPath === "reject" 
+              ? "bg-red-600 hover:bg-red-700 text-white border-red-500" 
+              : "border-red-500/50 text-red-400 hover:bg-red-500/10"
+          }`}
+        >
+          <X className="w-4 h-4" />
+          Rejeitar
+        </Button>
+      </div>
+
+      {/* Titles */}
+      <div className="text-center">
+        <h2 className="text-base font-bold text-foreground">
           Simulação: Descoberta de Hierarquia Taxonômica
-        </h4>
-        <p className="text-xs text-muted-foreground mt-1">
+        </h2>
+        <h3 className="text-sm text-muted-foreground mt-1">
           Fluxo de como a IA identifica e aprende hierarquias de tags
-        </p>
+        </h3>
       </div>
 
       <svg viewBox="0 0 800 520" className="w-full h-auto">
@@ -108,11 +144,12 @@ export const TaxonomyHierarchySimulationDiagram = ({
         <path
           d="M 320 310 L 220 350"
           stroke="hsl(160, 84%, 39%)"
-          strokeWidth="2"
+          strokeWidth={selectedPath === "accept" ? "3" : "2"}
           fill="none"
-          opacity="0.5"
+          opacity={selectedPath === "accept" ? "1" : selectedPath === "reject" ? "0.2" : "0.5"}
           markerEnd="url(#arrowHead)"
           strokeDasharray="5,3"
+          className="transition-all duration-300"
         >
           <animate attributeName="stroke-dashoffset" from="0" to="-16" dur={`${animationDuration}s`} repeatCount="indefinite" />
         </path>
@@ -121,11 +158,12 @@ export const TaxonomyHierarchySimulationDiagram = ({
         <path
           d="M 480 310 L 580 350"
           stroke="hsl(0, 84%, 60%)"
-          strokeWidth="2"
+          strokeWidth={selectedPath === "reject" ? "3" : "2"}
           fill="none"
-          opacity="0.5"
+          opacity={selectedPath === "reject" ? "1" : selectedPath === "accept" ? "0.2" : "0.5"}
           markerEnd="url(#arrowHead)"
           strokeDasharray="5,3"
+          className="transition-all duration-300"
         >
           <animate attributeName="stroke-dashoffset" from="0" to="-16" dur={`${animationDuration}s`} repeatCount="indefinite" />
         </path>
@@ -297,14 +335,22 @@ export const TaxonomyHierarchySimulationDiagram = ({
         </g>
 
         {/* 5. Accept Path Node */}
-        <g transform="translate(50, 355)">
+        <g 
+          transform="translate(50, 355)" 
+          opacity={selectedPath === "accept" ? "1" : selectedPath === "reject" ? "0.3" : "1"}
+          className="transition-all duration-300"
+        >
           <rect
             x="0" y="0" width="240" height="75"
             rx="8"
             fill="url(#acceptGradient)"
             stroke="hsl(160, 84%, 39%)"
-            strokeWidth="1.5"
-          />
+            strokeWidth={selectedPath === "accept" ? "3" : "1.5"}
+          >
+            {selectedPath === "accept" && (
+              <animate attributeName="stroke-opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite" />
+            )}
+          </rect>
           <foreignObject x="15" y="8" width="24" height="24">
             <div className="flex items-center">
               <Check className="w-5 h-5 text-emerald-100" />
@@ -327,14 +373,22 @@ export const TaxonomyHierarchySimulationDiagram = ({
         </g>
 
         {/* 6. Reject Path Node */}
-        <g transform="translate(510, 355)">
+        <g 
+          transform="translate(510, 355)"
+          opacity={selectedPath === "reject" ? "1" : selectedPath === "accept" ? "0.3" : "1"}
+          className="transition-all duration-300"
+        >
           <rect
             x="0" y="0" width="240" height="75"
             rx="8"
             fill="url(#rejectGradient)"
             stroke="hsl(0, 84%, 60%)"
-            strokeWidth="1.5"
-          />
+            strokeWidth={selectedPath === "reject" ? "3" : "1.5"}
+          >
+            {selectedPath === "reject" && (
+              <animate attributeName="stroke-opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite" />
+            )}
+          </rect>
           <foreignObject x="15" y="8" width="24" height="24">
             <div className="flex items-center">
               <X className="w-5 h-5 text-red-100" />
@@ -363,13 +417,17 @@ export const TaxonomyHierarchySimulationDiagram = ({
         </g>
 
         {/* 7. ML Learn Accept */}
-        <g transform="translate(50, 465)">
+        <g 
+          transform="translate(50, 465)"
+          opacity={selectedPath === "accept" ? "1" : selectedPath === "reject" ? "0.3" : "1"}
+          className="transition-all duration-300"
+        >
           <rect
             x="0" y="0" width="240" height="50"
             rx="8"
             fill="url(#mlGradient)"
             stroke="hsl(330, 81%, 60%)"
-            strokeWidth="1.5"
+            strokeWidth={selectedPath === "accept" ? "2.5" : "1.5"}
           />
           <foreignObject x="15" y="10" width="24" height="24">
             <div className="flex items-center">
@@ -388,13 +446,17 @@ export const TaxonomyHierarchySimulationDiagram = ({
         </g>
 
         {/* 8. ML Learn Reject */}
-        <g transform="translate(510, 465)">
+        <g 
+          transform="translate(510, 465)"
+          opacity={selectedPath === "reject" ? "1" : selectedPath === "accept" ? "0.3" : "1"}
+          className="transition-all duration-300"
+        >
           <rect
             x="0" y="0" width="240" height="50"
             rx="8"
             fill="url(#mlGradient)"
             stroke="hsl(330, 81%, 60%)"
-            strokeWidth="1.5"
+            strokeWidth={selectedPath === "reject" ? "2.5" : "1.5"}
           />
           <foreignObject x="15" y="10" width="24" height="24">
             <div className="flex items-center">
