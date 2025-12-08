@@ -41,6 +41,67 @@ const EVENT_ICONS: Record<string, React.ComponentType<{ className?: string }>> =
   new_conversation: MessageSquare,
 };
 
+// Format phone number for display with auto-masking
+const formatPhoneNumber = (value: string): string => {
+  // Remove all non-digit characters except +
+  const cleaned = value.replace(/[^\d+]/g, '');
+  
+  // Ensure it starts with +
+  if (!cleaned.startsWith('+') && cleaned.length > 0) {
+    return '+' + cleaned;
+  }
+  
+  // Extract country code and rest
+  if (cleaned.length <= 1) return cleaned;
+  
+  const withoutPlus = cleaned.slice(1);
+  
+  // Format based on country code
+  if (withoutPlus.startsWith('55')) {
+    // Brazil: +55 11 99999-9999
+    const countryCode = withoutPlus.slice(0, 2);
+    const areaCode = withoutPlus.slice(2, 4);
+    const firstPart = withoutPlus.slice(4, 9);
+    const secondPart = withoutPlus.slice(9, 13);
+    
+    let formatted = `+${countryCode}`;
+    if (areaCode) formatted += ` ${areaCode}`;
+    if (firstPart) formatted += ` ${firstPart}`;
+    if (secondPart) formatted += `-${secondPart}`;
+    return formatted;
+  } else if (withoutPlus.startsWith('1')) {
+    // US/Canada: +1 (617) 599-2049
+    const countryCode = withoutPlus.slice(0, 1);
+    const areaCode = withoutPlus.slice(1, 4);
+    const firstPart = withoutPlus.slice(4, 7);
+    const secondPart = withoutPlus.slice(7, 11);
+    
+    let formatted = `+${countryCode}`;
+    if (areaCode) formatted += ` (${areaCode})`;
+    if (firstPart) formatted += ` ${firstPart}`;
+    if (secondPart) formatted += `-${secondPart}`;
+    return formatted;
+  } else {
+    // Generic international: +XX XXX XXX XXXX
+    const parts = [];
+    let remaining = withoutPlus;
+    
+    // Country code (2-3 digits)
+    const countryCodeLen = remaining.length >= 2 && remaining[0] !== '1' ? 2 : 1;
+    parts.push(remaining.slice(0, countryCodeLen));
+    remaining = remaining.slice(countryCodeLen);
+    
+    // Split rest into groups of 3-4
+    while (remaining.length > 0) {
+      const chunkSize = remaining.length > 4 ? 3 : remaining.length;
+      parts.push(remaining.slice(0, chunkSize));
+      remaining = remaining.slice(chunkSize);
+    }
+    
+    return '+' + parts.join(' ');
+  }
+};
+
 export default function NotificationSettingsTab() {
   const { t } = useTranslation();
   const [preferences, setPreferences] = useState<NotificationPreference[]>([]);
@@ -51,6 +112,11 @@ export default function NotificationSettingsTab() {
   const [testingEmail, setTestingEmail] = useState(false);
   const [testingWhatsapp, setTestingWhatsapp] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setTargetPhone(formatted);
+  };
 
   useEffect(() => {
     loadSettings();
@@ -229,14 +295,14 @@ export default function NotificationSettingsTab() {
               <Label htmlFor="phone">Número de Telefone (com código do país)</Label>
               <Input
                 id="phone"
-                placeholder="+5511999999999"
+                placeholder="+55 11 99999-9999"
                 value={targetPhone}
-                onChange={(e) => setTargetPhone(e.target.value)}
+                onChange={handlePhoneChange}
                 className="border-blue-400/60 focus:border-blue-500"
                 disabled={!isEditMode}
               />
               <p className="text-xs text-muted-foreground">
-                Formato: +[código país][DDD][número] - Ex: +5511999999999
+                Auto-formatado: BR (+55), US (+1), ou internacional
               </p>
             </div>
             <div className="flex items-end gap-2">
