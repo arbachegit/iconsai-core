@@ -197,15 +197,10 @@ export const SimilarityReviewPanel = ({
         errors: [] as { id: string; error: string }[] 
       };
 
-      console.log("[BULK MERGE] Starting bulk merge operation");
-      console.log("[BULK MERGE] Master tag ID:", masterId, "Name:", masterName);
-      console.log("[BULK MERGE] Candidate IDs to merge:", candidateIds);
 
       // Get all tags that will be deleted (by tag_name)
       const candidateTags = allTags?.filter(t => candidateIds.includes(t.id)) || [];
       const candidateNames = [...new Set(candidateTags.map(t => t.tag_name))];
-
-      console.log("[BULK MERGE] Candidate names:", candidateNames);
 
       for (const candidateName of candidateNames) {
         try {
@@ -218,7 +213,6 @@ export const SimilarityReviewPanel = ({
 
           if (parentTagsToMerge && parentTagsToMerge.length > 0) {
             const parentIds = parentTagsToMerge.map(p => p.id);
-            console.log(`[BULK MERGE] Reassigning children from parent IDs:`, parentIds);
 
             // Move child tags to master tag
             const { data: updatedChildren, error: reassignError } = await supabase
@@ -227,16 +221,12 @@ export const SimilarityReviewPanel = ({
               .in('parent_tag_id', parentIds)
               .select('id');
 
-            if (reassignError) {
-              console.warn(`[BULK MERGE] Warning reassigning children:`, reassignError);
-            } else {
+            if (!reassignError) {
               results.documentsUpdated += updatedChildren?.length || 0;
-              console.log(`[BULK MERGE] Reassigned ${updatedChildren?.length || 0} child tags`);
             }
           }
 
           // Step B: Delete the source tags (all instances with this name)
-          console.log(`[BULK MERGE] Deleting all tags with name: "${candidateName}"`);
           const { error: deleteError } = await supabase
             .from('document_tags')
             .delete()
@@ -257,14 +247,10 @@ export const SimilarityReviewPanel = ({
               onConflict: 'source_tag,chat_type',
             });
 
-          if (ruleError) {
-            console.warn(`[BULK MERGE] Warning creating ML rule:`, ruleError);
-          }
 
           results.success++;
-          console.log(`[BULK MERGE] Successfully merged tag: "${candidateName}"`);
         } catch (error: any) {
-          console.error(`[BULK MERGE ERROR] Failed for "${candidateName}":`, error);
+          console.error(`[BULK MERGE] Failed for "${candidateName}":`, error.message);
           results.errors.push({ id: candidateName, error: error.message });
           results.failed++;
         }
@@ -295,7 +281,6 @@ export const SimilarityReviewPanel = ({
     onSuccess: (results) => {
       const message = `Merge concluído: ${results.success} tags mescladas, ${results.documentsUpdated} documentos atualizados.${results.failed > 0 ? ` ${results.failed} falhou.` : ''}`;
       toast.success(message);
-      console.log("[BULK MERGE] Final results:", results);
       
       queryClient.invalidateQueries({ queryKey: ["all-tags"] });
       queryClient.invalidateQueries({ queryKey: ["tag-merge-rules"] });
@@ -303,7 +288,7 @@ export const SimilarityReviewPanel = ({
       setConfirmModalOpen(false);
     },
     onError: (error: any) => {
-      console.error("[BULK MERGE ERROR]", error);
+      console.error("[BULK MERGE] Error:", error.message);
       toast.error(`Erro no merge: ${error.message}`);
     },
   });
