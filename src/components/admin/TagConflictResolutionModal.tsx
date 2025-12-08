@@ -691,7 +691,11 @@ export const TagConflictResolutionModal = ({
           </Button>
           <Button
             onClick={() => mergeMutation.mutate()}
-            disabled={mergeMutation.isPending || (conflictType === 'child' && (!selectedParentId || !hasSelectedMergeReason))}
+            disabled={
+              mergeMutation.isPending || 
+              !selectedTargetId || // Sempre verificar se há tag alvo selecionada
+              (conflictType === 'child' && (!selectedParentId || !hasSelectedMergeReason))
+            }
           >
             {mergeMutation.isPending ? (
               <>

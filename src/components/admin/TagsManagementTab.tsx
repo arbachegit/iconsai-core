@@ -80,6 +80,7 @@ import { MetricsDashboard } from "./tags/MetricsDashboard";
 import { TagFilters } from "./tags/TagFilters";
 import { useTagsData } from "./tags/useTagsData";
 import { useSimilarityCalculations } from "./tags/useSimilarityCalculations";
+import { TagUnificationSuggestionsModal } from "./tags/TagUnificationSuggestionsModal";
 
 interface Tag {
   id: string;
@@ -130,6 +131,9 @@ export const TagsManagementTab = () => {
     tags: Tag[];
     similarityScore?: number;
   }>({ open: false, type: 'parent', tags: [] });
+  
+  // Unification suggestions modal state
+  const [suggestionsModalOpen, setSuggestionsModalOpen] = useState(false);
   
   // Import taxonomy state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -732,7 +736,26 @@ export const TagsManagementTab = () => {
 
   // Open conflict resolution modal
   const openConflictModal = useCallback((type: 'parent' | 'child' | 'semantic', tagIds: string[], similarity?: number) => {
-    const tagsForModal = allTags?.filter(t => tagIds.includes(t.id)) || [];
+    // Validação: verificar se allTags está carregado
+    if (!allTags || allTags.length === 0) {
+      toast.error("Aguarde o carregamento das tags antes de unificar");
+      return;
+    }
+    
+    const tagsForModal = allTags.filter(t => tagIds.includes(t.id));
+    
+    // Validação: verificar se as tags foram encontradas
+    if (tagsForModal.length === 0) {
+      toast.error("Não foi possível encontrar as tags selecionadas");
+      console.error("[TAG MERGE DEBUG] Tags não encontradas:", { 
+        tagIds, 
+        allTagsCount: allTags.length,
+        allTagIds: allTags.slice(0, 10).map(t => t.id)
+      });
+      return;
+    }
+    
+    console.log("[TAG MERGE DEBUG] Abrindo modal com tags:", tagsForModal.map(t => ({ id: t.id, name: t.tag_name })));
     setConflictModal({ open: true, type, tags: tagsForModal, similarityScore: similarity });
   }, [allTags]);
 
@@ -1413,8 +1436,17 @@ export const TagsManagementTab = () => {
           </DropdownMenu>
         </div>
         
-        {/* Lado Direito - Criar Tag Pai alinhado com linha 2 */}
-        <div className="flex flex-col justify-end" style={{ height: 'calc(2 * 32px + 8px)' }}>
+        {/* Lado Direito - Botões de ação */}
+        <div className="flex flex-col gap-2 justify-end" style={{ height: 'calc(2 * 32px + 8px)' }}>
+          <Button 
+            variant="outline" 
+            onClick={() => setSuggestionsModalOpen(true)} 
+            className="gap-2 border-purple-500/50 hover:bg-purple-500/10"
+            disabled={isLoading}
+          >
+            <Sparkles className="h-4 w-4 text-purple-400" />
+            Sugerir Unificações
+          </Button>
           <Button onClick={() => openCreateDialog(true)} className="gap-2">
             <Plus className="h-4 w-4" />
             Criar Tag Pai
@@ -2567,6 +2599,19 @@ export const TagsManagementTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Sugestões de Unificação */}
+      <TagUnificationSuggestionsModal
+        open={suggestionsModalOpen}
+        onOpenChange={setSuggestionsModalOpen}
+        parentTags={parentTags}
+        childTagsMap={childTagsMap}
+        onMerge={(type, ids, similarity) => {
+          setSuggestionsModalOpen(false);
+          openConflictModal(type, ids, similarity);
+        }}
+        onReject={handleRejectDuplicate}
+      />
     </div>
   );
 };

@@ -1,0 +1,296 @@
+import { useState, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Sparkles, Merge, XCircle, ChevronRight, Brain, Target, Loader2 } from "lucide-react";
+import { suggestMergeReasons, type SuggestedReasons } from "@/lib/merge-reason-heuristics";
+
+interface Tag {
+  id: string;
+  tag_name: string;
+  tag_type: string;
+  parent_tag_id: string | null;
+}
+
+interface UnificationSuggestion {
+  tag1: Tag;
+  tag2: Tag;
+  suggestion: SuggestedReasons;
+  type: 'parent' | 'child';
+}
+
+interface TagUnificationSuggestionsModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  parentTags: Tag[];
+  childTagsMap: Record<string, Tag[]>;
+  onMerge: (type: 'parent' | 'child' | 'semantic', ids: string[], similarity?: number) => void;
+  onReject: (ids: string[], tagName: string, type: 'parent' | 'child') => void;
+}
+
+// Calcular similaridade baseada em Levenshtein
+function calculateSimilarity(a: string, b: string): number {
+  const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const n1 = normalize(a);
+  const n2 = normalize(b);
+  
+  if (n1 === n2) return 1;
+  
+  const matrix: number[][] = [];
+  for (let i = 0; i <= n2.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= n1.length; j++) matrix[0][j] = j;
+  
+  for (let i = 1; i <= n2.length; i++) {
+    for (let j = 1; j <= n1.length; j++) {
+      if (n2.charAt(i - 1) === n1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  
+  const maxLen = Math.max(n1.length, n2.length);
+  return maxLen > 0 ? 1 - matrix[n2.length][n1.length] / maxLen : 1;
+}
+
+export const TagUnificationSuggestionsModal = ({
+  open,
+  onOpenChange,
+  parentTags,
+  childTagsMap,
+  onMerge,
+  onReject,
+}: TagUnificationSuggestionsModalProps) => {
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Gerar sugestões de unificação usando heurísticas
+  const suggestions = useMemo<UnificationSuggestion[]>(() => {
+    if (!open) return [];
+    
+    const results: UnificationSuggestion[] = [];
+    
+    // Analisar parent tags entre si
+    for (let i = 0; i < parentTags.length; i++) {
+      for (let j = i + 1; j < parentTags.length; j++) {
+        const tag1 = parentTags[i];
+        const tag2 = parentTags[j];
+        
+        // Pular se já foi rejeitada
+        const key = `${tag1.id}-${tag2.id}`;
+        if (dismissedSuggestions.has(key)) continue;
+        
+        const suggestion = suggestMergeReasons(tag1.tag_name, tag2.tag_name);
+        
+        // Incluir se confiança > 0 (alguma heurística detectou algo)
+        if (suggestion.confidence > 0) {
+          results.push({ tag1, tag2, suggestion, type: 'parent' });
+        } else {
+          // Verificar similaridade textual mesmo sem match de heurística
+          const similarity = calculateSimilarity(tag1.tag_name, tag2.tag_name);
+          if (similarity >= 0.7) {
+            results.push({
+              tag1,
+              tag2,
+              suggestion: {
+                ...suggestion,
+                confidence: similarity,
+                explanations: [`Similaridade textual de ${Math.round(similarity * 100)}%`]
+              },
+              type: 'parent'
+            });
+          }
+        }
+      }
+    }
+    
+    // Analisar child tags dentro do mesmo parent
+    Object.entries(childTagsMap).forEach(([parentId, children]) => {
+      for (let i = 0; i < children.length; i++) {
+        for (let j = i + 1; j < children.length; j++) {
+          const tag1 = children[i];
+          const tag2 = children[j];
+          
+          const key = `${tag1.id}-${tag2.id}`;
+          if (dismissedSuggestions.has(key)) continue;
+          
+          const suggestion = suggestMergeReasons(tag1.tag_name, tag2.tag_name);
+          
+          if (suggestion.confidence > 0) {
+            results.push({ tag1, tag2, suggestion, type: 'child' });
+          } else {
+            const similarity = calculateSimilarity(tag1.tag_name, tag2.tag_name);
+            if (similarity >= 0.6) {
+              results.push({
+                tag1,
+                tag2,
+                suggestion: {
+                  ...suggestion,
+                  confidence: similarity,
+                  explanations: [`Similaridade textual de ${Math.round(similarity * 100)}%`]
+                },
+                type: 'child'
+              });
+            }
+          }
+        }
+      }
+    });
+    
+    // Ordenar por confiança (mais alta primeiro)
+    return results.sort((a, b) => b.suggestion.confidence - a.suggestion.confidence);
+  }, [open, parentTags, childTagsMap, dismissedSuggestions]);
+
+  const handleDismiss = (tag1Id: string, tag2Id: string, tag1Name: string, tag2Name: string, type: 'parent' | 'child') => {
+    const key = `${tag1Id}-${tag2Id}`;
+    setDismissedSuggestions(prev => new Set(prev).add(key));
+    onReject([tag1Id, tag2Id], `${tag1Name} / ${tag2Name}`, type);
+  };
+
+  const handleMerge = (s: UnificationSuggestion) => {
+    onMerge(
+      s.type === 'parent' ? 'semantic' : 'child', 
+      [s.tag1.id, s.tag2.id], 
+      s.suggestion.confidence
+    );
+  };
+
+  const getReasonLabels = (suggestion: SuggestedReasons): string[] => {
+    const labels: string[] = [];
+    if (suggestion.reasons.synonymy) labels.push('Sinonímia');
+    if (suggestion.reasons.grammaticalVariation) labels.push('Plural/Singular');
+    if (suggestion.reasons.spellingVariation) labels.push('Variação de Grafia');
+    if (suggestion.reasons.acronym) labels.push('Sigla/Acrônimo');
+    if (suggestion.reasons.typo) labels.push('Erro de Digitação');
+    if (suggestion.reasons.languageEquivalence) labels.push('PT ↔ EN');
+    if (suggestion.reasons.generalization) labels.push('Generalização');
+    return labels;
+  };
+
+  const getConfidenceColor = (confidence: number): string => {
+    if (confidence >= 0.85) return 'bg-green-500/20 text-green-300 border-green-500/30';
+    if (confidence >= 0.7) return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+    return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-purple-400" />
+            Sugestões de Unificação Inteligente
+          </DialogTitle>
+          <DialogDescription>
+            Análise automática detectou possíveis tags que podem ser unificadas com base em heurísticas de Data Science.
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea className="max-h-[60vh] pr-4">
+          {suggestions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Nenhuma sugestão de unificação encontrada.</p>
+              <p className="text-sm mt-2">Todas as tags parecem estar bem organizadas!</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {suggestions.map((s, idx) => {
+                const reasonLabels = getReasonLabels(s.suggestion);
+                
+                return (
+                  <div 
+                    key={`${s.tag1.id}-${s.tag2.id}`}
+                    className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        {/* Tags */}
+                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                          <Badge variant="secondary" className="font-medium">
+                            {s.tag1.tag_name}
+                          </Badge>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          <Badge variant="secondary" className="font-medium">
+                            {s.tag2.tag_name}
+                          </Badge>
+                          <Badge variant="outline" className={getConfidenceColor(s.suggestion.confidence)}>
+                            {Math.round(s.suggestion.confidence * 100)}%
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {s.type === 'parent' ? 'Parent' : 'Child'}
+                          </Badge>
+                        </div>
+                        
+                        {/* Motivos detectados */}
+                        {reasonLabels.length > 0 && (
+                          <div className="flex items-center gap-1 flex-wrap mb-2">
+                            <Target className="h-3 w-3 text-purple-400" />
+                            {reasonLabels.map((label, i) => (
+                              <Badge key={i} variant="outline" className="text-xs bg-purple-500/10 text-purple-300 border-purple-500/30">
+                                {label}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Explicações */}
+                        {s.suggestion.explanations.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {s.suggestion.explanations[0]}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Ações */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
+                          onClick={() => handleDismiss(s.tag1.id, s.tag2.id, s.tag1.tag_name, s.tag2.tag_name, s.type)}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleMerge(s)}
+                        >
+                          <Merge className="h-4 w-4 mr-1" />
+                          Unificar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
+
+        <DialogFooter className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            {suggestions.length} sugestão(ões) encontrada(s)
+          </div>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Fechar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
