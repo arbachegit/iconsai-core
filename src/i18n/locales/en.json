@@ -335,6 +335,26 @@
     "dataAnalytics": "Data Analytics",
     "documentation": "Documentation",
     "backToApp": "Back to App",
-    "logout": "Logout"
+    "logout": "Logout",
+    "notifications": {
+      "title": "Notification Preferences",
+      "targetPhone": "Phone Number",
+      "emailNotification": "Email Notification",
+      "whatsappNotification": "WhatsApp Notification",
+      "testEmail": "Test Email",
+      "testWhatsapp": "Test WhatsApp",
+      "whatsappConfig": "WhatsApp Configuration",
+      "enableGlobally": "Enable WhatsApp Globally",
+      "eventTypes": "Event Types",
+      "testSection": "Test Notifications",
+      "eventLabels": {
+        "newDocument": "New RAG Document",
+        "documentFailed": "Processing Failure",
+        "newContactMessage": "New Contact Message",
+        "securityAlert": "Security Alert",
+        "mlAccuracyDrop": "ML Accuracy Drop",
+        "newConversation": "New User Conversation"
+      }
+    }
   }
 }

@@ -52,6 +52,7 @@ const MaieuticTrainingTab = lazy(() => import("@/components/admin/MaieuticTraini
 const TaxonomyMLAuditTab = lazy(() => import("@/components/admin/TaxonomyMLAuditTab").then(m => ({ default: m.TaxonomyMLAuditTab })));
 const ManageTaxonomyTab = lazy(() => import("@/components/admin/ManageTaxonomyTab").then(m => ({ default: m.ManageTaxonomyTab })));
 const SecurityIntegrityTab = lazy(() => import("@/components/admin/SecurityIntegrityTab").then(m => ({ default: m.SecurityIntegrityTab })));
+const NotificationSettingsTab = lazy(() => import("@/components/admin/NotificationSettingsTab"));
 
 // Loading fallback component
 const TabLoadingFallback = () => (
@@ -60,7 +61,7 @@ const TabLoadingFallback = () => (
   </div>
 );
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -97,6 +98,7 @@ const TAB_LABELS: Record<TabType, string> = {
   "taxonomy-ml-audit": "Taxonomy ML",
   "manage-taxonomy": "Gerenciar Taxonomia",
   "security-integrity": "Segurança & Integridade",
+  "notification-settings": "Notificação",
 };
 
 const Admin = () => {
@@ -256,6 +258,7 @@ const Admin = () => {
         case "taxonomy-ml-audit": return <TaxonomyMLAuditTab />;
         case "manage-taxonomy": return <ManageTaxonomyTab />;
         case "security-integrity": return <SecurityIntegrityTab />;
+        case "notification-settings": return <NotificationSettingsTab />;
         default: return <DashboardTab />;
       }
     })();

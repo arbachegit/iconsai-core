@@ -335,6 +335,26 @@
     "dataAnalytics": "Analyse des Données",
     "documentation": "Documentation",
     "backToApp": "Retour à l'App",
-    "logout": "Déconnexion"
+    "logout": "Déconnexion",
+    "notifications": {
+      "title": "Préférences de Notification",
+      "targetPhone": "Numéro de Téléphone",
+      "emailNotification": "Notification par Email",
+      "whatsappNotification": "Notification par WhatsApp",
+      "testEmail": "Tester Email",
+      "testWhatsapp": "Tester WhatsApp",
+      "whatsappConfig": "Configuration WhatsApp",
+      "enableGlobally": "Activer WhatsApp Globalement",
+      "eventTypes": "Types d'Événements",
+      "testSection": "Tester les Notifications",
+      "eventLabels": {
+        "newDocument": "Nouveau Document RAG",
+        "documentFailed": "Échec du Traitement",
+        "newContactMessage": "Nouveau Message de Contact",
+        "securityAlert": "Alerte de Sécurité",
+        "mlAccuracyDrop": "Baisse de Précision ML",
+        "newConversation": "Nouvelle Conversation Utilisateur"
+      }
+    }
   }
 }
