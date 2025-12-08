@@ -70,9 +70,10 @@ export const AdminTitleWithInfo = ({
             </TooltipContent>
 
             <PopoverContent 
-              className="w-[520px] max-w-[95vw] bg-card/95 backdrop-blur-sm border-primary/20" 
+              className="w-[900px] max-w-[95vw] max-h-[85vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-primary/20 shadow-2xl" 
               side="right"
               align="start"
+              sideOffset={10}
             >
               <div className="space-y-3">
                 <div className="flex items-start gap-2">
