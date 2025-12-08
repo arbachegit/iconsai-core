@@ -105,7 +105,7 @@ export const SecurityIntegrityTab = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const fetchScanHistory = async () => {
     try {
@@ -326,10 +326,10 @@ export const SecurityIntegrityTab = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedScans = filteredAndSortedScans.slice(startIndex, endIndex);
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters or items per page change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, dateRange, sortField, sortDirection]);
+  }, [statusFilter, dateRange, sortField, sortDirection, itemsPerPage]);
 
   const latestScan = scanHistory[0];
 
@@ -700,10 +700,25 @@ export const SecurityIntegrityTab = () => {
           </ScrollArea>
           
           {/* Pagination Controls */}
-          {totalPages > 1 && (
+          {totalItems > 0 && (
             <div className="flex items-center justify-between pt-4 border-t">
-              <div className="text-sm text-muted-foreground">
-                Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de {totalItems} registros
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-muted-foreground">
+                  Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de {totalItems} registros
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Itens por página:</span>
+                  <Select value={itemsPerPage.toString()} onValueChange={(v) => setItemsPerPage(Number(v))}>
+                    <SelectTrigger className="w-[70px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Button
