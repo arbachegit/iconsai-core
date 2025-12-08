@@ -63,6 +63,7 @@ interface AdminSettings {
   security_scan_enabled: boolean;
   security_alert_email: string | null;
   security_alert_threshold: string;
+  security_scan_time: string | null;
   last_security_scan: string | null;
 }
 
@@ -75,8 +76,11 @@ export const SecurityIntegrityTab = () => {
     security_scan_enabled: true,
     security_alert_email: null,
     security_alert_threshold: 'critical',
+    security_scan_time: '03:00',
     last_security_scan: null
   });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchScanHistory = async () => {
     try {
@@ -116,6 +120,7 @@ export const SecurityIntegrityTab = () => {
           security_scan_enabled: data.security_scan_enabled ?? true,
           security_alert_email: data.security_alert_email,
           security_alert_threshold: data.security_alert_threshold ?? 'critical',
+          security_scan_time: '03:00',
           last_security_scan: data.last_security_scan
         });
       }
@@ -475,24 +480,29 @@ export const SecurityIntegrityTab = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
-            Configuração de Alertas
+            Configuracao de Alertas
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <Label>Alertas Automáticos</Label>
+              <Label>Alertas Automaticos</Label>
               <p className="text-sm text-muted-foreground">Receber emails quando problemas forem detectados</p>
             </div>
             <Switch 
               checked={settings.security_scan_enabled}
-              onCheckedChange={(checked) => updateSettings({ security_scan_enabled: checked })}
+              onCheckedChange={(checked) => {
+                if (isEditMode) {
+                  setSettings(prev => ({ ...prev, security_scan_enabled: checked }));
+                }
+              }}
+              disabled={!isEditMode}
             />
           </div>
           
           <Separator />
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Email para Alertas</Label>
               <Input 
@@ -500,31 +510,78 @@ export const SecurityIntegrityTab = () => {
                 placeholder="admin@example.com"
                 value={settings.security_alert_email || ''}
                 onChange={(e) => setSettings(prev => ({ ...prev, security_alert_email: e.target.value }))}
-                onBlur={() => updateSettings({ security_alert_email: settings.security_alert_email })}
+                disabled={!isEditMode}
               />
             </div>
             
             <div className="space-y-2">
-              <Label>Nível de Alerta</Label>
+              <Label>Nivel de Alerta</Label>
               <Select 
                 value={settings.security_alert_threshold}
-                onValueChange={(value) => updateSettings({ security_alert_threshold: value })}
+                onValueChange={(value) => setSettings(prev => ({ ...prev, security_alert_threshold: value }))}
+                disabled={!isEditMode}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="critical">🔴 Apenas Críticos</SelectItem>
-                  <SelectItem value="warning">🟡 Avisos e Críticos</SelectItem>
-                  <SelectItem value="all">📊 Todos os Scans</SelectItem>
+                  <SelectItem value="critical">Apenas Criticos</SelectItem>
+                  <SelectItem value="warning">Avisos e Criticos</SelectItem>
+                  <SelectItem value="all">Todos os Scans</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label>Horario do Scan Automatico</Label>
+              <Input 
+                type="time"
+                value={settings.security_scan_time || '03:00'}
+                onChange={(e) => setSettings(prev => ({ ...prev, security_scan_time: e.target.value }))}
+                disabled={!isEditMode}
+              />
+            </div>
           </div>
           
-          <p className="text-xs text-muted-foreground">
-            ⏰ Scan automático agendado para 03:00 AM diariamente
-          </p>
+          <div className="flex justify-end pt-2">
+            {isEditMode ? (
+              <Button 
+                onClick={async () => {
+                  setIsSaving(true);
+                  try {
+                    await updateSettings({
+                      security_scan_enabled: settings.security_scan_enabled,
+                      security_alert_email: settings.security_alert_email,
+                      security_alert_threshold: settings.security_alert_threshold
+                    });
+                    setIsEditMode(false);
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
+                disabled={isSaving}
+                className="gap-2"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  'Salvar'
+                )}
+              </Button>
+            ) : (
+              <Button 
+                variant="outline"
+                onClick={() => setIsEditMode(true)}
+                className="gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                Configurar
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
