@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Lightbulb, type LucideIcon } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,7 @@ export const AdminTitleWithInfo = ({
   icon: Icon,
   className
 }: AdminTitleWithInfoProps) => {
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const HeadingTag = level;
   
@@ -47,8 +47,8 @@ export const AdminTitleWithInfo = ({
 
       <TooltipProvider>
         <Tooltip>
-          <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-            <PopoverTrigger asChild>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
               <TooltipTrigger asChild>
                 <button 
                   className="relative w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -63,17 +63,14 @@ export const AdminTitleWithInfo = ({
                   </div>
                 </button>
               </TooltipTrigger>
-            </PopoverTrigger>
+            </DialogTrigger>
             
             <TooltipContent side="right" sideOffset={5}>
               <p className="text-sm max-w-[250px]">{tooltipText}</p>
             </TooltipContent>
 
-            <PopoverContent 
-              className="w-[900px] max-w-[95vw] max-h-[85vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-primary/20 shadow-2xl" 
-              side="right"
-              align="start"
-              sideOffset={10}
+            <DialogContent 
+              className="max-w-[900px] w-[95vw] max-h-[85vh] overflow-y-auto bg-card/95 backdrop-blur-sm border-primary/20 shadow-2xl"
             >
               <div className="space-y-3">
                 <div className="flex items-start gap-2">
@@ -86,8 +83,8 @@ export const AdminTitleWithInfo = ({
                   </div>
                 </div>
               </div>
-            </PopoverContent>
-          </Popover>
+            </DialogContent>
+          </Dialog>
         </Tooltip>
       </TooltipProvider>
     </div>
