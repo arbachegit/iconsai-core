@@ -474,15 +474,27 @@ export const TaxonomyHierarchySimulationDiagram = ({
           </text>
         </g>
 
-        {/* Animated data packets */}
-        <circle r="4" fill="hsl(var(--primary))">
-          <animateMotion dur={`${animationDuration}s`} repeatCount="indefinite">
-            <mpath href="#flowPath1" />
-          </animateMotion>
-        </circle>
+        {/* Animated data packets - Accept path */}
+        {selectedPath !== "reject" && (
+          <circle r="4" fill="hsl(160, 84%, 39%)">
+            <animateMotion dur={`${animationDuration}s`} repeatCount="indefinite">
+              <mpath href="#flowPathAccept" />
+            </animateMotion>
+          </circle>
+        )}
 
-        {/* Hidden path for animation */}
-        <path id="flowPath1" d="M 130 55 L 200 55 L 400 55 L 400 140 L 400 270 L 320 310 L 170 390 L 170 465" fill="none" stroke="none" />
+        {/* Animated data packets - Reject path */}
+        {selectedPath !== "accept" && (
+          <circle r="4" fill="hsl(0, 84%, 60%)">
+            <animateMotion dur={`${animationDuration}s`} repeatCount="indefinite">
+              <mpath href="#flowPathReject" />
+            </animateMotion>
+          </circle>
+        )}
+
+        {/* Hidden paths for animation */}
+        <path id="flowPathAccept" d="M 130 55 L 200 55 L 400 55 L 400 140 L 400 270 L 320 310 L 170 390 L 170 465" fill="none" stroke="none" />
+        <path id="flowPathReject" d="M 130 55 L 200 55 L 400 55 L 400 140 L 400 270 L 480 310 L 630 390 L 630 465" fill="none" stroke="none" />
       </svg>
     </div>
   );
