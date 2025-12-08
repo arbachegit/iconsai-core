@@ -89,6 +89,7 @@ const STEPS: StepConfig[] = [
 export const MLProcessSimulationDiagram = ({ activityLevel = 0.5 }: MLProcessSimulationDiagramProps) => {
   const [currentStep, setCurrentStep] = useState<ProcessStep>("upload");
   const [isAnimating, setIsAnimating] = useState(false);
+  const [highlightedButtonIndex, setHighlightedButtonIndex] = useState<number | null>(null);
 
   const currentStepIndex = STEPS.findIndex(s => s.id === currentStep);
 
@@ -102,11 +103,26 @@ export const MLProcessSimulationDiagram = ({ activityLevel = 0.5 }: MLProcessSim
 
   const nextStep = () => {
     const nextIndex = (currentStepIndex + 1) % STEPS.length;
-    goToStep(STEPS[nextIndex].id);
+    
+    // Animate button highlight sequence
+    const animateButtons = async () => {
+      for (let i = 0; i <= nextIndex; i++) {
+        setHighlightedButtonIndex(i);
+        await new Promise(resolve => setTimeout(resolve, 120));
+      }
+      setHighlightedButtonIndex(null);
+      goToStep(STEPS[nextIndex].id);
+    };
+    
+    animateButtons();
   };
 
   const resetSimulation = () => {
-    goToStep("upload");
+    setHighlightedButtonIndex(0);
+    setTimeout(() => {
+      setHighlightedButtonIndex(null);
+      goToStep("upload");
+    }, 150);
   };
 
   const renderStepContent = () => {
@@ -330,14 +346,17 @@ export const MLProcessSimulationDiagram = ({ activityLevel = 0.5 }: MLProcessSim
                 <div className="p-2 rounded bg-emerald-500/10 border border-emerald-500/20">
                   <span className="text-emerald-300 font-bold text-lg">TP</span>
                   <p className="text-[10px] text-muted-foreground">Acertos</p>
+                  <p className="text-[9px] text-muted-foreground/70">True Positives</p>
                 </div>
                 <div className="p-2 rounded bg-red-500/10 border border-red-500/20">
                   <span className="text-red-300 font-bold text-lg">FP</span>
                   <p className="text-[10px] text-muted-foreground">Erros</p>
+                  <p className="text-[9px] text-muted-foreground/70">False Positives</p>
                 </div>
                 <div className="p-2 rounded bg-blue-500/10 border border-blue-500/20">
                   <span className="text-blue-300 font-bold text-lg">%</span>
                   <p className="text-[10px] text-muted-foreground">Taxa</p>
+                  <p className="text-[9px] text-muted-foreground/70">Learning Rate</p>
                 </div>
               </div>
               
@@ -373,30 +392,37 @@ export const MLProcessSimulationDiagram = ({ activityLevel = 0.5 }: MLProcessSim
 
       {/* Step Buttons */}
       <div className="flex flex-wrap gap-1.5 justify-center">
-        {STEPS.map((step, index) => (
-          <Button
-            key={step.id}
-            variant="ghost"
-            size="sm"
-            onClick={() => goToStep(step.id)}
-            className={`
-              h-8 px-2 text-xs gap-1.5 transition-all
-              ${currentStep === step.id 
-                ? `${step.bgColor} ${step.color} ${step.borderColor} border` 
-                : "text-muted-foreground hover:text-foreground"
-              }
-            `}
-          >
-            <span className={`
-              w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold
-              ${currentStep === step.id ? step.bgColor : "bg-muted"}
-            `}>
-              {index + 1}
-            </span>
-            {step.icon}
-            <span className="hidden sm:inline">{step.label}</span>
-          </Button>
-        ))}
+        {STEPS.map((step, index) => {
+          const isHighlighted = highlightedButtonIndex === index;
+          const isActive = currentStep === step.id;
+          
+          return (
+            <Button
+              key={step.id}
+              variant="ghost"
+              size="sm"
+              onClick={() => goToStep(step.id)}
+              className={`
+                h-8 px-2 text-xs gap-1.5 transition-all duration-150
+                ${isActive 
+                  ? `${step.bgColor} ${step.color} ${step.borderColor} border` 
+                  : isHighlighted
+                    ? `${step.bgColor} ${step.color} ${step.borderColor} border scale-110 shadow-lg`
+                    : "text-muted-foreground hover:text-foreground"
+                }
+              `}
+            >
+              <span className={`
+                w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-150
+                ${isActive || isHighlighted ? step.bgColor : "bg-muted"}
+              `}>
+                {index + 1}
+              </span>
+              {step.icon}
+              <span className="hidden sm:inline">{step.label}</span>
+            </Button>
+          );
+        })}
       </div>
 
       {/* Progress Bar */}
