@@ -1354,6 +1354,36 @@ export type Database = {
         }
         Relationships: []
       }
+      security_severity_history: {
+        Row: {
+          change_reason: string | null
+          changed_by_email: string | null
+          changed_by_user_id: string | null
+          created_at: string | null
+          id: string
+          new_level: string
+          previous_level: string
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_by_email?: string | null
+          changed_by_user_id?: string | null
+          created_at?: string | null
+          id?: string
+          new_level: string
+          previous_level: string
+        }
+        Update: {
+          change_reason?: string | null
+          changed_by_email?: string | null
+          changed_by_user_id?: string | null
+          created_at?: string | null
+          id?: string
+          new_level?: string
+          previous_level?: string
+        }
+        Relationships: []
+      }
       suggestion_audit: {
         Row: {
           admin_feedback: string | null
