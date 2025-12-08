@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -13,7 +14,6 @@ import {
   FileText,
   Mail,
   BarChart3,
-  ArrowLeft,
   LogOut,
   MessagesSquare,
   Image,
@@ -24,6 +24,7 @@ import {
   Tags,
   Search,
   ChevronDown,
+  ChevronUp,
   Zap,
   MessageCircle,
   Brain,
@@ -40,7 +41,7 @@ import {
   Globe,
   Sparkles,
   Menu,
-  PanelLeftClose,
+  Monitor,
   RefreshCw,
 } from "lucide-react";
 
@@ -76,6 +77,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [pendingMessagesCount, setPendingMessagesCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isFooterCollapsed, setIsFooterCollapsed] = useState(false);
   const previousCountRef = useRef(0);
 
   const fetchPendingMessages = useCallback(async () => {
@@ -225,27 +228,81 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
     }
   ];
 
+  // Filter menu categories based on search query
+  const filteredCategories = useMemo(() => {
+    if (!searchQuery.trim()) return menuCategories;
+    
+    const query = searchQuery.toLowerCase();
+    
+    return menuCategories
+      .map(category => ({
+        ...category,
+        items: category.items.filter(item => 
+          item.label.toLowerCase().includes(query) ||
+          category.label.toLowerCase().includes(query)
+        )
+      }))
+      .filter(category => category.items.length > 0);
+  }, [searchQuery]);
+
   return (
     <TooltipProvider delayDuration={0}>
       <>
-        <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-card border-r border-primary/20 flex flex-col h-screen transition-all duration-300`}>
-        <div className={`${isCollapsed ? 'p-3' : 'p-6'} border-b border-primary/20 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-            <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
-              <h1 className="text-xl font-bold text-gradient whitespace-nowrap">Admin Panel</h1>
-              <p className="text-sm text-muted-foreground mt-1 whitespace-nowrap">KnowYOU</p>
+        <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-card border-r border-primary/20 flex flex-col h-screen transition-all duration-300 ease-in-out`}>
+          {/* Header with Search and Hamburger */}
+          <div className={`${isCollapsed ? 'p-2' : 'p-3'} border-b border-primary/20 transition-all duration-300 ease-in-out`}>
+            <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-2'}`}>
+              {/* Search Input - hidden when collapsed, shows icon below hamburger */}
+              {!isCollapsed && (
+                <div className="flex-1 relative transition-all duration-300 ease-in-out">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Buscar..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8 h-8 text-sm bg-background/50 border-primary/20 focus:border-primary/50"
+                  />
+                </div>
+              )}
+              
+              {/* Hamburger Menu - Right side when expanded, top when collapsed */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleCollapse}
+                className="shrink-0 h-8 w-8 transition-transform duration-300 ease-in-out"
+              >
+                <Menu className={`w-5 h-5 transition-transform duration-300 ease-in-out ${isCollapsed ? 'rotate-90' : 'rotate-0'}`} />
+              </Button>
+
+              {/* Search Icon - Only visible when collapsed, below hamburger */}
+              {isCollapsed && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 transition-all duration-300 ease-in-out"
+                      onClick={() => {
+                        onToggleCollapse();
+                        setTimeout(() => {
+                          const searchInput = document.querySelector('input[placeholder="Buscar..."]') as HTMLInputElement;
+                          searchInput?.focus();
+                        }, 350);
+                      }}
+                    >
+                      <Search className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Buscar</TooltipContent>
+                </Tooltip>
+              )}
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleCollapse}
-              className="shrink-0"
-            >
-              <Menu className={`w-5 h-5 transition-transform duration-300 ease-in-out ${isCollapsed ? 'rotate-90' : 'rotate-0'}`} />
-            </Button>
           </div>
 
-          <nav className={`flex-1 ${isCollapsed ? 'p-2' : 'p-4'} pb-44 space-y-1 overflow-y-auto`}>
-            {menuCategories.map((category, index) => (
+          <nav className={`flex-1 ${isCollapsed ? 'p-2' : 'p-3'} pb-44 space-y-1 overflow-y-auto transition-all duration-300 ease-in-out`}>
+            {filteredCategories.map((category, index) => (
               <div key={category.id}>
                 {index > 0 && <Separator className="my-2 bg-primary/10" />}
                 
@@ -300,7 +357,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                         <category.icon className="w-3 h-3" />
                         {category.label}
                       </div>
-                      <ChevronDown className={`w-3 h-3 transition-transform ${openSections.includes(category.id) ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${openSections.includes(category.id) ? 'rotate-180' : ''}`} />
                     </CollapsibleTrigger>
                     
                     <CollapsibleContent className="space-y-1 mt-1">
@@ -336,83 +393,130 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           </nav>
         </aside>
 
-        <div className={`fixed bottom-0 left-0 ${isCollapsed ? 'w-16' : 'w-64'} p-${isCollapsed ? '2' : '4'} border-t border-primary/20 bg-card space-y-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 transition-all duration-300`}>
-          {isCollapsed ? (
-            // Modo colapsado: apenas ícones
-            <>
-              <Tooltip>
-                <TooltipTrigger asChild>
+        {/* Ultra-High Density Footer with Collapsible Chevron */}
+        <div 
+          className={`fixed bottom-0 left-0 ${isCollapsed ? 'w-16' : 'w-64'} border-t border-primary/20 bg-card shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 transition-all duration-300 ease-in-out overflow-hidden`}
+        >
+          {/* Chevron Toggle for Footer */}
+          {!isCollapsed && (
+            <button
+              onClick={() => setIsFooterCollapsed(!isFooterCollapsed)}
+              className="absolute top-1 right-2 p-1 hover:bg-muted rounded transition-colors duration-200 z-10"
+            >
+              <ChevronUp className={`w-3 h-3 text-muted-foreground transition-transform duration-300 ${isFooterCollapsed ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+
+          <div 
+            className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'p-2' : 'p-2 pt-5'}`}
+            style={{
+              maxHeight: isFooterCollapsed && !isCollapsed ? '0px' : '200px',
+              opacity: isFooterCollapsed && !isCollapsed ? 0 : 1,
+              padding: isFooterCollapsed && !isCollapsed ? '0 8px' : undefined,
+            }}
+          >
+            <div className={`flex ${isCollapsed ? 'flex-col' : 'flex-col'} gap-1`}>
+              {isCollapsed ? (
+                // Modo colapsado: apenas ícones empilhados
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-full h-8"
+                        onClick={() => navigate("#")}
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Back to Data Analytics</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-full h-8"
+                        onClick={() => navigate("/docs")}
+                      >
+                        <BookOpen className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Documentação</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-full h-8 text-primary"
+                        onClick={() => navigate("/")}
+                      >
+                        <Monitor className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Voltar ao APP</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-full h-8 text-destructive"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Sair</TooltipContent>
+                  </Tooltip>
+                </>
+              ) : (
+                // Modo expandido: botões ultra-compactos
+                <>
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="w-full"
+                    className="w-full justify-start gap-2 h-7 py-1 text-sm"
+                    onClick={() => navigate("#")}
+                  >
+                    <BarChart3 className="w-4 h-4 shrink-0" />
+                    <span>Back to Data Analytics</span>
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-2 h-7 py-1 text-sm"
                     onClick={() => navigate("/docs")}
                   >
-                    <BookOpen className="w-4 h-4" />
+                    <BookOpen className="w-4 h-4 shrink-0" />
+                    <span>Documentação</span>
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Documentação</TooltipContent>
-              </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="w-full text-primary"
+                    className="w-full justify-start gap-2 h-7 py-1 text-sm text-primary hover:!text-black"
                     onClick={() => navigate("/")}
                   >
-                    <ArrowLeft className="w-4 h-4" />
+                    <Monitor className="w-4 h-4 shrink-0" />
+                    <span>Voltar ao APP</span>
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Voltar ao APP</TooltipContent>
-              </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="w-full text-destructive"
+                    className="w-full justify-start gap-2 h-7 py-1 text-sm text-destructive hover:text-destructive"
                     onClick={handleLogout}
                   >
-                    <LogOut className="w-4 h-4" />
+                    <LogOut className="w-4 h-4 shrink-0" />
+                    <span>Sair</span>
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Sair</TooltipContent>
-              </Tooltip>
-            </>
-          ) : (
-            // Modo expandido: botões completos
-            <>
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3"
-                onClick={() => navigate("/docs")}
-              >
-                <BookOpen className="w-4 h-4 shrink-0" />
-                <span className="transition-opacity duration-300 ease-in-out">Documentação</span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3 text-primary hover:!text-black"
-                onClick={() => navigate("/")}
-              >
-                <ArrowLeft className="w-4 h-4 shrink-0" />
-                <span className="transition-opacity duration-300 ease-in-out">Voltar ao APP</span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3 text-destructive hover:text-destructive"
-                onClick={handleLogout}
-              >
-                <LogOut className="w-4 h-4 shrink-0" />
-                <span className="transition-opacity duration-300 ease-in-out">Sair</span>
-              </Button>
-            </>
-          )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </>
     </TooltipProvider>
