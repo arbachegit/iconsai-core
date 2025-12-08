@@ -5,6 +5,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { NotificationsPanel } from "@/components/admin/NotificationsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 
 // Eager load only DashboardTab (first view)
 import { DashboardTab } from "@/components/admin/DashboardTab";
@@ -228,26 +229,51 @@ const Admin = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      <AdminSidebar 
-        activeTab={activeTab} 
-        onTabChange={handleTabChange} 
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-      />
-      
-      <main className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-          <div className="flex items-center justify-end px-8 py-4">
-            <NotificationsPanel />
-          </div>
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Fixed Global Header */}
+      <header 
+        className={`fixed top-0 left-0 right-0 h-12 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-primary/20 z-30 flex items-center justify-between px-4 transition-all duration-300 ease-in-out`}
+        style={{
+          paddingLeft: isSidebarCollapsed ? '80px' : '272px',
+        }}
+      >
+        {/* Logo and Admin Panel Text - anchored near sidebar edge */}
+        <div 
+          className="flex items-center gap-3 transition-all duration-300 ease-in-out"
+          style={{
+            transform: `translateX(${isSidebarCollapsed ? '-8px' : '0px'})`,
+          }}
+        >
+          <img 
+            src={knowriskLogo} 
+            alt="Knowrisk" 
+            className="h-7 w-7 rounded-full object-cover transition-transform duration-300 ease-in-out"
+          />
+          <span className="text-lg font-bold text-gradient whitespace-nowrap">Admin Panel</span>
         </div>
-        <div className="p-8">
-          <div className="max-w-7xl mx-auto">
-            {renderTab()}
-          </div>
+
+        {/* Notifications - Right side */}
+        <div className="flex items-center gap-4">
+          <NotificationsPanel />
         </div>
-      </main>
+      </header>
+
+      <div className="flex flex-1 pt-12">
+        <AdminSidebar 
+          activeTab={activeTab} 
+          onTabChange={handleTabChange} 
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
+        
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-8">
+            <div className="max-w-7xl mx-auto">
+              {renderTab()}
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 };
