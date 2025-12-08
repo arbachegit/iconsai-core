@@ -20,7 +20,8 @@ import {
   Shield, 
   TrendingDown, 
   MessageCircle,
-  Loader2
+  Loader2,
+  Settings
 } from 'lucide-react';
 
 interface NotificationPreference {
@@ -49,6 +50,7 @@ export default function NotificationSettingsTab() {
   const [saving, setSaving] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
   const [testingWhatsapp, setTestingWhatsapp] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -99,6 +101,7 @@ export default function NotificationSettingsTab() {
 
       if (error) throw error;
       toast.success('Configurações de WhatsApp salvas');
+      setIsEditMode(false);
     } catch (error: any) {
       console.error('Error saving phone settings:', error);
       toast.error('Erro ao salvar configurações');
@@ -230,20 +233,32 @@ export default function NotificationSettingsTab() {
                 value={targetPhone}
                 onChange={(e) => setTargetPhone(e.target.value)}
                 className="border-blue-400/60 focus:border-blue-500"
+                disabled={!isEditMode}
               />
               <p className="text-xs text-muted-foreground">
                 Formato: +[código país][DDD][número] - Ex: +5511999999999
               </p>
             </div>
             <div className="flex items-end gap-2">
-              <Button 
-                onClick={savePhoneSettings} 
-                disabled={saving}
-                className="gap-2"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Salvar
-              </Button>
+              {isEditMode ? (
+                <Button 
+                  onClick={savePhoneSettings} 
+                  disabled={saving}
+                  className="gap-2"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {saving ? 'Salvando...' : 'Salvar'}
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline"
+                  onClick={() => setIsEditMode(true)}
+                  className="gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Configurar
+                </Button>
+              )}
             </div>
           </div>
 
