@@ -254,156 +254,153 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
   return (
     <TooltipProvider delayDuration={0}>
-      <>
-        <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-card border-r border-primary/20 flex flex-col h-screen transition-all duration-300 ease-in-out`}>
-          {/* Header with Search and Hamburger */}
-          <div className={`${isCollapsed ? 'p-2' : 'p-3'} border-b border-primary/20 transition-all duration-300 ease-in-out`}>
-            <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-2'}`}>
-              {/* Search Input - hidden when collapsed, shows icon below hamburger */}
-              {!isCollapsed && (
-                <div className="flex-1 relative transition-all duration-300 ease-in-out">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Buscar..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 h-8 text-sm bg-background/50 border-primary/20 focus:border-primary/50"
-                  />
-                </div>
-              )}
-              
-              {/* Hamburger Menu - Right side when expanded, top when collapsed */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onToggleCollapse}
-                className="shrink-0 h-8 w-8 transition-transform duration-300 ease-in-out"
-              >
-                <Menu className={`w-5 h-5 transition-transform duration-300 ease-in-out ${isCollapsed ? 'rotate-90' : 'rotate-0'}`} />
-              </Button>
+      <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-card border-r border-primary/20 flex flex-col h-screen transition-all duration-300 ease-in-out`}>
+        {/* Header with Search and Hamburger */}
+        <div className={`${isCollapsed ? 'p-2' : 'p-3'} border-b border-primary/20 transition-all duration-300 ease-in-out shrink-0`}>
+          <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-2'}`}>
+            {/* Search Input - hidden when collapsed, shows icon below hamburger */}
+            {!isCollapsed && (
+              <div className="flex-1 relative transition-all duration-300 ease-in-out">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Buscar..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 h-8 text-sm bg-background/50 border-primary/20 focus:border-primary/50"
+                />
+              </div>
+            )}
+            
+            {/* Hamburger Menu - Right side when expanded, top when collapsed */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleCollapse}
+              className="shrink-0 h-8 w-8 transition-transform duration-300 ease-in-out"
+            >
+              <Menu className={`w-5 h-5 transition-transform duration-300 ease-in-out ${isCollapsed ? 'rotate-90' : 'rotate-0'}`} />
+            </Button>
 
-              {/* Search Icon - Only visible when collapsed, below hamburger */}
-              {isCollapsed && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 transition-all duration-300 ease-in-out"
-                      onClick={() => {
-                        onToggleCollapse();
-                        setTimeout(() => {
-                          const searchInput = document.querySelector('input[placeholder="Buscar..."]') as HTMLInputElement;
-                          searchInput?.focus();
-                        }, 350);
-                      }}
-                    >
-                      <Search className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Buscar</TooltipContent>
-                </Tooltip>
-              )}
-            </div>
+            {/* Search Icon - Only visible when collapsed, below hamburger */}
+            {isCollapsed && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 transition-all duration-300 ease-in-out"
+                    onClick={() => {
+                      onToggleCollapse();
+                      setTimeout(() => {
+                        const searchInput = document.querySelector('input[placeholder="Buscar..."]') as HTMLInputElement;
+                        searchInput?.focus();
+                      }, 350);
+                    }}
+                  >
+                    <Search className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Buscar</TooltipContent>
+              </Tooltip>
+            )}
           </div>
+        </div>
 
-          <nav className={`flex-1 ${isCollapsed ? 'p-2' : 'p-3'} pb-44 space-y-1 overflow-y-auto transition-all duration-300 ease-in-out`}>
-            {filteredCategories.map((category, index) => (
-              <div key={category.id}>
-                {index > 0 && <Separator className="my-2 bg-primary/10" />}
-                
-                {isCollapsed ? (
-                  // Modo colapsado: mostrar apenas ícones com tooltip
-                  <div className="space-y-1">
+        {/* Navigation - Flex grow to fill space, scrollable */}
+        <nav className={`flex-1 min-h-0 ${isCollapsed ? 'p-2' : 'p-3'} pb-2 space-y-1 overflow-y-auto transition-all duration-300 ease-in-out`}>
+          {filteredCategories.map((category, index) => (
+            <div key={category.id}>
+              {index > 0 && <Separator className="my-2 bg-primary/10" />}
+              
+              {isCollapsed ? (
+                // Modo colapsado: mostrar apenas ícones com tooltip
+                <div className="space-y-1">
+                  {category.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeTab === item.id;
+                    const showBadge = item.id === "contact-messages" && pendingMessagesCount > 0;
+
+                    return (
+                      <Tooltip key={item.id}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={isActive ? "default" : "ghost"}
+                            size="icon"
+                            className={`w-full ${isActive ? "bg-gradient-primary" : ""} relative`}
+                            onClick={() => onTabChange(item.id)}
+                          >
+                            <Icon className="w-4 h-4" />
+                            {showBadge && (
+                              <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center text-[10px] bg-destructive text-destructive-foreground rounded-full px-1">
+                                {pendingMessagesCount}
+                              </span>
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="font-medium">
+                          {item.id === "activity-logs" ? (
+                            <div>
+                              <span className="font-bold">Log de Atividades</span>
+                              <br />
+                              <span className="text-xs text-muted-foreground">(admin)</span>
+                            </div>
+                          ) : (
+                            item.label
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              ) : (
+                // Modo expandido: mostrar menu completo
+                <Collapsible 
+                  open={openSections.includes(category.id)}
+                  onOpenChange={() => toggleSection(category.id)}
+                >
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-primary transition-colors">
+                    <div className="flex items-center gap-2">
+                      <category.icon className="w-3 h-3" />
+                      {category.label}
+                    </div>
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${openSections.includes(category.id) ? 'rotate-180' : ''}`} />
+                  </CollapsibleTrigger>
+                  
+                  <CollapsibleContent className="space-y-1 mt-1">
                     {category.items.map((item) => {
                       const Icon = item.icon;
                       const isActive = activeTab === item.id;
                       const showBadge = item.id === "contact-messages" && pendingMessagesCount > 0;
 
                       return (
-                        <Tooltip key={item.id}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant={isActive ? "default" : "ghost"}
-                              size="icon"
-                              className={`w-full ${isActive ? "bg-gradient-primary" : ""} relative`}
-                              onClick={() => onTabChange(item.id)}
-                            >
-                              <Icon className="w-4 h-4" />
-                              {showBadge && (
-                                <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center text-[10px] bg-destructive text-destructive-foreground rounded-full px-1">
-                                  {pendingMessagesCount}
-                                </span>
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="font-medium">
-                            {item.id === "activity-logs" ? (
-                              <div>
-                                <span className="font-bold">Log de Atividades</span>
-                                <br />
-                                <span className="text-xs text-muted-foreground">(admin)</span>
-                              </div>
-                            ) : (
-                              item.label
-                            )}
-                          </TooltipContent>
-                        </Tooltip>
+                        <Button
+                          key={item.id}
+                          variant={isActive ? "default" : "ghost"}
+                          className={`w-full justify-start gap-3 ${isActive ? "bg-gradient-primary" : ""}`}
+                          onClick={() => onTabChange(item.id)}
+                        >
+                          <Icon className="w-4 h-4 shrink-0" />
+                          <span className="transition-opacity duration-300 ease-in-out">
+                            {item.label}
+                          </span>
+                          {showBadge && (
+                            <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
+                              {pendingMessagesCount}
+                            </Badge>
+                          )}
+                        </Button>
                       );
                     })}
-                  </div>
-                ) : (
-                  // Modo expandido: mostrar menu completo
-                  <Collapsible 
-                    open={openSections.includes(category.id)}
-                    onOpenChange={() => toggleSection(category.id)}
-                  >
-                    <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-primary transition-colors">
-                      <div className="flex items-center gap-2">
-                        <category.icon className="w-3 h-3" />
-                        {category.label}
-                      </div>
-                      <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${openSections.includes(category.id) ? 'rotate-180' : ''}`} />
-                    </CollapsibleTrigger>
-                    
-                    <CollapsibleContent className="space-y-1 mt-1">
-                      {category.items.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = activeTab === item.id;
-                        const showBadge = item.id === "contact-messages" && pendingMessagesCount > 0;
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+            </div>
+          ))}
+        </nav>
 
-                        return (
-                          <Button
-                            key={item.id}
-                            variant={isActive ? "default" : "ghost"}
-                            className={`w-full justify-start gap-3 ${isActive ? "bg-gradient-primary" : ""}`}
-                            onClick={() => onTabChange(item.id)}
-                          >
-                            <Icon className="w-4 h-4 shrink-0" />
-                            <span className="transition-opacity duration-300 ease-in-out">
-                              {item.label}
-                            </span>
-                            {showBadge && (
-                              <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
-                                {pendingMessagesCount}
-                              </Badge>
-                            )}
-                          </Button>
-                        );
-                      })}
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
-              </div>
-            ))}
-          </nav>
-        </aside>
-
-        {/* Ultra-High Density Footer with Collapsible Chevron */}
-        <div 
-          className={`fixed bottom-0 left-0 ${isCollapsed ? 'w-16' : 'w-64'} border-t border-border/40 bg-card shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 transition-all duration-300 ease-in-out`}
-        >
+        {/* Footer Control Bar - Inside aside, pushed to bottom with mt-auto */}
+        <div className="shrink-0 border-t border-border/40 bg-card shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
           {/* Centered Chevron Toggle */}
           {!isCollapsed && (
             <button 
@@ -521,7 +518,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             )}
           </div>
         </div>
-      </>
+      </aside>
     </TooltipProvider>
   );
 };
