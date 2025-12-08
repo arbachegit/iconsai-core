@@ -328,5 +328,12 @@
     "rateLimitTitle": "Aguarde um momento",
     "rateLimitDescription": "Você poderá enviar outra mensagem em {{seconds}} segundos",
     "cooldownMessage": "Aguarde {{seconds}}s"
+  },
+  "admin": {
+    "panel": "Painel Admin",
+    "dataAnalytics": "Análise de Dados",
+    "documentation": "Documentação",
+    "backToApp": "Voltar ao App",
+    "logout": "Sair"
   }
 }

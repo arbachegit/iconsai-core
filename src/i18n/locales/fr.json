@@ -329,5 +329,12 @@
     "rateLimitTitle": "Veuillez patienter",
     "rateLimitDescription": "Vous pourrez envoyer un autre message dans {{seconds}} secondes",
     "cooldownMessage": "Attendre {{seconds}}s"
+  },
+  "admin": {
+    "panel": "Panneau Admin",
+    "dataAnalytics": "Analyse des Données",
+    "documentation": "Documentation",
+    "backToApp": "Retour à l'App",
+    "logout": "Déconnexion"
   }
 }

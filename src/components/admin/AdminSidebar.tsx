@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -75,6 +76,7 @@ const playNotificationSound = () => {
 
 export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleCollapse }: AdminSidebarProps) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [pendingMessagesCount, setPendingMessagesCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -422,7 +424,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       <BookOpen className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="right">Documentation</TooltipContent>
+                  <TooltipContent side="right">{t('admin.documentation')}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -431,7 +433,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       <BarChart3 className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="right">Data Analytics</TooltipContent>
+                  <TooltipContent side="right">{t('admin.dataAnalytics')}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -440,7 +442,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       <Monitor className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="right">Back to App</TooltipContent>
+                  <TooltipContent side="right">{t('admin.backToApp')}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -449,7 +451,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       <LogOut className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="right">Logout</TooltipContent>
+                  <TooltipContent side="right">{t('admin.logout')}</TooltipContent>
                 </Tooltip>
               </div>
             ) : isFooterCollapsed ? (
@@ -461,7 +463,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       <BookOpen className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="top">Documentation</TooltipContent>
+                  <TooltipContent side="top">{t('admin.documentation')}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -470,7 +472,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       <BarChart3 className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="top">Data Analytics</TooltipContent>
+                  <TooltipContent side="top">{t('admin.dataAnalytics')}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -479,7 +481,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       <Monitor className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="top">Back to App</TooltipContent>
+                  <TooltipContent side="top">{t('admin.backToApp')}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -488,7 +490,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       <LogOut className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="top">Logout</TooltipContent>
+                  <TooltipContent side="top">{t('admin.logout')}</TooltipContent>
                 </Tooltip>
               </div>
             ) : (
@@ -496,22 +498,22 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
               <div className="flex flex-col gap-1 transition-all duration-300">
                 <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm" onClick={() => navigate("/docs")}>
                   <BookOpen className="w-4 h-4 shrink-0" />
-                  <span className="transition-opacity duration-200">Documentation</span>
+                  <span className="transition-opacity duration-200 whitespace-nowrap">{t('admin.documentation')}</span>
                 </Button>
 
                 <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm hover:text-primary" onClick={() => navigate("#")}>
                   <BarChart3 className="w-4 h-4 shrink-0" />
-                  <span className="transition-opacity duration-200">Data Analytics</span>
+                  <span className="transition-opacity duration-200 whitespace-nowrap">{t('admin.dataAnalytics')}</span>
                 </Button>
 
                 <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm text-primary hover:text-primary" onClick={() => navigate("/")}>
                   <Monitor className="w-4 h-4 shrink-0" />
-                  <span className="transition-opacity duration-200">Back to App</span>
+                  <span className="transition-opacity duration-200 whitespace-nowrap">{t('admin.backToApp')}</span>
                 </Button>
 
                 <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm text-destructive hover:text-destructive" onClick={handleLogout}>
                   <LogOut className="w-4 h-4 shrink-0" />
-                  <span className="transition-opacity duration-200">Logout</span>
+                  <span className="transition-opacity duration-200 whitespace-nowrap">{t('admin.logout')}</span>
                 </Button>
               </div>
             )}
