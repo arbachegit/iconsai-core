@@ -898,6 +898,51 @@ export type Database = {
         }
         Relationships: []
       }
+      maieutic_training_categories: {
+        Row: {
+          antiprompt: string | null
+          behavioral_instructions: string | null
+          category_icon: string | null
+          category_key: string
+          category_name: string
+          combination_rules: Json | null
+          created_at: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          positive_directives: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          antiprompt?: string | null
+          behavioral_instructions?: string | null
+          category_icon?: string | null
+          category_key: string
+          category_name: string
+          combination_rules?: Json | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          positive_directives?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          antiprompt?: string | null
+          behavioral_instructions?: string | null
+          category_icon?: string | null
+          category_key?: string
+          category_name?: string
+          combination_rules?: Json | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          positive_directives?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       password_recovery_codes: {
         Row: {
           code: string

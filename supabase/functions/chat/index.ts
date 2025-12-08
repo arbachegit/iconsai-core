@@ -395,27 +395,58 @@ Se o usuário perguntar "você tem o documento X?" ou "você conhece o documento
 
     // System prompt especializado em Hospital Moinhos de Vento e saúde
     // IMPORTANTE: Protocolo de coerência PRIMEIRO, antes de qualquer outra regra
+    
+    // 🧠 MAIEUTIC CLASSIFICATION ENGINE - Classify message before responding
+    let maieuticDirectives = "";
+    let maieuticAntiprompt = "";
+    let maieuticBehavioral = "";
+    let cognitiveMode = "normal";
+    
+    try {
+      const classifyResponse = await supabase.functions.invoke("classify-message", {
+        body: { 
+          message: userQuery,
+          conversationHistory: messages.filter((m: any) => m.role === "user").map((m: any) => m.content),
+          chatType: "health"
+        }
+      });
+      
+      if (classifyResponse.data && !classifyResponse.error) {
+        const classification = classifyResponse.data;
+        maieuticDirectives = classification.injectedPrompt || "";
+        maieuticAntiprompt = classification.injectedAntiprompt || "";
+        maieuticBehavioral = classification.behavioralInstructions || "";
+        cognitiveMode = classification.cognitiveMode || "normal";
+        
+        console.log(`[MAIEUTIC] Categories: ${classification.detectedCategories?.map((c: any) => c.category_key).join(", ")} | Mode: ${cognitiveMode}`);
+      }
+    } catch (classifyError) {
+      console.error("Maieutic classification error:", classifyError);
+      // Continue without maieutic classification if it fails
+    }
+    
     const systemPrompt = `Você é o KnowYOU, um assistente de IA especializado em saúde e no Hospital Moinhos de Vento, desenvolvido pela KnowRISK para ajudar profissionais e gestores da área de saúde.
 
 ${getContextualCoherenceProtocol()}
 
+${maieuticDirectives ? `
+## 🧠 DIRETRIZES MAIÊUTICAS (CONFIGURADAS PELO ADMIN):
+${maieuticDirectives}
+` : ""}
+
+${maieuticAntiprompt ? `
+## ❌ ANTIPROMPT MAIÊUTICO (NUNCA FAZER):
+${maieuticAntiprompt}
+` : ""}
+
+${maieuticBehavioral ? `
+## 🎯 INSTRUÇÕES COMPORTAMENTAIS:
+${maieuticBehavioral}
+` : ""}
+
 ${culturalTone}
 ${locationPrompt}
 ${getAdaptiveResponseProtocol()}
-
-# 🔒 REGRA DE IDIOSSINCRASIA (OBRIGATÓRIA)
-- NUNCA repita a mesma frase de abertura, encerramento ou transição em mensagens consecutivas
-- Mantenha um "banco de variações" mental para saudações, expressões de empatia e frases de transição
-- Use SINÔNIMOS e estruturas variadas para mostrar que a conversa é dinâmica
-- A conversa deve parecer fluida e humana, não um loop de respostas padronizadas
-- Evite fórmulas repetitivas como "Claro!", "Com certeza!", "Ótima pergunta!" em sequência
-
-# 🎯 COMANDOS OBJETIVOS - EXECUÇÃO DIRETA
-- Se o usuário der um COMANDO DIRETO (ex: "liste", "mostre", "qual é", "como"), EXECUTE IMEDIATAMENTE sem perguntar formato
-- Pergunte formato (Curto/Longo) APENAS para perguntas ABERTAS ou AMBÍGUAS
-- Para iniciantes/leigos: responda de forma CURTA e PONTUADA por padrão
-${getMathematicalInterpretationProtocol()}
-${ragContext}
 
 ⚠️ INSTRUÇÃO CRÍTICA - LEIA ATENTAMENTE:
 ${hasRagContext ? `

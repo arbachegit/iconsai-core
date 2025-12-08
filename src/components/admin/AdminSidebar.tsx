@@ -44,7 +44,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -166,6 +166,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       icon: MessageCircle,
       items: [
         { id: "chat" as TabType, label: "Chat Config", icon: MessageSquare },
+        { id: "maieutic-training" as TabType, label: "Treino IA Maiêutica", icon: Sparkles },
         { id: "chat-scope-config" as TabType, label: "Delimitações", icon: Settings },
         { id: "regional-config" as TabType, label: "Configurações Regionais", icon: Globe },
         { id: "conversations" as TabType, label: "Conversas", icon: MessagesSquare },
