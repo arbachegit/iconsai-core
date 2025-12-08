@@ -83,6 +83,20 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
   const [searchQuery, setSearchQuery] = useState("");
   const [isFooterCollapsed, setIsFooterCollapsed] = useState(false);
   const previousCountRef = useRef(0);
+  const navRef = useRef<HTMLElement>(null);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
+  // Check scroll position to show/hide fade indicators
+  const handleNavScroll = useCallback(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = nav;
+    setCanScrollUp(scrollTop > 10);
+    setCanScrollDown(scrollTop + clientHeight < scrollHeight - 10);
+  }, []);
+
 
   const fetchPendingMessages = useCallback(async () => {
     const { count } = await supabase
@@ -252,6 +266,18 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       .filter(category => category.items.length > 0);
   }, [searchQuery]);
 
+  // Initial check and resize observer for scroll indicators
+  useEffect(() => {
+    handleNavScroll();
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const resizeObserver = new ResizeObserver(handleNavScroll);
+    resizeObserver.observe(nav);
+    
+    return () => resizeObserver.disconnect();
+  }, [handleNavScroll, filteredCategories]);
+
   return (
     <TooltipProvider delayDuration={0}>
       <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-card border-r border-primary/20 flex flex-col h-screen transition-all duration-300 ease-in-out`}>
@@ -307,8 +333,18 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           </div>
         </div>
 
-        {/* Navigation - Flex grow to fill space, scrollable */}
-        <nav className={`flex-1 min-h-0 ${isCollapsed ? 'p-2' : 'p-3'} pb-2 space-y-1 overflow-y-auto transition-all duration-300 ease-in-out`}>
+        {/* Navigation - Flex grow to fill space, scrollable with fade indicators */}
+        <div className="flex-1 min-h-0 relative">
+          {/* Top fade indicator */}
+          <div 
+            className={`absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-card to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
+          />
+          
+          <nav 
+            ref={navRef}
+            onScroll={handleNavScroll}
+            className={`h-full ${isCollapsed ? 'p-2' : 'p-3'} pb-2 space-y-1 overflow-y-auto transition-all duration-300 ease-in-out`}
+          >
           {filteredCategories.map((category, index) => (
             <div key={category.id}>
               {index > 0 && <Separator className="my-2 bg-primary/10" />}
@@ -398,6 +434,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             </div>
           ))}
         </nav>
+          
+          {/* Bottom fade indicator */}
+          <div 
+            className={`absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollDown ? 'opacity-100' : 'opacity-0'}`}
+          />
+        </div>
 
         {/* Footer Control Bar - Inside aside, pushed to bottom with mt-auto */}
         <div className="shrink-0 border-t border-border/40 bg-card shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
