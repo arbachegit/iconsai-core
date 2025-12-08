@@ -24,7 +24,6 @@ import {
   Tags,
   Search,
   ChevronDown,
-  ChevronUp,
   Zap,
   MessageCircle,
   Brain,
@@ -395,127 +394,123 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
         {/* Ultra-High Density Footer with Collapsible Chevron */}
         <div 
-          className={`fixed bottom-0 left-0 ${isCollapsed ? 'w-16' : 'w-64'} border-t border-primary/20 bg-card shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 transition-all duration-300 ease-in-out overflow-hidden`}
+          className={`fixed bottom-0 left-0 ${isCollapsed ? 'w-16' : 'w-64'} border-t border-border/40 bg-card shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 transition-all duration-300 ease-in-out`}
         >
-          {/* Chevron Toggle for Footer */}
+          {/* Centered Chevron Toggle */}
           {!isCollapsed && (
             <button
               onClick={() => setIsFooterCollapsed(!isFooterCollapsed)}
-              className="absolute top-1 right-2 p-1 hover:bg-muted rounded transition-colors duration-200 z-10"
+              className="w-full flex justify-center py-2 border-b border-border/40 hover:bg-muted/50 transition-colors duration-200"
             >
-              <ChevronUp className={`w-3 h-3 text-muted-foreground transition-transform duration-300 ${isFooterCollapsed ? 'rotate-180' : ''}`} />
+              <ChevronDown 
+                className={`w-4 h-4 text-muted-foreground transition-transform duration-300 ${isFooterCollapsed ? 'rotate-180' : ''}`} 
+              />
             </button>
           )}
 
-          <div 
-            className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'p-2' : 'p-2 pt-5'}`}
-            style={{
-              maxHeight: isFooterCollapsed && !isCollapsed ? '0px' : '200px',
-              opacity: isFooterCollapsed && !isCollapsed ? 0 : 1,
-              padding: isFooterCollapsed && !isCollapsed ? '0 8px' : undefined,
-            }}
-          >
-            <div className={`flex ${isCollapsed ? 'flex-col' : 'flex-col'} gap-1`}>
-              {isCollapsed ? (
-                // Modo colapsado: apenas ícones empilhados
-                <>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-full h-8"
-                        onClick={() => navigate("#")}
-                      >
-                        <BarChart3 className="w-4 h-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">Back to Data Analytics</TooltipContent>
-                  </Tooltip>
+          <div className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'p-2' : 'p-2'}`}>
+            {isCollapsed ? (
+              // Sidebar collapsed: vertical stacked icons
+              <div className="flex flex-col gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="w-full h-8" onClick={() => navigate("#")}>
+                      <BarChart3 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Data Analytics</TooltipContent>
+                </Tooltip>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-full h-8"
-                        onClick={() => navigate("/docs")}
-                      >
-                        <BookOpen className="w-4 h-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">Documentação</TooltipContent>
-                  </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="w-full h-8" onClick={() => navigate("/docs")}>
+                      <BookOpen className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Documentation</TooltipContent>
+                </Tooltip>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-full h-8 text-primary"
-                        onClick={() => navigate("/")}
-                      >
-                        <Monitor className="w-4 h-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">Voltar ao APP</TooltipContent>
-                  </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="w-full h-8 text-primary" onClick={() => navigate("/")}>
+                      <Monitor className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Back to App</TooltipContent>
+                </Tooltip>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-full h-8 text-destructive"
-                        onClick={handleLogout}
-                      >
-                        <LogOut className="w-4 h-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">Sair</TooltipContent>
-                  </Tooltip>
-                </>
-              ) : (
-                // Modo expandido: botões ultra-compactos
-                <>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-2 h-7 py-1 text-sm"
-                    onClick={() => navigate("#")}
-                  >
-                    <BarChart3 className="w-4 h-4 shrink-0" />
-                    <span>Back to Data Analytics</span>
-                  </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="w-full h-8 text-destructive" onClick={handleLogout}>
+                      <LogOut className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Logout</TooltipContent>
+                </Tooltip>
+              </div>
+            ) : isFooterCollapsed ? (
+              // Footer collapsed: horizontal toolbar mode
+              <div className="flex flex-row justify-evenly items-center py-1 gap-2 transition-all duration-300">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("#")}>
+                      <BarChart3 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Data Analytics</TooltipContent>
+                </Tooltip>
 
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-2 h-7 py-1 text-sm"
-                    onClick={() => navigate("/docs")}
-                  >
-                    <BookOpen className="w-4 h-4 shrink-0" />
-                    <span>Documentação</span>
-                  </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/docs")}>
+                      <BookOpen className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Documentation</TooltipContent>
+                </Tooltip>
 
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-2 h-7 py-1 text-sm text-primary hover:!text-black"
-                    onClick={() => navigate("/")}
-                  >
-                    <Monitor className="w-4 h-4 shrink-0" />
-                    <span>Voltar ao APP</span>
-                  </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => navigate("/")}>
+                      <Monitor className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Back to App</TooltipContent>
+                </Tooltip>
 
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-2 h-7 py-1 text-sm text-destructive hover:text-destructive"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="w-4 h-4 shrink-0" />
-                    <span>Sair</span>
-                  </Button>
-                </>
-              )}
-            </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleLogout}>
+                      <LogOut className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Logout</TooltipContent>
+                </Tooltip>
+              </div>
+            ) : (
+              // Footer expanded: vertical with text labels
+              <div className="flex flex-col gap-1 transition-all duration-300">
+                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm" onClick={() => navigate("#")}>
+                  <BarChart3 className="w-4 h-4 shrink-0" />
+                  <span className="transition-opacity duration-200">Data Analytics</span>
+                </Button>
+
+                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm" onClick={() => navigate("/docs")}>
+                  <BookOpen className="w-4 h-4 shrink-0" />
+                  <span className="transition-opacity duration-200">Documentation</span>
+                </Button>
+
+                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm text-primary hover:text-primary" onClick={() => navigate("/")}>
+                  <Monitor className="w-4 h-4 shrink-0" />
+                  <span className="transition-opacity duration-200">Back to App</span>
+                </Button>
+
+                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm text-destructive hover:text-destructive" onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 shrink-0" />
+                  <span className="transition-opacity duration-200">Logout</span>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </>
