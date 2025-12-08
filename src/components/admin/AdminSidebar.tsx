@@ -33,6 +33,7 @@ import {
   TestTube,
   Music,
   Shield,
+  ShieldCheck,
   History,
   Users,
   Target,
@@ -44,7 +45,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -205,6 +206,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       label: "Auditoria",
       icon: Shield,
       items: [
+        { id: "security-integrity" as TabType, label: "Segurança & Integridade", icon: ShieldCheck },
         { id: "activity-logs" as TabType, label: "Log de Atividades (admin)", icon: History },
         { id: "user-usage-logs" as TabType, label: "Log de Uso (Usuários)", icon: Users },
         { id: "document-routing-logs" as TabType, label: "Logs de Roteamento", icon: Route },
