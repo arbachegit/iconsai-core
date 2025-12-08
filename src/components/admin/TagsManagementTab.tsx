@@ -198,6 +198,45 @@ export const TagsManagementTab = () => {
       pii: false,
     },
   });
+
+  // BULK Delete modal state - for deleting multiple tags at once with shared reasoning
+  const [bulkDeleteModal, setBulkDeleteModal] = useState<{
+    open: boolean;
+    selectedTagIds: string[];
+    tagNames: string[];
+    totalDocumentsAffected: number;
+    isLoadingCount: boolean;
+    isDeleting: boolean;
+    reasons: {
+      generic: boolean;
+      outOfDomain: boolean;
+      properName: boolean;
+      isYear: boolean;
+      isPhrase: boolean;
+      typo: boolean;
+      variation: boolean;
+      isolatedVerb: boolean;
+      pii: boolean;
+    };
+  }>({
+    open: false,
+    selectedTagIds: [],
+    tagNames: [],
+    totalDocumentsAffected: 0,
+    isLoadingCount: false,
+    isDeleting: false,
+    reasons: {
+      generic: false,
+      outOfDomain: false,
+      properName: false,
+      isYear: false,
+      isPhrase: false,
+      typo: false,
+      variation: false,
+      isolatedVerb: false,
+      pii: false,
+    },
+  });
   
   // ML Alert state sync - MOVED TO MLDashboardTab
 
@@ -540,6 +579,179 @@ export const TagsManagementTab = () => {
       });
     } catch (error: any) {
       toast.error(`Erro ao excluir tags: ${error.message}`);
+    }
+  };
+
+  // BULK DELETE: Open modal with selected tags
+  const openBulkDeleteModal = async () => {
+    const selectedTagData = allTags?.filter(t => selectedTags.has(t.id)) || [];
+    const uniqueTagNames = [...new Set(selectedTagData.map(t => t.tag_name))];
+    const selectedIds = Array.from(selectedTags);
+    
+    console.log("[BULK DELETE] Opening modal for", selectedIds.length, "tags:", uniqueTagNames);
+    
+    // Open modal immediately with loading state
+    setBulkDeleteModal({
+      open: true,
+      selectedTagIds: selectedIds,
+      tagNames: uniqueTagNames,
+      totalDocumentsAffected: 0,
+      isLoadingCount: true,
+      isDeleting: false,
+      reasons: {
+        generic: false,
+        outOfDomain: false,
+        properName: false,
+        isYear: false,
+        isPhrase: false,
+        typo: false,
+        variation: false,
+        isolatedVerb: false,
+        pii: false,
+      },
+    });
+    
+    // Calculate total affected documents
+    let totalAffected = 0;
+    for (const tagName of uniqueTagNames) {
+      const { count } = await supabase
+        .from('document_tags')
+        .select('*', { count: 'exact', head: true })
+        .eq('tag_name', tagName);
+      totalAffected += count || 0;
+    }
+    
+    setBulkDeleteModal(prev => ({
+      ...prev,
+      totalDocumentsAffected: totalAffected,
+      isLoadingCount: false,
+    }));
+  };
+
+  // BULK DELETE: Execute batch deletion with shared reasoning
+  const confirmBulkDelete = async () => {
+    const { tagNames, reasons, totalDocumentsAffected } = bulkDeleteModal;
+    
+    // Build reason labels for audit
+    const reasonLabels: string[] = [];
+    if (reasons.generic) reasonLabels.push('Termo genérico (Stopwords)');
+    if (reasons.outOfDomain) reasonLabels.push('Irrelevância de domínio');
+    if (reasons.properName) reasonLabels.push('Nome próprio (High Cardinality)');
+    if (reasons.isYear) reasonLabels.push('Dado temporal (Ano)');
+    if (reasons.isPhrase) reasonLabels.push('Frase (Length excessivo)');
+    if (reasons.typo) reasonLabels.push('Erro de grafia');
+    if (reasons.variation) reasonLabels.push('Variação (Plural/Sinônimo)');
+    if (reasons.isolatedVerb) reasonLabels.push('Verbo isolado');
+    if (reasons.pii) reasonLabels.push('Dado sensível (PII)');
+    
+    console.log("[BULK DELETE] Deleting", tagNames.length, "unique tags with reasons:", reasonLabels);
+    
+    setBulkDeleteModal(prev => ({ ...prev, isDeleting: true }));
+    
+    try {
+      let successCount = 0;
+      let failedCount = 0;
+      const errors: string[] = [];
+      
+      // Process each unique tag name
+      for (const tagName of tagNames) {
+        try {
+          // First, find all parent tags with this name to orphan their children
+          const { data: parentTagsToDelete } = await supabase
+            .from('document_tags')
+            .select('id')
+            .eq('tag_name', tagName)
+            .eq('tag_type', 'parent');
+            
+          if (parentTagsToDelete && parentTagsToDelete.length > 0) {
+            const parentIds = parentTagsToDelete.map(p => p.id);
+            
+            // Move child tags to Orphaned Zone
+            console.log(`[BULK DELETE] Orphaning children of ${tagName} (parent IDs: ${parentIds})`);
+            const { error: orphanError } = await supabase
+              .from('document_tags')
+              .update({ parent_tag_id: null })
+              .in('parent_tag_id', parentIds);
+              
+            if (orphanError) {
+              console.warn('[BULK DELETE] Warning: Could not orphan child tags:', orphanError);
+            }
+          }
+          
+          // Delete ALL instances of this tag by name
+          console.log(`[BULK DELETE] Deleting all instances of: ${tagName}`);
+          const { error } = await supabase
+            .from('document_tags')
+            .delete()
+            .eq('tag_name', tagName);
+            
+          if (error) throw error;
+          
+          successCount++;
+        } catch (error: any) {
+          console.error(`[BULK DELETE ERROR] Failed for ${tagName}:`, error);
+          errors.push(`${tagName}: ${error.message}`);
+          failedCount++;
+          // Continue processing others - don't stop on error
+        }
+      }
+      
+      // Log the bulk action
+      await logTagManagementEvent({
+        input_state: {
+          tags_involved: tagNames.map(name => ({ 
+            id: 'bulk', 
+            name, 
+            type: 'parent' as const
+          })),
+        },
+        action_type: 'bulk_delete_orphans',
+        user_decision: {
+          deleted_count: successCount,
+          failed_count: failedCount,
+          documents_updated: totalDocumentsAffected,
+          deletion_reasons: reasons,
+        },
+        rationale: `Exclusão em massa de ${successCount} tags (${totalDocumentsAffected} documentos). Motivos: ${reasonLabels.join(', ')}${failedCount > 0 ? `. Falhou: ${failedCount}` : ''}`,
+      });
+      
+      // Show appropriate toast
+      if (failedCount === 0) {
+        toast.success(`${successCount} tags excluídas com sucesso de ${totalDocumentsAffected} documentos. Motivo: ${reasonLabels.join(', ')}`);
+      } else {
+        toast.warning(`${successCount} tags excluídas, ${failedCount} falharam. Verifique o console para detalhes.`);
+      }
+      
+      // Clear selection and refresh
+      setSelectedTags(new Set());
+      queryClient.invalidateQueries({ queryKey: ['all-tags'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-config'] });
+      
+      // Close modal and reset state
+      setBulkDeleteModal({
+        open: false,
+        selectedTagIds: [],
+        tagNames: [],
+        totalDocumentsAffected: 0,
+        isLoadingCount: false,
+        isDeleting: false,
+        reasons: {
+          generic: false,
+          outOfDomain: false,
+          properName: false,
+          isYear: false,
+          isPhrase: false,
+          typo: false,
+          variation: false,
+          isolatedVerb: false,
+          pii: false,
+        },
+      });
+      
+    } catch (error: any) {
+      console.error("[BULK DELETE ERROR]", error);
+      toast.error(`Erro ao excluir tags: ${error.message}`);
+      setBulkDeleteModal(prev => ({ ...prev, isDeleting: false }));
     }
   };
 
@@ -2029,19 +2241,10 @@ export const TagsManagementTab = () => {
             <Button 
               variant="destructive" 
               size="sm"
-              onClick={() => {
-                // Get unique tag names from selected tags
-                const selectedTagData = allTags?.filter(t => selectedTags.has(t.id)) || [];
-                const uniqueTagNames = [...new Set(selectedTagData.map(t => t.tag_name))];
-                
-                // Open bulk delete modal
-                toast.info(`${uniqueTagNames.length} tag(s) únicas selecionadas para exclusão em massa`, {
-                  description: "Use o modal de exclusão individual para cada tag ou selecione uma de cada vez."
-                });
-              }}
+              onClick={openBulkDeleteModal}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Excluir Selecionadas
+              Excluir Selecionadas ({selectedTags.size})
             </Button>
           </div>
         )}
@@ -2630,6 +2833,284 @@ export const TagsManagementTab = () => {
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Excluir Tag
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* BULK Delete Confirmation Modal with Batch Reasoning */}
+      <AlertDialog 
+        open={bulkDeleteModal.open} 
+        onOpenChange={(open) => !open && setBulkDeleteModal(prev => ({ ...prev, open: false }))}
+      >
+        <AlertDialogContent className="max-w-lg max-h-[90vh]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Excluindo {bulkDeleteModal.tagNames.length} Tags em Massa
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                {bulkDeleteModal.isLoadingCount ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Calculando documentos afetados...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p>
+                      Você está prestes a excluir <strong>{bulkDeleteModal.tagNames.length}</strong> tag(s) únicas.
+                    </p>
+                    
+                    {/* Tags to be deleted */}
+                    <div className="p-3 bg-muted/50 border border-border rounded-lg">
+                      <p className="text-sm font-medium mb-2">Tags a serem excluídas:</p>
+                      <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                        {bulkDeleteModal.tagNames.slice(0, 15).map((name, i) => (
+                          <Badge key={i} variant="outline" className="text-xs border-destructive/50 text-destructive">
+                            {name}
+                          </Badge>
+                        ))}
+                        {bulkDeleteModal.tagNames.length > 15 && (
+                          <Badge variant="outline" className="text-xs">+{bulkDeleteModal.tagNames.length - 15} mais</Badge>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Impact summary */}
+                    <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                      <p className="text-destructive text-sm font-semibold flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        Impacto: {bulkDeleteModal.totalDocumentsAffected} documento(s) serão atualizados
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Tags filhas associadas serão movidas para a Zona de Órfãos.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                  <p className="text-amber-200 text-sm font-medium mb-3">
+                    ⚠️ Selecione o motivo da exclusão (aplica-se a TODAS as tags):
+                  </p>
+                  
+                  <ScrollArea className="h-[280px] pr-3">
+                    <div className="space-y-2">
+                      {/* 1. Termo genérico (Stopwords) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="bulk-reason-generic"
+                          checked={bulkDeleteModal.reasons.generic}
+                          onCheckedChange={(checked) => 
+                            setBulkDeleteModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, generic: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="bulk-reason-generic" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">Termo genérico</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Stopwords que não agregam valor de predição
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 2. Não se encaixa nas categorias (Out-of-domain) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="bulk-reason-out-of-domain"
+                          checked={bulkDeleteModal.reasons.outOfDomain}
+                          onCheckedChange={(checked) => 
+                            setBulkDeleteModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, outOfDomain: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="bulk-reason-out-of-domain" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">Não se encaixa nas categorias</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Irrelevância de domínio (Out-of-domain)
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 3. Nome próprio (High Cardinality) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="bulk-reason-proper-name"
+                          checked={bulkDeleteModal.reasons.properName}
+                          onCheckedChange={(checked) => 
+                            setBulkDeleteModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, properName: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="bulk-reason-proper-name" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">Nome próprio</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Alta cardinalidade - cria matriz esparsa
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 4. É um ano (Dados temporais) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="bulk-reason-is-year"
+                          checked={bulkDeleteModal.reasons.isYear}
+                          onCheckedChange={(checked) => 
+                            setBulkDeleteModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, isYear: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="bulk-reason-is-year" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">É um ano</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Dados temporais devem ser variáveis contínuas
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 5. É uma frase (Length excessivo) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="bulk-reason-is-phrase"
+                          checked={bulkDeleteModal.reasons.isPhrase}
+                          onCheckedChange={(checked) => 
+                            setBulkDeleteModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, isPhrase: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="bulk-reason-is-phrase" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">É uma frase, não palavra-chave</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Ensina IA a detectar length excessivo
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 6. Erro de digitação/grafia (Fuzzy matching) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="bulk-reason-typo"
+                          checked={bulkDeleteModal.reasons.typo}
+                          onCheckedChange={(checked) => 
+                            setBulkDeleteModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, typo: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="bulk-reason-typo" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">Erro de digitação/grafia</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Sugere fuzzy matching para correções futuras
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 7. Variação Plural/Singular/Sinônimo (Lemmatization) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="bulk-reason-variation"
+                          checked={bulkDeleteModal.reasons.variation}
+                          onCheckedChange={(checked) => 
+                            setBulkDeleteModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, variation: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="bulk-reason-variation" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">Variação (Plural/Singular/Sinônimo)</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Ensina lemmatization - reduzir à raiz
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 8. Verbo/Ação isolada */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="bulk-reason-isolated-verb"
+                          checked={bulkDeleteModal.reasons.isolatedVerb}
+                          onCheckedChange={(checked) => 
+                            setBulkDeleteModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, isolatedVerb: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="bulk-reason-isolated-verb" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm">Verbo/Ação isolada</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Verbos soltos não classificam - precisam substantivo
+                          </p>
+                        </label>
+                      </div>
+                      
+                      {/* 9. Dado sensível (PII) */}
+                      <div className="flex items-start gap-3 p-2 rounded bg-background/50 hover:bg-background/80 transition-colors">
+                        <Checkbox
+                          id="bulk-reason-pii"
+                          checked={bulkDeleteModal.reasons.pii}
+                          onCheckedChange={(checked) => 
+                            setBulkDeleteModal(prev => ({ 
+                              ...prev, 
+                              reasons: { ...prev.reasons, pii: checked === true }
+                            }))
+                          }
+                        />
+                        <label htmlFor="bulk-reason-pii" className="cursor-pointer flex-1">
+                          <span className="font-medium text-foreground text-sm text-red-400">Dado sensível (PII)</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            CPF, Telefone, E-mail - bloquear por segurança
+                          </p>
+                        </label>
+                      </div>
+                    </div>
+                  </ScrollArea>
+                </div>
+                
+                {!Object.values(bulkDeleteModal.reasons).some(v => v) && (
+                  <p className="text-xs text-amber-400 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Escolha ao menos um motivo para excluir
+                  </p>
+                )}
+                
+                <p className="text-xs text-muted-foreground">
+                  Esta ação é <strong>irreversível</strong> e será registrada no log de atividades.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleteModal.isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
+              disabled={!Object.values(bulkDeleteModal.reasons).some(v => v) || bulkDeleteModal.isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {bulkDeleteModal.isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Confirmar Exclusão em Massa
+                </>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
