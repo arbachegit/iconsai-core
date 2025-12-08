@@ -232,12 +232,18 @@ const Admin = () => {
     <div className="min-h-screen flex flex-col bg-background">
       {/* Fixed Global Header */}
       <header 
-        className={`fixed top-0 left-0 right-0 h-12 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-primary/20 z-30 flex items-center justify-start px-4 pr-6 transition-all duration-300 ease-in-out`}
+        className={`fixed top-0 left-0 right-0 h-12 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-primary/20 z-30 flex items-center justify-between px-4 pr-6 transition-all duration-300 ease-in-out`}
         style={{
           paddingLeft: isSidebarCollapsed ? '80px' : '272px',
         }}
       >
-        {/* Logo and Admin Panel Text - Left side */}
+        {/* Notifications - Left side */}
+        <div className="flex items-center gap-4">
+          <NotificationsPanel />
+          <div className="h-6 w-px bg-border/40" />
+        </div>
+
+        {/* Logo and Admin Panel Text - Extreme Right */}
         <div className="flex items-center gap-3">
           <img 
             src={knowriskLogo} 
@@ -245,12 +251,6 @@ const Admin = () => {
             className="h-7 w-7 rounded-full object-cover"
           />
           <span className="text-lg font-bold text-gradient whitespace-nowrap">Admin Panel</span>
-        </div>
-
-        {/* Separator + Notifications - Right side */}
-        <div className="flex items-center gap-4 ml-auto">
-          <div className="h-6 w-px bg-border/40" />
-          <NotificationsPanel />
         </div>
       </header>
 
