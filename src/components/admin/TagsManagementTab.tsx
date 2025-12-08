@@ -81,6 +81,7 @@ import { TagFilters } from "./tags/TagFilters";
 import { useTagsData } from "./tags/useTagsData";
 import { useSimilarityCalculations } from "./tags/useSimilarityCalculations";
 import { TagUnificationSuggestionsModal } from "./tags/TagUnificationSuggestionsModal";
+import { SimilarityReviewPanel } from "./tags/SimilarityReviewPanel";
 
 interface Tag {
   id: string;
@@ -135,6 +136,8 @@ export const TagsManagementTab = () => {
   // Unification suggestions modal state
   const [suggestionsModalOpen, setSuggestionsModalOpen] = useState(false);
   
+  // Similarity Review Panel state
+  const [similarityReviewOpen, setSimilarityReviewOpen] = useState(false);
   // Import taxonomy state
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
@@ -1703,6 +1706,38 @@ export const TagsManagementTab = () => {
         onOpenConflictModal={openConflictModal}
         onDelete={openDeleteConfirmModal}
         onRejectDuplicate={handleRejectDuplicate}
+      />
+
+      {/* Bulk Similarity Review Button */}
+      {semanticDuplicates.length > 0 && !similarityReviewOpen && (
+        <Card className="p-4 border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-indigo-500/5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-5 w-5 text-purple-400" />
+              <div>
+                <h3 className="font-semibold text-sm">Revisão em Massa de Similaridades</h3>
+                <p className="text-xs text-muted-foreground">
+                  {semanticDuplicates.length} pares de tags similares detectados
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={() => setSimilarityReviewOpen(true)}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Revisar Similaridades
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Similarity Review Panel */}
+      <SimilarityReviewPanel
+        open={similarityReviewOpen}
+        onClose={() => setSimilarityReviewOpen(false)}
+        semanticDuplicates={semanticDuplicates}
+        allTags={allTags}
       />
 
       {/* Machine Learning Rules Panel */}

@@ -3,6 +3,8 @@
  * Baseado em técnicas de Data Science para detecção de duplicatas
  */
 
+export type ReasonType = 'similarity' | 'case' | 'typo' | 'plural' | 'acronym' | 'language' | 'synonym' | 'generalization';
+
 export interface MergeReasons {
   synonymy: boolean;
   grammaticalVariation: boolean;
@@ -17,6 +19,73 @@ export interface SuggestedReasons {
   reasons: MergeReasons;
   confidence: number;
   explanations: string[];
+}
+
+export interface ReasonBadge {
+  text: string;
+  type: ReasonType;
+}
+
+/**
+ * Returns a human-readable reason badge explaining why two tags are considered similar
+ */
+export function getReasonBadge(tag1: string, tag2: string, similarity: number): ReasonBadge {
+  const n1 = tag1.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const n2 = tag2.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  
+  // Check for case sensitivity mismatch (same when lowercased, different original)
+  if (n1 === n2 && tag1 !== tag2) {
+    return { text: 'Diferença de Maiúsculas', type: 'case' };
+  }
+  
+  // Check for plural pattern
+  if (n1 + 's' === n2 || n2 + 's' === n1 ||
+      n1 + 'es' === n2 || n2 + 'es' === n1 ||
+      n1.replace(/oes$/, 'ao') === n2 || n2.replace(/oes$/, 'ao') === n1 ||
+      n1.replace(/ais$/, 'al') === n2 || n2.replace(/ais$/, 'al') === n1) {
+    return { text: 'Plural/Singular', type: 'plural' };
+  }
+  
+  // Check for acronym relationship
+  const isAcr1 = tag1.length <= 6 && tag1 === tag1.toUpperCase() && /^[A-Z]+$/.test(tag1.replace(/[^a-zA-Z]/g, ''));
+  const isAcr2 = tag2.length <= 6 && tag2 === tag2.toUpperCase() && /^[A-Z]+$/.test(tag2.replace(/[^a-zA-Z]/g, ''));
+  if (isAcr1 !== isAcr2) {
+    const acronym = isAcr1 ? tag1 : tag2;
+    const full = isAcr1 ? tag2 : tag1;
+    const initials = full.split(/[\s-]+/).filter(w => w.length > 0).map(w => w[0].toUpperCase()).join('');
+    if (initials === acronym.toUpperCase()) {
+      return { text: 'Sigla ↔ Extensão', type: 'acronym' };
+    }
+  }
+  
+  // Check for typo (Levenshtein distance 1-2)
+  const distance = levenshteinDistanceSimple(n1, n2);
+  const maxLen = Math.max(n1.length, n2.length);
+  if ((maxLen >= 5 && distance <= 2 && distance > 0) || 
+      (maxLen >= 3 && maxLen < 5 && distance === 1)) {
+    return { text: 'Possível Typo', type: 'typo' };
+  }
+  
+  // Default to similarity percentage
+  const pct = Math.round(similarity * 100);
+  return { text: `${pct}% Similaridade`, type: 'similarity' };
+}
+
+// Simple Levenshtein for badge detection (duplicated for module isolation)
+function levenshteinDistanceSimple(a: string, b: string): number {
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
+      }
+    }
+  }
+  return matrix[b.length][a.length];
 }
 
 // Levenshtein distance para detectar typos
