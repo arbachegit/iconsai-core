@@ -398,9 +398,9 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         >
           {/* Centered Chevron Toggle */}
           {!isCollapsed && (
-            <button
+            <button 
               onClick={() => setIsFooterCollapsed(!isFooterCollapsed)}
-              className="w-full flex justify-center py-2 border-b border-border/40 hover:bg-muted/50 transition-colors duration-200"
+              className="w-full flex justify-center py-0.5 border-b border-border/40 hover:bg-muted/50 transition-colors duration-200"
             >
               <ChevronDown 
                 className={`w-4 h-4 text-muted-foreground transition-transform duration-300 ${isFooterCollapsed ? 'rotate-180' : ''}`} 
