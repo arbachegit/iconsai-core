@@ -414,20 +414,20 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
               <div className="flex flex-col gap-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="w-full h-8" onClick={() => navigate("#")}>
-                      <BarChart3 className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Data Analytics</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
                     <Button variant="ghost" size="icon" className="w-full h-8" onClick={() => navigate("/docs")}>
                       <BookOpen className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="right">Documentation</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="w-full h-8 hover:text-primary" onClick={() => navigate("#")}>
+                      <BarChart3 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Data Analytics</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -453,20 +453,20 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
               <div className="flex flex-row justify-evenly items-center py-1 gap-2 transition-all duration-300">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("#")}>
-                      <BarChart3 className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Data Analytics</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/docs")}>
                       <BookOpen className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top">Documentation</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-primary" onClick={() => navigate("#")}>
+                      <BarChart3 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Data Analytics</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -490,14 +490,14 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             ) : (
               // Footer expanded: vertical with text labels
               <div className="flex flex-col gap-1 transition-all duration-300">
-                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm" onClick={() => navigate("#")}>
-                  <BarChart3 className="w-4 h-4 shrink-0" />
-                  <span className="transition-opacity duration-200">Data Analytics</span>
-                </Button>
-
                 <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm" onClick={() => navigate("/docs")}>
                   <BookOpen className="w-4 h-4 shrink-0" />
                   <span className="transition-opacity duration-200">Documentation</span>
+                </Button>
+
+                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm hover:text-primary" onClick={() => navigate("#")}>
+                  <BarChart3 className="w-4 h-4 shrink-0" />
+                  <span className="transition-opacity duration-200">Data Analytics</span>
                 </Button>
 
                 <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm text-primary hover:text-primary" onClick={() => navigate("/")}>
