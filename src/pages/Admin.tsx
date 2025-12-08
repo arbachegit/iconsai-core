@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Globe } from "lucide-react";
+import { Loader2, Languages } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { NotificationsPanel } from "@/components/admin/NotificationsPanel";
 import { supabase } from "@/integrations/supabase/client";
@@ -112,9 +112,9 @@ const Admin = () => {
   const { i18n } = useTranslation();
 
   const languages = [
-    { code: "pt", label: "Português", flag: "🇧🇷" },
-    { code: "en", label: "English", flag: "🇺🇸" },
-    { code: "fr", label: "Français", flag: "🇫🇷" },
+    { code: "pt", label: "Português", abbr: "PT" },
+    { code: "en", label: "English", abbr: "EN" },
+    { code: "fr", label: "Français", abbr: "FR" },
   ];
 
   const handleLanguageChange = async (code: string) => {
@@ -300,8 +300,8 @@ const Admin = () => {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <Globe className="h-4 w-4" />
-                    <span className="text-sm">{currentLanguage.flag}</span>
+                    <Languages className="h-4 w-4" />
+                    <span className="text-xs font-semibold">{currentLanguage.abbr}</span>
                   </>
                 )}
               </Button>
@@ -311,11 +311,11 @@ const Admin = () => {
                 <DropdownMenuItem
                   key={lang.code}
                   onClick={() => handleLanguageChange(lang.code)}
-                  className={`flex items-center gap-2 cursor-pointer ${
+                  className={`flex items-center gap-3 cursor-pointer ${
                     i18n.language === lang.code ? "bg-accent" : ""
                   }`}
                 >
-                  <span>{lang.flag}</span>
+                  <span className="text-xs font-bold text-muted-foreground w-5">{lang.abbr}</span>
                   <span>{lang.label}</span>
                 </DropdownMenuItem>
               ))}
