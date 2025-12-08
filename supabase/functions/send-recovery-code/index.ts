@@ -165,6 +165,56 @@ serve(async (req) => {
       details: { code_sent: true },
     });
 
+    // Dispatch password reset notification via centralized system
+    try {
+      // Check notification preferences for password_reset event
+      const { data: prefData } = await supabase
+        .from("notification_preferences")
+        .select("email_enabled, whatsapp_enabled")
+        .eq("event_type", "password_reset")
+        .single();
+
+      if (prefData) {
+        const { data: settings } = await supabase
+          .from("admin_settings")
+          .select("gmail_notification_email, whatsapp_target_phone, whatsapp_global_enabled")
+          .single();
+
+        // Send email notification if enabled
+        if (prefData.email_enabled && settings?.gmail_notification_email) {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "Health AI App <noreply@knowyou.app>",
+              to: [settings.gmail_notification_email],
+              subject: "🔑 Solicitação de Recuperação de Senha",
+              html: `<p>Uma solicitação de recuperação de senha foi feita para: <strong>${email}</strong></p><p>Data/Hora: ${new Date().toLocaleString('pt-BR')}</p>`,
+            }),
+          });
+          console.log("[NotificationDispatcher] Password reset email sent");
+        }
+
+        // Send WhatsApp notification if enabled
+        if (prefData.whatsapp_enabled && settings?.whatsapp_global_enabled && settings?.whatsapp_target_phone) {
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phoneNumber: settings.whatsapp_target_phone,
+              message: `🔑 Solicitação de Recuperação de Senha\n\nUma solicitação de recuperação de senha foi feita para: ${email}`,
+              eventType: "password_reset",
+            },
+          });
+          console.log("[NotificationDispatcher] Password reset WhatsApp sent");
+        }
+      }
+    } catch (notifyError) {
+      console.error("[NotificationDispatcher] Error sending password reset notification:", notifyError);
+      // Don't fail the main flow if notification fails
+    }
+
     return new Response(
       JSON.stringify({ success: true, message: "Código enviado para seu email" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
