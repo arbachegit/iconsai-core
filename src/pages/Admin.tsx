@@ -40,6 +40,8 @@ const DocumentationSyncTab = lazy(() => import("@/components/admin/Documentation
 const TagsManagementTab = lazy(() => import("@/components/admin/TagsManagementTab").then(m => ({ default: m.TagsManagementTab })));
 const MLDashboardTab = lazy(() => import("@/components/admin/MLDashboardTab").then(m => ({ default: m.MLDashboardTab })));
 const MaieuticTrainingTab = lazy(() => import("@/components/admin/MaieuticTrainingTab").then(m => ({ default: m.MaieuticTrainingTab })));
+const TaxonomyMLAuditTab = lazy(() => import("@/components/admin/TaxonomyMLAuditTab").then(m => ({ default: m.TaxonomyMLAuditTab })));
+const ManageTaxonomyTab = lazy(() => import("@/components/admin/ManageTaxonomyTab").then(m => ({ default: m.ManageTaxonomyTab })));
 
 // Loading fallback component
 const TabLoadingFallback = () => (
@@ -48,7 +50,7 @@ const TabLoadingFallback = () => (
   </div>
 );
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -82,6 +84,8 @@ const TAB_LABELS: Record<TabType, string> = {
   "documentation-sync": "Sincronizar Docs",
   "ml-dashboard": "Machine Learning ML",
   "maieutic-training": "Treino IA Maiêutica",
+  "taxonomy-ml-audit": "Taxonomy ML",
+  "manage-taxonomy": "Gerenciar Taxonomia",
 };
 
 const Admin = () => {
@@ -217,6 +221,8 @@ const Admin = () => {
         case "youtube": return <YouTubeCacheTab />;
         case "ml-dashboard": return <MLDashboardTab />;
         case "maieutic-training": return <MaieuticTrainingTab />;
+        case "taxonomy-ml-audit": return <TaxonomyMLAuditTab />;
+        case "manage-taxonomy": return <ManageTaxonomyTab />;
         default: return <DashboardTab />;
       }
     })();

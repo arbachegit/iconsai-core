@@ -104,6 +104,7 @@ export const DocumentAnalysisTab = () => {
   const [selectedDocTags, setSelectedDocTags] = useState<Set<string>>(new Set());
   const [unifyModalOpen, setUnifyModalOpen] = useState(false);
   const [adoptModalOpen, setAdoptModalOpen] = useState(false);
+  const [isAdoptProcessing, setIsAdoptProcessing] = useState(false);
   
   const queryClient = useQueryClient();
 
@@ -1319,10 +1320,25 @@ export const DocumentAnalysisTab = () => {
             variant="ghost" 
             size="sm"
             className="text-white hover:bg-white/20"
-            onClick={() => setAdoptModalOpen(true)}
+            disabled={isAdoptProcessing}
+            onClick={() => {
+              setIsAdoptProcessing(true);
+              // Simulate brief validation loading
+              setTimeout(() => {
+                setAdoptModalOpen(true);
+                setIsAdoptProcessing(false);
+              }, 300);
+            }}
           >
-            <FolderTree className="h-4 w-4 mr-2" />
+            {isAdoptProcessing ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <FolderTree className="h-4 w-4 mr-2" />
+            )}
             Taxonomy (Adotar)
+            <Badge variant="secondary" className="ml-2 bg-cyan-500/20 text-cyan-300 border-cyan-400/40">
+              {selectedDocTags.size}
+            </Badge>
           </Button>
           
           <div className="h-6 w-px bg-white/20" />

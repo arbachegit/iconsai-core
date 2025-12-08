@@ -391,7 +391,7 @@ export const TaxonomyAdoptionModal = ({
             )}
           </ScrollArea>
 
-          {/* Hierarchical preview */}
+          {/* AI Reasoning Section */}
           {selectedParent && (
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
               <h4 className="text-sm font-medium mb-2 flex items-center gap-2 text-emerald-400">
@@ -421,11 +421,49 @@ export const TaxonomyAdoptionModal = ({
                   )}
                 </div>
               </div>
+              
+              {/* AI Reasoning */}
+              <div className="mt-3 pt-3 border-t border-emerald-500/20">
+                <h5 className="text-xs font-semibold text-emerald-300 mb-2">Por que esta sugestão?</h5>
+                <ul className="text-xs space-y-1 text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <ShieldCheck className="h-3 w-3 text-green-400" />
+                    <span>Score de validação: <strong className="text-foreground">{selectedParent.validation.score}%</strong></span>
+                  </li>
+                  {selectedParent.validation.violations.length === 0 ? (
+                    <li className="flex items-center gap-2">
+                      <Check className="h-3 w-3 text-green-400" />
+                      <span>Todas as regras de validação aprovadas</span>
+                    </li>
+                  ) : (
+                    selectedParent.validation.violations.slice(0, 2).map((v, i) => (
+                      <li key={i} className="flex items-center gap-2">
+                        <AlertTriangle className="h-3 w-3 text-amber-400" />
+                        <span>{v.message}</span>
+                      </li>
+                    ))
+                  )}
+                  <li className="flex items-center gap-2">
+                    <Heart className="h-3 w-3 text-pink-400" />
+                    <span>Domínio: <strong className="text-foreground">{getDomainLabel()}</strong></span>
+                  </li>
+                </ul>
+              </div>
             </div>
           )}
         </div>
 
-        <DialogFooter className="flex-shrink-0 pt-4 border-t">
+        <DialogFooter className="flex-shrink-0 pt-4 border-t gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              onOpenChange(false);
+            }}
+            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+          >
+            <X className="h-4 w-4 mr-2" />
+            Rejeitar
+          </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
@@ -441,8 +479,8 @@ export const TaxonomyAdoptionModal = ({
               </>
             ) : (
               <>
-                <FolderTree className="h-4 w-4 mr-2" />
-                Confirmar Adoção
+                <Check className="h-4 w-4 mr-2" />
+                Aceitar Adoção
               </>
             )}
           </Button>
