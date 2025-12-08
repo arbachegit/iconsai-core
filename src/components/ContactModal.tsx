@@ -84,7 +84,6 @@ export const ContactModal = ({ children }: ContactModalProps) => {
     
     // Honeypot anti-spam check - silently reject if filled
     if (honeypot) {
-      console.log('Spam detected via honeypot');
       toast({
         title: t('contact.successTitle'),
         description: t('contact.successDescription'),

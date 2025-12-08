@@ -231,7 +231,6 @@ export const DocumentsTab = () => {
     for (let i = 1; i <= totalPages; i++) {
       // Check for cancellation at each page
       if (abortRef?.current) {
-        console.log(`Extração cancelada na página ${i}/${totalPages}`);
         break;
       }
       
@@ -345,8 +344,6 @@ export const DocumentsTab = () => {
     if (!data.success) {
       throw new Error(data.error || 'Document AI processing failed');
     }
-
-    console.log(`Document AI stats: ${data.statistics?.tableCount} tables, ${data.statistics?.totalTableRows} rows`);
     
     return data.text;
   };

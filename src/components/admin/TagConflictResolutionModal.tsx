@@ -706,15 +706,6 @@ export const TagConflictResolutionModal = ({
           </Button>
           <Button
             onClick={() => {
-              console.log("[TAG MERGE] Merge button clicked!");
-              console.log("[TAG MERGE] State check:", {
-                selectedTargetId,
-                tagsCount: tags.length,
-                conflictType,
-                selectedParentId,
-                hasSelectedMergeReason
-              });
-              
               if (!selectedTargetId) {
                 toast.error("Selecione uma tag alvo");
                 return;
