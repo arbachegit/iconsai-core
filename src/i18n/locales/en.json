@@ -329,5 +329,12 @@
     "rateLimitTitle": "Please wait",
     "rateLimitDescription": "You can send another message in {{seconds}} seconds",
     "cooldownMessage": "Wait {{seconds}}s"
+  },
+  "admin": {
+    "panel": "Admin Panel",
+    "dataAnalytics": "Data Analytics",
+    "documentation": "Documentation",
+    "backToApp": "Back to App",
+    "logout": "Logout"
   }
 }

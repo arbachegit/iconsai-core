@@ -6,6 +6,7 @@ import { NotificationsPanel } from "@/components/admin/NotificationsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { t } from "i18next";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -109,7 +110,7 @@ const Admin = () => {
   const [isChangingLanguage, setIsChangingLanguage] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const languages = [
     { code: "pt", label: "Português", abbr: "PT" },
@@ -279,7 +280,7 @@ const Admin = () => {
             alt="KnowYOU" 
             className="h-8 w-8 rounded-full object-cover"
           />
-          <span className="text-sm font-medium text-foreground">Admin Panel</span>
+          <span className="text-sm font-medium text-foreground whitespace-nowrap">{t('admin.panel')}</span>
         </div>
         
         {/* Spacer to push right elements */}
