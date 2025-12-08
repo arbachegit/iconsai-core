@@ -29,8 +29,44 @@ import {
   Settings,
   Cog,
   History,
-  User
+  User,
+  KeyRound,
+  LogIn,
+  Brain,
+  Tags,
+  ScanSearch
 } from 'lucide-react';
+
+interface EventConfig {
+  icon: React.ComponentType<{ className?: string }>;
+  category: 'security' | 'intelligence' | 'system';
+  description?: string;
+}
+
+const EVENT_CONFIG: Record<string, EventConfig> = {
+  // Category A: Security & Auth
+  password_reset: { icon: KeyRound, category: 'security', description: 'Quando usuário solicita recuperação de senha' },
+  login_alert: { icon: LogIn, category: 'security', description: 'Login detectado em novo dispositivo' },
+  security_alert: { icon: Shield, category: 'security', description: 'Alertas de segurança do sistema' },
+  
+  // Category B: Data Intelligence
+  sentiment_alert: { icon: Brain, category: 'intelligence', description: 'IA detecta sentimento negativo em análises' },
+  taxonomy_anomaly: { icon: Tags, category: 'intelligence', description: 'Falha na auditoria de taxonomia ML' },
+  ml_accuracy_drop: { icon: TrendingDown, category: 'intelligence', description: 'Queda na precisão do sistema ML' },
+  
+  // Category C: System Status
+  new_document: { icon: FileText, category: 'system', description: 'Novo documento processado no RAG' },
+  document_failed: { icon: AlertTriangle, category: 'system', description: 'Falha no processamento de documento' },
+  new_contact_message: { icon: MessageCircle, category: 'system', description: 'Nova mensagem de contato recebida' },
+  new_conversation: { icon: MessageSquare, category: 'system', description: 'Nova conversa iniciada no chat' },
+  scan_complete: { icon: ScanSearch, category: 'system', description: 'Scan de segurança finalizado' },
+};
+
+const CATEGORY_LABELS: Record<string, { title: string; icon: React.ComponentType<{ className?: string }> }> = {
+  security: { title: 'Segurança & Autenticação', icon: Shield },
+  intelligence: { title: 'Inteligência de Dados', icon: Brain },
+  system: { title: 'Status do Sistema', icon: Bell },
+};
 
 interface NotificationPreference {
   id: string;
@@ -56,15 +92,6 @@ interface SeverityHistoryEntry {
   change_reason: string | null;
   created_at: string;
 }
-
-const EVENT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  new_document: FileText,
-  document_failed: AlertTriangle,
-  new_contact_message: MessageCircle,
-  security_alert: Shield,
-  ml_accuracy_drop: TrendingDown,
-  new_conversation: MessageSquare,
-};
 
 // Format phone number for display with auto-masking
 const formatPhoneNumber = (value: string): string => {
@@ -508,80 +535,106 @@ export default function NotificationSettingsTab() {
         </CardContent>
       </Card>
 
-      {/* Event Types List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Tipos de Evento</CardTitle>
-          <CardDescription>
-            Configure notificações individuais para cada tipo de evento do sistema
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="divide-y divide-border">
-            {preferences.map((pref) => {
-              const IconComponent = EVENT_ICONS[pref.event_type] || Bell;
-              const isSecurityAlert = pref.event_type === 'security_alert';
-              
-              return (
-                <div 
-                  key={pref.id} 
-                  className="flex items-center justify-between px-6 py-4 hover:bg-muted/50 transition-colors"
-                >
-                  {/* Left: Icon and Label */}
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                      <IconComponent className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="font-medium text-sm truncate">{pref.event_label}</span>
-                      {isSecurityAlert && getCurrentSeverityBadge()}
-                    </div>
-                  </div>
+      {/* Event Types by Category */}
+      {(['security', 'intelligence', 'system'] as const).map((category) => {
+        const categoryConfig = CATEGORY_LABELS[category];
+        const CategoryIcon = categoryConfig.icon;
+        const categoryPrefs = preferences.filter(
+          (p) => EVENT_CONFIG[p.event_type]?.category === category
+        );
 
-                  {/* Right: Controls */}
-                  <div className="flex items-center gap-6 shrink-0">
-                    {/* Security Alert Config Button */}
-                    {isSecurityAlert && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={openSecurityModal}
-                        className="gap-1.5 text-muted-foreground hover:text-foreground"
-                      >
-                        <Cog className="h-4 w-4" />
-                        <span className="hidden sm:inline">Severidade</span>
-                      </Button>
-                    )}
-                    
-                    {/* Email Toggle */}
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-blue-500" />
-                      <Switch
-                        checked={pref.email_enabled}
-                        onCheckedChange={(checked) => 
-                          togglePreference(pref.id, 'email_enabled', checked)
-                        }
-                      />
-                    </div>
+        if (categoryPrefs.length === 0) return null;
 
-                    {/* WhatsApp Toggle */}
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-green-500" />
-                      <Switch
-                        checked={pref.whatsapp_enabled}
-                        onCheckedChange={(checked) => 
-                          togglePreference(pref.id, 'whatsapp_enabled', checked)
-                        }
-                        disabled={!whatsappGlobalEnabled}
-                      />
+        return (
+          <Card key={category} className="border-primary/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CategoryIcon className="h-5 w-5 text-primary" />
+                {categoryConfig.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {categoryPrefs.map((pref) => {
+                  const eventConfig = EVENT_CONFIG[pref.event_type];
+                  const IconComponent = eventConfig?.icon || Bell;
+                  const isSecurityAlert = pref.event_type === 'security_alert';
+                  const isSentimentAlert = pref.event_type === 'sentiment_alert';
+                  
+                  return (
+                    <div 
+                      key={pref.id} 
+                      className="flex items-center justify-between px-6 py-4 hover:bg-muted/50 transition-colors"
+                    >
+                      {/* Left: Icon and Label */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                          <IconComponent className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm truncate">{pref.event_label}</span>
+                            {isSecurityAlert && getCurrentSeverityBadge()}
+                            {isSentimentAlert && (
+                              <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">
+                                IA
+                              </Badge>
+                            )}
+                          </div>
+                          {eventConfig?.description && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              {eventConfig.description}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Controls */}
+                      <div className="flex items-center gap-6 shrink-0">
+                        {/* Security Alert Config Button */}
+                        {isSecurityAlert && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={openSecurityModal}
+                            className="gap-1.5 text-muted-foreground hover:text-foreground"
+                          >
+                            <Cog className="h-4 w-4" />
+                            <span className="hidden sm:inline">Severidade</span>
+                          </Button>
+                        )}
+                        
+                        {/* Email Toggle */}
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-blue-500" />
+                          <Switch
+                            checked={pref.email_enabled}
+                            onCheckedChange={(checked) => 
+                              togglePreference(pref.id, 'email_enabled', checked)
+                            }
+                          />
+                        </div>
+
+                        {/* WhatsApp Toggle */}
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4 text-green-500" />
+                          <Switch
+                            checked={pref.whatsapp_enabled}
+                            onCheckedChange={(checked) => 
+                              togglePreference(pref.id, 'whatsapp_enabled', checked)
+                            }
+                            disabled={!whatsappGlobalEnabled}
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
 
       {/* Security Severity Configuration Modal */}
       <Dialog open={securityModalOpen} onOpenChange={setSecurityModalOpen}>

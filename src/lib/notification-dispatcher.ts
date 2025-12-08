@@ -6,7 +6,15 @@ export type NotificationEventType =
   | 'new_contact_message'
   | 'security_alert'
   | 'ml_accuracy_drop'
-  | 'new_conversation';
+  | 'new_conversation'
+  // Security & Auth
+  | 'password_reset'
+  | 'login_alert'
+  // Data Intelligence
+  | 'sentiment_alert'
+  | 'taxonomy_anomaly'
+  // System Status
+  | 'scan_complete';
 
 interface NotificationPayload {
   eventType: NotificationEventType;
@@ -160,4 +168,42 @@ export const notifyNewConversation = (sessionId: string, chatType: string) =>
     eventType: 'new_conversation',
     subject: '💬 Nova Conversa de Usuário',
     message: `Nova conversa iniciada no chat ${chatType}.\nSession ID: ${sessionId}`
+  });
+
+// Security & Auth
+export const notifyPasswordReset = (email: string) => 
+  dispatchNotification({
+    eventType: 'password_reset',
+    subject: '🔑 Solicitação de Recuperação de Senha',
+    message: `Uma solicitação de recuperação de senha foi feita para: ${email}`
+  });
+
+export const notifyLoginAlert = (email: string, deviceInfo: string) => 
+  dispatchNotification({
+    eventType: 'login_alert',
+    subject: '🚨 Alerta de Login Suspeito',
+    message: `Login detectado em novo dispositivo para ${email}.\n\nDispositivo: ${deviceInfo}`
+  });
+
+// Data Intelligence
+export const notifySentimentAlert = (sessionId: string, sentiment: string, message: string) => 
+  dispatchNotification({
+    eventType: 'sentiment_alert',
+    subject: '😔 Alerta de Sentimento Negativo Detectado',
+    message: `Sentimento ${sentiment} detectado na sessão ${sessionId}.\n\nMensagem: ${message}`
+  });
+
+export const notifyTaxonomyAnomaly = (tagName: string, issue: string) => 
+  dispatchNotification({
+    eventType: 'taxonomy_anomaly',
+    subject: '⚠️ Anomalia de Taxonomia Detectada',
+    message: `Problema detectado com a tag "${tagName}".\n\nDetalhes: ${issue}`
+  });
+
+// System Status
+export const notifyScanComplete = (status: string, findingsCount: number) => 
+  dispatchNotification({
+    eventType: 'scan_complete',
+    subject: '🔍 Scan de Segurança Concluído',
+    message: `Scan finalizado com status: ${status}.\n\nProblemas encontrados: ${findingsCount}`
   });
