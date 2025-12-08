@@ -44,7 +44,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -185,6 +185,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "rag-metrics" as TabType, label: "Métricas RAG", icon: Database },
         { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
         { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
+        { id: "manage-taxonomy" as TabType, label: "Gerenciar Taxonomia", icon: Settings },
       ]
     },
     {
@@ -210,6 +211,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "tag-modification-logs" as TabType, label: "Logs de Mescla Tags", icon: Tags },
         { id: "suggestion-audit" as TabType, label: "Auditoria Sugestões", icon: Sparkles },
         { id: "ml-dashboard" as TabType, label: "Machine Learning ML", icon: Brain },
+        { id: "taxonomy-ml-audit" as TabType, label: "Taxonomy ML", icon: Target },
         { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
         { id: "contact-messages" as TabType, label: "Mensagens Contato", icon: MessageSquare },
         { id: "documentation-sync" as TabType, label: "Sincronizar Docs", icon: RefreshCw },
