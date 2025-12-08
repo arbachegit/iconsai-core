@@ -5,6 +5,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Sanitize phone number: remove spaces, parentheses, hyphens, and other formatting
+const sanitizePhoneNumber = (phone: string): string => {
+  // Keep only + and digits
+  return phone.replace(/[^\d+]/g, '');
+};
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -12,18 +18,22 @@ serve(async (req) => {
   }
 
   try {
-    const { phoneNumber, message, eventType } = await req.json();
+    const { phoneNumber: rawPhoneNumber, message, eventType } = await req.json();
     
     // Validate required inputs
-    if (!phoneNumber || !message) {
+    if (!rawPhoneNumber || !message) {
       console.error('[WhatsApp] Missing required fields: phoneNumber or message');
       throw new Error('phoneNumber and message are required');
     }
 
-    // Validate phone number format (should start with + and country code)
+    // Sanitize phone number before validation
+    const phoneNumber = sanitizePhoneNumber(rawPhoneNumber);
+    console.log(`[WhatsApp] Raw phone: ${rawPhoneNumber}, Sanitized: ${phoneNumber}`);
+
+    // Validate phone number format (E.164: should start with + and country code)
     if (!phoneNumber.match(/^\+[1-9]\d{1,14}$/)) {
-      console.error('[WhatsApp] Invalid phone number format:', phoneNumber);
-      throw new Error('Invalid phone number format. Must include country code (e.g., +5511999999999)');
+      console.error('[WhatsApp] Invalid phone number format after sanitization:', phoneNumber);
+      throw new Error('Invalid phone number format. Must include country code (e.g., +1234567890 or +5511999999999)');
     }
 
     // Get Twilio credentials from environment
