@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
 
-export const MLFlowDiagram = () => {
+interface MLFlowDiagramProps {
+  /** Activity level from 0 to 1, affects animation speed */
+  activityLevel?: number;
+}
+
+export const MLFlowDiagram = ({ activityLevel = 0.5 }: MLFlowDiagramProps) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
   }, []);
+
+  // Calculate animation durations based on activity level (higher activity = faster)
+  // Activity 0 = slowest (3s base), Activity 1 = fastest (0.5s base)
+  const baseDuration = 3 - (activityLevel * 2.5); // Range: 0.5s to 3s
+  const pulseDuration = 4 - (activityLevel * 3); // Range: 1s to 4s
+  const travelDuration = 3 - (activityLevel * 2); // Range: 1s to 3s
 
   return (
     <div 
@@ -98,7 +109,7 @@ export const MLFlowDiagram = () => {
             stroke="hsl(var(--primary))" 
             strokeWidth="2"
           >
-            <animate attributeName="stroke-opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite" />
+            <animate attributeName="stroke-opacity" values="0.6;1;0.6" dur={`${pulseDuration}s`} repeatCount="indefinite" />
           </rect>
           <text x="60" y="50" textAnchor="middle" fill="hsl(var(--primary))" fontSize="11" fontWeight="600">
             👤 Admin
@@ -109,8 +120,8 @@ export const MLFlowDiagram = () => {
           
           {/* Pulse effect */}
           <circle cx="60" cy="55" r="35" fill="none" stroke="hsl(var(--primary))" strokeWidth="1" opacity="0">
-            <animate attributeName="r" values="35;50;35" dur="3s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.4;0;0.4" dur="3s" repeatCount="indefinite" />
+            <animate attributeName="r" values="35;50;35" dur={`${pulseDuration}s`} repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.4;0;0.4" dur={`${pulseDuration}s`} repeatCount="indefinite" />
           </circle>
         </g>
 
@@ -124,12 +135,12 @@ export const MLFlowDiagram = () => {
             strokeDasharray="6 3"
             markerEnd="url(#mlArrowhead)"
           >
-            <animate attributeName="stroke-dashoffset" from="9" to="0" dur="1s" repeatCount="indefinite" />
+            <animate attributeName="stroke-dashoffset" from="9" to="0" dur={`${baseDuration}s`} repeatCount="indefinite" />
           </path>
           
           {/* Traveling data packet */}
           <circle r="4" fill="hsl(var(--primary))">
-            <animateMotion dur="2s" repeatCount="indefinite">
+            <animateMotion dur={`${travelDuration}s`} repeatCount="indefinite">
               <mpath href="#path1" />
             </animateMotion>
           </circle>
@@ -147,7 +158,7 @@ export const MLFlowDiagram = () => {
             stroke="#3B82F6" 
             strokeWidth="2"
           >
-            <animate attributeName="stroke-opacity" values="0.6;1;0.6" dur="2.5s" repeatCount="indefinite" />
+            <animate attributeName="stroke-opacity" values="0.6;1;0.6" dur={`${pulseDuration * 1.2}s`} repeatCount="indefinite" />
           </rect>
           <text x="225" y="50" textAnchor="middle" fill="#3B82F6" fontSize="11" fontWeight="600">
             🗄️ Banco Regras
@@ -157,8 +168,8 @@ export const MLFlowDiagram = () => {
           </text>
           
           <circle cx="225" cy="55" r="40" fill="none" stroke="#3B82F6" strokeWidth="1" opacity="0">
-            <animate attributeName="r" values="40;55;40" dur="3.5s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.3;0;0.3" dur="3.5s" repeatCount="indefinite" />
+            <animate attributeName="r" values="40;55;40" dur={`${pulseDuration * 1.3}s`} repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.3;0;0.3" dur={`${pulseDuration * 1.3}s`} repeatCount="indefinite" />
           </circle>
         </g>
 
@@ -172,11 +183,11 @@ export const MLFlowDiagram = () => {
             strokeDasharray="6 3"
             markerEnd="url(#mlArrowBlue)"
           >
-            <animate attributeName="stroke-dashoffset" from="9" to="0" dur="1s" repeatCount="indefinite" />
+            <animate attributeName="stroke-dashoffset" from="9" to="0" dur={`${baseDuration}s`} repeatCount="indefinite" />
           </path>
           
           <circle r="4" fill="#3B82F6">
-            <animateMotion dur="2s" repeatCount="indefinite" begin="0.5s">
+            <animateMotion dur={`${travelDuration}s`} repeatCount="indefinite" begin="0.3s">
               <mpath href="#path2" />
             </animateMotion>
           </circle>
@@ -194,7 +205,7 @@ export const MLFlowDiagram = () => {
             stroke="#10B981" 
             strokeWidth="2"
           >
-            <animate attributeName="stroke-opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" />
+            <animate attributeName="stroke-opacity" values="0.6;1;0.6" dur={`${pulseDuration * 1.1}s`} repeatCount="indefinite" />
           </rect>
           <text x="405" y="50" textAnchor="middle" fill="#10B981" fontSize="11" fontWeight="600">
             🤖 IA Sugere Tags
@@ -204,8 +215,8 @@ export const MLFlowDiagram = () => {
           </text>
           
           <circle cx="405" cy="55" r="45" fill="none" stroke="#10B981" strokeWidth="1" opacity="0">
-            <animate attributeName="r" values="45;60;45" dur="4s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.3;0;0.3" dur="4s" repeatCount="indefinite" />
+            <animate attributeName="r" values="45;60;45" dur={`${pulseDuration * 1.4}s`} repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.3;0;0.3" dur={`${pulseDuration * 1.4}s`} repeatCount="indefinite" />
           </circle>
         </g>
 
@@ -219,11 +230,11 @@ export const MLFlowDiagram = () => {
             strokeDasharray="6 3"
             markerEnd="url(#mlArrowGreen)"
           >
-            <animate attributeName="stroke-dashoffset" from="9" to="0" dur="1s" repeatCount="indefinite" />
+            <animate attributeName="stroke-dashoffset" from="9" to="0" dur={`${baseDuration}s`} repeatCount="indefinite" />
           </path>
           
           <circle r="4" fill="#10B981">
-            <animateMotion dur="2s" repeatCount="indefinite" begin="1s">
+            <animateMotion dur={`${travelDuration}s`} repeatCount="indefinite" begin="0.6s">
               <mpath href="#path3" />
             </animateMotion>
           </circle>
@@ -241,7 +252,7 @@ export const MLFlowDiagram = () => {
             stroke="#F59E0B" 
             strokeWidth="2"
           >
-            <animate attributeName="stroke-opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite" />
+            <animate attributeName="stroke-opacity" values="0.6;1;0.6" dur={`${pulseDuration}s`} repeatCount="indefinite" />
           </rect>
           <text x="265" y="150" textAnchor="middle" fill="#F59E0B" fontSize="11" fontWeight="600">
             📄 Documento Novo
@@ -251,8 +262,8 @@ export const MLFlowDiagram = () => {
           </text>
           
           <circle cx="265" cy="155" r="50" fill="none" stroke="#F59E0B" strokeWidth="1" opacity="0">
-            <animate attributeName="r" values="50;70;50" dur="3s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.25;0;0.25" dur="3s" repeatCount="indefinite" />
+            <animate attributeName="r" values="50;70;50" dur={`${pulseDuration}s`} repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.25;0;0.25" dur={`${pulseDuration}s`} repeatCount="indefinite" />
           </circle>
         </g>
 
@@ -266,11 +277,11 @@ export const MLFlowDiagram = () => {
             strokeDasharray="6 3"
             markerEnd="url(#mlArrowOrange)"
           >
-            <animate attributeName="stroke-dashoffset" from="9" to="0" dur="1s" repeatCount="indefinite" />
+            <animate attributeName="stroke-dashoffset" from="9" to="0" dur={`${baseDuration}s`} repeatCount="indefinite" />
           </path>
           
           <circle r="4" fill="#F59E0B">
-            <animateMotion dur="3s" repeatCount="indefinite" begin="1.5s">
+            <animateMotion dur={`${travelDuration * 1.2}s`} repeatCount="indefinite" begin="0.9s">
               <mpath href="#path4" />
             </animateMotion>
           </circle>
@@ -285,6 +296,16 @@ export const MLFlowDiagram = () => {
         <text x="240" y="105" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="9" fontStyle="italic">
           Ciclo contínuo de aprendizado
         </text>
+
+        {/* Activity indicator */}
+        {activityLevel > 0.7 && (
+          <g>
+            <circle cx="460" cy="15" r="6" fill="#10B981">
+              <animate attributeName="opacity" values="0.5;1;0.5" dur="0.5s" repeatCount="indefinite" />
+            </circle>
+            <text x="445" y="18" textAnchor="end" fill="#10B981" fontSize="7" fontWeight="600">ALTA</text>
+          </g>
+        )}
       </svg>
       
       <div className="text-[10px] text-muted-foreground text-center mt-2 space-y-0.5">
