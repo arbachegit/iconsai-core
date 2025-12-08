@@ -182,9 +182,11 @@ export const TagConflictResolutionModal = ({
     return 'modified';
   };
 
-  // Reset state when modal opens
+  // Reset state when modal opens - CRITICAL: childTagsMap removed from deps to prevent re-render loop
   useEffect(() => {
     if (open && tags.length > 0) {
+      // IMPORTANT: Always set selectedTargetId to first tag when modal opens
+      console.log("[TAG MERGE] Modal opened with tags:", tags.map(t => ({ id: t.id, name: t.tag_name })));
       setSelectedTargetId(tags[0].id);
       setRationale("");
       setAutoSuggestionApplied(false);
@@ -198,7 +200,7 @@ export const TagConflictResolutionModal = ({
         generalization: false,
       });
       
-      if (conflictType === 'parent' && tags.length > 1) {
+      if ((conflictType === 'parent' || conflictType === 'semantic') && tags.length > 1) {
         // Pre-select all children as coherent by default
         const allChildrenIds = new Set<string>();
         tags.slice(1).forEach(tag => {
@@ -209,7 +211,7 @@ export const TagConflictResolutionModal = ({
         setOrphanChildren(new Set());
       }
     }
-  }, [open, tags, conflictType, childTagsMap]);
+  }, [open, tags, conflictType]); // REMOVED childTagsMap from deps - it causes state reset loops
 
   // Check if at least one merge reason is selected (for child merges)
   const hasSelectedMergeReason = Object.values(mergeReasons).some(v => v);

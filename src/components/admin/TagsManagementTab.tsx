@@ -2606,11 +2606,49 @@ export const TagsManagementTab = () => {
         onOpenChange={setSuggestionsModalOpen}
         parentTags={parentTags}
         childTagsMap={childTagsMap}
+        orphanedTags={orphanedTags}
         onMerge={(type, ids, similarity) => {
           setSuggestionsModalOpen(false);
           openConflictModal(type, ids, similarity);
         }}
         onReject={handleRejectDuplicate}
+        onAdoptOrphan={async (orphanId, parentId) => {
+          try {
+            const { error } = await supabase
+              .from("document_tags")
+              .update({ parent_tag_id: parentId })
+              .eq("id", orphanId);
+            
+            if (error) throw error;
+            
+            const orphan = orphanedTags.find(o => o.id === orphanId);
+            const parent = parentTags.find(p => p.id === parentId);
+            
+            await logTagManagementEvent({
+              input_state: {
+                tags_involved: [{
+                  id: orphanId,
+                  name: orphan?.tag_name || 'unknown',
+                  type: 'child',
+                  parent_id: null
+                }]
+              },
+              action_type: 'adopt_orphan',
+              user_decision: {
+                target_tag_id: orphanId,
+                target_tag_name: orphan?.tag_name,
+                target_parent_id: parentId,
+                target_parent_name: parent?.tag_name,
+                action: 'adopted_from_suggestion_modal'
+              },
+            });
+            
+            toast.success(`"${orphan?.tag_name}" adotada por "${parent?.tag_name}"`);
+            queryClient.invalidateQueries({ queryKey: ["all-tags"] });
+          } catch (error: any) {
+            toast.error(`Erro ao adotar tag: ${error.message}`);
+          }
+        }}
       />
     </div>
   );
