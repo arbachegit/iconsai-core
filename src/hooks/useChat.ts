@@ -7,6 +7,7 @@ import { useChatAnalytics } from "./useChatAnalytics";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
 import { saveSuggestionAudit } from "@/lib/suggestion-audit";
+import { notifySentimentAlert } from "@/lib/notification-dispatcher";
 
 export interface Message {
   role: "user" | "assistant";
@@ -128,6 +129,7 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
         sentiment.score < (settings.alert_threshold || 0.3) &&
         settings.alert_email
       ) {
+        // Legacy direct email alert
         await supabase.functions.invoke("sentiment-alert", {
           body: {
             session_id: sessionId,
@@ -137,6 +139,9 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
             alert_email: settings.alert_email,
           },
         });
+
+        // Dispatch via centralized notification system
+        notifySentimentAlert(sessionId, sentiment.label, text).catch(console.error);
       }
 
       return sentiment;
