@@ -120,7 +120,7 @@ const Header = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button 
-                  className="text-muted-foreground hover:text-foreground transition-all duration-200 hover:scale-110 flex items-center gap-1"
+                  className="text-muted-foreground hover:text-foreground hover:!text-black dark:hover:!text-white transition-all duration-200 hover:scale-110 flex items-center gap-1"
                   title="Idioma / Language"
                   disabled={isChangingLanguage}
                 >

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { exportData } from "@/lib/export-utils";
@@ -20,6 +21,7 @@ import {
   ShieldX,
   RefreshCw, 
   ChevronDown, 
+  ChevronUp,
   FileText,
   Download,
   Clock,
@@ -28,10 +30,16 @@ import {
   Info,
   Settings,
   Loader2,
-  Copy
+  Copy,
+  ArrowUpDown,
+  Filter,
+  CalendarIcon,
+  X
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { DateRange } from "react-day-picker";
 
 interface SecurityFinding {
   id: string;
@@ -68,6 +76,9 @@ interface AdminSettings {
   last_security_scan: string | null;
 }
 
+type SortField = 'scan_timestamp' | 'overall_status' | 'execution_duration_ms';
+type SortDirection = 'asc' | 'desc';
+
 export const SecurityIntegrityTab = () => {
   const [scanHistory, setScanHistory] = useState<ScanResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,6 +93,15 @@ export const SecurityIntegrityTab = () => {
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Sorting state
+  const [sortField, setSortField] = useState<SortField>('scan_timestamp');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  
+  // Filtering state
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [showFilters, setShowFilters] = useState(false);
 
   const fetchScanHistory = async () => {
     try {
@@ -230,6 +250,71 @@ export const SecurityIntegrityTab = () => {
     }
   };
 
+  // Sorting and filtering logic
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-4 h-4 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ChevronUp className="w-4 h-4 ml-1" /> 
+      : <ChevronDown className="w-4 h-4 ml-1" />;
+  };
+
+  const clearFilters = () => {
+    setStatusFilter('all');
+    setDateRange(undefined);
+  };
+
+  const hasActiveFilters = statusFilter !== 'all' || dateRange !== undefined;
+
+  const filteredAndSortedScans = useMemo(() => {
+    let result = [...scanHistory];
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      result = result.filter(scan => scan.overall_status === statusFilter);
+    }
+
+    // Apply date range filter
+    if (dateRange?.from) {
+      result = result.filter(scan => {
+        const scanDate = new Date(scan.scan_timestamp);
+        const from = startOfDay(dateRange.from!);
+        const to = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from!);
+        return isWithinInterval(scanDate, { start: from, end: to });
+      });
+    }
+
+    // Apply sorting
+    result.sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'scan_timestamp':
+          comparison = new Date(a.scan_timestamp).getTime() - new Date(b.scan_timestamp).getTime();
+          break;
+        case 'overall_status':
+          const statusOrder = { critical: 0, warning: 1, healthy: 2 };
+          comparison = statusOrder[a.overall_status] - statusOrder[b.overall_status];
+          break;
+        case 'execution_duration_ms':
+          comparison = a.execution_duration_ms - b.execution_duration_ms;
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return result;
+  }, [scanHistory, statusFilter, dateRange, sortField, sortDirection]);
+
   const latestScan = scanHistory[0];
 
   if (isLoading) {
@@ -349,154 +434,253 @@ export const SecurityIntegrityTab = () => {
 
       {/* Scan History Table */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5" />
             Histórico de Scans
           </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn("gap-2", hasActiveFilters && "border-primary text-primary")}
+          >
+            <Filter className="w-4 h-4" />
+            Filtros
+            {hasActiveFilters && <Badge variant="secondary" className="ml-1 h-5 px-1.5">{(statusFilter !== 'all' ? 1 : 0) + (dateRange ? 1 : 0)}</Badge>}
+          </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Filter Toolbar */}
+          {showFilters && (
+            <div className="flex flex-wrap items-end gap-4 p-4 bg-muted/30 rounded-lg border">
+              <div className="space-y-2">
+                <Label className="text-sm">Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border z-50">
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="critical">Crítico</SelectItem>
+                    <SelectItem value="warning">Atenção</SelectItem>
+                    <SelectItem value="healthy">Aprovado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-sm">Período</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[240px] justify-start text-left font-normal",
+                        !dateRange && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "dd/MM/yy", { locale: ptBR })} -{" "}
+                            {format(dateRange.to, "dd/MM/yy", { locale: ptBR })}
+                          </>
+                        ) : (
+                          format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })
+                        )
+                      ) : (
+                        <span>Selecionar período</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-background border z-50" align="start">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange?.from}
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={2}
+                      locale={ptBR}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
+                  <X className="w-4 h-4" />
+                  Limpar
+                </Button>
+              )}
+            </div>
+          )}
+          
           <ScrollArea className="h-[400px]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[180px]">Data/Hora</TableHead>
-                  <TableHead className="w-[100px]">Status</TableHead>
-                  <TableHead className="w-[100px]">Duração</TableHead>
-                  <TableHead className="w-[80px]">📊</TableHead>
-                  <TableHead className="w-[80px]">Detalhes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {scanHistory.map((scan) => (
-                  <Collapsible key={scan.id} open={expandedScanId === scan.id}>
-                    <TableRow className="cursor-pointer hover:bg-muted/50">
-                      <TableCell>
+            {/* Grid-based Table Header */}
+            <div className="grid grid-cols-[200px_150px_100px_80px_80px] gap-0 border-b border-border bg-muted/50 rounded-t-md">
+              <button
+                onClick={() => handleSort('scan_timestamp')}
+                className="flex items-center px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors text-left"
+              >
+                Data/Hora
+                {getSortIcon('scan_timestamp')}
+              </button>
+              <button
+                onClick={() => handleSort('overall_status')}
+                className="flex items-center px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors text-left"
+              >
+                Status
+                {getSortIcon('overall_status')}
+              </button>
+              <button
+                onClick={() => handleSort('execution_duration_ms')}
+                className="flex items-center px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors text-left"
+              >
+                Duração
+                {getSortIcon('execution_duration_ms')}
+              </button>
+              <div className="flex items-center justify-center px-4 py-3 text-sm font-medium text-muted-foreground">
+                PDF
+              </div>
+              <div className="flex items-center justify-center px-4 py-3 text-sm font-medium text-muted-foreground">
+                Detalhes
+              </div>
+            </div>
+            
+            {/* Grid-based Table Body */}
+            <div className="divide-y divide-border">
+              {filteredAndSortedScans.map((scan) => (
+                <Collapsible key={scan.id} open={expandedScanId === scan.id}>
+                  <div className="grid grid-cols-[200px_150px_100px_80px_80px] gap-0 hover:bg-muted/50 transition-colors">
+                    <div className="px-4 py-3">
+                      <div className="text-sm">
                         {format(new Date(scan.scan_timestamp), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                        <span className="block text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(scan.scan_timestamp), { addSuffix: true, locale: ptBR })}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(scan.overall_status)}
-                          <span className="capitalize">
-                            {scan.overall_status === 'healthy' ? 'Saudável' : 
-                             scan.overall_status === 'warning' ? 'Atenção' : 'Crítico'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{scan.execution_duration_ms}ms</TableCell>
-                      <TableCell>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(scan.scan_timestamp), { addSuffix: true, locale: ptBR })}
+                      </div>
+                    </div>
+                    <div className="px-4 py-3 flex items-center gap-2">
+                      {getStatusIcon(scan.overall_status)}
+                      <span className="text-sm capitalize">
+                        {scan.overall_status === 'healthy' ? 'Saudável' : 
+                         scan.overall_status === 'warning' ? 'Atenção' : 'Crítico'}
+                      </span>
+                    </div>
+                    <div className="px-4 py-3 flex items-center text-sm">
+                      {scan.execution_duration_ms}ms
+                    </div>
+                    <div className="px-4 py-3 flex items-center justify-center">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => exportToPDF(scan)}
+                        title="Exportar PDF"
+                      >
+                        <Download className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="px-4 py-3 flex items-center justify-center">
+                      <CollapsibleTrigger asChild>
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => exportToPDF(scan)}
-                          title="Exportar PDF"
+                          onClick={() => setExpandedScanId(expandedScanId === scan.id ? null : scan.id)}
                         >
-                          <Download className="w-4 h-4" />
+                          <ChevronDown className={`w-4 h-4 transition-transform ${expandedScanId === scan.id ? 'rotate-180' : ''}`} />
                         </Button>
-                      </TableCell>
-                      <TableCell>
-                        <CollapsibleTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => setExpandedScanId(expandedScanId === scan.id ? null : scan.id)}
-                          >
-                            <ChevronDown className={`w-4 h-4 transition-transform ${expandedScanId === scan.id ? 'rotate-180' : ''}`} />
-                          </Button>
-                        </CollapsibleTrigger>
-                      </TableCell>
-                    </TableRow>
-                    <CollapsibleContent asChild>
-                      <TableRow>
-                        <TableCell colSpan={5} className="bg-muted/30 p-4">
-                          <div className="space-y-4">
-                            <div className="flex gap-4 text-sm">
-                              <Badge variant="destructive">{scan.findings_summary.critical} Criticos</Badge>
-                              <Badge className="bg-yellow-500/20 text-yellow-500">{scan.findings_summary.warning} Avisos</Badge>
-                              <Badge variant="secondary">{scan.findings_summary.info} Info</Badge>
-                              <Badge className="bg-green-500/20 text-green-500">{scan.findings_summary.passed} Aprovados</Badge>
-                            </div>
-                            
-                            <Separator />
-                            
-                            <div className="space-y-2">
-                              {scan.detailed_report
-                                .filter(f => f.severity !== 'passed')
-                                .map((finding) => (
-                                  <div key={finding.id} className="p-3 rounded-lg bg-background border">
-                                    <div className="flex items-start justify-between gap-4">
-                                      <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                          {getSeverityBadge(finding.severity)}
-                                          <span className="text-xs text-muted-foreground">{finding.category}</span>
-                                        </div>
-                                        <p className="font-medium">{finding.title}</p>
-                                        <p className="text-sm text-muted-foreground">{finding.description}</p>
-                                        {finding.location && (
-                                          <code className="text-xs bg-muted px-1 py-0.5 rounded mt-1 inline-block">
-                                            {finding.location}
-                                          </code>
-                                        )}
-                                        {finding.remediation && (
-                                          <p className="text-xs text-primary mt-2">
-                                            {finding.remediation}
-                                          </p>
-                                        )}
-                                      </div>
+                      </CollapsibleTrigger>
+                    </div>
+                  </div>
+                  <CollapsibleContent>
+                    <div className="bg-muted/30 p-4 border-t border-border">
+                      <div className="space-y-4">
+                        <div className="flex gap-4 text-sm">
+                          <Badge variant="destructive">{scan.findings_summary.critical} Críticos</Badge>
+                          <Badge className="bg-yellow-500/20 text-yellow-500">{scan.findings_summary.warning} Avisos</Badge>
+                          <Badge variant="secondary">{scan.findings_summary.info} Info</Badge>
+                          <Badge className="bg-green-500/20 text-green-500">{scan.findings_summary.passed} Aprovados</Badge>
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="space-y-2">
+                          {scan.detailed_report
+                            .filter(f => f.severity !== 'passed')
+                            .map((finding) => (
+                              <div key={finding.id} className="p-3 rounded-lg bg-background border">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      {getSeverityBadge(finding.severity)}
+                                      <span className="text-xs text-muted-foreground">{finding.category}</span>
                                     </div>
+                                    <p className="font-medium">{finding.title}</p>
+                                    <p className="text-sm text-muted-foreground">{finding.description}</p>
+                                    {finding.location && (
+                                      <code className="text-xs bg-muted px-1 py-0.5 rounded mt-1 inline-block">
+                                        {finding.location}
+                                      </code>
+                                    )}
+                                    {finding.remediation && (
+                                      <p className="text-xs text-primary mt-2">
+                                        {finding.remediation}
+                                      </p>
+                                    )}
                                   </div>
-                                ))}
-                              
-                              {scan.detailed_report.filter(f => f.severity !== 'passed').length === 0 && (
-                                <p className="text-sm text-muted-foreground text-center py-4">
-                                  Nenhum problema encontrado neste scan
-                                </p>
-                              )}
-                            </div>
-                            
-                            {/* Copy Prompt Button */}
-                            {scan.detailed_report.filter(f => f.severity !== 'passed').length > 0 && (
-                              <div className="flex justify-end">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="gap-2 text-muted-foreground hover:text-foreground"
-                                  onClick={() => {
-                                    const issues = scan.detailed_report
-                                      .filter(f => f.severity !== 'passed')
-                                      .map(f => `- [${f.severity.toUpperCase()}] ${f.title}: ${f.description}${f.location ? ` (Location: ${f.location})` : ''}${f.remediation ? ` | Fix: ${f.remediation}` : ''}`)
-                                      .join('\n');
-                                    
-                                    const prompt = `Please fix the following security issues found in the scan:\n\n${issues}`;
-                                    
-                                    navigator.clipboard.writeText(prompt);
-                                    toast.success('Prompt copiado para a area de transferencia');
-                                  }}
-                                >
-                                  <Copy className="w-4 h-4" />
-                                  Copiar prompt
-                                </Button>
+                                </div>
                               </div>
-                            )}
+                            ))}
+                          
+                          {scan.detailed_report.filter(f => f.severity !== 'passed').length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              Nenhum problema encontrado neste scan
+                            </p>
+                          )}
+                        </div>
+                        
+                        {/* Copy Prompt Button */}
+                        {scan.detailed_report.filter(f => f.severity !== 'passed').length > 0 && (
+                          <div className="flex justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-2 text-muted-foreground hover:text-foreground"
+                              onClick={() => {
+                                const issues = scan.detailed_report
+                                  .filter(f => f.severity !== 'passed')
+                                  .map(f => `- [${f.severity.toUpperCase()}] ${f.title}: ${f.description}${f.location ? ` (Location: ${f.location})` : ''}${f.remediation ? ` | Fix: ${f.remediation}` : ''}`)
+                                  .join('\n');
+                                
+                                const prompt = `Please fix the following security issues found in the scan:\n\n${issues}`;
+                                
+                                navigator.clipboard.writeText(prompt);
+                                toast.success('Prompt copiado para a área de transferência');
+                              }}
+                            >
+                              <Copy className="w-4 h-4" />
+                              Copiar prompt
+                            </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))}
-                
-                {scanHistory.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      Nenhum scan realizado ainda. Clique em "Executar Scan Manual" para começar.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                        )}
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
+              
+              {filteredAndSortedScans.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  {scanHistory.length === 0 
+                    ? 'Nenhum scan realizado ainda. Clique em "Executar Scan Manual" para começar.'
+                    : 'Nenhum scan encontrado com os filtros aplicados.'}
+                </div>
+              )}
+            </div>
           </ScrollArea>
         </CardContent>
       </Card>
