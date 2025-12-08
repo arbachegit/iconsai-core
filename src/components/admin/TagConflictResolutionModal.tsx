@@ -184,10 +184,15 @@ export const TagConflictResolutionModal = ({
 
   // Reset state when modal opens - CRITICAL: childTagsMap removed from deps to prevent re-render loop
   useEffect(() => {
+    console.log("[TAG MERGE] useEffect triggered", { open, tagsCount: tags.length, conflictType });
+    
     if (open && tags.length > 0) {
       // IMPORTANT: Always set selectedTargetId to first tag when modal opens
-      console.log("[TAG MERGE] Modal opened with tags:", tags.map(t => ({ id: t.id, name: t.tag_name })));
-      setSelectedTargetId(tags[0].id);
+      const firstTagId = tags[0].id;
+      console.log("[TAG MERGE] Setting selectedTargetId to:", firstTagId);
+      console.log("[TAG MERGE] All tags for modal:", tags.map(t => ({ id: t.id, name: t.tag_name })));
+      
+      setSelectedTargetId(firstTagId);
       setRationale("");
       setAutoSuggestionApplied(false);
       setMergeReasons({
@@ -209,7 +214,11 @@ export const TagConflictResolutionModal = ({
         });
         setCoherentChildren(allChildrenIds);
         setOrphanChildren(new Set());
+        console.log("[TAG MERGE] Pre-selected children:", allChildrenIds.size);
       }
+    } else if (open && tags.length === 0) {
+      console.error("[TAG MERGE ERROR] Modal opened but no tags provided!");
+      toast.error("Erro: Nenhuma tag selecionada para unificação");
     }
   }, [open, tags, conflictType]); // REMOVED childTagsMap from deps - it causes state reset loops
 
@@ -234,10 +243,26 @@ export const TagConflictResolutionModal = ({
 
   const mergeMutation = useMutation({
     mutationFn: async () => {
+      console.log("[TAG MERGE] Starting merge mutation...");
+      console.log("[TAG MERGE] selectedTargetId:", selectedTargetId);
+      console.log("[TAG MERGE] conflictType:", conflictType);
+      console.log("[TAG MERGE] tags:", tags.map(t => ({ id: t.id, name: t.tag_name })));
+      
       const targetTag = tags.find(t => t.id === selectedTargetId);
       const sourceTags = tags.filter(t => t.id !== selectedTargetId);
       
-      if (!targetTag) throw new Error("Tag alvo não encontrada");
+      console.log("[TAG MERGE] Target tag:", targetTag);
+      console.log("[TAG MERGE] Source tags to merge:", sourceTags.map(t => t.tag_name));
+      
+      if (!targetTag) {
+        console.error("[TAG MERGE ERROR] Target tag not found! selectedTargetId:", selectedTargetId);
+        throw new Error("Tag alvo não encontrada");
+      }
+      
+      if (sourceTags.length === 0) {
+        console.error("[TAG MERGE ERROR] No source tags to merge!");
+        throw new Error("Nenhuma tag fonte para unificar");
+      }
 
       const timeToDecision = calculateTimeSinceModalOpen(modalOpenTime);
 
@@ -372,6 +397,7 @@ export const TagConflictResolutionModal = ({
       }
     },
     onSuccess: () => {
+      console.log("[TAG MERGE] Merge completed successfully!");
       toast.success("Tags unificadas com sucesso! Regra ML criada.");
       queryClient.invalidateQueries({ queryKey: ["all-tags"] });
       queryClient.invalidateQueries({ queryKey: ["tag-merge-rules"] });
@@ -379,6 +405,7 @@ export const TagConflictResolutionModal = ({
       onComplete?.();
     },
     onError: (error: Error) => {
+      console.error("[TAG MERGE ERROR] Merge failed:", error);
       toast.error(`Erro ao unificar: ${error.message}`);
     },
   });
@@ -692,10 +719,32 @@ export const TagConflictResolutionModal = ({
             Cancelar
           </Button>
           <Button
-            onClick={() => mergeMutation.mutate()}
+            onClick={() => {
+              console.log("[TAG MERGE] Merge button clicked!");
+              console.log("[TAG MERGE] State check:", {
+                selectedTargetId,
+                tagsCount: tags.length,
+                conflictType,
+                selectedParentId,
+                hasSelectedMergeReason
+              });
+              
+              if (!selectedTargetId) {
+                toast.error("Selecione uma tag alvo");
+                return;
+              }
+              
+              if (tags.length < 2) {
+                toast.error("Precisa de pelo menos 2 tags para unificar");
+                return;
+              }
+              
+              mergeMutation.mutate();
+            }}
             disabled={
               mergeMutation.isPending || 
-              !selectedTargetId || // Sempre verificar se há tag alvo selecionada
+              !selectedTargetId || 
+              tags.length < 2 ||
               (conflictType === 'child' && (!selectedParentId || !hasSelectedMergeReason))
             }
           >

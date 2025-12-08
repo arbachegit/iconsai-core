@@ -93,7 +93,7 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
   const [isOpen, setIsOpen] = useState(true);
   const [selectedParents, setSelectedParents] = useState<Record<string, string>>({});
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [processingType, setProcessingType] = useState<'adopt' | 'delete' | null>(null);
+  const [processingType, setProcessingType] = useState<'adopt' | 'delete' | 'bulk_delete' | null>(null);
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
     tag: OrphanedTag | null;
@@ -101,6 +101,13 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
   }>({
     open: false,
     tag: null,
+    reasons: { ...DEFAULT_REASONS },
+  });
+  const [bulkDeleteModal, setBulkDeleteModal] = useState<{
+    open: boolean;
+    reasons: DeletionReasons;
+  }>({
+    open: false,
     reasons: { ...DEFAULT_REASONS },
   });
   const queryClient = useQueryClient();
@@ -265,6 +272,79 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
   };
 
   const hasSelectedReason = Object.values(deleteModal.reasons).some(v => v);
+  const hasBulkSelectedReason = Object.values(bulkDeleteModal.reasons).some(v => v);
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async ({ 
+      tagIds, 
+      deletion_reasons,
+      rationale
+    }: { 
+      tagIds: string[]; 
+      deletion_reasons: DeletionReasons;
+      rationale: string;
+    }) => {
+      const startTime = Date.now();
+      
+      const { error } = await supabase
+        .from("document_tags")
+        .delete()
+        .in("id", tagIds);
+
+      if (error) throw error;
+
+      await logTagManagementEvent({
+        input_state: {
+          tags_involved: orphanedTags
+            .filter(t => tagIds.includes(t.id))
+            .map(t => ({ id: t.id, name: t.tag_name, type: 'child' as const, parent_id: null }))
+        },
+        action_type: 'bulk_delete_orphans',
+        user_decision: {
+          deleted_count: tagIds.length,
+          action: 'bulk_deleted',
+          deletion_reasons
+        },
+        rationale,
+        time_to_decision_ms: Date.now() - startTime
+      });
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`${variables.tagIds.length} tags órfãs excluídas!`);
+      queryClient.invalidateQueries({ queryKey: ["all-tags"] });
+      setProcessingType(null);
+      setBulkDeleteModal({ open: false, reasons: { ...DEFAULT_REASONS } });
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao excluir tags: ${error.message}`);
+      setProcessingType(null);
+    },
+  });
+
+  const handleBulkDelete = () => {
+    const { reasons } = bulkDeleteModal;
+    
+    const selectedReasonLabels: string[] = [];
+    if (reasons.generic) selectedReasonLabels.push('Termo genérico (Stopwords)');
+    if (reasons.outOfDomain) selectedReasonLabels.push('Irrelevância de domínio');
+    if (reasons.properName) selectedReasonLabels.push('Nome próprio (High Cardinality)');
+    if (reasons.isYear) selectedReasonLabels.push('Dado temporal (Ano)');
+    if (reasons.isPhrase) selectedReasonLabels.push('Frase (Length excessivo)');
+    if (reasons.typo) selectedReasonLabels.push('Erro de grafia');
+    if (reasons.variation) selectedReasonLabels.push('Variação (Plural/Sinônimo)');
+    if (reasons.isolatedVerb) selectedReasonLabels.push('Verbo isolado');
+    if (reasons.pii) selectedReasonLabels.push('Dado sensível (PII)');
+    
+    const rationale = `Exclusão em massa de ${orphanedTags.length} tags órfãs. Motivos: ${selectedReasonLabels.join(', ')}`;
+    
+    setProcessingType('bulk_delete');
+    bulkDeleteMutation.mutate({ 
+      tagIds: orphanedTags.map(t => t.id), 
+      deletion_reasons: reasons,
+      rationale
+    });
+  };
 
   if (orphanedTags.length === 0) {
     return null;
@@ -287,9 +367,23 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Tags filhas sem parent válido. Reatribua-as a um parent tag existente ou exclua permanentemente.
-            </p>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-muted-foreground">
+                Tags filhas sem parent válido. Reatribua-as a um parent tag existente ou exclua permanentemente.
+              </p>
+              
+              {/* Bulk Delete Button */}
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBulkDeleteModal({ open: true, reasons: { ...DEFAULT_REASONS } })}
+                disabled={isProcessing || orphanedTags.length === 0}
+                className="shrink-0"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir Todas ({orphanedTags.length})
+              </Button>
+            </div>
 
             <div className={`space-y-3 max-h-[300px] overflow-y-auto transition-opacity ${isProcessing ? 'opacity-60' : ''}`}>
               {orphanedTags.map((tag) => (
@@ -424,6 +518,84 @@ export const OrphanedTagsPanel = ({ orphanedTags, parentTags }: OrphanedTagsPane
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Excluir Tag
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de Confirmação de Exclusão em Massa */}
+      <AlertDialog open={bulkDeleteModal.open} onOpenChange={(open) => setBulkDeleteModal(prev => ({ ...prev, open }))}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Confirmar Exclusão em Massa
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está prestes a excluir permanentemente <strong className="text-foreground">{orphanedTags.length}</strong> tags órfãs.
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="py-4">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-medium">Selecione pelo menos um motivo para excluir:</span>
+            </div>
+
+            <ScrollArea className="h-[280px] pr-4">
+              <div className="space-y-2">
+                {DELETION_REASONS_CONFIG.map((reason) => (
+                  <div 
+                    key={reason.key}
+                    className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors"
+                  >
+                    <Checkbox
+                      id={`bulk-reason-${reason.key}`}
+                      checked={bulkDeleteModal.reasons[reason.key]}
+                      onCheckedChange={(checked) =>
+                        setBulkDeleteModal(prev => ({
+                          ...prev,
+                          reasons: { ...prev.reasons, [reason.key]: checked === true }
+                        }))
+                      }
+                      className="mt-0.5"
+                    />
+                    <label htmlFor={`bulk-reason-${reason.key}`} className="cursor-pointer flex-1">
+                      <span className="font-medium text-sm text-foreground">{reason.title}</span>
+                      <p className="text-xs text-muted-foreground mt-0.5">{reason.description}</p>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+
+            {!hasBulkSelectedReason && (
+              <p className="text-xs text-amber-500 mt-3 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Escolha ao menos um motivo para habilitar a exclusão
+              </p>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={!hasBulkSelectedReason || bulkDeleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {bulkDeleteMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir Todas ({orphanedTags.length})
+                </>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
