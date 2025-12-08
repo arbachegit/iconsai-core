@@ -27,7 +27,8 @@ import {
   CheckCircle2,
   Info,
   Settings,
-  Loader2
+  Loader2,
+  Copy
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -413,7 +414,7 @@ export const SecurityIntegrityTab = () => {
                         <TableCell colSpan={5} className="bg-muted/30 p-4">
                           <div className="space-y-4">
                             <div className="flex gap-4 text-sm">
-                              <Badge variant="destructive">{scan.findings_summary.critical} Críticos</Badge>
+                              <Badge variant="destructive">{scan.findings_summary.critical} Criticos</Badge>
                               <Badge className="bg-yellow-500/20 text-yellow-500">{scan.findings_summary.warning} Avisos</Badge>
                               <Badge variant="secondary">{scan.findings_summary.info} Info</Badge>
                               <Badge className="bg-green-500/20 text-green-500">{scan.findings_summary.passed} Aprovados</Badge>
@@ -441,7 +442,7 @@ export const SecurityIntegrityTab = () => {
                                         )}
                                         {finding.remediation && (
                                           <p className="text-xs text-primary mt-2">
-                                            💡 {finding.remediation}
+                                            {finding.remediation}
                                           </p>
                                         )}
                                       </div>
@@ -451,10 +452,35 @@ export const SecurityIntegrityTab = () => {
                               
                               {scan.detailed_report.filter(f => f.severity !== 'passed').length === 0 && (
                                 <p className="text-sm text-muted-foreground text-center py-4">
-                                  ✅ Nenhum problema encontrado neste scan
+                                  Nenhum problema encontrado neste scan
                                 </p>
                               )}
                             </div>
+                            
+                            {/* Copy Prompt Button */}
+                            {scan.detailed_report.filter(f => f.severity !== 'passed').length > 0 && (
+                              <div className="flex justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-2 text-muted-foreground hover:text-foreground"
+                                  onClick={() => {
+                                    const issues = scan.detailed_report
+                                      .filter(f => f.severity !== 'passed')
+                                      .map(f => `- [${f.severity.toUpperCase()}] ${f.title}: ${f.description}${f.location ? ` (Location: ${f.location})` : ''}${f.remediation ? ` | Fix: ${f.remediation}` : ''}`)
+                                      .join('\n');
+                                    
+                                    const prompt = `Please fix the following security issues found in the scan:\n\n${issues}`;
+                                    
+                                    navigator.clipboard.writeText(prompt);
+                                    toast.success('Prompt copiado para a area de transferencia');
+                                  }}
+                                >
+                                  <Copy className="w-4 h-4" />
+                                  Copiar prompt
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
