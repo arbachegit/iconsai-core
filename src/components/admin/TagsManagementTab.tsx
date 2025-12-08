@@ -588,8 +588,6 @@ export const TagsManagementTab = () => {
     const uniqueTagNames = [...new Set(selectedTagData.map(t => t.tag_name))];
     const selectedIds = Array.from(selectedTags);
     
-    console.log("[BULK DELETE] Opening modal for", selectedIds.length, "tags:", uniqueTagNames);
-    
     // Open modal immediately with loading state
     setBulkDeleteModal({
       open: true,
@@ -644,8 +642,6 @@ export const TagsManagementTab = () => {
     if (reasons.isolatedVerb) reasonLabels.push('Verbo isolado');
     if (reasons.pii) reasonLabels.push('Dado sensível (PII)');
     
-    console.log("[BULK DELETE] Deleting", tagNames.length, "unique tags with reasons:", reasonLabels);
-    
     setBulkDeleteModal(prev => ({ ...prev, isDeleting: true }));
     
     try {
@@ -667,7 +663,6 @@ export const TagsManagementTab = () => {
             const parentIds = parentTagsToDelete.map(p => p.id);
             
             // Move child tags to Orphaned Zone
-            console.log(`[BULK DELETE] Orphaning children of ${tagName} (parent IDs: ${parentIds})`);
             const { error: orphanError } = await supabase
               .from('document_tags')
               .update({ parent_tag_id: null })
@@ -679,7 +674,6 @@ export const TagsManagementTab = () => {
           }
           
           // Delete ALL instances of this tag by name
-          console.log(`[BULK DELETE] Deleting all instances of: ${tagName}`);
           const { error } = await supabase
             .from('document_tags')
             .delete()
@@ -970,7 +964,6 @@ export const TagsManagementTab = () => {
       return;
     }
     
-    console.log("[TAG MERGE DEBUG] Abrindo modal com tags:", tagsForModal.map(t => ({ id: t.id, name: t.tag_name })));
     setConflictModal({ open: true, type, tags: tagsForModal, similarityScore: similarity });
   }, [allTags]);
 
