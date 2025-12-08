@@ -184,13 +184,9 @@ export const TagConflictResolutionModal = ({
 
   // Reset state when modal opens - CRITICAL: childTagsMap removed from deps to prevent re-render loop
   useEffect(() => {
-    console.log("[TAG MERGE] useEffect triggered", { open, tagsCount: tags.length, conflictType });
-    
     if (open && tags.length > 0) {
       // IMPORTANT: Always set selectedTargetId to first tag when modal opens
       const firstTagId = tags[0].id;
-      console.log("[TAG MERGE] Setting selectedTargetId to:", firstTagId);
-      console.log("[TAG MERGE] All tags for modal:", tags.map(t => ({ id: t.id, name: t.tag_name })));
       
       setSelectedTargetId(firstTagId);
       setRationale("");
@@ -214,7 +210,6 @@ export const TagConflictResolutionModal = ({
         });
         setCoherentChildren(allChildrenIds);
         setOrphanChildren(new Set());
-        console.log("[TAG MERGE] Pre-selected children:", allChildrenIds.size);
       }
     } else if (open && tags.length === 0) {
       console.error("[TAG MERGE ERROR] Modal opened but no tags provided!");
@@ -243,16 +238,8 @@ export const TagConflictResolutionModal = ({
 
   const mergeMutation = useMutation({
     mutationFn: async () => {
-      console.log("[TAG MERGE] Starting merge mutation...");
-      console.log("[TAG MERGE] selectedTargetId:", selectedTargetId);
-      console.log("[TAG MERGE] conflictType:", conflictType);
-      console.log("[TAG MERGE] tags:", tags.map(t => ({ id: t.id, name: t.tag_name })));
-      
       const targetTag = tags.find(t => t.id === selectedTargetId);
       const sourceTags = tags.filter(t => t.id !== selectedTargetId);
-      
-      console.log("[TAG MERGE] Target tag:", targetTag);
-      console.log("[TAG MERGE] Source tags to merge:", sourceTags.map(t => t.tag_name));
       
       if (!targetTag) {
         console.error("[TAG MERGE ERROR] Target tag not found! selectedTargetId:", selectedTargetId);
@@ -397,7 +384,6 @@ export const TagConflictResolutionModal = ({
       }
     },
     onSuccess: () => {
-      console.log("[TAG MERGE] Merge completed successfully!");
       toast.success("Tags unificadas com sucesso! Regra ML criada.");
       queryClient.invalidateQueries({ queryKey: ["all-tags"] });
       queryClient.invalidateQueries({ queryKey: ["tag-merge-rules"] });

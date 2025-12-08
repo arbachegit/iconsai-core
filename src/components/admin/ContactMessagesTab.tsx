@@ -259,7 +259,6 @@ export const ContactMessagesTab = () => {
           table: 'contact_messages'
         },
         (payload) => {
-          console.log('[REALTIME] New contact message:', payload);
           queryClient.invalidateQueries({ queryKey: ['contact-messages'] });
           
           toast({

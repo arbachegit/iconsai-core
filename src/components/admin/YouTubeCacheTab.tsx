@@ -146,8 +146,6 @@ export const YouTubeCacheTab = () => {
 
     for (const category of categories) {
       try {
-        console.log(`Pré-carregando vídeos: ${category.label}`);
-        
         const { data, error } = await supabase.functions.invoke('youtube-videos', {
           body: { category: category.query }
         });
@@ -161,7 +159,6 @@ export const YouTubeCacheTab = () => {
             timestamp: Date.now()
           }));
           successCount++;
-          console.log(`✓ ${category.label}: ${data.videos.length} vídeos`);
         }
 
         // Small delay between requests to avoid rate limiting
