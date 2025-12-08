@@ -23,6 +23,7 @@ export interface TagManagementEventInput {
     | 'reject_duplicate' 
     | 'adopt_orphan'
     | 'delete_orphan'
+    | 'bulk_delete_orphans'
     | 'export_taxonomy'
     | 'import_taxonomy';
   user_decision: {
@@ -35,6 +36,7 @@ export interface TagManagementEventInput {
     source_tags_removed?: string[];
     imported_count?: number;
     exported_count?: number;
+    deleted_count?: number;
     action?: string;
     format?: string;
     // Auto-suggestion tracking
