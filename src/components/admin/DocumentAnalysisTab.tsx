@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -49,7 +50,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle, Heart, BookOpen, Package, Check, AlertTriangle, X, Plus, Trash2, Merge } from "lucide-react";
+import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle, Heart, BookOpen, Package, Check, AlertTriangle, X, Plus, Trash2, Merge, FolderTree } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
@@ -60,6 +61,8 @@ import {
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { toast } from "sonner";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
+import { TagConflictResolutionModal } from "./TagConflictResolutionModal";
+import { TaxonomyAdoptionModal } from "./TaxonomyAdoptionModal";
 
 interface Document {
   id: string;
@@ -96,6 +99,11 @@ export const DocumentAnalysisTab = () => {
   const [selectedParentTag, setSelectedParentTag] = useState<string | null>(null);
   const [selectedChildTags, setSelectedChildTags] = useState<Set<string>>(new Set());
   const [tagToDelete, setTagToDelete] = useState<{ id: string; name: string; isParent: boolean } | null>(null);
+  
+  // Multi-selection state for tag management
+  const [selectedDocTags, setSelectedDocTags] = useState<Set<string>>(new Set());
+  const [unifyModalOpen, setUnifyModalOpen] = useState(false);
+  const [adoptModalOpen, setAdoptModalOpen] = useState(false);
   
   const queryClient = useQueryClient();
 
@@ -290,6 +298,77 @@ export const DocumentAnalysisTab = () => {
     }
   });
 
+  // Toggle tag selection for multi-select
+  const toggleTagSelection = (tagId: string) => {
+    setSelectedDocTags(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(tagId)) {
+        newSet.delete(tagId);
+      } else {
+        newSet.add(tagId);
+      }
+      return newSet;
+    });
+  };
+
+  // Get selected tags for modals
+  const getSelectedTagsForModal = () => {
+    if (!allTags) return [];
+    return allTags.filter(tag => selectedDocTags.has(tag.id));
+  };
+
+  // Determine domain from selected tags
+  const getSelectedTagsDomain = (): 'general' | 'health' | 'study' => {
+    const selectedTags = getSelectedTagsForModal();
+    if (selectedTags.length === 0) return 'general';
+    
+    // Find documents for selected tags and determine domain
+    const docIds = [...new Set(selectedTags.map(t => t.document_id))];
+    const docs = documents?.filter(d => docIds.includes(d.id)) || [];
+    
+    const hasHealth = docs.some(d => d.target_chat === 'health');
+    const hasStudy = docs.some(d => d.target_chat === 'study');
+    
+    if (hasHealth && !hasStudy) return 'health';
+    if (hasStudy && !hasHealth) return 'study';
+    return 'general';
+  };
+
+  // Build childTagsMap for TagConflictResolutionModal
+  const buildChildTagsMap = () => {
+    const selectedTags = getSelectedTagsForModal();
+    const map: Record<string, Array<{
+      id: string;
+      tag_name: string;
+      tag_type: string;
+      confidence: number | null;
+      document_id: string;
+      parent_tag_id: string | null;
+      source: string | null;
+      created_at: string;
+      target_chat?: string | null;
+    }>> = {};
+    
+    selectedTags.forEach(tag => {
+      if (!tag.parent_tag_id) {
+        // This is a parent tag, find its children
+        const children = allTags?.filter(t => t.parent_tag_id === tag.id) || [];
+        map[tag.id] = children.map(c => ({
+          ...c,
+          source: null,
+          created_at: '',
+          target_chat: null
+        }));
+      }
+    });
+    
+    return map;
+  };
+
+  // Clear selection after action
+  const clearSelection = () => {
+    setSelectedDocTags(new Set());
+  };
 
   const tagsByDocument = allTags?.reduce((acc, tag) => {
     if (!acc[tag.document_id]) {
@@ -903,6 +982,12 @@ export const DocumentAnalysisTab = () => {
                               const hasMerge = mergeInfo.length > 0;
                               return (
                                 <div key={parent.id} className="flex items-start gap-3 p-3 bg-background rounded-lg group">
+                                  {/* Checkbox for multi-selection */}
+                                  <Checkbox
+                                    checked={selectedDocTags.has(parent.id)}
+                                    onCheckedChange={() => toggleTagSelection(parent.id)}
+                                    className="mt-1 flex-shrink-0"
+                                  />
                                   <div className="flex-shrink-0 min-w-[140px]">
                                     <div className="flex items-center gap-1">
                                       <Badge 
@@ -1002,17 +1087,24 @@ export const DocumentAnalysisTab = () => {
                                   
                                   {/* Tags filhas */}
                                   {children.length > 0 && (
-                                    <div className="flex gap-1 flex-wrap">
+                                    <div className="flex gap-1 flex-wrap items-center">
                                       {children.map((child) => (
-                                        <Badge key={child.id} variant="secondary" className="text-xs group/child flex items-center gap-1">
-                                          {child.tag_name}
-                                          <button
-                                            className="opacity-0 group-hover/child:opacity-100 transition-opacity hover:text-destructive"
-                                            onClick={() => setTagToDelete({ id: child.id, name: child.tag_name, isParent: false })}
-                                          >
-                                            <X className="h-3 w-3" />
-                                          </button>
-                                        </Badge>
+                                        <div key={child.id} className="flex items-center gap-1">
+                                          <Checkbox
+                                            checked={selectedDocTags.has(child.id)}
+                                            onCheckedChange={() => toggleTagSelection(child.id)}
+                                            className="h-3 w-3"
+                                          />
+                                          <Badge variant="secondary" className="text-xs group/child flex items-center gap-1">
+                                            {child.tag_name}
+                                            <button
+                                              className="opacity-0 group-hover/child:opacity-100 transition-opacity hover:text-destructive"
+                                              onClick={() => setTagToDelete({ id: child.id, name: child.tag_name, isParent: false })}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </button>
+                                          </Badge>
+                                        </div>
                                       ))}
                                     </div>
                                   )}
@@ -1203,6 +1295,85 @@ export const DocumentAnalysisTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Floating Action Bar - Multi-selection */}
+      {selectedDocTags.size >= 2 && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-primary/95 to-secondary/95 backdrop-blur-sm p-4 rounded-xl shadow-2xl border border-primary/30 z-50 flex items-center gap-4 animate-in slide-in-from-bottom-4">
+          <Badge variant="secondary" className="text-sm px-3 py-1">
+            {selectedDocTags.size} tags selecionadas
+          </Badge>
+          
+          <div className="h-6 w-px bg-white/20" />
+          
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="text-white hover:bg-white/20"
+            onClick={() => setUnifyModalOpen(true)}
+          >
+            <Merge className="h-4 w-4 mr-2" />
+            Unificar
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="text-white hover:bg-white/20"
+            onClick={() => setAdoptModalOpen(true)}
+          >
+            <FolderTree className="h-4 w-4 mr-2" />
+            Taxonomy (Adotar)
+          </Button>
+          
+          <div className="h-6 w-px bg-white/20" />
+          
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="text-white/70 hover:text-white hover:bg-white/10"
+            onClick={clearSelection}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Limpar
+          </Button>
+        </div>
+      )}
+
+      {/* TagConflictResolutionModal for Unification */}
+      <TagConflictResolutionModal
+        open={unifyModalOpen}
+        onOpenChange={setUnifyModalOpen}
+        conflictType="semantic"
+        tags={getSelectedTagsForModal().map(t => ({
+          ...t,
+          source: t.document_id ? 'document' : null,
+          created_at: '',
+          target_chat: documents?.find(d => d.id === t.document_id)?.target_chat || null
+        }))}
+        childTagsMap={buildChildTagsMap()}
+        parentTags={allTags?.filter(t => !t.parent_tag_id).map(t => ({
+          ...t,
+          source: null,
+          created_at: '',
+          target_chat: null
+        })) || []}
+        onComplete={() => {
+          clearSelection();
+          queryClient.invalidateQueries({ queryKey: ["document-tags-all"] });
+        }}
+      />
+
+      {/* TaxonomyAdoptionModal for Hierarchical Adoption */}
+      <TaxonomyAdoptionModal
+        open={adoptModalOpen}
+        onOpenChange={setAdoptModalOpen}
+        tagsToAdopt={getSelectedTagsForModal()}
+        domain={getSelectedTagsDomain()}
+        onComplete={() => {
+          clearSelection();
+          queryClient.invalidateQueries({ queryKey: ["document-tags-all"] });
+        }}
+      />
     </div>
   );
 };
