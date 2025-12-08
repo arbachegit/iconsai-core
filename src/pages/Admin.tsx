@@ -13,8 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
-import knowyouLogo from "@/assets/knowrisk-logo.png";
+import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
 
 // Eager load only DashboardTab (first view)
 import { DashboardTab } from "@/components/admin/DashboardTab";
@@ -273,18 +272,14 @@ const Admin = () => {
       <header 
         className="fixed top-0 left-0 right-0 h-12 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-primary/20 z-30 flex items-center justify-between px-4 transition-all duration-300 ease-in-out"
       >
-        {/* Far Left: Knowrisk Logo + Near Left: Knowyou Logo */}
-        <div className="flex items-center gap-3">
+        {/* Logo + Admin Panel with ml-auto */}
+        <div className="flex items-center gap-3 ml-auto">
           <img 
-            src={knowriskLogo} 
-            alt="Knowrisk" 
+            src={knowyouAdminLogo} 
+            alt="KnowYOU" 
             className="h-8 w-8 rounded-full object-cover"
           />
-          <img 
-            src={knowyouLogo} 
-            alt="Knowyou" 
-            className="h-7 object-contain"
-          />
+          <span className="text-sm font-medium text-foreground">Admin Panel</span>
         </div>
 
         {/* Far Right: Notification + Near Right: Language Selector */}
