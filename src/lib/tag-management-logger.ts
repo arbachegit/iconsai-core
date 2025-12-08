@@ -37,6 +37,7 @@ export interface TagManagementEventInput {
     imported_count?: number;
     exported_count?: number;
     deleted_count?: number;
+    documents_updated?: number;
     action?: string;
     format?: string;
     // Auto-suggestion tracking
