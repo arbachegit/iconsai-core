@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.classify-message]
 verify_jwt = false
+
+[functions.security-integrity-scan]
+verify_jwt = false

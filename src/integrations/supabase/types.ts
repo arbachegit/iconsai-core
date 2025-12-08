@@ -58,11 +58,15 @@ export type Database = {
           gmail_api_configured: boolean | null
           gmail_notification_email: string | null
           id: string
+          last_security_scan: string | null
           ml_accuracy_alert_email: string | null
           ml_accuracy_alert_enabled: boolean | null
           ml_accuracy_last_alert: string | null
           ml_accuracy_threshold: number | null
           monthly_report_enabled: boolean | null
+          security_alert_email: string | null
+          security_alert_threshold: string | null
+          security_scan_enabled: boolean | null
           updated_at: string | null
           vimeo_history_url: string | null
           weekly_report_enabled: boolean | null
@@ -80,11 +84,15 @@ export type Database = {
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
+          last_security_scan?: string | null
           ml_accuracy_alert_email?: string | null
           ml_accuracy_alert_enabled?: boolean | null
           ml_accuracy_last_alert?: string | null
           ml_accuracy_threshold?: number | null
           monthly_report_enabled?: boolean | null
+          security_alert_email?: string | null
+          security_alert_threshold?: string | null
+          security_scan_enabled?: boolean | null
           updated_at?: string | null
           vimeo_history_url?: string | null
           weekly_report_enabled?: boolean | null
@@ -102,11 +110,15 @@ export type Database = {
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
+          last_security_scan?: string | null
           ml_accuracy_alert_email?: string | null
           ml_accuracy_alert_enabled?: boolean | null
           ml_accuracy_last_alert?: string | null
           ml_accuracy_threshold?: number | null
           monthly_report_enabled?: boolean | null
+          security_alert_email?: string | null
+          security_alert_threshold?: string | null
+          security_scan_enabled?: boolean | null
           updated_at?: string | null
           vimeo_history_url?: string | null
           weekly_report_enabled?: boolean | null
@@ -898,6 +910,36 @@ export type Database = {
         }
         Relationships: []
       }
+      integrity_check_log: {
+        Row: {
+          check_timestamp: string
+          check_type: string
+          created_at: string | null
+          id: string
+          issues_found: Json | null
+          modules_checked: string[] | null
+          recommendations: Json | null
+        }
+        Insert: {
+          check_timestamp?: string
+          check_type: string
+          created_at?: string | null
+          id?: string
+          issues_found?: Json | null
+          modules_checked?: string[] | null
+          recommendations?: Json | null
+        }
+        Update: {
+          check_timestamp?: string
+          check_type?: string
+          created_at?: string | null
+          id?: string
+          issues_found?: Json | null
+          modules_checked?: string[] | null
+          recommendations?: Json | null
+        }
+        Relationships: []
+      }
       maieutic_training_categories: {
         Row: {
           antiprompt: string | null
@@ -1204,6 +1246,45 @@ export type Database = {
           section_id?: string
           title?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      security_scan_results: {
+        Row: {
+          alert_sent: boolean | null
+          created_at: string | null
+          detailed_report: Json
+          execution_duration_ms: number | null
+          findings_summary: Json
+          id: string
+          overall_status: string
+          scan_timestamp: string
+          scanner_type: string
+          triggered_by: string
+        }
+        Insert: {
+          alert_sent?: boolean | null
+          created_at?: string | null
+          detailed_report?: Json
+          execution_duration_ms?: number | null
+          findings_summary?: Json
+          id?: string
+          overall_status?: string
+          scan_timestamp?: string
+          scanner_type?: string
+          triggered_by?: string
+        }
+        Update: {
+          alert_sent?: boolean | null
+          created_at?: string | null
+          detailed_report?: Json
+          execution_duration_ms?: number | null
+          findings_summary?: Json
+          id?: string
+          overall_status?: string
+          scan_timestamp?: string
+          scanner_type?: string
+          triggered_by?: string
         }
         Relationships: []
       }
