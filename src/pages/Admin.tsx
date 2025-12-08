@@ -1,11 +1,20 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, Globe } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { NotificationsPanel } from "@/components/admin/NotificationsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
+import knowyouLogo from "@/assets/knowrisk-logo.png";
 
 // Eager load only DashboardTab (first view)
 import { DashboardTab } from "@/components/admin/DashboardTab";
@@ -98,8 +107,29 @@ const Admin = () => {
     const saved = localStorage.getItem('admin_sidebar_collapsed');
     return saved === 'true';
   });
+  const [isChangingLanguage, setIsChangingLanguage] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { i18n } = useTranslation();
+
+  const languages = [
+    { code: "pt", label: "Português", flag: "🇧🇷" },
+    { code: "en", label: "English", flag: "🇺🇸" },
+    { code: "fr", label: "Français", flag: "🇫🇷" },
+  ];
+
+  const handleLanguageChange = async (code: string) => {
+    setIsChangingLanguage(true);
+    try {
+      await i18n.changeLanguage(code);
+      localStorage.setItem("i18nextLng", code);
+      document.cookie = `i18next=${code};path=/;max-age=31536000`;
+    } finally {
+      setIsChangingLanguage(false);
+    }
+  };
+
+  const currentLanguage = languages.find((l) => l.code === i18n.language) || languages[0];
 
   // Função para logar navegação
   const logNavigation = async (fromTab: TabType, toTab: TabType, email: string) => {
@@ -241,25 +271,63 @@ const Admin = () => {
     <div className="min-h-screen flex flex-col bg-background">
       {/* Fixed Global Header */}
       <header 
-        className={`fixed top-0 left-0 right-0 h-12 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-primary/20 z-30 flex items-center justify-between px-4 pr-6 transition-all duration-300 ease-in-out`}
-        style={{
-          paddingLeft: isSidebarCollapsed ? '80px' : '272px',
-        }}
+        className="fixed top-0 left-0 right-0 h-12 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-primary/20 z-30 flex items-center justify-between px-4 transition-all duration-300 ease-in-out"
       >
-        {/* Notifications - Left side */}
-        <div className="flex items-center gap-4">
-          <NotificationsPanel />
-          <div className="h-6 w-px bg-border/40" />
-        </div>
-
-        {/* Logo and Admin Panel Text - Extreme Right */}
+        {/* Far Left: Knowrisk Logo + Near Left: Knowyou Logo */}
         <div className="flex items-center gap-3">
           <img 
             src={knowriskLogo} 
             alt="Knowrisk" 
-            className="h-7 w-7 rounded-full object-cover"
+            className="h-8 w-8 rounded-full object-cover"
           />
-          <span className="text-lg font-bold text-gradient whitespace-nowrap">Admin Panel</span>
+          <img 
+            src={knowyouLogo} 
+            alt="Knowyou" 
+            className="h-7 object-contain"
+          />
+        </div>
+
+        {/* Far Right: Notification + Near Right: Language Selector */}
+        <div className="flex items-center gap-3">
+          {/* Language Selector */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                disabled={isChangingLanguage}
+              >
+                {isChangingLanguage ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Globe className="h-4 w-4" />
+                    <span className="text-sm">{currentLanguage.flag}</span>
+                  </>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[140px]">
+              {languages.map((lang) => (
+                <DropdownMenuItem
+                  key={lang.code}
+                  onClick={() => handleLanguageChange(lang.code)}
+                  className={`flex items-center gap-2 cursor-pointer ${
+                    i18n.language === lang.code ? "bg-accent" : ""
+                  }`}
+                >
+                  <span>{lang.flag}</span>
+                  <span>{lang.label}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="h-6 w-px bg-border/40" />
+
+          {/* Notifications - Far Right */}
+          <NotificationsPanel />
         </div>
       </header>
 
