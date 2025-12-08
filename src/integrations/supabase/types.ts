@@ -1285,6 +1285,36 @@ export type Database = {
         }
         Relationships: []
       }
+      security_alert_config: {
+        Row: {
+          created_at: string | null
+          current_level: string
+          id: string
+          template_critical: string
+          template_secure: string
+          template_warning: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_level?: string
+          id?: string
+          template_critical?: string
+          template_secure?: string
+          template_warning?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_level?: string
+          id?: string
+          template_critical?: string
+          template_secure?: string
+          template_warning?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       security_scan_results: {
         Row: {
           alert_sent: boolean | null
