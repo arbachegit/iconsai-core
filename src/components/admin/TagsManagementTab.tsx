@@ -121,14 +121,7 @@ export const TagsManagementTab = () => {
   const queryClient = useQueryClient();
   const { settings: adminSettings, updateSettings } = useAdminSettings();
   
-  // ML Alert configuration state
-  const [mlAlertThreshold, setMlAlertThreshold] = useState<number>(70);
-  const [mlAlertEmail, setMlAlertEmail] = useState<string>("");
-  const [mlAlertEnabled, setMlAlertEnabled] = useState<boolean>(false);
-  const [isTestingAlert, setIsTestingAlert] = useState<boolean>(false);
-  const [isMlAlertConfigured, setIsMlAlertConfigured] = useState<boolean>(false);
-  const [isSavingMlConfig, setIsSavingMlConfig] = useState<boolean>(false);
-  const [isEnablingEdit, setIsEnablingEdit] = useState<boolean>(false);
+  // ML Alert configuration state - MOVED TO MLDashboardTab
   
   // Conflict resolution modal state
   const [conflictModal, setConflictModal] = useState<{
@@ -153,8 +146,6 @@ export const TagsManagementTab = () => {
   } | null>(null);
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
   const [isImporting, setIsImporting] = useState(false);
-  const [mlEventsOpen, setMlEventsOpen] = useState(false);
-  const [mlEventsTimeRange, setMlEventsTimeRange] = useState<number>(30); // days
   
   // Delete confirmation modal state with 9 Data Science reasons
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
@@ -201,18 +192,7 @@ export const TagsManagementTab = () => {
     },
   });
   
-  // Sync state with admin settings
-  useEffect(() => {
-    if (adminSettings) {
-      setMlAlertThreshold((adminSettings.ml_accuracy_threshold || 0.70) * 100);
-      setMlAlertEmail(adminSettings.ml_accuracy_alert_email || adminSettings.alert_email || "");
-      setMlAlertEnabled(adminSettings.ml_accuracy_alert_enabled || false);
-      // Mark as configured if settings exist in database
-      if (adminSettings.ml_accuracy_alert_email || adminSettings.ml_accuracy_threshold) {
-        setIsMlAlertConfigured(true);
-      }
-    }
-  }, [adminSettings]);
+  // ML Alert state sync - MOVED TO MLDashboardTab
 
   // Fetch all tags with document target_chat - with staleTime for caching
   const { data: allTags, isLoading } = useQuery({
@@ -336,182 +316,8 @@ export const TagsManagementTab = () => {
     },
   });
 
-  // Fetch ML management events for dashboard - only when panel is open
-  const { data: mlEvents } = useQuery({
-    queryKey: ["ml-management-events", mlEventsTimeRange],
-    enabled: mlEventsOpen, // Only fetch when panel is open
-    queryFn: async () => {
-      const startDate = new Date(Date.now() - mlEventsTimeRange * 24 * 60 * 60 * 1000).toISOString();
-      const { data, error } = await supabase
-        .from("tag_management_events")
-        .select("*")
-        .gte("created_at", startDate)
-        .order("created_at", { ascending: false });
-      
-      if (error) throw error;
-      
-      // Aggregate by action_type
-      const byType = (data || []).reduce((acc, e) => {
-        acc[e.action_type] = (acc[e.action_type] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      
-      // Calculate avg decision time per type
-      const avgTimeByType = (data || []).reduce((acc, e) => {
-        if (e.time_to_decision_ms) {
-          if (!acc[e.action_type]) acc[e.action_type] = { total: 0, count: 0 };
-          acc[e.action_type].total += e.time_to_decision_ms;
-          acc[e.action_type].count += 1;
-        }
-        return acc;
-      }, {} as Record<string, { total: number; count: number }>);
-      
-      // Group by day for time series
-      const byDay = (data || []).reduce((acc, item) => {
-        const date = new Date(item.created_at || '').toISOString().split('T')[0];
-        if (!acc[date]) acc[date] = { adoptions: 0, merges: 0, deletes: 0, exports: 0, imports: 0, rejects: 0 };
-        if (item.action_type === 'adopt_orphan') acc[date].adoptions++;
-        if (item.action_type?.includes('merge')) acc[date].merges++;
-        if (item.action_type === 'delete_orphan') acc[date].deletes++;
-        if (item.action_type === 'export_taxonomy') acc[date].exports++;
-        if (item.action_type === 'import_taxonomy') acc[date].imports++;
-        if (item.action_type === 'reject_duplicate') acc[date].rejects++;
-        return acc;
-      }, {} as Record<string, { adoptions: number; merges: number; deletes: number; exports: number; imports: number; rejects: number }>);
-
-      const timeSeriesData = Object.entries(byDay)
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .slice(-14) // Last 14 days
-        .map(([date, counts]) => ({
-          date: date.slice(5), // MM-DD format
-          ...counts,
-          total: counts.adoptions + counts.merges + counts.deletes + counts.exports + counts.imports + counts.rejects
-        }));
-
-      // Pie chart data
-      const pieData = Object.entries(byType).map(([name, value]) => {
-        const labels: Record<string, { label: string; color: string }> = {
-          'adopt_orphan': { label: 'Adoções', color: 'hsl(262, 83%, 58%)' },
-          'merge_parent': { label: 'Merge Parent', color: 'hsl(187, 71%, 45%)' },
-          'merge_child': { label: 'Merge Child', color: 'hsl(220, 70%, 50%)' },
-          'delete_orphan': { label: 'Exclusões', color: 'hsl(0, 72%, 51%)' },
-          'export_taxonomy': { label: 'Exports', color: 'hsl(142, 71%, 45%)' },
-          'import_taxonomy': { label: 'Imports', color: 'hsl(38, 92%, 50%)' },
-          'reject_duplicate': { label: 'Rejeições', color: 'hsl(330, 81%, 60%)' },
-          'reassign_orphan': { label: 'Reassignments', color: 'hsl(280, 65%, 60%)' }
-        };
-        return {
-          name: labels[name]?.label || name,
-          value,
-          fill: labels[name]?.color || 'hsl(220, 10%, 50%)'
-        };
-      }).filter(d => d.value > 0);
-
-      // Bar chart data for decision time
-      const decisionTimeData = Object.entries(avgTimeByType).map(([type, { total, count }]) => {
-        const labels: Record<string, string> = {
-          'adopt_orphan': 'Adoção',
-          'merge_parent': 'Merge P.',
-          'merge_child': 'Merge C.',
-          'delete_orphan': 'Exclusão',
-          'reject_duplicate': 'Rejeição'
-        };
-        return {
-          name: labels[type] || type,
-          avgTime: Math.round(total / count),
-          count
-        };
-      });
-
-      // Aggregate merge reasons from user_decision
-      const mergeReasonsCounts = {
-        synonymy: 0,
-        grammaticalVariation: 0,
-        spellingVariation: 0,
-        acronym: 0,
-        typo: 0,
-        languageEquivalence: 0,
-        generalization: 0
-      };
-      
-      let totalMergesWithReasons = 0;
-      let autoSuggestionAccepted = 0;
-      let autoSuggestionModified = 0;
-      let autoSuggestionIgnored = 0;
-      
-      (data || []).forEach(event => {
-        if (event.action_type?.includes('merge') && event.user_decision) {
-          const decision = typeof event.user_decision === 'string' 
-            ? JSON.parse(event.user_decision) 
-            : event.user_decision;
-          
-          if (decision.merge_reasons) {
-            totalMergesWithReasons++;
-            if (decision.merge_reasons.synonymy) mergeReasonsCounts.synonymy++;
-            if (decision.merge_reasons.grammaticalVariation) mergeReasonsCounts.grammaticalVariation++;
-            if (decision.merge_reasons.spellingVariation) mergeReasonsCounts.spellingVariation++;
-            if (decision.merge_reasons.acronym) mergeReasonsCounts.acronym++;
-            if (decision.merge_reasons.typo) mergeReasonsCounts.typo++;
-            if (decision.merge_reasons.languageEquivalence) mergeReasonsCounts.languageEquivalence++;
-            if (decision.merge_reasons.generalization) mergeReasonsCounts.generalization++;
-            
-            // Track auto-suggestion usage
-            if (decision.auto_suggestion_used !== undefined) {
-              if (decision.auto_suggestion_used === 'accepted') {
-                autoSuggestionAccepted++;
-              } else if (decision.auto_suggestion_used === 'modified') {
-                autoSuggestionModified++;
-              } else if (decision.auto_suggestion_used === 'ignored') {
-                autoSuggestionIgnored++;
-              }
-            }
-          }
-        }
-      });
-      
-      // Bar chart data for merge reasons
-      const mergeReasonsLabels: Record<string, { label: string; color: string }> = {
-        synonymy: { label: 'Sinonímia', color: 'hsl(262, 83%, 58%)' },
-        grammaticalVariation: { label: 'Gram. (Sing/Pl)', color: 'hsl(187, 71%, 45%)' },
-        spellingVariation: { label: 'Grafia', color: 'hsl(220, 70%, 50%)' },
-        acronym: { label: 'Siglas', color: 'hsl(38, 92%, 50%)' },
-        typo: { label: 'Typos', color: 'hsl(0, 72%, 51%)' },
-        languageEquivalence: { label: 'Idioma', color: 'hsl(142, 71%, 45%)' },
-        generalization: { label: 'Generalização', color: 'hsl(330, 81%, 60%)' }
-      };
-      
-      const mergeReasonsData = Object.entries(mergeReasonsCounts)
-        .map(([key, count]) => ({
-          name: mergeReasonsLabels[key]?.label || key,
-          count,
-          fill: mergeReasonsLabels[key]?.color || 'hsl(220, 10%, 50%)'
-        }))
-        .filter(d => d.count > 0);
-
-      // Auto-suggestion stats
-      const autoSuggestionStats = {
-        accepted: autoSuggestionAccepted,
-        modified: autoSuggestionModified,
-        ignored: autoSuggestionIgnored,
-        total: autoSuggestionAccepted + autoSuggestionModified + autoSuggestionIgnored,
-        acceptanceRate: (autoSuggestionAccepted + autoSuggestionModified + autoSuggestionIgnored) > 0
-          ? Math.round((autoSuggestionAccepted / (autoSuggestionAccepted + autoSuggestionModified + autoSuggestionIgnored)) * 100)
-          : 0
-      };
-
-      return {
-        total: data?.length || 0,
-        byType,
-        recentEvents: data?.slice(0, 15) || [],
-        timeSeriesData,
-        pieData,
-        decisionTimeData,
-        mergeReasonsData,
-        totalMergesWithReasons,
-        autoSuggestionStats
-      };
-    },
-  });
+  // ML management events - MOVED TO MLDashboardTab
+  const mlEvents = null;
 
   // Delete chat routing rule mutation
   const deleteChatRoutingRuleMutation = useMutation({
@@ -549,56 +355,7 @@ export const TagsManagementTab = () => {
     },
   });
 
-  // Save ML alert configuration
-  const handleSaveMlAlertConfig = async () => {
-    setIsSavingMlConfig(true);
-    try {
-      await updateSettings({
-        ml_accuracy_threshold: mlAlertThreshold / 100,
-        ml_accuracy_alert_enabled: mlAlertEnabled,
-        ml_accuracy_alert_email: mlAlertEmail || null,
-      });
-      toast.success("Configurações de alerta ML salvas!");
-      setIsMlAlertConfigured(true);
-    } catch (error: any) {
-      toast.error(`Erro ao salvar configurações: ${error.message}`);
-    } finally {
-      setIsSavingMlConfig(false);
-    }
-  };
-
-  // Edit ML alert configuration (unlock fields)
-  const handleEditMlAlertConfig = async () => {
-    setIsEnablingEdit(true);
-    await new Promise(resolve => setTimeout(resolve, 300));
-    setIsMlAlertConfigured(false);
-    setIsEnablingEdit(false);
-  };
-
-  // Test ML alert (calls edge function)
-  const handleTestMlAlert = async () => {
-    setIsTestingAlert(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("check-ml-accuracy");
-      if (error) throw error;
-      
-      if (data?.message === "Alerts disabled") {
-        toast.info("Alertas ML desativados. Ative para testar.");
-      } else if (data?.message === "No alert email configured") {
-        toast.warning("Configure um email de alerta primeiro.");
-      } else if (data?.message === "Alert email sent") {
-        toast.success(`Email de alerta enviado! Taxa: ${(data.accuracyRate * 100).toFixed(1)}%`);
-      } else if (data?.message === "Accuracy OK") {
-        toast.success(`Taxa OK (${(data.accuracyRate * 100).toFixed(1)}%) - acima do threshold (${(data.threshold * 100).toFixed(0)}%)`);
-      } else {
-        toast.info(data?.message || "Verificação concluída");
-      }
-    } catch (error: any) {
-      toast.error(`Erro ao testar alerta: ${error.message}`);
-    } finally {
-      setIsTestingAlert(false);
-    }
-  };
+  // ML Alert functions - MOVED TO MLDashboardTab
 
   // Open delete confirmation modal - fetches count of all instances
   const openDeleteConfirmModal = async (ids: string[], tagName: string, documentId?: string) => {

@@ -332,82 +332,70 @@ export function useChatStudy(options: UseChatStudyOptions = {}) {
           });
         }
 
-        // Common post-processing for both paths
-        console.log("[SUGGESTIONS DEBUG] Full response length:", fullResponse.length);
-        console.log("[SUGGESTIONS DEBUG] Response tail (last 500 chars):", fullResponse.slice(-500));
-        const extractedSuggestions = extractSuggestions(fullResponse);
-        console.log("[SUGGESTIONS DEBUG] Extracted suggestions:", extractedSuggestions);
-        if (extractedSuggestions.length > 0) {
-          setSuggestions(extractedSuggestions);
-          
-          // 📊 Salvar auditoria de sugestões para análise de coerência
-          saveSuggestionAudit({
-            sessionId,
-            chatType: "study",
-            userQuery: input,
-            aiResponsePreview: fullResponse,
-            suggestionsGenerated: extractedSuggestions,
-            hasRagContext: fullResponse.includes("CONTEXTO RELEVANTE"),
-          });
-        }
-
-        const cleanedResponse = removeSuggestionsFromText(fullResponse);
-
-        // Gerar áudio da resposta (somente se habilitado)
-        if (settings?.chat_audio_enabled) {
-          setIsGeneratingAudio(true);
-          try {
-            const audioUrl = await generateAudioUrl(cleanedResponse, "study");
-            
-            setMessages((prev) => {
-              const updated = prev.map((m, i) =>
-                i === prev.length - 1
-                  ? { ...m, content: cleanedResponse, audioUrl }
-                  : m
-              );
-              saveHistory(updated);
-              return updated;
-            });
-
-            // Update analytics with audio play
-            updateSession({
-              session_id: sessionId,
-              updates: { audio_plays: messages.filter(m => m.audioUrl).length + 1 },
-            }).catch(console.error);
-          } catch (error) {
-            console.error("Erro ao gerar áudio:", error);
-            setMessages((prev) => {
-              const updated = prev.map((m, i) =>
-                i === prev.length - 1
-                  ? { ...m, content: cleanedResponse }
-                  : m
-              );
-              saveHistory(updated);
-              return updated;
-            });
-          } finally {
-            setIsGeneratingAudio(false);
-          }
+        // Post-processing only for attachedDocument path (streamChat handles its own in onDone)
+        if (attachedDocumentId === null) {
+          // Already processed in streamChat onDone callback
         } else {
-          // No audio - just save the message
-          setMessages((prev) => {
-            const updated = prev.map((m, i) =>
-              i === prev.length - 1
-                ? { ...m, content: cleanedResponse }
-                : m
-            );
-            saveHistory(updated);
-            return updated;
-          });
+          // Process for unified chat path
+          const extractedSuggestions = extractSuggestions(fullResponse);
+          if (extractedSuggestions.length > 0) {
+            setSuggestions(extractedSuggestions);
+            saveSuggestionAudit({
+              sessionId,
+              chatType: "study",
+              userQuery: input,
+              aiResponsePreview: fullResponse,
+              suggestionsGenerated: extractedSuggestions,
+              hasRagContext: fullResponse.includes("CONTEXTO RELEVANTE"),
+            });
+          }
+
+          const cleanedResponse = removeSuggestionsFromText(fullResponse);
+
+          if (settings?.chat_audio_enabled) {
+            setIsGeneratingAudio(true);
+            try {
+              const audioUrl = await generateAudioUrl(cleanedResponse, "study");
+              setMessages((prev) => {
+                const updated = prev.map((m, i) =>
+                  i === prev.length - 1 ? { ...m, content: cleanedResponse, audioUrl } : m
+                );
+                saveHistory(updated);
+                return updated;
+              });
+              updateSession({
+                session_id: sessionId,
+                updates: { audio_plays: messages.filter(m => m.audioUrl).length + 1 },
+              }).catch(console.error);
+            } catch (error) {
+              console.error("Erro ao gerar áudio:", error);
+              setMessages((prev) => {
+                const updated = prev.map((m, i) =>
+                  i === prev.length - 1 ? { ...m, content: cleanedResponse } : m
+                );
+                saveHistory(updated);
+                return updated;
+              });
+            } finally {
+              setIsGeneratingAudio(false);
+            }
+          } else {
+            setMessages((prev) => {
+              const updated = prev.map((m, i) =>
+                i === prev.length - 1 ? { ...m, content: cleanedResponse } : m
+              );
+              saveHistory(updated);
+              return updated;
+            });
+          }
+
+          updateSession({
+            session_id: sessionId,
+            updates: { message_count: messages.length + 2 },
+          }).catch(console.error);
+
+          setIsLoading(false);
         }
-
-        // Update analytics with message count
-        updateSession({
-          session_id: sessionId,
-          updates: { message_count: messages.length + 2 },
-        }).catch(console.error);
-
-        setIsLoading(false);
       } catch (error) {
         console.error("Erro ao enviar mensagem:", error);
         toast({
