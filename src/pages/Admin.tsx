@@ -237,12 +237,7 @@ const Admin = () => {
           paddingLeft: isSidebarCollapsed ? '80px' : '272px',
         }}
       >
-        {/* Notifications - Left side */}
-        <div className="flex items-center gap-4">
-          <NotificationsPanel />
-        </div>
-
-        {/* Logo and Admin Panel Text - Far Right */}
+        {/* Logo and Admin Panel Text - Left side */}
         <div className="flex items-center gap-3">
           <img 
             src={knowriskLogo} 
@@ -250,6 +245,12 @@ const Admin = () => {
             className="h-7 w-7 rounded-full object-cover"
           />
           <span className="text-lg font-bold text-gradient whitespace-nowrap">Admin Panel</span>
+        </div>
+
+        {/* Separator + Notifications - Right side */}
+        <div className="flex items-center gap-4">
+          <div className="h-6 w-px bg-border/40" />
+          <NotificationsPanel />
         </div>
       </header>
 
