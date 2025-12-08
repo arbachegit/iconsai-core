@@ -38,6 +38,7 @@ const ContactMessagesTab = lazy(() => import("@/components/admin/ContactMessages
 const DocumentationSyncTab = lazy(() => import("@/components/admin/DocumentationSyncTab").then(m => ({ default: m.DocumentationSyncTab })));
 const TagsManagementTab = lazy(() => import("@/components/admin/TagsManagementTab").then(m => ({ default: m.TagsManagementTab })));
 const MLDashboardTab = lazy(() => import("@/components/admin/MLDashboardTab").then(m => ({ default: m.MLDashboardTab })));
+const MaieuticTrainingTab = lazy(() => import("@/components/admin/MaieuticTrainingTab").then(m => ({ default: m.MaieuticTrainingTab })));
 
 // Loading fallback component
 const TabLoadingFallback = () => (
@@ -46,7 +47,7 @@ const TabLoadingFallback = () => (
   </div>
 );
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -79,6 +80,7 @@ const TAB_LABELS: Record<TabType, string> = {
   "contact-messages": "Mensagens Contato",
   "documentation-sync": "Sincronizar Docs",
   "ml-dashboard": "Machine Learning ML",
+  "maieutic-training": "Treino IA Maiêutica",
 };
 
 const Admin = () => {
@@ -213,6 +215,7 @@ const Admin = () => {
         case "images": return <ImageCacheTab />;
         case "youtube": return <YouTubeCacheTab />;
         case "ml-dashboard": return <MLDashboardTab />;
+        case "maieutic-training": return <MaieuticTrainingTab />;
         default: return <DashboardTab />;
       }
     })();

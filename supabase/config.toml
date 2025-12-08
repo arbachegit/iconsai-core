@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.sync-documentation]
 verify_jwt = false
+
+[functions.classify-message]
+verify_jwt = false
