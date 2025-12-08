@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -21,7 +23,8 @@ import {
   TrendingDown, 
   MessageCircle,
   Loader2,
-  Settings
+  Settings,
+  Cog
 } from 'lucide-react';
 
 interface NotificationPreference {
@@ -30,6 +33,14 @@ interface NotificationPreference {
   event_label: string;
   email_enabled: boolean;
   whatsapp_enabled: boolean;
+}
+
+interface SecurityAlertConfig {
+  id: string;
+  current_level: 'critical' | 'warning' | 'secure';
+  template_critical: string;
+  template_warning: string;
+  template_secure: string;
 }
 
 const EVENT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -102,6 +113,12 @@ const formatPhoneNumber = (value: string): string => {
   }
 };
 
+const SEVERITY_LEVELS = [
+  { value: 'critical' as const, label: 'Crítico', color: 'bg-red-500/20 text-red-500 border-red-500/50 hover:bg-red-500/30' },
+  { value: 'warning' as const, label: 'Atenção', color: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/30' },
+  { value: 'secure' as const, label: 'Seguro', color: 'bg-green-500/20 text-green-500 border-green-500/50 hover:bg-green-500/30' },
+];
+
 export default function NotificationSettingsTab() {
   const { t } = useTranslation();
   const [preferences, setPreferences] = useState<NotificationPreference[]>([]);
@@ -112,6 +129,12 @@ export default function NotificationSettingsTab() {
   const [testingEmail, setTestingEmail] = useState(false);
   const [testingWhatsapp, setTestingWhatsapp] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  
+  // Security Alert Config State
+  const [securityConfig, setSecurityConfig] = useState<SecurityAlertConfig | null>(null);
+  const [securityModalOpen, setSecurityModalOpen] = useState(false);
+  const [editingSecurityConfig, setEditingSecurityConfig] = useState<SecurityAlertConfig | null>(null);
+  const [savingSecurityConfig, setSavingSecurityConfig] = useState(false);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhoneNumber(e.target.value);
@@ -144,6 +167,17 @@ export default function NotificationSettingsTab() {
       if (settingsData) {
         setTargetPhone(settingsData.whatsapp_target_phone || '');
         setWhatsappGlobalEnabled(settingsData.whatsapp_global_enabled || false);
+      }
+
+      // Load security alert config
+      const { data: securityData, error: securityError } = await supabase
+        .from('security_alert_config')
+        .select('*')
+        .single();
+
+      if (securityError && securityError.code !== 'PGRST116') throw securityError;
+      if (securityData) {
+        setSecurityConfig(securityData as SecurityAlertConfig);
       }
     } catch (error: any) {
       console.error('Error loading notification settings:', error);
@@ -193,6 +227,40 @@ export default function NotificationSettingsTab() {
     } catch (error: any) {
       console.error('Error updating preference:', error);
       toast.error('Erro ao atualizar preferência');
+    }
+  };
+
+  const openSecurityModal = () => {
+    setEditingSecurityConfig(securityConfig ? { ...securityConfig } : null);
+    setSecurityModalOpen(true);
+  };
+
+  const saveSecurityConfig = async () => {
+    if (!editingSecurityConfig) return;
+    
+    setSavingSecurityConfig(true);
+    try {
+      const { error } = await supabase
+        .from('security_alert_config')
+        .update({
+          current_level: editingSecurityConfig.current_level,
+          template_critical: editingSecurityConfig.template_critical,
+          template_warning: editingSecurityConfig.template_warning,
+          template_secure: editingSecurityConfig.template_secure,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingSecurityConfig.id);
+
+      if (error) throw error;
+      
+      setSecurityConfig(editingSecurityConfig);
+      setSecurityModalOpen(false);
+      toast.success('Configuração de alerta de segurança salva');
+    } catch (error: any) {
+      console.error('Error saving security config:', error);
+      toast.error('Erro ao salvar configuração');
+    } finally {
+      setSavingSecurityConfig(false);
     }
   };
 
@@ -253,6 +321,24 @@ export default function NotificationSettingsTab() {
     } finally {
       setTestingWhatsapp(false);
     }
+  };
+
+  const getCurrentSeverityBadge = () => {
+    if (!securityConfig) return null;
+    const level = SEVERITY_LEVELS.find(l => l.value === securityConfig.current_level);
+    if (!level) return null;
+    
+    const icons = {
+      critical: '🔴',
+      warning: '🟡',
+      secure: '🟢'
+    };
+    
+    return (
+      <Badge className={`${level.color} cursor-default`}>
+        {icons[level.value]} {level.label}
+      </Badge>
+    );
   };
 
   if (loading) {
@@ -349,7 +435,7 @@ export default function NotificationSettingsTab() {
         </CardContent>
       </Card>
 
-      {/* Event Types Grid */}
+      {/* Event Types List */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Tipos de Evento</CardTitle>
@@ -357,63 +443,181 @@ export default function NotificationSettingsTab() {
             Configure notificações individuais para cada tipo de evento do sistema
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <CardContent className="p-0">
+          <div className="divide-y divide-border">
             {preferences.map((pref) => {
               const IconComponent = EVENT_ICONS[pref.event_type] || Bell;
+              const isSecurityAlert = pref.event_type === 'security_alert';
               
               return (
-                <Card key={pref.id} className="border-border/50 hover:border-primary/30 transition-colors">
-                  <CardContent className="p-4 space-y-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <IconComponent className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{pref.event_label}</p>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {pref.event_type}
-                        </Badge>
-                      </div>
+                <div 
+                  key={pref.id} 
+                  className="flex items-center justify-between px-6 py-4 hover:bg-muted/50 transition-colors"
+                >
+                  {/* Left: Icon and Label */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                      <IconComponent className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="font-medium text-sm truncate">{pref.event_label}</span>
+                      {isSecurityAlert && getCurrentSeverityBadge()}
+                    </div>
+                  </div>
+
+                  {/* Right: Controls */}
+                  <div className="flex items-center gap-6 shrink-0">
+                    {/* Security Alert Config Button */}
+                    {isSecurityAlert && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={openSecurityModal}
+                        className="gap-1.5 text-muted-foreground hover:text-foreground"
+                      >
+                        <Cog className="h-4 w-4" />
+                        <span className="hidden sm:inline">Severidade</span>
+                      </Button>
+                    )}
+                    
+                    {/* Email Toggle */}
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-blue-500" />
+                      <Switch
+                        checked={pref.email_enabled}
+                        onCheckedChange={(checked) => 
+                          togglePreference(pref.id, 'email_enabled', checked)
+                        }
+                      />
                     </div>
 
-                    <div className="space-y-3">
-                      {/* Email Toggle */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm">Email</span>
-                        </div>
-                        <Switch
-                          checked={pref.email_enabled}
-                          onCheckedChange={(checked) => 
-                            togglePreference(pref.id, 'email_enabled', checked)
-                          }
-                        />
-                      </div>
-
-                      {/* WhatsApp Toggle */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4 text-green-500" />
-                          <span className="text-sm">WhatsApp</span>
-                        </div>
-                        <Switch
-                          checked={pref.whatsapp_enabled}
-                          onCheckedChange={(checked) => 
-                            togglePreference(pref.id, 'whatsapp_enabled', checked)
-                          }
-                          disabled={!whatsappGlobalEnabled}
-                        />
-                      </div>
+                    {/* WhatsApp Toggle */}
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-green-500" />
+                      <Switch
+                        checked={pref.whatsapp_enabled}
+                        onCheckedChange={(checked) => 
+                          togglePreference(pref.id, 'whatsapp_enabled', checked)
+                        }
+                        disabled={!whatsappGlobalEnabled}
+                      />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })}
           </div>
         </CardContent>
       </Card>
+
+      {/* Security Severity Configuration Modal */}
+      <Dialog open={securityModalOpen} onOpenChange={setSecurityModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              Configuração de Alerta de Segurança
+            </DialogTitle>
+          </DialogHeader>
+          
+          {editingSecurityConfig && (
+            <div className="space-y-6">
+              {/* Severity Level Selector */}
+              <div className="space-y-3">
+                <Label>Nível de Alerta Atual</Label>
+                <div className="flex flex-wrap gap-2">
+                  {SEVERITY_LEVELS.map((level) => {
+                    const icons = { critical: '🔴', warning: '🟡', secure: '🟢' };
+                    const isSelected = editingSecurityConfig.current_level === level.value;
+                    
+                    return (
+                      <Badge
+                        key={level.value}
+                        className={`cursor-pointer transition-all ${level.color} ${
+                          isSelected ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : 'opacity-60 hover:opacity-100'
+                        }`}
+                        onClick={() => setEditingSecurityConfig({
+                          ...editingSecurityConfig,
+                          current_level: level.value
+                        })}
+                      >
+                        {icons[level.value]} {level.label}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Message Templates */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-red-500">
+                    🔴 Mensagem Crítica
+                  </Label>
+                  <Textarea
+                    value={editingSecurityConfig.template_critical}
+                    onChange={(e) => setEditingSecurityConfig({
+                      ...editingSecurityConfig,
+                      template_critical: e.target.value
+                    })}
+                    placeholder="Template para alertas críticos..."
+                    className="min-h-[80px] border-red-500/30 focus:border-red-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-yellow-500">
+                    🟡 Mensagem de Atenção
+                  </Label>
+                  <Textarea
+                    value={editingSecurityConfig.template_warning}
+                    onChange={(e) => setEditingSecurityConfig({
+                      ...editingSecurityConfig,
+                      template_warning: e.target.value
+                    })}
+                    placeholder="Template para alertas de atenção..."
+                    className="min-h-[80px] border-yellow-500/30 focus:border-yellow-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-green-500">
+                    🟢 Mensagem de Segurança
+                  </Label>
+                  <Textarea
+                    value={editingSecurityConfig.template_secure}
+                    onChange={(e) => setEditingSecurityConfig({
+                      ...editingSecurityConfig,
+                      template_secure: e.target.value
+                    })}
+                    placeholder="Template para status seguro..."
+                    className="min-h-[80px] border-green-500/30 focus:border-green-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSecurityModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={saveSecurityConfig} disabled={savingSecurityConfig}>
+              {savingSecurityConfig ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Test Section */}
       <Card>
