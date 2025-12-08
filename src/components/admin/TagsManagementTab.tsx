@@ -57,6 +57,7 @@ import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRig
 import { useRef } from "react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
+import { TaxonomyFlowDiagram } from "./TaxonomyFlowDiagram";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie, Legend, LineChart, Line, Area, AreaChart } from "recharts";
 import { Switch } from "@/components/ui/switch";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
@@ -1542,25 +1543,16 @@ export const TagsManagementTab = () => {
               </div>
             </div>
 
-            {/* ML Learning Loop */}
+            {/* ML Learning Loop with Diagram */}
             <div>
               <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
                 <Brain className="h-4 w-4 text-primary" />
-                Aprendizado de Máquina (ML)
+                Fluxo de Taxonomia com ML
               </h5>
-              <p className="text-xs text-muted-foreground mb-2">
+              <TaxonomyFlowDiagram />
+              <p className="text-xs text-muted-foreground mt-2">
                 Cada decisão de merge/reject é logada em <code className="bg-primary/20 px-1 rounded">tag_management_events</code> para treinar futuros modelos de detecção de duplicatas.
               </p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-card/50 rounded p-2 text-center">
-                  <Zap className="h-4 w-4 text-green-400 mx-auto mb-1" />
-                  <div className="text-muted-foreground">Regras de Merge</div>
-                </div>
-                <div className="bg-card/50 rounded p-2 text-center">
-                  <ArrowRightLeft className="h-4 w-4 text-cyan-400 mx-auto mb-1" />
-                  <div className="text-muted-foreground">Regras de Roteamento</div>
-                </div>
-              </div>
             </div>
 
             {/* Import/Export */}

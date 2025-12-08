@@ -414,7 +414,8 @@ export const MLDashboardTab = () => {
               para governança de tags e roteamento de documentos.
             </p>
             
-            <MLFlowDiagram />
+            {/* Calculate activity level based on recent events */}
+            <MLFlowDiagram activityLevel={Math.min(1, (mlEvents?.total || 0) / 50)} />
             
             <div className="text-xs text-muted-foreground space-y-1">
               <p className="font-semibold text-foreground">Como funciona:</p>
@@ -424,6 +425,9 @@ export const MLDashboardTab = () => {
                 <li>IA consulta regras antes de sugerir</li>
                 <li>Sugestões futuras já vêm corrigidas</li>
               </ol>
+              <p className="text-[10px] mt-2 italic">
+                Velocidade das animações baseada em atividade ML recente ({mlEvents?.total || 0} eventos)
+              </p>
             </div>
           </div>
         }
