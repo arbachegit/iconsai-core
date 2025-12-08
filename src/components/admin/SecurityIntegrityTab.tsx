@@ -102,6 +102,10 @@ export const SecurityIntegrityTab = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const fetchScanHistory = async () => {
     try {
@@ -314,6 +318,18 @@ export const SecurityIntegrityTab = () => {
 
     return result;
   }, [scanHistory, statusFilter, dateRange, sortField, sortDirection]);
+
+  // Pagination logic
+  const totalItems = filteredAndSortedScans.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedScans = filteredAndSortedScans.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, dateRange, sortField, sortDirection]);
 
   const latestScan = scanHistory[0];
 
@@ -553,7 +569,7 @@ export const SecurityIntegrityTab = () => {
             
             {/* Grid-based Table Body */}
             <div className="divide-y divide-border">
-              {filteredAndSortedScans.map((scan) => (
+              {paginatedScans.map((scan) => (
                 <Collapsible key={scan.id} open={expandedScanId === scan.id}>
                   <div className="grid grid-cols-[200px_150px_100px_80px_80px] gap-0 hover:bg-muted/50 transition-colors">
                     <div className="px-4 py-3">
@@ -673,7 +689,7 @@ export const SecurityIntegrityTab = () => {
                 </Collapsible>
               ))}
               
-              {filteredAndSortedScans.length === 0 && (
+              {paginatedScans.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   {scanHistory.length === 0 
                     ? 'Nenhum scan realizado ainda. Clique em "Executar Scan Manual" para começar.'
@@ -682,6 +698,74 @@ export const SecurityIntegrityTab = () => {
               )}
             </div>
           </ScrollArea>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de {totalItems} registros
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                >
+                  Primeira
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Anterior
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(pageNum)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Próxima
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  Última
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
