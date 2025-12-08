@@ -16,6 +16,16 @@ export const TaxonomyHierarchySimulationDiagram = ({
 
   return (
     <div className="w-full space-y-4">
+      {/* Titles */}
+      <div className="text-center">
+        <h2 className="text-base font-bold text-foreground">
+          Simulação: Descoberta de Hierarquia Taxonômica
+        </h2>
+        <h3 className="text-sm text-muted-foreground mt-1">
+          Fluxo de como a IA identifica e aprende hierarquias de tags
+        </h3>
+      </div>
+
       {/* Action Buttons */}
       <div className="flex items-center justify-center gap-3">
         <Button
@@ -44,16 +54,6 @@ export const TaxonomyHierarchySimulationDiagram = ({
           <X className="w-4 h-4" />
           Rejeitar
         </Button>
-      </div>
-
-      {/* Titles */}
-      <div className="text-center">
-        <h2 className="text-base font-bold text-foreground">
-          Simulação: Descoberta de Hierarquia Taxonômica
-        </h2>
-        <h3 className="text-sm text-muted-foreground mt-1">
-          Fluxo de como a IA identifica e aprende hierarquias de tags
-        </h3>
       </div>
 
       <svg viewBox="0 0 800 520" className="w-full h-auto">
