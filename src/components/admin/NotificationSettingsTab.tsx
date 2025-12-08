@@ -6,10 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { 
   Bell, 
   Mail, 
@@ -24,7 +27,9 @@ import {
   MessageCircle,
   Loader2,
   Settings,
-  Cog
+  Cog,
+  History,
+  User
 } from 'lucide-react';
 
 interface NotificationPreference {
@@ -41,6 +46,15 @@ interface SecurityAlertConfig {
   template_critical: string;
   template_warning: string;
   template_secure: string;
+}
+
+interface SeverityHistoryEntry {
+  id: string;
+  previous_level: string;
+  new_level: string;
+  changed_by_email: string | null;
+  change_reason: string | null;
+  created_at: string;
 }
 
 const EVENT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -135,6 +149,12 @@ export default function NotificationSettingsTab() {
   const [securityModalOpen, setSecurityModalOpen] = useState(false);
   const [editingSecurityConfig, setEditingSecurityConfig] = useState<SecurityAlertConfig | null>(null);
   const [savingSecurityConfig, setSavingSecurityConfig] = useState(false);
+  const [changeReason, setChangeReason] = useState('');
+  
+  // Severity History State
+  const [severityHistory, setSeverityHistory] = useState<SeverityHistoryEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhoneNumber(e.target.value);
@@ -232,14 +252,55 @@ export default function NotificationSettingsTab() {
 
   const openSecurityModal = () => {
     setEditingSecurityConfig(securityConfig ? { ...securityConfig } : null);
+    setChangeReason('');
     setSecurityModalOpen(true);
+    loadSeverityHistory();
+  };
+
+  const loadSeverityHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('security_severity_history')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setSeverityHistory(data || []);
+    } catch (error: any) {
+      console.error('Error loading severity history:', error);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   const saveSecurityConfig = async () => {
-    if (!editingSecurityConfig) return;
+    if (!editingSecurityConfig || !securityConfig) return;
+    
+    const levelChanged = editingSecurityConfig.current_level !== securityConfig.current_level;
     
     setSavingSecurityConfig(true);
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // If level changed, log to history
+      if (levelChanged) {
+        const { error: historyError } = await supabase
+          .from('security_severity_history')
+          .insert({
+            previous_level: securityConfig.current_level,
+            new_level: editingSecurityConfig.current_level,
+            changed_by_user_id: user?.id || null,
+            changed_by_email: user?.email || null,
+            change_reason: changeReason || null
+          });
+
+        if (historyError) throw historyError;
+      }
+
+      // Update config
       const { error } = await supabase
         .from('security_alert_config')
         .update({
@@ -255,6 +316,7 @@ export default function NotificationSettingsTab() {
       
       setSecurityConfig(editingSecurityConfig);
       setSecurityModalOpen(false);
+      setChangeReason('');
       toast.success('Configuração de alerta de segurança salva');
     } catch (error: any) {
       console.error('Error saving security config:', error);
@@ -262,6 +324,17 @@ export default function NotificationSettingsTab() {
     } finally {
       setSavingSecurityConfig(false);
     }
+  };
+
+  const getLevelBadge = (level: string) => {
+    const levelConfig = SEVERITY_LEVELS.find(l => l.value === level);
+    const icons: Record<string, string> = { critical: '🔴', warning: '🟡', secure: '🟢' };
+    if (!levelConfig) return <Badge variant="outline">{level}</Badge>;
+    return (
+      <Badge className={`${levelConfig.color} text-xs`}>
+        {icons[level] || ''} {levelConfig.label}
+      </Badge>
+    );
   };
 
   const testEmail = async () => {
@@ -512,7 +585,7 @@ export default function NotificationSettingsTab() {
 
       {/* Security Severity Configuration Modal */}
       <Dialog open={securityModalOpen} onOpenChange={setSecurityModalOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
@@ -520,85 +593,162 @@ export default function NotificationSettingsTab() {
             </DialogTitle>
           </DialogHeader>
           
-          {editingSecurityConfig && (
-            <div className="space-y-6">
-              {/* Severity Level Selector */}
-              <div className="space-y-3">
-                <Label>Nível de Alerta Atual</Label>
-                <div className="flex flex-wrap gap-2">
-                  {SEVERITY_LEVELS.map((level) => {
-                    const icons = { critical: '🔴', warning: '🟡', secure: '🟢' };
-                    const isSelected = editingSecurityConfig.current_level === level.value;
-                    
-                    return (
-                      <Badge
-                        key={level.value}
-                        className={`cursor-pointer transition-all ${level.color} ${
-                          isSelected ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : 'opacity-60 hover:opacity-100'
-                        }`}
-                        onClick={() => setEditingSecurityConfig({
-                          ...editingSecurityConfig,
-                          current_level: level.value
-                        })}
-                      >
-                        {icons[level.value]} {level.label}
-                      </Badge>
-                    );
-                  })}
+          <ScrollArea className="flex-1 pr-4">
+            {editingSecurityConfig && (
+              <div className="space-y-6">
+                {/* Severity Level Selector */}
+                <div className="space-y-3">
+                  <Label>Nível de Alerta Atual</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {SEVERITY_LEVELS.map((level) => {
+                      const icons = { critical: '🔴', warning: '🟡', secure: '🟢' };
+                      const isSelected = editingSecurityConfig.current_level === level.value;
+                      
+                      return (
+                        <Badge
+                          key={level.value}
+                          className={`cursor-pointer transition-all ${level.color} ${
+                            isSelected ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : 'opacity-60 hover:opacity-100'
+                          }`}
+                          onClick={() => setEditingSecurityConfig({
+                            ...editingSecurityConfig,
+                            current_level: level.value
+                          })}
+                        >
+                          {icons[level.value]} {level.label}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Change Reason (only show if level changed) */}
+                {securityConfig && editingSecurityConfig.current_level !== securityConfig.current_level && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <History className="h-4 w-4" />
+                      Motivo da Alteração (opcional)
+                    </Label>
+                    <Input
+                      value={changeReason}
+                      onChange={(e) => setChangeReason(e.target.value)}
+                      placeholder="Ex: Vulnerabilidade corrigida, Nova ameaça detectada..."
+                      className="border-primary/30"
+                    />
+                  </div>
+                )}
+
+                {/* Message Templates */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-red-500">
+                      🔴 Mensagem Crítica
+                    </Label>
+                    <Textarea
+                      value={editingSecurityConfig.template_critical}
+                      onChange={(e) => setEditingSecurityConfig({
+                        ...editingSecurityConfig,
+                        template_critical: e.target.value
+                      })}
+                      placeholder="Template para alertas críticos..."
+                      className="min-h-[80px] border-red-500/30 focus:border-red-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-yellow-500">
+                      🟡 Mensagem de Atenção
+                    </Label>
+                    <Textarea
+                      value={editingSecurityConfig.template_warning}
+                      onChange={(e) => setEditingSecurityConfig({
+                        ...editingSecurityConfig,
+                        template_warning: e.target.value
+                      })}
+                      placeholder="Template para alertas de atenção..."
+                      className="min-h-[80px] border-yellow-500/30 focus:border-yellow-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-green-500">
+                      🟢 Mensagem de Segurança
+                    </Label>
+                    <Textarea
+                      value={editingSecurityConfig.template_secure}
+                      onChange={(e) => setEditingSecurityConfig({
+                        ...editingSecurityConfig,
+                        template_secure: e.target.value
+                      })}
+                      placeholder="Template para status seguro..."
+                      className="min-h-[80px] border-green-500/30 focus:border-green-500"
+                    />
+                  </div>
+                </div>
+
+                {/* History Section */}
+                <div className="space-y-3 border-t border-border pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowHistory(!showHistory)}
+                    className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <History className="h-4 w-4" />
+                    Histórico de Alterações
+                    <Badge variant="outline" className="ml-1">
+                      {severityHistory.length}
+                    </Badge>
+                  </button>
+
+                  {showHistory && (
+                    <div className="space-y-2 mt-3">
+                      {loadingHistory ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : severityHistory.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Nenhuma alteração registrada
+                        </p>
+                      ) : (
+                        <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                          {severityHistory.map((entry) => (
+                            <div
+                              key={entry.id}
+                              className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 text-sm"
+                            >
+                              <div className="flex-1 space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {getLevelBadge(entry.previous_level)}
+                                  <span className="text-muted-foreground">→</span>
+                                  {getLevelBadge(entry.new_level)}
+                                </div>
+                                {entry.change_reason && (
+                                  <p className="text-muted-foreground text-xs">
+                                    "{entry.change_reason}"
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <User className="h-3 w-3" />
+                                  <span>{entry.changed_by_email || 'Sistema'}</span>
+                                  <span>•</span>
+                                  <span>
+                                    {format(new Date(entry.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
+            )}
+          </ScrollArea>
 
-              {/* Message Templates */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-red-500">
-                    🔴 Mensagem Crítica
-                  </Label>
-                  <Textarea
-                    value={editingSecurityConfig.template_critical}
-                    onChange={(e) => setEditingSecurityConfig({
-                      ...editingSecurityConfig,
-                      template_critical: e.target.value
-                    })}
-                    placeholder="Template para alertas críticos..."
-                    className="min-h-[80px] border-red-500/30 focus:border-red-500"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-yellow-500">
-                    🟡 Mensagem de Atenção
-                  </Label>
-                  <Textarea
-                    value={editingSecurityConfig.template_warning}
-                    onChange={(e) => setEditingSecurityConfig({
-                      ...editingSecurityConfig,
-                      template_warning: e.target.value
-                    })}
-                    placeholder="Template para alertas de atenção..."
-                    className="min-h-[80px] border-yellow-500/30 focus:border-yellow-500"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-green-500">
-                    🟢 Mensagem de Segurança
-                  </Label>
-                  <Textarea
-                    value={editingSecurityConfig.template_secure}
-                    onChange={(e) => setEditingSecurityConfig({
-                      ...editingSecurityConfig,
-                      template_secure: e.target.value
-                    })}
-                    placeholder="Template para status seguro..."
-                    className="min-h-[80px] border-green-500/30 focus:border-green-500"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setSecurityModalOpen(false)}>
               Cancelar
             </Button>
