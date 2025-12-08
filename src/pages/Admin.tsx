@@ -272,8 +272,8 @@ const Admin = () => {
       <header 
         className="fixed top-0 left-0 right-0 h-12 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-primary/20 z-30 flex items-center justify-between px-4 transition-all duration-300 ease-in-out"
       >
-        {/* Logo + Admin Panel with ml-auto */}
-        <div className="flex items-center gap-3 ml-auto">
+        {/* Extreme Left: Logo + Admin Panel */}
+        <div className="flex items-center gap-3">
           <img 
             src={knowyouAdminLogo} 
             alt="KnowYOU" 
@@ -281,6 +281,9 @@ const Admin = () => {
           />
           <span className="text-sm font-medium text-foreground">Admin Panel</span>
         </div>
+        
+        {/* Spacer to push right elements */}
+        <div className="flex-1" />
 
         {/* Far Right: Notification + Near Right: Language Selector */}
         <div className="flex items-center gap-3">
