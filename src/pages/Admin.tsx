@@ -232,7 +232,7 @@ const Admin = () => {
     <div className="min-h-screen flex flex-col bg-background">
       {/* Fixed Global Header */}
       <header 
-        className={`fixed top-0 left-0 right-0 h-12 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-primary/20 z-30 flex items-center justify-between px-4 pr-6 transition-all duration-300 ease-in-out`}
+        className={`fixed top-0 left-0 right-0 h-12 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-primary/20 z-30 flex items-center justify-start px-4 pr-6 transition-all duration-300 ease-in-out`}
         style={{
           paddingLeft: isSidebarCollapsed ? '80px' : '272px',
         }}
@@ -248,7 +248,7 @@ const Admin = () => {
         </div>
 
         {/* Separator + Notifications - Right side */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 ml-auto">
           <div className="h-6 w-px bg-border/40" />
           <NotificationsPanel />
         </div>
