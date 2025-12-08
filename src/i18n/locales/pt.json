@@ -334,6 +334,26 @@
     "dataAnalytics": "Análise de Dados",
     "documentation": "Documentação",
     "backToApp": "Voltar ao App",
-    "logout": "Sair"
+    "logout": "Sair",
+    "notifications": {
+      "title": "Preferências de Notificação",
+      "targetPhone": "Número de Telefone",
+      "emailNotification": "Notificação por Email",
+      "whatsappNotification": "Notificação por WhatsApp",
+      "testEmail": "Testar Email",
+      "testWhatsapp": "Testar WhatsApp",
+      "whatsappConfig": "Configuração WhatsApp",
+      "enableGlobally": "Habilitar WhatsApp Globalmente",
+      "eventTypes": "Tipos de Evento",
+      "testSection": "Testar Notificações",
+      "eventLabels": {
+        "newDocument": "Novo Documento RAG",
+        "documentFailed": "Falha no Processamento",
+        "newContactMessage": "Nova Mensagem de Contato",
+        "securityAlert": "Alerta de Segurança",
+        "mlAccuracyDrop": "Queda de Precisão ML",
+        "newConversation": "Nova Conversa de Usuário"
+      }
+    }
   }
 }

@@ -70,6 +70,8 @@ export type Database = {
           updated_at: string | null
           vimeo_history_url: string | null
           weekly_report_enabled: boolean | null
+          whatsapp_global_enabled: boolean | null
+          whatsapp_target_phone: string | null
         }
         Insert: {
           alert_email?: string | null
@@ -96,6 +98,8 @@ export type Database = {
           updated_at?: string | null
           vimeo_history_url?: string | null
           weekly_report_enabled?: boolean | null
+          whatsapp_global_enabled?: boolean | null
+          whatsapp_target_phone?: string | null
         }
         Update: {
           alert_email?: string | null
@@ -122,6 +126,8 @@ export type Database = {
           updated_at?: string | null
           vimeo_history_url?: string | null
           weekly_report_enabled?: boolean | null
+          whatsapp_global_enabled?: boolean | null
+          whatsapp_target_phone?: string | null
         }
         Relationships: []
       }
@@ -982,6 +988,36 @@ export type Database = {
           is_active?: boolean | null
           positive_directives?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          email_enabled: boolean | null
+          event_label: string
+          event_type: string
+          id: string
+          updated_at: string | null
+          whatsapp_enabled: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          event_label: string
+          event_type: string
+          id?: string
+          updated_at?: string | null
+          whatsapp_enabled?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          event_label?: string
+          event_type?: string
+          id?: string
+          updated_at?: string | null
+          whatsapp_enabled?: boolean | null
         }
         Relationships: []
       }
