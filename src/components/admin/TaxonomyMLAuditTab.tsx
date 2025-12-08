@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
+import { TaxonomyHierarchySimulationDiagram } from "./TaxonomyHierarchySimulationDiagram";
 import {
   FolderTree,
   TrendingUp,
@@ -171,15 +172,35 @@ export const TaxonomyMLAuditTab = () => {
           title="Taxonomy ML - Auditoria"
           level="h1"
           icon={FolderTree}
-          tooltipText="Auditoria de decisões de taxonomia para treinamento ML"
+          tooltipText="Ver simulação do processo de descoberta taxonômica"
           infoContent={
-            <div className="space-y-3">
-              <p>Este painel rastreia todas as decisões de adoção taxonômica para treinar o modelo ML.</p>
-              <ul className="text-sm space-y-1">
-                <li><strong>Aceitas:</strong> Tags adotadas com sucesso → Positivo para ML</li>
-                <li><strong>Rejeitadas:</strong> Tags excluídas/rejeitadas → Negativo para ML</li>
-                <li><strong>Taxa de Aceitação:</strong> Métrica de qualidade das sugestões</li>
-              </ul>
+            <div className="space-y-4">
+              <TaxonomyHierarchySimulationDiagram 
+                activityLevel={taxonomyEvents ? Math.min(taxonomyEvents.total / 50, 1) : 0.3} 
+              />
+              
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+                  <h5 className="font-semibold text-emerald-400 flex items-center gap-2 text-sm">
+                    Quando Aceitar
+                  </h5>
+                  <ul className="text-xs space-y-1 mt-2 text-muted-foreground">
+                    <li>Hierarquia específica ao domínio do negócio</li>
+                    <li>Relação parent-child semanticamente correta</li>
+                    <li>Tag não duplica conceitos existentes</li>
+                  </ul>
+                </div>
+                <div className="p-3 bg-red-500/10 rounded-lg border border-red-500/30">
+                  <h5 className="font-semibold text-red-400 flex items-center gap-2 text-sm">
+                    Quando Rejeitar
+                  </h5>
+                  <ul className="text-xs space-y-1 mt-2 text-muted-foreground">
+                    <li>Tags genéricas demais ("Geral", "Outros")</li>
+                    <li>Hierarquia invertida ou incorreta</li>
+                    <li>Duplicação de conceitos existentes</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           }
         />
