@@ -36,7 +36,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
-import { MLFlowDiagram } from "./MLFlowDiagram";
+import { MLProcessSimulationDiagram } from "./MLProcessSimulationDiagram";
 import { 
   Activity, 
   Bell, 
@@ -408,100 +408,26 @@ export const MLDashboardTab = () => {
         level="h1"
         tooltipText="Ver ciclo de aprendizado ML"
         infoContent={
-          <div className="space-y-5">
-            {/* Sophisticated ML Diagram */}
-            <MLFlowDiagram activityLevel={Math.min(1, (mlEvents?.total || 0) / 50)} />
-            
-            {/* Two-column explanation layout */}
-            <div className="grid grid-cols-2 gap-5 pt-2">
-              {/* Column 1: How It Works */}
-              <div className="space-y-2.5 p-3 bg-background/50 rounded-lg border border-primary/20">
-                <h5 className="font-semibold text-sm text-primary flex items-center gap-2">
-                  <span className="text-base">📚</span> Como Funciona
-                </h5>
-                <ol className="text-xs space-y-2 text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-amber-500 min-w-[18px]">1.</span>
-                    <span>Documento é enviado para processamento RAG</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-emerald-500 min-w-[18px]">2.</span>
-                    <span>IA extrai tags usando NLP + consulta regras existentes</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-cyan-500 min-w-[18px]">3.</span>
-                    <span>Tags são sugeridas (parent + children hierárquicos)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-purple-500 min-w-[18px]">4.</span>
-                    <span>Admin revisa: <span className="text-green-400">aceita</span>, <span className="text-blue-400">corrige</span>, <span className="text-pink-400">unifica</span> ou <span className="text-red-400">rejeita</span></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-pink-500 min-w-[18px]">5.</span>
-                    <span>Correções alimentam <code className="text-pink-400 text-[10px]">tag_merge_rules</code></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-blue-500 min-w-[18px]">6.</span>
-                    <span>Regras são aplicadas em uploads futuros automaticamente</span>
-                  </li>
-                </ol>
-              </div>
-              
-              {/* Column 2: Metrics Explanation */}
-              <div className="space-y-2.5 p-3 bg-background/50 rounded-lg border border-emerald-500/20">
-                <h5 className="font-semibold text-sm text-emerald-400 flex items-center gap-2">
-                  <span className="text-base">📊</span> Métricas & Score
-                </h5>
-                <ul className="text-xs space-y-2 text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-400">✅</span>
-                    <span><strong className="text-green-400">Acertos (TP)</strong>: Tags IA adotadas pelo admin</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-red-400">❌</span>
-                    <span><strong className="text-red-400">Erros (FP)</strong>: Tags IA rejeitadas/excluídas</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-400">📈</span>
-                    <span><strong className="text-emerald-400">Score</strong>: Acertos / (Acertos + Erros) × 100</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-pink-400">🔄</span>
-                    <span><strong className="text-pink-400">Regras aplicadas</strong>: Quantas vezes ML preveniu duplicatas</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-purple-400">⏱️</span>
-                    <span><strong className="text-purple-400">Tempo decisão</strong>: Velocidade de validação admin</span>
-                  </li>
-                </ul>
-                <div className="pt-2 mt-2 border-t border-emerald-500/20">
-                  <p className="text-[10px] text-emerald-400/80 italic">
-                    Meta: Score ≥ 70% indica boa calibração ML
-                  </p>
-                </div>
-              </div>
-            </div>
+          <div className="space-y-4">
+            {/* Step-by-step ML Simulation Diagram */}
+            <MLProcessSimulationDiagram activityLevel={Math.min(1, (mlEvents?.total || 0) / 50)} />
             
             {/* Real-time stats badges */}
-            <div className="flex items-center justify-center gap-3 pt-2">
+            <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/50">
               <span className="text-[10px] px-2.5 py-1 rounded-full bg-primary/20 text-primary border border-primary/30 font-medium">
-                📊 Eventos: {mlEvents?.total || 0}
+                Eventos: {mlEvents?.total || 0}
               </span>
               <span className="text-[10px] px-2.5 py-1 rounded-full bg-pink-500/20 text-pink-400 border border-pink-500/30 font-medium">
-                🧠 Regras: {mlEvents?.byType?.merge_parent || 0 + (mlEvents?.byType?.merge_child || 0)}
+                Regras: {(mlEvents?.byType?.merge_parent || 0) + (mlEvents?.byType?.merge_child || 0)}
               </span>
               <span className={`text-[10px] px-2.5 py-1 rounded-full font-medium border ${
                 (mlEvents?.accuracyRate || 0) >= 70 
                   ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
                   : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
               }`}>
-                🎯 Score: {(mlEvents?.accuracyRate || 0).toFixed(0)}%
+                Score: {(mlEvents?.accuracyRate || 0).toFixed(0)}%
               </span>
             </div>
-            
-            <p className="text-[10px] text-center text-muted-foreground italic">
-              Animações baseadas em atividade ML recente • {mlEvents?.total || 0} eventos no período
-            </p>
           </div>
         }
       />
