@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -598,18 +599,18 @@ export default function NotificationSettingsTab() {
     setSavingLogicConfig(true);
 
     try {
-      let configData: Record<string, unknown> = {};
+      let configData: Json = {};
 
       if (editingLogicEvent === 'login_alert') {
-        configData = { ...loginAlertConfig };
+        configData = { ...loginAlertConfig } as Json;
       } else if (editingLogicEvent === 'security_alert') {
         configData = {
           cronEnabled: scanCronConfig.cronEnabled,
           cronExpression: scanCronConfig.cronExpression,
           alertThreshold: scanCronConfig.alertThreshold
-        };
+        } as Json;
       } else if (editingLogicEvent === 'password_reset') {
-        configData = { ...otpConfig };
+        configData = { ...otpConfig } as Json;
       }
 
       // Check if config exists
@@ -624,7 +625,7 @@ export default function NotificationSettingsTab() {
       } else {
         const { error } = await supabase
           .from('notification_logic_config')
-          .insert({ event_type: editingLogicEvent, config: configData });
+          .insert([{ event_type: editingLogicEvent, config: configData }]);
         if (error) throw error;
       }
 
@@ -633,13 +634,6 @@ export default function NotificationSettingsTab() {
         .from('notification_logic_config')
         .select('*');
       if (data) setLogicConfigs(data as NotificationLogicConfig[]);
-        .upsert({
-          event_type: editingLogicEvent,
-          config: configData,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'event_type' });
-
-      if (error) throw error;
 
       setLogicModalOpen(false);
       toast.success('Configuração de lógica salva');
