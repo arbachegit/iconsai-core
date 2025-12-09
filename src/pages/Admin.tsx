@@ -286,7 +286,7 @@ const Admin = () => {
       {/* Main content wrapper with dynamic left margin */}
       <div className={`${sidebarWidth} transition-all duration-300 ease-in-out min-h-screen flex flex-col`}>
         {/* Header - inside main content area, not overlapping sidebar */}
-        <header className="h-14 w-full bg-background/80 backdrop-blur-md border-b border-border/40 sticky top-0 z-30 flex items-center justify-between px-6">
+        <header className={`h-14 bg-background/80 backdrop-blur-md border-b border-border/50 fixed top-0 right-0 z-30 flex items-center justify-between px-6 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'left-[72px]' : 'left-[280px]'}`}>
           {/* Left: Logo + Admin Panel title */}
           <div className="flex items-center gap-3">
             <img 
@@ -344,7 +344,7 @@ const Admin = () => {
         </header>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pt-14">
           <div className="p-8">
             <div className="max-w-7xl mx-auto">
               {renderTab()}
