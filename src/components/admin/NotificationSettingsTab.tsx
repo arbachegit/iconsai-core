@@ -199,6 +199,10 @@ export default function NotificationSettingsTab() {
   const [testingEmail, setTestingEmail] = useState(false);
   const [testingWhatsapp, setTestingWhatsapp] = useState(false);
   
+  // Configuration saved states
+  const [whatsappConfigured, setWhatsappConfigured] = useState(false);
+  const [emailConfigured, setEmailConfigured] = useState(false);
+  
   // Resend Domain Status State
   const [checkingDomain, setCheckingDomain] = useState(false);
   const [domainStatus, setDomainStatus] = useState<{
@@ -294,6 +298,10 @@ export default function NotificationSettingsTab() {
         setNotificationEmail((settingsData as any).gmail_notification_email || '');
         setEmailGlobalEnabled((settingsData as any).email_global_enabled !== false);
         
+        // Mark as configured if values exist
+        setWhatsappConfigured(!!settingsData.whatsapp_target_phone);
+        setEmailConfigured(!!(settingsData as any).gmail_notification_email);
+        
         if (settingsData.last_scheduled_scan) {
           setScanCronConfig(prev => ({ ...prev, lastRun: settingsData.last_scheduled_scan }));
         }
@@ -375,6 +383,7 @@ export default function NotificationSettingsTab() {
 
       if (error) throw error;
       toast.success('Configurações de WhatsApp salvas');
+      setWhatsappConfigured(true);
     } catch (error: any) {
       console.error('Error saving phone settings:', error);
       toast.error('Erro ao salvar configurações');
@@ -397,6 +406,7 @@ export default function NotificationSettingsTab() {
 
       if (error) throw error;
       toast.success('Configurações de E-mail salvas');
+      setEmailConfigured(true);
     } catch (error: any) {
       console.error('Error saving email settings:', error);
       toast.error('Erro ao salvar configurações');
@@ -1465,12 +1475,25 @@ export default function NotificationSettingsTab() {
               Enviar Teste WhatsApp
             </Button>
             <Button 
-              onClick={savePhoneSettings} 
+              onClick={() => {
+                if (whatsappConfigured) {
+                  setWhatsappConfigured(false);
+                } else {
+                  savePhoneSettings();
+                }
+              }} 
               disabled={saving}
-              className="gap-2"
+              variant={whatsappConfigured ? "outline" : "default"}
+              className={`gap-2 ${whatsappConfigured ? 'border-amber-500 text-amber-500 hover:bg-amber-500/10 hover:text-amber-600' : ''}`}
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Salvar Configuração
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : whatsappConfigured ? (
+                <Settings className="h-4 w-4" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {whatsappConfigured ? 'Configurar' : 'Salvar Configuração'}
             </Button>
           </div>
         </CardContent>
@@ -1568,12 +1591,25 @@ export default function NotificationSettingsTab() {
               Enviar Teste E-mail
             </Button>
             <Button 
-              onClick={saveEmailSettings} 
+              onClick={() => {
+                if (emailConfigured) {
+                  setEmailConfigured(false);
+                } else {
+                  saveEmailSettings();
+                }
+              }} 
               disabled={savingEmail}
-              className="gap-2"
+              variant={emailConfigured ? "outline" : "default"}
+              className={`gap-2 ${emailConfigured ? 'border-amber-500 text-amber-500 hover:bg-amber-500/10 hover:text-amber-600' : ''}`}
             >
-              {savingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Salvar Configuração
+              {savingEmail ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : emailConfigured ? (
+                <Settings className="h-4 w-4" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {emailConfigured ? 'Configurar' : 'Salvar Configuração'}
             </Button>
           </div>
         </CardContent>
