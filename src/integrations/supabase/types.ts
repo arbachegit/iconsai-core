@@ -835,6 +835,50 @@ export type Database = {
         }
         Relationships: []
       }
+      economic_indicators: {
+        Row: {
+          api_id: string | null
+          code: string
+          created_at: string | null
+          cron_schedule: string | null
+          frequency: string | null
+          id: string
+          name: string
+          unit: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_id?: string | null
+          code: string
+          created_at?: string | null
+          cron_schedule?: string | null
+          frequency?: string | null
+          id?: string
+          name: string
+          unit?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_id?: string | null
+          code?: string
+          created_at?: string | null
+          cron_schedule?: string | null
+          frequency?: string | null
+          id?: string
+          name?: string
+          unit?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "economic_indicators_api_id_fkey"
+            columns: ["api_id"]
+            isOneToOne: false
+            referencedRelation: "system_api_registry"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_flags: {
         Row: {
           created_at: string
@@ -925,6 +969,38 @@ export type Database = {
         }
         Relationships: []
       }
+      indicator_values: {
+        Row: {
+          created_at: string | null
+          id: string
+          indicator_id: string
+          reference_date: string
+          value: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          indicator_id: string
+          reference_date: string
+          value: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          indicator_id?: string
+          reference_date?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "indicator_values_indicator_id_fkey"
+            columns: ["indicator_id"]
+            isOneToOne: false
+            referencedRelation: "economic_indicators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrity_check_log: {
         Row: {
           check_timestamp: string
@@ -997,6 +1073,36 @@ export type Database = {
           is_active?: boolean | null
           positive_directives?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      market_news: {
+        Row: {
+          created_at: string | null
+          id: string
+          published_at: string | null
+          sentiment_score: number | null
+          source: string
+          title: string
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          published_at?: string | null
+          sentiment_score?: number | null
+          source: string
+          title: string
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          published_at?: string | null
+          sentiment_score?: number | null
+          source?: string
+          title?: string
+          url?: string
         }
         Relationships: []
       }
@@ -1607,6 +1713,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_api_registry: {
+        Row: {
+          base_url: string
+          created_at: string | null
+          description: string | null
+          id: string
+          method: string | null
+          name: string
+          provider: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          base_url: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          method?: string | null
+          name: string
+          provider?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          base_url?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          method?: string | null
+          name?: string
+          provider?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       system_increments: {
         Row: {

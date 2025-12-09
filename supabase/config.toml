@@ -125,3 +125,9 @@ verify_jwt = false
 
 [functions.contact-form-handler]
 verify_jwt = false
+
+[functions.fetch-economic-data]
+verify_jwt = false
+
+[functions.scrape-retail-news]
+verify_jwt = false
