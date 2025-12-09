@@ -44,6 +44,7 @@ import {
   Globe,
   Sparkles,
   Menu,
+  X,
   Monitor,
   RefreshCw,
   Bell,
@@ -309,14 +310,17 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             ? 'flex-col items-center w-full gap-4 px-3 py-4' 
             : 'flex-row items-center w-full gap-3 px-4 py-3'}
         `}>
-          {/* 1. Hamburger Menu */}
+          {/* 1. Hamburger Menu with Rotation Animation */}
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggleCollapse}
             className="shrink-0 h-10 w-10 rounded-full hover:bg-muted/50 transition-all duration-300"
           >
-            <Menu className="w-5 h-5" />
+            <div className="relative w-5 h-5">
+              <Menu className={`w-5 h-5 absolute inset-0 transition-all duration-300 ${isCollapsed ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'}`} />
+              <X className={`w-5 h-5 absolute inset-0 transition-all duration-300 ${isCollapsed ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'}`} />
+            </div>
           </Button>
 
           {/* 2. Search Component - Adapts to sidebar state */}
@@ -326,7 +330,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 rounded-full hover:bg-white/10 transition-all duration-500 ease-in-out"
+                  className="h-10 w-10 rounded-full hover:bg-white/10 transition-all duration-500 ease-in-out animate-pulse"
                   onClick={() => {
                     onToggleCollapse();
                     setTimeout(() => {
