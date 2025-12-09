@@ -301,14 +301,29 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           transition-all duration-500 ease-in-out
         `}
       >
-        {/* TOP HEADER: Hamburger + Search (Vertical Stack) */}
+        {/* TOP HEADER: Logo + Hamburger + Search (Vertical Stack) */}
         <div className={`
           px-3 py-3 border-b border-border 
           flex flex-col 
           ${isCollapsed ? 'items-center' : 'items-start'} 
           gap-3 shrink-0
         `}>
-          {/* 1. Hamburger Menu - First */}
+          {/* 1. Logo/Branding - First */}
+          <div className={`flex items-center gap-2 transition-all duration-300 ${isCollapsed ? 'justify-center w-full' : ''}`}>
+            <img 
+              src={knowyouAdminLogo} 
+              alt="KnowYOU Admin" 
+              className={`rounded-full transition-all duration-300 ${isCollapsed ? 'h-8 w-8' : 'h-10 w-10'}`}
+            />
+            {!isCollapsed && (
+              <div className="flex items-baseline gap-1">
+                <span className="font-bold text-sm text-foreground">KNOWYOU</span>
+                <span className="text-sm font-medium text-primary">AI</span>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Hamburger Menu - Second */}
           <Button
             variant="ghost"
             size="icon"
@@ -355,7 +370,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
         {/* Top fade indicator */}
         <div 
-          className={`absolute top-[100px] left-0 right-0 h-6 bg-gradient-to-b from-sidebar to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute top-[140px] left-0 right-0 h-6 bg-gradient-to-b from-sidebar to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
         />
 
         {/* MIDDLE NAVIGATION - Scrollable with margin-bottom for dock */}
