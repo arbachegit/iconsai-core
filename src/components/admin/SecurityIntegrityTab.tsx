@@ -14,6 +14,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { exportData } from "@/lib/export-utils";
+import { notifySecurityAlert } from "@/lib/notification-dispatcher";
 import { 
   Shield, 
   ShieldCheck, 
@@ -175,6 +176,19 @@ export const SecurityIntegrityTab = () => {
       });
 
       if (error) throw error;
+
+      // Map scan status to severity level for notification
+      const severityMap: Record<string, string> = { healthy: 'secure', warning: 'warning', critical: 'critical' };
+      const severityLevel = severityMap[data.overall_status] || 'secure';
+      
+      // Build threat type message based on findings
+      const summary = data.findings_summary || { critical: 0, warning: 0 };
+      const threatType = data.overall_status === 'healthy' 
+        ? 'Nenhuma vulnerabilidade detectada'
+        : `${summary.critical} críticas, ${summary.warning} avisos`;
+      
+      // Dispatch notification for manual scan (always notify)
+      await notifySecurityAlert(severityLevel, threatType, 'Scan Manual');
 
       toast.success('Scan concluído', {
         description: `Status: ${data.overall_status === 'healthy' ? '✅ Saudável' : data.overall_status === 'warning' ? '⚠️ Atenção' : '🔴 Crítico'}`

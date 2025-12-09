@@ -45,8 +45,12 @@ import {
   Info,
   Smartphone,
   Globe,
-  Wifi
+  Wifi,
+  Map,
+  Database,
+  Zap
 } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface EventConfig {
   icon: React.ComponentType<{ className?: string }>;
@@ -228,6 +232,9 @@ export default function NotificationSettingsTab() {
   const [editingLogicEvent, setEditingLogicEvent] = useState<string | null>(null);
   const [logicConfigs, setLogicConfigs] = useState<NotificationLogicConfig[]>([]);
   const [savingLogicConfig, setSavingLogicConfig] = useState(false);
+
+  // Trigger Map Modal State
+  const [showTriggerMap, setShowTriggerMap] = useState(false);
 
   // Login Alert Logic State
   const [loginAlertConfig, setLoginAlertConfig] = useState({
@@ -1206,17 +1213,194 @@ export default function NotificationSettingsTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Bell className="h-6 w-6 text-primary" />
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">
-            {t('admin.notifications.title', 'Preferências de Notificação')}
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Configure como você deseja receber alertas do sistema
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Bell className="h-6 w-6 text-primary" />
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">
+              {t('admin.notifications.title', 'Preferências de Notificação')}
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Configure como você deseja receber alertas do sistema
+            </p>
+          </div>
         </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowTriggerMap(true)}
+                className="gap-2"
+              >
+                <Map className="h-4 w-4" />
+                Mapa de Gatilhos
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Ver todos os gatilhos de notificação do sistema</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
+
+      {/* Trigger Map Dialog */}
+      <Dialog open={showTriggerMap} onOpenChange={setShowTriggerMap}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Map className="h-5 w-5 text-primary" />
+              Mapa de Gatilhos do Sistema
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-[500px] pr-4">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Lista completa de ações e eventos que disparam notificações no sistema.
+              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">Gatilho</TableHead>
+                    <TableHead>Evento</TableHead>
+                    <TableHead>Origem</TableHead>
+                    <TableHead>Condição</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <ScanSearch className="h-4 w-4 text-green-500" />
+                        Scan Manual
+                      </div>
+                    </TableCell>
+                    <TableCell><Badge variant="outline">security_alert</Badge></TableCell>
+                    <TableCell>Admin clica "Executar Scan"</TableCell>
+                    <TableCell>Sempre (info/warning/critical)</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-red-500" />
+                        Vulnerabilidade Crítica
+                      </div>
+                    </TableCell>
+                    <TableCell><Badge variant="outline">security_alert</Badge></TableCell>
+                    <TableCell>Database webhook</TableCell>
+                    <TableCell>severity IN ('critical')</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <KeyRound className="h-4 w-4 text-blue-500" />
+                        Recuperação de Senha
+                      </div>
+                    </TableCell>
+                    <TableCell><Badge variant="outline">password_reset</Badge></TableCell>
+                    <TableCell>send-recovery-code Edge Function</TableCell>
+                    <TableCell>Usuário solicita reset</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <LogIn className="h-4 w-4 text-amber-500" />
+                        Login Suspeito
+                      </div>
+                    </TableCell>
+                    <TableCell><Badge variant="outline">login_alert</Badge></TableCell>
+                    <TableCell>Auth trigger</TableCell>
+                    <TableCell>Novo IP/dispositivo detectado</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <TrendingDown className="h-4 w-4 text-purple-500" />
+                        Queda ML
+                      </div>
+                    </TableCell>
+                    <TableCell><Badge variant="outline">ml_accuracy_drop</Badge></TableCell>
+                    <TableCell>check-ml-accuracy Edge Function</TableCell>
+                    <TableCell>accuracy &lt; threshold</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Brain className="h-4 w-4 text-pink-500" />
+                        Sentimento Negativo
+                      </div>
+                    </TableCell>
+                    <TableCell><Badge variant="outline">sentiment_alert</Badge></TableCell>
+                    <TableCell>Chat analysis (useChat)</TableCell>
+                    <TableCell>sentiment_score &lt; -0.5</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Tags className="h-4 w-4 text-cyan-500" />
+                        Anomalia de Taxonomia
+                      </div>
+                    </TableCell>
+                    <TableCell><Badge variant="outline">taxonomy_anomaly</Badge></TableCell>
+                    <TableCell>Classification engine</TableCell>
+                    <TableCell>confidence &lt; 0.6</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-red-500" />
+                        Falha de Processamento
+                      </div>
+                    </TableCell>
+                    <TableCell><Badge variant="outline">document_failed</Badge></TableCell>
+                    <TableCell>Edge Function catch block</TableCell>
+                    <TableCell>Erro durante processamento</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4 text-green-500" />
+                        Nova Mensagem
+                      </div>
+                    </TableCell>
+                    <TableCell><Badge variant="outline">new_contact_message</Badge></TableCell>
+                    <TableCell>Contact form submit</TableCell>
+                    <TableCell>Nova submissão</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4 text-blue-500" />
+                        Nova Conversa
+                      </div>
+                    </TableCell>
+                    <TableCell><Badge variant="outline">new_conversation</Badge></TableCell>
+                    <TableCell>Chat session start</TableCell>
+                    <TableCell>Novo session ID</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-emerald-500" />
+                        Novo Documento RAG
+                      </div>
+                    </TableCell>
+                    <TableCell><Badge variant="outline">new_document</Badge></TableCell>
+                    <TableCell>Document processing</TableCell>
+                    <TableCell>status = 'processed'</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTriggerMap(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* WhatsApp Configuration Card */}
       <Card className="border-primary/20">
