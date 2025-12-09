@@ -170,16 +170,44 @@ serve(async (req) => {
       details: { code_sent: true },
     });
 
-    // Dispatch admin notification via centralized system
+    // Dispatch admin notification via centralized system with FORCE LOGGING
+    const timestamp = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    
+    // Force log helper - logs ALL attempts regardless of outcome
+    const forceLog = async (
+      channel: string,
+      recipient: string,
+      status: string,
+      messageBody: string,
+      errorMessage?: string
+    ) => {
+      try {
+        await supabase.from("notification_logs").insert({
+          event_type: "password_reset",
+          channel,
+          recipient: recipient || "N/A",
+          status,
+          message_body: messageBody.substring(0, 500),
+          error_message: errorMessage || null,
+          metadata: { force_logged: true, user_email: email, timestamp },
+        });
+        console.log(`[ForceLog] password_reset | ${channel} | ${status} | ${recipient}`);
+      } catch (logError) {
+        console.error("[ForceLog] Failed to log:", logError);
+      }
+    };
+
     try {
       // Check notification preferences for password_reset event
-      const { data: prefData } = await supabase
+      const { data: prefData, error: prefError } = await supabase
         .from("notification_preferences")
         .select("email_enabled, whatsapp_enabled")
         .eq("event_type", "password_reset")
         .single();
 
-      if (prefData) {
+      if (prefError || !prefData) {
+        await forceLog("system", "N/A", "blocked", `Recuperação de senha para ${email}`, "No preferences configured for password_reset");
+      } else {
         const { data: settings } = await supabase
           .from("admin_settings")
           .select("gmail_notification_email, whatsapp_target_phone, whatsapp_global_enabled, email_global_enabled")
@@ -191,8 +219,6 @@ serve(async (req) => {
           .select("*")
           .eq("event_type", "password_reset")
           .single();
-
-        const timestamp = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
         
         // Inject variables into templates
         const variables: Record<string, string> = {
@@ -221,20 +247,33 @@ serve(async (req) => {
             ? injectVars(template.email_body)
             : `Olá, ${userName}.\n\nRecebemos uma solicitação para redefinir sua senha na Plataforma KnowYOU Health.\n\nSeu código de verificação é: ${code}\n\nEste código expira em 10 minutos.`;
 
-          await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${RESEND_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: "Plataforma KnowYOU Health <noreply@knowyou.app>",
-              to: [settings.gmail_notification_email],
-              subject: emailSubject,
-              html: `<pre style="font-family: sans-serif;">${emailBody}</pre>`,
-            }),
-          });
-          console.log("[NotificationDispatcher] Password reset admin email sent");
+          try {
+            const emailResponse = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${RESEND_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                from: "Plataforma KnowYOU Health <noreply@knowyou.app>",
+                to: [settings.gmail_notification_email],
+                subject: emailSubject,
+                html: `<pre style="font-family: sans-serif;">${emailBody}</pre>`,
+              }),
+            });
+            
+            if (emailResponse.ok) {
+              await forceLog("email", settings.gmail_notification_email, "success", emailBody);
+              console.log("[NotificationDispatcher] Password reset admin email sent");
+            } else {
+              const errorData = await emailResponse.json();
+              await forceLog("email", settings.gmail_notification_email, "failed", emailBody, errorData.message);
+            }
+          } catch (emailError) {
+            await forceLog("email", settings.gmail_notification_email, "failed", emailBody, emailError instanceof Error ? emailError.message : "Unknown error");
+          }
+        } else if (!prefData.email_enabled) {
+          await forceLog("email", settings?.gmail_notification_email || "N/A", "blocked", `Recuperação para ${email}`, "Email notifications disabled for password_reset");
         }
 
         // Send WhatsApp notification if enabled
@@ -243,19 +282,31 @@ serve(async (req) => {
             ? injectVars(template.whatsapp_message)
             : `🔐 ${timestamp} - Plataforma KnowYOU Health: Solicitação de recuperação de senha para ${userName}.`;
 
-          await supabase.functions.invoke("send-whatsapp", {
-            body: {
-              phoneNumber: settings.whatsapp_target_phone,
-              message: whatsappMessage,
-              eventType: "password_reset",
-            },
-          });
-          console.log("[NotificationDispatcher] Password reset WhatsApp sent");
+          try {
+            const whatsappResponse = await supabase.functions.invoke("send-whatsapp", {
+              body: {
+                phoneNumber: settings.whatsapp_target_phone,
+                message: whatsappMessage,
+                eventType: "password_reset",
+              },
+            });
+            
+            if (!whatsappResponse.error) {
+              await forceLog("whatsapp", settings.whatsapp_target_phone, "success", whatsappMessage);
+              console.log("[NotificationDispatcher] Password reset WhatsApp sent");
+            } else {
+              await forceLog("whatsapp", settings.whatsapp_target_phone, "failed", whatsappMessage, whatsappResponse.error.message);
+            }
+          } catch (whatsappError) {
+            await forceLog("whatsapp", settings.whatsapp_target_phone, "failed", whatsappMessage, whatsappError instanceof Error ? whatsappError.message : "Unknown error");
+          }
+        } else if (!prefData.whatsapp_enabled || !settings?.whatsapp_global_enabled) {
+          await forceLog("whatsapp", settings?.whatsapp_target_phone || "N/A", "blocked", `Recuperação para ${email}`, "WhatsApp disabled for password_reset or globally");
         }
       }
     } catch (notifyError) {
       console.error("[NotificationDispatcher] Error sending password reset notification:", notifyError);
-      // Don't fail the main flow if notification fails
+      await forceLog("system", "N/A", "failed", `Recuperação para ${email}`, notifyError instanceof Error ? notifyError.message : "Unknown error");
     }
 
     return new Response(

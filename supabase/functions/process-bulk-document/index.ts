@@ -514,6 +514,120 @@ serve(async (req) => {
         results.push({ document_id: doc.document_id, status: "completed" });
         console.log(`Document ${doc.document_id} processed successfully as ${targetChat}`);
         
+        // 🔔 DISPATCH new_document NOTIFICATION with force logging
+        try {
+          const timestamp = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+          
+          // Check notification preferences
+          const { data: prefData } = await supabase
+            .from("notification_preferences")
+            .select("email_enabled, whatsapp_enabled")
+            .eq("event_type", "new_document")
+            .single();
+          
+          const { data: settings } = await supabase
+            .from("admin_settings")
+            .select("gmail_notification_email, whatsapp_target_phone, whatsapp_global_enabled, email_global_enabled")
+            .single();
+          
+          const forceLogDoc = async (channel: string, recipient: string, status: string, msg: string, err?: string) => {
+            await supabase.from("notification_logs").insert({
+              event_type: "new_document",
+              channel,
+              recipient: recipient || "N/A",
+              status,
+              message_body: msg.substring(0, 500),
+              error_message: err || null,
+              metadata: { force_logged: true, document_id: doc.document_id, filename: doc.title, timestamp },
+            });
+            console.log(`[ForceLog] new_document | ${channel} | ${status}`);
+          };
+          
+          if (!prefData) {
+            await forceLogDoc("system", "N/A", "blocked", `Novo documento: ${doc.title}`, "No preferences for new_document");
+          } else {
+            const { data: template } = await supabase
+              .from("notification_templates")
+              .select("*")
+              .eq("event_type", "new_document")
+              .single();
+            
+            const variables: Record<string, string> = {
+              file_name: doc.title,
+              upload_date: timestamp,
+              target_chat: targetChat,
+              platform_name: 'Plataforma KnowYOU Health'
+            };
+            
+            const injectVars = (tpl: string) => {
+              let result = tpl;
+              for (const [key, value] of Object.entries(variables)) {
+                result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+              }
+              return result;
+            };
+            
+            // Email notification
+            const emailGlobalEnabled = (settings as any)?.email_global_enabled !== false;
+            if (prefData.email_enabled && emailGlobalEnabled && settings?.gmail_notification_email) {
+              const emailBody = template?.email_body
+                ? injectVars(template.email_body)
+                : `📄 Novo documento processado: ${doc.title}\nDestino: ${targetChat}\nData: ${timestamp}`;
+              
+              try {
+                const emailResp = await fetch("https://api.resend.com/emails", {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    from: "Plataforma KnowYOU Health <noreply@knowyou.app>",
+                    to: [settings.gmail_notification_email],
+                    subject: template?.email_subject ? injectVars(template.email_subject) : `📄 Novo Documento: ${doc.title}`,
+                    html: `<pre style="font-family: sans-serif;">${emailBody}</pre>`,
+                  }),
+                });
+                
+                if (emailResp.ok) {
+                  await forceLogDoc("email", settings.gmail_notification_email, "success", emailBody);
+                } else {
+                  const errData = await emailResp.json();
+                  await forceLogDoc("email", settings.gmail_notification_email, "failed", emailBody, errData.message);
+                }
+              } catch (emailErr) {
+                await forceLogDoc("email", settings.gmail_notification_email, "failed", emailBody, emailErr instanceof Error ? emailErr.message : "Unknown");
+              }
+            } else if (!prefData.email_enabled) {
+              await forceLogDoc("email", settings?.gmail_notification_email || "N/A", "blocked", `Novo doc: ${doc.title}`, "Email disabled for new_document");
+            }
+            
+            // WhatsApp notification
+            if (prefData.whatsapp_enabled && settings?.whatsapp_global_enabled && settings?.whatsapp_target_phone) {
+              const whatsappMsg = template?.whatsapp_message
+                ? injectVars(template.whatsapp_message)
+                : `📄 ${timestamp} - Novo documento: ${doc.title} (${targetChat})`;
+              
+              try {
+                const waResp = await supabase.functions.invoke("send-whatsapp", {
+                  body: { phoneNumber: settings.whatsapp_target_phone, message: whatsappMsg, eventType: "new_document" },
+                });
+                if (!waResp.error) {
+                  await forceLogDoc("whatsapp", settings.whatsapp_target_phone, "success", whatsappMsg);
+                } else {
+                  await forceLogDoc("whatsapp", settings.whatsapp_target_phone, "failed", whatsappMsg, waResp.error.message);
+                }
+              } catch (waErr) {
+                await forceLogDoc("whatsapp", settings.whatsapp_target_phone, "failed", whatsappMsg, waErr instanceof Error ? waErr.message : "Unknown");
+              }
+            } else if (!prefData.whatsapp_enabled || !settings?.whatsapp_global_enabled) {
+              await forceLogDoc("whatsapp", settings?.whatsapp_target_phone || "N/A", "blocked", `Novo doc: ${doc.title}`, "WhatsApp disabled");
+            }
+          }
+        } catch (notifyErr) {
+          console.error("[ProcessBulkDoc] Notification dispatch error:", notifyErr);
+        }
+        
       } catch (docError) {
         console.error(`Error processing ${doc.document_id}:`, docError);
         
