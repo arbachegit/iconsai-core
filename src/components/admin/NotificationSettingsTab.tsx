@@ -175,6 +175,16 @@ export default function NotificationSettingsTab() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isEmailEditMode, setIsEmailEditMode] = useState(false);
   
+  // Resend Domain Status State
+  const [checkingDomain, setCheckingDomain] = useState(false);
+  const [domainStatus, setDomainStatus] = useState<{
+    configured: boolean;
+    verified: boolean;
+    domain?: { name: string; status: string };
+    error?: string;
+    message?: string;
+  } | null>(null);
+  
   // Security Alert Config State
   const [securityConfig, setSecurityConfig] = useState<SecurityAlertConfig | null>(null);
   const [securityModalOpen, setSecurityModalOpen] = useState(false);
@@ -393,9 +403,48 @@ export default function NotificationSettingsTab() {
     );
   };
 
+  const checkResendDomain = async () => {
+    setCheckingDomain(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-resend-domain');
+      
+      if (error) throw error;
+      
+      setDomainStatus(data);
+      
+      if (data?.verified) {
+        toast.success('Domínio Resend verificado e pronto!');
+      } else if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.warning(`Domínio com status: ${data?.domain?.status || 'desconhecido'}`);
+      }
+      
+      return data;
+    } catch (error: any) {
+      console.error('Error checking Resend domain:', error);
+      toast.error(`Erro ao verificar domínio: ${error.message}`);
+      return null;
+    } finally {
+      setCheckingDomain(false);
+    }
+  };
+
   const testEmail = async () => {
     setTestingEmail(true);
     try {
+      // First check domain status
+      const domainCheck = await checkResendDomain();
+      
+      if (!domainCheck?.verified) {
+        toast.error(
+          domainCheck?.error || 
+          `Domínio não verificado (status: ${domainCheck?.domain?.status || 'desconhecido'}). Verifique em resend.com/domains`
+        );
+        setTestingEmail(false);
+        return;
+      }
+
       const { data: settings } = await supabase
         .from('admin_settings')
         .select('gmail_notification_email')
@@ -631,19 +680,54 @@ export default function NotificationSettingsTab() {
             />
           </div>
 
-          <Button
-            variant="outline"
-            onClick={testEmail}
-            disabled={testingEmail || !notificationEmail || !emailGlobalEnabled}
-            className="gap-2"
-          >
-            {testingEmail ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            Enviar E-mail de Teste
-          </Button>
+          {/* Domain Status Indicator */}
+          {domainStatus && (
+            <div className={`flex items-center gap-2 p-3 rounded-lg border ${
+              domainStatus.verified 
+                ? 'bg-green-500/10 border-green-500/30' 
+                : 'bg-amber-500/10 border-amber-500/30'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${domainStatus.verified ? 'bg-green-500' : 'bg-amber-500'}`} />
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${domainStatus.verified ? 'text-green-400' : 'text-amber-400'}`}>
+                  {domainStatus.verified ? 'Domínio Verificado' : `Status: ${domainStatus.domain?.status || 'não verificado'}`}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {domainStatus.domain?.name || 'knowyou.app'} • {domainStatus.message || domainStatus.error}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={checkResendDomain}
+              disabled={checkingDomain}
+              className="gap-2"
+            >
+              {checkingDomain ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Shield className="h-4 w-4" />
+              )}
+              Verificar Domínio
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={testEmail}
+              disabled={testingEmail || !notificationEmail || !emailGlobalEnabled}
+              className="gap-2"
+            >
+              {testingEmail ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Enviar E-mail de Teste
+            </Button>
+          </div>
 
           {!emailGlobalEnabled && (
             <p className="text-xs text-amber-500">

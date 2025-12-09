@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.update-chat-config]
 verify_jwt = false
+
+[functions.check-resend-domain]
+verify_jwt = false
