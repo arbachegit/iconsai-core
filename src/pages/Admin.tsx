@@ -286,7 +286,7 @@ const Admin = () => {
       {/* Main content wrapper with dynamic left margin */}
       <div className={`${sidebarWidth} transition-all duration-300 ease-in-out min-h-screen flex flex-col`}>
         {/* Header - inside main content area, not overlapping sidebar */}
-        <header className="h-14 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-border sticky top-0 z-30 flex items-center justify-between px-6">
+        <header className="h-14 w-full bg-background/80 backdrop-blur-md border-b border-border/40 sticky top-0 z-30 flex items-center justify-between px-6">
           {/* Left: Logo + Admin Panel title */}
           <div className="flex items-center gap-3">
             <img 
