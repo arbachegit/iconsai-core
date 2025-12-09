@@ -47,9 +47,10 @@ import {
   Monitor,
   RefreshCw,
   Bell,
+  FilePlus2,
 } from "lucide-react";
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings" | "user-registry" | "data-registry";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -206,6 +207,15 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
         { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
         { id: "manage-taxonomy" as TabType, label: "Gerenciar Taxonomia", icon: Settings },
+      ]
+    },
+    {
+      id: "database",
+      label: "Banco de Dados",
+      icon: Database,
+      items: [
+        { id: "user-registry" as TabType, label: "Cadastro de Usuários", icon: Users },
+        { id: "data-registry" as TabType, label: "Cadastro de Dados", icon: FilePlus2 },
       ]
     },
     {
@@ -367,7 +377,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                           <Button
                             variant={isActive ? "default" : "ghost"}
                             size="icon"
-                            className={`w-full h-10 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted/50"} relative`}
+                            className={`w-full h-10 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted/50 hover:text-white"} relative transition-colors duration-200`}
                             onClick={() => onTabChange(item.id)}
                           >
                             <Icon className="w-4 h-4" />
@@ -399,7 +409,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   open={openSections.includes(category.id)}
                   onOpenChange={() => toggleSection(category.id)}
                 >
-                  <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground rounded-lg hover:bg-muted/30 transition-colors">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-white rounded-lg hover:bg-muted/30 transition-colors duration-200">
                     <div className="flex items-center gap-2">
                       <category.icon className="w-3.5 h-3.5" />
                       {category.label}
@@ -417,7 +427,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                         <Button
                           key={item.id}
                           variant={isActive ? "default" : "ghost"}
-                          className={`w-full justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted/50"}`}
+                          className={`w-full justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted/50 hover:text-white"} transition-colors duration-200`}
                           onClick={() => onTabChange(item.id)}
                         >
                           <Icon className="w-4 h-4 shrink-0" />
@@ -461,7 +471,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-10 w-10 rounded-lg hover:bg-muted/50 hover:text-foreground"
+                    className="h-10 w-10 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
                     onClick={() => navigate("/docs")}
                   >
                     <BookOpen className="w-4 h-4" />
@@ -475,7 +485,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-10 w-10 rounded-lg hover:bg-muted/50 hover:text-foreground"
+                    className="h-10 w-10 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
                     onClick={() => navigate("#")}
                   >
                     <BarChart3 className="w-4 h-4" />
@@ -489,7 +499,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-10 w-10 rounded-lg text-primary hover:bg-muted/50 hover:text-foreground"
+                    className="h-10 w-10 rounded-lg text-primary hover:bg-muted/50 hover:text-white transition-colors duration-200"
                     onClick={() => navigate("/")}
                   >
                     <Monitor className="w-4 h-4" />
@@ -520,7 +530,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-9 w-9 rounded-lg hover:bg-muted/50 hover:text-foreground"
+                    className="h-9 w-9 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
                     onClick={() => navigate("/docs")}
                   >
                     <BookOpen className="w-4 h-4" />
@@ -534,7 +544,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-9 w-9 rounded-lg hover:bg-muted/50 hover:text-foreground"
+                    className="h-9 w-9 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
                     onClick={() => navigate("#")}
                   >
                     <BarChart3 className="w-4 h-4" />
@@ -548,7 +558,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-9 w-9 rounded-lg text-primary hover:bg-muted/50 hover:text-foreground"
+                    className="h-9 w-9 rounded-lg text-primary hover:bg-muted/50 hover:text-white transition-colors duration-200"
                     onClick={() => navigate("/")}
                   >
                     <Monitor className="w-4 h-4" />
@@ -576,7 +586,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             <div className="flex flex-col gap-0.5">
               <Button 
                 variant="ghost" 
-                className="w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted/50 hover:text-foreground"
+                className="w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
                 onClick={() => navigate("/docs")}
               >
                 <BookOpen className="w-4 h-4 shrink-0" />
@@ -585,7 +595,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
               <Button 
                 variant="ghost" 
-                className="w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted/50 hover:text-foreground"
+                className="w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
                 onClick={() => navigate("#")}
               >
                 <BarChart3 className="w-4 h-4 shrink-0" />
@@ -594,7 +604,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
               <Button 
                 variant="ghost" 
-                className="w-full justify-start gap-3 h-9 rounded-lg text-primary hover:bg-muted/50 hover:text-foreground"
+                className="w-full justify-start gap-3 h-9 rounded-lg text-primary hover:bg-muted/50 hover:text-white transition-colors duration-200"
                 onClick={() => navigate("/")}
               >
                 <Monitor className="w-4 h-4 shrink-0" />
