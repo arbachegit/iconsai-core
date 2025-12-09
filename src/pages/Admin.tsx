@@ -330,8 +330,8 @@ const Admin = () => {
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
-                        size="sm"
-                        className="flex items-center gap-2 text-muted-foreground hover:text-foreground rounded-full"
+                        size="icon"
+                        className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full"
                         disabled={isChangingLanguage}
                       >
                         {isChangingLanguage ? (
