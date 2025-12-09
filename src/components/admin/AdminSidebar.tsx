@@ -315,11 +315,11 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             variant="ghost"
             size="icon"
             onClick={onToggleCollapse}
-            className="shrink-0 h-10 w-10 rounded-full hover:bg-muted/50 transition-all duration-300"
+            className="group shrink-0 h-10 w-10 rounded-full hover:bg-[#00D4FF]/10 transition-all duration-300"
           >
             <div className="relative w-5 h-5">
-              <Menu className={`w-5 h-5 absolute inset-0 transition-all duration-300 ${isCollapsed ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'}`} />
-              <X className={`w-5 h-5 absolute inset-0 transition-all duration-300 ${isCollapsed ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'}`} />
+              <Menu className={`w-5 h-5 absolute inset-0 transition-all duration-300 group-hover:text-[#00D4FF] ${isCollapsed ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'}`} />
+              <X className={`w-5 h-5 absolute inset-0 transition-all duration-300 group-hover:text-[#00D4FF] ${isCollapsed ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'}`} />
             </div>
           </Button>
 
