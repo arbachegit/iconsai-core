@@ -1431,7 +1431,8 @@ export default function NotificationSettingsTab() {
               placeholder="+55 11 99999-9999"
               value={targetPhone}
               onChange={handlePhoneChange}
-              className="border-blue-400/60 focus:border-blue-500"
+              disabled={whatsappConfigured}
+              className={`border-blue-400/60 focus:border-blue-500 ${whatsappConfigured ? 'opacity-60 cursor-not-allowed' : ''}`}
             />
             <p className="text-xs text-muted-foreground">
               Auto-formatado: BR (+55), US (+1), ou internacional
@@ -1519,7 +1520,8 @@ export default function NotificationSettingsTab() {
               placeholder="seu@email.com"
               value={notificationEmail}
               onChange={(e) => setNotificationEmail(e.target.value)}
-              className="border-blue-400/60 focus:border-blue-500"
+              disabled={emailConfigured}
+              className={`border-blue-400/60 focus:border-blue-500 ${emailConfigured ? 'opacity-60 cursor-not-allowed' : ''}`}
             />
           </div>
 
