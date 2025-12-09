@@ -74,6 +74,8 @@ interface AdminSettings {
   security_alert_threshold: string;
   security_scan_time: string | null;
   last_security_scan: string | null;
+  last_scheduled_scan: string | null;
+  last_scheduler_error: string | null;
 }
 
 type SortField = 'scan_timestamp' | 'overall_status' | 'execution_duration_ms';
@@ -89,7 +91,9 @@ export const SecurityIntegrityTab = () => {
     security_alert_email: null,
     security_alert_threshold: 'critical',
     security_scan_time: '03:00',
-    last_security_scan: null
+    last_security_scan: null,
+    last_scheduled_scan: null,
+    last_scheduler_error: null
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -135,7 +139,7 @@ export const SecurityIntegrityTab = () => {
     try {
       const { data, error } = await supabase
         .from('admin_settings')
-        .select('security_scan_enabled, security_alert_email, security_alert_threshold, last_security_scan')
+        .select('security_scan_enabled, security_alert_email, security_alert_threshold, last_security_scan, last_scheduled_scan, last_scheduler_error')
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
@@ -146,7 +150,9 @@ export const SecurityIntegrityTab = () => {
           security_alert_email: data.security_alert_email,
           security_alert_threshold: data.security_alert_threshold ?? 'critical',
           security_scan_time: '03:00',
-          last_security_scan: data.last_security_scan
+          last_security_scan: data.last_security_scan,
+          last_scheduled_scan: (data as any).last_scheduled_scan || null,
+          last_scheduler_error: (data as any).last_scheduler_error || null
         });
       }
     } catch (error) {
@@ -423,6 +429,42 @@ export const SecurityIntegrityTab = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Scheduler Status Card */}
+      <Card className="border-primary/20">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" />
+                <span className="font-medium">Scan Agendado: 03:00 AM (diário)</span>
+              </div>
+              <span className="text-muted-foreground">•</span>
+              <div className="flex items-center gap-2">
+                {settings.last_scheduled_scan ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    <span className="text-green-500">
+                      Último: {format(new Date(settings.last_scheduled_scan), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                    <span className="text-yellow-500">Nenhum scan agendado executado ainda</span>
+                  </>
+                )}
+              </div>
+            </div>
+            {settings.last_scheduler_error && (
+              <Badge variant="destructive" className="gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Erro: {settings.last_scheduler_error.substring(0, 50)}...
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Last Scan Info */}
       {latestScan && (

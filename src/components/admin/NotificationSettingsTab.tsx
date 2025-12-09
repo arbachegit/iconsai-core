@@ -76,6 +76,16 @@ interface NotificationPreference {
   whatsapp_enabled: boolean;
 }
 
+interface NotificationTemplate {
+  id: string;
+  event_type: string;
+  platform_name: string;
+  email_subject: string | null;
+  email_body: string | null;
+  whatsapp_message: string | null;
+  variables_available: string[];
+}
+
 interface SecurityAlertConfig {
   id: string;
   current_level: 'critical' | 'warning' | 'secure';
@@ -195,6 +205,12 @@ export default function NotificationSettingsTab() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
+  // Template Customization State
+  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<NotificationTemplate | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhoneNumber(e.target.value);
     setTargetPhone(formatted);
@@ -239,6 +255,18 @@ export default function NotificationSettingsTab() {
       if (securityError && securityError.code !== 'PGRST116') throw securityError;
       if (securityData) {
         setSecurityConfig(securityData as SecurityAlertConfig);
+      }
+
+      // Load notification templates
+      const { data: templatesData, error: templatesError } = await supabase
+        .from('notification_templates')
+        .select('*')
+        .order('event_type');
+
+      if (templatesError) {
+        console.error('Error loading templates:', templatesError);
+      } else {
+        setTemplates((templatesData || []) as NotificationTemplate[]);
       }
     } catch (error: any) {
       console.error('Error loading notification settings:', error);
@@ -397,6 +425,85 @@ export default function NotificationSettingsTab() {
         {icons[level] || ''} {levelConfig.label}
       </Badge>
     );
+  };
+
+  // Template Modal Functions
+  const openTemplateModal = (eventType: string, eventLabel: string) => {
+    const existingTemplate = templates.find(t => t.event_type === eventType);
+    if (existingTemplate) {
+      setEditingTemplate({ ...existingTemplate });
+    } else {
+      setEditingTemplate({
+        id: '',
+        event_type: eventType,
+        platform_name: 'KnowYOU Admin',
+        email_subject: `Notificação: ${eventLabel}`,
+        email_body: 'Detalhes: {event_details}\n\nHorário: {timestamp}',
+        whatsapp_message: `📢 ${eventLabel}\n\n{event_details}\n\nHorário: {timestamp}`,
+        variables_available: ['timestamp', 'event_details', 'platform_name']
+      });
+    }
+    setTemplateModalOpen(true);
+  };
+
+  const saveTemplate = async () => {
+    if (!editingTemplate) return;
+    setSavingTemplate(true);
+
+    try {
+      if (editingTemplate.id) {
+        // Update existing template
+        const { error } = await supabase
+          .from('notification_templates')
+          .update({
+            platform_name: editingTemplate.platform_name,
+            email_subject: editingTemplate.email_subject,
+            email_body: editingTemplate.email_body,
+            whatsapp_message: editingTemplate.whatsapp_message
+          })
+          .eq('id', editingTemplate.id);
+
+        if (error) throw error;
+      } else {
+        // Insert new template
+        const { error } = await supabase
+          .from('notification_templates')
+          .upsert({
+            event_type: editingTemplate.event_type,
+            platform_name: editingTemplate.platform_name,
+            email_subject: editingTemplate.email_subject,
+            email_body: editingTemplate.email_body,
+            whatsapp_message: editingTemplate.whatsapp_message,
+            variables_available: editingTemplate.variables_available
+          }, { onConflict: 'event_type' });
+
+        if (error) throw error;
+      }
+
+      // Reload templates
+      const { data } = await supabase
+        .from('notification_templates')
+        .select('*')
+        .order('event_type');
+      
+      setTemplates((data || []) as NotificationTemplate[]);
+      setTemplateModalOpen(false);
+      toast.success('Template salvo com sucesso');
+    } catch (error: any) {
+      console.error('Error saving template:', error);
+      toast.error('Erro ao salvar template');
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const insertVariable = (variable: string, field: 'email_subject' | 'email_body' | 'whatsapp_message') => {
+    if (!editingTemplate) return;
+    const currentValue = editingTemplate[field] || '';
+    setEditingTemplate({
+      ...editingTemplate,
+      [field]: currentValue + `{${variable}}`
+    });
   };
 
   const checkResendDomain = async () => {
@@ -771,7 +878,18 @@ export default function NotificationSettingsTab() {
                       </div>
 
                       {/* Right: Controls */}
-                      <div className="flex items-center gap-6 shrink-0">
+                      <div className="flex items-center gap-4 shrink-0">
+                        {/* Message Template Config Button (Gear) */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openTemplateModal(pref.event_type, pref.event_label)}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10"
+                          title="Customizar Mensagem"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+
                         {/* Security Alert Config Button */}
                         {isSecurityAlert && (
                           <Button
@@ -997,6 +1115,155 @@ export default function NotificationSettingsTab() {
                 <>
                   <Save className="h-4 w-4 mr-2" />
                   Salvar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Customization Modal */}
+      <Dialog open={templateModalOpen} onOpenChange={setTemplateModalOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-primary" />
+              Customizar Mensagem
+            </DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 pr-4">
+            {editingTemplate && (
+              <div className="space-y-6">
+                {/* Platform Name */}
+                <div className="space-y-2">
+                  <Label>Nome da Plataforma (remetente)</Label>
+                  <Input
+                    value={editingTemplate.platform_name}
+                    onChange={(e) => setEditingTemplate({
+                      ...editingTemplate,
+                      platform_name: e.target.value
+                    })}
+                    placeholder="KnowYOU Admin"
+                    className="border-primary/30"
+                  />
+                </div>
+
+                {/* Available Variables */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Variáveis Disponíveis (clique para inserir)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(editingTemplate.variables_available || ['timestamp', 'event_details']).map((variable) => (
+                      <Badge 
+                        key={variable}
+                        variant="outline" 
+                        className="cursor-pointer hover:bg-primary/10 transition-colors"
+                        onClick={() => {
+                          // Copy to clipboard as fallback
+                          navigator.clipboard.writeText(`{${variable}}`);
+                          toast.success(`{${variable}} copiado!`);
+                        }}
+                      >
+                        {`{${variable}}`}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Email Subject */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-blue-500" />
+                    Assunto do E-mail
+                  </Label>
+                  <Input
+                    value={editingTemplate.email_subject || ''}
+                    onChange={(e) => setEditingTemplate({
+                      ...editingTemplate,
+                      email_subject: e.target.value
+                    })}
+                    placeholder="[KnowYOU] Notificação: {event_details}"
+                    className="border-blue-400/30 focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Email Body */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-blue-500" />
+                    Corpo do E-mail
+                  </Label>
+                  <Textarea
+                    value={editingTemplate.email_body || ''}
+                    onChange={(e) => setEditingTemplate({
+                      ...editingTemplate,
+                      email_body: e.target.value
+                    })}
+                    placeholder="Detalhes: {event_details}&#10;&#10;Horário: {timestamp}"
+                    className="min-h-[120px] border-blue-400/30 focus:border-blue-500"
+                  />
+                </div>
+
+                {/* WhatsApp Message */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-green-500" />
+                    Mensagem WhatsApp
+                  </Label>
+                  <Textarea
+                    value={editingTemplate.whatsapp_message || ''}
+                    onChange={(e) => setEditingTemplate({
+                      ...editingTemplate,
+                      whatsapp_message: e.target.value
+                    })}
+                    placeholder="📢 Notificação KnowYOU&#10;&#10;{event_details}&#10;&#10;Horário: {timestamp}"
+                    className="min-h-[120px] border-green-400/30 focus:border-green-500"
+                  />
+                </div>
+
+                {/* Preview Section */}
+                <div className="space-y-3 border-t border-border pt-4">
+                  <Label className="text-xs text-muted-foreground">Prévia (com variáveis de exemplo)</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                      <p className="text-xs text-blue-400 mb-1">E-mail</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {(editingTemplate.email_subject || '')
+                          .replace('{timestamp}', '09/12/2025 15:30')
+                          .replace('{event_details}', 'Exemplo de evento')
+                          .replace('{platform_name}', editingTemplate.platform_name)}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                      <p className="text-xs text-green-400 mb-1">WhatsApp</p>
+                      <p className="text-sm text-foreground whitespace-pre-wrap">
+                        {(editingTemplate.whatsapp_message || '')
+                          .replace('{timestamp}', '09/12/2025 15:30')
+                          .replace('{event_details}', 'Exemplo de evento')
+                          .replace('{platform_name}', editingTemplate.platform_name)
+                          .substring(0, 100)}...
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </ScrollArea>
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setTemplateModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={saveTemplate} disabled={savingTemplate}>
+              {savingTemplate ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Modelo
                 </>
               )}
             </Button>

@@ -59,6 +59,8 @@ export type Database = {
           gmail_api_configured: boolean | null
           gmail_notification_email: string | null
           id: string
+          last_scheduled_scan: string | null
+          last_scheduler_error: string | null
           last_security_scan: string | null
           ml_accuracy_alert_email: string | null
           ml_accuracy_alert_enabled: boolean | null
@@ -88,6 +90,8 @@ export type Database = {
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
+          last_scheduled_scan?: string | null
+          last_scheduler_error?: string | null
           last_security_scan?: string | null
           ml_accuracy_alert_email?: string | null
           ml_accuracy_alert_enabled?: boolean | null
@@ -117,6 +121,8 @@ export type Database = {
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
+          last_scheduled_scan?: string | null
+          last_scheduler_error?: string | null
           last_security_scan?: string | null
           ml_accuracy_alert_email?: string | null
           ml_accuracy_alert_enabled?: boolean | null
@@ -1021,6 +1027,42 @@ export type Database = {
           id?: string
           updated_at?: string | null
           whatsapp_enabled?: boolean | null
+        }
+        Relationships: []
+      }
+      notification_templates: {
+        Row: {
+          created_at: string | null
+          email_body: string | null
+          email_subject: string | null
+          event_type: string
+          id: string
+          platform_name: string
+          updated_at: string | null
+          variables_available: string[] | null
+          whatsapp_message: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_body?: string | null
+          email_subject?: string | null
+          event_type: string
+          id?: string
+          platform_name?: string
+          updated_at?: string | null
+          variables_available?: string[] | null
+          whatsapp_message?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email_body?: string | null
+          email_subject?: string | null
+          event_type?: string
+          id?: string
+          platform_name?: string
+          updated_at?: string | null
+          variables_available?: string[] | null
+          whatsapp_message?: string | null
         }
         Relationships: []
       }
