@@ -330,7 +330,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 rounded-full hover:bg-white/10 transition-all duration-500 ease-in-out animate-pulse"
+                  className="group h-10 w-10 rounded-full hover:bg-[#00D4FF]/10 hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-500 ease-in-out animate-pulse"
                   onClick={() => {
                     onToggleCollapse();
                     setTimeout(() => {
@@ -339,7 +339,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                     }, 350);
                   }}
                 >
-                  <Search className="w-4 h-4" />
+                  <Search className="w-4 h-4 group-hover:text-[#00D4FF] transition-colors duration-300" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">Buscar</TooltipContent>
