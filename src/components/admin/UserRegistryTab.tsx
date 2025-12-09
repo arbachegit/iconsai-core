@@ -38,7 +38,10 @@ import {
   GraduationCap,
   Globe,
   AlertTriangle,
-  Copy
+  Copy,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { toast } from "sonner";
 import { useDropzone } from "react-dropzone";
@@ -182,11 +185,24 @@ export const UserRegistryTab = () => {
     return Array.from(origins) as string[];
   }, [registrations]);
 
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
+  // Handle sort toggle
+  const handleSort = (key: string) => {
+    setSortConfig(prev => {
+      if (prev?.key === key) {
+        return prev.direction === 'asc' ? { key, direction: 'desc' } : null;
+      }
+      return { key, direction: 'asc' };
+    });
+  };
+
   // Filter registrations based on tab, search, role, and DNS
   const filteredRegistrations = useMemo(() => {
     if (!registrations) return [];
     
-    return registrations.filter(reg => {
+    let filtered = registrations.filter(reg => {
       // Tab filter
       if (activeTab === "active" && reg.status !== "approved") return false;
       if (activeTab === "pending" && reg.status !== "pending") return false;
@@ -208,7 +224,38 @@ export const UserRegistryTab = () => {
       
       return true;
     });
-  }, [registrations, activeTab, searchQuery, roleFilter, dnsFilter]);
+
+    // Apply sorting
+    if (sortConfig) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue: string | Date;
+        let bValue: string | Date;
+        
+        switch (sortConfig.key) {
+          case 'name':
+            aValue = `${a.first_name} ${a.last_name}`.toLowerCase();
+            bValue = `${b.first_name} ${b.last_name}`.toLowerCase();
+            break;
+          case 'email':
+            aValue = a.email.toLowerCase();
+            bValue = b.email.toLowerCase();
+            break;
+          case 'date':
+            aValue = new Date(a.requested_at);
+            bValue = new Date(b.requested_at);
+            break;
+          default:
+            return 0;
+        }
+        
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [registrations, activeTab, searchQuery, roleFilter, dnsFilter, sortConfig]);
 
   // Pagination
   const totalPages = Math.ceil(filteredRegistrations.length / itemsPerPage);
@@ -300,10 +347,8 @@ export const UserRegistryTab = () => {
         .update({
           first_name: user.first_name,
           last_name: user.last_name,
+          email: user.email,
           phone: user.phone,
-          institution_work: user.institution_work,
-          institution_study: user.institution_study,
-          role: user.role,
         })
         .eq("id", user.id);
       if (error) throw error;
@@ -843,13 +888,43 @@ export const UserRegistryTab = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Nome</TableHead>
-                          <TableHead>Email</TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:text-foreground transition-colors"
+                            onClick={() => handleSort('name')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Nome
+                              {sortConfig?.key === 'name' ? (
+                                sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                              ) : <ArrowUpDown className="w-3 h-3 opacity-50" />}
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:text-foreground transition-colors"
+                            onClick={() => handleSort('email')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Email
+                              {sortConfig?.key === 'email' ? (
+                                sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                              ) : <ArrowUpDown className="w-3 h-3 opacity-50" />}
+                            </div>
+                          </TableHead>
                           <TableHead>Telefone</TableHead>
                           <TableHead>DNS</TableHead>
                           <TableHead>Role</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Data</TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:text-foreground transition-colors"
+                            onClick={() => handleSort('date')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Data
+                              {sortConfig?.key === 'date' ? (
+                                sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                              ) : <ArrowUpDown className="w-3 h-3 opacity-50" />}
+                            </div>
+                          </TableHead>
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1279,32 +1354,23 @@ export const UserRegistryTab = () => {
                 </div>
               </div>
               <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={editModal.user.email}
+                  onChange={(e) => setEditModal(prev => ({
+                    ...prev,
+                    user: prev.user ? { ...prev.user, email: e.target.value } : null
+                  }))}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>Telefone</Label>
                 <Input
                   value={editModal.user.phone || ""}
                   onChange={(e) => setEditModal(prev => ({
                     ...prev,
                     user: prev.user ? { ...prev.user, phone: e.target.value } : null
-                  }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Instituição de Trabalho</Label>
-                <Input
-                  value={editModal.user.institution_work || ""}
-                  onChange={(e) => setEditModal(prev => ({
-                    ...prev,
-                    user: prev.user ? { ...prev.user, institution_work: e.target.value } : null
-                  }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Instituição de Estudo</Label>
-                <Input
-                  value={editModal.user.institution_study || ""}
-                  onChange={(e) => setEditModal(prev => ({
-                    ...prev,
-                    user: prev.user ? { ...prev.user, institution_study: e.target.value } : null
                   }))}
                 />
               </div>
