@@ -284,9 +284,9 @@ const Admin = () => {
       />
 
       {/* Main content wrapper with dynamic left margin */}
-      <div className={`${sidebarWidth} transition-all duration-300 ease-in-out min-h-screen flex flex-col`}>
+      <div className={`${sidebarWidth} transition-all duration-500 ease-in-out min-h-screen flex flex-col`}>
         {/* Header - inside main content area, not overlapping sidebar */}
-        <header className={`h-14 bg-background/80 backdrop-blur-md border-b border-border/50 fixed top-0 right-0 z-30 flex items-center justify-between px-6 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'left-[72px]' : 'left-[280px]'}`}>
+        <header className={`h-14 bg-background/80 backdrop-blur-md border-b border-border/50 fixed top-0 right-0 z-30 flex items-center justify-between px-6 transition-all duration-500 ease-in-out ${isSidebarCollapsed ? 'left-[72px]' : 'left-[280px]'}`}>
           {/* Left: Logo + Admin Panel title */}
           <div className="flex items-center gap-3">
             <img 
@@ -300,7 +300,7 @@ const Admin = () => {
           </div>
           
           {/* Right: Language + Notifications */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 ml-auto">
             {/* Language Selector */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -339,7 +339,12 @@ const Admin = () => {
             <div className="h-6 w-px bg-border/40" />
 
             {/* Notifications */}
-            <NotificationsPanel />
+              <NotificationsPanel />
+              
+              {/* User Avatar with Halo Effect */}
+              <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center cursor-pointer transition-all duration-300 ease-in-out hover:ring-4 hover:ring-primary/20 hover:shadow-[0_0_15px_rgba(var(--primary),0.3)]">
+                <span className="text-xs font-semibold text-primary">AD</span>
+              </div>
           </div>
         </header>
 
