@@ -1644,6 +1644,39 @@ export type Database = {
         }
         Relationships: []
       }
+      system_versions: {
+        Row: {
+          change_log: string | null
+          created_at: string | null
+          id: string
+          major: number
+          minor: number
+          patch: number
+          semver: string
+          trigger_source: string | null
+        }
+        Insert: {
+          change_log?: string | null
+          created_at?: string | null
+          id?: string
+          major?: number
+          minor?: number
+          patch?: number
+          semver?: string
+          trigger_source?: string | null
+        }
+        Update: {
+          change_log?: string | null
+          created_at?: string | null
+          id?: string
+          major?: number
+          minor?: number
+          patch?: number
+          semver?: string
+          trigger_source?: string | null
+        }
+        Relationships: []
+      }
       tag_management_events: {
         Row: {
           action_type: string
