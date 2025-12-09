@@ -333,18 +333,17 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           </div>
         </div>
 
-        {/* Navigation - Scrollable area with massive bottom padding for floating dock */}
-        <div className="flex-1 overflow-y-auto w-full">
-          {/* Top fade indicator */}
-          <div 
-            className={`absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-card to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
-          />
-          
-          <nav 
-            ref={navRef}
-            onScroll={handleNavScroll}
-            className={`${isCollapsed ? 'p-2' : 'p-3'} pb-48 space-y-1 transition-all duration-300 ease-in-out`}
-          >
+        {/* Top fade indicator - direct child of aside */}
+        <div 
+          className={`absolute top-[60px] left-0 right-0 h-6 bg-gradient-to-b from-card to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
+        />
+
+        {/* Navigation - THE ONLY scrollable element with massive bottom padding */}
+        <nav 
+          ref={navRef}
+          onScroll={handleNavScroll}
+          className={`flex-1 w-full overflow-y-auto ${isCollapsed ? 'p-2' : 'p-3'} pb-40 space-y-1 transition-all duration-300 ease-in-out`}
+        >
           {filteredCategories.map((category, index) => (
             <div key={category.id}>
               {index > 0 && <Separator className="my-2 bg-primary/10" />}
@@ -434,15 +433,14 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             </div>
           ))}
         </nav>
-          
-          {/* Bottom fade indicator */}
-          <div 
-            className={`absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent z-40 pointer-events-none transition-opacity duration-200 ${canScrollDown ? 'opacity-100' : 'opacity-0'}`}
-          />
-        </div>
+
+        {/* Bottom fade indicator - positioned above footer */}
+        <div 
+          className={`absolute bottom-[160px] left-0 right-0 h-8 bg-gradient-to-t from-[#0B1120] to-transparent z-40 pointer-events-none transition-opacity duration-200 ${canScrollDown ? 'opacity-100' : 'opacity-0'}`}
+        />
 
         {/* Footer Control Bar - Floating sticky dock at bottom */}
-        <div className="absolute bottom-0 left-0 w-full z-50 border-t border-white/10 bg-[#0B1120] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.3)]">
+        <div className="absolute bottom-0 left-0 w-full z-50 border-t border-white/10 bg-[#0B1120] p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.3)]">
           {/* Centered Chevron Toggle */}
           {!isCollapsed && (
             <button 
@@ -542,12 +540,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <span className="transition-opacity duration-200 whitespace-nowrap">{t('admin.documentation')}</span>
                 </Button>
 
-                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm hover:text-primary" onClick={() => navigate("#")}>
+                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm hover:text-black" onClick={() => navigate("#")}>
                   <BarChart3 className="w-4 h-4 shrink-0" />
                   <span className="transition-opacity duration-200 whitespace-nowrap">{t('admin.dataAnalytics')}</span>
                 </Button>
 
-                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm text-primary hover:text-primary" onClick={() => navigate("/")}>
+                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm text-primary hover:text-black" onClick={() => navigate("/")}>
                   <Monitor className="w-4 h-4 shrink-0" />
                   <span className="transition-opacity duration-200 whitespace-nowrap">{t('admin.backToApp')}</span>
                 </Button>
