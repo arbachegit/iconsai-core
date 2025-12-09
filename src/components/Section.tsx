@@ -73,11 +73,13 @@ const Section = ({ id, title, subtitle, children, reverse = false, quote, quoteA
                     </div>
                   </div>
                 ) : (
-                  <img 
-                    src={sectionImage} 
-                    alt={title}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
+                <img 
+                  src={sectionImage} 
+                  alt={title}
+                  className="w-full h-full object-cover rounded-lg"
+                  loading="lazy"
+                  decoding="async"
+                />
                 )}
               </div>
             </Card>
