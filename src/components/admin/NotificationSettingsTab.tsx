@@ -240,6 +240,14 @@ export default function NotificationSettingsTab() {
   // Trigger Map Modal State
   const [showTriggerMap, setShowTriggerMap] = useState(false);
 
+  // Confirmation Dialog State
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmationType, setConfirmationType] = useState<'whatsapp' | 'email' | null>(null);
+  const [originalWhatsappPhone, setOriginalWhatsappPhone] = useState('');
+  const [originalWhatsappEnabled, setOriginalWhatsappEnabled] = useState(false);
+  const [originalEmail, setOriginalEmail] = useState('');
+  const [originalEmailEnabled, setOriginalEmailEnabled] = useState(true);
+
   // Login Alert Logic State
   const [loginAlertConfig, setLoginAlertConfig] = useState({
     checkIp: true,
@@ -293,14 +301,25 @@ export default function NotificationSettingsTab() {
       if (settingsError && settingsError.code !== 'PGRST116') throw settingsError;
       
       if (settingsData) {
-        setTargetPhone(settingsData.whatsapp_target_phone || '');
-        setWhatsappGlobalEnabled(settingsData.whatsapp_global_enabled || false);
-        setNotificationEmail((settingsData as any).gmail_notification_email || '');
-        setEmailGlobalEnabled((settingsData as any).email_global_enabled !== false);
+        const phone = settingsData.whatsapp_target_phone || '';
+        const whatsappEnabled = settingsData.whatsapp_global_enabled || false;
+        const email = (settingsData as any).gmail_notification_email || '';
+        const emailEnabled = (settingsData as any).email_global_enabled !== false;
+        
+        setTargetPhone(phone);
+        setWhatsappGlobalEnabled(whatsappEnabled);
+        setNotificationEmail(email);
+        setEmailGlobalEnabled(emailEnabled);
+        
+        // Store original values for comparison
+        setOriginalWhatsappPhone(phone);
+        setOriginalWhatsappEnabled(whatsappEnabled);
+        setOriginalEmail(email);
+        setOriginalEmailEnabled(emailEnabled);
         
         // Mark as configured if values exist
-        setWhatsappConfigured(!!settingsData.whatsapp_target_phone);
-        setEmailConfigured(!!(settingsData as any).gmail_notification_email);
+        setWhatsappConfigured(!!phone);
+        setEmailConfigured(!!email);
         
         if (settingsData.last_scheduled_scan) {
           setScanCronConfig(prev => ({ ...prev, lastRun: settingsData.last_scheduled_scan }));
@@ -369,6 +388,59 @@ export default function NotificationSettingsTab() {
     }
   };
 
+  const openConfirmDialog = (type: 'whatsapp' | 'email') => {
+    setConfirmationType(type);
+    setConfirmDialogOpen(true);
+  };
+
+  const getWhatsappChanges = () => {
+    const changes: { field: string; from: string; to: string }[] = [];
+    if (targetPhone !== originalWhatsappPhone) {
+      changes.push({
+        field: 'Número de Telefone',
+        from: originalWhatsappPhone || '(não configurado)',
+        to: targetPhone || '(vazio)'
+      });
+    }
+    if (whatsappGlobalEnabled !== originalWhatsappEnabled) {
+      changes.push({
+        field: 'WhatsApp Global',
+        from: originalWhatsappEnabled ? 'Habilitado' : 'Desabilitado',
+        to: whatsappGlobalEnabled ? 'Habilitado' : 'Desabilitado'
+      });
+    }
+    return changes;
+  };
+
+  const getEmailChanges = () => {
+    const changes: { field: string; from: string; to: string }[] = [];
+    if (notificationEmail !== originalEmail) {
+      changes.push({
+        field: 'Endereço de E-mail',
+        from: originalEmail || '(não configurado)',
+        to: notificationEmail || '(vazio)'
+      });
+    }
+    if (emailGlobalEnabled !== originalEmailEnabled) {
+      changes.push({
+        field: 'E-mail Global',
+        from: originalEmailEnabled ? 'Habilitado' : 'Desabilitado',
+        to: emailGlobalEnabled ? 'Habilitado' : 'Desabilitado'
+      });
+    }
+    return changes;
+  };
+
+  const confirmAndSave = async () => {
+    setConfirmDialogOpen(false);
+    if (confirmationType === 'whatsapp') {
+      await savePhoneSettings();
+    } else if (confirmationType === 'email') {
+      await saveEmailSettings();
+    }
+    setConfirmationType(null);
+  };
+
   const savePhoneSettings = async () => {
     setSaving(true);
     try {
@@ -384,6 +456,9 @@ export default function NotificationSettingsTab() {
       if (error) throw error;
       toast.success('Configurações de WhatsApp salvas');
       setWhatsappConfigured(true);
+      // Update original values
+      setOriginalWhatsappPhone(targetPhone);
+      setOriginalWhatsappEnabled(whatsappGlobalEnabled);
     } catch (error: any) {
       console.error('Error saving phone settings:', error);
       toast.error('Erro ao salvar configurações');
@@ -407,6 +482,9 @@ export default function NotificationSettingsTab() {
       if (error) throw error;
       toast.success('Configurações de E-mail salvas');
       setEmailConfigured(true);
+      // Update original values
+      setOriginalEmail(notificationEmail);
+      setOriginalEmailEnabled(emailGlobalEnabled);
     } catch (error: any) {
       console.error('Error saving email settings:', error);
       toast.error('Erro ao salvar configurações');
@@ -1480,7 +1558,7 @@ export default function NotificationSettingsTab() {
                 if (whatsappConfigured) {
                   setWhatsappConfigured(false);
                 } else {
-                  savePhoneSettings();
+                  openConfirmDialog('whatsapp');
                 }
               }} 
               disabled={saving}
@@ -1597,7 +1675,7 @@ export default function NotificationSettingsTab() {
                 if (emailConfigured) {
                   setEmailConfigured(false);
                 } else {
-                  saveEmailSettings();
+                  openConfirmDialog('email');
                 }
               }} 
               disabled={savingEmail}
@@ -1616,6 +1694,80 @@ export default function NotificationSettingsTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Confirmar Alterações
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Você está prestes a salvar as seguintes alterações em{' '}
+              <strong>{confirmationType === 'whatsapp' ? 'WhatsApp' : 'E-mail'}</strong>:
+            </p>
+            
+            {confirmationType === 'whatsapp' && getWhatsappChanges().length > 0 && (
+              <div className="space-y-2 bg-muted/50 p-3 rounded-lg border">
+                {getWhatsappChanges().map((change, idx) => (
+                  <div key={idx} className="text-sm">
+                    <p className="font-medium text-foreground">{change.field}</p>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-red-400 line-through">{change.from}</span>
+                      <span className="text-muted-foreground">→</span>
+                      <span className="text-green-400">{change.to}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {confirmationType === 'email' && getEmailChanges().length > 0 && (
+              <div className="space-y-2 bg-muted/50 p-3 rounded-lg border">
+                {getEmailChanges().map((change, idx) => (
+                  <div key={idx} className="text-sm">
+                    <p className="font-medium text-foreground">{change.field}</p>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-red-400 line-through">{change.from}</span>
+                      <span className="text-muted-foreground">→</span>
+                      <span className="text-green-400">{change.to}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {((confirmationType === 'whatsapp' && getWhatsappChanges().length === 0) ||
+              (confirmationType === 'email' && getEmailChanges().length === 0)) && (
+              <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg border text-center">
+                Nenhuma alteração detectada.
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setConfirmDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={confirmAndSave}
+              disabled={
+                (confirmationType === 'whatsapp' && getWhatsappChanges().length === 0) ||
+                (confirmationType === 'email' && getEmailChanges().length === 0)
+              }
+              className="gap-2"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Confirmar e Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Event Types by Category */}
       <TooltipProvider>
