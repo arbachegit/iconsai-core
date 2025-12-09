@@ -288,7 +288,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           bg-sidebar border-r border-border 
           fixed left-0 top-0 h-screen z-50 
           flex flex-col overflow-hidden 
-          transition-all duration-300 ease-in-out
+          transition-all duration-500 ease-in-out
         `}
       >
         {/* TOP HEADER: Hamburger + Search (Gemini-style) */}
