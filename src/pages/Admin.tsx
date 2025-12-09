@@ -417,8 +417,7 @@ const Admin = () => {
                 
                 {/* Camera Overlay - appears on hover */}
                 <div 
-                  className="absolute inset-0 rounded-full bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  onClick={() => console.log("Open File Picker")}
+                  className="absolute inset-0 rounded-full bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
                 >
                   <Camera className="h-6 w-6 text-white" />
                   <span className="text-xs text-white mt-1">Alterar Foto</span>
