@@ -53,13 +53,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, CheckCircle2, Bell, Mail, Settings, FolderOpen, FolderTree, Tag, Activity, Clock, XCircle, FileCheck, Info, Eye } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, FolderOpen, FolderTree, Tag, XCircle, Info, Eye } from "lucide-react";
 import { useRef } from "react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { TaxonomyFlowDiagram } from "./TaxonomyFlowDiagram";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie, Legend, LineChart, Line, Area, AreaChart } from "recharts";
-import { Switch } from "@/components/ui/switch";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie } from "recharts";
 import { useAdminSettings } from "@/hooks/useAdminSettings";
 import {
   Tooltip,
@@ -361,10 +360,6 @@ export const TagsManagementTab = () => {
       };
     },
   });
-
-  // ML management events - MOVED TO MLDashboardTab
-  const mlEvents = null;
-
   // Delete chat routing rule mutation
   const deleteChatRoutingRuleMutation = useMutation({
     mutationFn: async (ruleId: string) => {
