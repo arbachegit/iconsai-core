@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { t } from "i18next";
+import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -286,10 +287,17 @@ const Admin = () => {
       <div className={`${sidebarWidth} transition-all duration-300 ease-in-out min-h-screen flex flex-col`}>
         {/* Header - inside main content area, not overlapping sidebar */}
         <header className="h-14 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-border sticky top-0 z-30 flex items-center justify-between px-6">
-          {/* Left: Admin Panel title */}
-          <span className="text-sm font-medium text-foreground whitespace-nowrap">
-            {t('admin.panel')}
-          </span>
+          {/* Left: Logo + Admin Panel title */}
+          <div className="flex items-center gap-3">
+            <img 
+              src={knowyouAdminLogo} 
+              alt="KnowYOU" 
+              className="h-8 w-8 rounded-full object-cover"
+            />
+            <span className="text-sm font-medium text-foreground whitespace-nowrap">
+              {t('admin.panel')}
+            </span>
+          </div>
           
           {/* Right: Language + Notifications */}
           <div className="flex items-center gap-3">

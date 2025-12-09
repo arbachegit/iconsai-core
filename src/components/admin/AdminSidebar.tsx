@@ -291,8 +291,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           transition-all duration-300 ease-in-out
         `}
       >
-        {/* TOP HEADER: Hamburger + Logo (Gemini-style) */}
-        <div className="h-14 px-3 border-b border-border flex items-center gap-3 shrink-0">
+        {/* TOP HEADER: Hamburger + Search (Gemini-style) */}
+        <div className="h-14 px-3 border-b border-border flex items-center gap-2 shrink-0">
           {/* Hamburger Menu */}
           <Button
             variant="ghost"
@@ -303,23 +303,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             <Menu className="w-5 h-5" />
           </Button>
 
-          {/* Logo + Text - hidden when collapsed */}
-          {!isCollapsed && (
-            <div className="flex items-center gap-2 overflow-hidden">
-              <img 
-                src={knowyouAdminLogo} 
-                alt="KnowYOU" 
-                className="h-8 w-8 rounded-full object-cover shrink-0"
-              />
-              <span className="text-lg font-semibold text-foreground whitespace-nowrap">
-                KnowYOU
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Search Input - below header */}
-        <div className={`px-3 py-2 border-b border-border shrink-0 ${isCollapsed ? 'flex justify-center' : ''}`}>
+          {/* Search Bar - Pill shape like Gemini */}
           {isCollapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -341,14 +325,14 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
               <TooltipContent side="right">Buscar</TooltipContent>
             </Tooltip>
           ) : (
-            <div className="relative">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-10 text-sm bg-muted/30 border-border rounded-full focus:border-primary/50"
+                className="pl-9 h-10 text-sm bg-muted/30 border-border rounded-full focus:border-primary/50 w-full"
               />
             </div>
           )}
@@ -356,7 +340,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
         {/* Top fade indicator */}
         <div 
-          className={`absolute top-[116px] left-0 right-0 h-6 bg-gradient-to-b from-sidebar to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute top-[60px] left-0 right-0 h-6 bg-gradient-to-b from-sidebar to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
         />
 
         {/* MIDDLE NAVIGATION - Scrollable with margin-bottom for dock */}
