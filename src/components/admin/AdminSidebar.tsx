@@ -376,7 +376,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="w-full h-12 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
+                        className="group w-full h-12 rounded-lg hover:bg-[#00D4FF] hover:text-black transition-all duration-300 ease-in-out"
                         onClick={() => {
                           // Click-to-expand: Always expand sidebar first
                           onToggleCollapse();
@@ -386,7 +386,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                           }
                         }}
                       >
-                        <category.icon className="w-5 h-5" />
+                        <category.icon className="w-5 h-5 group-hover:text-black" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="font-medium">
@@ -400,12 +400,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   open={openSections.includes(category.id)}
                   onOpenChange={() => toggleSection(category.id)}
                 >
-                  <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-white rounded-lg hover:bg-muted/30 transition-colors duration-200">
+                  <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-black rounded-lg hover:bg-[#00D4FF] transition-all duration-300 ease-in-out">
                     <div className="flex items-center gap-2">
-                      <category.icon className="w-3.5 h-3.5" />
+                      <category.icon className="w-3.5 h-3.5 group-hover:text-black" />
                       {category.label}
                     </div>
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openSections.includes(category.id) ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 group-hover:text-black ${openSections.includes(category.id) ? 'rotate-180' : ''}`} />
                   </CollapsibleTrigger>
                   
                   <CollapsibleContent className="space-y-0.5 mt-1">
@@ -418,10 +418,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                         <Button
                           key={item.id}
                           variant={isActive ? "default" : "ghost"}
-                          className={`w-full justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted/50 hover:text-white"} transition-colors duration-200`}
+                          className={`group w-full justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-[#00D4FF] hover:text-black"} transition-all duration-300 ease-in-out`}
                           onClick={() => onTabChange(item.id)}
                         >
-                          <Icon className="w-4 h-4 shrink-0" />
+                          <Icon className="w-4 h-4 shrink-0 group-hover:text-black" />
                           <span className="truncate">{item.label}</span>
                           {showBadge && (
                             <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
