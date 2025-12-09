@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
+
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,7 +17,6 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -28,12 +28,12 @@ const handler = async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (settingsError) {
-      console.error("Error fetching settings:", settingsError);
+      console.error("[check-ml-accuracy] Error fetching settings:", settingsError);
       throw settingsError;
     }
 
     if (!settings?.ml_accuracy_alert_enabled) {
-      console.log("ML accuracy alerts disabled");
+      console.log("[check-ml-accuracy] ML accuracy alerts disabled");
       return new Response(
         JSON.stringify({ success: true, message: "Alerts disabled" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -41,15 +41,6 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const threshold = settings.ml_accuracy_threshold || 0.70;
-    const alertEmail = settings.ml_accuracy_alert_email || settings.alert_email;
-
-    if (!alertEmail) {
-      console.log("No alert email configured");
-      return new Response(
-        JSON.stringify({ success: true, message: "No alert email configured" }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
 
     // Calculate ML accuracy from last 7 days
     const sevenDaysAgo = new Date();
@@ -62,12 +53,12 @@ const handler = async (req: Request): Promise<Response> => {
       .gte("created_at", sevenDaysAgo.toISOString());
 
     if (logsError) {
-      console.error("Error fetching routing logs:", logsError);
+      console.error("[check-ml-accuracy] Error fetching routing logs:", logsError);
       throw logsError;
     }
 
     if (!routingLogs || routingLogs.length === 0) {
-      console.log("No ML routing data available");
+      console.log("[check-ml-accuracy] No ML routing data available");
       return new Response(
         JSON.stringify({ success: true, message: "No ML data available" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -78,11 +69,11 @@ const handler = async (req: Request): Promise<Response> => {
     const accepted = routingLogs.filter(l => l.action_type === "ml_accepted").length;
     const accuracyRate = totalML > 0 ? accepted / totalML : 0;
 
-    console.log(`ML Accuracy: ${(accuracyRate * 100).toFixed(1)}% (threshold: ${(threshold * 100).toFixed(0)}%)`);
+    console.log(`[check-ml-accuracy] ML Accuracy: ${(accuracyRate * 100).toFixed(1)}% (threshold: ${(threshold * 100).toFixed(0)}%)`);
 
     // Check if we need to send alert
     if (accuracyRate >= threshold) {
-      console.log("Accuracy above threshold, no alert needed");
+      console.log("[check-ml-accuracy] Accuracy above threshold, no alert needed");
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -100,7 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
       const lastAlertDate = new Date(lastAlert);
       const hoursSinceLastAlert = (Date.now() - lastAlertDate.getTime()) / (1000 * 60 * 60);
       if (hoursSinceLastAlert < 24) {
-        console.log(`Alert already sent ${hoursSinceLastAlert.toFixed(1)} hours ago`);
+        console.log(`[check-ml-accuracy] Alert already sent ${hoursSinceLastAlert.toFixed(1)} hours ago`);
         return new Response(
           JSON.stringify({ 
             success: true, 
@@ -112,55 +103,150 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Send email alert
-    if (!resendApiKey) {
-      console.error("RESEND_API_KEY not configured");
+    // Check notification preferences for ml_accuracy_drop event
+    const { data: prefData } = await supabase
+      .from("notification_preferences")
+      .select("email_enabled, whatsapp_enabled")
+      .eq("event_type", "ml_accuracy_drop")
+      .single();
+
+    // Get admin email from single source (gmail_notification_email)
+    const adminEmail = settings.gmail_notification_email;
+    const emailGlobalEnabled = settings.email_global_enabled !== false;
+    const whatsappGlobalEnabled = settings.whatsapp_global_enabled || false;
+    const whatsappPhone = settings.whatsapp_target_phone;
+
+    if (!prefData) {
+      console.log("[check-ml-accuracy] No notification preferences found for ml_accuracy_drop");
       return new Response(
-        JSON.stringify({ success: false, error: "Email service not configured" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        JSON.stringify({ success: true, message: "No preferences configured" }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const resend = new Resend(resendApiKey);
+    // Get custom template
+    const { data: template } = await supabase
+      .from("notification_templates")
+      .select("*")
+      .eq("event_type", "ml_accuracy_drop")
+      .single();
 
-    const emailResponse = await resend.emails.send({
-      from: "KnowYOU <onboarding@resend.dev>",
-      to: [alertEmail],
-      subject: `⚠️ Alerta: Taxa de Acerto ML abaixo do threshold (${(accuracyRate * 100).toFixed(1)}%)`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #e53935;">⚠️ Alerta de Acurácia ML</h1>
-          
-          <p>A taxa de acerto do sistema de roteamento ML caiu abaixo do threshold configurado.</p>
-          
-          <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0;">Métricas (últimos 7 dias)</h3>
-            <ul style="list-style: none; padding: 0;">
-              <li><strong>Taxa de Acerto Atual:</strong> <span style="color: #e53935; font-size: 1.2em;">${(accuracyRate * 100).toFixed(1)}%</span></li>
-              <li><strong>Threshold Configurado:</strong> ${(threshold * 100).toFixed(0)}%</li>
-              <li><strong>Total de Sugestões:</strong> ${totalML}</li>
-              <li><strong>Aceitas:</strong> ${accepted}</li>
-              <li><strong>Rejeitadas:</strong> ${totalML - accepted}</li>
-            </ul>
-          </div>
-          
-          <h3>Recomendações:</h3>
-          <ol>
-            <li>Revise as regras de roteamento ML no painel de administração</li>
-            <li>Analise os padrões de documentos rejeitados recentemente</li>
-            <li>Considere ajustar o threshold de confiança mínimo para sugestões</li>
-            <li>Verifique se houve mudanças nos tipos de documentos enviados</li>
-          </ol>
-          
-          <p style="color: #666; font-size: 12px; margin-top: 30px;">
-            Este email foi enviado automaticamente pelo sistema KnowYOU.<br>
-            Para configurar alertas, acesse o painel de administração.
-          </p>
-        </div>
-      `,
-    });
+    const timestamp = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    
+    // Prepare template variables
+    const variables: Record<string, string> = {
+      model_name: 'Document Routing ML',
+      current_accuracy: (accuracyRate * 100).toFixed(1),
+      drop_percentage: ((threshold - accuracyRate) * 100).toFixed(1),
+      timestamp,
+      platform_name: 'Plataforma KnowYOU Health',
+      total_suggestions: String(totalML),
+      accepted_count: String(accepted),
+      rejected_count: String(totalML - accepted)
+    };
 
-    console.log("Email sent:", emailResponse);
+    const injectVars = (tpl: string) => {
+      let result = tpl;
+      for (const [key, value] of Object.entries(variables)) {
+        result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+      }
+      return result;
+    };
+
+    let emailSent = false;
+    let whatsappSent = false;
+
+    // Send email notification if enabled
+    if (prefData.email_enabled && emailGlobalEnabled && adminEmail && RESEND_API_KEY) {
+      try {
+        const emailSubject = template?.email_subject 
+          ? injectVars(template.email_subject)
+          : `⚠️ Alerta: Taxa de Acerto ML abaixo do threshold (${(accuracyRate * 100).toFixed(1)}%)`;
+        
+        const emailBody = template?.email_body
+          ? injectVars(template.email_body)
+          : `A taxa de acerto do sistema de roteamento ML caiu para ${(accuracyRate * 100).toFixed(1)}% (threshold: ${(threshold * 100).toFixed(0)}%).
+
+Métricas (últimos 7 dias):
+- Total de Sugestões: ${totalML}
+- Aceitas: ${accepted}
+- Rejeitadas: ${totalML - accepted}
+
+Revise as regras de roteamento ML no painel de administração.`;
+
+        const emailResponse = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "Plataforma KnowYOU Health <noreply@knowyou.app>",
+            to: [adminEmail],
+            subject: emailSubject,
+            html: `<pre style="font-family: sans-serif; white-space: pre-wrap;">${emailBody}</pre>`,
+          }),
+        });
+
+        if (emailResponse.ok) {
+          emailSent = true;
+          console.log("[check-ml-accuracy] Email sent successfully");
+        } else {
+          const errData = await emailResponse.json();
+          console.error("[check-ml-accuracy] Email send error:", errData);
+        }
+
+        // Log email attempt
+        await supabase.from("notification_logs").insert({
+          event_type: "ml_accuracy_drop",
+          channel: "email",
+          recipient: adminEmail,
+          subject: emailSubject,
+          message_body: emailBody,
+          status: emailSent ? "success" : "failed",
+          error_message: emailSent ? null : "Failed to send",
+          metadata: { variables }
+        });
+      } catch (emailError: any) {
+        console.error("[check-ml-accuracy] Email error:", emailError);
+      }
+    }
+
+    // Send WhatsApp notification if enabled
+    if (prefData.whatsapp_enabled && whatsappGlobalEnabled && whatsappPhone) {
+      try {
+        const whatsappMessage = template?.whatsapp_message
+          ? injectVars(template.whatsapp_message)
+          : `⚠️ ${timestamp} - Plataforma KnowYOU Health: Taxa de Acerto ML caiu para ${(accuracyRate * 100).toFixed(1)}% (threshold: ${(threshold * 100).toFixed(0)}%).`;
+
+        const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
+          body: {
+            phoneNumber: whatsappPhone,
+            message: whatsappMessage,
+            eventType: "ml_accuracy_drop",
+          },
+        });
+
+        if (!whatsappError && whatsappData?.success) {
+          whatsappSent = true;
+          console.log("[check-ml-accuracy] WhatsApp sent successfully");
+        }
+
+        // Log WhatsApp attempt
+        await supabase.from("notification_logs").insert({
+          event_type: "ml_accuracy_drop",
+          channel: "whatsapp",
+          recipient: whatsappPhone,
+          subject: null,
+          message_body: whatsappMessage,
+          status: whatsappSent ? "success" : "failed",
+          error_message: whatsappSent ? null : (whatsappError?.message || "Failed to send"),
+          metadata: { variables }
+        });
+      } catch (whatsappErr: any) {
+        console.error("[check-ml-accuracy] WhatsApp error:", whatsappErr);
+      }
+    }
 
     // Update last alert timestamp
     await supabase
@@ -171,15 +257,16 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Alert email sent",
+        message: "Alert processing complete",
         accuracyRate,
         threshold,
-        emailResponse
+        emailSent,
+        whatsappSent
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
-    console.error("Error in check-ml-accuracy:", error);
+    console.error("[check-ml-accuracy] Error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }

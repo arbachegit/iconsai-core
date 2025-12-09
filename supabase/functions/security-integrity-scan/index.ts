@@ -242,45 +242,159 @@ Deno.serve(async (req) => {
       .update({ last_security_scan: new Date().toISOString() })
       .not('id', 'is', null);
 
-    // Send alert email if critical issues found
-    if (overall_status === 'critical') {
-      const { data: settings } = await supabase
-        .from('admin_settings')
-        .select('security_alert_email, security_scan_enabled')
-        .single();
+    // Send alert notifications if critical or warning issues found (respecting preferences)
+    if (overall_status === 'critical' || overall_status === 'warning') {
+      try {
+        // Check notification preferences for security_alert event
+        const { data: prefData } = await supabase
+          .from('notification_preferences')
+          .select('email_enabled, whatsapp_enabled')
+          .eq('event_type', 'security_alert')
+          .single();
 
-      if (settings?.security_scan_enabled && settings?.security_alert_email) {
-        console.log('[SECURITY-SCAN] Sending alert email for critical findings...');
-        
-        try {
-          await supabase.functions.invoke('send-email', {
-            body: {
-              to: settings.security_alert_email,
-              subject: '🔴 Critical Security Alert - Health AI App',
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h1 style="color: #dc2626;">🔴 Critical Security Alert</h1>
-                  <p>The automated security scan detected <strong>${summary.critical} critical issue(s)</strong>.</p>
-                  <h3>Summary:</h3>
-                  <ul>
-                    <li>🔴 Critical: ${summary.critical}</li>
-                    <li>🟡 Warnings: ${summary.warning}</li>
-                    <li>🟢 Passed: ${summary.passed}</li>
-                  </ul>
-                  <p>Please review the Security & Integrity dashboard in the admin panel immediately.</p>
-                  <p style="color: #666; font-size: 12px;">Scan completed at ${new Date().toISOString()}</p>
-                </div>
-              `
+        const { data: settings } = await supabase
+          .from('admin_settings')
+          .select('gmail_notification_email, whatsapp_target_phone, whatsapp_global_enabled, email_global_enabled, security_scan_enabled')
+          .single();
+
+        if (!settings?.security_scan_enabled) {
+          console.log('[SECURITY-SCAN] Security scan alerts disabled');
+        } else if (prefData) {
+          const emailGlobalEnabled = settings?.email_global_enabled !== false;
+          const whatsappGlobalEnabled = settings?.whatsapp_global_enabled || false;
+          const adminEmail = settings?.gmail_notification_email;
+          const whatsappPhone = settings?.whatsapp_target_phone;
+
+          // Get custom template
+          const { data: template } = await supabase
+            .from('notification_templates')
+            .select('*')
+            .eq('event_type', 'security_alert')
+            .single();
+
+          const timestamp = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+          const severityIcon = overall_status === 'critical' ? '🔴' : '🟡';
+          
+          const variables: Record<string, string> = {
+            severity_level: overall_status,
+            severity_icon: severityIcon,
+            threat_type: `${summary.critical} críticos, ${summary.warning} avisos`,
+            affected_asset: 'Sistema completo',
+            timestamp,
+            platform_name: 'Plataforma KnowYOU Health',
+            critical_count: String(summary.critical),
+            warning_count: String(summary.warning),
+            passed_count: String(summary.passed)
+          };
+
+          const injectVars = (tpl: string) => {
+            let result = tpl;
+            for (const [key, value] of Object.entries(variables)) {
+              result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
             }
-          });
+            return result;
+          };
+
+          // Send email notification if enabled
+          if (prefData.email_enabled && emailGlobalEnabled && adminEmail) {
+            console.log('[SECURITY-SCAN] Sending alert email...');
+            
+            const emailSubject = template?.email_subject 
+              ? injectVars(template.email_subject)
+              : `${severityIcon} Alerta de Segurança - ${summary.critical} críticos, ${summary.warning} avisos`;
+            
+            const emailBody = template?.email_body
+              ? injectVars(template.email_body)
+              : `O scan de segurança automatizado detectou ${summary.critical} problema(s) crítico(s) e ${summary.warning} aviso(s).
+
+Resumo:
+- 🔴 Críticos: ${summary.critical}
+- 🟡 Avisos: ${summary.warning}
+- 🟢 Aprovados: ${summary.passed}
+
+Revise o dashboard de Segurança & Integridade no painel de administração.
+
+Scan concluído em: ${timestamp}`;
+
+            try {
+              await supabase.functions.invoke('send-email', {
+                body: {
+                  to: adminEmail,
+                  subject: emailSubject,
+                  body: emailBody
+                }
+              });
+              console.log('[SECURITY-SCAN] Email sent successfully');
+
+              // Log email notification
+              await supabase.from('notification_logs').insert({
+                event_type: 'security_alert',
+                channel: 'email',
+                recipient: adminEmail,
+                subject: emailSubject,
+                message_body: emailBody,
+                status: 'success',
+                metadata: { variables }
+              });
+            } catch (emailError) {
+              console.error('[SECURITY-SCAN] Failed to send alert email:', emailError);
+              await supabase.from('notification_logs').insert({
+                event_type: 'security_alert',
+                channel: 'email',
+                recipient: adminEmail,
+                subject: emailSubject,
+                message_body: emailBody,
+                status: 'failed',
+                error_message: String(emailError),
+                metadata: { variables }
+              });
+            }
+          }
+
+          // Send WhatsApp notification if enabled
+          if (prefData.whatsapp_enabled && whatsappGlobalEnabled && whatsappPhone) {
+            console.log('[SECURITY-SCAN] Sending WhatsApp alert...');
+            
+            const whatsappMessage = template?.whatsapp_message
+              ? injectVars(template.whatsapp_message)
+              : `${severityIcon} ${timestamp} - Plataforma KnowYOU Health: Alerta de Segurança. ${summary.critical} críticos, ${summary.warning} avisos detectados.`;
+
+            try {
+              const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke('send-whatsapp', {
+                body: {
+                  phoneNumber: whatsappPhone,
+                  message: whatsappMessage,
+                  eventType: 'security_alert'
+                }
+              });
+
+              if (!whatsappError && whatsappData?.success) {
+                console.log('[SECURITY-SCAN] WhatsApp sent successfully');
+              }
+
+              // Log WhatsApp notification
+              await supabase.from('notification_logs').insert({
+                event_type: 'security_alert',
+                channel: 'whatsapp',
+                recipient: whatsappPhone,
+                subject: null,
+                message_body: whatsappMessage,
+                status: (!whatsappError && whatsappData?.success) ? 'success' : 'failed',
+                error_message: whatsappError?.message || null,
+                metadata: { variables }
+              });
+            } catch (whatsappErr) {
+              console.error('[SECURITY-SCAN] Failed to send WhatsApp:', whatsappErr);
+            }
+          }
 
           // Mark alert as sent
           await supabase.from('security_scan_results')
             .update({ alert_sent: true })
             .eq('scan_timestamp', new Date().toISOString().split('.')[0]);
-        } catch (emailError) {
-          console.error('[SECURITY-SCAN] Failed to send alert email:', emailError);
         }
+      } catch (notifyError) {
+        console.error('[SECURITY-SCAN] Error sending notifications:', notifyError);
       }
     }
 
