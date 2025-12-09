@@ -197,12 +197,12 @@ const Admin = () => {
 
         setUserEmail(user.email || null);
 
-        // Check if user has admin role
+        // Check if user has admin or superadmin role
         const { data: roleData } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", user.id)
-          .eq("role", "admin")
+          .in("role", ["admin", "superadmin"])
           .maybeSingle();
 
         if (!roleData) {
