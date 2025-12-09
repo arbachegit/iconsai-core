@@ -55,6 +55,7 @@ export type Database = {
           daily_report_enabled: boolean | null
           doc_sync_alert_email: string | null
           doc_sync_time: string | null
+          email_global_enabled: boolean | null
           gmail_api_configured: boolean | null
           gmail_notification_email: string | null
           id: string
@@ -83,6 +84,7 @@ export type Database = {
           daily_report_enabled?: boolean | null
           doc_sync_alert_email?: string | null
           doc_sync_time?: string | null
+          email_global_enabled?: boolean | null
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string
@@ -111,6 +113,7 @@ export type Database = {
           daily_report_enabled?: boolean | null
           doc_sync_alert_email?: string | null
           doc_sync_time?: string | null
+          email_global_enabled?: boolean | null
           gmail_api_configured?: boolean | null
           gmail_notification_email?: string | null
           id?: string

@@ -62,7 +62,7 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
     // Get admin settings for email and phone targets
     const { data: settings, error: settingsError } = await supabase
       .from('admin_settings')
-      .select('gmail_notification_email, whatsapp_target_phone, whatsapp_global_enabled')
+      .select('gmail_notification_email, whatsapp_target_phone, whatsapp_global_enabled, email_global_enabled')
       .single();
 
     if (settingsError) {
@@ -71,8 +71,11 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
       return result;
     }
 
-    // Send email notification if enabled
-    if (prefData.email_enabled && settings?.gmail_notification_email) {
+    // Check if email_global_enabled (default true if not set)
+    const emailGlobalEnabled = (settings as any)?.email_global_enabled !== false;
+
+    // Send email notification if enabled (check global toggle too)
+    if (prefData.email_enabled && emailGlobalEnabled && settings?.gmail_notification_email) {
       try {
         const { error } = await supabase.functions.invoke('send-email', {
           body: {

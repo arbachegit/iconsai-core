@@ -165,11 +165,15 @@ export default function NotificationSettingsTab() {
   const [preferences, setPreferences] = useState<NotificationPreference[]>([]);
   const [targetPhone, setTargetPhone] = useState('');
   const [whatsappGlobalEnabled, setWhatsappGlobalEnabled] = useState(false);
+  const [notificationEmail, setNotificationEmail] = useState('');
+  const [emailGlobalEnabled, setEmailGlobalEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
   const [testingWhatsapp, setTestingWhatsapp] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isEmailEditMode, setIsEmailEditMode] = useState(false);
   
   // Security Alert Config State
   const [securityConfig, setSecurityConfig] = useState<SecurityAlertConfig | null>(null);
@@ -203,10 +207,10 @@ export default function NotificationSettingsTab() {
       if (prefsError) throw prefsError;
       setPreferences(prefsData || []);
 
-      // Load admin settings for phone and global toggle
+      // Load admin settings for phone, email and global toggles
       const { data: settingsData, error: settingsError } = await supabase
         .from('admin_settings')
-        .select('whatsapp_target_phone, whatsapp_global_enabled')
+        .select('whatsapp_target_phone, whatsapp_global_enabled, gmail_notification_email, email_global_enabled')
         .single();
 
       if (settingsError && settingsError.code !== 'PGRST116') throw settingsError;
@@ -214,6 +218,8 @@ export default function NotificationSettingsTab() {
       if (settingsData) {
         setTargetPhone(settingsData.whatsapp_target_phone || '');
         setWhatsappGlobalEnabled(settingsData.whatsapp_global_enabled || false);
+        setNotificationEmail((settingsData as any).gmail_notification_email || '');
+        setEmailGlobalEnabled((settingsData as any).email_global_enabled !== false);
       }
 
       // Load security alert config
@@ -254,6 +260,29 @@ export default function NotificationSettingsTab() {
       toast.error('Erro ao salvar configurações');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveEmailSettings = async () => {
+    setSavingEmail(true);
+    try {
+      const { error } = await supabase
+        .from('admin_settings')
+        .update({
+          gmail_notification_email: notificationEmail,
+          email_global_enabled: emailGlobalEnabled,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', (await supabase.from('admin_settings').select('id').single()).data?.id);
+
+      if (error) throw error;
+      toast.success('Configurações de E-mail salvas');
+      setIsEmailEditMode(false);
+    } catch (error: any) {
+      console.error('Error saving email settings:', error);
+      toast.error('Erro ao salvar configurações');
+    } finally {
+      setSavingEmail(false);
     }
   };
 
@@ -535,6 +564,95 @@ export default function NotificationSettingsTab() {
         </CardContent>
       </Card>
 
+      {/* Email Configuration Card */}
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Mail className="h-5 w-5 text-blue-500" />
+            Configuração de E-mail
+          </CardTitle>
+          <CardDescription>
+            Configure o endereço de e-mail para receber notificações
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="email">Endereço de E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                value={notificationEmail}
+                onChange={(e) => setNotificationEmail(e.target.value)}
+                className="border-blue-400/60 focus:border-blue-500"
+                disabled={!isEmailEditMode}
+              />
+            </div>
+            <div className="flex items-end gap-2">
+              {isEmailEditMode ? (
+                <Button 
+                  onClick={saveEmailSettings} 
+                  disabled={savingEmail}
+                  className="gap-2"
+                >
+                  {savingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {savingEmail ? 'Salvando...' : 'Salvar Configuração'}
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline"
+                  onClick={() => setIsEmailEditMode(true)}
+                  className="gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Configurar
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-3">
+              <Mail className="h-5 w-5 text-blue-500" />
+              <div>
+                <p className="font-medium">Habilitar E-mail Globalmente</p>
+                <p className="text-xs text-muted-foreground">
+                  Desative para pausar todas as notificações por e-mail
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={emailGlobalEnabled}
+              onCheckedChange={(checked) => {
+                setEmailGlobalEnabled(checked);
+                saveEmailSettings();
+              }}
+            />
+          </div>
+
+          <Button
+            variant="outline"
+            onClick={testEmail}
+            disabled={testingEmail || !notificationEmail || !emailGlobalEnabled}
+            className="gap-2"
+          >
+            {testingEmail ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            Enviar E-mail de Teste
+          </Button>
+
+          {!emailGlobalEnabled && (
+            <p className="text-xs text-amber-500">
+              ⚠️ E-mail global está desabilitado. Habilite para testar.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Event Types by Category */}
       {(['security', 'intelligence', 'system'] as const).map((category) => {
         const categoryConfig = CATEGORY_LABELS[category];
@@ -612,6 +730,7 @@ export default function NotificationSettingsTab() {
                             onCheckedChange={(checked) => 
                               togglePreference(pref.id, 'email_enabled', checked)
                             }
+                            disabled={!emailGlobalEnabled}
                           />
                         </div>
 
