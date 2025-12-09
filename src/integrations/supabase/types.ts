@@ -1192,6 +1192,39 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          first_name: string | null
+          id: string
+          institution_study: string | null
+          institution_work: string | null
+          last_name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          first_name?: string | null
+          id: string
+          institution_study?: string | null
+          institution_work?: string | null
+          last_name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          first_name?: string | null
+          id?: string
+          institution_study?: string | null
+          institution_work?: string | null
+          last_name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       rag_analytics: {
         Row: {
           created_at: string | null
@@ -1926,6 +1959,39 @@ export type Database = {
           topics_discussed?: string[] | null
           total_interactions?: number | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_contacts: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_primary: boolean | null
+          is_verified: boolean | null
+          type: string
+          updated_at: string | null
+          user_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          is_verified?: boolean | null
+          type: string
+          updated_at?: string | null
+          user_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          is_verified?: boolean | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+          value?: string
         }
         Relationships: []
       }
