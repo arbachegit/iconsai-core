@@ -83,6 +83,28 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
     errors: []
   };
 
+  // Force logging helper - always logs attempts even on early failures
+  const forceLog = async (status: 'blocked' | 'success' | 'failed', channel: string, recipient: string, errorMessage?: string) => {
+    try {
+      await supabase.from('notification_logs').insert({
+        event_type: payload.eventType,
+        channel: channel,
+        recipient: recipient || 'unknown',
+        subject: payload.subject,
+        message_body: payload.message.substring(0, 500),
+        status: status,
+        error_message: errorMessage || null,
+        metadata: { 
+          source: 'dispatcher',
+          variables: payload.metadata || {},
+          forced_log: true
+        }
+      });
+    } catch (logError) {
+      console.error('[NotificationDispatcher] Force log failed:', logError);
+    }
+  };
+
   try {
     // Check notification preferences for this event type
     const { data: prefData, error: prefError } = await supabase
@@ -94,11 +116,14 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
     if (prefError) {
       console.error('[NotificationDispatcher] Error fetching preferences:', prefError);
       result.errors.push(`Preference fetch error: ${prefError.message}`);
+      // FORCE LOG: Log the blocked attempt due to RLS/preferences error
+      await forceLog('blocked', 'system', 'N/A', `RLS/Preferences error: ${prefError.message}`);
       return result;
     }
 
     if (!prefData) {
       console.log('[NotificationDispatcher] No preferences found for event:', payload.eventType);
+      await forceLog('blocked', 'system', 'N/A', `No preferences found for event: ${payload.eventType}`);
       return result;
     }
 
@@ -111,6 +136,7 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
     if (settingsError) {
       console.error('[NotificationDispatcher] Error fetching admin settings:', settingsError);
       result.errors.push(`Settings fetch error: ${settingsError.message}`);
+      await forceLog('blocked', 'system', 'N/A', `Admin settings error: ${settingsError.message}`);
       return result;
     }
 
