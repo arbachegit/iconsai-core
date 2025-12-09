@@ -172,8 +172,6 @@ export default function NotificationSettingsTab() {
   const [savingEmail, setSavingEmail] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
   const [testingWhatsapp, setTestingWhatsapp] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [isEmailEditMode, setIsEmailEditMode] = useState(false);
   
   // Resend Domain Status State
   const [checkingDomain, setCheckingDomain] = useState(false);
@@ -264,7 +262,6 @@ export default function NotificationSettingsTab() {
 
       if (error) throw error;
       toast.success('Configurações de WhatsApp salvas');
-      setIsEditMode(false);
     } catch (error: any) {
       console.error('Error saving phone settings:', error);
       toast.error('Erro ao salvar configurações');
@@ -287,7 +284,6 @@ export default function NotificationSettingsTab() {
 
       if (error) throw error;
       toast.success('Configurações de E-mail salvas');
-      setIsEmailEditMode(false);
     } catch (error: any) {
       console.error('Error saving email settings:', error);
       toast.error('Erro ao salvar configurações');
@@ -554,42 +550,18 @@ export default function NotificationSettingsTab() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="phone">Número de Telefone (com código do país)</Label>
-              <Input
-                id="phone"
-                placeholder="+55 11 99999-9999"
-                value={targetPhone}
-                onChange={handlePhoneChange}
-                className="border-blue-400/60 focus:border-blue-500"
-                disabled={!isEditMode}
-              />
-              <p className="text-xs text-muted-foreground">
-                Auto-formatado: BR (+55), US (+1), ou internacional
-              </p>
-            </div>
-            <div className="flex items-end gap-2">
-              {isEditMode ? (
-                <Button 
-                  onClick={savePhoneSettings} 
-                  disabled={saving}
-                  className="gap-2"
-                >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </Button>
-              ) : (
-                <Button 
-                  variant="outline"
-                  onClick={() => setIsEditMode(true)}
-                  className="gap-2"
-                >
-                  <Settings className="h-4 w-4" />
-                  Configurar
-                </Button>
-              )}
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="phone">Número de Telefone (com código do país)</Label>
+            <Input
+              id="phone"
+              placeholder="+55 11 99999-9999"
+              value={targetPhone}
+              onChange={handlePhoneChange}
+              className="border-blue-400/60 focus:border-blue-500"
+            />
+            <p className="text-xs text-muted-foreground">
+              Auto-formatado: BR (+55), US (+1), ou internacional
+            </p>
           </div>
 
           <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
@@ -604,11 +576,38 @@ export default function NotificationSettingsTab() {
             </div>
             <Switch
               checked={whatsappGlobalEnabled}
-              onCheckedChange={(checked) => {
-                setWhatsappGlobalEnabled(checked);
-                savePhoneSettings();
-              }}
+              onCheckedChange={setWhatsappGlobalEnabled}
             />
+          </div>
+
+          {!whatsappGlobalEnabled && (
+            <p className="text-xs text-amber-500">
+              ⚠️ WhatsApp global está desabilitado. Habilite para testar.
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={testWhatsapp}
+              disabled={testingWhatsapp || !targetPhone || !whatsappGlobalEnabled}
+              className="gap-2"
+            >
+              {testingWhatsapp ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Enviar Teste WhatsApp
+            </Button>
+            <Button 
+              onClick={savePhoneSettings} 
+              disabled={saving}
+              className="gap-2"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Salvar Configuração
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -625,40 +624,16 @@ export default function NotificationSettingsTab() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="email">Endereço de E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={notificationEmail}
-                onChange={(e) => setNotificationEmail(e.target.value)}
-                className="border-blue-400/60 focus:border-blue-500"
-                disabled={!isEmailEditMode}
-              />
-            </div>
-            <div className="flex items-end gap-2">
-              {isEmailEditMode ? (
-                <Button 
-                  onClick={saveEmailSettings} 
-                  disabled={savingEmail}
-                  className="gap-2"
-                >
-                  {savingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  {savingEmail ? 'Salvando...' : 'Salvar Configuração'}
-                </Button>
-              ) : (
-                <Button 
-                  variant="outline"
-                  onClick={() => setIsEmailEditMode(true)}
-                  className="gap-2"
-                >
-                  <Settings className="h-4 w-4" />
-                  Configurar
-                </Button>
-              )}
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Endereço de E-mail</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="seu@email.com"
+              value={notificationEmail}
+              onChange={(e) => setNotificationEmail(e.target.value)}
+              className="border-blue-400/60 focus:border-blue-500"
+            />
           </div>
 
           <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
@@ -673,10 +648,7 @@ export default function NotificationSettingsTab() {
             </div>
             <Switch
               checked={emailGlobalEnabled}
-              onCheckedChange={(checked) => {
-                setEmailGlobalEnabled(checked);
-                saveEmailSettings();
-              }}
+              onCheckedChange={setEmailGlobalEnabled}
             />
           </div>
 
@@ -699,7 +671,13 @@ export default function NotificationSettingsTab() {
             </div>
           )}
 
-          <div className="flex gap-2">
+          {!emailGlobalEnabled && (
+            <p className="text-xs text-amber-500">
+              ⚠️ E-mail global está desabilitado. Habilite para testar.
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
             <Button
               variant="outline"
               onClick={checkResendDomain}
@@ -713,7 +691,6 @@ export default function NotificationSettingsTab() {
               )}
               Verificar Domínio
             </Button>
-
             <Button
               variant="outline"
               onClick={testEmail}
@@ -725,15 +702,17 @@ export default function NotificationSettingsTab() {
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              Enviar E-mail de Teste
+              Enviar Teste E-mail
+            </Button>
+            <Button 
+              onClick={saveEmailSettings} 
+              disabled={savingEmail}
+              className="gap-2"
+            >
+              {savingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Salvar Configuração
             </Button>
           </div>
-
-          {!emailGlobalEnabled && (
-            <p className="text-xs text-amber-500">
-              ⚠️ E-mail global está desabilitado. Habilite para testar.
-            </p>
-          )}
         </CardContent>
       </Card>
 
@@ -1025,52 +1004,6 @@ export default function NotificationSettingsTab() {
         </DialogContent>
       </Dialog>
 
-      {/* Test Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Testar Notificações</CardTitle>
-          <CardDescription>
-            Envie mensagens de teste para verificar se as configurações estão corretas
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
-            <Button
-              variant="outline"
-              onClick={testEmail}
-              disabled={testingEmail}
-              className="gap-2"
-            >
-              {testingEmail ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              Testar Email
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={testWhatsapp}
-              disabled={testingWhatsapp || !targetPhone || !whatsappGlobalEnabled}
-              className="gap-2"
-            >
-              {testingWhatsapp ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <MessageSquare className="h-4 w-4" />
-              )}
-              Testar WhatsApp
-            </Button>
-          </div>
-
-          {!whatsappGlobalEnabled && (
-            <p className="text-xs text-amber-500 mt-2">
-              ⚠️ WhatsApp global está desabilitado. Habilite para testar.
-            </p>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
