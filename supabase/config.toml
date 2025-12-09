@@ -57,6 +57,9 @@ verify_jwt = false
 [functions.version-control]
 verify_jwt = false
 
+[functions.batch-version-update]
+verify_jwt = false
+
 [functions.generate-documentation]
 verify_jwt = true
 
