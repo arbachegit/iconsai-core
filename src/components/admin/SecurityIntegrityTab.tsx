@@ -95,8 +95,6 @@ export const SecurityIntegrityTab = () => {
     last_scheduled_scan: null,
     last_scheduler_error: null
   });
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   
   // Sorting state
   const [sortField, setSortField] = useState<SortField>('scan_timestamp');
@@ -826,115 +824,6 @@ export const SecurityIntegrityTab = () => {
         </CardContent>
       </Card>
 
-      {/* Alert Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5" />
-            Configuracao de Alertas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Alertas Automaticos</Label>
-              <p className="text-sm text-muted-foreground">Receber emails quando problemas forem detectados</p>
-            </div>
-            <Switch 
-              checked={settings.security_scan_enabled}
-              onCheckedChange={(checked) => {
-                if (isEditMode) {
-                  setSettings(prev => ({ ...prev, security_scan_enabled: checked }));
-                }
-              }}
-              disabled={!isEditMode}
-            />
-          </div>
-          
-          <Separator />
-          
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Email para Alertas</Label>
-              <Input 
-                type="email"
-                placeholder="admin@example.com"
-                value={settings.security_alert_email || ''}
-                onChange={(e) => setSettings(prev => ({ ...prev, security_alert_email: e.target.value }))}
-                disabled={!isEditMode}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Nivel de Alerta</Label>
-              <Select 
-                value={settings.security_alert_threshold}
-                onValueChange={(value) => setSettings(prev => ({ ...prev, security_alert_threshold: value }))}
-                disabled={!isEditMode}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="critical">Apenas Criticos</SelectItem>
-                  <SelectItem value="warning">Avisos e Criticos</SelectItem>
-                  <SelectItem value="all">Todos os Scans</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Horario do Scan Automatico</Label>
-              <Input 
-                type="time"
-                value={settings.security_scan_time || '03:00'}
-                onChange={(e) => setSettings(prev => ({ ...prev, security_scan_time: e.target.value }))}
-                disabled={!isEditMode}
-              />
-            </div>
-          </div>
-          
-          <div className="flex justify-end pt-2">
-            {isEditMode ? (
-              <Button 
-                onClick={async () => {
-                  setIsSaving(true);
-                  try {
-                    await updateSettings({
-                      security_scan_enabled: settings.security_scan_enabled,
-                      security_alert_email: settings.security_alert_email,
-                      security_alert_threshold: settings.security_alert_threshold
-                    });
-                    setIsEditMode(false);
-                  } finally {
-                    setIsSaving(false);
-                  }
-                }}
-                disabled={isSaving}
-                className="gap-2"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  'Salvar'
-                )}
-              </Button>
-            ) : (
-              <Button 
-                variant="outline"
-                onClick={() => setIsEditMode(true)}
-                className="gap-2"
-              >
-                <Settings className="w-4 h-4" />
-                Configurar
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

@@ -62,16 +62,15 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
   security_alert: { icon: Shield, category: 'security', description: 'Alertas de segurança do sistema', hasLogicConfig: true },
   
   // Category B: Data Intelligence
-  sentiment_alert: { icon: Brain, category: 'intelligence', description: 'IA detecta sentimento negativo em análises' },
-  taxonomy_anomaly: { icon: Tags, category: 'intelligence', description: 'Falha na auditoria de taxonomia ML' },
-  ml_accuracy_drop: { icon: TrendingDown, category: 'intelligence', description: 'Queda na precisão do sistema ML' },
+  sentiment_alert: { icon: Brain, category: 'intelligence', description: 'IA detecta sentimento negativo em análises', hasLogicConfig: true },
+  taxonomy_anomaly: { icon: Tags, category: 'intelligence', description: 'Falha na auditoria de taxonomia ML', hasLogicConfig: true },
+  ml_accuracy_drop: { icon: TrendingDown, category: 'intelligence', description: 'Queda na precisão do sistema ML', hasLogicConfig: true },
   
   // Category C: System Status
-  new_document: { icon: FileText, category: 'system', description: 'Novo documento processado no RAG' },
-  document_failed: { icon: AlertTriangle, category: 'system', description: 'Falha no processamento de documento' },
-  new_contact_message: { icon: MessageCircle, category: 'system', description: 'Nova mensagem de contato recebida' },
-  new_conversation: { icon: MessageSquare, category: 'system', description: 'Nova conversa iniciada no chat' },
-  scan_complete: { icon: ScanSearch, category: 'system', description: 'Scan de segurança finalizado' },
+  new_document: { icon: FileText, category: 'system', description: 'Novo documento processado no RAG', hasLogicConfig: true },
+  document_failed: { icon: AlertTriangle, category: 'system', description: 'Falha no processamento de documento', hasLogicConfig: true },
+  new_contact_message: { icon: MessageCircle, category: 'system', description: 'Nova mensagem de contato recebida', hasLogicConfig: true },
+  new_conversation: { icon: MessageSquare, category: 'system', description: 'Nova conversa iniciada no chat', hasLogicConfig: true },
 };
 
 const CATEGORY_LABELS: Record<string, { title: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -884,6 +883,215 @@ export default function NotificationSettingsTab() {
           </div>
         );
 
+      case 'sentiment_alert':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Gatilhos de Sentimento</Label>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-center">
+                  <p className="text-2xl font-bold text-red-400">-0.5</p>
+                  <p className="text-xs text-muted-foreground mt-1">Threshold Negativo</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-2xl font-bold text-primary">IA</p>
+                  <p className="text-xs text-muted-foreground mt-1">Análise Automática</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-2xl font-bold text-primary">Chat</p>
+                  <p className="text-xs text-muted-foreground mt-1">Fonte de Dados</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Variáveis Disponíveis</Label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{user_id}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Identificador da sessão do usuário</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{sentiment_score}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Score de sentimento detectado</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{trigger_phrase}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Frase que ativou o alerta</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'taxonomy_anomaly':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Detecção de Anomalias</Label>
+              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                <p className="text-sm">Sistema detecta automaticamente conflitos de tags, duplicatas e hierarquias inconsistentes.</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Variáveis Disponíveis</Label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{category}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Categoria da tag afetada</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{conflict_reason}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Descrição do conflito</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'ml_accuracy_drop':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Threshold de Precisão</Label>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-2xl font-bold text-primary">70%</p>
+                  <p className="text-xs text-muted-foreground mt-1">Limite Mínimo</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-2xl font-bold text-primary">24h</p>
+                  <p className="text-xs text-muted-foreground mt-1">Cooldown Alerta</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-2xl font-bold text-primary">7d</p>
+                  <p className="text-xs text-muted-foreground mt-1">Janela Análise</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Variáveis Disponíveis</Label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{model_name}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Nome do modelo ML afetado</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{current_accuracy}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Precisão atual em %</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{drop_percentage}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Queda percentual</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'new_document':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Notificação de Documentos RAG</Label>
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                <p className="text-sm">Notifica quando um novo documento é processado e inserido no sistema RAG.</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Variáveis Disponíveis</Label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{file_name}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Nome do arquivo processado</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{upload_date}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Data do upload</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'document_failed':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Falha de Processamento</Label>
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                <p className="text-sm">Alerta quando um documento falha ao ser processado pelo sistema.</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Variáveis Disponíveis</Label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{file_name}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Nome do arquivo com erro</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{process_id}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ ID do processo</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{error_code}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Código de erro</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'new_contact_message':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Mensagens de Contato</Label>
+              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                <p className="text-sm">Notifica quando uma nova mensagem é recebida pelo formulário de contato.</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Variáveis Disponíveis</Label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{sender_name}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Nome/Email do remetente</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{snippet}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Prévia da mensagem</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'new_conversation':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Novas Conversas</Label>
+              <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                <p className="text-sm">Notifica quando um usuário inicia uma nova sessão de chat.</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Variáveis Disponíveis</Label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{sender_name}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Identificador do usuário</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{snippet}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Primeira mensagem</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       case 'security_alert':
         return (
           <div className="space-y-6">
@@ -1321,10 +1529,20 @@ export default function NotificationSettingsTab() {
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-amber-500" />
-              {editingLogicEvent === 'login_alert' && 'Configuração: Alerta de Login Suspeito'}
-              {editingLogicEvent === 'password_reset' && 'Configuração: Recuperação de Senha'}
-              {editingLogicEvent === 'security_alert' && 'Configuração: Alerta de Segurança'}
+              <Shield className="h-5 w-5 text-amber-500" />
+              Regras e Gatilhos: {
+                editingLogicEvent === 'login_alert' ? 'Alerta de Login Suspeito' :
+                editingLogicEvent === 'password_reset' ? 'Recuperação de Senha' :
+                editingLogicEvent === 'security_alert' ? 'Alerta de Segurança' :
+                editingLogicEvent === 'sentiment_alert' ? 'Alerta de Sentimento' :
+                editingLogicEvent === 'taxonomy_anomaly' ? 'Anomalia de Taxonomia' :
+                editingLogicEvent === 'ml_accuracy_drop' ? 'Queda de Precisão ML' :
+                editingLogicEvent === 'new_document' ? 'Novo Documento RAG' :
+                editingLogicEvent === 'document_failed' ? 'Falha no Processamento' :
+                editingLogicEvent === 'new_contact_message' ? 'Nova Mensagem de Contato' :
+                editingLogicEvent === 'new_conversation' ? 'Nova Conversa' :
+                'Configuração'
+              }
             </DialogTitle>
           </DialogHeader>
           

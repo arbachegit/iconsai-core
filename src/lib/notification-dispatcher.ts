@@ -12,9 +12,7 @@ export type NotificationEventType =
   | 'login_alert'
   // Data Intelligence
   | 'sentiment_alert'
-  | 'taxonomy_anomaly'
-  // System Status
-  | 'scan_complete';
+  | 'taxonomy_anomaly';
 
 interface NotificationTemplate {
   id: string;
@@ -30,7 +28,7 @@ interface NotificationPayload {
   eventType: NotificationEventType;
   subject: string;
   message: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string>;
 }
 
 interface DispatchResult {
@@ -45,7 +43,7 @@ interface DispatchResult {
 function injectVariables(template: string, variables: Record<string, string>): string {
   let result = template;
   for (const [key, value] of Object.entries(variables)) {
-    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value || '');
   }
   return result;
 }
@@ -119,12 +117,11 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
     // Get custom template
     const template = await getTemplate(payload.eventType);
     
-    // Prepare template variables
+    // Prepare template variables with standard platform name
     const timestamp = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     const variables: Record<string, string> = {
       timestamp,
-      event_details: payload.message,
-      platform_name: template?.platform_name || 'KnowYOU Admin',
+      platform_name: 'Plataforma KnowYOU Health',
       ...(payload.metadata || {})
     };
 
@@ -149,7 +146,7 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
           const { error } = await supabase.functions.invoke('send-email', {
             body: {
               to: settings.gmail_notification_email,
-              subject: emailSubject || `[${variables.platform_name}] Notificação`,
+              subject: emailSubject || `[Plataforma KnowYOU Health] Notificação`,
               body: emailBody
             }
           });
@@ -171,10 +168,10 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
       settings?.whatsapp_target_phone
     ) {
       try {
-        // Use custom template or fallback
+        // Use custom template or fallback with standard format
         const whatsappMessage = template?.whatsapp_message 
           ? injectVariables(template.whatsapp_message, variables)
-          : `${payload.subject}\n\n${payload.message}`;
+          : `${timestamp} - Plataforma KnowYOU Health: ${payload.subject}. ${payload.message}`;
 
         // Never send empty messages
         if (!whatsappMessage || whatsappMessage.trim() === '') {
@@ -209,84 +206,124 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
 }
 
 /**
- * Quick helper to send a specific notification type
+ * Quick helpers to send specific notification types with proper variable mapping
  */
-export const notifyNewDocument = (documentName: string) => 
+export const notifyNewDocument = (fileName: string, uploadDate?: string) => 
   dispatchNotification({
     eventType: 'new_document',
-    subject: '📄 Novo Documento RAG Adicionado',
-    message: documentName
+    subject: 'Novo Documento RAG',
+    message: fileName,
+    metadata: {
+      file_name: fileName,
+      upload_date: uploadDate || new Date().toLocaleString('pt-BR')
+    }
   });
 
-export const notifyDocumentFailed = (documentName: string, error: string) => 
+export const notifyDocumentFailed = (fileName: string, errorCode: string, processId?: string) => 
   dispatchNotification({
     eventType: 'document_failed',
-    subject: '❌ Falha no Processamento de Documento',
-    message: `${documentName} - ${error}`
+    subject: 'Falha no Processamento',
+    message: `${fileName} - ${errorCode}`,
+    metadata: {
+      file_name: fileName,
+      error_code: errorCode,
+      process_id: processId || 'N/A'
+    }
   });
 
-export const notifyNewContactMessage = (email: string, subject: string) => 
+export const notifyNewContactMessage = (senderName: string, snippet: string) => 
   dispatchNotification({
     eventType: 'new_contact_message',
-    subject: '📬 Nova Mensagem de Contato',
-    message: `De: ${email} | Assunto: ${subject}`
+    subject: 'Nova Mensagem de Contato',
+    message: `De: ${senderName}`,
+    metadata: {
+      sender_name: senderName,
+      snippet: snippet.substring(0, 100)
+    }
   });
 
-export const notifySecurityAlert = (alertType: string, details: string) => 
-  dispatchNotification({
+export const notifySecurityAlert = (severityLevel: string, threatType: string, affectedAsset: string) => {
+  const severityIcons: Record<string, string> = { critical: '🔴', warning: '🟡', secure: '🟢' };
+  return dispatchNotification({
     eventType: 'security_alert',
-    subject: '🛡️ Alerta de Segurança',
-    message: `${alertType}: ${details}`
+    subject: 'Alerta de Segurança',
+    message: `${severityLevel}: ${threatType}`,
+    metadata: {
+      severity_level: severityLevel,
+      severity_icon: severityIcons[severityLevel.toLowerCase()] || '⚪',
+      threat_type: threatType,
+      affected_asset: affectedAsset
+    }
   });
+};
 
-export const notifyMLAccuracyDrop = (currentAccuracy: number, threshold: number) => 
+export const notifyMLAccuracyDrop = (modelName: string, currentAccuracy: number, dropPercentage: number) => 
   dispatchNotification({
     eventType: 'ml_accuracy_drop',
-    subject: '📉 Queda de Precisão ML Detectada',
-    message: `Precisão atual: ${currentAccuracy.toFixed(1)}%, Limite: ${threshold}%`
+    subject: 'Queda de Precisão ML',
+    message: `${modelName}: ${currentAccuracy}%`,
+    metadata: {
+      model_name: modelName,
+      current_accuracy: currentAccuracy.toFixed(1),
+      drop_percentage: dropPercentage.toFixed(1)
+    }
   });
 
-export const notifyNewConversation = (sessionId: string, chatType: string) => 
+export const notifyNewConversation = (senderName: string, snippet: string) => 
   dispatchNotification({
     eventType: 'new_conversation',
-    subject: '💬 Nova Conversa de Usuário',
-    message: `Chat: ${chatType} | Session: ${sessionId}`
+    subject: 'Nova Conversa',
+    message: senderName,
+    metadata: {
+      sender_name: senderName,
+      snippet: snippet.substring(0, 100)
+    }
   });
 
 // Security & Auth
-export const notifyPasswordReset = (email: string) => 
+export const notifyPasswordReset = (userName: string, otpCode: string) => 
   dispatchNotification({
     eventType: 'password_reset',
-    subject: '🔑 Solicitação de Recuperação de Senha',
-    message: email
+    subject: 'Solicitação de Recuperação de Senha',
+    message: userName,
+    metadata: {
+      user_name: userName,
+      otp_code: otpCode
+    }
   });
 
-export const notifyLoginAlert = (email: string, deviceInfo: string) => 
+export const notifyLoginAlert = (ipAddress: string, deviceName: string, location: string) => 
   dispatchNotification({
     eventType: 'login_alert',
-    subject: '🚨 Alerta de Login Suspeito',
-    message: `${email} - ${deviceInfo}`
+    subject: 'Alerta de Login Suspeito',
+    message: `${deviceName} - ${location}`,
+    metadata: {
+      ip_address: ipAddress,
+      device_name: deviceName,
+      location: location
+    }
   });
 
 // Data Intelligence
-export const notifySentimentAlert = (sessionId: string, sentiment: string, message: string) => 
+export const notifySentimentAlert = (userId: string, sentimentScore: string, triggerPhrase: string) => 
   dispatchNotification({
     eventType: 'sentiment_alert',
-    subject: '😔 Alerta de Sentimento Negativo Detectado',
-    message: `Sentimento: ${sentiment} | Sessão: ${sessionId} | Msg: ${message.substring(0, 100)}`
+    subject: 'Alerta de Sentimento Negativo',
+    message: `Score: ${sentimentScore}`,
+    metadata: {
+      user_id: userId,
+      sentiment_score: sentimentScore,
+      trigger_phrase: triggerPhrase.substring(0, 100)
+    }
   });
 
-export const notifyTaxonomyAnomaly = (tagName: string, issue: string) => 
+export const notifyTaxonomyAnomaly = (category: string, conflictReason: string) => 
   dispatchNotification({
     eventType: 'taxonomy_anomaly',
-    subject: '⚠️ Anomalia de Taxonomia Detectada',
-    message: `Tag: ${tagName} | Problema: ${issue}`
-  });
-
-// System Status
-export const notifyScanComplete = (status: string, findingsCount: number) => 
-  dispatchNotification({
-    eventType: 'scan_complete',
-    subject: '🔍 Scan de Segurança Concluído',
-    message: `Status: ${status} | Problemas: ${findingsCount}`
+    subject: 'Anomalia de Taxonomia',
+    message: `${category}: ${conflictReason}`,
+    metadata: {
+      category: category,
+      conflict_reason: conflictReason
+    }
   });

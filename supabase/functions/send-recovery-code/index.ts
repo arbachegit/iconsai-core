@@ -12,7 +12,7 @@ function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-function getEmailTemplate(code: string): string {
+function getEmailTemplate(code: string, userName: string): string {
   const currentYear = new Date().getFullYear();
   return `
 <!DOCTYPE html>
@@ -20,13 +20,15 @@ function getEmailTemplate(code: string): string {
 <head><meta charset="utf-8"></head>
 <body style="font-family: Arial, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 40px; margin: 0;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #1e293b; border-radius: 12px; padding: 32px;">
-    <h2 style="color: #60a5fa; margin: 0 0 24px 0; font-size: 24px;">Health AI App</h2>
+    <h2 style="color: #60a5fa; margin: 0 0 24px 0; font-size: 24px;">Plataforma KnowYOU Health</h2>
     <hr style="border: none; border-top: 1px solid #334155; margin: 0 0 24px 0;">
     
     <h3 style="color: #f8fafc; margin: 0 0 16px 0; font-size: 18px;">Recuperação de Senha</h3>
     <p style="color: #cbd5e1; margin: 0 0 24px 0; line-height: 1.6;">
-      Você solicitou a recuperação de senha. Use o código abaixo para continuar:
+      Olá, ${userName}. Recebemos uma solicitação para redefinir sua senha na Plataforma KnowYOU Health.
     </p>
+    
+    <p style="color: #cbd5e1; margin: 0 0 8px 0;">Seu código de verificação é:</p>
     
     <div style="background-color: #0f172a; padding: 24px; text-align: center; border-radius: 8px; margin: 0 0 24px 0; border: 1px solid #334155;">
       <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #60a5fa; font-family: monospace;">
@@ -35,7 +37,7 @@ function getEmailTemplate(code: string): string {
     </div>
     
     <p style="color: #94a3b8; font-size: 14px; margin: 0 0 8px 0;">
-      ⏱️ Este código expira em <strong>15 minutos</strong>.
+      ⏱️ Este código expira em <strong>10 minutos</strong>.
     </p>
     <p style="color: #94a3b8; font-size: 14px; margin: 0 0 24px 0;">
       Se você não solicitou esta recuperação, ignore este email.
@@ -43,7 +45,7 @@ function getEmailTemplate(code: string): string {
     
     <hr style="border: none; border-top: 1px solid #334155; margin: 0 0 16px 0;">
     <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">
-      © ${currentYear} Health AI App. Todos os direitos reservados.
+      © ${currentYear} Plataforma KnowYOU Health. Todos os direitos reservados.
     </p>
   </div>
 </body>
@@ -118,7 +120,7 @@ serve(async (req) => {
 
     // Generate new code
     const code = generateCode();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes expiry
 
     // Save code to database
     const { error: insertError } = await supabase
@@ -134,7 +136,10 @@ serve(async (req) => {
       throw new Error("Erro ao gerar código");
     }
 
-    // Send email via Resend API
+    // Get user name from email (use email prefix as fallback)
+    const userName = email.split('@')[0];
+
+    // Send email to user via Resend API
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -142,15 +147,15 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Health AI App <noreply@knowyou.app>",
+        from: "Plataforma KnowYOU Health <noreply@knowyou.app>",
         to: [email],
-        subject: "Código de Recuperação de Senha - Health AI App",
-        html: getEmailTemplate(code),
+        subject: "🔐 Código de Recuperação - Plataforma KnowYOU Health",
+        html: getEmailTemplate(code, userName),
       }),
     });
 
     const emailResult = await emailResponse.json();
-    console.log("Recovery code email sent:", emailResult);
+    console.log("Recovery code email sent to user:", emailResult);
 
     if (!emailResponse.ok) {
       console.error("Resend API error:", emailResult);
@@ -165,7 +170,7 @@ serve(async (req) => {
       details: { code_sent: true },
     });
 
-    // Dispatch password reset notification via centralized system
+    // Dispatch admin notification via centralized system
     try {
       // Check notification preferences for password_reset event
       const { data: prefData } = await supabase
@@ -177,11 +182,45 @@ serve(async (req) => {
       if (prefData) {
         const { data: settings } = await supabase
           .from("admin_settings")
-          .select("gmail_notification_email, whatsapp_target_phone, whatsapp_global_enabled")
+          .select("gmail_notification_email, whatsapp_target_phone, whatsapp_global_enabled, email_global_enabled")
           .single();
 
-        // Send email notification if enabled
-        if (prefData.email_enabled && settings?.gmail_notification_email) {
+        // Get custom template
+        const { data: template } = await supabase
+          .from("notification_templates")
+          .select("*")
+          .eq("event_type", "password_reset")
+          .single();
+
+        const timestamp = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        
+        // Inject variables into templates
+        const variables: Record<string, string> = {
+          otp_code: code,
+          user_name: userName,
+          timestamp,
+          platform_name: 'Plataforma KnowYOU Health'
+        };
+
+        const injectVars = (tpl: string) => {
+          let result = tpl;
+          for (const [key, value] of Object.entries(variables)) {
+            result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+          }
+          return result;
+        };
+
+        // Send admin email notification if enabled
+        const emailGlobalEnabled = (settings as any)?.email_global_enabled !== false;
+        if (prefData.email_enabled && emailGlobalEnabled && settings?.gmail_notification_email) {
+          const emailSubject = template?.email_subject 
+            ? injectVars(template.email_subject)
+            : "🔐 Solicitação de Recuperação de Senha - Plataforma KnowYOU Health";
+          
+          const emailBody = template?.email_body
+            ? injectVars(template.email_body)
+            : `Olá, ${userName}.\n\nRecebemos uma solicitação para redefinir sua senha na Plataforma KnowYOU Health.\n\nSeu código de verificação é: ${code}\n\nEste código expira em 10 minutos.`;
+
           await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
@@ -189,21 +228,25 @@ serve(async (req) => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              from: "Health AI App <noreply@knowyou.app>",
+              from: "Plataforma KnowYOU Health <noreply@knowyou.app>",
               to: [settings.gmail_notification_email],
-              subject: "🔑 Solicitação de Recuperação de Senha",
-              html: `<p>Uma solicitação de recuperação de senha foi feita para: <strong>${email}</strong></p><p>Data/Hora: ${new Date().toLocaleString('pt-BR')}</p>`,
+              subject: emailSubject,
+              html: `<pre style="font-family: sans-serif;">${emailBody}</pre>`,
             }),
           });
-          console.log("[NotificationDispatcher] Password reset email sent");
+          console.log("[NotificationDispatcher] Password reset admin email sent");
         }
 
         // Send WhatsApp notification if enabled
         if (prefData.whatsapp_enabled && settings?.whatsapp_global_enabled && settings?.whatsapp_target_phone) {
+          const whatsappMessage = template?.whatsapp_message
+            ? injectVars(template.whatsapp_message)
+            : `🔐 ${timestamp} - Plataforma KnowYOU Health: Solicitação de recuperação de senha para ${userName}.`;
+
           await supabase.functions.invoke("send-whatsapp", {
             body: {
               phoneNumber: settings.whatsapp_target_phone,
-              message: `🔑 Solicitação de Recuperação de Senha\n\nUma solicitação de recuperação de senha foi feita para: ${email}`,
+              message: whatsappMessage,
               eventType: "password_reset",
             },
           });
