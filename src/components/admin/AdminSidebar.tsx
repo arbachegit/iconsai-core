@@ -342,7 +342,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         <nav 
           ref={navRef}
           onScroll={handleNavScroll}
-          className={`flex-1 w-full overflow-y-auto ${isCollapsed ? 'p-2' : 'p-3'} pb-40 space-y-1 transition-all duration-300 ease-in-out`}
+          className={`flex-1 w-full overflow-y-auto z-0 ${isCollapsed ? 'p-2' : 'p-3'} pb-48 space-y-1 transition-all duration-300 ease-in-out`}
         >
           {filteredCategories.map((category, index) => (
             <div key={category.id}>
@@ -434,13 +434,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           ))}
         </nav>
 
-        {/* Bottom fade indicator - positioned above footer */}
-        <div 
-          className={`absolute bottom-[160px] left-0 right-0 h-8 bg-gradient-to-t from-[#0B1120] to-transparent z-40 pointer-events-none transition-opacity duration-200 ${canScrollDown ? 'opacity-100' : 'opacity-0'}`}
-        />
-
-        {/* Footer Control Bar - Floating sticky dock at bottom */}
-        <div className="absolute bottom-0 left-0 w-full z-50 border-t border-white/10 bg-[#0B1120] p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.3)]">
+        {/* Footer Control Bar - Immutable floating dock at bottom */}
+        <div className="absolute bottom-0 left-0 w-full z-50 isolate border-t border-white/10 bg-[#0B1120] p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.3)]">
           {/* Centered Chevron Toggle */}
           {!isCollapsed && (
             <button 
