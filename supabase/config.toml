@@ -95,3 +95,12 @@ verify_jwt = false
 
 [functions.send-whatsapp]
 verify_jwt = false
+
+[functions.compress-storage-images]
+verify_jwt = false
+
+[functions.check-ml-accuracy]
+verify_jwt = false
+
+[functions.update-chat-config]
+verify_jwt = false
