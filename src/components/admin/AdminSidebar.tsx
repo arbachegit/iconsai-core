@@ -26,6 +26,7 @@ import {
   Tags,
   Search,
   ChevronDown,
+  ChevronUp,
   Zap,
   MessageCircle,
   Brain,
@@ -86,6 +87,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
   const navRef = useRef<HTMLElement>(null);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
+  const [isControlCenterCollapsed, setIsControlCenterCollapsed] = useState(false);
 
   // Check scroll position to show/hide fade indicators
   const handleNavScroll = useCallback(() => {
@@ -452,9 +454,23 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         </nav>
 
         {/* BOTTOM DOCK - Control Center (Gemini-style fixed footer) */}
-        <div className="absolute bottom-0 left-0 w-full bg-sidebar border-t border-border p-2">
+        <div className="absolute bottom-0 left-0 w-full bg-[#0B1120] border-t border-white/10 p-2 transition-all duration-200">
+          {/* Chevron Toggle - Only visible when sidebar is expanded */}
+          {!isCollapsed && (
+            <button
+              onClick={() => setIsControlCenterCollapsed(!isControlCenterCollapsed)}
+              className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 bg-[#0B1120] border border-white/10 rounded-full p-0.5 hover:bg-muted/50 transition-colors"
+            >
+              {isControlCenterCollapsed ? (
+                <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+              )}
+            </button>
+          )}
+
           {isCollapsed ? (
-            // Collapsed: centered icons vertically
+            // SCENARIO A: Sidebar COLLAPSED - Always vertical icons only
             <div className="flex flex-col items-center gap-1">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -512,8 +528,67 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                 <TooltipContent side="right">{t('admin.logout')}</TooltipContent>
               </Tooltip>
             </div>
+          ) : isControlCenterCollapsed ? (
+            // SCENARIO B-2: Sidebar EXPANDED + Control Center COLLAPSED - Horizontal row of icons
+            <div className="flex flex-row items-center justify-around py-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-lg hover:bg-muted/50 hover:text-foreground"
+                    onClick={() => navigate("/docs")}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{t('admin.documentation')}</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-lg hover:bg-muted/50 hover:text-foreground"
+                    onClick={() => navigate("#")}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{t('admin.dataAnalytics')}</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-lg text-primary hover:bg-muted/50 hover:text-foreground"
+                    onClick={() => navigate("/")}
+                  >
+                    <Monitor className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{t('admin.backToApp')}</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-lg text-destructive hover:bg-destructive/10"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{t('admin.logout')}</TooltipContent>
+              </Tooltip>
+            </div>
           ) : (
-            // Expanded: icons with text labels stacked vertically
+            // SCENARIO B-1: Sidebar EXPANDED + Control Center EXPANDED (default) - Vertical with text
             <div className="flex flex-col gap-0.5">
               <Button 
                 variant="ghost" 
