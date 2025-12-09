@@ -267,8 +267,6 @@ export const UserRegistryTab = () => {
       toast.error(`Erro ao alterar role: ${error.message}`);
     }
   });
-    }
-  });
 
   // CSV Drop handler
   const onDrop = useCallback((acceptedFiles: File[]) => {
