@@ -301,31 +301,32 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           transition-all duration-500 ease-in-out
         `}
       >
-        {/* TOP HEADER: Hamburger + Search (Vertical Stack) */}
+        {/* TOP HEADER: Hamburger + Search (Horizontal-to-Vertical Transformation) */}
         <div className={`
-          px-3 py-3 border-b border-border 
-          flex flex-col 
-          ${isCollapsed ? 'items-center' : 'items-start'} 
-          gap-3 shrink-0
+          border-b border-border shrink-0
+          flex transition-all duration-500 ease-in-out
+          ${isCollapsed 
+            ? 'flex-col items-center w-full gap-4 px-3 py-4' 
+            : 'flex-row items-center w-full gap-3 px-4 py-3'}
         `}>
-          {/* 1. Hamburger Menu - First */}
+          {/* 1. Hamburger Menu */}
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggleCollapse}
-            className="shrink-0 h-10 w-10 rounded-full hover:bg-muted/50"
+            className="shrink-0 h-10 w-10 rounded-full hover:bg-muted/50 transition-all duration-300"
           >
             <Menu className="w-5 h-5" />
           </Button>
 
-          {/* 2. Search Bar - Second (below hamburger) */}
+          {/* 2. Search Component - Adapts to sidebar state */}
           {isCollapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 rounded-full hover:bg-muted/50"
+                  className="h-10 w-10 rounded-full hover:bg-white/10 transition-all duration-500 ease-in-out"
                   onClick={() => {
                     onToggleCollapse();
                     setTimeout(() => {
@@ -340,7 +341,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
               <TooltipContent side="right">Buscar</TooltipContent>
             </Tooltip>
           ) : (
-            <div className="relative w-full">
+            <div className="relative flex-1 transition-all duration-500 ease-in-out">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
