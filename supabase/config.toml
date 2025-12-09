@@ -110,3 +110,12 @@ verify_jwt = false
 
 [functions.trigger-daily-scan]
 verify_jwt = false
+
+[functions.approve-user-registration]
+verify_jwt = false
+
+[functions.reject-user-registration]
+verify_jwt = false
+
+[functions.check-existing-emails]
+verify_jwt = false

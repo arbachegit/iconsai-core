@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -35,7 +36,9 @@ import {
   Phone,
   Building2,
   GraduationCap,
-  Globe
+  Globe,
+  AlertTriangle,
+  Copy
 } from "lucide-react";
 import { toast } from "sonner";
 import { useDropzone } from "react-dropzone";
@@ -80,11 +83,20 @@ interface ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
+  emailStatus: 'valid' | 'invalid_format' | 'duplicate_db' | 'duplicate_csv';
+  roleStatus: 'valid' | 'invalid';
+  normalizedRole: AppRole;
+}
+
+interface ExistingEmail {
+  email: string;
+  source: 'auth' | 'registration' | 'both';
 }
 
 const REQUIRED_FIELDS = ["first_name", "last_name", "email"] as const;
 const OPTIONAL_FIELDS = ["phone", "institution_work", "institution_study", "role"] as const;
 const ALL_FIELDS = [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS] as const;
+const VALID_ROLES: AppRole[] = ["user", "admin", "superadmin"];
 
 const FIELD_LABELS: Record<string, string> = {
   first_name: "Nome",
@@ -109,6 +121,12 @@ const ROLE_CONFIG: Record<AppRole, { color: string; label: string }> = {
   admin: { color: "bg-purple-500", label: "Admin" },
   superadmin: { color: "bg-rose-500", label: "Super Admin" },
 };
+
+// CSV Template content
+const CSV_TEMPLATE = `first_name,last_name,email,phone,institution_work,institution_study,role
+João,Silva,joao.silva@email.com,+5511999999999,Hospital ABC,USP,user
+Maria,Santos,maria.santos@email.com,+5521888888888,Clínica XYZ,UFRJ,admin
+Carlos,Oliveira,carlos.oliveira@email.com,+5531777777777,Centro Médico,UFMG,superadmin`;
 
 export const UserRegistryTab = () => {
   const queryClient = useQueryClient();
@@ -140,6 +158,8 @@ export const UserRegistryTab = () => {
   const [csvImportStatus, setCsvImportStatus] = useState<"approved" | "pending">("pending");
   const [isImporting, setIsImporting] = useState(false);
   const [showFieldMapping, setShowFieldMapping] = useState(false);
+  const [existingEmails, setExistingEmails] = useState<ExistingEmail[]>([]);
+  const [isCheckingEmails, setIsCheckingEmails] = useState(false);
 
   // Fetch all registrations
   const { data: registrations, isLoading, refetch } = useQuery({
@@ -202,6 +222,40 @@ export const UserRegistryTab = () => {
     setSearchQuery(value);
     setCurrentPage(1);
   };
+
+  // Download CSV template
+  const downloadCsvTemplate = () => {
+    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'template_usuarios.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Template CSV baixado!");
+  };
+
+  // Check existing emails when CSV is loaded
+  const checkExistingEmails = useCallback(async (emails: string[]) => {
+    if (emails.length === 0) return;
+    
+    setIsCheckingEmails(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-existing-emails', {
+        body: { emails }
+      });
+      
+      if (error) throw error;
+      setExistingEmails(data.existingEmails || []);
+    } catch (err) {
+      console.error('Error checking existing emails:', err);
+      toast.error('Erro ao verificar emails existentes');
+    } finally {
+      setIsCheckingEmails(false);
+    }
+  }, []);
 
   // Approve user mutation
   const approveMutation = useMutation({
@@ -335,44 +389,33 @@ export const UserRegistryTab = () => {
     return mapping;
   }, []);
 
-  // CSV Drop handler
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
+  // Get mapped value from row
+  const getMappedValue = useCallback((row: CSVRow, field: keyof FieldMapping): string => {
+    const column = fieldMapping[field];
+    return column ? (row[column] || "").trim() : "";
+  }, [fieldMapping]);
 
-    Papa.parse<CSVRow>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const headers = results.meta.fields || [];
-        setCsvHeaders(headers);
-        setCsvData(results.data);
-        
-        const detectedMapping = autoDetectMapping(headers);
-        setFieldMapping(detectedMapping);
-        setShowFieldMapping(true);
-        
-        toast.success(`${results.data.length} registros encontrados no CSV`);
-      },
-      error: (error) => {
-        toast.error(`Erro ao ler CSV: ${error.message}`);
+  // Find CSV internal duplicates
+  const csvEmailDuplicates = useMemo(() => {
+    const emailCounts: Record<string, number> = {};
+    csvData.forEach(row => {
+      const email = getMappedValue(row, "email").toLowerCase();
+      if (email) {
+        emailCounts[email] = (emailCounts[email] || 0) + 1;
       }
     });
-  }, [autoDetectMapping]);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      "text/csv": [".csv"],
-      "application/vnd.ms-excel": [".csv"],
-    },
-    maxFiles: 1,
-  });
+    return Object.entries(emailCounts)
+      .filter(([_, count]) => count > 1)
+      .map(([email]) => email);
+  }, [csvData, getMappedValue]);
 
   // Validate row based on mapping
   const validateRow = useCallback((row: CSVRow): ValidationResult => {
     const errors: string[] = [];
     const warnings: string[] = [];
+    let emailStatus: ValidationResult['emailStatus'] = 'valid';
+    let roleStatus: ValidationResult['roleStatus'] = 'valid';
+    let normalizedRole: AppRole = 'user';
 
     // Check required fields
     REQUIRED_FIELDS.forEach(field => {
@@ -383,11 +426,33 @@ export const UserRegistryTab = () => {
     });
 
     // Validate email format
-    const emailColumn = fieldMapping.email;
-    if (emailColumn && row[emailColumn]) {
+    const email = getMappedValue(row, "email").toLowerCase();
+    if (email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(row[emailColumn])) {
-        errors.push("Email inválido");
+      if (!emailRegex.test(email)) {
+        errors.push("Formato de email inválido");
+        emailStatus = 'invalid_format';
+      } else {
+        // Check for duplicate in database
+        const dbDuplicate = existingEmails.find(e => e.email === email);
+        if (dbDuplicate) {
+          errors.push("Email já cadastrado no sistema");
+          emailStatus = 'duplicate_db';
+        } else if (csvEmailDuplicates.includes(email)) {
+          errors.push("Email duplicado no CSV");
+          emailStatus = 'duplicate_csv';
+        }
+      }
+    }
+
+    // Validate role
+    const roleValue = getMappedValue(row, "role").toLowerCase();
+    if (roleValue) {
+      if (VALID_ROLES.includes(roleValue as AppRole)) {
+        normalizedRole = roleValue as AppRole;
+      } else {
+        warnings.push(`Role "${roleValue}" inválida, usando "user"`);
+        roleStatus = 'invalid';
       }
     }
 
@@ -405,29 +470,91 @@ export const UserRegistryTab = () => {
       isValid: errors.length === 0,
       errors,
       warnings,
+      emailStatus,
+      roleStatus,
+      normalizedRole,
     };
-  }, [fieldMapping]);
+  }, [fieldMapping, getMappedValue, existingEmails, csvEmailDuplicates]);
 
-  // Get mapped value from row
-  const getMappedValue = useCallback((row: CSVRow, field: keyof FieldMapping): string => {
-    const column = fieldMapping[field];
-    return column ? (row[column] || "") : "";
-  }, [fieldMapping]);
+  // CSV Drop handler
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+
+    Papa.parse<CSVRow>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const headers = results.meta.fields || [];
+        setCsvHeaders(headers);
+        setCsvData(results.data);
+        
+        const detectedMapping = autoDetectMapping(headers);
+        setFieldMapping(detectedMapping);
+        setShowFieldMapping(true);
+        
+        // Extract emails for duplicate checking
+        const emailColumn = detectedMapping.email;
+        if (emailColumn) {
+          const emails = results.data
+            .map(row => row[emailColumn]?.trim().toLowerCase())
+            .filter(Boolean) as string[];
+          await checkExistingEmails(emails);
+        }
+        
+        toast.success(`${results.data.length} registros encontrados no CSV`);
+      },
+      error: (error) => {
+        toast.error(`Erro ao ler CSV: ${error.message}`);
+      }
+    });
+  }, [autoDetectMapping, checkExistingEmails]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "text/csv": [".csv"],
+      "application/vnd.ms-excel": [".csv"],
+    },
+    maxFiles: 1,
+  });
+
+  // Re-check emails when mapping changes
+  useEffect(() => {
+    if (csvData.length > 0 && fieldMapping.email) {
+      const emails = csvData
+        .map(row => getMappedValue(row, "email").toLowerCase())
+        .filter(Boolean);
+      if (emails.length > 0) {
+        checkExistingEmails(emails);
+      }
+    }
+  }, [fieldMapping.email, csvData, getMappedValue, checkExistingEmails]);
 
   // Validation summary
   const validationSummary = useMemo(() => {
-    if (csvData.length === 0) return { valid: 0, invalid: 0, total: 0 };
+    if (csvData.length === 0) return { valid: 0, invalid: 0, invalidFormat: 0, duplicateDb: 0, duplicateCsv: 0, invalidRole: 0, total: 0 };
     
     let valid = 0;
     let invalid = 0;
+    let invalidFormat = 0;
+    let duplicateDb = 0;
+    let duplicateCsv = 0;
+    let invalidRole = 0;
     
     csvData.forEach(row => {
       const result = validateRow(row);
       if (result.isValid) valid++;
-      else invalid++;
+      else {
+        invalid++;
+        if (result.emailStatus === 'invalid_format') invalidFormat++;
+        if (result.emailStatus === 'duplicate_db') duplicateDb++;
+        if (result.emailStatus === 'duplicate_csv') duplicateCsv++;
+      }
+      if (result.roleStatus === 'invalid') invalidRole++;
     });
     
-    return { valid, invalid, total: csvData.length };
+    return { valid, invalid, invalidFormat, duplicateDb, duplicateCsv, invalidRole, total: csvData.length };
   }, [csvData, validateRow]);
 
   // Import CSV mutation
@@ -437,17 +564,20 @@ export const UserRegistryTab = () => {
       
       const validRows = csvData.filter(row => validateRow(row).isValid);
       
-      const registrationsToInsert = validRows.map(row => ({
-        first_name: getMappedValue(row, "first_name"),
-        last_name: getMappedValue(row, "last_name"),
-        email: getMappedValue(row, "email"),
-        phone: getMappedValue(row, "phone") || null,
-        institution_work: getMappedValue(row, "institution_work") || null,
-        institution_study: getMappedValue(row, "institution_study") || null,
-        role: (getMappedValue(row, "role") || "user") as AppRole,
-        status: csvImportStatus,
-        mass_import_at: new Date().toISOString(),
-      }));
+      const registrationsToInsert = validRows.map(row => {
+        const validation = validateRow(row);
+        return {
+          first_name: getMappedValue(row, "first_name"),
+          last_name: getMappedValue(row, "last_name"),
+          email: getMappedValue(row, "email").toLowerCase(),
+          phone: getMappedValue(row, "phone") || null,
+          institution_work: getMappedValue(row, "institution_work") || null,
+          institution_study: getMappedValue(row, "institution_study") || null,
+          role: validation.normalizedRole,
+          status: csvImportStatus,
+          mass_import_at: new Date().toISOString(),
+        };
+      });
 
       const { error } = await supabase
         .from("user_registrations")
@@ -459,6 +589,9 @@ export const UserRegistryTab = () => {
     onSuccess: (count) => {
       toast.success(`${count} usuários importados com sucesso!`);
       setCsvData([]);
+      setCsvHeaders([]);
+      setShowFieldMapping(false);
+      setExistingEmails([]);
       queryClient.invalidateQueries({ queryKey: ["user-registrations"] });
       
       // Log audit
@@ -487,8 +620,108 @@ export const UserRegistryTab = () => {
     return <Badge className={`${config.color} text-white`}>{config.label}</Badge>;
   };
 
+  // Render email cell with validation highlighting
+  const renderEmailCell = (row: CSVRow) => {
+    const email = getMappedValue(row, "email");
+    const validation = validateRow(row);
+    
+    if (!email) {
+      return <span className="text-red-400 text-xs">Vazio</span>;
+    }
+
+    let bgClass = "";
+    let textClass = "";
+    let badge = null;
+
+    switch (validation.emailStatus) {
+      case 'invalid_format':
+        bgClass = "bg-red-500/20";
+        textClass = "text-red-400";
+        badge = (
+          <Badge variant="outline" className="ml-2 text-[10px] border-red-500/50 text-red-400">
+            <AlertCircle className="w-2.5 h-2.5 mr-1" />
+            Inválido
+          </Badge>
+        );
+        break;
+      case 'duplicate_db':
+        bgClass = "bg-amber-500/20";
+        textClass = "text-amber-400";
+        badge = (
+          <Badge variant="outline" className="ml-2 text-[10px] border-amber-500/50 text-amber-400">
+            <AlertTriangle className="w-2.5 h-2.5 mr-1" />
+            Já cadastrado
+          </Badge>
+        );
+        break;
+      case 'duplicate_csv':
+        bgClass = "bg-purple-500/20";
+        textClass = "text-purple-400";
+        badge = (
+          <Badge variant="outline" className="ml-2 text-[10px] border-purple-500/50 text-purple-400">
+            <Copy className="w-2.5 h-2.5 mr-1" />
+            Duplicado
+          </Badge>
+        );
+        break;
+    }
+
+    return (
+      <div className={`flex items-center px-1 py-0.5 rounded ${bgClass}`}>
+        <span className={`text-sm ${textClass}`}>{email}</span>
+        {badge}
+      </div>
+    );
+  };
+
+  // Render role cell with validation highlighting
+  const renderCsvRoleCell = (row: CSVRow) => {
+    const validation = validateRow(row);
+    const rawRole = getMappedValue(row, "role");
+    
+    const roleConfig = ROLE_CONFIG[validation.normalizedRole];
+    
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1">
+              <Badge className={`${roleConfig.color} text-white text-xs`}>
+                {roleConfig.label}
+              </Badge>
+              {validation.roleStatus === 'invalid' && (
+                <AlertTriangle className="w-3 h-3 text-amber-400" />
+              )}
+            </div>
+          </TooltipTrigger>
+          {validation.roleStatus === 'invalid' && (
+            <TooltipContent>
+              <p className="text-xs">Role "{rawRole}" inválida, convertida para "user"</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
   const pendingCount = registrations?.filter(r => r.status === "pending").length || 0;
   const activeCount = registrations?.filter(r => r.status === "approved").length || 0;
+
+  const clearCsvData = () => {
+    setCsvData([]);
+    setCsvHeaders([]);
+    setShowFieldMapping(false);
+    setExistingEmails([]);
+    setFieldMapping({
+      first_name: "",
+      last_name: "",
+      email: "",
+      phone: "",
+      institution_work: "",
+      institution_study: "",
+      role: "",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -504,6 +737,11 @@ export const UserRegistryTab = () => {
               <li><span className="text-amber-400 font-semibold">Lista de Aprovação:</span> Aprovar ou reprovar solicitações</li>
               <li><span className="text-blue-400 font-semibold">Importação CSV:</span> Upload em massa de usuários</li>
             </ul>
+            <div className="pt-2 border-t border-border/50">
+              <p className="text-xs text-muted-foreground">
+                Roles disponíveis: <span className="text-blue-400">user</span>, <span className="text-purple-400">admin</span>, <span className="text-rose-400">superadmin</span>
+              </p>
+            </div>
           </div>
         }
       />
@@ -729,10 +967,16 @@ export const UserRegistryTab = () => {
         <TabsContent value="import" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="w-5 h-5" />
-                Importação em Massa via CSV
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="w-5 h-5" />
+                  Importação em Massa via CSV
+                </CardTitle>
+                <Button variant="outline" size="sm" onClick={downloadCsvTemplate} className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Baixar Template CSV
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Dropzone */}
@@ -757,7 +1001,10 @@ export const UserRegistryTab = () => {
                       Arraste e solte um arquivo CSV aqui, ou clique para selecionar
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Colunas esperadas: first_name, last_name, email, phone, institution_work, institution_study
+                      Colunas esperadas: first_name, last_name, email, phone, institution_work, institution_study, role
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Roles válidas: <span className="text-blue-400">user</span>, <span className="text-purple-400">admin</span>, <span className="text-rose-400">superadmin</span>
                     </p>
                   </div>
                 )}
@@ -770,6 +1017,9 @@ export const UserRegistryTab = () => {
                     <CardTitle className="text-base flex items-center gap-2">
                       <FileSpreadsheet className="w-4 h-4 text-blue-400" />
                       Mapeamento de Colunas
+                      {isCheckingEmails && (
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground ml-2" />
+                      )}
                     </CardTitle>
                     <p className="text-xs text-muted-foreground">
                       Associe cada coluna do CSV aos campos do sistema. Campos obrigatórios marcados com *
@@ -842,6 +1092,30 @@ export const UserRegistryTab = () => {
                         <span className="font-semibold text-red-400">{validationSummary.invalid}</span> inválidos
                       </span>
                     </div>
+                    {validationSummary.invalidFormat > 0 && (
+                      <Badge variant="outline" className="text-xs border-red-500/50 text-red-400">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        {validationSummary.invalidFormat} email inválido
+                      </Badge>
+                    )}
+                    {validationSummary.duplicateDb > 0 && (
+                      <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
+                        <AlertTriangle className="w-3 h-3 mr-1" />
+                        {validationSummary.duplicateDb} já cadastrado
+                      </Badge>
+                    )}
+                    {validationSummary.duplicateCsv > 0 && (
+                      <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-400">
+                        <Copy className="w-3 h-3 mr-1" />
+                        {validationSummary.duplicateCsv} duplicado no CSV
+                      </Badge>
+                    )}
+                    {validationSummary.invalidRole > 0 && (
+                      <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
+                        <AlertTriangle className="w-3 h-3 mr-1" />
+                        {validationSummary.invalidRole} role inválida
+                      </Badge>
+                    )}
                     <div className="flex-1" />
                     <div className="flex items-center gap-3">
                       <Label className="text-sm">Importar como:</Label>
@@ -898,25 +1172,25 @@ export const UserRegistryTab = () => {
                                   {validation.isValid ? (
                                     <Check className="w-4 h-4 text-emerald-500" />
                                   ) : (
-                                    <div className="group relative">
-                                      <AlertCircle className="w-4 h-4 text-red-500" />
-                                      <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 hidden group-hover:block">
-                                        <div className="bg-popover border rounded-md p-2 shadow-lg min-w-[200px]">
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <AlertCircle className="w-4 h-4 text-red-500 cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" className="max-w-[250px]">
                                           {validation.errors.map((err, i) => (
                                             <p key={i} className="text-xs text-red-400">{err}</p>
                                           ))}
-                                        </div>
-                                      </div>
-                                    </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   )}
                                 </TableCell>
                                 <TableCell className="font-medium">
                                   {getMappedValue(row, "first_name")} {getMappedValue(row, "last_name")}
                                 </TableCell>
-                                <TableCell className="text-sm">
-                                  {getMappedValue(row, "email") || (
-                                    <span className="text-red-400 text-xs">Vazio</span>
-                                  )}
+                                <TableCell>
+                                  {renderEmailCell(row)}
                                 </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">
                                   {getMappedValue(row, "phone") || "-"}
@@ -928,9 +1202,7 @@ export const UserRegistryTab = () => {
                                   {getMappedValue(row, "institution_study") || "-"}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant="outline" className="text-xs">
-                                    {getMappedValue(row, "role") || "user"}
-                                  </Badge>
+                                  {renderCsvRoleCell(row)}
                                 </TableCell>
                               </TableRow>
                             );
@@ -959,23 +1231,7 @@ export const UserRegistryTab = () => {
                       )}
                       Importar {validationSummary.valid} Registros Válidos
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setCsvData([]);
-                        setCsvHeaders([]);
-                        setShowFieldMapping(false);
-                        setFieldMapping({
-                          first_name: "",
-                          last_name: "",
-                          email: "",
-                          phone: "",
-                          institution_work: "",
-                          institution_study: "",
-                          role: "",
-                        });
-                      }}
-                    >
+                    <Button variant="outline" onClick={clearCsvData}>
                       Limpar
                     </Button>
                     {validationSummary.invalid > 0 && (
