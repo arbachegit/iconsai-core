@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -81,7 +82,6 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [pendingMessagesCount, setPendingMessagesCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isFooterCollapsed, setIsFooterCollapsed] = useState(false);
   const previousCountRef = useRef(0);
   const navRef = useRef<HTMLElement>(null);
   const [canScrollUp, setCanScrollUp] = useState(false);
@@ -280,76 +280,95 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
   return (
     <TooltipProvider delayDuration={0}>
-      <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-[#0B1120] border-r border-white/10 fixed left-0 top-0 h-screen z-40 flex flex-col overflow-hidden transition-all duration-300 ease-in-out`}>
-        {/* Header with Search and Hamburger */}
-        <div className={`${isCollapsed ? 'p-2 flex justify-center' : 'p-3'} border-b border-white/10 transition-all duration-300 ease-in-out shrink-0`}>
-          <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-2'}`}>
-            {/* Search Input - hidden when collapsed, shows icon below hamburger */}
-            {!isCollapsed && (
-              <div className="flex-1 relative transition-all duration-300 ease-in-out">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Buscar..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 h-8 text-sm bg-background/50 border-primary/20 focus:border-primary/50"
-                />
-              </div>
-            )}
-            
-            {/* Hamburger Menu - Right side when expanded, top when collapsed */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleCollapse}
-              className="shrink-0 h-8 w-8 transition-transform duration-300 ease-in-out"
-            >
-              <Menu className={`w-5 h-5 transition-transform duration-300 ease-in-out ${isCollapsed ? 'rotate-90' : 'rotate-0'}`} />
-            </Button>
+      <aside 
+        className={`
+          ${isCollapsed ? 'w-[72px]' : 'w-[280px]'} 
+          bg-sidebar border-r border-border 
+          fixed left-0 top-0 h-screen z-50 
+          flex flex-col overflow-hidden 
+          transition-all duration-300 ease-in-out
+        `}
+      >
+        {/* TOP HEADER: Hamburger + Logo (Gemini-style) */}
+        <div className="h-14 px-3 border-b border-border flex items-center gap-3 shrink-0">
+          {/* Hamburger Menu */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleCollapse}
+            className="shrink-0 h-10 w-10 rounded-full hover:bg-muted/50"
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
 
-            {/* Search Icon - Only visible when collapsed, below hamburger */}
-            {isCollapsed && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 transition-all duration-300 ease-in-out"
-                    onClick={() => {
-                      onToggleCollapse();
-                      setTimeout(() => {
-                        const searchInput = document.querySelector('input[placeholder="Buscar..."]') as HTMLInputElement;
-                        searchInput?.focus();
-                      }, 350);
-                    }}
-                  >
-                    <Search className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Buscar</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
+          {/* Logo + Text - hidden when collapsed */}
+          {!isCollapsed && (
+            <div className="flex items-center gap-2 overflow-hidden">
+              <img 
+                src={knowyouAdminLogo} 
+                alt="KnowYOU" 
+                className="h-8 w-8 rounded-full object-cover shrink-0"
+              />
+              <span className="text-lg font-semibold text-foreground whitespace-nowrap">
+                KnowYOU
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Top fade indicator - direct child of aside */}
+        {/* Search Input - below header */}
+        <div className={`px-3 py-2 border-b border-border shrink-0 ${isCollapsed ? 'flex justify-center' : ''}`}>
+          {isCollapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full hover:bg-muted/50"
+                  onClick={() => {
+                    onToggleCollapse();
+                    setTimeout(() => {
+                      const searchInput = document.querySelector('input[placeholder="Buscar..."]') as HTMLInputElement;
+                      searchInput?.focus();
+                    }, 350);
+                  }}
+                >
+                  <Search className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Buscar</TooltipContent>
+            </Tooltip>
+          ) : (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Buscar..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-10 text-sm bg-muted/30 border-border rounded-full focus:border-primary/50"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Top fade indicator */}
         <div 
-          className={`absolute top-[60px] left-0 right-0 h-6 bg-gradient-to-b from-[#0B1120] to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute top-[116px] left-0 right-0 h-6 bg-gradient-to-b from-sidebar to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
         />
 
-        {/* Navigation - THE ONLY scrollable element with massive bottom padding */}
+        {/* MIDDLE NAVIGATION - Scrollable with margin-bottom for dock */}
         <nav 
           ref={navRef}
           onScroll={handleNavScroll}
-          className={`flex-1 w-full overflow-y-auto z-0 ${isCollapsed ? 'p-2' : 'p-3'} pb-[180px] space-y-1 transition-all duration-300 ease-in-out`}
+          className={`flex-1 overflow-y-auto ${isCollapsed ? 'px-2' : 'px-3'} py-2 mb-[140px] space-y-1`}
         >
           {filteredCategories.map((category, index) => (
             <div key={category.id}>
-              {index > 0 && <Separator className="my-2 bg-primary/10" />}
+              {index > 0 && <Separator className="my-2 bg-border/50" />}
               
               {isCollapsed ? (
-                // Modo colapsado: mostrar apenas ícones com tooltip
+                // Collapsed mode: icons only with tooltips
                 <div className="space-y-1">
                   {category.items.map((item) => {
                     const Icon = item.icon;
@@ -362,7 +381,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                           <Button
                             variant={isActive ? "default" : "ghost"}
                             size="icon"
-                            className={`w-full ${isActive ? "bg-gradient-primary" : ""} relative`}
+                            className={`w-full h-10 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted/50"} relative`}
                             onClick={() => onTabChange(item.id)}
                           >
                             <Icon className="w-4 h-4" />
@@ -389,20 +408,20 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   })}
                 </div>
               ) : (
-                // Modo expandido: mostrar menu completo
+                // Expanded mode: full menu with collapsible sections
                 <Collapsible 
                   open={openSections.includes(category.id)}
                   onOpenChange={() => toggleSection(category.id)}
                 >
-                  <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-primary transition-colors">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground rounded-lg hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-2">
-                      <category.icon className="w-3 h-3" />
+                      <category.icon className="w-3.5 h-3.5" />
                       {category.label}
                     </div>
-                    <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${openSections.includes(category.id) ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openSections.includes(category.id) ? 'rotate-180' : ''}`} />
                   </CollapsibleTrigger>
                   
-                  <CollapsibleContent className="space-y-1 mt-1">
+                  <CollapsibleContent className="space-y-0.5 mt-1">
                     {category.items.map((item) => {
                       const Icon = item.icon;
                       const isActive = activeTab === item.id;
@@ -412,13 +431,11 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                         <Button
                           key={item.id}
                           variant={isActive ? "default" : "ghost"}
-                          className={`w-full justify-start gap-3 ${isActive ? "bg-gradient-primary" : ""}`}
+                          className={`w-full justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted/50"}`}
                           onClick={() => onTabChange(item.id)}
                         >
                           <Icon className="w-4 h-4 shrink-0" />
-                          <span className="transition-opacity duration-300 ease-in-out">
-                            {item.label}
-                          </span>
+                          <span className="truncate">{item.label}</span>
                           {showBadge && (
                             <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
                               {pendingMessagesCount}
@@ -434,124 +451,107 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           ))}
         </nav>
 
-        {/* Footer Control Bar - Immutable floating dock at bottom */}
-        <div className="absolute bottom-0 left-0 w-full z-50 isolate border-t border-white/10 bg-[#0B1120] p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.3)]">
-          {/* Centered Chevron Toggle */}
-          {!isCollapsed && (
-            <button 
-              onClick={() => setIsFooterCollapsed(!isFooterCollapsed)}
-              className="w-full flex justify-center py-0.5 border-b border-border/40 hover:bg-muted/50 transition-colors duration-200"
-            >
-              <ChevronDown 
-                className={`w-4 h-4 text-muted-foreground transition-transform duration-300 ${isFooterCollapsed ? 'rotate-180' : ''}`} 
-              />
-            </button>
+        {/* BOTTOM DOCK - Control Center (Gemini-style fixed footer) */}
+        <div className="absolute bottom-0 left-0 w-full bg-sidebar border-t border-border p-2">
+          {isCollapsed ? (
+            // Collapsed: centered icons vertically
+            <div className="flex flex-col items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-10 w-10 rounded-lg hover:bg-muted/50 hover:text-foreground"
+                    onClick={() => navigate("/docs")}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{t('admin.documentation')}</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-10 w-10 rounded-lg hover:bg-muted/50 hover:text-foreground"
+                    onClick={() => navigate("#")}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{t('admin.dataAnalytics')}</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-10 w-10 rounded-lg text-primary hover:bg-muted/50 hover:text-foreground"
+                    onClick={() => navigate("/")}
+                  >
+                    <Monitor className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{t('admin.backToApp')}</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-10 w-10 rounded-lg text-destructive hover:bg-destructive/10"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{t('admin.logout')}</TooltipContent>
+              </Tooltip>
+            </div>
+          ) : (
+            // Expanded: icons with text labels stacked vertically
+            <div className="flex flex-col gap-0.5">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted/50 hover:text-foreground"
+                onClick={() => navigate("/docs")}
+              >
+                <BookOpen className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap">{t('admin.documentation')}</span>
+              </Button>
+
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted/50 hover:text-foreground"
+                onClick={() => navigate("#")}
+              >
+                <BarChart3 className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap">{t('admin.dataAnalytics')}</span>
+              </Button>
+
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start gap-3 h-9 rounded-lg text-primary hover:bg-muted/50 hover:text-foreground"
+                onClick={() => navigate("/")}
+              >
+                <Monitor className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap">{t('admin.backToApp')}</span>
+              </Button>
+
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start gap-3 h-9 rounded-lg text-destructive hover:bg-destructive/10"
+                onClick={handleLogout}
+              >
+                <LogOut className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap">{t('admin.logout')}</span>
+              </Button>
+            </div>
           )}
-
-          <div className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'p-2' : 'p-2'}`}>
-            {isCollapsed ? (
-              // Sidebar collapsed: vertical stacked icons
-              <div className="flex flex-col gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="w-full h-8" onClick={() => navigate("/docs")}>
-                      <BookOpen className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{t('admin.documentation')}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="w-full h-8 hover:text-primary" onClick={() => navigate("#")}>
-                      <BarChart3 className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{t('admin.dataAnalytics')}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="w-full h-8 text-primary" onClick={() => navigate("/")}>
-                      <Monitor className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{t('admin.backToApp')}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="w-full h-8 text-destructive" onClick={handleLogout}>
-                      <LogOut className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{t('admin.logout')}</TooltipContent>
-                </Tooltip>
-              </div>
-            ) : isFooterCollapsed ? (
-              // Footer collapsed: horizontal toolbar mode
-              <div className="flex flex-row justify-evenly items-center py-1 gap-2 transition-all duration-300">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/docs")}>
-                      <BookOpen className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">{t('admin.documentation')}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-primary" onClick={() => navigate("#")}>
-                      <BarChart3 className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">{t('admin.dataAnalytics')}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => navigate("/")}>
-                      <Monitor className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">{t('admin.backToApp')}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleLogout}>
-                      <LogOut className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">{t('admin.logout')}</TooltipContent>
-                </Tooltip>
-              </div>
-            ) : (
-              // Footer expanded: vertical with text labels
-              <div className="flex flex-col gap-1 transition-all duration-300">
-                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm hover:text-black" onClick={() => navigate("/docs")}>
-                  <BookOpen className="w-4 h-4 shrink-0" />
-                  <span className="transition-opacity duration-200 whitespace-nowrap">{t('admin.documentation')}</span>
-                </Button>
-
-                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm hover:text-black" onClick={() => navigate("#")}>
-                  <BarChart3 className="w-4 h-4 shrink-0" />
-                  <span className="transition-opacity duration-200 whitespace-nowrap">{t('admin.dataAnalytics')}</span>
-                </Button>
-
-                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm text-primary hover:text-black" onClick={() => navigate("/")}>
-                  <Monitor className="w-4 h-4 shrink-0" />
-                  <span className="transition-opacity duration-200 whitespace-nowrap">{t('admin.backToApp')}</span>
-                </Button>
-
-                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm text-destructive hover:text-destructive" onClick={handleLogout}>
-                  <LogOut className="w-4 h-4 shrink-0" />
-                  <span className="transition-opacity duration-200 whitespace-nowrap">{t('admin.logout')}</span>
-                </Button>
-              </div>
-            )}
-          </div>
         </div>
       </aside>
     </TooltipProvider>
