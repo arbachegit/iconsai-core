@@ -15,6 +15,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // Eager load only DashboardTab (first view)
 import { DashboardTab } from "@/components/admin/DashboardTab";
@@ -110,6 +124,7 @@ const Admin = () => {
     return saved === 'true';
   });
   const [isChangingLanguage, setIsChangingLanguage] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
@@ -299,53 +314,79 @@ const Admin = () => {
             </span>
           </div>
           
-          {/* Right: Language + Notifications */}
-          <div className="flex items-center gap-4 ml-auto">
-            {/* Language Selector */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground rounded-full"
-                  disabled={isChangingLanguage}
-                >
-                  {isChangingLanguage ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Languages className="h-4 w-4" />
-                      <span className="text-xs font-semibold">{currentLanguage.abbr}</span>
-                    </>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[140px]">
-                {languages.map((lang) => (
-                  <DropdownMenuItem
-                    key={lang.code}
-                    onClick={() => handleLanguageChange(lang.code)}
-                    className={`flex items-center gap-3 cursor-pointer ${
-                      i18n.language === lang.code ? "bg-accent" : ""
-                    }`}
-                  >
-                    <span className="text-xs font-bold text-muted-foreground w-5">{lang.abbr}</span>
-                    <span>{lang.label}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {/* Right: Language + Notifications + User */}
+          <TooltipProvider delayDuration={300}>
+            <div className="flex items-center gap-4 ml-auto">
+              {/* Language Selector with Tooltip */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex items-center gap-2 text-muted-foreground hover:text-foreground rounded-full"
+                        disabled={isChangingLanguage}
+                      >
+                        {isChangingLanguage ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Languages className="h-4 w-4" />
+                            <span className="text-xs font-semibold">{currentLanguage.abbr}</span>
+                          </>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-[140px]">
+                      {languages.map((lang) => (
+                        <DropdownMenuItem
+                          key={lang.code}
+                          onClick={() => handleLanguageChange(lang.code)}
+                          className={`flex items-center gap-3 cursor-pointer ${
+                            i18n.language === lang.code ? "bg-accent" : ""
+                          }`}
+                        >
+                          <span className="text-xs font-bold text-muted-foreground w-5">{lang.abbr}</span>
+                          <span>{lang.label}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Mudar Idioma</p>
+                </TooltipContent>
+              </Tooltip>
 
-            <div className="h-6 w-px bg-border/40" />
-
-            {/* Notifications */}
-              <NotificationsPanel />
+              {/* Notifications with Tooltip */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <NotificationsPanel />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Notificações</p>
+                </TooltipContent>
+              </Tooltip>
               
-              {/* User Avatar with Halo Effect */}
-              <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center cursor-pointer transition-all duration-300 ease-in-out hover:ring-4 hover:ring-primary/20 hover:shadow-[0_0_15px_rgba(var(--primary),0.3)]">
-                <span className="text-xs font-semibold text-primary">AD</span>
-              </div>
-          </div>
+              {/* User Avatar with Halo Effect and Tooltip */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div 
+                    onClick={() => setIsProfileOpen(true)}
+                    className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center cursor-pointer transition-all duration-300 ease-in-out hover:ring-4 hover:ring-primary/20 hover:shadow-[0_0_15px_rgba(var(--primary),0.3)]"
+                  >
+                    <span className="text-xs font-semibold text-primary">AD</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Perfil do Usuário</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
         </header>
 
         {/* Main content */}
@@ -356,6 +397,51 @@ const Admin = () => {
             </div>
           </div>
         </main>
+
+        {/* User Profile Modal */}
+        <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold">Perfil do Usuário</DialogTitle>
+              <DialogDescription>
+                Informações da conta administrativa
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="flex flex-col items-center gap-4 py-4">
+              {/* Large Avatar */}
+              <div className="h-20 w-20 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-2xl font-bold text-primary">AD</span>
+              </div>
+              
+              {/* User Info */}
+              <div className="w-full space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-border/40">
+                  <span className="text-sm text-muted-foreground">Nome</span>
+                  <span className="text-sm font-medium">Admin User</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-border/40">
+                  <span className="text-sm text-muted-foreground">Email</span>
+                  <span className="text-sm font-medium">{userEmail || "admin@knowyou.app"}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-border/40">
+                  <span className="text-sm text-muted-foreground">Função</span>
+                  <span className="text-sm font-medium">Administrator</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm text-muted-foreground">Plano</span>
+                  <span className="text-sm font-medium text-primary">Enterprise</span>
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsProfileOpen(false)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
