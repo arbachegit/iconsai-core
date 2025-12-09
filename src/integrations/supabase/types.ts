@@ -1000,6 +1000,30 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_logic_config: {
+        Row: {
+          config: Json
+          created_at: string | null
+          event_type: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string | null
+          event_type: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           created_at: string | null

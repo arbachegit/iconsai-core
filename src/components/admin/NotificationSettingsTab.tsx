@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -34,20 +36,29 @@ import {
   LogIn,
   Brain,
   Tags,
-  ScanSearch
+  ScanSearch,
+  Activity,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Info,
+  Smartphone,
+  Globe,
+  Wifi
 } from 'lucide-react';
 
 interface EventConfig {
   icon: React.ComponentType<{ className?: string }>;
   category: 'security' | 'intelligence' | 'system';
   description?: string;
+  hasLogicConfig?: boolean;
 }
 
 const EVENT_CONFIG: Record<string, EventConfig> = {
   // Category A: Security & Auth
-  password_reset: { icon: KeyRound, category: 'security', description: 'Quando usuário solicita recuperação de senha' },
-  login_alert: { icon: LogIn, category: 'security', description: 'Login detectado em novo dispositivo' },
-  security_alert: { icon: Shield, category: 'security', description: 'Alertas de segurança do sistema' },
+  password_reset: { icon: KeyRound, category: 'security', description: 'Quando usuário solicita recuperação de senha', hasLogicConfig: true },
+  login_alert: { icon: LogIn, category: 'security', description: 'Login detectado em novo dispositivo', hasLogicConfig: true },
+  security_alert: { icon: Shield, category: 'security', description: 'Alertas de segurança do sistema', hasLogicConfig: true },
   
   // Category B: Data Intelligence
   sentiment_alert: { icon: Brain, category: 'intelligence', description: 'IA detecta sentimento negativo em análises' },
@@ -103,24 +114,23 @@ interface SeverityHistoryEntry {
   created_at: string;
 }
 
+interface NotificationLogicConfig {
+  id: string;
+  event_type: string;
+  config: Record<string, unknown>;
+}
+
 // Format phone number for display with auto-masking
 const formatPhoneNumber = (value: string): string => {
-  // Remove all non-digit characters except +
   const cleaned = value.replace(/[^\d+]/g, '');
-  
-  // Ensure it starts with +
   if (!cleaned.startsWith('+') && cleaned.length > 0) {
     return '+' + cleaned;
   }
-  
-  // Extract country code and rest
   if (cleaned.length <= 1) return cleaned;
   
   const withoutPlus = cleaned.slice(1);
   
-  // Format based on country code
   if (withoutPlus.startsWith('55')) {
-    // Brazil: +55 11 99999-9999
     const countryCode = withoutPlus.slice(0, 2);
     const areaCode = withoutPlus.slice(2, 4);
     const firstPart = withoutPlus.slice(4, 9);
@@ -132,7 +142,6 @@ const formatPhoneNumber = (value: string): string => {
     if (secondPart) formatted += `-${secondPart}`;
     return formatted;
   } else if (withoutPlus.startsWith('1')) {
-    // US/Canada: +1 (617) 599-2049
     const countryCode = withoutPlus.slice(0, 1);
     const areaCode = withoutPlus.slice(1, 4);
     const firstPart = withoutPlus.slice(4, 7);
@@ -144,16 +153,12 @@ const formatPhoneNumber = (value: string): string => {
     if (secondPart) formatted += `-${secondPart}`;
     return formatted;
   } else {
-    // Generic international: +XX XXX XXX XXXX
     const parts = [];
     let remaining = withoutPlus;
-    
-    // Country code (2-3 digits)
     const countryCodeLen = remaining.length >= 2 && remaining[0] !== '1' ? 2 : 1;
     parts.push(remaining.slice(0, countryCodeLen));
     remaining = remaining.slice(countryCodeLen);
     
-    // Split rest into groups of 3-4
     while (remaining.length > 0) {
       const chunkSize = remaining.length > 4 ? 3 : remaining.length;
       parts.push(remaining.slice(0, chunkSize));
@@ -168,6 +173,13 @@ const SEVERITY_LEVELS = [
   { value: 'critical' as const, label: 'Crítico', color: 'bg-red-500/20 text-red-500 border-red-500/50 hover:bg-red-500/30' },
   { value: 'warning' as const, label: 'Atenção', color: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/30' },
   { value: 'secure' as const, label: 'Seguro', color: 'bg-green-500/20 text-green-500 border-green-500/50 hover:bg-green-500/30' },
+];
+
+const CRON_OPTIONS = [
+  { value: '0 3 * * *', label: 'Diário às 03:00' },
+  { value: '0 */6 * * *', label: 'A cada 6 horas' },
+  { value: '0 */12 * * *', label: 'A cada 12 horas' },
+  { value: '0 0 * * 0', label: 'Semanal (Domingo 00:00)' },
 ];
 
 export default function NotificationSettingsTab() {
@@ -211,6 +223,36 @@ export default function NotificationSettingsTab() {
   const [editingTemplate, setEditingTemplate] = useState<NotificationTemplate | null>(null);
   const [savingTemplate, setSavingTemplate] = useState(false);
 
+  // Logic Modal State (Dual-Engine)
+  const [logicModalOpen, setLogicModalOpen] = useState(false);
+  const [editingLogicEvent, setEditingLogicEvent] = useState<string | null>(null);
+  const [logicConfigs, setLogicConfigs] = useState<NotificationLogicConfig[]>([]);
+  const [savingLogicConfig, setSavingLogicConfig] = useState(false);
+
+  // Login Alert Logic State
+  const [loginAlertConfig, setLoginAlertConfig] = useState({
+    checkIp: true,
+    checkDevice: true,
+    checkGeo: false,
+    alertOnNewDevice: true
+  });
+
+  // Password Recovery Logic State (read-only)
+  const [otpConfig] = useState({
+    codeLength: 6,
+    expirationMinutes: 15,
+    maxAttempts: 3
+  });
+
+  // Security Scan Logic State
+  const [scanCronConfig, setScanCronConfig] = useState({
+    cronEnabled: true,
+    cronExpression: '0 3 * * *',
+    alertThreshold: 'warning',
+    lastRun: null as string | null,
+    nextRun: null as string | null
+  });
+
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhoneNumber(e.target.value);
     setTargetPhone(formatted);
@@ -234,7 +276,7 @@ export default function NotificationSettingsTab() {
       // Load admin settings for phone, email and global toggles
       const { data: settingsData, error: settingsError } = await supabase
         .from('admin_settings')
-        .select('whatsapp_target_phone, whatsapp_global_enabled, gmail_notification_email, email_global_enabled')
+        .select('whatsapp_target_phone, whatsapp_global_enabled, gmail_notification_email, email_global_enabled, last_scheduled_scan')
         .single();
 
       if (settingsError && settingsError.code !== 'PGRST116') throw settingsError;
@@ -244,6 +286,10 @@ export default function NotificationSettingsTab() {
         setWhatsappGlobalEnabled(settingsData.whatsapp_global_enabled || false);
         setNotificationEmail((settingsData as any).gmail_notification_email || '');
         setEmailGlobalEnabled((settingsData as any).email_global_enabled !== false);
+        
+        if (settingsData.last_scheduled_scan) {
+          setScanCronConfig(prev => ({ ...prev, lastRun: settingsData.last_scheduled_scan }));
+        }
       }
 
       // Load security alert config
@@ -267,6 +313,38 @@ export default function NotificationSettingsTab() {
         console.error('Error loading templates:', templatesError);
       } else {
         setTemplates((templatesData || []) as NotificationTemplate[]);
+      }
+
+      // Load logic configs
+      const { data: logicData, error: logicError } = await supabase
+        .from('notification_logic_config')
+        .select('*');
+
+      if (!logicError && logicData) {
+        setLogicConfigs(logicData as NotificationLogicConfig[]);
+        
+        // Initialize state from database
+        const loginConfig = logicData.find(c => c.event_type === 'login_alert');
+        if (loginConfig?.config) {
+          const cfg = loginConfig.config as Record<string, unknown>;
+          setLoginAlertConfig({
+            checkIp: cfg.checkIp as boolean ?? true,
+            checkDevice: cfg.checkDevice as boolean ?? true,
+            checkGeo: cfg.checkGeo as boolean ?? false,
+            alertOnNewDevice: cfg.alertOnNewDevice as boolean ?? true
+          });
+        }
+
+        const secScanConfig = logicData.find(c => c.event_type === 'security_alert');
+        if (secScanConfig?.config) {
+          const cfg = secScanConfig.config as Record<string, unknown>;
+          setScanCronConfig(prev => ({
+            ...prev,
+            cronEnabled: cfg.cronEnabled as boolean ?? true,
+            cronExpression: cfg.cronExpression as string ?? '0 3 * * *',
+            alertThreshold: cfg.alertThreshold as string ?? 'warning'
+          }));
+        }
       }
     } catch (error: any) {
       console.error('Error loading notification settings:', error);
@@ -372,10 +450,8 @@ export default function NotificationSettingsTab() {
     
     setSavingSecurityConfig(true);
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
-      // If level changed, log to history
       if (levelChanged) {
         const { error: historyError } = await supabase
           .from('security_severity_history')
@@ -390,7 +466,6 @@ export default function NotificationSettingsTab() {
         if (historyError) throw historyError;
       }
 
-      // Update config
       const { error } = await supabase
         .from('security_alert_config')
         .update({
@@ -433,14 +508,32 @@ export default function NotificationSettingsTab() {
     if (existingTemplate) {
       setEditingTemplate({ ...existingTemplate });
     } else {
+      // Default templates with proper variables
+      const defaultTemplates: Record<string, Partial<NotificationTemplate>> = {
+        password_reset: {
+          email_subject: '🔑 Código de Recuperação de Senha',
+          email_body: 'Seu código de recuperação é: {numero_aleatorio}\n\nSolicitado por: {event_details}\nHorário: {timestamp}\n\nEste código expira em 15 minutos.',
+          whatsapp_message: '🔑 Recuperação de Senha\n\nCódigo: {numero_aleatorio}\nUsuário: {event_details}\nHorário: {timestamp}\n\n⏱️ Expira em 15 minutos.',
+          variables_available: ['timestamp', 'event_details', 'numero_aleatorio', 'platform_name']
+        },
+        login_alert: {
+          email_subject: '🚨 Alerta de Login Suspeito',
+          email_body: 'Alerta: Login suspeito detectado via {event_details}.\n\nSe não foi você, bloqueie sua conta imediatamente.\n\nHorário: {timestamp}',
+          whatsapp_message: '🚨 Alerta de Login Suspeito\n\nDispositivo: {event_details}\nHorário: {timestamp}\n\nSe não foi você, bloqueie sua conta.',
+          variables_available: ['timestamp', 'event_details', 'platform_name', 'device_info', 'ip_address']
+        }
+      };
+
+      const defaultForEvent = defaultTemplates[eventType];
+      
       setEditingTemplate({
         id: '',
         event_type: eventType,
         platform_name: 'KnowYOU Admin',
-        email_subject: `Notificação: ${eventLabel}`,
-        email_body: 'Detalhes: {event_details}\n\nHorário: {timestamp}',
-        whatsapp_message: `📢 ${eventLabel}\n\n{event_details}\n\nHorário: {timestamp}`,
-        variables_available: ['timestamp', 'event_details', 'platform_name']
+        email_subject: defaultForEvent?.email_subject || `Notificação: ${eventLabel}`,
+        email_body: defaultForEvent?.email_body || 'Detalhes: {event_details}\n\nHorário: {timestamp}',
+        whatsapp_message: defaultForEvent?.whatsapp_message || `📢 ${eventLabel}\n\n{event_details}\n\nHorário: {timestamp}`,
+        variables_available: defaultForEvent?.variables_available || ['timestamp', 'event_details', 'platform_name']
       });
     }
     setTemplateModalOpen(true);
@@ -452,7 +545,6 @@ export default function NotificationSettingsTab() {
 
     try {
       if (editingTemplate.id) {
-        // Update existing template
         const { error } = await supabase
           .from('notification_templates')
           .update({
@@ -465,7 +557,6 @@ export default function NotificationSettingsTab() {
 
         if (error) throw error;
       } else {
-        // Insert new template
         const { error } = await supabase
           .from('notification_templates')
           .upsert({
@@ -480,7 +571,6 @@ export default function NotificationSettingsTab() {
         if (error) throw error;
       }
 
-      // Reload templates
       const { data } = await supabase
         .from('notification_templates')
         .select('*')
@@ -497,13 +587,68 @@ export default function NotificationSettingsTab() {
     }
   };
 
-  const insertVariable = (variable: string, field: 'email_subject' | 'email_body' | 'whatsapp_message') => {
-    if (!editingTemplate) return;
-    const currentValue = editingTemplate[field] || '';
-    setEditingTemplate({
-      ...editingTemplate,
-      [field]: currentValue + `{${variable}}`
-    });
+  // Logic Modal Functions (Dual-Engine)
+  const openLogicModal = (eventType: string) => {
+    setEditingLogicEvent(eventType);
+    setLogicModalOpen(true);
+  };
+
+  const saveLogicConfig = async () => {
+    if (!editingLogicEvent) return;
+    setSavingLogicConfig(true);
+
+    try {
+      let configData: Record<string, unknown> = {};
+
+      if (editingLogicEvent === 'login_alert') {
+        configData = { ...loginAlertConfig };
+      } else if (editingLogicEvent === 'security_alert') {
+        configData = {
+          cronEnabled: scanCronConfig.cronEnabled,
+          cronExpression: scanCronConfig.cronExpression,
+          alertThreshold: scanCronConfig.alertThreshold
+        };
+      } else if (editingLogicEvent === 'password_reset') {
+        configData = { ...otpConfig };
+      }
+
+      // Check if config exists
+      const existingConfig = logicConfigs.find(c => c.event_type === editingLogicEvent);
+      
+      if (existingConfig) {
+        const { error } = await supabase
+          .from('notification_logic_config')
+          .update({ config: configData, updated_at: new Date().toISOString() })
+          .eq('event_type', editingLogicEvent);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('notification_logic_config')
+          .insert({ event_type: editingLogicEvent, config: configData });
+        if (error) throw error;
+      }
+
+      // Refresh logic configs
+      const { data } = await supabase
+        .from('notification_logic_config')
+        .select('*');
+      if (data) setLogicConfigs(data as NotificationLogicConfig[]);
+        .upsert({
+          event_type: editingLogicEvent,
+          config: configData,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'event_type' });
+
+      if (error) throw error;
+
+      setLogicModalOpen(false);
+      toast.success('Configuração de lógica salva');
+    } catch (error: any) {
+      console.error('Error saving logic config:', error);
+      toast.error('Erro ao salvar configuração');
+    } finally {
+      setSavingLogicConfig(false);
+    }
   };
 
   const checkResendDomain = async () => {
@@ -536,7 +681,6 @@ export default function NotificationSettingsTab() {
   const testEmail = async () => {
     setTestingEmail(true);
     try {
-      // First check domain status
       const domainCheck = await checkResendDomain();
       
       if (!domainCheck?.verified) {
@@ -609,17 +753,244 @@ export default function NotificationSettingsTab() {
     const level = SEVERITY_LEVELS.find(l => l.value === securityConfig.current_level);
     if (!level) return null;
     
-    const icons = {
-      critical: '🔴',
-      warning: '🟡',
-      secure: '🟢'
-    };
+    const icons = { critical: '🔴', warning: '🟡', secure: '🟢' };
     
     return (
       <Badge className={`${level.color} cursor-default`}>
         {icons[level.value]} {level.label}
       </Badge>
     );
+  };
+
+  const renderLogicModalContent = () => {
+    if (!editingLogicEvent) return null;
+
+    switch (editingLogicEvent) {
+      case 'login_alert':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Gatilhos de Detecção</Label>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-3">
+                    <Wifi className="h-5 w-5 text-blue-500" />
+                    <div>
+                      <p className="font-medium text-sm">Detectar IP desconhecido</p>
+                      <p className="text-xs text-muted-foreground">Alerta quando login de IP diferente</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={loginAlertConfig.checkIp}
+                    onCheckedChange={(checked) => setLoginAlertConfig(prev => ({ ...prev, checkIp: checked }))}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-3">
+                    <Smartphone className="h-5 w-5 text-purple-500" />
+                    <div>
+                      <p className="font-medium text-sm">Detectar novo dispositivo</p>
+                      <p className="text-xs text-muted-foreground">Alerta quando login de device novo</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={loginAlertConfig.checkDevice}
+                    onCheckedChange={(checked) => setLoginAlertConfig(prev => ({ ...prev, checkDevice: checked }))}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-3">
+                    <Globe className="h-5 w-5 text-green-500" />
+                    <div>
+                      <p className="font-medium text-sm">Detectar nova localização geográfica</p>
+                      <p className="text-xs text-muted-foreground">Alerta quando login de região diferente</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={loginAlertConfig.checkGeo}
+                    onCheckedChange={(checked) => setLoginAlertConfig(prev => ({ ...prev, checkGeo: checked }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-blue-400 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-blue-400 mb-1">Status do Backend</p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <Badge variant="outline" className="text-green-400 border-green-400/50">
+                      <CheckCircle2 className="h-3 w-3 mr-1" /> IP: Suportado
+                    </Badge>
+                    <Badge variant="outline" className="text-green-400 border-green-400/50">
+                      <CheckCircle2 className="h-3 w-3 mr-1" /> Device: Suportado
+                    </Badge>
+                    <Badge variant="outline" className="text-amber-400 border-amber-400/50">
+                      <XCircle className="h-3 w-3 mr-1" /> Geo: Não configurado
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'password_reset':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Regras do Código OTP</Label>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-3xl font-bold text-primary">{otpConfig.codeLength}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Dígitos</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-3xl font-bold text-primary">{otpConfig.expirationMinutes}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Minutos</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border text-center">
+                  <p className="text-3xl font-bold text-primary">{otpConfig.maxAttempts}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Tentativas</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Variáveis Disponíveis</Label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/30">
+                  <Badge variant="outline" className="font-mono">{'{numero_aleatorio}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Código de 6 dígitos gerado pelo sistema</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{event_details}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Nome/Email do usuário solicitante</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Badge variant="outline" className="font-mono">{'{timestamp}'}</Badge>
+                  <span className="text-sm text-muted-foreground">→ Data/hora da solicitação</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-400 mt-0.5" />
+                <p className="text-sm text-amber-200">
+                  Configurações de OTP são gerenciadas via código. Use o botão de Template (⚙️) para customizar a mensagem.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'security_alert':
+        return (
+          <div className="space-y-6">
+            {/* Severity Level Section */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Nível de Severidade Atual</Label>
+              <div className="flex flex-wrap gap-2">
+                {SEVERITY_LEVELS.map((level) => {
+                  const icons = { critical: '🔴', warning: '🟡', secure: '🟢' };
+                  const isSelected = securityConfig?.current_level === level.value;
+                  
+                  return (
+                    <Badge
+                      key={level.value}
+                      className={`cursor-pointer transition-all ${level.color} ${
+                        isSelected ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : 'opacity-60 hover:opacity-100'
+                      }`}
+                      onClick={openSecurityModal}
+                    >
+                      {icons[level.value]} {level.label}
+                    </Badge>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">Clique para configurar templates por nível</p>
+            </div>
+
+            {/* Cron Job Configuration */}
+            <div className="space-y-4 border-t pt-4">
+              <Label className="text-base font-semibold flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Agendamento do Scan Automático
+              </Label>
+
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                <div className="flex items-center gap-3">
+                  <Activity className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="font-medium text-sm">Scan Habilitado</p>
+                    <p className="text-xs text-muted-foreground">Execução automática de varredura</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={scanCronConfig.cronEnabled}
+                  onCheckedChange={(checked) => setScanCronConfig(prev => ({ ...prev, cronEnabled: checked }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Frequência</Label>
+                <Select
+                  value={scanCronConfig.cronExpression}
+                  onValueChange={(value) => setScanCronConfig(prev => ({ ...prev, cronExpression: value }))}
+                  disabled={!scanCronConfig.cronEnabled}
+                >
+                  <SelectTrigger className="border-primary/30">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CRON_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {scanCronConfig.lastRun && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  Último scan: {format(new Date(scanCronConfig.lastRun), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </div>
+              )}
+            </div>
+
+            {/* Alert Threshold */}
+            <div className="space-y-3 border-t pt-4">
+              <Label className="text-base font-semibold">Thresholds de Alerta</Label>
+              
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Alertar se severidade for:</Label>
+                <Select
+                  value={scanCronConfig.alertThreshold}
+                  onValueChange={(value) => setScanCronConfig(prev => ({ ...prev, alertThreshold: value }))}
+                >
+                  <SelectTrigger className="border-primary/30">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="critical">Crítico apenas</SelectItem>
+                    <SelectItem value="warning">Atenção ou pior</SelectItem>
+                    <SelectItem value="secure">Sempre (incluindo Seguro)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
   };
 
   if (loading) {
@@ -759,7 +1130,6 @@ export default function NotificationSettingsTab() {
             />
           </div>
 
-          {/* Domain Status Indicator */}
           {domainStatus && (
             <div className={`flex items-center gap-2 p-3 rounded-lg border ${
               domainStatus.verified 
@@ -824,117 +1194,172 @@ export default function NotificationSettingsTab() {
       </Card>
 
       {/* Event Types by Category */}
-      {(['security', 'intelligence', 'system'] as const).map((category) => {
-        const categoryConfig = CATEGORY_LABELS[category];
-        const CategoryIcon = categoryConfig.icon;
-        const categoryPrefs = preferences.filter(
-          (p) => EVENT_CONFIG[p.event_type]?.category === category
-        );
+      <TooltipProvider>
+        {(['security', 'intelligence', 'system'] as const).map((category) => {
+          const categoryConfig = CATEGORY_LABELS[category];
+          const CategoryIcon = categoryConfig.icon;
+          const categoryPrefs = preferences.filter(
+            (p) => EVENT_CONFIG[p.event_type]?.category === category
+          );
 
-        if (categoryPrefs.length === 0) return null;
+          if (categoryPrefs.length === 0) return null;
 
-        return (
-          <Card key={category} className="border-primary/20">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <CategoryIcon className="h-5 w-5 text-primary" />
-                {categoryConfig.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {categoryPrefs.map((pref) => {
-                  const eventConfig = EVENT_CONFIG[pref.event_type];
-                  const IconComponent = eventConfig?.icon || Bell;
-                  const isSecurityAlert = pref.event_type === 'security_alert';
-                  const isSentimentAlert = pref.event_type === 'sentiment_alert';
-                  
-                  return (
-                    <div 
-                      key={pref.id} 
-                      className="flex items-center justify-between px-6 py-4 hover:bg-muted/50 transition-colors"
-                    >
-                      {/* Left: Icon and Label */}
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                          <IconComponent className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm truncate">{pref.event_label}</span>
-                            {isSecurityAlert && getCurrentSeverityBadge()}
-                            {isSentimentAlert && (
-                              <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">
-                                IA
-                              </Badge>
+          return (
+            <Card key={category} className="border-primary/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CategoryIcon className="h-5 w-5 text-primary" />
+                  {categoryConfig.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
+                  {categoryPrefs.map((pref) => {
+                    const eventConfig = EVENT_CONFIG[pref.event_type];
+                    const IconComponent = eventConfig?.icon || Bell;
+                    const hasLogicConfig = eventConfig?.hasLogicConfig;
+                    const isSecurityAlert = pref.event_type === 'security_alert';
+                    const isSentimentAlert = pref.event_type === 'sentiment_alert';
+                    
+                    return (
+                      <div 
+                        key={pref.id} 
+                        className="flex items-center justify-between px-6 py-4 hover:bg-muted/50 transition-colors"
+                      >
+                        {/* Left: Dual-Engine Icons + Label */}
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          {/* Logic Icon (Shield) - Only for events with logic config */}
+                          {hasLogicConfig && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openLogicModal(pref.event_type)}
+                                  className="h-8 w-8 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 shrink-0"
+                                >
+                                  <Activity className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p>Regras e Gatilhos</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+
+                          {/* Template Icon (Gear) */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openTemplateModal(pref.event_type, pref.event_label)}
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10 shrink-0"
+                              >
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p>Personalizar Mensagem</p>
+                            </TooltipContent>
+                          </Tooltip>
+
+                          {/* Event Icon and Label */}
+                          <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                            <IconComponent className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm truncate">{pref.event_label}</span>
+                              {isSecurityAlert && getCurrentSeverityBadge()}
+                              {isSentimentAlert && (
+                                <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">
+                                  IA
+                                </Badge>
+                              )}
+                            </div>
+                            {eventConfig?.description && (
+                              <span className="text-xs text-muted-foreground truncate">
+                                {eventConfig.description}
+                              </span>
                             )}
                           </div>
-                          {eventConfig?.description && (
-                            <span className="text-xs text-muted-foreground truncate">
-                              {eventConfig.description}
-                            </span>
-                          )}
+                        </div>
+
+                        {/* Right: Switches */}
+                        <div className="flex items-center gap-4 shrink-0">
+                          {/* Email Toggle */}
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-blue-500" />
+                            <Switch
+                              checked={pref.email_enabled}
+                              onCheckedChange={(checked) => 
+                                togglePreference(pref.id, 'email_enabled', checked)
+                              }
+                              disabled={!emailGlobalEnabled}
+                            />
+                          </div>
+
+                          {/* WhatsApp Toggle */}
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4 text-green-500" />
+                            <Switch
+                              checked={pref.whatsapp_enabled}
+                              onCheckedChange={(checked) => 
+                                togglePreference(pref.id, 'whatsapp_enabled', checked)
+                              }
+                              disabled={!whatsappGlobalEnabled}
+                            />
+                          </div>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </TooltipProvider>
 
-                      {/* Right: Controls */}
-                      <div className="flex items-center gap-4 shrink-0">
-                        {/* Message Template Config Button (Gear) */}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openTemplateModal(pref.event_type, pref.event_label)}
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/10"
-                          title="Customizar Mensagem"
-                        >
-                          <Settings className="h-4 w-4" />
-                        </Button>
+      {/* Logic Configuration Modal (Dual-Engine) */}
+      <Dialog open={logicModalOpen} onOpenChange={setLogicModalOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-amber-500" />
+              {editingLogicEvent === 'login_alert' && 'Configuração: Alerta de Login Suspeito'}
+              {editingLogicEvent === 'password_reset' && 'Configuração: Recuperação de Senha'}
+              {editingLogicEvent === 'security_alert' && 'Configuração: Alerta de Segurança'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 pr-4">
+            {renderLogicModalContent()}
+          </ScrollArea>
 
-                        {/* Security Alert Config Button */}
-                        {isSecurityAlert && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={openSecurityModal}
-                            className="gap-1.5 text-muted-foreground hover:text-foreground"
-                          >
-                            <Cog className="h-4 w-4" />
-                            <span className="hidden sm:inline">Severidade</span>
-                          </Button>
-                        )}
-                        
-                        {/* Email Toggle */}
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-blue-500" />
-                          <Switch
-                            checked={pref.email_enabled}
-                            onCheckedChange={(checked) => 
-                              togglePreference(pref.id, 'email_enabled', checked)
-                            }
-                            disabled={!emailGlobalEnabled}
-                          />
-                        </div>
-
-                        {/* WhatsApp Toggle */}
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4 text-green-500" />
-                          <Switch
-                            checked={pref.whatsapp_enabled}
-                            onCheckedChange={(checked) => 
-                              togglePreference(pref.id, 'whatsapp_enabled', checked)
-                            }
-                            disabled={!whatsappGlobalEnabled}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setLogicModalOpen(false)}>
+              Cancelar
+            </Button>
+            {editingLogicEvent !== 'password_reset' && (
+              <Button onClick={saveLogicConfig} disabled={savingLogicConfig}>
+                {savingLogicConfig ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Salvar
+                  </>
+                )}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Security Severity Configuration Modal */}
       <Dialog open={securityModalOpen} onOpenChange={setSecurityModalOpen}>
@@ -1151,7 +1576,7 @@ export default function NotificationSettingsTab() {
 
                 {/* Available Variables */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Variáveis Disponíveis (clique para inserir)</Label>
+                  <Label className="text-xs text-muted-foreground">Variáveis Disponíveis (clique para copiar)</Label>
                   <div className="flex flex-wrap gap-2">
                     {(editingTemplate.variables_available || ['timestamp', 'event_details']).map((variable) => (
                       <Badge 
@@ -1159,7 +1584,6 @@ export default function NotificationSettingsTab() {
                         variant="outline" 
                         className="cursor-pointer hover:bg-primary/10 transition-colors"
                         onClick={() => {
-                          // Copy to clipboard as fallback
                           navigator.clipboard.writeText(`{${variable}}`);
                           toast.success(`{${variable}} copiado!`);
                         }}
@@ -1231,7 +1655,8 @@ export default function NotificationSettingsTab() {
                         {(editingTemplate.email_subject || '')
                           .replace('{timestamp}', '09/12/2025 15:30')
                           .replace('{event_details}', 'Exemplo de evento')
-                          .replace('{platform_name}', editingTemplate.platform_name)}
+                          .replace('{platform_name}', editingTemplate.platform_name)
+                          .replace('{numero_aleatorio}', '847291')}
                       </p>
                     </div>
                     <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
@@ -1241,6 +1666,7 @@ export default function NotificationSettingsTab() {
                           .replace('{timestamp}', '09/12/2025 15:30')
                           .replace('{event_details}', 'Exemplo de evento')
                           .replace('{platform_name}', editingTemplate.platform_name)
+                          .replace('{numero_aleatorio}', '847291')
                           .substring(0, 100)}...
                       </p>
                     </div>
