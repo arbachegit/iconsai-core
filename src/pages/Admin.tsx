@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Languages } from "lucide-react";
+import { Loader2, Languages, Camera } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { NotificationsPanel } from "@/components/admin/NotificationsPanel";
 import { supabase } from "@/integrations/supabase/client";
@@ -316,7 +316,7 @@ const Admin = () => {
           
           {/* Right: Language + Notifications + User */}
           <TooltipProvider delayDuration={300}>
-            <div className="flex items-center gap-4 ml-auto">
+            <div className="flex items-center gap-5">
               {/* Language Selector with Tooltip */}
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -409,9 +409,20 @@ const Admin = () => {
             </DialogHeader>
             
             <div className="flex flex-col items-center gap-4 py-4">
-              {/* Large Avatar */}
-              <div className="h-20 w-20 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary">AD</span>
+              {/* Editable Avatar with Hover Overlay */}
+              <div className="relative group cursor-pointer">
+                <div className="h-24 w-24 rounded-full bg-primary/20 flex items-center justify-center transition-all duration-300 group-hover:ring-4 group-hover:ring-primary/30">
+                  <span className="text-3xl font-bold text-primary">AD</span>
+                </div>
+                
+                {/* Camera Overlay - appears on hover */}
+                <div 
+                  className="absolute inset-0 rounded-full bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  onClick={() => console.log("Open File Picker")}
+                >
+                  <Camera className="h-6 w-6 text-white" />
+                  <span className="text-xs text-white mt-1">Alterar Foto</span>
+                </div>
               </div>
               
               {/* User Info */}
@@ -435,9 +446,12 @@ const Admin = () => {
               </div>
             </div>
             
-            <DialogFooter>
+            <DialogFooter className="flex gap-2 sm:gap-2">
               <Button variant="outline" onClick={() => setIsProfileOpen(false)}>
-                Fechar
+                Cancelar
+              </Button>
+              <Button onClick={() => setIsProfileOpen(false)}>
+                Salvar
               </Button>
             </DialogFooter>
           </DialogContent>
