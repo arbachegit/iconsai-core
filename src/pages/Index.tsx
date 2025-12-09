@@ -1,19 +1,28 @@
+import React, { Suspense, lazy } from "react";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import Section from "@/components/Section";
-import ChatKnowYOU from "@/components/ChatKnowYOU";
-import { MediaCarousel } from "@/components/MediaCarousel";
-import { DigitalExclusionSection } from "@/components/DigitalExclusionSection";
-import TuringLegacy from "@/components/TuringLegacy";
 import { Link } from "react-router-dom";
 import { Brain, Mail, Sparkles } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-logo.png";
-import { FloatingChatButton } from "@/components/FloatingChatButton";
-import { ScrollToTopButton } from "@/components/ScrollToTopButton";
-import { ContactModal } from "@/components/ContactModal";
 import { useTranslation } from "react-i18next";
-import { useEffect } from "react";
 import { useYouTubeAutoPreload } from "@/hooks/useYouTubeAutoPreload";
+
+// Lazy load below-the-fold components
+const ChatKnowYOU = lazy(() => import("@/components/ChatKnowYOU"));
+const MediaCarousel = lazy(() => import("@/components/MediaCarousel").then(m => ({ default: m.MediaCarousel })));
+const DigitalExclusionSection = lazy(() => import("@/components/DigitalExclusionSection").then(m => ({ default: m.DigitalExclusionSection })));
+const TuringLegacy = lazy(() => import("@/components/TuringLegacy"));
+const FloatingChatButton = lazy(() => import("@/components/FloatingChatButton").then(m => ({ default: m.FloatingChatButton })));
+const ScrollToTopButton = lazy(() => import("@/components/ScrollToTopButton").then(m => ({ default: m.ScrollToTopButton })));
+const ContactModal = lazy(() => import("@/components/ContactModal").then(m => ({ default: m.ContactModal })));
+
+// Simple loading placeholder
+const SectionLoader = () => (
+  <div className="flex items-center justify-center py-12">
+    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 const Index = () => {
   const { t, i18n } = useTranslation();
@@ -151,19 +160,25 @@ const Index = () => {
             
             {/* Chat Component - Full Width */}
             <div className="mt-8 w-full">
-              <ChatKnowYOU />
+              <Suspense fallback={<SectionLoader />}>
+                <ChatKnowYOU />
+              </Suspense>
             </div>
             
             {/* Media Carousel - Full Width */}
             <div className="mt-12 w-full">
-              <MediaCarousel />
+              <Suspense fallback={<SectionLoader />}>
+                <MediaCarousel />
+              </Suspense>
             </div>
           </div>
         </div>
       </section>
 
       {/* Digital Exclusion Section */}
-      <DigitalExclusionSection />
+      <Suspense fallback={<SectionLoader />}>
+        <DigitalExclusionSection />
+      </Suspense>
 
       {/* Section 8: Bom Prompt */}
       <Section
@@ -209,7 +224,9 @@ const Index = () => {
       </Section>
 
       {/* Turing Legacy Section */}
-      <TuringLegacy />
+      <Suspense fallback={<SectionLoader />}>
+        <TuringLegacy />
+      </Suspense>
 
       {/* Footer */}
       <footer className="py-12 border-t border-border/50">
@@ -227,12 +244,14 @@ const Index = () => {
               <p className="text-sm text-muted-foreground">
                 {t('footer.tagline')}
               </p>
-              <ContactModal>
-                <button className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors mx-auto mt-2">
-                  <Mail className="h-4 w-4" />
-                  {t('contact.button')}
-                </button>
-              </ContactModal>
+              <Suspense fallback={null}>
+                <ContactModal>
+                  <button className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors mx-auto mt-2">
+                    <Mail className="h-4 w-4" />
+                    {t('contact.button')}
+                  </button>
+                </ContactModal>
+              </Suspense>
               <p className="text-xs text-muted-foreground">
                 {t('footer.copyright')}
               </p>
@@ -248,10 +267,14 @@ const Index = () => {
       </div>
 
       {/* Floating Chat Button */}
-      <FloatingChatButton />
+      <Suspense fallback={null}>
+        <FloatingChatButton />
+      </Suspense>
       
       {/* Scroll to Top Button */}
-      <ScrollToTopButton />
+      <Suspense fallback={null}>
+        <ScrollToTopButton />
+      </Suspense>
     </div>;
 };
 export default Index;
