@@ -78,7 +78,7 @@ export const UserUsageLogsTab = () => {
       const { data, error } = await supabase
         .from("user_roles")
         .select("user_id")
-        .eq("role", "admin");
+        .in("role", ["admin", "superadmin"]);
       if (error) throw error;
       return data?.map(r => r.user_id) || [];
     },
