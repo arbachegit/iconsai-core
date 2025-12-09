@@ -333,8 +333,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           </div>
         </div>
 
-        {/* Navigation - Flex grow to fill space, scrollable with fade indicators */}
-        <div className="flex-1 min-h-0 relative">
+        {/* Navigation - Full height scrollable area with fade indicators */}
+        <div className="flex-1 min-h-0 relative z-0">
           {/* Top fade indicator */}
           <div 
             className={`absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-card to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
@@ -343,7 +343,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           <nav 
             ref={navRef}
             onScroll={handleNavScroll}
-            className={`h-full ${isCollapsed ? 'p-2' : 'p-3'} pb-2 space-y-1 overflow-y-auto transition-all duration-300 ease-in-out`}
+            className={`h-full ${isCollapsed ? 'p-2' : 'p-3'} pb-36 space-y-1 overflow-y-auto transition-all duration-300 ease-in-out`}
           >
           {filteredCategories.map((category, index) => (
             <div key={category.id}>
@@ -437,12 +437,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           
           {/* Bottom fade indicator */}
           <div 
-            className={`absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollDown ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent z-40 pointer-events-none transition-opacity duration-200 ${canScrollDown ? 'opacity-100' : 'opacity-0'}`}
           />
         </div>
 
-        {/* Footer Control Bar - Inside aside, pushed to bottom with mt-auto */}
-        <div className="shrink-0 border-t border-border/40 bg-card shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        {/* Footer Control Bar - Floating sticky dock at bottom */}
+        <div className="absolute bottom-0 left-0 w-full z-50 border-t border-border/40 bg-card shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
           {/* Centered Chevron Toggle */}
           {!isCollapsed && (
             <button 
