@@ -280,9 +280,9 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
   return (
     <TooltipProvider delayDuration={0}>
-      <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-card border-r border-primary/20 h-screen flex flex-col relative overflow-hidden transition-all duration-300 ease-in-out`}>
+      <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-[#0B1120] border-r border-white/10 fixed left-0 top-0 h-screen z-40 flex flex-col overflow-hidden transition-all duration-300 ease-in-out`}>
         {/* Header with Search and Hamburger */}
-        <div className={`${isCollapsed ? 'p-2' : 'p-3'} border-b border-primary/20 transition-all duration-300 ease-in-out shrink-0`}>
+        <div className={`${isCollapsed ? 'p-2 flex justify-center' : 'p-3'} border-b border-white/10 transition-all duration-300 ease-in-out shrink-0`}>
           <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-2'}`}>
             {/* Search Input - hidden when collapsed, shows icon below hamburger */}
             {!isCollapsed && (
@@ -335,14 +335,14 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
         {/* Top fade indicator - direct child of aside */}
         <div 
-          className={`absolute top-[60px] left-0 right-0 h-6 bg-gradient-to-b from-card to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute top-[60px] left-0 right-0 h-6 bg-gradient-to-b from-[#0B1120] to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
         />
 
         {/* Navigation - THE ONLY scrollable element with massive bottom padding */}
         <nav 
           ref={navRef}
           onScroll={handleNavScroll}
-          className={`flex-1 w-full overflow-y-auto z-0 ${isCollapsed ? 'p-2' : 'p-3'} pb-48 space-y-1 transition-all duration-300 ease-in-out`}
+          className={`flex-1 w-full overflow-y-auto z-0 ${isCollapsed ? 'p-2' : 'p-3'} pb-[180px] space-y-1 transition-all duration-300 ease-in-out`}
         >
           {filteredCategories.map((category, index) => (
             <div key={category.id}>
@@ -530,7 +530,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             ) : (
               // Footer expanded: vertical with text labels
               <div className="flex flex-col gap-1 transition-all duration-300">
-                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm" onClick={() => navigate("/docs")}>
+                <Button variant="ghost" className="w-full justify-start gap-2 h-7 py-1 text-sm hover:text-black" onClick={() => navigate("/docs")}>
                   <BookOpen className="w-4 h-4 shrink-0" />
                   <span className="transition-opacity duration-200 whitespace-nowrap">{t('admin.documentation')}</span>
                 </Button>
