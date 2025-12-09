@@ -1,8 +1,8 @@
 import React, { memo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, PieChart, Target, Zap, ArrowRightLeft } from "lucide-react";
-import { ResponsiveContainer, PieChart as RechartsPie, Pie, Tooltip as RechartsTooltip } from "recharts";
+import { BarChart3, PieChart as PieChartIcon, Target, Zap, ArrowRightLeft } from "lucide-react";
+import { ResponsiveContainer, PieChart, Pie, Tooltip as RechartsTooltip, Cell } from "recharts";
 
 interface Tag {
   id: string;
@@ -72,12 +72,12 @@ export const MetricsDashboard = memo(({
         {/* Tag Distribution by Source */}
         <div className="p-4 bg-background/30 rounded-lg border">
           <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-            <PieChart className="h-4 w-4" />
+            <PieChartIcon className="h-4 w-4" />
             Distribuição por Fonte
           </h4>
           <div className="h-[180px]">
             <ResponsiveContainer width="100%" height="100%">
-              <RechartsPie>
+              <PieChart>
                 <Pie
                   data={sourceDistribution}
                   dataKey="value"
@@ -86,9 +86,13 @@ export const MetricsDashboard = memo(({
                   cy="50%"
                   outerRadius={60}
                   label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                />
+                >
+                  {sourceDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
                 <RechartsTooltip />
-              </RechartsPie>
+              </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -101,7 +105,7 @@ export const MetricsDashboard = memo(({
           </h4>
           <div className="h-[180px]">
             <ResponsiveContainer width="100%" height="100%">
-              <RechartsPie>
+              <PieChart>
                 <Pie
                   data={chatDistribution}
                   dataKey="value"
@@ -110,9 +114,13 @@ export const MetricsDashboard = memo(({
                   cy="50%"
                   outerRadius={60}
                   label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                />
+                >
+                  {chatDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
                 <RechartsTooltip />
-              </RechartsPie>
+              </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
