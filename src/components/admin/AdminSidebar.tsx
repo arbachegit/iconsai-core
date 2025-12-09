@@ -301,9 +301,14 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           transition-all duration-500 ease-in-out
         `}
       >
-        {/* TOP HEADER: Hamburger + Search (Gemini-style) */}
-        <div className="h-14 px-3 border-b border-border flex items-center gap-2 shrink-0">
-          {/* Hamburger Menu */}
+        {/* TOP HEADER: Hamburger + Search (Vertical Stack) */}
+        <div className={`
+          px-3 py-3 border-b border-border 
+          flex flex-col 
+          ${isCollapsed ? 'items-center' : 'items-start'} 
+          gap-3 shrink-0
+        `}>
+          {/* 1. Hamburger Menu - First */}
           <Button
             variant="ghost"
             size="icon"
@@ -313,7 +318,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             <Menu className="w-5 h-5" />
           </Button>
 
-          {/* Search Bar - Pill shape like Gemini */}
+          {/* 2. Search Bar - Second (below hamburger) */}
           {isCollapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -335,7 +340,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
               <TooltipContent side="right">Buscar</TooltipContent>
             </Tooltip>
           ) : (
-            <div className="relative flex-1">
+            <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
@@ -350,7 +355,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
         {/* Top fade indicator */}
         <div 
-          className={`absolute top-[60px] left-0 right-0 h-6 bg-gradient-to-b from-sidebar to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute top-[100px] left-0 right-0 h-6 bg-gradient-to-b from-sidebar to-transparent z-10 pointer-events-none transition-opacity duration-200 ${canScrollUp ? 'opacity-100' : 'opacity-0'}`}
         />
 
         {/* MIDDLE NAVIGATION - Scrollable with margin-bottom for dock */}
