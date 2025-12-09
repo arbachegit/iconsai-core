@@ -51,6 +51,7 @@ import {
   FilePlus2,
   ScrollText,
 } from "lucide-react";
+import { VersionWidget } from "./VersionWidget";
 
 type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs";
 
@@ -443,6 +444,14 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             </div>
           ))}
         </nav>
+
+        {/* VERSION WIDGET - Above control center */}
+        <div className="absolute bottom-[140px] left-0 w-full">
+          <VersionWidget 
+            isCollapsed={isCollapsed} 
+            onNavigateToVersionControl={() => onTabChange("version-control")}
+          />
+        </div>
 
         {/* BOTTOM DOCK - Control Center (Gemini-style fixed footer) */}
         <div className="absolute bottom-0 left-0 w-full bg-[#0B1120] border-t border-white/10 p-2 transition-all duration-200">
