@@ -1024,6 +1024,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_logs: {
+        Row: {
+          channel: string
+          created_at: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          message_body: string
+          metadata: Json | null
+          recipient: string
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          message_body: string
+          metadata?: Json | null
+          recipient: string
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          message_body?: string
+          metadata?: Json | null
+          recipient?: string
+          status?: string
+          subject?: string | null
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           created_at: string | null

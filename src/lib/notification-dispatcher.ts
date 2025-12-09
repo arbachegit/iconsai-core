@@ -130,22 +130,29 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
 
     // Send email notification if enabled (check global toggle too)
     if (prefData.email_enabled && emailGlobalEnabled && settings?.gmail_notification_email) {
+      const emailRecipient = settings.gmail_notification_email;
+      let emailSubject = '';
+      let emailBody = '';
+      let emailStatus: 'success' | 'failed' = 'failed';
+      let emailError: string | null = null;
+
       try {
         // Use custom template or fallback to payload
-        const emailSubject = template?.email_subject 
+        emailSubject = template?.email_subject 
           ? injectVariables(template.email_subject, variables)
           : payload.subject;
-        const emailBody = template?.email_body 
+        emailBody = template?.email_body 
           ? injectVariables(template.email_body, variables)
           : payload.message;
 
         // Never send empty messages
         if (!emailBody || emailBody.trim() === '') {
-          result.errors.push('Email body is empty - skipping');
+          emailError = 'Email body is empty - skipping';
+          result.errors.push(emailError);
         } else {
           const { error } = await supabase.functions.invoke('send-email', {
             body: {
-              to: settings.gmail_notification_email,
+              to: emailRecipient,
               subject: emailSubject || `[Plataforma KnowYOU Health] Notificação`,
               body: emailBody
             }
@@ -153,12 +160,26 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
 
           if (error) throw error;
           result.emailSent = true;
+          emailStatus = 'success';
           console.log('[NotificationDispatcher] Email sent successfully for:', payload.eventType);
         }
-      } catch (emailError: any) {
-        console.error('[NotificationDispatcher] Email send error:', emailError);
-        result.errors.push(`Email error: ${emailError.message}`);
+      } catch (err: any) {
+        console.error('[NotificationDispatcher] Email send error:', err);
+        emailError = err.message || 'Unknown email error';
+        result.errors.push(`Email error: ${emailError}`);
       }
+
+      // Log email notification attempt
+      await supabase.from('notification_logs').insert({
+        event_type: payload.eventType,
+        channel: 'email',
+        recipient: emailRecipient,
+        subject: emailSubject || payload.subject,
+        message_body: emailBody || payload.message,
+        status: emailStatus,
+        error_message: emailError,
+        metadata: { variables: payload.metadata || {} }
+      });
     }
 
     // Send WhatsApp notification if enabled (check global toggle too)
@@ -167,19 +188,25 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
       settings?.whatsapp_global_enabled && 
       settings?.whatsapp_target_phone
     ) {
+      const whatsappRecipient = settings.whatsapp_target_phone;
+      let whatsappMessage = '';
+      let whatsappStatus: 'success' | 'failed' = 'failed';
+      let whatsappError: string | null = null;
+
       try {
         // Use custom template or fallback with standard format
-        const whatsappMessage = template?.whatsapp_message 
+        whatsappMessage = template?.whatsapp_message 
           ? injectVariables(template.whatsapp_message, variables)
           : `${timestamp} - Plataforma KnowYOU Health: ${payload.subject}. ${payload.message}`;
 
         // Never send empty messages
         if (!whatsappMessage || whatsappMessage.trim() === '') {
-          result.errors.push('WhatsApp message is empty - skipping');
+          whatsappError = 'WhatsApp message is empty - skipping';
+          result.errors.push(whatsappError);
         } else {
           const { data, error } = await supabase.functions.invoke('send-whatsapp', {
             body: {
-              phoneNumber: settings.whatsapp_target_phone,
+              phoneNumber: whatsappRecipient,
               message: whatsappMessage,
               eventType: payload.eventType
             }
@@ -189,12 +216,26 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
           if (!data?.success) throw new Error(data?.error || 'Unknown WhatsApp error');
           
           result.whatsappSent = true;
+          whatsappStatus = 'success';
           console.log('[NotificationDispatcher] WhatsApp sent successfully for:', payload.eventType);
         }
-      } catch (whatsappError: any) {
-        console.error('[NotificationDispatcher] WhatsApp send error:', whatsappError);
-        result.errors.push(`WhatsApp error: ${whatsappError.message}`);
+      } catch (err: any) {
+        console.error('[NotificationDispatcher] WhatsApp send error:', err);
+        whatsappError = err.message || 'Unknown WhatsApp error';
+        result.errors.push(`WhatsApp error: ${whatsappError}`);
       }
+
+      // Log WhatsApp notification attempt
+      await supabase.from('notification_logs').insert({
+        event_type: payload.eventType,
+        channel: 'whatsapp',
+        recipient: whatsappRecipient,
+        subject: null,
+        message_body: whatsappMessage || payload.message,
+        status: whatsappStatus,
+        error_message: whatsappError,
+        metadata: { variables: payload.metadata || {} }
+      });
     }
 
   } catch (error: any) {
