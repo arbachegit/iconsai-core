@@ -376,7 +376,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="group w-full h-12 rounded-lg hover:bg-[#00D4FF] hover:text-black transition-all duration-300 ease-in-out"
+                        className="group w-full h-12 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                         onClick={() => {
                           // Click-to-expand: Always expand sidebar first
                           onToggleCollapse();
@@ -400,7 +400,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   open={openSections.includes(category.id)}
                   onOpenChange={() => toggleSection(category.id)}
                 >
-                  <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-black rounded-lg hover:bg-[#00D4FF] transition-all duration-300 ease-in-out">
+                  <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-black rounded-lg hover:bg-[#00D4FF] hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out">
                     <div className="flex items-center gap-2">
                       <category.icon className="w-3.5 h-3.5 group-hover:text-black" />
                       {category.label}
@@ -418,7 +418,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                         <Button
                           key={item.id}
                           variant={isActive ? "default" : "ghost"}
-                          className={`group w-full justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-[#00D4FF] hover:text-black"} transition-all duration-300 ease-in-out`}
+                          className={`group w-full justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)]"} transition-all duration-300 ease-in-out`}
                           onClick={() => onTabChange(item.id)}
                         >
                           <Icon className="w-4 h-4 shrink-0 group-hover:text-black" />
@@ -444,12 +444,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           {!isCollapsed && (
             <button
               onClick={() => setIsControlCenterCollapsed(!isControlCenterCollapsed)}
-              className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 bg-[#0B1120] border border-white/10 rounded-full p-0.5 hover:bg-muted/50 transition-colors"
+              className="group absolute -top-3 left-1/2 -translate-x-1/2 z-10 bg-[#0B1120] border border-white/10 rounded-full p-0.5 hover:bg-[#00D4FF] hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
             >
               {isControlCenterCollapsed ? (
-                <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+                <ChevronUp className="w-3.5 h-3.5 text-muted-foreground group-hover:text-black" />
               ) : (
-                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-hover:text-black" />
               )}
             </button>
           )}
@@ -462,10 +462,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-10 w-10 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
+                    className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                     onClick={() => navigate("/docs")}
                   >
-                    <BookOpen className="w-4 h-4" />
+                    <BookOpen className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">{t('admin.documentation')}</TooltipContent>
@@ -476,10 +476,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-10 w-10 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
+                    className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                     onClick={() => navigate("#")}
                   >
-                    <BarChart3 className="w-4 h-4" />
+                    <BarChart3 className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">{t('admin.dataAnalytics')}</TooltipContent>
@@ -490,10 +490,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-10 w-10 rounded-lg text-primary hover:bg-muted/50 hover:text-white transition-colors duration-200"
+                    className="group h-10 w-10 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                     onClick={() => navigate("/")}
                   >
-                    <Monitor className="w-4 h-4" />
+                    <Monitor className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">{t('admin.backToApp')}</TooltipContent>
@@ -504,10 +504,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-10 w-10 rounded-lg text-destructive hover:bg-destructive/10"
+                    className="group h-10 w-10 rounded-lg text-destructive hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                     onClick={handleLogout}
                   >
-                    <LogOut className="w-4 h-4" />
+                    <LogOut className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">{t('admin.logout')}</TooltipContent>
@@ -521,10 +521,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-9 w-9 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
+                    className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                     onClick={() => navigate("/docs")}
                   >
-                    <BookOpen className="w-4 h-4" />
+                    <BookOpen className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">{t('admin.documentation')}</TooltipContent>
@@ -535,10 +535,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-9 w-9 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
+                    className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                     onClick={() => navigate("#")}
                   >
-                    <BarChart3 className="w-4 h-4" />
+                    <BarChart3 className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">{t('admin.dataAnalytics')}</TooltipContent>
@@ -549,10 +549,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-9 w-9 rounded-lg text-primary hover:bg-muted/50 hover:text-white transition-colors duration-200"
+                    className="group h-9 w-9 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                     onClick={() => navigate("/")}
                   >
-                    <Monitor className="w-4 h-4" />
+                    <Monitor className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">{t('admin.backToApp')}</TooltipContent>
@@ -563,10 +563,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-9 w-9 rounded-lg text-destructive hover:bg-destructive/10"
+                    className="group h-9 w-9 rounded-lg text-destructive hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                     onClick={handleLogout}
                   >
-                    <LogOut className="w-4 h-4" />
+                    <LogOut className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">{t('admin.logout')}</TooltipContent>
@@ -577,37 +577,37 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             <div className="flex flex-col gap-0.5">
               <Button 
                 variant="ghost" 
-                className="w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
+                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                 onClick={() => navigate("/docs")}
               >
-                <BookOpen className="w-4 h-4 shrink-0" />
+                <BookOpen className="w-4 h-4 shrink-0 group-hover:text-black" />
                 <span className="whitespace-nowrap">{t('admin.documentation')}</span>
               </Button>
 
               <Button 
                 variant="ghost" 
-                className="w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
+                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                 onClick={() => navigate("#")}
               >
-                <BarChart3 className="w-4 h-4 shrink-0" />
+                <BarChart3 className="w-4 h-4 shrink-0 group-hover:text-black" />
                 <span className="whitespace-nowrap">{t('admin.dataAnalytics')}</span>
               </Button>
 
               <Button 
                 variant="ghost" 
-                className="w-full justify-start gap-3 h-9 rounded-lg text-primary hover:bg-muted/50 hover:text-white transition-colors duration-200"
+                className="group w-full justify-start gap-3 h-9 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                 onClick={() => navigate("/")}
               >
-                <Monitor className="w-4 h-4 shrink-0" />
+                <Monitor className="w-4 h-4 shrink-0 group-hover:text-black" />
                 <span className="whitespace-nowrap">{t('admin.backToApp')}</span>
               </Button>
 
               <Button 
                 variant="ghost" 
-                className="w-full justify-start gap-3 h-9 rounded-lg text-destructive hover:bg-destructive/10"
+                className="group w-full justify-start gap-3 h-9 rounded-lg text-destructive hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300 ease-in-out"
                 onClick={handleLogout}
               >
-                <LogOut className="w-4 h-4 shrink-0" />
+                <LogOut className="w-4 h-4 shrink-0 group-hover:text-black" />
                 <span className="whitespace-nowrap">{t('admin.logout')}</span>
               </Button>
             </div>
