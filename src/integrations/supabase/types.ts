@@ -1929,6 +1929,66 @@ export type Database = {
         }
         Relationships: []
       }
+      user_registrations: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          dns_origin: string | null
+          email: string
+          first_name: string
+          id: string
+          institution_study: string | null
+          institution_work: string | null
+          last_name: string
+          mass_import_at: string | null
+          phone: string | null
+          rejection_reason: string | null
+          requested_at: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          dns_origin?: string | null
+          email: string
+          first_name: string
+          id?: string
+          institution_study?: string | null
+          institution_work?: string | null
+          last_name: string
+          mass_import_at?: string | null
+          phone?: string | null
+          rejection_reason?: string | null
+          requested_at?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          dns_origin?: string | null
+          email?: string
+          first_name?: string
+          id?: string
+          institution_study?: string | null
+          institution_work?: string | null
+          last_name?: string
+          mass_import_at?: string | null
+          phone?: string | null
+          rejection_reason?: string | null
+          requested_at?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null

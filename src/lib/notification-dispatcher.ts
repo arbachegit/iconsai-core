@@ -12,7 +12,11 @@ export type NotificationEventType =
   | 'login_alert'
   // Data Intelligence
   | 'sentiment_alert'
-  | 'taxonomy_anomaly';
+  | 'taxonomy_anomaly'
+  // User Registration
+  | 'user_registration_request'
+  | 'user_registration_approved'
+  | 'user_registration_rejected';
 
 interface NotificationTemplate {
   id: string;
@@ -392,5 +396,44 @@ export const notifyTaxonomyAnomaly = (category: string, conflictReason: string) 
     metadata: {
       category: category,
       conflict_reason: conflictReason
+    }
+  });
+
+// User Registration
+export const notifyUserRegistrationRequest = (userName: string, userEmail: string, dnsOrigin: string, institutionWork?: string, institutionStudy?: string) => 
+  dispatchNotification({
+    eventType: 'user_registration_request',
+    subject: 'Nova Solicitação de Cadastro',
+    message: `${userName} (${userEmail})`,
+    metadata: {
+      user_name: userName,
+      user_email: userEmail,
+      dns_origin: dnsOrigin,
+      institution_work: institutionWork || 'N/A',
+      institution_study: institutionStudy || 'N/A'
+    }
+  });
+
+export const notifyUserRegistrationApproved = (userName: string, userEmail: string, recoveryLink: string) => 
+  dispatchNotification({
+    eventType: 'user_registration_approved',
+    subject: 'Bem-vindo à Plataforma KnowYOU Health',
+    message: `Olá, ${userName}! Seu cadastro foi aprovado.`,
+    metadata: {
+      user_name: userName,
+      user_email: userEmail,
+      recovery_link: recoveryLink
+    }
+  });
+
+export const notifyUserRegistrationRejected = (userName: string, userEmail: string, reason?: string) => 
+  dispatchNotification({
+    eventType: 'user_registration_rejected',
+    subject: 'Solicitação de Cadastro Reprovada',
+    message: reason || 'Sua solicitação foi reprovada.',
+    metadata: {
+      user_name: userName,
+      user_email: userEmail,
+      rejection_reason: reason || 'Sem motivo especificado'
     }
   });
