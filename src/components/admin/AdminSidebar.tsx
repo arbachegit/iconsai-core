@@ -30,12 +30,12 @@ import {
   Zap,
   MessageCircle,
   Brain,
-  Palette,
+  Film,
   Settings,
   Route,
   TestTube,
   Music,
-  Shield,
+  ClipboardCheck,
   ShieldCheck,
   History,
   Users,
@@ -221,7 +221,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
     {
       id: "media",
       label: "Mídia & Conteúdo",
-      icon: Palette,
+      icon: Film,
       items: [
         { id: "content-management" as TabType, label: "Seções Landing Page", icon: FileText },
         { id: "podcasts" as TabType, label: "Podcasts", icon: Music },
@@ -233,7 +233,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
     {
       id: "audit",
       label: "Auditoria",
-      icon: Shield,
+      icon: ClipboardCheck,
       items: [
         { id: "security-integrity" as TabType, label: "Segurança & Integridade", icon: ShieldCheck },
         { id: "activity-logs" as TabType, label: "Log de Atividades (admin)", icon: History },
@@ -364,44 +364,30 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
               {index > 0 && <Separator className="my-2 bg-border/50" />}
               
               {isCollapsed ? (
-                // Collapsed mode: icons only with tooltips
-                <div className="space-y-1">
-                  {category.items.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = activeTab === item.id;
-                    const showBadge = item.id === "contact-messages" && pendingMessagesCount > 0;
-
-                    return (
-                      <Tooltip key={item.id}>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant={isActive ? "default" : "ghost"}
-                            size="icon"
-                            className={`w-full h-10 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted/50 hover:text-white"} relative transition-colors duration-200`}
-                            onClick={() => onTabChange(item.id)}
-                          >
-                            <Icon className="w-4 h-4" />
-                            {showBadge && (
-                              <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center text-[10px] bg-destructive text-destructive-foreground rounded-full px-1">
-                                {pendingMessagesCount}
-                              </span>
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="font-medium">
-                          {item.id === "activity-logs" ? (
-                            <div>
-                              <span className="font-bold">Log de Atividades</span>
-                              <br />
-                              <span className="text-xs text-muted-foreground">(admin)</span>
-                            </div>
-                          ) : (
-                            item.label
-                          )}
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
+                // Collapsed mode: ONLY parent category icon with click-to-expand
+                <div className="flex justify-center">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-full h-12 rounded-lg hover:bg-muted/50 hover:text-white transition-colors duration-200"
+                        onClick={() => {
+                          // Click-to-expand: Always expand sidebar first
+                          onToggleCollapse();
+                          // Then open this category's section
+                          if (!openSections.includes(category.id)) {
+                            toggleSection(category.id);
+                          }
+                        }}
+                      >
+                        <category.icon className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="font-medium">
+                      {category.label}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               ) : (
                 // Expanded mode: full menu with collapsible sections
