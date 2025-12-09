@@ -240,6 +240,20 @@ export default function NotificationSettingsTab() {
   // Trigger Map Modal State
   const [showTriggerMap, setShowTriggerMap] = useState(false);
 
+  // Diagnostic State
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
+  const [diagnosticResults, setDiagnosticResults] = useState<Array<{
+    event: string;
+    label: string;
+    emailEnabled: boolean;
+    whatsappEnabled: boolean;
+    emailTarget: string;
+    whatsappTarget: string;
+    templateFound: boolean;
+    conflict: string | null;
+  }>>([]);
+
   // Confirmation Dialog State
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [confirmationType, setConfirmationType] = useState<'whatsapp' | 'email' | null>(null);
@@ -595,6 +609,94 @@ export default function NotificationSettingsTab() {
         {icons[level] || ''} {levelConfig.label}
       </Badge>
     );
+  };
+
+  // Diagnostic Function
+  const runDiagnostic = async () => {
+    setDiagnosticLoading(true);
+    setDiagnosticResults([]);
+    
+    try {
+      const events = [
+        { type: 'new_document', label: 'Novo Documento RAG' },
+        { type: 'document_failed', label: 'Falha no Processamento' },
+        { type: 'new_contact_message', label: 'Nova Mensagem de Contato' },
+        { type: 'security_alert', label: 'Alerta de Segurança' },
+        { type: 'ml_accuracy_drop', label: 'Queda de Precisão ML' },
+        { type: 'new_conversation', label: 'Nova Conversa' },
+        { type: 'password_reset', label: 'Recuperação de Senha' },
+        { type: 'login_alert', label: 'Alerta de Login' },
+        { type: 'sentiment_alert', label: 'Alerta de Sentimento' },
+        { type: 'taxonomy_anomaly', label: 'Anomalia de Taxonomia' }
+      ];
+
+      const results = [];
+
+      // Get admin settings once
+      const { data: settings } = await supabase
+        .from('admin_settings')
+        .select('gmail_notification_email, whatsapp_target_phone, email_global_enabled, whatsapp_global_enabled')
+        .single();
+
+      for (const event of events) {
+        // Check preferences
+        const { data: pref } = await supabase
+          .from('notification_preferences')
+          .select('email_enabled, whatsapp_enabled')
+          .eq('event_type', event.type)
+          .single();
+
+        // Check template
+        const { data: template } = await supabase
+          .from('notification_templates')
+          .select('id')
+          .eq('event_type', event.type)
+          .single();
+
+        const emailGlobalEnabled = settings?.email_global_enabled !== false;
+        const whatsappGlobalEnabled = settings?.whatsapp_global_enabled || false;
+
+        // Determine conflicts
+        let conflict: string | null = null;
+        if (!pref) {
+          conflict = 'Preferência não encontrada';
+        } else if (pref.email_enabled && !settings?.gmail_notification_email) {
+          conflict = 'Email habilitado mas endereço não configurado';
+        } else if (pref.whatsapp_enabled && !settings?.whatsapp_target_phone) {
+          conflict = 'WhatsApp habilitado mas telefone não configurado';
+        } else if (pref.email_enabled && !emailGlobalEnabled) {
+          conflict = 'Email do evento ativo mas global desabilitado';
+        } else if (pref.whatsapp_enabled && !whatsappGlobalEnabled) {
+          conflict = 'WhatsApp do evento ativo mas global desabilitado';
+        }
+
+        results.push({
+          event: event.type,
+          label: event.label,
+          emailEnabled: (pref?.email_enabled ?? false) && emailGlobalEnabled,
+          whatsappEnabled: (pref?.whatsapp_enabled ?? false) && whatsappGlobalEnabled,
+          emailTarget: settings?.gmail_notification_email || '❌ Não configurado',
+          whatsappTarget: settings?.whatsapp_target_phone || '❌ Não configurado',
+          templateFound: !!template,
+          conflict
+        });
+      }
+
+      setDiagnosticResults(results);
+      setShowDiagnostic(true);
+      
+      const conflicts = results.filter(r => r.conflict).length;
+      if (conflicts === 0) {
+        toast.success('Diagnóstico concluído - Nenhum conflito detectado');
+      } else {
+        toast.warning(`Diagnóstico concluído - ${conflicts} conflito(s) detectado(s)`);
+      }
+    } catch (error: any) {
+      console.error('Error running diagnostic:', error);
+      toast.error('Erro ao executar diagnóstico');
+    } finally {
+      setDiagnosticLoading(false);
+    }
   };
 
   // Template Modal Functions
@@ -1313,25 +1415,171 @@ export default function NotificationSettingsTab() {
             </p>
           </div>
         </div>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowTriggerMap(true)}
-                className="gap-2"
-              >
-                <Map className="h-4 w-4" />
-                Mapa de Gatilhos
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Ver todos os gatilhos de notificação do sistema</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={runDiagnostic}
+                  disabled={diagnosticLoading}
+                  className="gap-2 border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                >
+                  {diagnosticLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4" />
+                  )}
+                  Diagnóstico Geral
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Verificar configurações de todos os 10 eventos</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowTriggerMap(true)}
+                  className="gap-2"
+                >
+                  <Map className="h-4 w-4" />
+                  Mapa de Gatilhos
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Ver todos os gatilhos de notificação do sistema</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
+
+      {/* Diagnostic Results Dialog */}
+      <Dialog open={showDiagnostic} onOpenChange={setShowDiagnostic}>
+        <DialogContent className="max-w-5xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500" />
+              Diagnóstico Geral - Configurações de Notificação
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-[500px] pr-4">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Verificação de configurações para todos os 10 eventos de notificação.
+              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Evento</TableHead>
+                    <TableHead className="text-center">Email</TableHead>
+                    <TableHead className="text-center">WhatsApp</TableHead>
+                    <TableHead>Destino Email</TableHead>
+                    <TableHead>Destino WhatsApp</TableHead>
+                    <TableHead className="text-center">Template</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {diagnosticResults.map((result) => (
+                    <TableRow key={result.event}>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span>{result.label}</span>
+                          <code className="text-xs text-muted-foreground">{result.event}</code>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {result.emailEnabled ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-muted-foreground mx-auto" />
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {result.whatsappEnabled ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-muted-foreground mx-auto" />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <code className="text-xs bg-muted px-2 py-1 rounded">
+                          {result.emailTarget.length > 25 
+                            ? result.emailTarget.substring(0, 25) + '...' 
+                            : result.emailTarget}
+                        </code>
+                      </TableCell>
+                      <TableCell>
+                        <code className="text-xs bg-muted px-2 py-1 rounded">
+                          {result.whatsappTarget}
+                        </code>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {result.templateFound ? (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
+                            OK
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-muted text-muted-foreground">
+                            Padrão
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {result.conflict ? (
+                          <Badge variant="destructive" className="text-xs">
+                            ⚠️ {result.conflict}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
+                            ✅ OK
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              {diagnosticResults.length > 0 && (
+                <div className="mt-4 p-4 rounded-lg bg-muted/50 border">
+                  <h4 className="font-semibold mb-2">Resumo:</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <span>Email Ativos: {diagnosticResults.filter(r => r.emailEnabled).length}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-green-500" />
+                      <span>WhatsApp Ativos: {diagnosticResults.filter(r => r.whatsappEnabled).length}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      <span>Templates Custom: {diagnosticResults.filter(r => r.templateFound).length}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      <span>Conflitos: {diagnosticResults.filter(r => r.conflict).length}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDiagnostic(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Trigger Map Dialog */}
       <Dialog open={showTriggerMap} onOpenChange={setShowTriggerMap}>

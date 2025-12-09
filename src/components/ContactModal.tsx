@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Mail, Send, Loader2, User, MessageSquare, CheckCircle2, XCircle, X, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { notifyNewContactMessage } from "@/lib/notification-dispatcher";
 
 interface ContactModalProps {
   children: React.ReactNode;
@@ -215,6 +216,15 @@ export const ContactModal = ({ children }: ContactModalProps) => {
       }
 
       if (error) throw error;
+
+      // Dispatch admin notification via centralized system (logs + WhatsApp)
+      try {
+        await notifyNewContactMessage(email, message.substring(0, 100));
+        console.log('[ContactModal] Admin notification dispatched via centralized system');
+      } catch (notifyError) {
+        console.error('[ContactModal] Failed to dispatch admin notification:', notifyError);
+        // Don't fail the main flow if notification fails
+      }
 
       // Set rate limit after successful send
       setLastSubmitTime(Date.now());
