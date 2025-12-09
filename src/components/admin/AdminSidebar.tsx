@@ -315,7 +315,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             variant="ghost"
             size="icon"
             onClick={onToggleCollapse}
-            className="group shrink-0 h-10 w-10 rounded-full hover:bg-[#00D4FF]/10 transition-all duration-300"
+            className="group shrink-0 h-10 w-10 rounded-full hover:bg-[#00D4FF]/10 hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-300"
           >
             <div className="relative w-5 h-5">
               <Menu className={`w-5 h-5 absolute inset-0 transition-all duration-300 group-hover:text-[#00D4FF] ${isCollapsed ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'}`} />
