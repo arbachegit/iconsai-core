@@ -245,7 +245,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       items: [
         { id: "notification-settings" as TabType, label: "Notificação", icon: Bell },
         { id: "architecture" as TabType, label: "Arquitetura", icon: Cpu },
-        { id: "gmail" as TabType, label: "Gmail", icon: Mail },
+        { id: "gmail" as TabType, label: "E-mail", icon: Mail },
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
       ]
     }

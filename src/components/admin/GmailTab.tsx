@@ -58,7 +58,7 @@ export const GmailTab = () => {
     <div className="space-y-6">
       <div>
         <AdminTitleWithInfo
-          title="Configuração Gmail"
+          title="Configuração E-mail"
           level="h1"
           icon={Mail}
           tooltipText="Configure notificações por email"
