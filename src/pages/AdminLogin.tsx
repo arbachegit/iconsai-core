@@ -65,15 +65,14 @@ const AdminLogin = () => {
 
       if (error) throw error;
 
-      // Check if user has admin role
+      // Check if user has admin OR superadmin role
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", data.user.id)
-        .eq("role", "admin")
-        .maybeSingle();
+        .in("role", ["admin", "superadmin"]);
 
-      if (!roleData) {
+      if (!roleData || roleData.length === 0) {
         await supabase.auth.signOut();
         throw new Error("Acesso negado. Você não tem permissões de administrador.");
       }
