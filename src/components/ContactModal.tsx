@@ -1,14 +1,13 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Mail, Send, Loader2, User, MessageSquare, CheckCircle2, XCircle, X, Clock } from "lucide-react";
+import { Mail, Send, Loader2, User, MessageSquare, CheckCircle2, XCircle, Clock, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { notifyNewContactMessage } from "@/lib/notification-dispatcher";
 
 interface ContactModalProps {
   children: React.ReactNode;
@@ -105,126 +104,21 @@ export const ContactModal = ({ children }: ContactModalProps) => {
     setIsSending(true);
 
     try {
-      // Save contact message to database first
-      const { data: contactMessage, error: insertError } = await supabase
-        .from('contact_messages')
-        .insert({
+      // Call the centralized contact-form-handler Edge Function
+      // This handles: DB insert, emails, and notification dispatch with logging
+      const { data, error } = await supabase.functions.invoke('contact-form-handler', {
+        body: {
           email,
           subject,
           message,
-          status: 'pending',
           metadata: {
             user_agent: navigator.userAgent,
             language: navigator.language,
-            timestamp: new Date().toISOString()
           }
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('Error saving contact message:', insertError);
-      }
-
-      const { data: settings } = await supabase
-        .from('admin_settings')
-        .select('gmail_notification_email')
-        .single();
-
-      const recipientEmail = settings?.gmail_notification_email || 'suporte@knowyou.app';
-
-      // Send notification to support team
-      const { error } = await supabase.functions.invoke('send-email', {
-        body: {
-          to: recipientEmail,
-          subject: `[Contato KnowYOU] ${subject}`,
-          body: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
-              <!-- Header -->
-              <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
-                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">Health AI App</h1>
-              </div>
-              
-              <!-- Corpo -->
-              <div style="padding: 30px; background: #ffffff;">
-                <h2 style="color: #1e3a5f; margin-top: 0;">Nova mensagem de contato</h2>
-                <p style="color: #334155;"><strong>De:</strong> ${email}</p>
-                <p style="color: #334155;"><strong>Assunto:</strong> ${subject}</p>
-                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-                <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #0ea5e9;">
-                  <p style="color: #334155; margin: 0; white-space: pre-line;">${message.replace(/\n/g, '<br />')}</p>
-                </div>
-              </div>
-              
-              <!-- Footer -->
-              <div style="text-align: center; padding: 16px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
-                <p style="color: #64748b; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} Health AI App
-                </p>
-              </div>
-            </div>
-          `,
-          replyTo: email,
         },
       });
-
-      // Send confirmation email to the client
-      await supabase.functions.invoke('send-email', {
-        body: {
-          to: email,
-          subject: `Recebemos sua mensagem - ${subject}`,
-          body: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
-              <!-- Header -->
-              <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
-                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">Health AI App</h1>
-              </div>
-              
-              <!-- Corpo -->
-              <div style="padding: 30px; background: #ffffff;">
-                <h2 style="color: #0ea5e9; margin-top: 0;">Obrigado por entrar em contato!</h2>
-                <p style="color: #334155;">Olá,</p>
-                <p style="color: #334155;">Recebemos sua mensagem e nossa equipe entrará em contato em breve.</p>
-                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-                <p style="color: #334155;"><strong>Resumo da sua mensagem:</strong></p>
-                <p style="color: #334155;"><strong>Assunto:</strong> ${subject}</p>
-                <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #0ea5e9;">
-                  <p style="color: #334155; margin: 0; white-space: pre-line;">${message}</p>
-                </div>
-              </div>
-              
-              <!-- Footer -->
-              <div style="text-align: center; padding: 16px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
-                <p style="color: #64748b; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} Health AI App
-                </p>
-              </div>
-            </div>
-          `,
-        },
-      });
-
-      // Update contact message status
-      if (contactMessage?.id) {
-        await supabase
-          .from('contact_messages')
-          .update({ 
-            status: error ? 'failed' : 'sent',
-            sent_at: error ? null : new Date().toISOString()
-          })
-          .eq('id', contactMessage.id);
-      }
 
       if (error) throw error;
-
-      // Dispatch admin notification via centralized system (logs + WhatsApp)
-      try {
-        await notifyNewContactMessage(email, message.substring(0, 100));
-        console.log('[ContactModal] Admin notification dispatched via centralized system');
-      } catch (notifyError) {
-        console.error('[ContactModal] Failed to dispatch admin notification:', notifyError);
-        // Don't fail the main flow if notification fails
-      }
 
       // Set rate limit after successful send
       setLastSubmitTime(Date.now());
