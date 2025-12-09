@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
 
 // Eager load only DashboardTab (first view)
 import { DashboardTab } from "@/components/admin/DashboardTab";
@@ -270,77 +269,73 @@ const Admin = () => {
     );
   };
 
+  // Dynamic margin based on sidebar state
+  const sidebarWidth = isSidebarCollapsed ? 'ml-[72px]' : 'ml-[280px]';
+
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Fixed Global Header */}
-      <header 
-        className="fixed top-0 left-0 right-0 h-12 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-primary/20 z-30 flex items-center justify-between px-4 transition-all duration-300 ease-in-out"
-      >
-        {/* Extreme Left: Logo + Admin Panel */}
-        <div className="flex items-center gap-3">
-          <img 
-            src={knowyouAdminLogo} 
-            alt="KnowYOU" 
-            className="h-8 w-8 rounded-full object-cover"
-          />
-          <span className="text-sm font-medium text-foreground whitespace-nowrap">{t('admin.panel')}</span>
-        </div>
-        
-        {/* Spacer to push right elements */}
-        <div className="flex-1" />
+    <div className="min-h-screen bg-background">
+      {/* Sidebar - Fixed full height */}
+      <AdminSidebar 
+        activeTab={activeTab} 
+        onTabChange={handleTabChange} 
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+      />
 
-        {/* Far Right: Notification + Near Right: Language Selector */}
-        <div className="flex items-center gap-3">
-          {/* Language Selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-                disabled={isChangingLanguage}
-              >
-                {isChangingLanguage ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Languages className="h-4 w-4" />
-                    <span className="text-xs font-semibold">{currentLanguage.abbr}</span>
-                  </>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[140px]">
-              {languages.map((lang) => (
-                <DropdownMenuItem
-                  key={lang.code}
-                  onClick={() => handleLanguageChange(lang.code)}
-                  className={`flex items-center gap-3 cursor-pointer ${
-                    i18n.language === lang.code ? "bg-accent" : ""
-                  }`}
+      {/* Main content wrapper with dynamic left margin */}
+      <div className={`${sidebarWidth} transition-all duration-300 ease-in-out min-h-screen flex flex-col`}>
+        {/* Header - inside main content area, not overlapping sidebar */}
+        <header className="h-14 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-border sticky top-0 z-30 flex items-center justify-between px-6">
+          {/* Left: Admin Panel title */}
+          <span className="text-sm font-medium text-foreground whitespace-nowrap">
+            {t('admin.panel')}
+          </span>
+          
+          {/* Right: Language + Notifications */}
+          <div className="flex items-center gap-3">
+            {/* Language Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground rounded-full"
+                  disabled={isChangingLanguage}
                 >
-                  <span className="text-xs font-bold text-muted-foreground w-5">{lang.abbr}</span>
-                  <span>{lang.label}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  {isChangingLanguage ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Languages className="h-4 w-4" />
+                      <span className="text-xs font-semibold">{currentLanguage.abbr}</span>
+                    </>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[140px]">
+                {languages.map((lang) => (
+                  <DropdownMenuItem
+                    key={lang.code}
+                    onClick={() => handleLanguageChange(lang.code)}
+                    className={`flex items-center gap-3 cursor-pointer ${
+                      i18n.language === lang.code ? "bg-accent" : ""
+                    }`}
+                  >
+                    <span className="text-xs font-bold text-muted-foreground w-5">{lang.abbr}</span>
+                    <span>{lang.label}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <div className="h-6 w-px bg-border/40" />
+            <div className="h-6 w-px bg-border/40" />
 
-          {/* Notifications - Far Right */}
-          <NotificationsPanel />
-        </div>
-      </header>
+            {/* Notifications */}
+            <NotificationsPanel />
+          </div>
+        </header>
 
-      <div className="flex flex-1 pt-12">
-        <AdminSidebar 
-          activeTab={activeTab} 
-          onTabChange={handleTabChange} 
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        />
-        
+        {/* Main content */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-8">
             <div className="max-w-7xl mx-auto">
