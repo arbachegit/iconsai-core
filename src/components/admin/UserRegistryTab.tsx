@@ -63,15 +63,38 @@ interface UserRegistration {
 }
 
 interface CSVRow {
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  phone?: string;
-  institution_work?: string;
-  institution_study?: string;
-  role?: string;
   [key: string]: string | undefined;
 }
+
+interface FieldMapping {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  institution_work: string;
+  institution_study: string;
+  role: string;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+const REQUIRED_FIELDS = ["first_name", "last_name", "email"] as const;
+const OPTIONAL_FIELDS = ["phone", "institution_work", "institution_study", "role"] as const;
+const ALL_FIELDS = [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS] as const;
+
+const FIELD_LABELS: Record<string, string> = {
+  first_name: "Nome",
+  last_name: "Sobrenome",
+  email: "Email",
+  phone: "Telefone",
+  institution_work: "Instituição Trabalho",
+  institution_study: "Instituição Estudo",
+  role: "Role",
+};
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 20, 50];
 
@@ -104,8 +127,19 @@ export const UserRegistryTab = () => {
   
   // CSV Import states
   const [csvData, setCsvData] = useState<CSVRow[]>([]);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [fieldMapping, setFieldMapping] = useState<FieldMapping>({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    institution_work: "",
+    institution_study: "",
+    role: "",
+  });
   const [csvImportStatus, setCsvImportStatus] = useState<"approved" | "pending">("pending");
   const [isImporting, setIsImporting] = useState(false);
+  const [showFieldMapping, setShowFieldMapping] = useState(false);
 
   // Fetch all registrations
   const { data: registrations, isLoading, refetch } = useQuery({
@@ -268,6 +302,39 @@ export const UserRegistryTab = () => {
     }
   });
 
+  // Auto-detect field mapping from CSV headers
+  const autoDetectMapping = useCallback((headers: string[]) => {
+    const mapping: FieldMapping = {
+      first_name: "",
+      last_name: "",
+      email: "",
+      phone: "",
+      institution_work: "",
+      institution_study: "",
+      role: "",
+    };
+
+    const patterns: Record<keyof FieldMapping, RegExp[]> = {
+      first_name: [/^(first_?name|nome|primeiro_?nome)$/i],
+      last_name: [/^(last_?name|sobrenome|último_?nome|surname)$/i],
+      email: [/^(email|e-?mail|mail)$/i],
+      phone: [/^(phone|telefone|tel|celular|mobile)$/i],
+      institution_work: [/^(institution_?work|instituição_?trabalho|empresa|company|work)$/i],
+      institution_study: [/^(institution_?study|instituição_?estudo|universidade|university|study)$/i],
+      role: [/^(role|papel|função)$/i],
+    };
+
+    headers.forEach(header => {
+      (Object.keys(patterns) as (keyof FieldMapping)[]).forEach(field => {
+        if (!mapping[field] && patterns[field].some(pattern => pattern.test(header))) {
+          mapping[field] = header;
+        }
+      });
+    });
+
+    return mapping;
+  }, []);
+
   // CSV Drop handler
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -277,14 +344,21 @@ export const UserRegistryTab = () => {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
+        const headers = results.meta.fields || [];
+        setCsvHeaders(headers);
         setCsvData(results.data);
+        
+        const detectedMapping = autoDetectMapping(headers);
+        setFieldMapping(detectedMapping);
+        setShowFieldMapping(true);
+        
         toast.success(`${results.data.length} registros encontrados no CSV`);
       },
       error: (error) => {
         toast.error(`Erro ao ler CSV: ${error.message}`);
       }
     });
-  }, []);
+  }, [autoDetectMapping]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -295,18 +369,82 @@ export const UserRegistryTab = () => {
     maxFiles: 1,
   });
 
+  // Validate row based on mapping
+  const validateRow = useCallback((row: CSVRow): ValidationResult => {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // Check required fields
+    REQUIRED_FIELDS.forEach(field => {
+      const csvColumn = fieldMapping[field];
+      if (!csvColumn || !row[csvColumn]?.trim()) {
+        errors.push(`${FIELD_LABELS[field]} é obrigatório`);
+      }
+    });
+
+    // Validate email format
+    const emailColumn = fieldMapping.email;
+    if (emailColumn && row[emailColumn]) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(row[emailColumn])) {
+        errors.push("Email inválido");
+      }
+    }
+
+    // Check for empty optional fields (warnings only)
+    OPTIONAL_FIELDS.forEach(field => {
+      if (field !== "role") {
+        const csvColumn = fieldMapping[field];
+        if (!csvColumn || !row[csvColumn]?.trim()) {
+          warnings.push(`${FIELD_LABELS[field]} não mapeado`);
+        }
+      }
+    });
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }, [fieldMapping]);
+
+  // Get mapped value from row
+  const getMappedValue = useCallback((row: CSVRow, field: keyof FieldMapping): string => {
+    const column = fieldMapping[field];
+    return column ? (row[column] || "") : "";
+  }, [fieldMapping]);
+
+  // Validation summary
+  const validationSummary = useMemo(() => {
+    if (csvData.length === 0) return { valid: 0, invalid: 0, total: 0 };
+    
+    let valid = 0;
+    let invalid = 0;
+    
+    csvData.forEach(row => {
+      const result = validateRow(row);
+      if (result.isValid) valid++;
+      else invalid++;
+    });
+    
+    return { valid, invalid, total: csvData.length };
+  }, [csvData, validateRow]);
+
   // Import CSV mutation
   const importCsvMutation = useMutation({
     mutationFn: async () => {
       setIsImporting(true);
-      const registrationsToInsert = csvData.map(row => ({
-        first_name: row.first_name || row["Nome"] || "",
-        last_name: row.last_name || row["Sobrenome"] || "",
-        email: row.email || row["Email"] || "",
-        phone: row.phone || row["Telefone"] || null,
-        institution_work: row.institution_work || row["Instituição Trabalho"] || null,
-        institution_study: row.institution_study || row["Instituição Estudo"] || null,
-        role: (row.role || "user") as AppRole,
+      
+      const validRows = csvData.filter(row => validateRow(row).isValid);
+      
+      const registrationsToInsert = validRows.map(row => ({
+        first_name: getMappedValue(row, "first_name"),
+        last_name: getMappedValue(row, "last_name"),
+        email: getMappedValue(row, "email"),
+        phone: getMappedValue(row, "phone") || null,
+        institution_work: getMappedValue(row, "institution_work") || null,
+        institution_study: getMappedValue(row, "institution_study") || null,
+        role: (getMappedValue(row, "role") || "user") as AppRole,
         status: csvImportStatus,
         mass_import_at: new Date().toISOString(),
       }));
@@ -625,74 +763,227 @@ export const UserRegistryTab = () => {
                 )}
               </div>
 
-              {/* CSV Preview */}
+              {/* Field Mapping Section */}
+              {showFieldMapping && csvHeaders.length > 0 && (
+                <Card className="border-blue-500/30 bg-blue-500/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4 text-blue-400" />
+                      Mapeamento de Colunas
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Associe cada coluna do CSV aos campos do sistema. Campos obrigatórios marcados com *
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {ALL_FIELDS.map((field) => {
+                        const isRequired = REQUIRED_FIELDS.includes(field as typeof REQUIRED_FIELDS[number]);
+                        const isMapped = !!fieldMapping[field];
+                        
+                        return (
+                          <div key={field} className="space-y-1.5">
+                            <Label className="flex items-center gap-1 text-sm">
+                              {FIELD_LABELS[field]}
+                              {isRequired && <span className="text-red-400">*</span>}
+                              {isMapped && <Check className="w-3 h-3 text-emerald-400" />}
+                            </Label>
+                            <Select
+                              value={fieldMapping[field] || ""}
+                              onValueChange={(value) => setFieldMapping(prev => ({
+                                ...prev,
+                                [field]: value === "_none_" ? "" : value
+                              }))}
+                            >
+                              <SelectTrigger className={`text-xs ${!isMapped && isRequired ? "border-red-500/50" : ""}`}>
+                                <SelectValue placeholder="Selecionar coluna..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="_none_">-- Não mapear --</SelectItem>
+                                {csvHeaders.map(header => (
+                                  <SelectItem key={header} value={header}>
+                                    {header}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Detected Columns Info */}
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
+                      <span className="text-xs text-muted-foreground">Colunas detectadas:</span>
+                      {csvHeaders.map(header => (
+                        <Badge key={header} variant="outline" className="text-xs">
+                          {header}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Validation Summary & Import Options */}
               {csvData.length > 0 && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">Preview ({csvData.length} registros)</h3>
-                    <div className="flex items-center gap-4">
-                      <Label>Importar como:</Label>
+                  {/* Validation Summary */}
+                  <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg bg-muted/30 border">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${validationSummary.valid > 0 ? "bg-emerald-500" : "bg-muted"}`} />
+                      <span className="text-sm">
+                        <span className="font-semibold text-emerald-400">{validationSummary.valid}</span> válidos
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${validationSummary.invalid > 0 ? "bg-red-500" : "bg-muted"}`} />
+                      <span className="text-sm">
+                        <span className="font-semibold text-red-400">{validationSummary.invalid}</span> inválidos
+                      </span>
+                    </div>
+                    <div className="flex-1" />
+                    <div className="flex items-center gap-3">
+                      <Label className="text-sm">Importar como:</Label>
                       <Select value={csvImportStatus} onValueChange={(v) => setCsvImportStatus(v as "pending" | "approved")}>
                         <SelectTrigger className="w-[140px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pending">Pendente</SelectItem>
-                          <SelectItem value="approved">Aprovado</SelectItem>
+                          <SelectItem value="pending">
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-3 h-3 text-amber-400" />
+                              Pendente
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="approved">
+                            <div className="flex items-center gap-2">
+                              <Check className="w-3 h-3 text-emerald-400" />
+                              Aprovado
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
-                  
-                  <div className="max-h-[300px] overflow-auto border rounded-lg">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nome</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Telefone</TableHead>
-                          <TableHead>Trabalho</TableHead>
-                          <TableHead>Estudo</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {csvData.slice(0, 10).map((row, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>{row.first_name || row["Nome"]} {row.last_name || row["Sobrenome"]}</TableCell>
-                            <TableCell>{row.email || row["Email"]}</TableCell>
-                            <TableCell>{row.phone || row["Telefone"] || "-"}</TableCell>
-                            <TableCell>{row.institution_work || row["Instituição Trabalho"] || "-"}</TableCell>
-                            <TableCell>{row.institution_study || row["Instituição Estudo"] || "-"}</TableCell>
+
+                  {/* Preview Table */}
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-sm flex items-center gap-2">
+                      Preview dos Dados
+                      <Badge variant="secondary">{csvData.length} registros</Badge>
+                    </h3>
+                    <div className="max-h-[350px] overflow-auto border rounded-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[60px]">Status</TableHead>
+                            <TableHead>Nome</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Telefone</TableHead>
+                            <TableHead>Trabalho</TableHead>
+                            <TableHead>Estudo</TableHead>
+                            <TableHead>Role</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    {csvData.length > 10 && (
-                      <p className="text-center py-2 text-sm text-muted-foreground">
-                        ... e mais {csvData.length - 10} registros
-                      </p>
-                    )}
+                        </TableHeader>
+                        <TableBody>
+                          {csvData.slice(0, 20).map((row, idx) => {
+                            const validation = validateRow(row);
+                            return (
+                              <TableRow 
+                                key={idx} 
+                                className={validation.isValid ? "" : "bg-red-500/5"}
+                              >
+                                <TableCell>
+                                  {validation.isValid ? (
+                                    <Check className="w-4 h-4 text-emerald-500" />
+                                  ) : (
+                                    <div className="group relative">
+                                      <AlertCircle className="w-4 h-4 text-red-500" />
+                                      <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 hidden group-hover:block">
+                                        <div className="bg-popover border rounded-md p-2 shadow-lg min-w-[200px]">
+                                          {validation.errors.map((err, i) => (
+                                            <p key={i} className="text-xs text-red-400">{err}</p>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {getMappedValue(row, "first_name")} {getMappedValue(row, "last_name")}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {getMappedValue(row, "email") || (
+                                    <span className="text-red-400 text-xs">Vazio</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {getMappedValue(row, "phone") || "-"}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {getMappedValue(row, "institution_work") || "-"}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {getMappedValue(row, "institution_study") || "-"}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="text-xs">
+                                    {getMappedValue(row, "role") || "user"}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                      {csvData.length > 20 && (
+                        <p className="text-center py-2 text-sm text-muted-foreground border-t">
+                          ... e mais {csvData.length - 20} registros
+                        </p>
+                      )}
+                    </div>
                   </div>
                   
-                  <div className="flex items-center gap-4">
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-4 pt-2">
                     <Button
                       onClick={() => importCsvMutation.mutate()}
-                      disabled={isImporting}
+                      disabled={isImporting || validationSummary.valid === 0}
                       className="gap-2"
                     >
                       {isImporting ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <Upload className="w-4 h-4" />
+                        <UserPlus className="w-4 h-4" />
                       )}
-                      Importar {csvData.length} Registros
+                      Importar {validationSummary.valid} Registros Válidos
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => setCsvData([])}
+                      onClick={() => {
+                        setCsvData([]);
+                        setCsvHeaders([]);
+                        setShowFieldMapping(false);
+                        setFieldMapping({
+                          first_name: "",
+                          last_name: "",
+                          email: "",
+                          phone: "",
+                          institution_work: "",
+                          institution_study: "",
+                          role: "",
+                        });
+                      }}
                     >
                       Limpar
                     </Button>
+                    {validationSummary.invalid > 0 && (
+                      <p className="text-xs text-amber-400 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {validationSummary.invalid} registro(s) inválido(s) serão ignorados
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
