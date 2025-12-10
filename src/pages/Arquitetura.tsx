@@ -188,29 +188,33 @@ const Arquitetura = () => {
     </header>
   );
 
-  // Tech icons background for diagram
+  // Tech icons background for diagram - slow blinking with varied sizes
   const renderDiagramBackground = () => {
     const icons = [
-      { Icon: Star, x: 5, y: 15, size: 'w-4 h-4', color: 'text-yellow-400', delay: 0 },
-      { Icon: Lightbulb, x: 92, y: 20, size: 'w-6 h-6', color: 'text-amber-400', delay: 0.5 },
-      { Icon: Code, x: 15, y: 75, size: 'w-5 h-5', color: 'text-cyan-400', delay: 1 },
-      { Icon: Database, x: 88, y: 70, size: 'w-7 h-7', color: 'text-violet-400', delay: 1.5 },
-      { Icon: Settings, x: 50, y: 10, size: 'w-4 h-4', color: 'text-slate-400', delay: 2 },
-      { Icon: Zap, x: 8, y: 45, size: 'w-5 h-5', color: 'text-yellow-300', delay: 0.3 },
-      { Icon: Star, x: 75, y: 85, size: 'w-6 h-6', color: 'text-pink-400', delay: 0.8 },
-      { Icon: Lightbulb, x: 25, y: 25, size: 'w-4 h-4', color: 'text-amber-300', delay: 1.2 },
-      { Icon: Code, x: 82, y: 40, size: 'w-4 h-4', color: 'text-cyan-300', delay: 1.8 },
-      { Icon: Database, x: 12, y: 60, size: 'w-5 h-5', color: 'text-violet-300', delay: 0.6 },
-      { Icon: Settings, x: 70, y: 15, size: 'w-5 h-5', color: 'text-slate-300', delay: 2.5 },
-      { Icon: Zap, x: 40, y: 80, size: 'w-6 h-6', color: 'text-yellow-400', delay: 0.4 },
-      { Icon: Star, x: 60, y: 30, size: 'w-3 h-3', color: 'text-yellow-200', delay: 1.4 },
-      { Icon: Lightbulb, x: 35, y: 65, size: 'w-5 h-5', color: 'text-amber-500', delay: 2.2 },
-      { Icon: Code, x: 55, y: 75, size: 'w-6 h-6', color: 'text-cyan-500', delay: 0.9 },
-      { Icon: Database, x: 45, y: 35, size: 'w-4 h-4', color: 'text-violet-500', delay: 1.6 },
-      { Icon: Settings, x: 20, y: 85, size: 'w-6 h-6', color: 'text-slate-500', delay: 2.8 },
-      { Icon: Zap, x: 78, y: 55, size: 'w-4 h-4', color: 'text-yellow-500', delay: 1.1 },
-      { Icon: Star, x: 30, y: 40, size: 'w-5 h-5', color: 'text-pink-300', delay: 2.0 },
-      { Icon: Lightbulb, x: 65, y: 60, size: 'w-4 h-4', color: 'text-amber-200', delay: 0.7 },
+      { Icon: Star, x: 5, y: 15, size: 'w-3 h-3', color: 'text-yellow-400', dur: 4 },
+      { Icon: Lightbulb, x: 92, y: 20, size: 'w-8 h-8', color: 'text-amber-400', dur: 5 },
+      { Icon: Code, x: 15, y: 75, size: 'w-5 h-5', color: 'text-cyan-400', dur: 6 },
+      { Icon: Database, x: 88, y: 70, size: 'w-10 h-10', color: 'text-violet-400', dur: 4.5 },
+      { Icon: Settings, x: 50, y: 10, size: 'w-4 h-4', color: 'text-slate-400', dur: 5.5 },
+      { Icon: Zap, x: 8, y: 45, size: 'w-6 h-6', color: 'text-yellow-300', dur: 3.5 },
+      { Icon: Star, x: 75, y: 85, size: 'w-7 h-7', color: 'text-pink-400', dur: 4.2 },
+      { Icon: Lightbulb, x: 25, y: 25, size: 'w-3 h-3', color: 'text-amber-300', dur: 5.8 },
+      { Icon: Code, x: 82, y: 40, size: 'w-4 h-4', color: 'text-cyan-300', dur: 4.8 },
+      { Icon: Database, x: 12, y: 60, size: 'w-6 h-6', color: 'text-violet-300', dur: 5.2 },
+      { Icon: Settings, x: 70, y: 15, size: 'w-8 h-8', color: 'text-slate-300', dur: 6.5 },
+      { Icon: Zap, x: 40, y: 80, size: 'w-9 h-9', color: 'text-yellow-400', dur: 3.8 },
+      { Icon: Star, x: 60, y: 30, size: 'w-2 h-2', color: 'text-yellow-200', dur: 4.4 },
+      { Icon: Lightbulb, x: 35, y: 65, size: 'w-7 h-7', color: 'text-amber-500', dur: 5.4 },
+      { Icon: Code, x: 55, y: 75, size: 'w-8 h-8', color: 'text-cyan-500', dur: 4.6 },
+      { Icon: Database, x: 45, y: 35, size: 'w-3 h-3', color: 'text-violet-500', dur: 6.2 },
+      { Icon: Settings, x: 20, y: 85, size: 'w-5 h-5', color: 'text-slate-500', dur: 5.6 },
+      { Icon: Zap, x: 78, y: 55, size: 'w-4 h-4', color: 'text-yellow-500', dur: 4.1 },
+      { Icon: Star, x: 30, y: 40, size: 'w-6 h-6', color: 'text-pink-300', dur: 5.3 },
+      { Icon: Lightbulb, x: 65, y: 60, size: 'w-5 h-5', color: 'text-amber-200', dur: 4.7 },
+      { Icon: Star, x: 95, y: 50, size: 'w-4 h-4', color: 'text-yellow-300', dur: 5.1 },
+      { Icon: Code, x: 3, y: 30, size: 'w-7 h-7', color: 'text-cyan-200', dur: 4.3 },
+      { Icon: Zap, x: 58, y: 15, size: 'w-3 h-3', color: 'text-yellow-200', dur: 3.9 },
+      { Icon: Database, x: 85, y: 25, size: 'w-5 h-5', color: 'text-violet-200', dur: 5.7 },
     ];
 
     return (
@@ -218,19 +222,23 @@ const Arquitetura = () => {
         {icons.map((item, i) => (
           <div
             key={`tech-icon-${i}`}
-            className="absolute"
-            style={{ left: `${item.x}%`, top: `${item.y}%` }}
+            className="absolute transition-opacity"
+            style={{ 
+              left: `${item.x}%`, 
+              top: `${item.y}%`,
+              animation: `slowBlink ${item.dur}s ease-in-out infinite`,
+              animationDelay: `${i * 0.3}s`
+            }}
           >
-            <item.Icon 
-              className={`${item.size} ${item.color} animate-pulse`}
-              style={{ 
-                animationDelay: `${item.delay}s`,
-                animationDuration: `${2 + (i % 3)}s`,
-                opacity: 0.4 + (i % 5) * 0.1
-              }}
-            />
+            <item.Icon className={`${item.size} ${item.color}`} />
           </div>
         ))}
+        <style>{`
+          @keyframes slowBlink {
+            0%, 100% { opacity: 0.15; }
+            50% { opacity: 0.6; }
+          }
+        `}</style>
       </div>
     );
   };
@@ -529,22 +537,22 @@ const Arquitetura = () => {
               <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
             </path>
 
-            {/* Element 1: Badge "Prompt" - start at 0s */}
+            {/* Element 1: Badge "Prompt" - start at 0s, dur 3s */}
             <g>
-              <animateMotion dur="1s" begin="0s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="3s" begin="0s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="0s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="0s" repeatCount="indefinite" />
               <rect x="-38" y="-12" width="76" height="24" rx="12" fill="#ec4899" opacity="0.95" />
               <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Prompt</text>
             </g>
             
-            {/* Element 2: MessageCircle - start at 1s */}
+            {/* Element 2: MessageCircle - start at 3s */}
             <g>
-              <animateMotion dur="1s" begin="1s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="3s" begin="3s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="1s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="3s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <MessageCircle className="w-5 h-5 text-pink-300 drop-shadow-[0_0_8px_rgba(236,72,153,0.9)]" />
@@ -552,22 +560,22 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
             
-            {/* Element 3: Badge "Palavra" - start at 2s */}
+            {/* Element 3: Badge "Palavra" - start at 6s */}
             <g>
-              <animateMotion dur="1s" begin="2s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="3s" begin="6s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="2s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="6s" repeatCount="indefinite" />
               <rect x="-40" y="-12" width="80" height="24" rx="12" fill="#a855f7" opacity="0.95" />
               <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Palavra</text>
             </g>
             
-            {/* Element 4: MessageCircle - start at 3s */}
+            {/* Element 4: MessageCircle - start at 9s */}
             <g>
-              <animateMotion dur="1s" begin="3s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="3s" begin="9s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="3s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="9s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <MessageCircle className="w-5 h-5 text-violet-300 drop-shadow-[0_0_8px_rgba(167,139,250,0.9)]" />
@@ -575,22 +583,22 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
             
-            {/* Element 5: Badge "Dados" - start at 4s */}
+            {/* Element 5: Badge "Dados" - start at 12s */}
             <g>
-              <animateMotion dur="1s" begin="4s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="3s" begin="12s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="4s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="12s" repeatCount="indefinite" />
               <rect x="-32" y="-12" width="64" height="24" rx="12" fill="#8b5cf6" opacity="0.95" />
               <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Dados</text>
             </g>
             
-            {/* Element 6: MessageCircle - start at 5s */}
+            {/* Element 6: MessageCircle - start at 15s */}
             <g>
-              <animateMotion dur="1s" begin="5s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="3s" begin="15s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="5s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="15s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <MessageCircle className="w-5 h-5 text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.9)]" />
@@ -623,22 +631,22 @@ const Arquitetura = () => {
               <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
             </path>
 
-            {/* Element 1: Badge "Valor" - start at 0s */}
+            {/* Element 1: Badge "Valor" - start at 0s, dur 3s */}
             <g>
-              <animateMotion dur="1s" begin="0s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="3s" begin="0s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="0s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="0s" repeatCount="indefinite" />
               <rect x="-28" y="-12" width="56" height="24" rx="12" fill="#06b6d4" opacity="0.95" />
               <text x="0" y="5" textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="600">Valor</text>
             </g>
             
-            {/* Element 2: Sparkles - start at 1s */}
+            {/* Element 2: Sparkles - start at 3s */}
             <g>
-              <animateMotion dur="1s" begin="1s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="3s" begin="3s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="1s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="3s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.9)]" />
@@ -646,22 +654,22 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
             
-            {/* Element 3: Badge "Solução" - start at 2s */}
+            {/* Element 3: Badge "Solução" - start at 6s */}
             <g>
-              <animateMotion dur="1s" begin="2s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="3s" begin="6s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="2s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="6s" repeatCount="indefinite" />
               <rect x="-38" y="-12" width="76" height="24" rx="12" fill="#8b5cf6" opacity="0.95" />
               <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Solução</text>
             </g>
             
-            {/* Element 4: Sparkles - start at 3s */}
+            {/* Element 4: Sparkles - start at 9s */}
             <g>
-              <animateMotion dur="1s" begin="3s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="3s" begin="9s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="3s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="9s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-violet-300 drop-shadow-[0_0_8px_rgba(167,139,250,0.9)]" />
@@ -669,22 +677,22 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
             
-            {/* Element 5: Badge "Eficiência" - start at 4s */}
+            {/* Element 5: Badge "Eficiência" - start at 12s */}
             <g>
-              <animateMotion dur="1s" begin="4s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="3s" begin="12s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="4s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="12s" repeatCount="indefinite" />
               <rect x="-44" y="-12" width="88" height="24" rx="12" fill="#22d3ee" opacity="0.95" />
               <text x="0" y="5" textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="600">Eficiência</text>
             </g>
             
-            {/* Element 6: Sparkles - start at 5s */}
+            {/* Element 6: Sparkles - start at 15s */}
             <g>
-              <animateMotion dur="1s" begin="5s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="3s" begin="15s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="5s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="15s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-pink-300 drop-shadow-[0_0_8px_rgba(236,72,153,0.9)]" />
