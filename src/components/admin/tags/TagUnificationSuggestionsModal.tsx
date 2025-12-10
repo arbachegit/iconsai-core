@@ -12,13 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Sparkles, Merge, XCircle, ChevronRight, Brain, Target, Home, Users, FolderOpen } from "lucide-react";
 import { suggestMergeReasons, type SuggestedReasons } from "@/lib/merge-reason-heuristics";
-
-interface Tag {
-  id: string;
-  tag_name: string;
-  tag_type: string;
-  parent_tag_id: string | null;
-}
+import { calculateSimilarity } from "@/lib/string-similarity";
+import type { Tag } from "@/types/tag";
 
 interface OrphanedTag {
   id: string;
@@ -56,35 +51,7 @@ interface TagUnificationSuggestionsModalProps {
   onAdoptOrphan?: (orphanId: string, parentId: string) => void;
 }
 
-// Calcular similaridade baseada em Levenshtein
-function calculateSimilarity(a: string, b: string): number {
-  const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-  const n1 = normalize(a);
-  const n2 = normalize(b);
-  
-  if (n1 === n2) return 1;
-  
-  const matrix: number[][] = [];
-  for (let i = 0; i <= n2.length; i++) matrix[i] = [i];
-  for (let j = 0; j <= n1.length; j++) matrix[0][j] = j;
-  
-  for (let i = 1; i <= n2.length; i++) {
-    for (let j = 1; j <= n1.length; j++) {
-      if (n2.charAt(i - 1) === n1.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-  
-  const maxLen = Math.max(n1.length, n2.length);
-  return maxLen > 0 ? 1 - matrix[n2.length][n1.length] / maxLen : 1;
-}
+// Use centralized similarity calculation (returns 0-100)
 
 export const TagUnificationSuggestionsModal = ({
   open,
@@ -122,7 +89,8 @@ export const TagUnificationSuggestionsModal = ({
           results.push({ tag1, tag2, suggestion, type: 'parent' });
         } else {
           // Verificar similaridade textual mesmo sem match de heurística
-          const similarity = calculateSimilarity(tag1.tag_name, tag2.tag_name);
+          const similarityPct = calculateSimilarity(tag1.tag_name, tag2.tag_name);
+          const similarity = similarityPct / 100; // Convert to 0-1 for consistency
           if (similarity >= 0.7) {
             results.push({
               tag1,
@@ -130,7 +98,7 @@ export const TagUnificationSuggestionsModal = ({
               suggestion: {
                 ...suggestion,
                 confidence: similarity,
-                explanations: [`Similaridade textual de ${Math.round(similarity * 100)}%`]
+                explanations: [`Similaridade textual de ${Math.round(similarityPct)}%`]
               },
               type: 'parent'
             });
@@ -154,7 +122,8 @@ export const TagUnificationSuggestionsModal = ({
           if (suggestion.confidence > 0) {
             results.push({ tag1, tag2, suggestion, type: 'child' });
           } else {
-            const similarity = calculateSimilarity(tag1.tag_name, tag2.tag_name);
+            const similarityPct = calculateSimilarity(tag1.tag_name, tag2.tag_name);
+            const similarity = similarityPct / 100; // Convert to 0-1 for consistency
             if (similarity >= 0.6) {
               results.push({
                 tag1,
@@ -162,7 +131,7 @@ export const TagUnificationSuggestionsModal = ({
                 suggestion: {
                   ...suggestion,
                   confidence: similarity,
-                  explanations: [`Similaridade textual de ${Math.round(similarity * 100)}%`]
+                  explanations: [`Similaridade textual de ${Math.round(similarityPct)}%`]
                 },
                 type: 'child'
               });
@@ -189,8 +158,9 @@ export const TagUnificationSuggestionsModal = ({
       let bestMatch: { parent: Tag; similarity: number; explanations: string[] } | null = null;
       
       for (const parent of parentTags) {
-        // Verificar similaridade textual
-        const similarity = calculateSimilarity(orphan.tag_name, parent.tag_name);
+        // Verificar similaridade textual (returns 0-100)
+        const similarityPct = calculateSimilarity(orphan.tag_name, parent.tag_name);
+        const similarity = similarityPct / 100; // Convert to 0-1 for consistency
         
         // Verificar heurísticas de merge
         const heuristicResult = suggestMergeReasons(orphan.tag_name, parent.tag_name);
@@ -206,7 +176,7 @@ export const TagUnificationSuggestionsModal = ({
             explanations.push(...heuristicResult.explanations);
           }
           if (similarity >= 0.5) {
-            explanations.push(`Similaridade textual: ${Math.round(similarity * 100)}%`);
+            explanations.push(`Similaridade textual: ${Math.round(similarityPct)}%`);
           }
           
           if (!bestMatch || combinedScore > bestMatch.similarity) {

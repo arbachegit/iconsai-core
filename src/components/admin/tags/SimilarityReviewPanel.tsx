@@ -26,17 +26,7 @@ import {
 import { logTagManagementEvent } from "@/lib/tag-management-logger";
 import { getReasonBadge, type ReasonType } from "@/lib/merge-reason-heuristics";
 import { BulkMergeConfirmationModal } from "./BulkMergeConfirmationModal";
-
-interface Tag {
-  id: string;
-  tag_name: string;
-  tag_type: string;
-  confidence: number | null;
-  source: string | null;
-  document_id: string;
-  parent_tag_id: string | null;
-  created_at?: string;
-}
+import type { Tag } from "@/types/tag";
 
 interface CandidateTag {
   tag: Tag;

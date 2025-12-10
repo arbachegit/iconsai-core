@@ -9,27 +9,11 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-
-interface DuplicateGroup {
-  tag_name: string;
-  count: number;
-  ids: string[];
-}
-
-interface SemanticDuplicate {
-  tag1: string;
-  tag2: string;
-  similarity: number;
-  ids: string[];
-}
-
-interface SimilarChildPair {
-  tag1: string;
-  tag2: string;
-  id1: string;
-  id2: string;
-  similarity: number;
-}
+import type { 
+  DuplicateGroup, 
+  SemanticDuplicate, 
+  SimilarChildPair 
+} from "./useSimilarityCalculations";
 
 interface SimilarChildGroup {
   parentId: string;

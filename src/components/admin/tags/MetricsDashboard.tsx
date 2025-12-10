@@ -3,13 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart3, PieChart as PieChartIcon, Target, Zap, ArrowRightLeft } from "lucide-react";
 import { ResponsiveContainer, PieChart, Pie, Tooltip as RechartsTooltip, Cell } from "recharts";
-
-interface Tag {
-  id: string;
-  tag_name: string;
-  source: string | null;
-  target_chat?: string | null;
-}
+import type { Tag } from "@/types/tag";
 
 interface MetricsDashboardProps {
   parentTags: Tag[];

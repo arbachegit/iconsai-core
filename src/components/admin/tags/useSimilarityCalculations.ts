@@ -1,15 +1,6 @@
 import { useMemo } from "react";
-
-interface Tag {
-  id: string;
-  tag_name: string;
-  tag_type: string;
-  confidence: number | null;
-  source: string | null;
-  document_id: string;
-  parent_tag_id: string | null;
-  created_at?: string;
-}
+import { calculateSimilarity } from "@/lib/string-similarity";
+import type { Tag } from "@/types/tag";
 
 export interface OrphanedTag {
   id: string;
@@ -43,44 +34,10 @@ export interface SimilarChildPair {
   similarity: number;
 }
 
-// Levenshtein distance for similarity detection
-function levenshteinDistance(a: string, b: string): number {
-  const matrix: number[][] = [];
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
-  }
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-  return matrix[b.length][a.length];
-}
-
 export interface SimilarChildGroup {
   parentId: string;
   parentName: string;
   pairs: SimilarChildPair[];
-}
-
-function calculateSimilarity(a: string, b: string): number {
-  const normalized1 = a.toLowerCase().replace(/[^a-záàâãéêíóôõúç\s]/gi, '').trim();
-  const normalized2 = b.toLowerCase().replace(/[^a-záàâãéêíóôõúç\s]/gi, '').trim();
-  const maxLen = Math.max(normalized1.length, normalized2.length);
-  if (maxLen === 0) return 1;
-  const distance = levenshteinDistance(normalized1, normalized2);
-  return 1 - (distance / maxLen);
 }
 
 export function useSimilarityCalculations(
@@ -116,7 +73,8 @@ export function useSimilarityCalculations(
     
     for (let i = 0; i < limitedTags.length; i++) {
       for (let j = i + 1; j < limitedTags.length; j++) {
-        const similarity = calculateSimilarity(limitedTags[i], limitedTags[j]);
+        const similarityPct = calculateSimilarity(limitedTags[i], limitedTags[j]);
+        const similarity = similarityPct / 100; // Convert from 0-100 to 0-1
         // Consider similar if >= 70% match but not exact
         if (similarity >= 0.7 && similarity < 1) {
           const tag1Ids = parentTags.filter(t => t.tag_name === limitedTags[i]).map(t => t.id);
@@ -151,7 +109,8 @@ export function useSimilarityCalculations(
       
       for (let i = 0; i < children.length; i++) {
         for (let j = i + 1; j < children.length; j++) {
-          const similarity = calculateSimilarity(children[i].tag_name, children[j].tag_name);
+          const similarityPct = calculateSimilarity(children[i].tag_name, children[j].tag_name);
+          const similarity = similarityPct / 100; // Convert from 0-100 to 0-1
           // Consider similar if >= 60% match but not exact
           if (similarity >= 0.6 && similarity < 1) {
             pairs.push({

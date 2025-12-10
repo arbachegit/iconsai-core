@@ -26,6 +26,7 @@ import { Loader2, Merge, AlertTriangle, ArrowRight, Users, Sparkles, ClipboardLi
 import { logTagManagementEvent, calculateTimeSinceModalOpen } from "@/lib/tag-management-logger";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { suggestMergeReasonsForTags, type SuggestedReasons } from "@/lib/merge-reason-heuristics";
+import type { Tag } from "@/types/tag";
 
 // Configuração dos 7 motivos de unificação baseados em Data Science
 const MERGE_REASONS_CONFIG = [
@@ -83,17 +84,7 @@ interface MergeReasons {
   generalization: boolean;
 }
 
-interface Tag {
-  id: string;
-  tag_name: string;
-  tag_type: string;
-  confidence: number | null;
-  source: string | null;
-  document_id: string;
-  parent_tag_id: string | null;
-  created_at: string;
-  target_chat?: string | null;
-}
+// Using centralized Tag type from @/types/tag
 
 interface ChildTag {
   id: string;
