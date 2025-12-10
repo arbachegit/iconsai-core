@@ -24,11 +24,11 @@ import {
 } from "recharts";
 
 export const DashboardTab = () => {
-  const { analytics } = useChatAnalytics();
-  const { settings } = useAdminSettings();
+  const { analytics, isLoading: analyticsLoading } = useChatAnalytics();
+  const { settings, isLoading: settingsLoading } = useAdminSettings();
 
   // Fetch documents metrics
-  const { data: docsData } = useQuery({
+  const { data: docsData, isLoading: docsLoading } = useQuery({
     queryKey: ["dashboard-docs"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -40,7 +40,7 @@ export const DashboardTab = () => {
   });
 
   // Fetch RAG searches
-  const { data: ragSearches } = useQuery({
+  const { data: ragSearches, isLoading: ragLoading } = useQuery({
     queryKey: ["dashboard-rag"],
     queryFn: async () => {
       const { count, error } = await supabase
@@ -50,6 +50,16 @@ export const DashboardTab = () => {
       return count || 0;
     },
   });
+
+  const isLoading = analyticsLoading || settingsLoading || docsLoading || ragLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   const today = new Date().toDateString();
   const todayAnalytics = analytics?.filter(
