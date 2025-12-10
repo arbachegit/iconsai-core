@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, RotateCcw, Shield, Zap, Server, Headphones, Play, Pause, Square, Download, Loader2 } from 'lucide-react';
@@ -8,21 +8,17 @@ import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 const HyperModularSLMDiagram = () => {
   const [zoom, setZoom] = useState(1);
   const [animationKey, setAnimationKey] = useState(0);
-  const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const { transferToFloating } = useAudioPlayer();
+  
+  // Use global audio player context - no local state
+  const { playAudio, floatingPlayerState, stopPlayback } = useAudioPlayer();
 
   const AUDIO_URL = "https://gmflpmcepempcygdrayv.supabase.co/storage/v1/object/public/tooltip-audio/audio-contents/65c265c8-e54b-4f7e-96f1-44136000ed7b.mp3";
   const AUDIO_TITLE = "🛡️Paredes de Titânio e Gênios Hiperfocados";
 
-  // Transfer audio to floating player on unmount if playing
-  useEffect(() => {
-    return () => {
-      if (audioRef.current && (audioRef.current.paused === false || audioRef.current.currentTime > 0)) {
-        transferToFloating(AUDIO_TITLE, AUDIO_URL, audioRef.current);
-      }
-    };
-  }, [transferToFloating]);
+  // Check if this audio is currently active in the global player
+  const isThisAudioActive = floatingPlayerState?.audioUrl === AUDIO_URL;
+  const isPlaying = isThisAudioActive && floatingPlayerState?.isPlaying;
+  const isLoading = isThisAudioActive && floatingPlayerState?.isLoading;
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 1.5));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.5));
@@ -31,39 +27,14 @@ const HyperModularSLMDiagram = () => {
     setAnimationKey(prev => prev + 1);
   };
 
-  const handleAudioPlayPause = async () => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(AUDIO_URL);
-      audioRef.current.onended = () => setAudioState('idle');
-      audioRef.current.oncanplaythrough = () => {
-        setAudioState('playing');
-        audioRef.current?.play();
-      };
-    }
-
-    if (audioState === 'idle' || audioState === 'paused') {
-      setAudioState('loading');
-      if (audioRef.current.readyState >= 3) {
-        setAudioState('playing');
-        audioRef.current.play();
-      } else {
-        audioRef.current.load();
-      }
-    } else if (audioState === 'playing') {
-      audioRef.current.pause();
-      setAudioState('paused');
-    }
+  const handleAudioPlayPause = () => {
+    playAudio(AUDIO_TITLE, AUDIO_URL);
   };
 
   const handleAudioStop = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current.onended = null;
-      audioRef.current.oncanplaythrough = null;
-      audioRef.current = null;
+    if (isThisAudioActive) {
+      stopPlayback();
     }
-    setAudioState('idle');
   };
 
   const handleAudioDownload = () => {
@@ -100,15 +71,15 @@ const HyperModularSLMDiagram = () => {
                 </Tooltip>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" onClick={handleAudioPlayPause} className="h-8 w-8">
-                    {audioState === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-                    {audioState === 'playing' && <Pause className="h-4 w-4 text-primary" />}
-                    {(audioState === 'idle' || audioState === 'paused') && <Play className="h-4 w-4 text-primary" />}
+                    {isLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                    {isPlaying && <Pause className="h-4 w-4 text-primary" />}
+                    {!isLoading && !isPlaying && <Play className="h-4 w-4 text-primary" />}
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="icon" 
                     onClick={handleAudioStop} 
-                    disabled={audioState === 'idle'}
+                    disabled={!isThisAudioActive}
                     className="h-8 w-8"
                   >
                     <Square className="h-4 w-4" />
@@ -342,133 +313,93 @@ const HyperModularSLMDiagram = () => {
             <g className="hm-slm-box">
               <rect x="100" y="340" width="200" height="100" rx="10" fill="url(#hmSlmGradient)" />
               <text x="200" y="370" textAnchor="middle" fill="white" fontSize="13" fontWeight="bold">SLM-HIPERFOCADA-A</text>
-              <text x="200" y="390" textAnchor="middle" fill="hsl(200, 90%, 85%)" fontSize="11">"Hiperfoco Econômico"</text>
-              <text x="200" y="415" textAnchor="middle" fill="hsl(45, 93%, 60%)" fontSize="10" fontWeight="bold">⚡ Latência &lt; 5ms</text>
+              <text x="200" y="395" textAnchor="middle" fill="white" fontSize="10" opacity="0.9">Phi-3-mini (LoRA)</text>
+              <text x="200" y="415" textAnchor="middle" fill="hsl(45, 93%, 55%)" fontSize="9">🎯 Economia & Finanças</text>
+              <text x="200" y="430" textAnchor="middle" fill="white" fontSize="8" opacity="0.7">Hiperfoco Total</text>
             </g>
 
             {/* SLM Hiperfocada B */}
             <g className="hm-slm-box">
               <rect x="700" y="340" width="200" height="100" rx="10" fill="url(#hmSlmGradient)" />
               <text x="800" y="370" textAnchor="middle" fill="white" fontSize="13" fontWeight="bold">SLM-HIPERFOCADA-B</text>
-              <text x="800" y="390" textAnchor="middle" fill="hsl(200, 90%, 85%)" fontSize="11">"Hiperfoco Saúde"</text>
-              <text x="800" y="415" textAnchor="middle" fill="hsl(0, 70%, 65%)" fontSize="10" fontWeight="bold">⚡ Latência &lt; 5ms</text>
+              <text x="800" y="395" textAnchor="middle" fill="white" fontSize="10" opacity="0.9">Phi-3-mini (LoRA)</text>
+              <text x="800" y="415" textAnchor="middle" fill="hsl(0, 70%, 60%)" fontSize="9">❤️ Saúde & Medicina</text>
+              <text x="800" y="430" textAnchor="middle" fill="white" fontSize="8" opacity="0.7">Hiperfoco Total</text>
             </g>
 
-            {/* ====== CAMADA 3: GPU COMPARTILHADA ====== */}
-
-            {/* VPN Tunnel Lines */}
-            <path d="M 200 440 L 200 520 L 400 520 L 400 560" fill="none" stroke="hsl(263, 70%, 50%)" strokeWidth="3" strokeDasharray="8,4" className="hm-tunnel" opacity="0.7" />
-            <path d="M 800 440 L 800 520 L 600 520 L 600 560" fill="none" stroke="hsl(158, 64%, 42%)" strokeWidth="3" strokeDasharray="8,4" className="hm-tunnel" opacity="0.7" />
-
-            {/* Shutter Effect Lines */}
-            <path d="M 380 540 L 420 540" stroke="hsl(0, 70%, 50%)" strokeWidth="4" strokeLinecap="round" className="hm-shutter" />
-            <path d="M 580 540 L 620 540" stroke="hsl(0, 70%, 50%)" strokeWidth="4" strokeLinecap="round" className="hm-shutter" />
-
-            {/* VPN Labels */}
-            <text x="200" y="485" textAnchor="middle" fill="hsl(263, 70%, 70%)" fontSize="9" fontWeight="bold">🔒 TÚNEL VPN</text>
-            <text x="800" y="485" textAnchor="middle" fill="hsl(158, 64%, 65%)" fontSize="9" fontWeight="bold">🔒 TÚNEL VPN</text>
-
-            {/* GPU Cluster */}
-            <g className="hm-gpu-box">
-              <rect x="350" y="560" width="300" height="120" rx="12" fill="url(#hmGpuGradient)" stroke="hsl(220, 40%, 45%)" strokeWidth="2" filter="url(#hmGpuGlow)" />
-              
-              {/* Turbine Effect */}
-              <g className="hm-turbine">
-                <circle cx="500" cy="600" r="20" fill="none" stroke="hsl(220, 50%, 55%)" strokeWidth="2" strokeDasharray="10,5" />
-              </g>
-              
-              <text x="500" y="590" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">INFRAESTRUTURA-GPU</text>
-              <text x="500" y="610" textAnchor="middle" fill="hsl(220, 40%, 75%)" fontSize="10">Cluster Compartilhado (AWS g5.xlarge)</text>
-              
-              {/* Lock Icon */}
-              <g className="hm-lock">
-                <text x="500" y="640" textAnchor="middle" fill="hsl(45, 93%, 55%)" fontSize="18">🔒</text>
-              </g>
-              
-              <text x="500" y="665" textAnchor="middle" fill="hsl(0, 70%, 65%)" fontSize="10" fontWeight="bold">
-                "Processa Dados, Não Acessa Conteúdo"
+            {/* Isolation Barrier */}
+            <g>
+              <line x1="500" y1="200" x2="500" y2="500" stroke="hsl(0, 70%, 50%)" strokeWidth="3" strokeDasharray="10,5" />
+              <text x="500" y="480" textAnchor="middle" fill="hsl(0, 70%, 60%)" fontSize="10" fontWeight="bold">
+                🔒 ISOLAMENTO TOTAL
               </text>
             </g>
 
-            {/* ====== ANIMATED DATA FLOWS ====== */}
+            {/* GPU Layer */}
+            <g className="hm-gpu-box">
+              <rect x="350" y="560" width="300" height="100" rx="12" fill="url(#hmGpuGradient)" filter="url(#hmGpuGlow)" />
+              <text x="500" y="590" textAnchor="middle" fill="hsl(220, 20%, 80%)" fontSize="14" fontWeight="bold">GPU COMPARTILHADA</text>
+              <text x="500" y="610" textAnchor="middle" fill="hsl(220, 20%, 65%)" fontSize="11">NVIDIA A10G (24GB VRAM)</text>
+              <text x="500" y="630" textAnchor="middle" fill="hsl(45, 93%, 55%)" fontSize="10">⚡ Hot-Swap LoRA Adapters (~ms)</text>
+              <text x="500" y="650" textAnchor="middle" fill="hsl(158, 64%, 50%)" fontSize="9">90% Redução de Custo</text>
+            </g>
 
-            {/* Economy Data Flow (Gold Coins) */}
-            <circle r="6" fill="hsl(45, 93%, 55%)" className="hm-economy-data">
-              <title>💰 Dado Econômico</title>
-            </circle>
-            <circle r="6" fill="hsl(45, 93%, 55%)" className="hm-rag-to-slm-a">
-              <title>💰 Dado Processado</title>
-            </circle>
+            {/* Connection Lines SLM to GPU */}
+            <line x1="200" y1="440" x2="200" y2="520" stroke="hsl(200, 90%, 50%)" strokeWidth="2" />
+            <line x1="200" y1="520" x2="400" y2="520" stroke="hsl(200, 90%, 50%)" strokeWidth="2" />
+            <line x1="400" y1="520" x2="400" y2="560" stroke="hsl(200, 90%, 50%)" strokeWidth="2" />
 
-            {/* Health Data Flow (Red Hearts) */}
-            <circle r="6" fill="hsl(0, 70%, 55%)" className="hm-health-data">
-              <title>❤️ Dado de Saúde</title>
-            </circle>
-            <circle r="6" fill="hsl(0, 70%, 55%)" className="hm-rag-to-slm-b">
-              <title>❤️ Dado Processado</title>
-            </circle>
+            <line x1="800" y1="440" x2="800" y2="520" stroke="hsl(200, 90%, 50%)" strokeWidth="2" />
+            <line x1="800" y1="520" x2="600" y2="520" stroke="hsl(200, 90%, 50%)" strokeWidth="2" />
+            <line x1="600" y1="520" x2="600" y2="560" stroke="hsl(200, 90%, 50%)" strokeWidth="2" />
 
-            {/* Query Flows to GPU */}
-            <circle r="5" fill="hsl(200, 90%, 60%)" className="hm-query-a">
-              <title>Query Econômico</title>
-            </circle>
-            <circle r="5" fill="hsl(200, 90%, 60%)" className="hm-query-b">
-              <title>Query Saúde</title>
-            </circle>
-
-            {/* Return Flows from GPU */}
-            <circle r="4" fill="hsl(142, 76%, 50%)" className="hm-return-a">
-              <title>Resposta A</title>
-            </circle>
-            <circle r="4" fill="hsl(142, 76%, 50%)" className="hm-return-b">
-              <title>Resposta B</title>
-            </circle>
-
-            {/* ====== ANIMATED SLOGANS ====== */}
-            <text x="500" y="470" textAnchor="middle" fill="hsl(0, 70%, 60%)" fontSize="16" fontWeight="bold" className="hm-slogan-security">
-              🛡️ SEGURANÇA
-            </text>
-            <text x="500" y="470" textAnchor="middle" fill="hsl(142, 76%, 50%)" fontSize="16" fontWeight="bold" className="hm-slogan-productivity">
-              ⚡ PRODUTIVIDADE
-            </text>
+            {/* Animated Data Dots */}
+            <circle r="6" fill="hsl(263, 70%, 55%)" className="hm-economy-data" />
+            <circle r="6" fill="hsl(158, 64%, 50%)" className="hm-health-data" />
+            <circle r="5" fill="hsl(263, 70%, 60%)" className="hm-rag-to-slm-a" />
+            <circle r="5" fill="hsl(158, 64%, 55%)" className="hm-rag-to-slm-b" />
+            <circle r="4" fill="hsl(200, 90%, 55%)" className="hm-query-a" />
+            <circle r="4" fill="hsl(200, 90%, 55%)" className="hm-query-b" />
+            <circle r="4" fill="hsl(45, 93%, 55%)" className="hm-return-a" />
+            <circle r="4" fill="hsl(45, 93%, 55%)" className="hm-return-b" />
 
           </svg>
         </div>
 
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-          <Card className="bg-purple-500/10 border-purple-500/30">
+          <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-transparent">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Shield className="w-5 h-5 text-purple-400" />
-                <h4 className="font-semibold text-purple-300">Hiperfoco de Domínio</h4>
+                <Shield className="h-5 w-5 text-purple-400" />
+                <h3 className="font-semibold text-purple-300">Hiperfoco por Domínio</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                Cada empresa possui RAG exclusivo com fontes de dados específicas do seu setor (Economia vs Saúde).
+                Cada SLM é treinada apenas em seu domínio (economia ou saúde), garantindo respostas precisas e especializadas.
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-red-500/10 border-red-500/30">
+          <Card className="border-red-500/30 bg-gradient-to-br from-red-500/10 to-transparent">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Server className="w-5 h-5 text-red-400" />
-                <h4 className="font-semibold text-red-300">Isolamento Total</h4>
+                <Server className="h-5 w-5 text-red-400" />
+                <h3 className="font-semibold text-red-300">Isolamento Total</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                SLMs privadas garantem que dados nunca cruzam entre empresas. Túnel VPN criptografado para GPU.
+                RAGs privados garantem que dados de um cliente nunca se misturam com dados de outro.
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-emerald-500/10 border-emerald-500/30">
+          <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-transparent">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Zap className="w-5 h-5 text-emerald-400" />
-                <h4 className="font-semibold text-emerald-300">Eficiência Compartilhada</h4>
+                <Zap className="h-5 w-5 text-emerald-400" />
+                <h3 className="font-semibold text-emerald-300">Eficiência Compartilhada</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                GPU processa cálculos sem acessar conteúdo. Infraestrutura otimizada com latência &lt; 5ms.
+                GPU única com hot-swap de LoRA Adapters permite servir múltiplos clientes com 90% menos custo.
               </p>
             </CardContent>
           </Card>

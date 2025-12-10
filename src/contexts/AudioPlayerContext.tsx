@@ -12,12 +12,10 @@ interface AudioPlayerState {
 
 interface AudioPlayerContextType {
   floatingPlayerState: AudioPlayerState | null;
-  audioRef: React.MutableRefObject<HTMLAudioElement | null>;
-  startPlayback: (title: string, audioUrl: string) => void;
+  playAudio: (title: string, audioUrl: string) => void;
   togglePlayPause: () => void;
   stopPlayback: () => void;
   closePlayer: () => void;
-  transferToFloating: (title: string, audioUrl: string, audioElement: HTMLAudioElement | null) => void;
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(undefined);
@@ -49,15 +47,40 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const startPlayback = useCallback((title: string, audioUrl: string) => {
+  // Main function to start playing audio - creates and manages its own Audio element
+  const playAudio = useCallback((title: string, audioUrl: string) => {
+    // If same audio is already loaded, just toggle play/pause
+    if (floatingPlayerState?.audioUrl === audioUrl && audioRef.current) {
+      if (floatingPlayerState.isPlaying) {
+        audioRef.current.pause();
+        stopProgressTracking();
+        setFloatingPlayerState(prev => prev ? {
+          ...prev,
+          isPlaying: false,
+          isPaused: true,
+        } : null);
+      } else {
+        audioRef.current.play();
+        startProgressTracking();
+        setFloatingPlayerState(prev => prev ? {
+          ...prev,
+          isPlaying: true,
+          isPaused: false,
+        } : null);
+      }
+      return;
+    }
+
     // Stop any existing audio
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.oncanplaythrough = null;
       audioRef.current = null;
     }
     stopProgressTracking();
 
-    // Create new audio
+    // Create new audio element
     const audio = new Audio(audioUrl);
     audioRef.current = audio;
 
@@ -93,7 +116,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     };
 
     audio.load();
-  }, [startProgressTracking, stopProgressTracking]);
+  }, [floatingPlayerState?.audioUrl, floatingPlayerState?.isPlaying, startProgressTracking, stopProgressTracking]);
 
   const togglePlayPause = useCallback(() => {
     if (!audioRef.current || !floatingPlayerState) return;
@@ -148,53 +171,21 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const closePlayer = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.oncanplaythrough = null;
       audioRef.current = null;
     }
     stopProgressTracking();
     setFloatingPlayerState(null);
   }, [stopProgressTracking]);
 
-  const transferToFloating = useCallback((title: string, audioUrl: string, audioElement: HTMLAudioElement | null) => {
-    if (!audioElement) return;
-
-    // Transfer the audio element to the global context
-    audioRef.current = audioElement;
-
-    setFloatingPlayerState({
-      isPlaying: !audioElement.paused,
-      isPaused: audioElement.paused && audioElement.currentTime > 0,
-      isLoading: false,
-      currentTime: audioElement.currentTime,
-      duration: audioElement.duration || 0,
-      title,
-      audioUrl,
-    });
-
-    // Set up event handlers
-    audioElement.onended = () => {
-      setFloatingPlayerState(prev => prev ? {
-        ...prev,
-        isPlaying: false,
-        isPaused: false,
-        currentTime: 0,
-      } : null);
-      stopProgressTracking();
-    };
-
-    if (!audioElement.paused) {
-      startProgressTracking();
-    }
-  }, [startProgressTracking, stopProgressTracking]);
-
   return (
     <AudioPlayerContext.Provider value={{ 
       floatingPlayerState, 
-      audioRef,
-      startPlayback,
+      playAudio,
       togglePlayPause,
       stopPlayback,
       closePlayer,
-      transferToFloating,
     }}>
       {children}
     </AudioPlayerContext.Provider>

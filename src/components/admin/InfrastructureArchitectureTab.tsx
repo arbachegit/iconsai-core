@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,49 +45,25 @@ export const InfrastructureArchitectureTab = () => {
   const [currentPhase, setCurrentPhase] = useState<SimulationPhase>('idle');
   const [adapterLoaded, setAdapterLoaded] = useState(false);
 
-  // Audio player state (local)
-  const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  
-  // Global audio player context
-  const { transferToFloating, floatingPlayerState } = useAudioPlayer();
+  // Use global audio player context - no local state
+  const { playAudio, floatingPlayerState, stopPlayback } = useAudioPlayer();
   
   const AUDIO_URL = "https://gmflpmcepempcygdrayv.supabase.co/storage/v1/object/public/tooltip-audio/audio-contents/e137c34e-4523-406a-a7bc-35ac598cc9f6.mp3";
   const AUDIO_TITLE = "AI Escalável: O Segredo dos 90% Mais Barato! 💰";
 
-  const handleAudioPlayPause = async () => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(AUDIO_URL);
-      audioRef.current.onended = () => setAudioState('idle');
-      audioRef.current.oncanplaythrough = () => {
-        setAudioState('playing');
-        audioRef.current?.play();
-      };
-    }
+  // Check if this audio is currently active in the global player
+  const isThisAudioActive = floatingPlayerState?.audioUrl === AUDIO_URL;
+  const isPlaying = isThisAudioActive && floatingPlayerState?.isPlaying;
+  const isLoading = isThisAudioActive && floatingPlayerState?.isLoading;
 
-    if (audioState === 'idle' || audioState === 'paused') {
-      setAudioState('loading');
-      if (audioRef.current.readyState >= 3) {
-        setAudioState('playing');
-        audioRef.current.play();
-      } else {
-        audioRef.current.load();
-      }
-    } else if (audioState === 'playing') {
-      audioRef.current.pause();
-      setAudioState('paused');
-    }
+  const handleAudioPlayPause = () => {
+    playAudio(AUDIO_TITLE, AUDIO_URL);
   };
 
   const handleAudioStop = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current.onended = null;
-      audioRef.current.oncanplaythrough = null;
-      audioRef.current = null;
+    if (isThisAudioActive) {
+      stopPlayback();
     }
-    setAudioState('idle');
   };
 
   const handleAudioDownload = () => {
@@ -97,16 +73,6 @@ export const InfrastructureArchitectureTab = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  // Transfer audio to floating player when navigating away from GPU view
-  const handleBackFromGpu = () => {
-    if (audioRef.current && (audioState === 'playing' || audioState === 'paused')) {
-      transferToFloating(AUDIO_TITLE, AUDIO_URL, audioRef.current);
-      audioRef.current = null;
-      setAudioState('idle');
-    }
-    setSelectedView('cards');
   };
 
   // Restart background animations periodically
@@ -367,7 +333,7 @@ export const InfrastructureArchitectureTab = () => {
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        <BackButton onClick={handleBackFromGpu} />
+        <BackButton />
         
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
@@ -395,9 +361,9 @@ export const InfrastructureArchitectureTab = () => {
                 onClick={handleAudioPlayPause} 
                 className="h-8 w-8 hover:bg-primary/20"
               >
-                {audioState === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-                {audioState === 'playing' && <Pause className="h-4 w-4 text-primary" />}
-                {(audioState === 'idle' || audioState === 'paused') && <Play className="h-4 w-4 text-primary" />}
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                {isPlaying && <Pause className="h-4 w-4 text-primary" />}
+                {!isLoading && !isPlaying && <Play className="h-4 w-4 text-primary" />}
               </Button>
               
               {/* Stop Button */}
@@ -405,7 +371,7 @@ export const InfrastructureArchitectureTab = () => {
                 variant="ghost" 
                 size="icon" 
                 onClick={handleAudioStop} 
-                disabled={audioState === 'idle'}
+                disabled={!isThisAudioActive}
                 className="h-8 w-8 hover:bg-primary/20"
               >
                 <Square className="h-4 w-4" />

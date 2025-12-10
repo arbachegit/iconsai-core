@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,21 +9,17 @@ import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 export const DynamicSLMArchitectureDiagram = () => {
   const [zoom, setZoom] = useState(100);
   const [animationKey, setAnimationKey] = useState(0);
-  const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const { transferToFloating } = useAudioPlayer();
+  
+  // Use global audio player context - no local state
+  const { playAudio, floatingPlayerState, stopPlayback } = useAudioPlayer();
 
   const AUDIO_URL = "https://gmflpmcepempcygdrayv.supabase.co/storage/v1/object/public/tooltip-audio/audio-contents/bc4eff8f-6306-415b-a86b-88298ad56e59.mp3";
   const AUDIO_TITLE = "🔒 O Segredo da Produtividade Duplicada: SLMs, Paredes de Titânio e o Orquestrador de Dados";
 
-  // Transfer audio to floating player on unmount if playing
-  useEffect(() => {
-    return () => {
-      if (audioRef.current && (audioRef.current.paused === false || audioRef.current.currentTime > 0)) {
-        transferToFloating(AUDIO_TITLE, AUDIO_URL, audioRef.current);
-      }
-    };
-  }, [transferToFloating]);
+  // Check if this audio is currently active in the global player
+  const isThisAudioActive = floatingPlayerState?.audioUrl === AUDIO_URL;
+  const isPlaying = isThisAudioActive && floatingPlayerState?.isPlaying;
+  const isLoading = isThisAudioActive && floatingPlayerState?.isLoading;
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 20, 150));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 20, 60));
@@ -32,39 +28,14 @@ export const DynamicSLMArchitectureDiagram = () => {
     setAnimationKey(prev => prev + 1);
   };
 
-  const handleAudioPlayPause = async () => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(AUDIO_URL);
-      audioRef.current.onended = () => setAudioState('idle');
-      audioRef.current.oncanplaythrough = () => {
-        setAudioState('playing');
-        audioRef.current?.play();
-      };
-    }
-
-    if (audioState === 'idle' || audioState === 'paused') {
-      setAudioState('loading');
-      if (audioRef.current.readyState >= 3) {
-        setAudioState('playing');
-        audioRef.current.play();
-      } else {
-        audioRef.current.load();
-      }
-    } else if (audioState === 'playing') {
-      audioRef.current.pause();
-      setAudioState('paused');
-    }
+  const handleAudioPlayPause = () => {
+    playAudio(AUDIO_TITLE, AUDIO_URL);
   };
 
   const handleAudioStop = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current.onended = null;
-      audioRef.current.oncanplaythrough = null;
-      audioRef.current = null;
+    if (isThisAudioActive) {
+      stopPlayback();
     }
-    setAudioState('idle');
   };
 
   const handleAudioDownload = () => {
@@ -104,15 +75,15 @@ export const DynamicSLMArchitectureDiagram = () => {
               </Tooltip>
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="icon" onClick={handleAudioPlayPause} className="h-8 w-8">
-                  {audioState === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-                  {audioState === 'playing' && <Pause className="h-4 w-4 text-primary" />}
-                  {(audioState === 'idle' || audioState === 'paused') && <Play className="h-4 w-4 text-primary" />}
+                  {isLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                  {isPlaying && <Pause className="h-4 w-4 text-primary" />}
+                  {!isLoading && !isPlaying && <Play className="h-4 w-4 text-primary" />}
                 </Button>
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   onClick={handleAudioStop} 
-                  disabled={audioState === 'idle'}
+                  disabled={!isThisAudioActive}
                   className="h-8 w-8"
                 >
                   <Square className="h-4 w-4" />
@@ -406,172 +377,126 @@ export const DynamicSLMArchitectureDiagram = () => {
                 d="M180 260 L180 310 L350 310" 
                 fill="none" 
                 stroke="hsl(271, 91%, 55%)" 
-                strokeWidth="2.5" 
+                strokeWidth="2"
                 strokeDasharray="6,3"
-                className="energy-line"
               />
               <path 
                 d="M720 260 L720 310 L550 310" 
                 fill="none" 
                 stroke="hsl(142, 76%, 45%)" 
-                strokeWidth="2.5" 
+                strokeWidth="2"
                 strokeDasharray="6,3"
-                className="energy-line"
               />
 
-              {/* ===== ARMAZENAMENTO VETORIAL GLOBAL (Gold) ===== */}
+              {/* ===== Global Vector Storage (Gold) ===== */}
               <g className="storage-box" filter="url(#glowGold)">
                 <rect 
-                  x="250" y="280" width="400" height="100" rx="16" 
+                  x="350" y="280" width="200" height="80" rx="12" 
                   fill="hsl(38, 92%, 50%, 0.25)" 
-                  stroke="url(#goldGradient)" 
+                  stroke="hsl(38, 92%, 50%)" 
                   strokeWidth="3"
                 />
-                <text x="450" y="315" textAnchor="middle" fill="hsl(38, 92%, 60%)" fontSize="18" fontWeight="700">Armazenamento Vetorial Global</text>
-                <text x="450" y="345" textAnchor="middle" fill="hsl(38, 92%, 50%)" fontSize="13">Base de Conhecimento Compartilhada</text>
-                <text x="450" y="365" textAnchor="middle" fill="hsl(38, 92%, 45%)" fontSize="11" fontStyle="italic">Padrões Anônimos &amp; Semânticos</text>
+                <Database className="h-6 w-6" x="435" y="295" style={{ color: 'hsl(38, 92%, 60%)' }} />
+                <text x="450" y="320" textAnchor="middle" fill="hsl(38, 92%, 65%)" fontSize="14" fontWeight="600">
+                  <tspan x="450" dy="0">Armazenamento</tspan>
+                  <tspan x="450" dy="18">Vetorizado Global</tspan>
+                </text>
               </g>
 
               {/* ===== Connection Lines from Storage to SLMs ===== */}
               <path 
-                d="M350 380 L350 420 L180 420 L180 460" 
+                d="M350 340 L180 340 L180 400" 
                 fill="none" 
-                stroke="hsl(200, 90%, 50%)" 
-                strokeWidth="2.5" 
-                strokeDasharray="6,3"
-                className="energy-line"
+                stroke="hsl(38, 92%, 50%)" 
+                strokeWidth="2"
               />
               <path 
-                d="M550 380 L550 420 L720 420 L720 460" 
+                d="M550 340 L720 340 L720 400" 
                 fill="none" 
-                stroke="hsl(200, 90%, 50%)" 
-                strokeWidth="2.5" 
-                strokeDasharray="6,3"
-                className="energy-line"
+                stroke="hsl(38, 92%, 50%)" 
+                strokeWidth="2"
               />
 
-              {/* ===== SLM-Inferência-A (Blue) ===== */}
-              <g className="slm-box" filter="url(#glowBlue)">
-                <rect 
-                  x="50" y="460" width="260" height="110" rx="14" 
-                  fill="hsl(200, 90%, 50%, 0.2)" 
-                  stroke="url(#blueGradient)" 
-                  strokeWidth="3"
-                />
-                <text x="180" y="495" textAnchor="middle" fill="hsl(200, 90%, 65%)" fontSize="17" fontWeight="700">SLM-Inferência-A</text>
-                <text x="180" y="520" textAnchor="middle" fill="hsl(200, 90%, 55%)" fontSize="13">SLM Hiperfocada</text>
-                <text x="180" y="545" textAnchor="middle" fill="hsl(200, 90%, 50%)" fontSize="12" fontWeight="600">(Latência &lt; 5ms)</text>
-                
-                {/* Pulse indicator */}
-                <circle cx="290" cy="480" r="8" fill="hsl(200, 90%, 50%)" className="glow-effect">
-                  <animate attributeName="r" values="6;10;6" dur="1.5s" repeatCount="indefinite" />
-                </circle>
-              </g>
-
-              {/* ===== SLM-Inferência-B (Blue) ===== */}
-              <g className="slm-box" filter="url(#glowBlue)">
-                <rect 
-                  x="590" y="460" width="260" height="110" rx="14" 
-                  fill="hsl(200, 90%, 50%, 0.2)" 
-                  stroke="url(#blueGradient)" 
-                  strokeWidth="3"
-                />
-                <text x="720" y="495" textAnchor="middle" fill="hsl(200, 90%, 65%)" fontSize="17" fontWeight="700">SLM-Inferência-B</text>
-                <text x="720" y="520" textAnchor="middle" fill="hsl(200, 90%, 55%)" fontSize="13">SLM Hiperfocada</text>
-                <text x="720" y="545" textAnchor="middle" fill="hsl(200, 90%, 50%)" fontSize="12" fontWeight="600">(Latência &lt; 5ms)</text>
-                
-                {/* Pulse indicator */}
-                <circle cx="830" cy="480" r="8" fill="hsl(200, 90%, 50%)" className="glow-effect">
-                  <animate attributeName="r" values="6;10;6" dur="1.5s" repeatCount="indefinite" begin="0.75s" />
-                </circle>
-              </g>
-
-              {/* ===== ISOLATION BARRIER (Red Dashed Line) ===== */}
+              {/* ===== ISOLATION BARRIER ===== */}
               <g>
-                {/* Main barrier line */}
                 <line 
-                  x1="450" y1="440" x2="450" y2="590" 
-                  stroke="hsl(0, 85%, 55%)" 
-                  strokeWidth="4" 
+                  x1="450" y1="400" x2="450" y2="560" 
+                  stroke="hsl(0, 70%, 50%)" 
+                  strokeWidth="4"
                   strokeDasharray="12,6"
                   className="shield-line"
-                  filter="url(#glowRed)"
                 />
-                
-                {/* Shield icon background */}
+                <Shield 
+                  x="430" y="470" 
+                  className="h-8 w-8"
+                  style={{ color: 'hsl(0, 70%, 55%)' }}
+                />
+                <text x="450" y="590" textAnchor="middle" fill="hsl(0, 70%, 60%)" fontSize="11" fontWeight="600">
+                  BARREIRA DE ISOLAMENTO
+                </text>
+              </g>
+
+              {/* ===== SLM-A (Purple/Blue) ===== */}
+              <g className="slm-box" filter="url(#glowBlue)">
                 <rect 
-                  x="420" y="495" width="60" height="40" rx="8" 
-                  fill="hsl(0, 85%, 15%)" 
-                  stroke="hsl(0, 85%, 55%)" 
-                  strokeWidth="2"
+                  x="80" y="400" width="200" height="160" rx="14" 
+                  fill="url(#blueGradient)" 
+                  fillOpacity="0.3"
+                  stroke="hsl(200, 90%, 50%)" 
+                  strokeWidth="2.5"
                 />
-                <text x="450" y="510" textAnchor="middle" fill="hsl(0, 85%, 60%)" fontSize="16">🔒</text>
-                <text x="450" y="528" textAnchor="middle" fill="hsl(0, 85%, 55%)" fontSize="8" fontWeight="600">ISOLADO</text>
-                
-                {/* Barrier annotations */}
-                <text x="365" y="605" textAnchor="middle" fill="hsl(0, 70%, 55%)" fontSize="10" fontWeight="500">Dados A</text>
-                <text x="535" y="605" textAnchor="middle" fill="hsl(0, 70%, 55%)" fontSize="10" fontWeight="500">Dados B</text>
+                <text x="180" y="440" textAnchor="middle" fill="hsl(200, 90%, 70%)" fontSize="16" fontWeight="700">SLM-Inferência-A</text>
+                <text x="180" y="470" textAnchor="middle" fill="hsl(200, 90%, 55%)" fontSize="12">Modelo Base</text>
+                <text x="180" y="490" textAnchor="middle" fill="hsl(200, 90%, 55%)" fontSize="12">+ LoRA-A</text>
+                <Zap x="160" y="510" className="h-6 w-6" style={{ color: 'hsl(45, 93%, 55%)' }} />
+                <text x="180" y="545" textAnchor="middle" fill="hsl(45, 93%, 60%)" fontSize="10">Inferência Isolada</text>
               </g>
 
-              {/* ===== PRODUCTIVITY FLOW (Green return arrows) ===== */}
-              <path 
-                d="M180 570 L180 670 L350 670" 
-                fill="none" 
-                stroke="hsl(142, 76%, 45%)" 
-                strokeWidth="2" 
-                strokeDasharray="5,3"
-                opacity="0.7"
-              />
-              <path 
-                d="M720 570 L720 670 L550 670" 
-                fill="none" 
-                stroke="hsl(142, 76%, 45%)" 
-                strokeWidth="2" 
-                strokeDasharray="5,3"
-                opacity="0.7"
-              />
-              <path 
-                d="M350 670 L450 670 L450 400" 
-                fill="none" 
-                stroke="hsl(142, 76%, 50%)" 
-                strokeWidth="2.5" 
-                strokeDasharray="5,3"
-                opacity="0.8"
-              />
-              <path 
-                d="M550 670 L450 670" 
-                fill="none" 
-                stroke="hsl(142, 76%, 50%)" 
-                strokeWidth="2.5" 
-                strokeDasharray="5,3"
-                opacity="0.8"
-              />
-
-              {/* Productivity label */}
-              <g>
-                <rect x="350" y="690" width="200" height="35" rx="8" fill="hsl(142, 76%, 30%, 0.3)" stroke="hsl(142, 76%, 45%)" strokeWidth="1.5" />
-                <text x="450" y="713" textAnchor="middle" fill="hsl(142, 76%, 55%)" fontSize="12" fontWeight="600">↑ Compartilhamento de Padrões</text>
+              {/* ===== SLM-B (Green/Blue) ===== */}
+              <g className="slm-box" filter="url(#glowBlue)">
+                <rect 
+                  x="620" y="400" width="200" height="160" rx="14" 
+                  fill="url(#blueGradient)" 
+                  fillOpacity="0.3"
+                  stroke="hsl(200, 90%, 50%)" 
+                  strokeWidth="2.5"
+                />
+                <text x="720" y="440" textAnchor="middle" fill="hsl(200, 90%, 70%)" fontSize="16" fontWeight="700">SLM-Inferência-B</text>
+                <text x="720" y="470" textAnchor="middle" fill="hsl(200, 90%, 55%)" fontSize="12">Modelo Base</text>
+                <text x="720" y="490" textAnchor="middle" fill="hsl(200, 90%, 55%)" fontSize="12">+ LoRA-B</text>
+                <Zap x="700" y="510" className="h-6 w-6" style={{ color: 'hsl(45, 93%, 55%)' }} />
+                <text x="720" y="545" textAnchor="middle" fill="hsl(45, 93%, 60%)" fontSize="10">Inferência Isolada</text>
               </g>
 
-              {/* ===== ANIMATED DATA PACKETS ===== */}
-              
-              {/* Security Flow A - Purple circles going down */}
-              <circle r="8" fill="hsl(271, 91%, 65%)" filter="url(#glowPurple)" className="security-dot-a" />
-              <circle r="8" fill="hsl(271, 91%, 65%)" filter="url(#glowPurple)" className="security-dot-a" style={{ animationDelay: '0.7s' }} />
-              <circle r="8" fill="hsl(271, 91%, 65%)" filter="url(#glowPurple)" className="security-dot-a" style={{ animationDelay: '1.4s' }} />
-              
-              {/* Security Flow B - Green circles going down */}
-              <circle r="8" fill="hsl(142, 76%, 50%)" filter="url(#glowGreen)" className="security-dot-b" />
-              <circle r="8" fill="hsl(142, 76%, 50%)" filter="url(#glowGreen)" className="security-dot-b" style={{ animationDelay: '0.8s' }} />
-              <circle r="8" fill="hsl(142, 76%, 50%)" filter="url(#glowGreen)" className="security-dot-b" style={{ animationDelay: '1.6s' }} />
-              
-              {/* Productivity Flow A - Light green circles going up */}
-              <circle r="6" fill="hsl(160, 84%, 50%)" className="productivity-dot-a" />
-              <circle r="6" fill="hsl(160, 84%, 50%)" className="productivity-dot-a" style={{ animationDelay: '1.75s' }} />
-              
-              {/* Productivity Flow B - Light green circles going up */}
-              <circle r="6" fill="hsl(160, 84%, 50%)" className="productivity-dot-b" />
-              <circle r="6" fill="hsl(160, 84%, 50%)" className="productivity-dot-b" style={{ animationDelay: '2.25s' }} />
+              {/* ===== Pattern Sharing Arrows ===== */}
+              <g className="glow-effect">
+                <path 
+                  d="M180 620 C180 680, 450 680, 450 640" 
+                  fill="none" 
+                  stroke="hsl(158, 64%, 50%)" 
+                  strokeWidth="2"
+                  strokeDasharray="5,3"
+                />
+                <path 
+                  d="M720 620 C720 680, 450 680, 450 640" 
+                  fill="none" 
+                  stroke="hsl(158, 64%, 50%)" 
+                  strokeWidth="2"
+                  strokeDasharray="5,3"
+                />
+                <Share2 x="430" y="665" className="h-6 w-6" style={{ color: 'hsl(158, 64%, 55%)' }} />
+                <text x="450" y="720" textAnchor="middle" fill="hsl(158, 64%, 60%)" fontSize="11" fontWeight="500">
+                  Padrões Compartilhados (Anônimos)
+                </text>
+              </g>
+
+              {/* ===== Animated Security Dots ===== */}
+              <circle r="6" fill="hsl(271, 91%, 65%)" className="security-dot-a" />
+              <circle r="6" fill="hsl(142, 76%, 50%)" className="security-dot-b" />
+
+              {/* ===== Animated Productivity Dots ===== */}
+              <circle r="5" fill="hsl(158, 64%, 55%)" className="productivity-dot-a" />
+              <circle r="5" fill="hsl(158, 64%, 55%)" className="productivity-dot-b" />
 
             </svg>
           </div>
@@ -580,53 +505,42 @@ export const DynamicSLMArchitectureDiagram = () => {
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-purple-600/5">
+        <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-transparent">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Shield className="h-5 w-5 text-purple-400" />
-              <h4 className="font-semibold text-purple-300">Segurança Total</h4>
+              <h3 className="font-semibold text-purple-300">Segurança Total</h3>
             </div>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Isolamento completo entre SLMs</li>
-              <li>• Dados nunca cruzam barreiras</li>
-              <li>• Inferência dedicada por cliente</li>
-              <li>• Zero vazamento de informação</li>
-            </ul>
+            <p className="text-sm text-muted-foreground">
+              Cada cliente tem seu próprio RAG-Adaptador e SLM isolado. Dados nunca se misturam.
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-amber-600/5">
+        <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-transparent">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Database className="h-5 w-5 text-amber-400" />
-              <h4 className="font-semibold text-amber-300">Base Compartilhada</h4>
+              <h3 className="font-semibold text-amber-300">Base Compartilhada</h3>
             </div>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Conhecimento centralizado</li>
-              <li>• Padrões anônimos e semânticos</li>
-              <li>• Enriquecimento mútuo</li>
-              <li>• Eficiência de armazenamento</li>
-            </ul>
+            <p className="text-sm text-muted-foreground">
+              O armazenamento vetorizado global permite reutilização de padrões anônimos entre clientes.
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5">
+        <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-transparent">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Zap className="h-5 w-5 text-cyan-400" />
-              <h4 className="font-semibold text-cyan-300">Hiperfoco</h4>
+              <Zap className="h-5 w-5 text-emerald-400" />
+              <h3 className="font-semibold text-emerald-300">Produtividade 2x</h3>
             </div>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Latência &lt; 5ms por inferência</li>
-              <li>• SLM especializada por contexto</li>
-              <li>• Respostas ultra-precisas</li>
-              <li>• Escalabilidade horizontal</li>
-            </ul>
+            <p className="text-sm text-muted-foreground">
+              Arquitetura LoRA permite hot-swap de adapters, dobrando a eficiência operacional.
+            </p>
           </CardContent>
         </Card>
       </div>
     </div>
   );
 };
-
-export default DynamicSLMArchitectureDiagram;
