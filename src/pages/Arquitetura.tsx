@@ -179,7 +179,7 @@ const Arquitetura = () => {
         <Button
           variant="outline"
           onClick={handleGoHome}
-          className="gap-2 hover:bg-primary/10"
+          className="gap-2 text-white hover:text-white hover:bg-primary/10"
         >
           <Globe className="h-4 w-4" />
           Voltar para o App
