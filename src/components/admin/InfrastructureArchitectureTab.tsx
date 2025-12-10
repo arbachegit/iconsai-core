@@ -50,7 +50,7 @@ export const InfrastructureArchitectureTab = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
   // Global audio player context
-  const { transferToFloating } = useAudioPlayer();
+  const { transferToFloating, floatingPlayerState } = useAudioPlayer();
   
   const AUDIO_URL = "https://gmflpmcepempcygdrayv.supabase.co/storage/v1/object/public/tooltip-audio/audio-contents/e137c34e-4523-406a-a7bc-35ac598cc9f6.mp3";
   const AUDIO_TITLE = "AI Escalável: O Segredo dos 90% Mais Barato! 💰";
@@ -219,16 +219,27 @@ export const InfrastructureArchitectureTab = () => {
   }
 
   // Render back button for all detail views
-  const BackButton = ({ onClick }: { onClick?: () => void }) => (
-    <Button 
-      variant="outline" 
-      onClick={onClick || (() => setSelectedView('cards'))}
-      className="gap-2"
-    >
-      <ArrowLeft className="h-4 w-4" />
-      Voltar
-    </Button>
-  );
+  const BackButton = ({ onClick }: { onClick?: () => void }) => {
+    const handleClick = () => {
+      if (onClick) {
+        onClick();
+      } else {
+        setSelectedView('cards');
+      }
+    };
+
+    return (
+      <Button 
+        variant="outline" 
+        onClick={handleClick}
+        className="gap-2"
+        type="button"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Voltar
+      </Button>
+    );
+  };
 
   // Render department choice view (sub-cards)
   if (selectedView === 'department-choice') {
