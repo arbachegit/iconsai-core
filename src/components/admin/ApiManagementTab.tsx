@@ -6,14 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar } from 'lucide-react';
+import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -42,6 +46,10 @@ interface ApiRegistry {
   target_table: string | null;
   last_http_status: number | null;
   last_sync_metadata: SyncMetadata | null;
+  fetch_start_date: string | null;
+  fetch_end_date: string | null;
+  auto_fetch_enabled: boolean | null;
+  auto_fetch_interval: string | null;
 }
 
 interface TestResult {
@@ -70,6 +78,12 @@ export default function ApiManagementTab() {
   const [testedApiName, setTestedApiName] = useState<string>('');
   const [showLogModal, setShowLogModal] = useState(false);
   const [selectedApiForLog, setSelectedApiForLog] = useState<ApiRegistry | null>(null);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [configApi, setConfigApi] = useState<ApiRegistry | null>(null);
+  const [configStartDate, setConfigStartDate] = useState<Date | undefined>(undefined);
+  const [configEndDate, setConfigEndDate] = useState<Date | undefined>(undefined);
+  const [configAutoEnabled, setConfigAutoEnabled] = useState(false);
+  const [configInterval, setConfigInterval] = useState('daily');
   const [formData, setFormData] = useState({
     name: '',
     provider: 'BCB' as string,
@@ -252,6 +266,49 @@ export default function ApiManagementTab() {
     setShowLogModal(true);
   };
 
+  const handleOpenConfigModal = (api: ApiRegistry) => {
+    setConfigApi(api);
+    setConfigStartDate(api.fetch_start_date ? new Date(api.fetch_start_date) : new Date('2010-01-01'));
+    setConfigEndDate(api.fetch_end_date ? new Date(api.fetch_end_date) : undefined);
+    setConfigAutoEnabled(api.auto_fetch_enabled || false);
+    setConfigInterval(api.auto_fetch_interval || 'daily');
+    setShowConfigModal(true);
+  };
+
+  const handleSaveConfig = async () => {
+    if (!configApi) return;
+    
+    try {
+      const { error } = await supabase
+        .from('system_api_registry')
+        .update({
+          fetch_start_date: configStartDate ? format(configStartDate, 'yyyy-MM-dd') : null,
+          fetch_end_date: configEndDate ? format(configEndDate, 'yyyy-MM-dd') : null,
+          auto_fetch_enabled: configAutoEnabled,
+          auto_fetch_interval: configInterval
+        })
+        .eq('id', configApi.id);
+
+      if (error) throw error;
+      toast.success('Configuração salva com sucesso');
+      setShowConfigModal(false);
+      fetchApis();
+    } catch (error) {
+      console.error('Error saving config:', error);
+      toast.error('Erro ao salvar configuração');
+    }
+  };
+
+  const getIntervalLabel = (interval: string) => {
+    switch (interval) {
+      case '6hours': return 'A cada 6 horas';
+      case 'daily': return 'Diário';
+      case 'weekly': return 'Semanal';
+      case 'monthly': return 'Mensal';
+      default: return interval;
+    }
+  };
+
   const getProviderColor = (provider: string) => {
     switch (provider) {
       case 'BCB': return 'bg-blue-500/20 text-blue-400 border-blue-500/40';
@@ -342,10 +399,22 @@ export default function ApiManagementTab() {
   };
 
   const formatPeriod = (start: string | undefined, end: string | undefined) => {
-    if (!start || !end) return null;
+    if (!start) return null;
     const startYear = start.substring(0, 4);
-    const endYear = end.substring(0, 4);
+    const endYear = end ? end.substring(0, 4) : 'Hoje';
     return `${startYear} → ${endYear}`;
+  };
+
+  const getConfiguredPeriod = (api: ApiRegistry) => {
+    if (api.fetch_start_date) {
+      const startYear = api.fetch_start_date.substring(0, 4);
+      const endYear = api.fetch_end_date ? api.fetch_end_date.substring(0, 4) : 'Hoje';
+      return `${startYear} → ${endYear}`;
+    }
+    if (api.last_sync_metadata?.period_start && api.last_sync_metadata?.period_end) {
+      return formatPeriod(api.last_sync_metadata.period_start, api.last_sync_metadata.period_end);
+    }
+    return null;
   };
 
   if (loading) {
@@ -483,7 +552,6 @@ export default function ApiManagementTab() {
                   <TableHead className="hidden md:table-cell">URL</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden lg:table-cell">Última Verificação</TableHead>
-                  <TableHead className="hidden xl:table-cell">Base Alimentada</TableHead>
                   <TableHead className="hidden xl:table-cell">Dados Extraídos</TableHead>
                   <TableHead className="hidden xl:table-cell">Período</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -492,7 +560,7 @@ export default function ApiManagementTab() {
               <TableBody>
                 {apis.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       Nenhuma API cadastrada
                     </TableCell>
                   </TableRow>
@@ -500,14 +568,20 @@ export default function ApiManagementTab() {
                   apis.map((api) => (
                     <TableRow key={api.id}>
                       <TableCell className="font-medium">
-                        <div>
-                          {api.name}
-                          {api.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px] truncate">
-                              {api.description}
-                            </p>
-                          )}
-                        </div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help hover:text-primary transition-colors">
+                                {api.name}
+                              </span>
+                            </TooltipTrigger>
+                            {api.description && (
+                              <TooltipContent side="right" className="max-w-[300px]">
+                                <p className="text-sm">{api.description}</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={getProviderColor(api.provider)}>
@@ -570,13 +644,6 @@ export default function ApiManagementTab() {
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      {/* Base Alimentada */}
-                      <TableCell className="hidden xl:table-cell">
-                        <Badge variant="outline" className="border-violet-500/40 text-violet-400 text-xs">
-                          <Database className="h-3 w-3 mr-1" />
-                          {api.target_table || 'indicator_values'}
-                        </Badge>
-                      </TableCell>
                       {/* Dados Extraídos */}
                       <TableCell className="hidden xl:table-cell">
                         {api.last_sync_metadata?.extracted_count ? (
@@ -595,16 +662,22 @@ export default function ApiManagementTab() {
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      {/* Período */}
+                      {/* Período - Clickable */}
                       <TableCell className="hidden xl:table-cell">
-                        {api.last_sync_metadata?.period_start && api.last_sync_metadata?.period_end ? (
-                          <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-xs">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {formatPeriod(api.last_sync_metadata.period_start, api.last_sync_metadata.period_end)}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 gap-1.5 border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400"
+                          onClick={() => handleOpenConfigModal(api)}
+                        >
+                          <Settings className="h-3 w-3" />
+                          {getConfiguredPeriod(api) || 'Configurar'}
+                          {api.auto_fetch_enabled && (
+                            <Badge variant="outline" className="ml-1 text-[9px] px-1 py-0 border-cyan-500/40 text-cyan-400">
+                              Auto
+                            </Badge>
+                          )}
+                        </Button>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -734,7 +807,7 @@ export default function ApiManagementTab() {
                 </div>
                 {testResult.syncMetadata.period_start && testResult.syncMetadata.period_end && (
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-emerald-400" />
+                    <CalendarIcon className="h-4 w-4 text-emerald-400" />
                     <span className="text-sm">
                       Período: {formatPeriod(testResult.syncMetadata.period_start, testResult.syncMetadata.period_end)}
                     </span>
@@ -801,6 +874,144 @@ export default function ApiManagementTab() {
           <DialogFooter>
             <Button onClick={() => setShowLogModal(false)}>
               Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Configuration Modal */}
+      <Dialog open={showConfigModal} onOpenChange={setShowConfigModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-emerald-500" />
+              Configurar Período e Automação
+            </DialogTitle>
+            <DialogDescription>
+              {configApi?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Section A: Intervalo de Coleta */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <CalendarIcon className="h-4 w-4 text-emerald-400" />
+                <Label className="text-sm font-medium">Intervalo de Coleta</Label>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Data Início</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !configStartDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {configStartDate ? format(configStartDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={configStartDate}
+                        onSelect={setConfigStartDate}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Data Fim</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !configEndDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {configEndDate ? format(configEndDate, "dd/MM/yyyy", { locale: ptBR }) : "Até Hoje"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={configEndDate}
+                        onSelect={setConfigEndDate}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-border/40" />
+
+            {/* Section B: Busca Automatizada */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 text-cyan-400" />
+                <Label className="text-sm font-medium">Busca Automatizada</Label>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border/40">
+                <div className="space-y-0.5">
+                  <Label className="text-sm">Habilitar Busca Automática</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Preenche lacunas e busca novos registros
+                  </p>
+                </div>
+                <Switch
+                  checked={configAutoEnabled}
+                  onCheckedChange={setConfigAutoEnabled}
+                />
+              </div>
+
+              {configAutoEnabled && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Intervalo de Verificação</Label>
+                  <Select value={configInterval} onValueChange={setConfigInterval}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="6hours">A cada 6 horas</SelectItem>
+                      <SelectItem value="daily">Diário</SelectItem>
+                      <SelectItem value="weekly">Semanal</SelectItem>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <Info className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-blue-300">
+                  O sistema irá consultar a API automaticamente neste intervalo para preencher lacunas de dados ou buscar novos registros após a Data Fim.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfigModal(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveConfig} className="gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>

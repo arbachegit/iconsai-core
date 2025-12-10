@@ -1719,9 +1719,13 @@ export type Database = {
       }
       system_api_registry: {
         Row: {
+          auto_fetch_enabled: boolean | null
+          auto_fetch_interval: string | null
           base_url: string
           created_at: string | null
           description: string | null
+          fetch_end_date: string | null
+          fetch_start_date: string | null
           id: string
           last_checked_at: string | null
           last_http_status: number | null
@@ -1735,9 +1739,13 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_fetch_enabled?: boolean | null
+          auto_fetch_interval?: string | null
           base_url: string
           created_at?: string | null
           description?: string | null
+          fetch_end_date?: string | null
+          fetch_start_date?: string | null
           id?: string
           last_checked_at?: string | null
           last_http_status?: number | null
@@ -1751,9 +1759,13 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_fetch_enabled?: boolean | null
+          auto_fetch_interval?: string | null
           base_url?: string
           created_at?: string | null
           description?: string | null
+          fetch_end_date?: string | null
+          fetch_start_date?: string | null
           id?: string
           last_checked_at?: string | null
           last_http_status?: number | null
