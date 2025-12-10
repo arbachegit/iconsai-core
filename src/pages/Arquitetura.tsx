@@ -334,24 +334,198 @@ const Arquitetura = () => {
     return (
       <TooltipProvider>
         <div className="min-h-screen bg-background relative overflow-hidden">
-          {/* Background pattern */}
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          {/* Animated Background */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" className="opacity-[0.08]">
               <defs>
-                <pattern id="circuitPattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-                  <path d="M0 50 H40 M60 50 H100 M50 0 V40 M50 60 V100" stroke="currentColor" strokeWidth="1" fill="none" />
-                  <circle cx="50" cy="50" r="4" fill="currentColor" />
-                  <circle cx="0" cy="50" r="2" fill="currentColor" />
-                  <circle cx="100" cy="50" r="2" fill="currentColor" />
-                  <circle cx="50" cy="0" r="2" fill="currentColor" />
-                  <circle cx="50" cy="100" r="2" fill="currentColor" />
-                  <path d="M20 20 L30 20 L30 30" stroke="currentColor" strokeWidth="1" fill="none" />
-                  <path d="M70 70 L80 70 L80 80" stroke="currentColor" strokeWidth="1" fill="none" />
-                  <path d="M70 20 L80 20 L80 30" stroke="currentColor" strokeWidth="1" fill="none" />
-                  <path d="M20 70 L30 70 L30 80" stroke="currentColor" strokeWidth="1" fill="none" />
-                </pattern>
+                {/* Animated gradient */}
+                <linearGradient id="bgFlowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.5">
+                    <animate attributeName="stop-opacity" values="0.3;0.7;0.3" dur="4s" repeatCount="indefinite" />
+                  </stop>
+                  <stop offset="100%" stopColor="hsl(180, 70%, 50%)" stopOpacity="0.5">
+                    <animate attributeName="stop-opacity" values="0.7;0.3;0.7" dur="4s" repeatCount="indefinite" />
+                  </stop>
+                </linearGradient>
+                
+                {/* Glow filter */}
+                <filter id="bgGlow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="2" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
               </defs>
-              <rect width="100%" height="100%" fill="url(#circuitPattern)" />
+
+              {/* Floating nodes with pulse animation */}
+              {[
+                { x: '10%', y: '20%', delay: '0s' },
+                { x: '25%', y: '70%', delay: '0.5s' },
+                { x: '40%', y: '15%', delay: '1s' },
+                { x: '55%', y: '80%', delay: '1.5s' },
+                { x: '70%', y: '30%', delay: '2s' },
+                { x: '85%', y: '60%', delay: '2.5s' },
+                { x: '15%', y: '45%', delay: '3s' },
+                { x: '90%', y: '15%', delay: '0.3s' },
+                { x: '50%', y: '50%', delay: '1.2s' },
+                { x: '75%', y: '85%', delay: '1.8s' },
+              ].map((node, i) => (
+                <g key={i} filter="url(#bgGlow)">
+                  {/* Server/Node icon */}
+                  <rect 
+                    x={node.x} 
+                    y={node.y} 
+                    width="24" 
+                    height="30" 
+                    rx="3"
+                    fill="none" 
+                    stroke="url(#bgFlowGradient)" 
+                    strokeWidth="1.5"
+                  >
+                    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" begin={node.delay} repeatCount="indefinite" />
+                  </rect>
+                  <line x1={`calc(${node.x} + 4px)`} y1={`calc(${node.y} + 8px)`} x2={`calc(${node.x} + 20px)`} y2={`calc(${node.y} + 8px)`} stroke="url(#bgFlowGradient)" strokeWidth="1">
+                    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" begin={node.delay} repeatCount="indefinite" />
+                  </line>
+                  <line x1={`calc(${node.x} + 4px)`} y1={`calc(${node.y} + 14px)`} x2={`calc(${node.x} + 20px)`} y2={`calc(${node.y} + 14px)`} stroke="url(#bgFlowGradient)" strokeWidth="1">
+                    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" begin={node.delay} repeatCount="indefinite" />
+                  </line>
+                  <line x1={`calc(${node.x} + 4px)`} y1={`calc(${node.y} + 20px)`} x2={`calc(${node.x} + 20px)`} y2={`calc(${node.y} + 20px)`} stroke="url(#bgFlowGradient)" strokeWidth="1">
+                    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" begin={node.delay} repeatCount="indefinite" />
+                  </line>
+                </g>
+              ))}
+
+              {/* Floating connection lines */}
+              {[
+                { x1: '12%', y1: '22%', x2: '38%', y2: '17%', delay: '0s' },
+                { x1: '42%', y1: '17%', x2: '68%', y2: '32%', delay: '0.5s' },
+                { x1: '72%', y1: '32%', x2: '88%', y2: '17%', delay: '1s' },
+                { x1: '27%', y1: '72%', x2: '53%', y2: '52%', delay: '1.5s' },
+                { x1: '57%', y1: '82%', x2: '73%', y2: '87%', delay: '2s' },
+                { x1: '17%', y1: '47%', x2: '23%', y2: '72%', delay: '2.5s' },
+                { x1: '87%', y1: '62%', x2: '92%', y2: '17%', delay: '0.8s' },
+              ].map((line, i) => (
+                <line 
+                  key={i}
+                  x1={line.x1} 
+                  y1={line.y1} 
+                  x2={line.x2} 
+                  y2={line.y2} 
+                  stroke="url(#bgFlowGradient)" 
+                  strokeWidth="1"
+                  strokeDasharray="6,4"
+                >
+                  <animate attributeName="stroke-dashoffset" from="0" to="-20" dur="2s" begin={line.delay} repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.2;0.6;0.2" dur="4s" begin={line.delay} repeatCount="indefinite" />
+                </line>
+              ))}
+
+              {/* Floating CPU/Chip symbols */}
+              {[
+                { x: '30%', y: '40%', size: 40, delay: '0.2s' },
+                { x: '65%', y: '55%', size: 35, delay: '1.2s' },
+                { x: '80%', y: '40%', size: 45, delay: '2.2s' },
+              ].map((chip, i) => (
+                <g key={`chip-${i}`} transform={`translate(${chip.x}, ${chip.y})`}>
+                  {/* CPU body */}
+                  <rect 
+                    x="-15" 
+                    y="-15" 
+                    width="30" 
+                    height="30" 
+                    rx="2"
+                    fill="none" 
+                    stroke="url(#bgFlowGradient)" 
+                    strokeWidth="1.5"
+                  >
+                    <animate attributeName="opacity" values="0.2;0.7;0.2" dur="5s" begin={chip.delay} repeatCount="indefinite" />
+                  </rect>
+                  {/* CPU pins */}
+                  {[-10, -3, 4, 11].map((pos, j) => (
+                    <g key={j}>
+                      <line x1={pos.toString()} y1="-15" x2={pos.toString()} y2="-22" stroke="url(#bgFlowGradient)" strokeWidth="1">
+                        <animate attributeName="opacity" values="0.2;0.7;0.2" dur="5s" begin={chip.delay} repeatCount="indefinite" />
+                      </line>
+                      <line x1={pos.toString()} y1="15" x2={pos.toString()} y2="22" stroke="url(#bgFlowGradient)" strokeWidth="1">
+                        <animate attributeName="opacity" values="0.2;0.7;0.2" dur="5s" begin={chip.delay} repeatCount="indefinite" />
+                      </line>
+                      <line x1="-15" y1={pos.toString()} x2="-22" y2={pos.toString()} stroke="url(#bgFlowGradient)" strokeWidth="1">
+                        <animate attributeName="opacity" values="0.2;0.7;0.2" dur="5s" begin={chip.delay} repeatCount="indefinite" />
+                      </line>
+                      <line x1="15" y1={pos.toString()} x2="22" y2={pos.toString()} stroke="url(#bgFlowGradient)" strokeWidth="1">
+                        <animate attributeName="opacity" values="0.2;0.7;0.2" dur="5s" begin={chip.delay} repeatCount="indefinite" />
+                      </line>
+                    </g>
+                  ))}
+                  {/* CPU core */}
+                  <rect x="-8" y="-8" width="16" height="16" rx="1" fill="url(#bgFlowGradient)">
+                    <animate attributeName="opacity" values="0.1;0.4;0.1" dur="5s" begin={chip.delay} repeatCount="indefinite" />
+                  </rect>
+                </g>
+              ))}
+
+              {/* Cloud symbols */}
+              {[
+                { x: '20%', y: '25%', delay: '0.7s' },
+                { x: '78%', y: '70%', delay: '1.7s' },
+              ].map((cloud, i) => (
+                <g key={`cloud-${i}`} transform={`translate(${cloud.x}, ${cloud.y})`}>
+                  <path 
+                    d="M-20,10 C-25,10 -28,5 -25,0 C-25,-5 -20,-8 -15,-7 C-12,-15 0,-15 5,-8 C12,-12 22,-8 22,0 C28,2 28,10 22,12 L-20,12 Z" 
+                    fill="none" 
+                    stroke="url(#bgFlowGradient)" 
+                    strokeWidth="1.5"
+                  >
+                    <animate attributeName="opacity" values="0.2;0.6;0.2" dur="6s" begin={cloud.delay} repeatCount="indefinite" />
+                  </path>
+                </g>
+              ))}
+
+              {/* Data packets flowing */}
+              {[0, 1, 2, 3, 4].map((i) => (
+                <circle 
+                  key={`packet-${i}`}
+                  r="3" 
+                  fill="url(#bgFlowGradient)"
+                >
+                  <animate 
+                    attributeName="cx" 
+                    values="5%;25%;50%;75%;95%" 
+                    dur={`${8 + i * 2}s`} 
+                    begin={`${i * 1.5}s`} 
+                    repeatCount="indefinite" 
+                  />
+                  <animate 
+                    attributeName="cy" 
+                    values={`${20 + i * 15}%;${40 + i * 10}%;${30 + i * 12}%;${50 + i * 8}%;${25 + i * 14}%`}
+                    dur={`${8 + i * 2}s`} 
+                    begin={`${i * 1.5}s`} 
+                    repeatCount="indefinite" 
+                  />
+                  <animate attributeName="opacity" values="0;0.8;0.8;0" dur={`${8 + i * 2}s`} begin={`${i * 1.5}s`} repeatCount="indefinite" />
+                </circle>
+              ))}
+
+              {/* Binary streams */}
+              {[
+                { x: '5%', y: '90%', text: '01001010', delay: '0s' },
+                { x: '92%', y: '5%', text: '11010110', delay: '2s' },
+                { x: '45%', y: '92%', text: '10110011', delay: '4s' },
+              ].map((binary, i) => (
+                <text 
+                  key={`binary-${i}`}
+                  x={binary.x} 
+                  y={binary.y} 
+                  fill="url(#bgFlowGradient)" 
+                  fontSize="10" 
+                  fontFamily="monospace"
+                >
+                  <animate attributeName="opacity" values="0;0.5;0" dur="6s" begin={binary.delay} repeatCount="indefinite" />
+                  {binary.text}
+                </text>
+              ))}
             </svg>
           </div>
           
