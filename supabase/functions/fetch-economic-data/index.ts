@@ -32,6 +32,15 @@ interface ApiConfig {
   status: string;
 }
 
+interface SyncMetadata {
+  extracted_count: number;
+  period_start: string | null;
+  period_end: string | null;
+  fields_detected: string[];
+  last_record_value: string | null;
+  fetch_timestamp: string;
+}
+
 // BCB-specific headers to avoid 406 errors
 const BCB_HEADERS = {
   'Accept': 'application/json, text/plain, */*',
@@ -45,6 +54,12 @@ function formatDateBCB(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
+}
+
+// Convert BCB date DD/MM/YYYY to ISO YYYY-MM-DD
+function bcbDateToISO(bcbDate: string): string {
+  const [day, month, year] = bcbDate.split('/');
+  return `${year}-${month}-${day}`;
 }
 
 // Fetch BCB data with chunking to respect 10-year limit
@@ -91,6 +106,85 @@ async function fetchBCBWithChunking(baseUrl: string): Promise<BCBDataPoint[]> {
   
   console.log(`[FETCH-ECONOMIC] BCB total records fetched: ${allData.length}`);
   return allData;
+}
+
+// Generate sync metadata from fetched data
+function generateSyncMetadata(data: BCBDataPoint[], provider: string): SyncMetadata {
+  const metadata: SyncMetadata = {
+    extracted_count: 0,
+    period_start: null,
+    period_end: null,
+    fields_detected: [],
+    last_record_value: null,
+    fetch_timestamp: new Date().toISOString()
+  };
+
+  if (!data || data.length === 0) return metadata;
+
+  metadata.extracted_count = data.length;
+  
+  if (provider === 'BCB' && data[0].data && data[0].valor) {
+    metadata.fields_detected = ['data', 'valor'];
+    
+    // Sort dates to find range
+    const sortedData = [...data].sort((a, b) => {
+      const dateA = new Date(bcbDateToISO(a.data));
+      const dateB = new Date(bcbDateToISO(b.data));
+      return dateA.getTime() - dateB.getTime();
+    });
+    
+    metadata.period_start = bcbDateToISO(sortedData[0].data);
+    metadata.period_end = bcbDateToISO(sortedData[sortedData.length - 1].data);
+    metadata.last_record_value = sortedData[sortedData.length - 1].valor;
+  }
+
+  return metadata;
+}
+
+// Generate sync metadata for IBGE data
+function generateIBGESyncMetadata(ibgeData: IBGEResult[]): SyncMetadata {
+  const metadata: SyncMetadata = {
+    extracted_count: 0,
+    period_start: null,
+    period_end: null,
+    fields_detected: ['D2C', 'V', 'variavel', 'unidade'],
+    last_record_value: null,
+    fetch_timestamp: new Date().toISOString()
+  };
+
+  if (!ibgeData || ibgeData.length === 0 || !ibgeData[0].resultados) return metadata;
+
+  const allPeriods: string[] = [];
+  let totalCount = 0;
+  let lastValue: string | null = null;
+
+  for (const resultado of ibgeData[0].resultados) {
+    for (const serie of resultado.series || []) {
+      const serieData = serie.serie || {};
+      for (const [period, value] of Object.entries(serieData)) {
+        if (value && value !== '-' && value !== '...') {
+          allPeriods.push(period);
+          totalCount++;
+          lastValue = value;
+        }
+      }
+    }
+  }
+
+  metadata.extracted_count = totalCount;
+  
+  if (allPeriods.length > 0) {
+    allPeriods.sort();
+    const formatPeriod = (p: string) => {
+      if (p.length === 6) return `${p.substring(0, 4)}-${p.substring(4, 6)}-01`;
+      return `${p}-01-01`;
+    };
+    metadata.period_start = formatPeriod(allPeriods[0]);
+    metadata.period_end = formatPeriod(allPeriods[allPeriods.length - 1]);
+    metadata.last_record_value = lastValue;
+  }
+
+  return metadata;
 }
 
 serve(async (req) => {
@@ -146,19 +240,48 @@ serve(async (req) => {
         console.log(`[FETCH-ECONOMIC] Base URL: ${apiConfig.base_url}`);
 
         let data: unknown;
+        let syncMetadata: SyncMetadata | null = null;
+        let httpStatus: number | null = null;
         
         // Use chunking strategy for BCB to avoid 10-year limit (406 error)
         if (apiConfig.provider === 'BCB') {
-          data = await fetchBCBWithChunking(apiConfig.base_url);
+          const bcbData = await fetchBCBWithChunking(apiConfig.base_url);
+          data = bcbData;
+          syncMetadata = generateSyncMetadata(bcbData, 'BCB');
+          httpStatus = bcbData.length > 0 ? 200 : null;
         } else {
           // Other providers: standard fetch
           const response = await fetch(apiConfig.base_url);
+          httpStatus = response.status;
+          
           if (!response.ok) {
             console.error(`[FETCH-ECONOMIC] API error for ${indicator.name}: ${response.status}`);
+            
+            // Update API registry with error status
+            await supabase.from('system_api_registry').update({
+              status: 'error',
+              last_checked_at: new Date().toISOString(),
+              last_http_status: response.status,
+              last_sync_metadata: {
+                extracted_count: 0,
+                period_start: null,
+                period_end: null,
+                fields_detected: [],
+                last_record_value: null,
+                fetch_timestamp: new Date().toISOString(),
+                error: `HTTP ${response.status}`
+              }
+            }).eq('id', apiConfig.id);
+            
             results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
             continue;
           }
           data = await response.json();
+          
+          // Generate metadata for IBGE
+          if (apiConfig.provider === 'IBGE') {
+            syncMetadata = generateIBGESyncMetadata(data as IBGEResult[]);
+          }
         }
 
         let valuesToInsert: Array<{ indicator_id: string; reference_date: string; value: number }> = [];
@@ -258,6 +381,14 @@ serve(async (req) => {
               status: 'success',
               newRecords: newValues.length
             });
+
+            // Update API registry with success telemetry
+            await supabase.from('system_api_registry').update({
+              status: 'active',
+              last_checked_at: new Date().toISOString(),
+              last_http_status: httpStatus,
+              last_sync_metadata: syncMetadata
+            }).eq('id', apiConfig.id);
 
             // If NEW records were inserted, dispatch notification
             if (newValues.length > 0) {

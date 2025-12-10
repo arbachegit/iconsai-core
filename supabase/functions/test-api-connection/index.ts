@@ -15,6 +15,16 @@ interface TestResult {
   preview: any[] | null;
   error: string | null;
   timeout: boolean;
+  syncMetadata: SyncMetadata | null;
+}
+
+interface SyncMetadata {
+  extracted_count: number;
+  period_start: string | null;
+  period_end: string | null;
+  fields_detected: string[];
+  last_record_value: string | null;
+  fetch_timestamp: string;
 }
 
 // Format date as DD/MM/YYYY for BCB API
@@ -23,6 +33,80 @@ function formatDateBCB(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
+}
+
+// Convert BCB date DD/MM/YYYY to ISO YYYY-MM-DD
+function bcbDateToISO(bcbDate: string): string {
+  const [day, month, year] = bcbDate.split('/');
+  return `${year}-${month}-${day}`;
+}
+
+// Analyze API response and extract metadata
+function analyzeApiResponse(data: unknown, provider: string): SyncMetadata {
+  const metadata: SyncMetadata = {
+    extracted_count: 0,
+    period_start: null,
+    period_end: null,
+    fields_detected: [],
+    last_record_value: null,
+    fetch_timestamp: new Date().toISOString()
+  };
+
+  if (!data) return metadata;
+
+  // Handle array responses (BCB format)
+  if (Array.isArray(data) && data.length > 0) {
+    metadata.extracted_count = data.length;
+    metadata.fields_detected = Object.keys(data[0]);
+
+    // BCB format: {data: "DD/MM/YYYY", valor: "X.XX"}
+    if (provider === 'BCB' && data[0].data && data[0].valor) {
+      const dates = data.map(d => d.data).sort((a, b) => {
+        const dateA = new Date(bcbDateToISO(a));
+        const dateB = new Date(bcbDateToISO(b));
+        return dateA.getTime() - dateB.getTime();
+      });
+      
+      metadata.period_start = bcbDateToISO(dates[0]);
+      metadata.period_end = bcbDateToISO(dates[dates.length - 1]);
+      metadata.last_record_value = data[data.length - 1].valor;
+    }
+  } 
+  // Handle IBGE nested structure
+  else if (!Array.isArray(data) && typeof data === 'object') {
+    const ibgeData = data as any[];
+    if (Array.isArray(ibgeData) && ibgeData.length > 0 && ibgeData[0].resultados) {
+      const resultados = ibgeData[0].resultados;
+      if (resultados.length > 0 && resultados[0].series?.length > 0) {
+        const serie = resultados[0].series[0].serie || {};
+        const periods = Object.keys(serie).filter(k => serie[k] && serie[k] !== '-');
+        
+        metadata.extracted_count = periods.length;
+        metadata.fields_detected = ['D2C', 'V', 'variavel', 'unidade'];
+        
+        if (periods.length > 0) {
+          periods.sort();
+          const formatPeriod = (p: string) => {
+            if (p.length === 6) return `${p.substring(0, 4)}-${p.substring(4, 6)}-01`;
+            return `${p}-01-01`;
+          };
+          metadata.period_start = formatPeriod(periods[0]);
+          metadata.period_end = formatPeriod(periods[periods.length - 1]);
+          metadata.last_record_value = serie[periods[periods.length - 1]];
+        }
+      }
+    }
+  }
+
+  // For other array types, just extract count and fields
+  if (Array.isArray(data) && data.length > 0 && !metadata.period_start) {
+    metadata.extracted_count = data.length;
+    if (typeof data[0] === 'object' && data[0] !== null) {
+      metadata.fields_detected = Object.keys(data[0]);
+    }
+  }
+
+  return metadata;
 }
 
 serve(async (req) => {
@@ -48,6 +132,16 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Get API provider info
+    const { data: apiInfo } = await supabase
+      .from('system_api_registry')
+      .select('provider, target_table')
+      .eq('id', apiId)
+      .single();
+
+    const provider = apiInfo?.provider || 'Unknown';
+    const targetTable = apiInfo?.target_table || 'indicator_values';
+
     // Prepare test result
     const result: TestResult = {
       success: false,
@@ -58,6 +152,7 @@ serve(async (req) => {
       preview: null,
       error: null,
       timeout: false,
+      syncMetadata: null,
     };
 
     // Create abort controller for timeout
@@ -129,6 +224,10 @@ serve(async (req) => {
         try {
           const data = JSON.parse(text);
           
+          // Analyze response and extract metadata
+          result.syncMetadata = analyzeApiResponse(data, provider);
+          console.log(`[TEST-API] Sync metadata:`, result.syncMetadata);
+          
           // Extract preview (first 2 items if array, or first 2 keys if object)
           if (Array.isArray(data)) {
             result.preview = data.slice(0, 2);
@@ -173,21 +272,29 @@ serve(async (req) => {
       }
     }
 
-    // Update database with test results
+    // Update database with test results including new telemetry columns
     const newStatus = result.success ? 'active' : 'error';
+    const updatePayload: Record<string, unknown> = {
+      status: newStatus,
+      last_checked_at: new Date().toISOString(),
+      last_latency_ms: result.latencyMs,
+      last_http_status: result.statusCode,
+    };
+
+    // Include sync metadata if available
+    if (result.syncMetadata) {
+      updatePayload.last_sync_metadata = result.syncMetadata;
+    }
+
     const { error: updateError } = await supabase
       .from('system_api_registry')
-      .update({
-        status: newStatus,
-        last_checked_at: new Date().toISOString(),
-        last_latency_ms: result.latencyMs,
-      })
+      .update(updatePayload)
       .eq('id', apiId);
 
     if (updateError) {
       console.error(`[TEST-API] Database update error:`, updateError);
     } else {
-      console.log(`[TEST-API] Updated API status to: ${newStatus}`);
+      console.log(`[TEST-API] Updated API status to: ${newStatus}, with telemetry data`);
     }
 
     return new Response(
@@ -211,6 +318,7 @@ serve(async (req) => {
         contentType: null,
         preview: null,
         timeout: false,
+        syncMetadata: null,
       }),
       { 
         status: 500, 
