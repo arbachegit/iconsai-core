@@ -12,15 +12,21 @@ import {
   Info,
   Play,
   RotateCw,
-  CheckCircle2
+  CheckCircle2,
+  ArrowLeft,
+  Building2,
+  Factory
 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ArchitectureCard from "./ArchitectureCard";
 import SaasRagArchitectureDiagram from "./SaasRagArchitectureDiagram";
+import DepartmentArchitectureDiagram from "./DepartmentArchitectureDiagram";
 
 type SimulationPhase = 'idle' | 'request' | 'routing' | 'check-adapter' | 'load-adapter' | 'inference' | 'response' | 'complete';
+type ViewMode = 'cards' | 'gpu' | 'department' | 'saas';
 
 export const InfrastructureArchitectureTab = () => {
+  const [selectedView, setSelectedView] = useState<ViewMode>('cards');
   const [zoom, setZoom] = useState(100);
   const [animationKey, setAnimationKey] = useState(0);
   
@@ -48,25 +54,14 @@ export const InfrastructureArchitectureTab = () => {
     setCurrentPhase('request');
     setAdapterLoaded(false);
 
-    // Phase 1: Request arrives (1s)
     setTimeout(() => setCurrentPhase('routing'), 1000);
-    
-    // Phase 2: Routing to orchestrator (1.5s)
     setTimeout(() => setCurrentPhase('check-adapter'), 2500);
-    
-    // Phase 3: Check adapter in GPU (1s)
     setTimeout(() => setCurrentPhase('load-adapter'), 3500);
-    
-    // Phase 4: Load adapter from S3 (1.5s)
     setTimeout(() => {
       setAdapterLoaded(true);
       setCurrentPhase('inference');
     }, 5000);
-    
-    // Phase 5: Inference (1.5s)
     setTimeout(() => setCurrentPhase('response'), 6500);
-    
-    // Phase 6: Response (1s)
     setTimeout(() => {
       setCurrentPhase('complete');
       setIsSimulating(false);
@@ -106,23 +101,96 @@ export const InfrastructureArchitectureTab = () => {
     }
   };
 
+  // Render cards view
+  if (selectedView === 'cards') {
+    return (
+      <TooltipProvider>
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gradient">Arquitetura de Infraestrutura</h2>
+            <p className="text-muted-foreground mt-1">
+              Selecione uma visualização para explorar a arquitetura do sistema
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <ArchitectureCard
+              title="Arquitetura de GPU"
+              description="Infraestrutura GPU com LoRA Adapters para inferência multi-tenant"
+              icon={Server}
+              color="cyan"
+              badge="AWS g5.xlarge"
+              onClick={() => setSelectedView('gpu')}
+            />
+            <ArchitectureCard
+              title="Uma Empresa, Vários Departamentos"
+              description="SLM customizado por departamento com base de conhecimento compartilhada"
+              icon={Building2}
+              color="green"
+              badge="Multi-RAG"
+              onClick={() => setSelectedView('department')}
+            />
+            <ArchitectureCard
+              title="Empresas Diferentes"
+              description="SLM modular para múltiplas empresas com isolamento completo"
+              icon={Factory}
+              color="purple"
+              badge="SaaS"
+              onClick={() => setSelectedView('saas')}
+            />
+          </div>
+        </div>
+      </TooltipProvider>
+    );
+  }
+
+  // Render back button for all detail views
+  const BackButton = () => (
+    <Button 
+      variant="outline" 
+      onClick={() => setSelectedView('cards')}
+      className="gap-2"
+    >
+      <ArrowLeft className="h-4 w-4" />
+      Voltar
+    </Button>
+  );
+
+  // Render department view
+  if (selectedView === 'department') {
+    return (
+      <TooltipProvider>
+        <div className="space-y-6">
+          <BackButton />
+          <DepartmentArchitectureDiagram />
+        </div>
+      </TooltipProvider>
+    );
+  }
+
+  // Render SaaS view
+  if (selectedView === 'saas') {
+    return (
+      <TooltipProvider>
+        <div className="space-y-6">
+          <BackButton />
+          <SaasRagArchitectureDiagram />
+        </div>
+      </TooltipProvider>
+    );
+  }
+
+  // Render GPU view (default detail view)
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        {/* Tabs for different architecture views */}
-        <Tabs defaultValue="gpu" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="gpu">Infraestrutura GPU</TabsTrigger>
-            <TabsTrigger value="rag-saas">Arquitetura RAG SaaS</TabsTrigger>
-          </TabsList>
-
-          {/* GPU Infrastructure Tab */}
-          <TabsContent value="gpu" className="space-y-6 mt-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-gradient">Arquitetura KY AI SLM</h2>
-                <p className="text-muted-foreground mt-1">
+        <BackButton />
+        
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gradient">Arquitetura KY AI SLM</h2>
+            <p className="text-muted-foreground mt-1">
               Small Language Model Infrastructure - Base Model + LoRA Adapters
             </p>
           </div>
@@ -187,7 +255,6 @@ export const InfrastructureArchitectureTab = () => {
               >
                 {/* Definitions */}
                 <defs>
-                  {/* Glow filter */}
                   <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                     <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
                     <feMerge>
@@ -195,8 +262,6 @@ export const InfrastructureArchitectureTab = () => {
                       <feMergeNode in="SourceGraphic"/>
                     </feMerge>
                   </filter>
-                  
-                  {/* Strong glow for active elements */}
                   <filter id="strongGlow" x="-100%" y="-100%" width="300%" height="300%">
                     <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
                     <feMerge>
@@ -238,7 +303,6 @@ export const InfrastructureArchitectureTab = () => {
 
                 {/* ===== USERS SECTION (Purple) ===== */}
                 <g>
-                  {/* User A - Active during simulation */}
                   <g className="cursor-pointer" filter={currentPhase === 'request' || currentPhase === 'response' ? 'url(#strongGlow)' : ''}>
                     <rect 
                       x="200" y="30" width="140" height="50" rx="8" 
@@ -259,7 +323,6 @@ export const InfrastructureArchitectureTab = () => {
                     )}
                   </g>
 
-                  {/* User B - Inactive during simulation */}
                   <g className="cursor-pointer" opacity={currentPhase !== 'idle' ? '0.4' : '1'}>
                     <rect x="560" y="30" width="140" height="50" rx="8" fill="hsl(271 91% 65% / 0.2)" stroke="hsl(271 91% 65%)" strokeWidth="2">
                       {currentPhase === 'idle' && (
@@ -272,7 +335,6 @@ export const InfrastructureArchitectureTab = () => {
 
                 {/* ===== ARROWS FROM USERS TO API ===== */}
                 <g>
-                  {/* Arrow from User A */}
                   <path 
                     d="M270 80 L270 110 L450 110 L450 130" 
                     fill="none" 
@@ -283,14 +345,12 @@ export const InfrastructureArchitectureTab = () => {
                     <animate attributeName="stroke-dashoffset" values="10;0" dur="0.5s" repeatCount="indefinite" />
                   </path>
                   
-                  {/* Data packet - Request phase */}
                   {currentPhase === 'request' && (
                     <circle r="6" fill="hsl(271 91% 65%)" filter="url(#glow)">
                       <animateMotion dur="1s" repeatCount="1" path="M270 80 L270 110 L450 110 L450 130" />
                     </circle>
                   )}
                   
-                  {/* Data packet - Response phase (reverse) */}
                   {currentPhase === 'response' && (
                     <circle r="6" fill="hsl(142 76% 36%)" filter="url(#glow)">
                       <animateMotion dur="1s" repeatCount="1" path="M450 130 L450 110 L270 110 L270 80" />
@@ -362,7 +422,6 @@ export const InfrastructureArchitectureTab = () => {
 
                 {/* ===== GPU CLUSTER (Green) ===== */}
                 <g filter={['check-adapter', 'inference'].includes(currentPhase) ? 'url(#glow)' : ''}>
-                  {/* Main container */}
                   <rect 
                     x="100" y="310" width="700" height="230" rx="12" 
                     fill={['check-adapter', 'inference'].includes(currentPhase) ? 'hsl(142 76% 36% / 0.2)' : 'hsl(142 76% 36% / 0.1)'} 
@@ -371,7 +430,7 @@ export const InfrastructureArchitectureTab = () => {
                   />
                   <text x="450" y="335" textAnchor="middle" fill="hsl(142 76% 36%)" fontSize="14" fontWeight="700">CLUSTER DE INFERÊNCIA GPU NODES - AWS g5.xlarge</text>
 
-                  {/* VRAM Container (Cyan) */}
+                  {/* VRAM Container */}
                   <rect 
                     x="130" y="350" width="640" height="130" rx="8" 
                     fill={currentPhase === 'check-adapter' ? 'hsl(187 96% 42% / 0.25)' : 'hsl(187 96% 42% / 0.15)'} 
@@ -380,7 +439,7 @@ export const InfrastructureArchitectureTab = () => {
                   />
                   <text x="450" y="370" textAnchor="middle" fill="hsl(187 96% 42%)" fontSize="12" fontWeight="600">VRAM - 24GB (NVIDIA A10G)</text>
 
-                  {/* BASE MODEL - Pulsing during inference */}
+                  {/* BASE MODEL */}
                   <g filter={currentPhase === 'inference' ? 'url(#strongGlow)' : 'url(#glow)'}>
                     <rect 
                       x="160" y="385" width="350" height="80" rx="6" 
@@ -408,7 +467,6 @@ export const InfrastructureArchitectureTab = () => {
 
                   {/* Inference Slots */}
                   <g>
-                    {/* Slot A - Active when adapter loaded */}
                     <rect 
                       x="540" y="385" width="100" height="35" rx="4" 
                       fill={adapterLoaded ? 'hsl(271 91% 65% / 0.5)' : 'hsl(271 91% 65% / 0.2)'} 
@@ -429,7 +487,6 @@ export const InfrastructureArchitectureTab = () => {
                       </text>
                     )}
 
-                    {/* Slot B - Inactive */}
                     <rect x="540" y="430" width="100" height="35" rx="4" fill="hsl(271 91% 65% / 0.15)" stroke="hsl(271 91% 65% / 0.5)" strokeWidth="1" />
                     <text x="590" y="453" textAnchor="middle" fill="hsl(271 91% 65% / 0.5)" fontSize="11">Slot B</text>
                   </g>
@@ -444,7 +501,7 @@ export const InfrastructureArchitectureTab = () => {
                   <text x="450" y="515" textAnchor="middle" fill="hsl(142 76% 36%)" fontSize="13" fontWeight="600">Inference Server (vLLM / TGI / LoRAX)</text>
                 </g>
 
-                {/* ===== BIDIRECTIONAL ARROWS TO S3 ===== */}
+                {/* ===== ARROWS TO S3 ===== */}
                 <g>
                   <path 
                     d="M450 540 L450 570" 
@@ -458,7 +515,6 @@ export const InfrastructureArchitectureTab = () => {
                   <path d="M430 555 L450 540 L470 555" fill="none" stroke="hsl(25 95% 53%)" strokeWidth="2" />
                   <path d="M430 555 L450 570 L470 555" fill="none" stroke="hsl(25 95% 53%)" strokeWidth="2" />
                   
-                  {/* Data packet going UP (loading adapter) */}
                   {currentPhase === 'load-adapter' && (
                     <circle r="6" fill="hsl(25 95% 53%)" filter="url(#glow)">
                       <animateMotion dur="0.8s" repeatCount="indefinite" path="M450 580 L450 540" />
@@ -480,7 +536,6 @@ export const InfrastructureArchitectureTab = () => {
                   />
                   <text x="450" y="605" textAnchor="middle" fill="hsl(25 95% 53%)" fontSize="14" fontWeight="700">ARMAZENAMENTO S3</text>
 
-                  {/* Adapter A - Highlighted during load */}
                   <rect 
                     x="150" y="620" width="150" height="45" rx="6" 
                     fill={currentPhase === 'load-adapter' ? 'hsl(271 91% 65% / 0.4)' : 'hsl(271 91% 65% / 0.2)'} 
@@ -500,12 +555,10 @@ export const InfrastructureArchitectureTab = () => {
                     </text>
                   )}
 
-                  {/* Adapter B - Dim */}
                   <rect x="375" y="620" width="150" height="45" rx="6" fill="hsl(271 91% 65% / 0.1)" stroke="hsl(271 91% 65% / 0.4)" strokeWidth="1" />
                   <text x="450" y="640" textAnchor="middle" fill="hsl(271 91% 65% / 0.5)" fontSize="12">Adapter Empresa B</text>
                   <text x="450" y="656" textAnchor="middle" fill="hsl(271 91% 65% / 0.4)" fontSize="10">~100MB (LoRA)</text>
 
-                  {/* Base Model Weights */}
                   <rect x="600" y="620" width="150" height="45" rx="6" fill="hsl(187 96% 42% / 0.2)" stroke="hsl(187 96% 42%)" strokeWidth="1.5" />
                   <text x="675" y="640" textAnchor="middle" fill="hsl(187 96% 42%)" fontSize="12" fontWeight="600">Base Model</text>
                   <text x="675" y="656" textAnchor="middle" fill="hsl(187 96% 42% / 0.7)" fontSize="10">Weights (~16GB)</text>
@@ -595,7 +648,6 @@ export const InfrastructureArchitectureTab = () => {
 
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Specifications Card */}
           <Card className="border-cyan-500/30 bg-gradient-to-br from-cyan-500/5 to-cyan-600/10">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2 text-cyan-400">
@@ -627,7 +679,6 @@ export const InfrastructureArchitectureTab = () => {
             </CardContent>
           </Card>
 
-          {/* Costs Card */}
           <Card className="border-orange-500/30 bg-gradient-to-br from-orange-500/5 to-orange-600/10">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2 text-orange-400">
@@ -655,7 +706,6 @@ export const InfrastructureArchitectureTab = () => {
             </CardContent>
           </Card>
 
-          {/* LoRA Strategy Card */}
           <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/5 to-purple-600/10">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2 text-purple-400">
@@ -698,37 +748,25 @@ export const InfrastructureArchitectureTab = () => {
                 { step: "1", title: "Requisição", desc: "company_id: A", color: "purple" },
                 { step: "2", title: "Verificação", desc: "Adapter na GPU?", color: "blue" },
                 { step: "3", title: "Carregamento", desc: "S3 → GPU (~ms)", color: "orange" },
-                { step: "4", title: "Inferência", desc: "Base + Adapter", color: "cyan" },
-                { step: "5", title: "Resposta", desc: "Dados isolados", color: "green" },
-              ].map((item, i) => (
-                <div key={i} className="relative">
-                  <div className={`w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center text-sm font-bold
-                    ${item.color === 'purple' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50' : ''}
-                    ${item.color === 'blue' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' : ''}
-                    ${item.color === 'orange' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50' : ''}
-                    ${item.color === 'cyan' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50' : ''}
-                    ${item.color === 'green' ? 'bg-green-500/20 text-green-400 border border-green-500/50' : ''}
-                  `}>
+                { step: "4", title: "Inferência", desc: "Base + Adapter A", color: "cyan" },
+                { step: "5", title: "Resposta", desc: "Resultado isolado", color: "green" },
+              ].map((item) => (
+                <div key={item.step} className="flex flex-col items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-${item.color}-500/20 text-${item.color}-400 border border-${item.color}-500/40`}>
                     {item.step}
                   </div>
-                  <p className="font-medium text-sm">{item.title}</p>
-                  <p className="text-xs text-muted-foreground">{item.desc}</p>
-                  {i < 4 && (
-                    <div className="hidden md:block absolute top-5 -right-2 text-muted-foreground">→</div>
-                  )}
+                  <div>
+                    <div className="font-semibold text-sm">{item.title}</div>
+                    <div className="text-xs text-muted-foreground">{item.desc}</div>
+                  </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-          </TabsContent>
-
-          {/* RAG SaaS Architecture Tab */}
-          <TabsContent value="rag-saas" className="mt-6">
-            <SaasRagArchitectureDiagram />
-          </TabsContent>
-        </Tabs>
       </div>
     </TooltipProvider>
   );
 };
+
+export default InfrastructureArchitectureTab;
