@@ -35,7 +35,7 @@ export const DashboardTab = () => {
         .from("documents")
         .select("status, created_at");
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
@@ -47,29 +47,35 @@ export const DashboardTab = () => {
         .from("rag_analytics")
         .select("*", { count: "exact", head: true });
       if (error) throw error;
-      return count || 0;
+      return count ?? 0;
     },
   });
 
   const isLoading = analyticsLoading || settingsLoading || docsLoading || ragLoading;
 
+  // Safe mode: always render something visible
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64 min-h-[256px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  const today = new Date().toDateString();
-  const todayAnalytics = analytics?.filter(
-    (a) => new Date(a.started_at).toDateString() === today
-  ) || [];
+  // Defensive guard: ensure we have valid data before rendering charts
+  const safeAnalytics = analytics ?? [];
+  const safeDocsData = docsData ?? [];
+  const safeRagSearches = ragSearches ?? 0;
 
-  const totalConversations = analytics?.length || 0;
-  const totalMessages = analytics?.reduce((sum, a) => sum + a.message_count, 0) || 0;
-  const totalAudioPlays = analytics?.reduce((sum, a) => sum + a.audio_plays, 0) || 0;
-  const processedDocs = docsData?.filter(d => d.status === "completed").length || 0;
+  const today = new Date().toDateString();
+  const todayAnalytics = safeAnalytics.filter(
+    (a) => new Date(a.started_at).toDateString() === today
+  );
+
+  const totalConversations = safeAnalytics.length;
+  const totalMessages = safeAnalytics.reduce((sum, a) => sum + (a.message_count ?? 0), 0);
+  const totalAudioPlays = safeAnalytics.reduce((sum, a) => sum + (a.audio_plays ?? 0), 0);
+  const processedDocs = safeDocsData.filter(d => d.status === "completed").length;
 
   // Chart data: Last 7 days conversations
   const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -79,9 +85,9 @@ export const DashboardTab = () => {
   });
 
   const conversationsByDay = last7Days.map(date => {
-    const count = analytics?.filter(
+    const count = safeAnalytics.filter(
       a => new Date(a.started_at).toISOString().split('T')[0] === date
-    ).length || 0;
+    ).length;
     return {
       date: new Date(date).toLocaleDateString('pt-BR', { weekday: 'short' }),
       conversations: count
@@ -90,17 +96,17 @@ export const DashboardTab = () => {
 
   // Document status distribution
   const docStatusData = [
-    { name: 'Completo', value: docsData?.filter(d => d.status === 'completed').length || 0, color: '#10B981' },
-    { name: 'Processando', value: docsData?.filter(d => d.status === 'processing' || d.status === 'pending').length || 0, color: '#F59E0B' },
-    { name: 'Falha', value: docsData?.filter(d => d.status === 'failed').length || 0, color: '#EF4444' },
+    { name: 'Completo', value: safeDocsData.filter(d => d.status === 'completed').length, color: '#10B981' },
+    { name: 'Processando', value: safeDocsData.filter(d => d.status === 'processing' || d.status === 'pending').length, color: '#F59E0B' },
+    { name: 'Falha', value: safeDocsData.filter(d => d.status === 'failed').length, color: '#EF4444' },
   ];
 
   // Peak usage hours
   const hourlyData = Array.from({ length: 24 }, (_, hour) => {
-    const count = analytics?.filter(a => {
+    const count = safeAnalytics.filter(a => {
       const h = new Date(a.started_at).getHours();
       return h === hour;
-    }).length || 0;
+    }).length;
     return {
       hour: `${hour}h`,
       count
@@ -172,7 +178,7 @@ export const DashboardTab = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Buscas RAG</p>
-              <p className="text-2xl font-bold text-foreground">{ragSearches}</p>
+              <p className="text-2xl font-bold text-foreground">{safeRagSearches}</p>
             </div>
           </div>
         </Card>

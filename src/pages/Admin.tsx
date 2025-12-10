@@ -396,8 +396,8 @@ const Admin = () => {
           </TooltipProvider>
         </header>
 
-        {/* Main content */}
-        <main className="flex-1 overflow-y-auto pt-14">
+        {/* Main content - explicit visibility and min-height for safe mode */}
+        <main className="flex-1 overflow-y-auto pt-14 min-h-[calc(100vh-3.5rem)] opacity-100 visible">
           <div className="p-8">
             <div className="max-w-7xl mx-auto">
               <ErrorBoundary key={activeTab} fallbackMessage="Erro ao carregar este módulo do painel admin">
