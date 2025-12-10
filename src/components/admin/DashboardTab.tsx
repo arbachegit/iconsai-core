@@ -313,7 +313,21 @@ export const DashboardTab = () => {
 
         {/* RECENT ACTIVITY / LOGS */}
         <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Logs Recentes</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-foreground">Logs Recentes</h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button className="text-muted-foreground hover:text-foreground transition-colors">
+                    <Info size={18} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="max-w-[280px] text-sm">
+                  Registro das últimas ações realizadas por administradores no sistema, incluindo navegação, uploads, exclusões e alterações de configuração.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <div className="space-y-4">
             {recentLogs && recentLogs.length > 0 ? (
               recentLogs.map((log) => (
