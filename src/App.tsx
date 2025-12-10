@@ -6,10 +6,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
+import AdminLogin from "./pages/AdminLogin";
 
 // Lazy load non-critical pages
 const NotFound = lazy(() => import("./pages/NotFound"));
-const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminSignup = lazy(() => import("./pages/AdminSignup"));
 const AdminResetPassword = lazy(() => import("./pages/AdminResetPassword"));
 const Documentation = lazy(() => import("./pages/Documentation"));
