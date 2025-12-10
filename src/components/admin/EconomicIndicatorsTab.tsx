@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { TrendingUp, RefreshCw, Calendar, Clock, Download, Settings2 } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { TrendingUp, RefreshCw, Calendar, Clock, Download, Plus, Pencil, Trash2, Info, Database, Bell, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -24,6 +25,7 @@ interface Indicator {
 }
 
 interface IndicatorValue {
+  id: string;
   reference_date: string;
   value: number;
 }
@@ -38,11 +40,20 @@ export default function EconomicIndicatorsTab() {
   const [indicators, setIndicators] = useState<Indicator[]>([]);
   const [selectedIndicator, setSelectedIndicator] = useState<string>('');
   const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [tableData, setTableData] = useState<IndicatorValue[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchingData, setFetchingData] = useState(false);
   const [lastFetch, setLastFetch] = useState<string | null>(null);
   const [cronDialogOpen, setCronDialogOpen] = useState(false);
   const [cronSchedule, setCronSchedule] = useState('');
+  const [etlModalOpen, setEtlModalOpen] = useState(false);
+  
+  // CRUD state
+  const [crudDialogOpen, setCrudDialogOpen] = useState(false);
+  const [editingValue, setEditingValue] = useState<IndicatorValue | null>(null);
+  const [newDate, setNewDate] = useState('');
+  const [newValue, setNewValue] = useState('');
+  const [showTable, setShowTable] = useState(false);
 
   useEffect(() => {
     fetchIndicators();
@@ -78,7 +89,7 @@ export default function EconomicIndicatorsTab() {
     try {
       const { data, error } = await supabase
         .from('indicator_values')
-        .select('reference_date, value')
+        .select('id, reference_date, value')
         .eq('indicator_id', indicatorId)
         .order('reference_date', { ascending: true });
 
@@ -91,6 +102,7 @@ export default function EconomicIndicatorsTab() {
       }));
 
       setChartData(formattedData);
+      setTableData((data || []).map(d => ({ ...d, value: Number(d.value) })).reverse().slice(0, 24));
     } catch (error) {
       console.error('Error fetching indicator values:', error);
     }
@@ -157,6 +169,74 @@ export default function EconomicIndicatorsTab() {
     }
   };
 
+  // CRUD operations
+  const handleOpenCrud = (value?: IndicatorValue) => {
+    if (value) {
+      setEditingValue(value);
+      setNewDate(value.reference_date);
+      setNewValue(String(value.value));
+    } else {
+      setEditingValue(null);
+      setNewDate('');
+      setNewValue('');
+    }
+    setCrudDialogOpen(true);
+  };
+
+  const handleSaveValue = async () => {
+    if (!newDate || !newValue || !selectedIndicator) {
+      toast.error('Data e valor são obrigatórios');
+      return;
+    }
+
+    try {
+      if (editingValue) {
+        const { error } = await supabase
+          .from('indicator_values')
+          .update({ value: parseFloat(newValue), reference_date: newDate })
+          .eq('id', editingValue.id);
+
+        if (error) throw error;
+        toast.success('Valor atualizado');
+      } else {
+        const { error } = await supabase
+          .from('indicator_values')
+          .insert({
+            indicator_id: selectedIndicator,
+            reference_date: newDate,
+            value: parseFloat(newValue)
+          });
+
+        if (error) throw error;
+        toast.success('Valor inserido');
+      }
+
+      setCrudDialogOpen(false);
+      fetchIndicatorValues(selectedIndicator);
+    } catch (error) {
+      console.error('Error saving value:', error);
+      toast.error('Erro ao salvar');
+    }
+  };
+
+  const handleDeleteValue = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este registro?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('indicator_values')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Registro excluído');
+      fetchIndicatorValues(selectedIndicator);
+    } catch (error) {
+      console.error('Error deleting value:', error);
+      toast.error('Erro ao excluir');
+    }
+  };
+
   const selectedIndicatorData = indicators.find(i => i.id === selectedIndicator);
 
   const getLatestValue = () => {
@@ -189,6 +269,122 @@ export default function EconomicIndicatorsTab() {
         <div className="flex items-center gap-3">
           <TrendingUp className="h-6 w-6 text-primary" />
           <h2 className="text-xl font-semibold">Painel de Indicadores Econômicos</h2>
+          
+          {/* ETL Explanation Modal */}
+          <Dialog open={etlModalOpen} onOpenChange={setEtlModalOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Info className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5 text-primary" />
+                  Como Funciona o ETL de Indicadores
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6 py-4">
+                {/* Flow Diagram */}
+                <div className="bg-muted/30 rounded-lg p-6">
+                  <div className="flex items-center justify-between gap-4 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <Database className="h-6 w-6 text-blue-400" />
+                      </div>
+                      <span className="text-xs font-medium">APIs Externas</span>
+                      <span className="text-xs text-muted-foreground">BCB, IBGE</span>
+                    </div>
+                    
+                    <div className="flex-1 border-t-2 border-dashed border-border relative">
+                      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
+                        fetch
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center">
+                        <RefreshCw className="h-6 w-6 text-green-400" />
+                      </div>
+                      <span className="text-xs font-medium">Edge Function</span>
+                      <span className="text-xs text-muted-foreground">Parse & Transform</span>
+                    </div>
+                    
+                    <div className="flex-1 border-t-2 border-dashed border-border relative">
+                      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
+                        upsert
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="h-12 w-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                        <FileText className="h-6 w-6 text-purple-400" />
+                      </div>
+                      <span className="text-xs font-medium">Database</span>
+                      <span className="text-xs text-muted-foreground">indicator_values</span>
+                    </div>
+                    
+                    <div className="flex-1 border-t-2 border-dashed border-border relative">
+                      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
+                        notify
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="h-12 w-12 rounded-full bg-amber-500/20 flex items-center justify-center">
+                        <Bell className="h-6 w-6 text-amber-400" />
+                      </div>
+                      <span className="text-xs font-medium">Notificação</span>
+                      <span className="text-xs text-muted-foreground">Email/WhatsApp</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Steps */}
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                    <div className="h-6 w-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center font-bold shrink-0">1</div>
+                    <div>
+                      <h4 className="font-medium text-sm">Fetch de APIs</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Consulta APIs do BCB (Selic, Dólar, CDI) e IBGE/SIDRA (IPCA, PIB, PMC).
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <div className="h-6 w-6 rounded-full bg-green-500 text-white text-xs flex items-center justify-center font-bold shrink-0">2</div>
+                    <div>
+                      <h4 className="font-medium text-sm">Transformação</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Dados normalizados, datas convertidas e valores formatados.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                    <div className="h-6 w-6 rounded-full bg-purple-500 text-white text-xs flex items-center justify-center font-bold shrink-0">3</div>
+                    <div>
+                      <h4 className="font-medium text-sm">Upsert Inteligente</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Existentes atualizados, novos inseridos. Duplicatas detectadas.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <div className="h-6 w-6 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center font-bold shrink-0">4</div>
+                    <div>
+                      <h4 className="font-medium text-sm">Notificação Automática</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Novos dados disparam notificação via Email/WhatsApp.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -414,6 +610,124 @@ export default function EconomicIndicatorsTab() {
             </div>
           )}
         </CardContent>
+      </Card>
+
+      {/* CRUD Table */}
+      <Card className="border-border/40 bg-card/50">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Dados Recentes (CRUD)
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowTable(!showTable)}
+            >
+              {showTable ? 'Ocultar' : 'Mostrar'} Tabela
+            </Button>
+            <Dialog open={crudDialogOpen} onOpenChange={setCrudDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={() => handleOpenCrud()} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Inserir Valor
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingValue ? 'Editar Valor' : 'Inserir Novo Valor'}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Data de Referência</Label>
+                    <Input
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Valor</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={newValue}
+                      onChange={(e) => setNewValue(e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setCrudDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSaveValue}>
+                    {editingValue ? 'Salvar' : 'Inserir'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        {showTable && (
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="text-right w-[100px]">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tableData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                      Nenhum dado disponível
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  tableData.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell>
+                        {format(new Date(row.reference_date), 'dd/MM/yyyy', { locale: ptBR })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {row.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        {selectedIndicatorData?.unit && (
+                          <span className="text-muted-foreground ml-1">{selectedIndicatorData.unit}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleOpenCrud(row)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteValue(row.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        )}
       </Card>
 
       {lastFetch && (
