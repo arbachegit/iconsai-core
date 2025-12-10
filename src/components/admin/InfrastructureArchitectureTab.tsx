@@ -12,7 +12,6 @@ import {
   Info,
   Play,
   Pause,
-  Square,
   Download,
   Loader2,
   Headphones,
@@ -63,7 +62,7 @@ export const InfrastructureArchitectureTab = () => {
   const [adapterLoaded, setAdapterLoaded] = useState(false);
 
   // Use global audio player context - no local state
-  const { playAudio, floatingPlayerState, stopPlayback } = useAudioPlayer();
+  const { playAudio, floatingPlayerState } = useAudioPlayer();
   
   const AUDIO_URL = "https://gmflpmcepempcygdrayv.supabase.co/storage/v1/object/public/tooltip-audio/audio-contents/e137c34e-4523-406a-a7bc-35ac598cc9f6.mp3";
   const AUDIO_TITLE = "AI Escalável: O Segredo dos 90% Mais Barato! 💰";
@@ -75,12 +74,6 @@ export const InfrastructureArchitectureTab = () => {
 
   const handleAudioPlayPause = () => {
     playAudio(AUDIO_TITLE, AUDIO_URL);
-  };
-
-  const handleAudioStop = () => {
-    if (isThisAudioActive) {
-      stopPlayback();
-    }
   };
 
   const handleAudioDownload = () => {
@@ -363,17 +356,6 @@ export const InfrastructureArchitectureTab = () => {
                 {isLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                 {isPlaying && <Pause className="h-4 w-4 text-primary" />}
                 {!isLoading && !isPlaying && <Play className="h-4 w-4 text-primary" />}
-              </Button>
-              
-              {/* Stop Button */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={handleAudioStop} 
-                disabled={!isThisAudioActive}
-                className="h-8 w-8 hover:bg-primary/20"
-              >
-                <Square className="h-4 w-4" />
               </Button>
               
               {/* Download Button */}
