@@ -1,10 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Check, X } from "lucide-react";
+import { UserPlus, Check, X, ShieldAlert, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 // Password validation requirements matching AdminResetPassword.tsx
@@ -33,8 +33,38 @@ const AdminSignup = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAdmins, setIsCheckingAdmins] = useState(true);
+  const [adminExists, setAdminExists] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Security: Check if admin users already exist - hide signup if they do
+  useEffect(() => {
+    const checkExistingAdmins = async () => {
+      try {
+        // Check if any admin roles exist in the system
+        const { count, error } = await supabase
+          .from('user_roles')
+          .select('*', { count: 'exact', head: true })
+          .in('role', ['admin', 'superadmin']);
+        
+        if (error) {
+          console.error('Error checking admin existence:', error);
+          // If we can't check, allow access but log the issue
+          setAdminExists(false);
+        } else {
+          setAdminExists((count ?? 0) > 0);
+        }
+      } catch (err) {
+        console.error('Failed to check admin existence:', err);
+        setAdminExists(false);
+      } finally {
+        setIsCheckingAdmins(false);
+      }
+    };
+
+    checkExistingAdmins();
+  }, []);
 
   const passwordValidation = useMemo(() => validatePassword(password), [password]);
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
@@ -97,6 +127,53 @@ const AdminSignup = () => {
       setIsLoading(false);
     }
   };
+
+  // Show loading state while checking
+  if (isCheckingAdmins) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md p-8 bg-card/50 backdrop-blur-sm border-primary/20">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-muted-foreground">Verificando...</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Security: Block signup if admins already exist
+  if (adminExists) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md p-8 bg-card/50 backdrop-blur-sm border-primary/20">
+          <div className="flex flex-col items-center space-y-6">
+            <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center">
+              <ShieldAlert className="w-8 h-8 text-destructive" />
+            </div>
+
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-foreground">Acesso Restrito</h1>
+              <p className="text-muted-foreground mt-2">
+                O cadastro de novos administradores está desabilitado.
+              </p>
+              <p className="text-muted-foreground text-sm mt-4">
+                Já existem administradores no sistema. Novos admins devem ser 
+                criados por um administrador existente através do painel de controle.
+              </p>
+            </div>
+
+            <Button
+              onClick={() => navigate("/admin/login")}
+              className="w-full bg-gradient-primary"
+            >
+              Ir para Login
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
