@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ZoomIn, ZoomOut, RotateCcw, Shield, Zap, Server } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Shield, Zap, Server, Headphones, Play, Pause, Square, Download, Loader2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 const HyperModularSLMDiagram = () => {
   const [zoom, setZoom] = useState(1);
   const [animationKey, setAnimationKey] = useState(0);
+  const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const AUDIO_URL = "https://gmflpmcepempcygdrayv.supabase.co/storage/v1/object/public/tooltip-audio/audio-contents/65c265c8-e54b-4f7e-96f1-44136000ed7b.mp3";
+  const AUDIO_TITLE = "🛡️Paredes de Titânio e Gênios Hiperfocados";
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 1.5));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.5));
@@ -14,24 +20,107 @@ const HyperModularSLMDiagram = () => {
     setAnimationKey(prev => prev + 1);
   };
 
+  const handleAudioPlayPause = async () => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(AUDIO_URL);
+      audioRef.current.onended = () => setAudioState('idle');
+      audioRef.current.oncanplaythrough = () => {
+        setAudioState('playing');
+        audioRef.current?.play();
+      };
+    }
+
+    if (audioState === 'idle' || audioState === 'paused') {
+      setAudioState('loading');
+      if (audioRef.current.readyState >= 3) {
+        setAudioState('playing');
+        audioRef.current.play();
+      } else {
+        audioRef.current.load();
+      }
+    } else if (audioState === 'playing') {
+      audioRef.current.pause();
+      setAudioState('paused');
+    }
+  };
+
+  const handleAudioStop = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.onended = null;
+      audioRef.current.oncanplaythrough = null;
+      audioRef.current = null;
+    }
+    setAudioState('idle');
+  };
+
+  const handleAudioDownload = () => {
+    const link = document.createElement('a');
+    link.href = AUDIO_URL;
+    link.download = 'paredes-titanio-genios-hiperfocados.mp3';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <Card className="bg-card/50 backdrop-blur border-border/50">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <CardTitle className="text-xl flex items-center gap-2">
             <Shield className="w-5 h-5 text-purple-400" />
             Arquitetura SLM Hiper-Modular (Multi-Tenant)
           </CardTitle>
-          <div className="flex gap-2">
-            <Button variant="outline" size="icon" onClick={handleZoomOut}>
-              <ZoomOut className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={handleZoomIn}>
-              <ZoomIn className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={handleReset}>
-              <RotateCcw className="w-4 h-4" />
-            </Button>
+          <div className="flex items-center gap-3">
+            {/* Audio Player */}
+            <TooltipProvider>
+              <div className="flex items-center gap-2 bg-card border border-primary/30 rounded-lg px-3 py-2">
+                <Headphones className="h-4 w-4 text-primary shrink-0" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-sm font-medium max-w-[140px] truncate cursor-default">
+                      {AUDIO_TITLE}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    {AUDIO_TITLE}
+                  </TooltipContent>
+                </Tooltip>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" onClick={handleAudioPlayPause} className="h-8 w-8">
+                    {audioState === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                    {audioState === 'playing' && <Pause className="h-4 w-4 text-primary" />}
+                    {(audioState === 'idle' || audioState === 'paused') && <Play className="h-4 w-4 text-primary" />}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={handleAudioStop} 
+                    disabled={audioState === 'idle'}
+                    className="h-8 w-8"
+                  >
+                    <Square className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={handleAudioDownload} className="h-8 w-8">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </TooltipProvider>
+            
+            {/* Zoom Controls */}
+            <div className="flex gap-2">
+              <Button variant="outline" size="icon" onClick={handleZoomOut}>
+                <ZoomOut className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={handleZoomIn}>
+                <ZoomIn className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={handleReset}>
+                <RotateCcw className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </CardHeader>
