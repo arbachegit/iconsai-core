@@ -64,10 +64,15 @@ serve(async (req) => {
     const requestHeaders: Record<string, string> = {};
     
     if (isBCB) {
-      // BCB API is sensitive - don't send Accept header when formato=json is in URL
-      console.log(`[TEST-API] BCB API detected - using minimal headers`);
+      // BCB API rejects Deno's default headers - override with browser-like headers
+      requestHeaders['Accept'] = 'application/json, text/plain, */*';
+      requestHeaders['Accept-Encoding'] = 'identity'; // No compression
+      requestHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+      console.log(`[TEST-API] BCB API detected - using browser-like headers to override Deno defaults`);
     } else if (isIBGE) {
       requestHeaders['Accept'] = 'application/json';
+      requestHeaders['Accept-Encoding'] = 'identity';
+      requestHeaders['User-Agent'] = 'Mozilla/5.0 (compatible; KnowYOU/1.0)';
       console.log(`[TEST-API] IBGE API detected - using JSON Accept header`);
     } else {
       requestHeaders['Accept'] = '*/*';
