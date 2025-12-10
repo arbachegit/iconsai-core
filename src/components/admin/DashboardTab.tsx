@@ -12,10 +12,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer 
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer 
 } from "recharts";
 import { format, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Clock } from "lucide-react";
 
 // Stat Card Component
 const StatCard = ({ 
@@ -122,6 +123,31 @@ export const DashboardTab = () => {
     },
   });
 
+  // Fetch hourly activity for peak hours chart
+  const { data: hourlyActivityLogs } = useQuery({
+    queryKey: ["dashboard-hourly-activity"],
+    queryFn: async () => {
+      const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+      const { data } = await supabase
+        .from("user_activity_logs")
+        .select("created_at")
+        .gte("created_at", sevenDaysAgo);
+      return data || [];
+    },
+  });
+
+  const { data: hourlyChatActivity } = useQuery({
+    queryKey: ["dashboard-hourly-chat"],
+    queryFn: async () => {
+      const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+      const { data } = await supabase
+        .from("chat_analytics")
+        .select("started_at, message_count")
+        .gte("started_at", sevenDaysAgo);
+      return data || [];
+    },
+  });
+
   // Fetch active users (unique sessions in last 24h)
   const { data: activeUsers, isLoading: usersLoading } = useQuery({
     queryKey: ["dashboard-active-users"],
@@ -186,6 +212,42 @@ export const DashboardTab = () => {
   };
 
   const chartData = generateChartData();
+
+  // Generate hourly peak usage data
+  const generatePeakHoursData = () => {
+    const hourlyData: { [hour: number]: { sections: number; chats: number } } = {};
+    
+    // Initialize all 24 hours
+    for (let h = 0; h < 24; h++) {
+      hourlyData[h] = { sections: 0, chats: 0 };
+    }
+    
+    // Count activity logs (sections visited, simulations tested)
+    hourlyActivityLogs?.forEach((log) => {
+      if (log.created_at) {
+        const hour = new Date(log.created_at).getHours();
+        hourlyData[hour].sections += 1;
+      }
+    });
+    
+    // Count chat interactions
+    hourlyChatActivity?.forEach((chat) => {
+      if (chat.started_at) {
+        const hour = new Date(chat.started_at).getHours();
+        hourlyData[hour].chats += (chat.message_count || 1);
+      }
+    });
+    
+    // Convert to array format for chart
+    return Array.from({ length: 24 }, (_, hour) => ({
+      hour: `${hour.toString().padStart(2, "0")}h`,
+      total: hourlyData[hour].sections + hourlyData[hour].chats,
+      sections: hourlyData[hour].sections,
+      chats: hourlyData[hour].chats,
+    }));
+  };
+
+  const peakHoursData = generatePeakHoursData();
 
   // Format time ago
   const formatTimeAgo = (dateStr: string) => {
@@ -372,6 +434,78 @@ export const DashboardTab = () => {
               ))
             )}
           </div>
+        </div>
+      </div>
+
+      {/* PEAK HOURS CHART */}
+      <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-amber-500/10 rounded-lg">
+            <Clock className="h-5 w-5 text-amber-500" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-foreground">Horários de Pico de Uso</h3>
+            <p className="text-sm text-muted-foreground">Volume de atividades ao longo das 24 horas (últimos 7 dias)</p>
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="text-muted-foreground hover:text-foreground transition-colors">
+                  <Info size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-[300px] text-sm">
+                Soma de seções visitadas, simulações testadas e interações com os chats, agrupadas por hora do dia.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <div className="h-[250px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={peakHoursData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorPeak" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
+              <XAxis 
+                dataKey="hour" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} 
+                interval={1}
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: 'hsl(var(--muted-foreground))' }} 
+              />
+              <RechartsTooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--card))', 
+                  border: '1px solid hsl(var(--border))', 
+                  borderRadius: '8px',
+                  color: 'hsl(var(--foreground))'
+                }}
+                formatter={(value: number, name: string) => {
+                  const labels: { [key: string]: string } = {
+                    total: "Total",
+                    sections: "Seções/Simulações",
+                    chats: "Interações Chat"
+                  };
+                  return [value, labels[name] || name];
+                }}
+              />
+              <Bar 
+                dataKey="total" 
+                fill="url(#colorPeak)" 
+                radius={[4, 4, 0, 0]}
+                name="total"
+              />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>
