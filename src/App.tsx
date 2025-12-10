@@ -13,6 +13,7 @@ const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminSignup = lazy(() => import("./pages/AdminSignup"));
 const AdminResetPassword = lazy(() => import("./pages/AdminResetPassword"));
 const Documentation = lazy(() => import("./pages/Documentation"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
 
 // Simple loading fallback
 const PageLoader = () => (
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/signup" element={<AdminSignup />} />
             <Route path="/admin/reset-password" element={<AdminResetPassword />} />
+            <Route path="/admin/dashboard" element={<Dashboard />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/docs" element={<Documentation />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
