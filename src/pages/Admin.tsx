@@ -2,6 +2,7 @@ import { useEffect, useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Languages, Camera } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
 import { NotificationsPanel } from "@/components/admin/NotificationsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -399,7 +400,9 @@ const Admin = () => {
         <main className="flex-1 overflow-y-auto pt-14">
           <div className="p-8">
             <div className="max-w-7xl mx-auto">
-              {renderTab()}
+              <ErrorBoundary fallbackMessage="Erro ao carregar este módulo do painel admin">
+                {renderTab()}
+              </ErrorBoundary>
             </div>
           </div>
         </main>
