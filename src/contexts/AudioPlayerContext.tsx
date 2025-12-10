@@ -164,25 +164,32 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [floatingPlayerState, startProgressTracking, stopProgressTracking]);
 
   const stopPlayback = useCallback(() => {
+    console.log('[STOP] Called - audioRef exists:', !!audioRef.current);
+    
     // 1. Stop progress tracking FIRST to prevent race conditions
     stopProgressTracking();
     
     // 2. Pause and reset the audio element
     if (audioRef.current) {
+      console.log('[STOP] Before - currentTime:', audioRef.current.currentTime);
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      console.log('[STOP] After - currentTime:', audioRef.current.currentTime);
     }
     
     // 3. Update ref immediately to prevent stale state checks
     isPlayingRef.current = false;
     
     // 4. Update global state - player stays visible in stopped state
-    setFloatingPlayerState(prev => prev ? {
-      ...prev,
-      isPlaying: false,
-      isPaused: false,
-      currentTime: 0,
-    } : null);
+    setFloatingPlayerState(prev => {
+      console.log('[STOP] State update - prev:', prev?.isPlaying, prev?.currentTime);
+      return prev ? {
+        ...prev,
+        isPlaying: false,
+        isPaused: false,
+        currentTime: 0,
+      } : null;
+    });
   }, [stopProgressTracking]);
 
   const closePlayer = useCallback(() => {
