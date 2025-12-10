@@ -331,20 +331,29 @@ export const DashboardTab = () => {
           <div className="space-y-4">
             {recentLogs && recentLogs.length > 0 ? (
               recentLogs.map((log) => (
-                <div 
-                  key={log.id} 
-                  className="flex items-start gap-3 pb-3 border-b border-border last:border-0 last:pb-0"
-                >
-                  <div className="p-2 bg-primary/10 rounded-full text-primary">
-                    <Activity size={16} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{log.action}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatTimeAgo(log.created_at)} • {log.action_category}
-                    </p>
-                  </div>
-                </div>
+                <TooltipProvider key={log.id}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div 
+                        className="flex items-start gap-3 pb-3 border-b border-border last:border-0 last:pb-0 cursor-pointer hover:bg-muted/50 rounded-md transition-colors p-2 -mx-2"
+                      >
+                        <div className="p-2 bg-primary/10 rounded-full text-primary">
+                          <Activity size={16} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{log.action}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatTimeAgo(log.created_at)} • {log.action_category}
+                          </p>
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="max-w-[300px] text-sm">
+                      <p className="font-medium">{log.action}</p>
+                      <p className="text-muted-foreground mt-1">{log.action_category} • {formatTimeAgo(log.created_at)}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               ))
             ) : (
               [1, 2, 3, 4, 5].map((_, i) => (
