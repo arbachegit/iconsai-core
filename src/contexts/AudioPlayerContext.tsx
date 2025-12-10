@@ -25,9 +25,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
   
-  // Stable refs to avoid recreating callbacks - CRITICAL for preventing re-renders
+  // Stable refs to avoid recreating callbacks
   const currentAudioUrlRef = useRef<string | null>(null);
   const isPlayingRef = useRef<boolean>(false);
+  
+  // CRITICAL: Flag to block progress updates after STOP
+  const isStoppedRef = useRef<boolean>(false);
   
   // Sync refs with state changes
   useEffect(() => {
@@ -36,11 +39,15 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [floatingPlayerState?.audioUrl, floatingPlayerState?.isPlaying]);
 
   const startProgressTracking = useCallback(() => {
+    // Allow progress updates
+    isStoppedRef.current = false;
+    
     if (progressInterval.current) {
       clearInterval(progressInterval.current);
     }
     progressInterval.current = setInterval(() => {
-      if (audioRef.current) {
+      // CRITICAL: Check flag before updating to prevent race condition
+      if (audioRef.current && !isStoppedRef.current) {
         setFloatingPlayerState(prev => prev ? {
           ...prev,
           currentTime: audioRef.current?.currentTime || 0,
@@ -57,9 +64,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Main function to start playing audio - uses REFS for stable dependencies
+  // Main function to start playing audio
   const playAudio = useCallback((title: string, audioUrl: string) => {
-    // Use refs for comparison - NOT state (avoids callback recreation)
+    // Use refs for comparison
     if (currentAudioUrlRef.current === audioUrl && audioRef.current) {
       if (isPlayingRef.current) {
         audioRef.current.pause();
@@ -70,6 +77,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           isPaused: true,
         } : null);
       } else {
+        isStoppedRef.current = false; // Allow progress tracking
         audioRef.current.play();
         startProgressTracking();
         setFloatingPlayerState(prev => prev ? {
@@ -105,6 +113,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     });
 
     audio.oncanplaythrough = () => {
+      isStoppedRef.current = false; // Allow progress tracking
       setFloatingPlayerState(prev => prev ? {
         ...prev,
         isLoading: false,
@@ -126,10 +135,15 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     };
 
     audio.load();
-  }, [startProgressTracking, stopProgressTracking]); // STABLE dependencies only
+  }, [startProgressTracking, stopProgressTracking]);
 
   const togglePlayPause = useCallback(() => {
     if (!audioRef.current || !floatingPlayerState) return;
+
+    // Detect STOPPED state: not playing, not paused, time at 0
+    const isStopped = !floatingPlayerState.isPlaying && 
+                      !floatingPlayerState.isPaused && 
+                      floatingPlayerState.currentTime === 0;
 
     if (floatingPlayerState.isPlaying) {
       // Currently playing -> pause
@@ -140,17 +154,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         isPlaying: false,
         isPaused: true,
       } : null);
-    } else if (floatingPlayerState.isPaused) {
-      // Currently paused -> resume
-      audioRef.current.play();
-      startProgressTracking();
-      setFloatingPlayerState(prev => prev ? {
-        ...prev,
-        isPlaying: true,
-        isPaused: false,
-      } : null);
-    } else {
-      // Stopped state (after STOP button) -> restart from beginning
+    } else if (isStopped) {
+      // STOPPED state -> Play from beginning
+      isStoppedRef.current = false; // Allow progress tracking
       audioRef.current.currentTime = 0;
       audioRef.current.play();
       startProgressTracking();
@@ -159,51 +165,71 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         isPlaying: true,
         isPaused: false,
         currentTime: 0,
+      } : null);
+    } else {
+      // Currently paused -> resume
+      isStoppedRef.current = false; // Allow progress tracking
+      audioRef.current.play();
+      startProgressTracking();
+      setFloatingPlayerState(prev => prev ? {
+        ...prev,
+        isPlaying: true,
+        isPaused: false,
       } : null);
     }
   }, [floatingPlayerState, startProgressTracking, stopProgressTracking]);
 
+  // NUCLEAR STOP - Completely autonomous, no dependencies
   const stopPlayback = useCallback(() => {
-    console.log('[STOP] Called - audioRef exists:', !!audioRef.current);
+    // 1. BLOCK progress updates IMMEDIATELY - this is the nuclear flag
+    isStoppedRef.current = true;
     
-    // 1. Stop progress tracking FIRST to prevent race conditions
-    stopProgressTracking();
-    
-    // 2. Pause and reset the audio element
-    if (audioRef.current) {
-      console.log('[STOP] Before - currentTime:', audioRef.current.currentTime);
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      console.log('[STOP] After - currentTime:', audioRef.current.currentTime);
+    // 2. Clear interval inline (no dependency on stopProgressTracking)
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+      progressInterval.current = null;
     }
     
-    // 3. Update ref immediately to prevent stale state checks
+    // 3. Pause and reset the audio element
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    
+    // 4. Update ref immediately
     isPlayingRef.current = false;
     
-    // 4. Update global state - player stays visible in stopped state
-    setFloatingPlayerState(prev => {
-      console.log('[STOP] State update - prev:', prev?.isPlaying, prev?.currentTime);
-      return prev ? {
+    // 5. Use requestAnimationFrame to ensure state update happens AFTER browser processes pause
+    requestAnimationFrame(() => {
+      setFloatingPlayerState(prev => prev ? {
         ...prev,
         isPlaying: false,
         isPaused: false,
         currentTime: 0,
-      } : null;
+      } : null);
     });
-  }, [stopProgressTracking]);
+  }, []); // NO DEPENDENCIES - fully autonomous
 
   const closePlayer = useCallback(() => {
+    // Block progress updates
+    isStoppedRef.current = true;
+    
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.onended = null;
       audioRef.current.oncanplaythrough = null;
       audioRef.current = null;
     }
-    stopProgressTracking();
+    
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+      progressInterval.current = null;
+    }
+    
     setFloatingPlayerState(null);
-  }, [stopProgressTracking]);
+  }, []);
 
-  // Memoize context value to prevent unnecessary re-renders
+  // Memoize context value
   const contextValue = useMemo(() => ({
     floatingPlayerState,
     playAudio,
