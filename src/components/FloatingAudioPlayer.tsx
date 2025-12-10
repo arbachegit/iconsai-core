@@ -58,13 +58,12 @@ export function FloatingAudioPlayer() {
           )}
         </Button>
 
-        {/* Stop */}
+        {/* Stop - always enabled, resets to beginning */}
         <Button
           size="icon"
           variant="ghost"
           onClick={stopPlayback}
           className="h-9 w-9"
-          disabled={!floatingPlayerState.isPlaying && !floatingPlayerState.isPaused}
         >
           <Square className="h-4 w-4" />
         </Button>
