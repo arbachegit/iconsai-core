@@ -405,32 +405,73 @@ const Arquitetura = () => {
               <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
             </path>
 
-            {/* Animated MessageCircle icons with words */}
-            {/* Group 1: "Palavras" + MessageCircle */}
-            <g opacity="0.95">
-              <animateMotion dur="5s" repeatCount="indefinite">
+            {/* Badge 1: "Palavras" */}
+            <g>
+              <animateMotion dur="6s" begin="0s" repeatCount="indefinite">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <rect x="-45" y="-12" width="90" height="24" rx="12" fill="#ec4899" opacity="0.9" />
-              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">💬 Palavras</text>
+              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="0s" repeatCount="indefinite" />
+              <rect x="-40" y="-12" width="80" height="24" rx="12" fill="#ec4899" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Palavras</text>
             </g>
             
-            {/* Group 2: "Prompts" + MessageCircle */}
-            <g opacity="0.95">
-              <animateMotion dur="5s" begin="1.7s" repeatCount="indefinite">
+            {/* MessageCircle Icon 1 - SEPARATE */}
+            <g>
+              <animateMotion dur="6s" begin="0.9s" repeatCount="indefinite">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <rect x="-42" y="-12" width="84" height="24" rx="12" fill="#a855f7" opacity="0.9" />
-              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">💬 Prompts</text>
+              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="0.9s" repeatCount="indefinite" />
+              <foreignObject x="-12" y="-12" width="24" height="24">
+                <div className="w-full h-full flex items-center justify-center">
+                  <MessageCircle className="w-5 h-5 text-pink-300 drop-shadow-[0_0_8px_rgba(236,72,153,0.9)]" />
+                </div>
+              </foreignObject>
             </g>
             
-            {/* Group 3: "Dados" + MessageCircle */}
-            <g opacity="0.95">
-              <animateMotion dur="5s" begin="3.4s" repeatCount="indefinite">
+            {/* Badge 2: "Prompts" */}
+            <g>
+              <animateMotion dur="6s" begin="1.8s" repeatCount="indefinite">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <rect x="-35" y="-12" width="70" height="24" rx="12" fill="#8b5cf6" opacity="0.9" />
-              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">💬 Dados</text>
+              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="1.8s" repeatCount="indefinite" />
+              <rect x="-38" y="-12" width="76" height="24" rx="12" fill="#a855f7" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Prompts</text>
+            </g>
+            
+            {/* MessageCircle Icon 2 - SEPARATE */}
+            <g>
+              <animateMotion dur="6s" begin="2.7s" repeatCount="indefinite">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="2.7s" repeatCount="indefinite" />
+              <foreignObject x="-12" y="-12" width="24" height="24">
+                <div className="w-full h-full flex items-center justify-center">
+                  <MessageCircle className="w-5 h-5 text-violet-300 drop-shadow-[0_0_8px_rgba(167,139,250,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* Badge 3: "Dados" */}
+            <g>
+              <animateMotion dur="6s" begin="3.6s" repeatCount="indefinite">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="3.6s" repeatCount="indefinite" />
+              <rect x="-32" y="-12" width="64" height="24" rx="12" fill="#8b5cf6" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Dados</text>
+            </g>
+            
+            {/* MessageCircle Icon 3 - SEPARATE */}
+            <g>
+              <animateMotion dur="6s" begin="4.5s" repeatCount="indefinite">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="4.5s" repeatCount="indefinite" />
+              <foreignObject x="-12" y="-12" width="24" height="24">
+                <div className="w-full h-full flex items-center justify-center">
+                  <MessageCircle className="w-5 h-5 text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.9)]" />
+                </div>
+              </foreignObject>
             </g>
           </g>
 
@@ -458,42 +499,77 @@ const Arquitetura = () => {
               <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
             </path>
 
-            {/* Animated Sparkles icons with words */}
-            {/* Group 1: "Solução" + Sparkles */}
-            <g opacity="0.95">
-              <animateMotion dur="5s" repeatCount="indefinite">
+            {/* Badge 1: "Solução" */}
+            <g>
+              <animateMotion dur="6s" begin="0s" repeatCount="indefinite">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <rect x="-42" y="-12" width="84" height="24" rx="12" fill="#06b6d4" opacity="0.9" />
-              <text x="0" y="5" textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="600">✨ Solução</text>
+              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="0s" repeatCount="indefinite" />
+              <rect x="-38" y="-12" width="76" height="24" rx="12" fill="#06b6d4" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="600">Solução</text>
             </g>
             
-            {/* Group 2: "Eficiência" + Sparkles */}
-            <g opacity="0.95">
-              <animateMotion dur="5s" begin="1.7s" repeatCount="indefinite">
+            {/* Sparkles Icon 1 - SEPARATE */}
+            <g>
+              <animateMotion dur="6s" begin="0.9s" repeatCount="indefinite">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <rect x="-48" y="-12" width="96" height="24" rx="12" fill="#8b5cf6" opacity="0.9" />
-              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">✨ Eficiência</text>
+              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="0.9s" repeatCount="indefinite" />
+              <foreignObject x="-12" y="-12" width="24" height="24">
+                <div className="w-full h-full flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.9)]" />
+                </div>
+              </foreignObject>
             </g>
             
-            {/* Group 3: "Valor" + Sparkles */}
-            <g opacity="0.95">
-              <animateMotion dur="5s" begin="3.4s" repeatCount="indefinite">
+            {/* Badge 2: "Eficiência" */}
+            <g>
+              <animateMotion dur="6s" begin="1.8s" repeatCount="indefinite">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <rect x="-32" y="-12" width="64" height="24" rx="12" fill="#22d3ee" opacity="0.9" />
-              <text x="0" y="5" textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="600">✨ Valor</text>
+              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="1.8s" repeatCount="indefinite" />
+              <rect x="-44" y="-12" width="88" height="24" rx="12" fill="#8b5cf6" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Eficiência</text>
+            </g>
+            
+            {/* Sparkles Icon 2 - SEPARATE */}
+            <g>
+              <animateMotion dur="6s" begin="2.7s" repeatCount="indefinite">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="2.7s" repeatCount="indefinite" />
+              <foreignObject x="-12" y="-12" width="24" height="24">
+                <div className="w-full h-full flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-violet-300 drop-shadow-[0_0_8px_rgba(167,139,250,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* Badge 3: "Valor" */}
+            <g>
+              <animateMotion dur="6s" begin="3.6s" repeatCount="indefinite">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="3.6s" repeatCount="indefinite" />
+              <rect x="-28" y="-12" width="56" height="24" rx="12" fill="#22d3ee" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="600">Valor</text>
+            </g>
+            
+            {/* Sparkles Icon 3 - SEPARATE */}
+            <g>
+              <animateMotion dur="6s" begin="4.5s" repeatCount="indefinite">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="4.5s" repeatCount="indefinite" />
+              <foreignObject x="-12" y="-12" width="24" height="24">
+                <div className="w-full h-full flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-pink-300 drop-shadow-[0_0_8px_rgba(236,72,153,0.9)]" />
+                </div>
+              </foreignObject>
             </g>
           </g>
 
-          {/* Center decorative element */}
-          <g transform="translate(500, 140)">
-            <circle r="8" fill="#8b5cf6" opacity="0.8">
-              <animate attributeName="r" values="6;10;6" dur="2s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.5;0.9;0.5" dur="2s" repeatCount="indefinite" />
-            </circle>
-          </g>
+          {/* Center is now transparent - background shows through */}
         </svg>
       </div>
     </div>
