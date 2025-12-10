@@ -3,10 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   MessageSquare, FileText, ShieldAlert, Users, 
-  ArrowUpRight, ArrowDownRight, Activity 
+  ArrowUpRight, ArrowDownRight, Activity, Info
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer 
 } from "recharts";
 import { format, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,15 +23,29 @@ const StatCard = ({
   value, 
   change, 
   icon: Icon, 
-  trend 
+  trend,
+  tooltip
 }: { 
   title: string; 
   value: string; 
   change: string; 
   icon: React.ElementType; 
-  trend: "up" | "down"; 
+  trend: "up" | "down";
+  tooltip: string;
 }) => (
-  <div className="bg-card p-6 rounded-xl shadow-sm border border-border hover:shadow-md transition-shadow">
+  <div className="bg-card p-6 rounded-xl shadow-sm border border-border hover:shadow-md transition-shadow relative">
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors">
+            <Info size={16} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[250px] text-sm">
+          {tooltip}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
     <div className="flex items-center justify-between">
       <div className="p-3 bg-primary/10 rounded-lg">
         <Icon className="h-6 w-6 text-primary" />
@@ -198,28 +218,32 @@ export const DashboardTab = () => {
           value={totalConversas.toLocaleString()} 
           change="+12.5%" 
           icon={MessageSquare} 
-          trend="up" 
+          trend="up"
+          tooltip="Total de sessões de chat registradas no sistema. Cada conversa iniciada conta como uma sessão única."
         />
         <StatCard 
           title="Docs Processados" 
           value={docsProcessados.toLocaleString()} 
           change="+5.2%" 
           icon={FileText} 
-          trend="up" 
+          trend="up"
+          tooltip="Quantidade de documentos processados com sucesso e inseridos no sistema RAG para uso nos chats."
         />
         <StatCard 
           title="Alertas Críticos" 
           value={alertasCriticos.toString()} 
           change="-2.0%" 
           icon={ShieldAlert} 
-          trend="down" 
+          trend="down"
+          tooltip="Número de alertas de segurança com status crítico identificados nos últimos scans do sistema."
         />
         <StatCard 
           title="Usuários Ativos" 
           value={usuariosAtivos.toLocaleString()} 
           change="+18.2%" 
           icon={Users} 
-          trend="up" 
+          trend="up"
+          tooltip="Sessões únicas de chat com interação nas últimas 24 horas. Inclui visitantes anônimos que usaram o chat."
         />
       </div>
 
@@ -256,7 +280,7 @@ export const DashboardTab = () => {
                   tickLine={false} 
                   tick={{ fill: 'hsl(var(--muted-foreground))' }} 
                 />
-                <Tooltip 
+                <RechartsTooltip 
                   contentStyle={{ 
                     backgroundColor: 'hsl(var(--card))', 
                     border: '1px solid hsl(var(--border))', 
