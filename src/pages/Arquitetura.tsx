@@ -21,8 +21,10 @@ import {
   Building2,
   Factory,
   FileImage,
-  Activity
+  Activity,
+  Home
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import ArchitectureCard from "@/components/admin/ArchitectureCard";
 import SaasRagArchitectureDiagram from "@/components/admin/SaasRagArchitectureDiagram";
@@ -52,6 +54,7 @@ const BackButton = memo(({ onClick }: BackButtonProps) => (
 ));
 
 const Arquitetura = () => {
+  const navigate = useNavigate();
   const [selectedView, setSelectedView] = useState<ViewMode>('cards');
   const [zoom, setZoom] = useState(100);
   const [animationKey, setAnimationKey] = useState(0);
@@ -66,6 +69,8 @@ const Arquitetura = () => {
   
   const AUDIO_URL = "https://gmflpmcepempcygdrayv.supabase.co/storage/v1/object/public/tooltip-audio/audio-contents/e137c34e-4523-406a-a7bc-35ac598cc9f6.mp3";
   const AUDIO_TITLE = "AI Escalável: O Segredo dos 90% Mais Barato! 💰";
+
+  const handleGoHome = () => navigate('/');
 
   const isThisAudioActive = floatingPlayerState?.audioUrl === AUDIO_URL;
   const isPlaying = isThisAudioActive && floatingPlayerState?.isPlaying;
@@ -153,29 +158,208 @@ const Arquitetura = () => {
   const goToDepartmentChoice = () => setSelectedView('department-choice');
   const goToSaasChoice = () => setSelectedView('saas-choice');
 
-  // Header with logo
+  // Header with logo and back button
   const renderHeader = () => (
     <header className="w-full bg-card/80 backdrop-blur-md border-b border-border py-4 px-6 mb-8">
-      <div className="max-w-7xl mx-auto flex items-center justify-center">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
         <img 
           src={knowriskLogo} 
           alt="KnowRisk" 
           className="h-12 object-contain"
         />
+        <Button
+          variant="outline"
+          onClick={handleGoHome}
+          className="gap-2 hover:bg-primary/10"
+        >
+          <Home className="h-4 w-4" />
+          Voltar para o App
+        </Button>
       </div>
     </header>
+  );
+
+  // Brain flow animation component
+  const renderBrainFlowAnimation = () => (
+    <div className="w-full mt-8">
+      <svg viewBox="0 0 900 180" className="w-full h-auto">
+        <defs>
+          {/* Gradients */}
+          <linearGradient id="humanBrainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="hsl(340, 80%, 60%)" stopOpacity="0.9" />
+          </linearGradient>
+          <linearGradient id="aiBrainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="hsl(180, 80%, 50%)" stopOpacity="0.8" />
+          </linearGradient>
+          <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.6" />
+            <stop offset="50%" stopColor="hsl(180, 80%, 60%)" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.6" />
+          </linearGradient>
+          <filter id="brainGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* Human Brain (left) */}
+        <g transform="translate(80, 90)">
+          {/* Brain outline - organic shape */}
+          <path 
+            d="M0,-45 C20,-50 40,-40 50,-25 C60,-10 55,15 45,30 C35,45 15,50 0,48 C-15,50 -35,45 -45,30 C-55,15 -60,-10 -50,-25 C-40,-40 -20,-50 0,-45 Z"
+            fill="url(#humanBrainGradient)"
+            filter="url(#brainGlow)"
+            opacity="0.9"
+          />
+          {/* Brain wrinkles */}
+          <path d="M-30,-20 Q-15,-30 0,-20 Q15,-30 30,-20" fill="none" stroke="hsl(var(--background))" strokeWidth="2" opacity="0.5" />
+          <path d="M-25,0 Q-10,-10 5,0 Q20,-10 35,0" fill="none" stroke="hsl(var(--background))" strokeWidth="2" opacity="0.5" />
+          <path d="M-20,20 Q0,10 20,20" fill="none" stroke="hsl(var(--background))" strokeWidth="2" opacity="0.5" />
+          <text y="70" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="600">Cérebro Humano</text>
+        </g>
+
+        {/* AI Brain (right) */}
+        <g transform="translate(820, 90)">
+          {/* Brain outline with circuit pattern */}
+          <path 
+            d="M0,-45 C20,-50 40,-40 50,-25 C60,-10 55,15 45,30 C35,45 15,50 0,48 C-15,50 -35,45 -45,30 C-55,15 -60,-10 -50,-25 C-40,-40 -20,-50 0,-45 Z"
+            fill="url(#aiBrainGradient)"
+            filter="url(#brainGlow)"
+            opacity="0.9"
+          />
+          {/* Circuit patterns */}
+          <g stroke="hsl(var(--background))" strokeWidth="1.5" fill="none" opacity="0.7">
+            <path d="M-30,-20 L-15,-20 L-15,-10 L0,-10 L0,0 L15,0" />
+            <path d="M0,-35 L0,-20 L10,-20 L10,-5" />
+            <path d="M-20,10 L-5,10 L-5,25 L10,25" />
+            <path d="M15,-15 L25,-15 L25,5 L35,5" />
+            <circle cx="-30" cy="-20" r="3" fill="hsl(180, 80%, 60%)" />
+            <circle cx="0" cy="0" r="3" fill="hsl(180, 80%, 60%)" />
+            <circle cx="10" cy="25" r="3" fill="hsl(180, 80%, 60%)" />
+            <circle cx="35" cy="5" r="3" fill="hsl(180, 80%, 60%)" />
+          </g>
+          <text y="70" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="600">Cérebro Computacional</text>
+        </g>
+
+        {/* Flow arrows and words - Top flow (Human to AI) */}
+        <g>
+          {/* Arrow path */}
+          <path 
+            d="M140,70 Q450,20 760,70" 
+            fill="none" 
+            stroke="url(#flowGradient)" 
+            strokeWidth="3"
+            strokeDasharray="8,4"
+            opacity="0.6"
+          >
+            <animate attributeName="stroke-dashoffset" from="0" to="-24" dur="1s" repeatCount="indefinite" />
+          </path>
+          
+          {/* Flowing words */}
+          <text fill="hsl(var(--primary))" fontSize="11" fontWeight="500" opacity="0.9">
+            <textPath href="#topFlowPath" startOffset="20%">
+              <animate attributeName="startOffset" from="0%" to="80%" dur="4s" repeatCount="indefinite" />
+              Palavras
+            </textPath>
+          </text>
+          <path id="topFlowPath" d="M140,55 Q450,5 760,55" fill="none" />
+          
+          {/* Animated dots */}
+          <circle r="4" fill="hsl(var(--primary))" opacity="0.8">
+            <animateMotion dur="3s" repeatCount="indefinite">
+              <mpath href="#topFlowPath" />
+            </animateMotion>
+          </circle>
+          <circle r="4" fill="hsl(180, 80%, 60%)" opacity="0.8">
+            <animateMotion dur="3s" begin="1s" repeatCount="indefinite">
+              <mpath href="#topFlowPath" />
+            </animateMotion>
+          </circle>
+          <circle r="4" fill="hsl(var(--primary))" opacity="0.8">
+            <animateMotion dur="3s" begin="2s" repeatCount="indefinite">
+              <mpath href="#topFlowPath" />
+            </animateMotion>
+          </circle>
+
+          {/* Label */}
+          <text x="450" y="35" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12" fontStyle="italic">
+            Envia palavras, perguntas, dados...
+          </text>
+        </g>
+
+        {/* Flow arrows and intelligence - Bottom flow (AI to Human) */}
+        <g>
+          {/* Arrow path */}
+          <path 
+            d="M760,110 Q450,160 140,110" 
+            fill="none" 
+            stroke="url(#flowGradient)" 
+            strokeWidth="3"
+            strokeDasharray="8,4"
+            opacity="0.6"
+          >
+            <animate attributeName="stroke-dashoffset" from="0" to="-24" dur="1s" repeatCount="indefinite" />
+          </path>
+          
+          <path id="bottomFlowPath" d="M760,125 Q450,175 140,125" fill="none" />
+          
+          {/* Animated dots */}
+          <circle r="5" fill="hsl(180, 80%, 50%)" opacity="0.9">
+            <animateMotion dur="3s" repeatCount="indefinite">
+              <mpath href="#bottomFlowPath" />
+            </animateMotion>
+          </circle>
+          <circle r="5" fill="hsl(var(--primary))" opacity="0.9">
+            <animateMotion dur="3s" begin="1.5s" repeatCount="indefinite">
+              <mpath href="#bottomFlowPath" />
+            </animateMotion>
+          </circle>
+
+          {/* Label */}
+          <text x="450" y="165" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12" fontStyle="italic">
+            Retorna inteligência, insights, conhecimento...
+          </text>
+        </g>
+      </svg>
+    </div>
   );
 
   // Cards view
   if (selectedView === 'cards') {
     return (
       <TooltipProvider>
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background relative overflow-hidden">
+          {/* Background pattern */}
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="circuitPattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                  <path d="M0 50 H40 M60 50 H100 M50 0 V40 M50 60 V100" stroke="currentColor" strokeWidth="1" fill="none" />
+                  <circle cx="50" cy="50" r="4" fill="currentColor" />
+                  <circle cx="0" cy="50" r="2" fill="currentColor" />
+                  <circle cx="100" cy="50" r="2" fill="currentColor" />
+                  <circle cx="50" cy="0" r="2" fill="currentColor" />
+                  <circle cx="50" cy="100" r="2" fill="currentColor" />
+                  <path d="M20 20 L30 20 L30 30" stroke="currentColor" strokeWidth="1" fill="none" />
+                  <path d="M70 70 L80 70 L80 80" stroke="currentColor" strokeWidth="1" fill="none" />
+                  <path d="M70 20 L80 20 L80 30" stroke="currentColor" strokeWidth="1" fill="none" />
+                  <path d="M20 70 L30 70 L30 80" stroke="currentColor" strokeWidth="1" fill="none" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#circuitPattern)" />
+            </svg>
+          </div>
+          
           {renderHeader()}
-          <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gradient">Arquitetura de Infraestrutura</h1>
-              <p className="text-muted-foreground mt-2">
+          <div className="max-w-7xl mx-auto px-6 pb-12 space-y-8 relative z-10">
+            <div className="text-center py-6">
+              <h1 className="text-4xl md:text-5xl font-bold text-gradient mb-4">Arquitetura de Infraestrutura</h1>
+              <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
                 Selecione uma visualização para explorar a arquitetura do sistema
               </p>
             </div>
@@ -206,6 +390,9 @@ const Arquitetura = () => {
                 onClick={() => setSelectedView('saas-choice')}
               />
             </div>
+
+            {/* Brain Flow Animation */}
+            {renderBrainFlowAnimation()}
           </div>
         </div>
       </TooltipProvider>
