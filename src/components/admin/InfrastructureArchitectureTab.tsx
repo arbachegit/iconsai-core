@@ -15,6 +15,8 @@ import {
   CheckCircle2
 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SaasRagArchitectureDiagram } from "./SaasRagArchitectureDiagram";
 
 type SimulationPhase = 'idle' | 'request' | 'routing' | 'check-adapter' | 'load-adapter' | 'inference' | 'response' | 'complete';
 
@@ -107,11 +109,20 @@ export const InfrastructureArchitectureTab = () => {
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gradient">Arquitetura KY AI SLM</h2>
-            <p className="text-muted-foreground mt-1">
+        {/* Tabs for different architecture views */}
+        <Tabs defaultValue="gpu" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="gpu">Infraestrutura GPU</TabsTrigger>
+            <TabsTrigger value="rag-saas">Arquitetura RAG SaaS</TabsTrigger>
+          </TabsList>
+
+          {/* GPU Infrastructure Tab */}
+          <TabsContent value="gpu" className="space-y-6 mt-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gradient">Arquitetura KY AI SLM</h2>
+                <p className="text-muted-foreground mt-1">
               Small Language Model Infrastructure - Base Model + LoRA Adapters
             </p>
           </div>
@@ -710,6 +721,13 @@ export const InfrastructureArchitectureTab = () => {
             </div>
           </CardContent>
         </Card>
+          </TabsContent>
+
+          {/* RAG SaaS Architecture Tab */}
+          <TabsContent value="rag-saas" className="mt-6">
+            <SaasRagArchitectureDiagram />
+          </TabsContent>
+        </Tabs>
       </div>
     </TooltipProvider>
   );
