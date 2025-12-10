@@ -131,3 +131,6 @@ verify_jwt = false
 
 [functions.scrape-retail-news]
 verify_jwt = false
+
+[functions.test-api-connection]
+verify_jwt = false
