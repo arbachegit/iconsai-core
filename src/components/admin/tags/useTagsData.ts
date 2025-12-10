@@ -115,17 +115,28 @@ export function useTagsData({
     return Object.values(childTagsMap).reduce((sum, arr) => sum + arr.length, 0);
   }, [childTagsMap]);
 
-  // Document count per tag name - how many unique documents each tag appears in
+  // Document count per tag name - O(n) single-pass algorithm
   const documentCountByTagName = useMemo(() => {
-    const countMap: Record<string, number> = {};
-    allTags?.forEach(tag => {
-      if (!countMap[tag.tag_name]) {
-        const docsWithThisTag = new Set(
-          allTags.filter(t => t.tag_name === tag.tag_name).map(t => t.document_id)
-        );
-        countMap[tag.tag_name] = docsWithThisTag.size;
+    if (!allTags?.length) return {};
+    
+    // Single pass: collect unique document IDs per tag name
+    const docSetsByTag = new Map<string, Set<string>>();
+    
+    for (const tag of allTags) {
+      const existing = docSetsByTag.get(tag.tag_name);
+      if (existing) {
+        existing.add(tag.document_id);
+      } else {
+        docSetsByTag.set(tag.tag_name, new Set([tag.document_id]));
       }
+    }
+    
+    // Convert to count map
+    const countMap: Record<string, number> = {};
+    docSetsByTag.forEach((docs, tagName) => {
+      countMap[tagName] = docs.size;
     });
+    
     return countMap;
   }, [allTags]);
 
