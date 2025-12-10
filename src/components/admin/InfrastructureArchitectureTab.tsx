@@ -15,15 +15,18 @@ import {
   CheckCircle2,
   ArrowLeft,
   Building2,
-  Factory
+  Factory,
+  FileImage,
+  Activity
 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ArchitectureCard from "./ArchitectureCard";
 import SaasRagArchitectureDiagram from "./SaasRagArchitectureDiagram";
 import DepartmentArchitectureDiagram from "./DepartmentArchitectureDiagram";
+import DynamicSLMArchitectureDiagram from "./DynamicSLMArchitectureDiagram";
 
 type SimulationPhase = 'idle' | 'request' | 'routing' | 'check-adapter' | 'load-adapter' | 'inference' | 'response' | 'complete';
-type ViewMode = 'cards' | 'gpu' | 'department' | 'saas';
+type ViewMode = 'cards' | 'gpu' | 'department-choice' | 'department-static' | 'department-dynamic' | 'saas';
 
 export const InfrastructureArchitectureTab = () => {
   const [selectedView, setSelectedView] = useState<ViewMode>('cards');
@@ -128,7 +131,7 @@ export const InfrastructureArchitectureTab = () => {
               icon={Building2}
               color="green"
               badge="Multi-RAG"
-              onClick={() => setSelectedView('department')}
+              onClick={() => setSelectedView('department-choice')}
             />
             <ArchitectureCard
               title="Empresas Diferentes"
@@ -145,10 +148,10 @@ export const InfrastructureArchitectureTab = () => {
   }
 
   // Render back button for all detail views
-  const BackButton = () => (
+  const BackButton = ({ onClick }: { onClick?: () => void }) => (
     <Button 
       variant="outline" 
-      onClick={() => setSelectedView('cards')}
+      onClick={onClick || (() => setSelectedView('cards'))}
       className="gap-2"
     >
       <ArrowLeft className="h-4 w-4" />
@@ -156,13 +159,62 @@ export const InfrastructureArchitectureTab = () => {
     </Button>
   );
 
-  // Render department view
-  if (selectedView === 'department') {
+  // Render department choice view (sub-cards)
+  if (selectedView === 'department-choice') {
     return (
       <TooltipProvider>
         <div className="space-y-6">
           <BackButton />
+          
+          <div>
+            <h2 className="text-2xl font-bold text-gradient">Uma Empresa, Vários Departamentos</h2>
+            <p className="text-muted-foreground mt-1">
+              Selecione o tipo de visualização da arquitetura
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ArchitectureCard
+              title="Esquema Estático"
+              description="Diagrama estrutural com hierarquia de departamentos e fluxo de dados"
+              icon={FileImage}
+              color="green"
+              badge="Estrutura"
+              onClick={() => setSelectedView('department-static')}
+            />
+            <ArchitectureCard
+              title="Sistema Dinâmico"
+              description="Visualização animada com fluxos de segurança e compartilhamento de conhecimento"
+              icon={Activity}
+              color="cyan"
+              badge="Animado"
+              onClick={() => setSelectedView('department-dynamic')}
+            />
+          </div>
+        </div>
+      </TooltipProvider>
+    );
+  }
+
+  // Render department static view
+  if (selectedView === 'department-static') {
+    return (
+      <TooltipProvider>
+        <div className="space-y-6">
+          <BackButton onClick={() => setSelectedView('department-choice')} />
           <DepartmentArchitectureDiagram />
+        </div>
+      </TooltipProvider>
+    );
+  }
+
+  // Render department dynamic view
+  if (selectedView === 'department-dynamic') {
+    return (
+      <TooltipProvider>
+        <div className="space-y-6">
+          <BackButton onClick={() => setSelectedView('department-choice')} />
+          <DynamicSLMArchitectureDiagram />
         </div>
       </TooltipProvider>
     );
