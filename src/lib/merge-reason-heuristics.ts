@@ -3,6 +3,8 @@
  * Baseado em técnicas de Data Science para detecção de duplicatas
  */
 
+import { levenshteinDistance } from "./string-similarity";
+
 export type ReasonType = 'similarity' | 'case' | 'typo' | 'plural' | 'acronym' | 'language' | 'synonym' | 'generalization';
 
 export interface MergeReasons {
@@ -59,7 +61,7 @@ export function getReasonBadge(tag1: string, tag2: string, similarity: number): 
   }
   
   // Check for typo (Levenshtein distance 1-2)
-  const distance = levenshteinDistanceSimple(n1, n2);
+  const distance = levenshteinDistance(n1, n2);
   const maxLen = Math.max(n1.length, n2.length);
   if ((maxLen >= 5 && distance <= 2 && distance > 0) || 
       (maxLen >= 3 && maxLen < 5 && distance === 1)) {
@@ -71,50 +73,7 @@ export function getReasonBadge(tag1: string, tag2: string, similarity: number): 
   return { text: `${pct}% Similaridade`, type: 'similarity' };
 }
 
-// Simple Levenshtein for badge detection (duplicated for module isolation)
-function levenshteinDistanceSimple(a: string, b: string): number {
-  const matrix: number[][] = [];
-  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
-      }
-    }
-  }
-  return matrix[b.length][a.length];
-}
-
-// Levenshtein distance para detectar typos
-function levenshteinDistance(a: string, b: string): number {
-  const matrix: number[][] = [];
-
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
-  }
-
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substituição
-          matrix[i][j - 1] + 1,     // inserção
-          matrix[i - 1][j] + 1      // deleção
-        );
-      }
-    }
-  }
-
-  return matrix[b.length][a.length];
-}
+// Using centralized levenshteinDistance from string-similarity.ts (imported at top)
 
 // Normalizar texto para comparações
 function normalize(text: string): string {

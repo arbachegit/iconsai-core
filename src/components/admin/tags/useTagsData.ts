@@ -1,17 +1,5 @@
 import { useMemo } from "react";
-
-interface Tag {
-  id: string;
-  tag_name: string;
-  tag_type: string;
-  confidence: number | null;
-  source: string | null;
-  document_id: string;
-  parent_tag_id: string | null;
-  created_at: string;
-  target_chat?: string | null;
-  synonyms?: string[] | null;
-}
+import type { Tag } from "@/types/tag";
 
 interface UseTagsDataProps {
   allTags: Tag[] | undefined;

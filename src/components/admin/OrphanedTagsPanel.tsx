@@ -32,16 +32,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertTriangle, ChevronDown, FolderOpen, Loader2, ArrowRight, Users, Trash2 } from "lucide-react";
 import { logTagManagementEvent } from "@/lib/tag-management-logger";
 
-interface OrphanedTag {
-  id: string;
-  tag_name: string;
-  tag_type: string;
-  confidence: number | null;
-  source: string | null;
-  document_id: string;
-  parent_tag_id: string | null;
-  created_at: string;
-}
+import type { OrphanedTag } from "./tags/useSimilarityCalculations";
 
 interface ParentTag {
   id: string;
