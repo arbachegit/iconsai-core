@@ -25,7 +25,13 @@ import {
   Globe,
   MessageCircle,
   Sparkles,
-  Brain
+  Brain,
+  Star,
+  Lightbulb,
+  Code,
+  Database,
+  Settings,
+  Zap
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -182,99 +188,217 @@ const Arquitetura = () => {
     </header>
   );
 
+  // Tech icons background for diagram
+  const renderDiagramBackground = () => {
+    const icons = [
+      { Icon: Star, x: 5, y: 15, size: 'w-4 h-4', color: 'text-yellow-400', delay: 0 },
+      { Icon: Lightbulb, x: 92, y: 20, size: 'w-6 h-6', color: 'text-amber-400', delay: 0.5 },
+      { Icon: Code, x: 15, y: 75, size: 'w-5 h-5', color: 'text-cyan-400', delay: 1 },
+      { Icon: Database, x: 88, y: 70, size: 'w-7 h-7', color: 'text-violet-400', delay: 1.5 },
+      { Icon: Settings, x: 50, y: 10, size: 'w-4 h-4', color: 'text-slate-400', delay: 2 },
+      { Icon: Zap, x: 8, y: 45, size: 'w-5 h-5', color: 'text-yellow-300', delay: 0.3 },
+      { Icon: Star, x: 75, y: 85, size: 'w-6 h-6', color: 'text-pink-400', delay: 0.8 },
+      { Icon: Lightbulb, x: 25, y: 25, size: 'w-4 h-4', color: 'text-amber-300', delay: 1.2 },
+      { Icon: Code, x: 82, y: 40, size: 'w-4 h-4', color: 'text-cyan-300', delay: 1.8 },
+      { Icon: Database, x: 12, y: 60, size: 'w-5 h-5', color: 'text-violet-300', delay: 0.6 },
+      { Icon: Settings, x: 70, y: 15, size: 'w-5 h-5', color: 'text-slate-300', delay: 2.5 },
+      { Icon: Zap, x: 40, y: 80, size: 'w-6 h-6', color: 'text-yellow-400', delay: 0.4 },
+      { Icon: Star, x: 60, y: 30, size: 'w-3 h-3', color: 'text-yellow-200', delay: 1.4 },
+      { Icon: Lightbulb, x: 35, y: 65, size: 'w-5 h-5', color: 'text-amber-500', delay: 2.2 },
+      { Icon: Code, x: 55, y: 75, size: 'w-6 h-6', color: 'text-cyan-500', delay: 0.9 },
+      { Icon: Database, x: 45, y: 35, size: 'w-4 h-4', color: 'text-violet-500', delay: 1.6 },
+      { Icon: Settings, x: 20, y: 85, size: 'w-6 h-6', color: 'text-slate-500', delay: 2.8 },
+      { Icon: Zap, x: 78, y: 55, size: 'w-4 h-4', color: 'text-yellow-500', delay: 1.1 },
+      { Icon: Star, x: 30, y: 40, size: 'w-5 h-5', color: 'text-pink-300', delay: 2.0 },
+      { Icon: Lightbulb, x: 65, y: 60, size: 'w-4 h-4', color: 'text-amber-200', delay: 0.7 },
+    ];
+
+    return (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {icons.map((item, i) => (
+          <div
+            key={`tech-icon-${i}`}
+            className="absolute"
+            style={{ left: `${item.x}%`, top: `${item.y}%` }}
+          >
+            <item.Icon 
+              className={`${item.size} ${item.color} animate-pulse`}
+              style={{ 
+                animationDelay: `${item.delay}s`,
+                animationDuration: `${2 + (i % 3)}s`,
+                opacity: 0.4 + (i % 5) * 0.1
+              }}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Reusable hero background
+  const renderHeroBackground = () => (
+    <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0a1628] to-[#0d1b2a]">
+      <svg width="100%" height="100%" className="absolute inset-0">
+        <defs>
+          <linearGradient id="heroGradientCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.9">
+              <animate attributeName="stop-opacity" values="0.5;0.9;0.5" dur="4s" repeatCount="indefinite" />
+            </stop>
+            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.7">
+              <animate attributeName="stop-opacity" values="0.7;0.4;0.7" dur="5s" repeatCount="indefinite" />
+            </stop>
+          </linearGradient>
+          <linearGradient id="heroGradientPurple" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#ec4899" stopOpacity="0.6" />
+          </linearGradient>
+          <filter id="heroGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* Hexagonal circuit grid pattern */}
+        {Array.from({ length: 30 }).map((_, i) => {
+          const col = i % 10;
+          const row = Math.floor(i / 10);
+          const x = col * 120 + (row % 2 === 0 ? 0 : 60);
+          const y = row * 100 + 30;
+          return (
+            <polygon
+              key={`hero-hex-${i}`}
+              points={`${x + 30},${y} ${x + 60},${y + 17} ${x + 60},${y + 52} ${x + 30},${y + 69} ${x},${y + 52} ${x},${y + 17}`}
+              fill="none"
+              stroke="url(#heroGradientCyan)"
+              strokeWidth="0.5"
+              opacity="0.15"
+            >
+              <animate attributeName="opacity" values="0.05;0.25;0.05" dur={`${4 + (i % 4)}s`} begin={`${i * 0.15}s`} repeatCount="indefinite" />
+            </polygon>
+          );
+        })}
+
+        {/* Flowing code streams */}
+        {['01101', '10010', '11100', '00111', '10101', '01110', '11001', '00100'].map((code, i) => (
+          <text
+            key={`hero-code-${i}`}
+            x={`${8 + i * 12}%`}
+            y="-5%"
+            fill="url(#heroGradientCyan)"
+            fontSize="10"
+            fontFamily="monospace"
+            opacity="0"
+          >
+            <animate attributeName="y" values="-5%;105%" dur={`${8 + i * 1.5}s`} begin={`${i * 1.2}s`} repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0;0.5;0.5;0" dur={`${8 + i * 1.5}s`} begin={`${i * 1.2}s`} repeatCount="indefinite" />
+            {code}
+          </text>
+        ))}
+
+        {/* Network nodes pulsing */}
+        {[
+          { x: '8%', y: '15%' }, { x: '22%', y: '35%' }, { x: '15%', y: '65%' }, { x: '35%', y: '20%' },
+          { x: '45%', y: '50%' }, { x: '55%', y: '25%' }, { x: '65%', y: '70%' }, { x: '78%', y: '40%' },
+          { x: '85%', y: '18%' }, { x: '92%', y: '60%' }, { x: '50%', y: '85%' }, { x: '30%', y: '80%' }
+        ].map((node, i) => (
+          <g key={`hero-node-${i}`} filter="url(#heroGlow)">
+            <circle cx={node.x} cy={node.y} r="3" fill="url(#heroGradientCyan)" opacity="0.6">
+              <animate attributeName="r" values="2;5;2" dur={`${2.5 + i * 0.3}s`} repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.3;0.8;0.3" dur={`${2.5 + i * 0.3}s`} repeatCount="indefinite" />
+            </circle>
+          </g>
+        ))}
+
+        {/* Connection lines */}
+        {[
+          { x1: '8%', y1: '15%', x2: '22%', y2: '35%' },
+          { x1: '22%', y1: '35%', x2: '35%', y2: '20%' },
+          { x1: '35%', y1: '20%', x2: '55%', y2: '25%' },
+          { x1: '55%', y1: '25%', x2: '78%', y2: '40%' },
+          { x1: '78%', y1: '40%', x2: '85%', y2: '18%' },
+          { x1: '15%', y1: '65%', x2: '45%', y2: '50%' },
+          { x1: '45%', y1: '50%', x2: '65%', y2: '70%' },
+          { x1: '65%', y1: '70%', x2: '92%', y2: '60%' },
+          { x1: '30%', y1: '80%', x2: '50%', y2: '85%' },
+          { x1: '50%', y1: '85%', x2: '65%', y2: '70%' }
+        ].map((line, i) => (
+          <line
+            key={`hero-conn-${i}`}
+            x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2}
+            stroke="url(#heroGradientCyan)"
+            strokeWidth="1"
+            strokeDasharray="6,4"
+            opacity="0.3"
+          >
+            <animate attributeName="stroke-dashoffset" from="0" to="-20" dur="2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.15;0.4;0.15" dur={`${3 + i * 0.3}s`} repeatCount="indefinite" />
+          </line>
+        ))}
+
+        {/* Server wireframes */}
+        {[
+          { x: 80, y: 120 }, { x: 250, y: 280 }, { x: 450, y: 150 },
+          { x: 700, y: 320 }, { x: 900, y: 180 }, { x: 1100, y: 350 }
+        ].map((server, i) => (
+          <g key={`hero-server-${i}`} transform={`translate(${server.x}, ${server.y})`} opacity="0.25">
+            <rect x="0" y="0" width="40" height="55" rx="3" fill="none" stroke="url(#heroGradientCyan)" strokeWidth="1.5">
+              <animate attributeName="opacity" values="0.2;0.6;0.2" dur={`${4 + i}s`} repeatCount="indefinite" />
+            </rect>
+            {[12, 24, 36].map((lineY, j) => (
+              <line key={j} x1="5" y1={lineY} x2="35" y2={lineY} stroke="url(#heroGradientCyan)" strokeWidth="1">
+                <animate attributeName="opacity" values="0.2;0.7;0.2" dur={`${3 + j}s`} begin={`${i * 0.5}s`} repeatCount="indefinite" />
+              </line>
+            ))}
+            <circle cx="8" cy="8" r="2" fill="#22d3ee">
+              <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" begin={`${i * 0.3}s`} repeatCount="indefinite" />
+            </circle>
+          </g>
+        ))}
+
+        {/* Data particles */}
+        {Array.from({ length: 15 }).map((_, i) => (
+          <circle key={`hero-particle-${i}`} r="2" fill="url(#heroGradientCyan)" opacity="0">
+            <animate attributeName="cx" values={`${-5 + (i % 5) * 2}%;${105}%`} dur={`${10 + i * 2}s`} begin={`${i * 0.8}s`} repeatCount="indefinite" />
+            <animate attributeName="cy" values={`${10 + (i % 8) * 10}%;${15 + ((i + 3) % 7) * 12}%;${8 + (i % 9) * 10}%`} dur={`${10 + i * 2}s`} begin={`${i * 0.8}s`} repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0;0.7;0.7;0" dur={`${10 + i * 2}s`} begin={`${i * 0.8}s`} repeatCount="indefinite" />
+          </circle>
+        ))}
+
+        {/* Circuit paths */}
+        <path
+          d="M0,200 Q200,150 400,200 T800,180 T1200,220"
+          fill="none"
+          stroke="url(#heroGradientPurple)"
+          strokeWidth="1"
+          strokeDasharray="10,8"
+          opacity="0.2"
+        >
+          <animate attributeName="stroke-dashoffset" from="0" to="-36" dur="4s" repeatCount="indefinite" />
+        </path>
+        <path
+          d="M0,400 Q300,350 600,420 T1200,380"
+          fill="none"
+          stroke="url(#heroGradientCyan)"
+          strokeWidth="1"
+          strokeDasharray="8,6"
+          opacity="0.15"
+        >
+          <animate attributeName="stroke-dashoffset" from="0" to="-28" dur="5s" repeatCount="indefinite" />
+        </path>
+      </svg>
+    </div>
+  );
+
   // Brain flow animation component - Cognitive Processing Diagram
   const renderBrainFlowAnimation = () => (
     <div className="w-full mt-12 relative">
       {/* Container with cyberpunk styling */}
       <div className="relative rounded-2xl overflow-hidden border border-cyan-500/30 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        {/* Animated cyberpunk background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <svg width="100%" height="100%" className="opacity-20">
-            <defs>
-              <linearGradient id="cyberGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.8">
-                  <animate attributeName="stop-opacity" values="0.4;0.8;0.4" dur="3s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="50%" stopColor="#8b5cf6" stopOpacity="0.6">
-                  <animate attributeName="stop-opacity" values="0.6;0.3;0.6" dur="4s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.8">
-                  <animate attributeName="stop-opacity" values="0.4;0.8;0.4" dur="3s" repeatCount="indefinite" />
-                </stop>
-              </linearGradient>
-              <filter id="cyberGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-
-            {/* Hexagonal grid pattern */}
-            {Array.from({ length: 12 }).map((_, i) => (
-              <g key={`hex-${i}`} transform={`translate(${(i % 6) * 150 + 50}, ${Math.floor(i / 6) * 120 + 40})`}>
-                <polygon
-                  points="30,0 60,17 60,52 30,69 0,52 0,17"
-                  fill="none"
-                  stroke="url(#cyberGradient)"
-                  strokeWidth="0.5"
-                >
-                  <animate attributeName="opacity" values="0.1;0.4;0.1" dur={`${3 + (i % 3)}s`} begin={`${i * 0.3}s`} repeatCount="indefinite" />
-                </polygon>
-              </g>
-            ))}
-
-            {/* Flowing code streams */}
-            {['10110', '01001', '11010', '00111', '10101'].map((code, i) => (
-              <text
-                key={`code-${i}`}
-                x={`${15 + i * 20}%`}
-                y="10%"
-                fill="url(#cyberGradient)"
-                fontSize="9"
-                fontFamily="monospace"
-              >
-                <animate attributeName="y" values="-5%;110%" dur={`${6 + i}s`} begin={`${i * 1.5}s`} repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0;0.6;0.6;0" dur={`${6 + i}s`} begin={`${i * 1.5}s`} repeatCount="indefinite" />
-                {code}
-              </text>
-            ))}
-
-            {/* Network nodes pulsing */}
-            {[
-              { x: '10%', y: '30%' }, { x: '25%', y: '70%' }, { x: '40%', y: '25%' },
-              { x: '60%', y: '75%' }, { x: '75%', y: '35%' }, { x: '90%', y: '65%' }
-            ].map((node, i) => (
-              <g key={`node-${i}`}>
-                <circle cx={node.x} cy={node.y} r="4" fill="url(#cyberGradient)" filter="url(#cyberGlow)">
-                  <animate attributeName="r" values="3;6;3" dur={`${2 + i * 0.5}s`} repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0.3;0.8;0.3" dur={`${2 + i * 0.5}s`} repeatCount="indefinite" />
-                </circle>
-              </g>
-            ))}
-
-            {/* Connection lines between nodes */}
-            {[
-              { x1: '10%', y1: '30%', x2: '25%', y2: '70%' },
-              { x1: '25%', y1: '70%', x2: '40%', y2: '25%' },
-              { x1: '40%', y1: '25%', x2: '60%', y2: '75%' },
-              { x1: '60%', y1: '75%', x2: '75%', y2: '35%' },
-              { x1: '75%', y1: '35%', x2: '90%', y2: '65%' }
-            ].map((line, i) => (
-              <line
-                key={`conn-${i}`}
-                x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2}
-                stroke="url(#cyberGradient)"
-                strokeWidth="1"
-                strokeDasharray="4,4"
-              >
-                <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="2s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.2;0.5;0.2" dur="3s" begin={`${i * 0.5}s`} repeatCount="indefinite" />
-              </line>
-            ))}
-          </svg>
-        </div>
+        {/* Tech icons background */}
+        {renderDiagramBackground()}
 
         {/* Main cognitive flow diagram */}
         <svg viewBox="0 0 1000 280" className="w-full h-auto relative z-10 py-6">
@@ -381,7 +505,7 @@ const Arquitetura = () => {
             <text y="85" textAnchor="middle" fill="#22d3ee" fontSize="14" fontWeight="700">Cérebro Computacional</text>
           </g>
 
-          {/* INPUT FLOW: Human → AI (Top arc) */}
+          {/* INPUT FLOW: Human → AI (Top arc) - SEQUENTIAL: Prompt → MessageCircle → Palavra → MessageCircle → Dados → MessageCircle */}
           <g>
             {/* Flow path line */}
             <path 
@@ -405,22 +529,22 @@ const Arquitetura = () => {
               <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
             </path>
 
-            {/* Badge 1: "Palavras" */}
+            {/* Element 1: Badge "Prompt" - start at 0s */}
             <g>
-              <animateMotion dur="6s" begin="0s" repeatCount="indefinite">
+              <animateMotion dur="1s" begin="0s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="0s" repeatCount="indefinite" />
-              <rect x="-40" y="-12" width="80" height="24" rx="12" fill="#ec4899" opacity="0.95" />
-              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Palavras</text>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="0s" repeatCount="indefinite" />
+              <rect x="-38" y="-12" width="76" height="24" rx="12" fill="#ec4899" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Prompt</text>
             </g>
             
-            {/* MessageCircle Icon 1 - SEPARATE */}
+            {/* Element 2: MessageCircle - start at 1s */}
             <g>
-              <animateMotion dur="6s" begin="0.9s" repeatCount="indefinite">
+              <animateMotion dur="1s" begin="1s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="0.9s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="1s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <MessageCircle className="w-5 h-5 text-pink-300 drop-shadow-[0_0_8px_rgba(236,72,153,0.9)]" />
@@ -428,22 +552,22 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
             
-            {/* Badge 2: "Prompts" */}
+            {/* Element 3: Badge "Palavra" - start at 2s */}
             <g>
-              <animateMotion dur="6s" begin="1.8s" repeatCount="indefinite">
+              <animateMotion dur="1s" begin="2s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="1.8s" repeatCount="indefinite" />
-              <rect x="-38" y="-12" width="76" height="24" rx="12" fill="#a855f7" opacity="0.95" />
-              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Prompts</text>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="2s" repeatCount="indefinite" />
+              <rect x="-40" y="-12" width="80" height="24" rx="12" fill="#a855f7" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Palavra</text>
             </g>
             
-            {/* MessageCircle Icon 2 - SEPARATE */}
+            {/* Element 4: MessageCircle - start at 3s */}
             <g>
-              <animateMotion dur="6s" begin="2.7s" repeatCount="indefinite">
+              <animateMotion dur="1s" begin="3s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="2.7s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="3s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <MessageCircle className="w-5 h-5 text-violet-300 drop-shadow-[0_0_8px_rgba(167,139,250,0.9)]" />
@@ -451,22 +575,22 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
             
-            {/* Badge 3: "Dados" */}
+            {/* Element 5: Badge "Dados" - start at 4s */}
             <g>
-              <animateMotion dur="6s" begin="3.6s" repeatCount="indefinite">
+              <animateMotion dur="1s" begin="4s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="3.6s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="4s" repeatCount="indefinite" />
               <rect x="-32" y="-12" width="64" height="24" rx="12" fill="#8b5cf6" opacity="0.95" />
               <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Dados</text>
             </g>
             
-            {/* MessageCircle Icon 3 - SEPARATE */}
+            {/* Element 6: MessageCircle - start at 5s */}
             <g>
-              <animateMotion dur="6s" begin="4.5s" repeatCount="indefinite">
+              <animateMotion dur="1s" begin="5s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="4.5s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="5s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <MessageCircle className="w-5 h-5 text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.9)]" />
@@ -475,7 +599,7 @@ const Arquitetura = () => {
             </g>
           </g>
 
-          {/* OUTPUT FLOW: AI → Human (Bottom arc) */}
+          {/* OUTPUT FLOW: AI → Human (Bottom arc) - SEQUENTIAL: Valor → Sparkles → Solução → Sparkles → Eficiência → Sparkles */}
           <g>
             {/* Flow path line */}
             <path 
@@ -499,22 +623,22 @@ const Arquitetura = () => {
               <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
             </path>
 
-            {/* Badge 1: "Solução" */}
+            {/* Element 1: Badge "Valor" - start at 0s */}
             <g>
-              <animateMotion dur="6s" begin="0s" repeatCount="indefinite">
+              <animateMotion dur="1s" begin="0s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="0s" repeatCount="indefinite" />
-              <rect x="-38" y="-12" width="76" height="24" rx="12" fill="#06b6d4" opacity="0.95" />
-              <text x="0" y="5" textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="600">Solução</text>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="0s" repeatCount="indefinite" />
+              <rect x="-28" y="-12" width="56" height="24" rx="12" fill="#06b6d4" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="600">Valor</text>
             </g>
             
-            {/* Sparkles Icon 1 - SEPARATE */}
+            {/* Element 2: Sparkles - start at 1s */}
             <g>
-              <animateMotion dur="6s" begin="0.9s" repeatCount="indefinite">
+              <animateMotion dur="1s" begin="1s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="0.9s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="1s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.9)]" />
@@ -522,22 +646,22 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
             
-            {/* Badge 2: "Eficiência" */}
+            {/* Element 3: Badge "Solução" - start at 2s */}
             <g>
-              <animateMotion dur="6s" begin="1.8s" repeatCount="indefinite">
+              <animateMotion dur="1s" begin="2s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="1.8s" repeatCount="indefinite" />
-              <rect x="-44" y="-12" width="88" height="24" rx="12" fill="#8b5cf6" opacity="0.95" />
-              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Eficiência</text>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="2s" repeatCount="indefinite" />
+              <rect x="-38" y="-12" width="76" height="24" rx="12" fill="#8b5cf6" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Solução</text>
             </g>
             
-            {/* Sparkles Icon 2 - SEPARATE */}
+            {/* Element 4: Sparkles - start at 3s */}
             <g>
-              <animateMotion dur="6s" begin="2.7s" repeatCount="indefinite">
+              <animateMotion dur="1s" begin="3s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="2.7s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="3s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-violet-300 drop-shadow-[0_0_8px_rgba(167,139,250,0.9)]" />
@@ -545,22 +669,22 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
             
-            {/* Badge 3: "Valor" */}
+            {/* Element 5: Badge "Eficiência" - start at 4s */}
             <g>
-              <animateMotion dur="6s" begin="3.6s" repeatCount="indefinite">
+              <animateMotion dur="1s" begin="4s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="3.6s" repeatCount="indefinite" />
-              <rect x="-28" y="-12" width="56" height="24" rx="12" fill="#22d3ee" opacity="0.95" />
-              <text x="0" y="5" textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="600">Valor</text>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="4s" repeatCount="indefinite" />
+              <rect x="-44" y="-12" width="88" height="24" rx="12" fill="#22d3ee" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="600">Eficiência</text>
             </g>
             
-            {/* Sparkles Icon 3 - SEPARATE */}
+            {/* Element 6: Sparkles - start at 5s */}
             <g>
-              <animateMotion dur="6s" begin="4.5s" repeatCount="indefinite">
+              <animateMotion dur="1s" begin="5s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;1;0" keyTimes="0;0.1;0.5;0.9;1" dur="6s" begin="4.5s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1s" begin="5s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-pink-300 drop-shadow-[0_0_8px_rgba(236,72,153,0.9)]" />
@@ -568,8 +692,6 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
           </g>
-
-          {/* Center is now transparent - background shows through */}
         </svg>
       </div>
     </div>
@@ -791,35 +913,38 @@ const Arquitetura = () => {
   if (selectedView === 'department-choice') {
     return (
       <TooltipProvider>
-        <div className="min-h-screen bg-background">
-          {renderHeader()}
-          <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
-            <BackButton onClick={goToCards} />
-            
-            <div>
-              <h1 className="text-3xl font-bold text-gradient">Uma Empresa, Vários Departamentos</h1>
-              <p className="text-muted-foreground mt-2">
-                Selecione o tipo de visualização da arquitetura
-              </p>
-            </div>
+        <div className="min-h-screen relative overflow-hidden">
+          {renderHeroBackground()}
+          <div className="relative z-10">
+            {renderHeader()}
+            <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
+              <BackButton onClick={goToCards} />
+              
+              <div>
+                <h1 className="text-3xl font-bold text-gradient">Uma Empresa, Vários Departamentos</h1>
+                <p className="text-muted-foreground mt-2">
+                  Selecione o tipo de visualização da arquitetura
+                </p>
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ArchitectureCard
-                title="Esquema Estático"
-                description="Diagrama estrutural com hierarquia de departamentos e fluxo de dados"
-                icon={FileImage}
-                color="green"
-                badge="Estrutura"
-                onClick={() => setSelectedView('department-static')}
-              />
-              <ArchitectureCard
-                title="Sistema Dinâmico"
-                description="Visualização animada com fluxos de segurança e compartilhamento de conhecimento"
-                icon={Activity}
-                color="cyan"
-                badge="Animado"
-                onClick={() => setSelectedView('department-dynamic')}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <ArchitectureCard
+                  title="Esquema Estático"
+                  description="Diagrama estrutural com hierarquia de departamentos e fluxo de dados"
+                  icon={FileImage}
+                  color="green"
+                  badge="Estrutura"
+                  onClick={() => setSelectedView('department-static')}
+                />
+                <ArchitectureCard
+                  title="Sistema Dinâmico"
+                  description="Visualização animada com fluxos de segurança e compartilhamento de conhecimento"
+                  icon={Activity}
+                  color="cyan"
+                  badge="Animado"
+                  onClick={() => setSelectedView('department-dynamic')}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -831,11 +956,14 @@ const Arquitetura = () => {
   if (selectedView === 'department-static') {
     return (
       <TooltipProvider>
-        <div className="min-h-screen bg-background">
-          {renderHeader()}
-          <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
-            <BackButton onClick={goToDepartmentChoice} />
-            <DepartmentArchitectureDiagram />
+        <div className="min-h-screen relative overflow-hidden">
+          {renderHeroBackground()}
+          <div className="relative z-10">
+            {renderHeader()}
+            <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
+              <BackButton onClick={goToDepartmentChoice} />
+              <DepartmentArchitectureDiagram />
+            </div>
           </div>
         </div>
       </TooltipProvider>
@@ -846,11 +974,14 @@ const Arquitetura = () => {
   if (selectedView === 'department-dynamic') {
     return (
       <TooltipProvider>
-        <div className="min-h-screen bg-background">
-          {renderHeader()}
-          <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
-            <BackButton onClick={goToDepartmentChoice} />
-            <DynamicSLMArchitectureDiagram />
+        <div className="min-h-screen relative overflow-hidden">
+          {renderHeroBackground()}
+          <div className="relative z-10">
+            {renderHeader()}
+            <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
+              <BackButton onClick={goToDepartmentChoice} />
+              <DynamicSLMArchitectureDiagram />
+            </div>
           </div>
         </div>
       </TooltipProvider>
@@ -861,35 +992,38 @@ const Arquitetura = () => {
   if (selectedView === 'saas-choice') {
     return (
       <TooltipProvider>
-        <div className="min-h-screen bg-background">
-          {renderHeader()}
-          <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
-            <BackButton onClick={goToCards} />
-            
-            <div>
-              <h1 className="text-3xl font-bold text-gradient">Empresas Diferentes</h1>
-              <p className="text-muted-foreground mt-2">
-                Selecione o tipo de visualização da arquitetura SLM multi-tenant
-              </p>
-            </div>
+        <div className="min-h-screen relative overflow-hidden">
+          {renderHeroBackground()}
+          <div className="relative z-10">
+            {renderHeader()}
+            <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
+              <BackButton onClick={goToCards} />
+              
+              <div>
+                <h1 className="text-3xl font-bold text-gradient">Empresas Diferentes</h1>
+                <p className="text-muted-foreground mt-2">
+                  Selecione o tipo de visualização da arquitetura SLM multi-tenant
+                </p>
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ArchitectureCard
-                title="Esquema Estático"
-                description="Diagrama estrutural com pipeline de inferência e RAG customizado"
-                icon={FileImage}
-                color="purple"
-                badge="Estrutura"
-                onClick={() => setSelectedView('saas-static')}
-              />
-              <ArchitectureCard
-                title="Sistema Dinâmico"
-                description="Visualização lúdica com fluxos de segurança, hiperfoco e eficiência compartilhada"
-                icon={Activity}
-                color="cyan"
-                badge="Animado"
-                onClick={() => setSelectedView('saas-dynamic')}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <ArchitectureCard
+                  title="Esquema Estático"
+                  description="Diagrama estrutural com pipeline de inferência e RAG customizado"
+                  icon={FileImage}
+                  color="purple"
+                  badge="Estrutura"
+                  onClick={() => setSelectedView('saas-static')}
+                />
+                <ArchitectureCard
+                  title="Sistema Dinâmico"
+                  description="Visualização lúdica com fluxos de segurança, hiperfoco e eficiência compartilhada"
+                  icon={Activity}
+                  color="cyan"
+                  badge="Animado"
+                  onClick={() => setSelectedView('saas-dynamic')}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -901,11 +1035,14 @@ const Arquitetura = () => {
   if (selectedView === 'saas-static') {
     return (
       <TooltipProvider>
-        <div className="min-h-screen bg-background">
-          {renderHeader()}
-          <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
-            <BackButton onClick={goToSaasChoice} />
-            <SaasRagArchitectureDiagram />
+        <div className="min-h-screen relative overflow-hidden">
+          {renderHeroBackground()}
+          <div className="relative z-10">
+            {renderHeader()}
+            <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
+              <BackButton onClick={goToSaasChoice} />
+              <SaasRagArchitectureDiagram />
+            </div>
           </div>
         </div>
       </TooltipProvider>
@@ -916,11 +1053,14 @@ const Arquitetura = () => {
   if (selectedView === 'saas-dynamic') {
     return (
       <TooltipProvider>
-        <div className="min-h-screen bg-background">
-          {renderHeader()}
-          <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
-            <BackButton onClick={goToSaasChoice} />
-            <HyperModularSLMDiagram />
+        <div className="min-h-screen relative overflow-hidden">
+          {renderHeroBackground()}
+          <div className="relative z-10">
+            {renderHeader()}
+            <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
+              <BackButton onClick={goToSaasChoice} />
+              <HyperModularSLMDiagram />
+            </div>
           </div>
         </div>
       </TooltipProvider>
@@ -930,7 +1070,9 @@ const Arquitetura = () => {
   // GPU view
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen relative overflow-hidden">
+        {renderHeroBackground()}
+        <div className="relative z-10">
         {renderHeader()}
         <div className="max-w-7xl mx-auto px-6 pb-12 space-y-6">
           <BackButton onClick={goToCards} />
@@ -1173,6 +1315,7 @@ const Arquitetura = () => {
               </CardContent>
             </Card>
           </div>
+        </div>
         </div>
       </div>
     </TooltipProvider>
