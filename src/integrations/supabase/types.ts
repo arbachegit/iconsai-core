@@ -1723,6 +1723,8 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          last_checked_at: string | null
+          last_latency_ms: number | null
           method: string | null
           name: string
           provider: string
@@ -1734,6 +1736,8 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          last_checked_at?: string | null
+          last_latency_ms?: number | null
           method?: string | null
           name: string
           provider?: string
@@ -1745,6 +1749,8 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          last_checked_at?: string | null
+          last_latency_ms?: number | null
           method?: string | null
           name?: string
           provider?: string
