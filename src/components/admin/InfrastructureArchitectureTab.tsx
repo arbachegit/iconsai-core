@@ -24,9 +24,10 @@ import ArchitectureCard from "./ArchitectureCard";
 import SaasRagArchitectureDiagram from "./SaasRagArchitectureDiagram";
 import DepartmentArchitectureDiagram from "./DepartmentArchitectureDiagram";
 import DynamicSLMArchitectureDiagram from "./DynamicSLMArchitectureDiagram";
+import HyperModularSLMDiagram from "./HyperModularSLMDiagram";
 
 type SimulationPhase = 'idle' | 'request' | 'routing' | 'check-adapter' | 'load-adapter' | 'inference' | 'response' | 'complete';
-type ViewMode = 'cards' | 'gpu' | 'department-choice' | 'department-static' | 'department-dynamic' | 'saas';
+type ViewMode = 'cards' | 'gpu' | 'department-choice' | 'department-static' | 'department-dynamic' | 'saas-choice' | 'saas-static' | 'saas-dynamic';
 
 export const InfrastructureArchitectureTab = () => {
   const [selectedView, setSelectedView] = useState<ViewMode>('cards');
@@ -139,7 +140,7 @@ export const InfrastructureArchitectureTab = () => {
               icon={Factory}
               color="purple"
               badge="SaaS"
-              onClick={() => setSelectedView('saas')}
+              onClick={() => setSelectedView('saas-choice')}
             />
           </div>
         </div>
@@ -220,13 +221,62 @@ export const InfrastructureArchitectureTab = () => {
     );
   }
 
-  // Render SaaS view
-  if (selectedView === 'saas') {
+  // Render SaaS choice view (sub-cards)
+  if (selectedView === 'saas-choice') {
     return (
       <TooltipProvider>
         <div className="space-y-6">
           <BackButton />
+          
+          <div>
+            <h2 className="text-2xl font-bold text-gradient">Empresas Diferentes</h2>
+            <p className="text-muted-foreground mt-1">
+              Selecione o tipo de visualização da arquitetura SLM multi-tenant
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ArchitectureCard
+              title="Esquema Estático"
+              description="Diagrama estrutural com pipeline de inferência e RAG customizado"
+              icon={FileImage}
+              color="purple"
+              badge="Estrutura"
+              onClick={() => setSelectedView('saas-static')}
+            />
+            <ArchitectureCard
+              title="Sistema Dinâmico"
+              description="Visualização lúdica com fluxos de segurança, hiperfoco e eficiência compartilhada"
+              icon={Activity}
+              color="cyan"
+              badge="Animado"
+              onClick={() => setSelectedView('saas-dynamic')}
+            />
+          </div>
+        </div>
+      </TooltipProvider>
+    );
+  }
+
+  // Render SaaS static view
+  if (selectedView === 'saas-static') {
+    return (
+      <TooltipProvider>
+        <div className="space-y-6">
+          <BackButton onClick={() => setSelectedView('saas-choice')} />
           <SaasRagArchitectureDiagram />
+        </div>
+      </TooltipProvider>
+    );
+  }
+
+  // Render SaaS dynamic view
+  if (selectedView === 'saas-dynamic') {
+    return (
+      <TooltipProvider>
+        <div className="space-y-6">
+          <BackButton onClick={() => setSelectedView('saas-choice')} />
+          <HyperModularSLMDiagram />
         </div>
       </TooltipProvider>
     );
