@@ -22,7 +22,9 @@ import {
   Factory,
   FileImage,
   Activity,
-  Home
+  Globe,
+  MessageCircle,
+  Sparkles
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -172,160 +174,350 @@ const Arquitetura = () => {
           onClick={handleGoHome}
           className="gap-2 hover:bg-primary/10"
         >
-          <Home className="h-4 w-4" />
+          <Globe className="h-4 w-4" />
           Voltar para o App
         </Button>
       </div>
     </header>
   );
 
-  // Brain flow animation component
+  // Brain flow animation component - Cognitive Processing Diagram
   const renderBrainFlowAnimation = () => (
-    <div className="w-full mt-8">
-      <svg viewBox="0 0 900 180" className="w-full h-auto">
-        <defs>
-          {/* Gradients */}
-          <linearGradient id="humanBrainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="hsl(340, 80%, 60%)" stopOpacity="0.9" />
-          </linearGradient>
-          <linearGradient id="aiBrainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="hsl(180, 80%, 50%)" stopOpacity="0.8" />
-          </linearGradient>
-          <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.6" />
-            <stop offset="50%" stopColor="hsl(180, 80%, 60%)" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.6" />
-          </linearGradient>
-          <filter id="brainGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
+    <div className="w-full mt-12 relative">
+      {/* Container with cyberpunk styling */}
+      <div className="relative rounded-2xl overflow-hidden border border-cyan-500/30 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+        {/* Animated cyberpunk background */}
+        <div className="absolute inset-0 overflow-hidden">
+          <svg width="100%" height="100%" className="opacity-20">
+            <defs>
+              <linearGradient id="cyberGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.8">
+                  <animate attributeName="stop-opacity" values="0.4;0.8;0.4" dur="3s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="50%" stopColor="#8b5cf6" stopOpacity="0.6">
+                  <animate attributeName="stop-opacity" values="0.6;0.3;0.6" dur="4s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.8">
+                  <animate attributeName="stop-opacity" values="0.4;0.8;0.4" dur="3s" repeatCount="indefinite" />
+                </stop>
+              </linearGradient>
+              <filter id="cyberGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
 
-        {/* Human Brain (left) */}
-        <g transform="translate(80, 90)">
-          {/* Brain outline - organic shape */}
-          <path 
-            d="M0,-45 C20,-50 40,-40 50,-25 C60,-10 55,15 45,30 C35,45 15,50 0,48 C-15,50 -35,45 -45,30 C-55,15 -60,-10 -50,-25 C-40,-40 -20,-50 0,-45 Z"
-            fill="url(#humanBrainGradient)"
-            filter="url(#brainGlow)"
-            opacity="0.9"
-          />
-          {/* Brain wrinkles */}
-          <path d="M-30,-20 Q-15,-30 0,-20 Q15,-30 30,-20" fill="none" stroke="hsl(var(--background))" strokeWidth="2" opacity="0.5" />
-          <path d="M-25,0 Q-10,-10 5,0 Q20,-10 35,0" fill="none" stroke="hsl(var(--background))" strokeWidth="2" opacity="0.5" />
-          <path d="M-20,20 Q0,10 20,20" fill="none" stroke="hsl(var(--background))" strokeWidth="2" opacity="0.5" />
-          <text y="70" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="600">Cérebro Humano</text>
-        </g>
+            {/* Hexagonal grid pattern */}
+            {Array.from({ length: 12 }).map((_, i) => (
+              <g key={`hex-${i}`} transform={`translate(${(i % 6) * 150 + 50}, ${Math.floor(i / 6) * 120 + 40})`}>
+                <polygon
+                  points="30,0 60,17 60,52 30,69 0,52 0,17"
+                  fill="none"
+                  stroke="url(#cyberGradient)"
+                  strokeWidth="0.5"
+                >
+                  <animate attributeName="opacity" values="0.1;0.4;0.1" dur={`${3 + (i % 3)}s`} begin={`${i * 0.3}s`} repeatCount="indefinite" />
+                </polygon>
+              </g>
+            ))}
 
-        {/* AI Brain (right) */}
-        <g transform="translate(820, 90)">
-          {/* Brain outline with circuit pattern */}
-          <path 
-            d="M0,-45 C20,-50 40,-40 50,-25 C60,-10 55,15 45,30 C35,45 15,50 0,48 C-15,50 -35,45 -45,30 C-55,15 -60,-10 -50,-25 C-40,-40 -20,-50 0,-45 Z"
-            fill="url(#aiBrainGradient)"
-            filter="url(#brainGlow)"
-            opacity="0.9"
-          />
-          {/* Circuit patterns */}
-          <g stroke="hsl(var(--background))" strokeWidth="1.5" fill="none" opacity="0.7">
-            <path d="M-30,-20 L-15,-20 L-15,-10 L0,-10 L0,0 L15,0" />
-            <path d="M0,-35 L0,-20 L10,-20 L10,-5" />
-            <path d="M-20,10 L-5,10 L-5,25 L10,25" />
-            <path d="M15,-15 L25,-15 L25,5 L35,5" />
-            <circle cx="-30" cy="-20" r="3" fill="hsl(180, 80%, 60%)" />
-            <circle cx="0" cy="0" r="3" fill="hsl(180, 80%, 60%)" />
-            <circle cx="10" cy="25" r="3" fill="hsl(180, 80%, 60%)" />
-            <circle cx="35" cy="5" r="3" fill="hsl(180, 80%, 60%)" />
+            {/* Flowing code streams */}
+            {['10110', '01001', '11010', '00111', '10101'].map((code, i) => (
+              <text
+                key={`code-${i}`}
+                x={`${15 + i * 20}%`}
+                y="10%"
+                fill="url(#cyberGradient)"
+                fontSize="9"
+                fontFamily="monospace"
+              >
+                <animate attributeName="y" values="-5%;110%" dur={`${6 + i}s`} begin={`${i * 1.5}s`} repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0;0.6;0.6;0" dur={`${6 + i}s`} begin={`${i * 1.5}s`} repeatCount="indefinite" />
+                {code}
+              </text>
+            ))}
+
+            {/* Network nodes pulsing */}
+            {[
+              { x: '10%', y: '30%' }, { x: '25%', y: '70%' }, { x: '40%', y: '25%' },
+              { x: '60%', y: '75%' }, { x: '75%', y: '35%' }, { x: '90%', y: '65%' }
+            ].map((node, i) => (
+              <g key={`node-${i}`}>
+                <circle cx={node.x} cy={node.y} r="4" fill="url(#cyberGradient)" filter="url(#cyberGlow)">
+                  <animate attributeName="r" values="3;6;3" dur={`${2 + i * 0.5}s`} repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.3;0.8;0.3" dur={`${2 + i * 0.5}s`} repeatCount="indefinite" />
+                </circle>
+              </g>
+            ))}
+
+            {/* Connection lines between nodes */}
+            {[
+              { x1: '10%', y1: '30%', x2: '25%', y2: '70%' },
+              { x1: '25%', y1: '70%', x2: '40%', y2: '25%' },
+              { x1: '40%', y1: '25%', x2: '60%', y2: '75%' },
+              { x1: '60%', y1: '75%', x2: '75%', y2: '35%' },
+              { x1: '75%', y1: '35%', x2: '90%', y2: '65%' }
+            ].map((line, i) => (
+              <line
+                key={`conn-${i}`}
+                x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2}
+                stroke="url(#cyberGradient)"
+                strokeWidth="1"
+                strokeDasharray="4,4"
+              >
+                <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.2;0.5;0.2" dur="3s" begin={`${i * 0.5}s`} repeatCount="indefinite" />
+              </line>
+            ))}
+          </svg>
+        </div>
+
+        {/* Main cognitive flow diagram */}
+        <svg viewBox="0 0 1000 280" className="w-full h-auto relative z-10 py-6">
+          <defs>
+            {/* Human brain gradient - warm magenta/pink */}
+            <linearGradient id="humanBrainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ec4899" stopOpacity="0.9" />
+              <stop offset="50%" stopColor="#f472b6" stopOpacity="1" />
+              <stop offset="100%" stopColor="#db2777" stopOpacity="0.9" />
+            </linearGradient>
+            
+            {/* AI brain gradient - cool cyan/teal */}
+            <linearGradient id="aiBrainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.9" />
+              <stop offset="50%" stopColor="#22d3ee" stopOpacity="1" />
+              <stop offset="100%" stopColor="#0891b2" stopOpacity="0.9" />
+            </linearGradient>
+
+            {/* Input flow gradient (warm to cool) */}
+            <linearGradient id="inputFlowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#ec4899" />
+              <stop offset="50%" stopColor="#8b5cf6" />
+              <stop offset="100%" stopColor="#06b6d4" />
+            </linearGradient>
+
+            {/* Output flow gradient (cool to warm) */}
+            <linearGradient id="outputFlowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#06b6d4" />
+              <stop offset="50%" stopColor="#8b5cf6" />
+              <stop offset="100%" stopColor="#ec4899" />
+            </linearGradient>
+
+            {/* Glow filters */}
+            <filter id="brainGlowPink" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="6" result="blur" />
+              <feFlood floodColor="#ec4899" floodOpacity="0.5" />
+              <feComposite in2="blur" operator="in" />
+              <feMerge>
+                <feMergeNode />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="brainGlowCyan" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="6" result="blur" />
+              <feFlood floodColor="#06b6d4" floodOpacity="0.5" />
+              <feComposite in2="blur" operator="in" />
+              <feMerge>
+                <feMergeNode />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+
+            {/* Flow paths for animation */}
+            <path id="inputPath" d="M180,120 C350,60 650,60 820,120" fill="none" />
+            <path id="outputPath" d="M820,160 C650,220 350,220 180,160" fill="none" />
+          </defs>
+
+          {/* Human Brain (Left) */}
+          <g transform="translate(100, 140)">
+            {/* Outer glow ring */}
+            <circle r="70" fill="none" stroke="#ec4899" strokeWidth="1" opacity="0.3">
+              <animate attributeName="r" values="65;72;65" dur="3s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.2;0.4;0.2" dur="3s" repeatCount="indefinite" />
+            </circle>
+            
+            {/* Brain shape - organic */}
+            <path 
+              d="M0,-50 C25,-55 45,-42 55,-25 C65,-5 58,20 48,35 C38,50 18,55 0,53 C-18,55 -38,50 -48,35 C-58,20 -65,-5 -55,-25 C-45,-42 -25,-55 0,-50 Z"
+              fill="url(#humanBrainGrad)"
+              filter="url(#brainGlowPink)"
+            />
+            
+            {/* Brain folds/wrinkles */}
+            <g stroke="#fff" strokeWidth="2" fill="none" opacity="0.4">
+              <path d="M-35,-22 Q-18,-35 0,-22 Q18,-35 35,-22" />
+              <path d="M-30,0 Q-12,-12 8,0 Q25,-12 40,0" />
+              <path d="M-25,22 Q0,10 25,22" />
+            </g>
+            
+            {/* Label */}
+            <text y="85" textAnchor="middle" fill="#f472b6" fontSize="14" fontWeight="700">Cérebro Humano</text>
           </g>
-          <text y="70" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="600">Cérebro Computacional</text>
-        </g>
 
-        {/* Flow arrows and words - Top flow (Human to AI) */}
-        <g>
-          {/* Arrow path */}
-          <path 
-            d="M140,70 Q450,20 760,70" 
-            fill="none" 
-            stroke="url(#flowGradient)" 
-            strokeWidth="3"
-            strokeDasharray="8,4"
-            opacity="0.6"
-          >
-            <animate attributeName="stroke-dashoffset" from="0" to="-24" dur="1s" repeatCount="indefinite" />
-          </path>
-          
-          {/* Flowing words */}
-          <text fill="hsl(var(--primary))" fontSize="11" fontWeight="500" opacity="0.9">
-            <textPath href="#topFlowPath" startOffset="20%">
-              <animate attributeName="startOffset" from="0%" to="80%" dur="4s" repeatCount="indefinite" />
-              Palavras
-            </textPath>
-          </text>
-          <path id="topFlowPath" d="M140,55 Q450,5 760,55" fill="none" />
-          
-          {/* Animated dots */}
-          <circle r="4" fill="hsl(var(--primary))" opacity="0.8">
-            <animateMotion dur="3s" repeatCount="indefinite">
-              <mpath href="#topFlowPath" />
-            </animateMotion>
-          </circle>
-          <circle r="4" fill="hsl(180, 80%, 60%)" opacity="0.8">
-            <animateMotion dur="3s" begin="1s" repeatCount="indefinite">
-              <mpath href="#topFlowPath" />
-            </animateMotion>
-          </circle>
-          <circle r="4" fill="hsl(var(--primary))" opacity="0.8">
-            <animateMotion dur="3s" begin="2s" repeatCount="indefinite">
-              <mpath href="#topFlowPath" />
-            </animateMotion>
-          </circle>
+          {/* AI Brain (Right) - CPU/Chip styled as brain */}
+          <g transform="translate(900, 140)">
+            {/* Outer glow ring */}
+            <circle r="70" fill="none" stroke="#06b6d4" strokeWidth="1" opacity="0.3">
+              <animate attributeName="r" values="65;72;65" dur="3s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.2;0.4;0.2" dur="3s" repeatCount="indefinite" />
+            </circle>
+            
+            {/* Brain shape with circuits */}
+            <path 
+              d="M0,-50 C25,-55 45,-42 55,-25 C65,-5 58,20 48,35 C38,50 18,55 0,53 C-18,55 -38,50 -48,35 C-58,20 -65,-5 -55,-25 C-45,-42 -25,-55 0,-50 Z"
+              fill="url(#aiBrainGrad)"
+              filter="url(#brainGlowCyan)"
+            />
+            
+            {/* Circuit patterns inside brain */}
+            <g stroke="#0f172a" strokeWidth="2" fill="none" opacity="0.5">
+              <path d="M-32,-20 L-15,-20 L-15,-8 L0,-8 L0,5 L18,5" />
+              <path d="M0,-38 L0,-22 L12,-22 L12,-5" />
+              <path d="M-22,12 L-5,12 L-5,28 L12,28" />
+              <path d="M18,-18 L28,-18 L28,8 L38,8" />
+            </g>
+            
+            {/* Circuit nodes */}
+            <g fill="#22d3ee">
+              <circle cx="-32" cy="-20" r="4">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="0" cy="5" r="4">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" begin="0.3s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="12" cy="28" r="4">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" begin="0.6s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="38" cy="8" r="4">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" begin="0.9s" repeatCount="indefinite" />
+              </circle>
+            </g>
 
-          {/* Label */}
-          <text x="450" y="35" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12" fontStyle="italic">
-            Envia palavras, perguntas, dados...
-          </text>
-        </g>
+            {/* IA Label inside */}
+            <text y="8" textAnchor="middle" fill="#0f172a" fontSize="22" fontWeight="900">IA</text>
+            
+            {/* Label below */}
+            <text y="85" textAnchor="middle" fill="#22d3ee" fontSize="14" fontWeight="700">Cérebro Computacional</text>
+          </g>
 
-        {/* Flow arrows and intelligence - Bottom flow (AI to Human) */}
-        <g>
-          {/* Arrow path */}
-          <path 
-            d="M760,110 Q450,160 140,110" 
-            fill="none" 
-            stroke="url(#flowGradient)" 
-            strokeWidth="3"
-            strokeDasharray="8,4"
-            opacity="0.6"
-          >
-            <animate attributeName="stroke-dashoffset" from="0" to="-24" dur="1s" repeatCount="indefinite" />
-          </path>
-          
-          <path id="bottomFlowPath" d="M760,125 Q450,175 140,125" fill="none" />
-          
-          {/* Animated dots */}
-          <circle r="5" fill="hsl(180, 80%, 50%)" opacity="0.9">
-            <animateMotion dur="3s" repeatCount="indefinite">
-              <mpath href="#bottomFlowPath" />
-            </animateMotion>
-          </circle>
-          <circle r="5" fill="hsl(var(--primary))" opacity="0.9">
-            <animateMotion dur="3s" begin="1.5s" repeatCount="indefinite">
-              <mpath href="#bottomFlowPath" />
-            </animateMotion>
-          </circle>
+          {/* INPUT FLOW: Human → AI (Top arc) */}
+          <g>
+            {/* Flow path line */}
+            <path 
+              d="M180,120 C350,60 650,60 820,120" 
+              fill="none" 
+              stroke="url(#inputFlowGrad)" 
+              strokeWidth="4"
+              strokeLinecap="round"
+              opacity="0.6"
+            />
+            
+            {/* Animated dashes on path */}
+            <path 
+              d="M180,120 C350,60 650,60 820,120" 
+              fill="none" 
+              stroke="url(#inputFlowGrad)" 
+              strokeWidth="2"
+              strokeDasharray="12,8"
+              opacity="0.8"
+            >
+              <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
+            </path>
 
-          {/* Label */}
-          <text x="450" y="165" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12" fontStyle="italic">
-            Retorna inteligência, insights, conhecimento...
-          </text>
-        </g>
-      </svg>
+            {/* Animated MessageCircle icons with words */}
+            {/* Group 1: "Palavras" + MessageCircle */}
+            <g opacity="0.95">
+              <animateMotion dur="5s" repeatCount="indefinite">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <rect x="-45" y="-12" width="90" height="24" rx="12" fill="#ec4899" opacity="0.9" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">💬 Palavras</text>
+            </g>
+            
+            {/* Group 2: "Prompts" + MessageCircle */}
+            <g opacity="0.95">
+              <animateMotion dur="5s" begin="1.7s" repeatCount="indefinite">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <rect x="-42" y="-12" width="84" height="24" rx="12" fill="#a855f7" opacity="0.9" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">💬 Prompts</text>
+            </g>
+            
+            {/* Group 3: "Dados" + MessageCircle */}
+            <g opacity="0.95">
+              <animateMotion dur="5s" begin="3.4s" repeatCount="indefinite">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <rect x="-35" y="-12" width="70" height="24" rx="12" fill="#8b5cf6" opacity="0.9" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">💬 Dados</text>
+            </g>
+          </g>
+
+          {/* OUTPUT FLOW: AI → Human (Bottom arc) */}
+          <g>
+            {/* Flow path line */}
+            <path 
+              d="M820,160 C650,220 350,220 180,160" 
+              fill="none" 
+              stroke="url(#outputFlowGrad)" 
+              strokeWidth="4"
+              strokeLinecap="round"
+              opacity="0.6"
+            />
+            
+            {/* Animated dashes on path */}
+            <path 
+              d="M820,160 C650,220 350,220 180,160" 
+              fill="none" 
+              stroke="url(#outputFlowGrad)" 
+              strokeWidth="2"
+              strokeDasharray="12,8"
+              opacity="0.8"
+            >
+              <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
+            </path>
+
+            {/* Animated Sparkles icons with words */}
+            {/* Group 1: "Solução" + Sparkles */}
+            <g opacity="0.95">
+              <animateMotion dur="5s" repeatCount="indefinite">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <rect x="-42" y="-12" width="84" height="24" rx="12" fill="#06b6d4" opacity="0.9" />
+              <text x="0" y="5" textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="600">✨ Solução</text>
+            </g>
+            
+            {/* Group 2: "Eficiência" + Sparkles */}
+            <g opacity="0.95">
+              <animateMotion dur="5s" begin="1.7s" repeatCount="indefinite">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <rect x="-48" y="-12" width="96" height="24" rx="12" fill="#8b5cf6" opacity="0.9" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">✨ Eficiência</text>
+            </g>
+            
+            {/* Group 3: "Valor" + Sparkles */}
+            <g opacity="0.95">
+              <animateMotion dur="5s" begin="3.4s" repeatCount="indefinite">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <rect x="-32" y="-12" width="64" height="24" rx="12" fill="#22d3ee" opacity="0.9" />
+              <text x="0" y="5" textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="600">✨ Valor</text>
+            </g>
+          </g>
+
+          {/* Center decorative element */}
+          <g transform="translate(500, 140)">
+            <circle r="8" fill="#8b5cf6" opacity="0.8">
+              <animate attributeName="r" values="6;10;6" dur="2s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.5;0.9;0.5" dur="2s" repeatCount="indefinite" />
+            </circle>
+          </g>
+        </svg>
+      </div>
     </div>
   );
 
