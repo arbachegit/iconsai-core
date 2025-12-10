@@ -121,14 +121,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      audioRef.current.onended = null;
+      audioRef.current = null;
     }
     stopProgressTracking();
-    setFloatingPlayerState(prev => prev ? {
-      ...prev,
-      isPlaying: false,
-      isPaused: false,
-      currentTime: 0,
-    } : null);
+    setFloatingPlayerState(null);
   }, [stopProgressTracking]);
 
   const closePlayer = useCallback(() => {
