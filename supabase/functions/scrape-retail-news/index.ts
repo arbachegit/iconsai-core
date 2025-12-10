@@ -11,17 +11,20 @@ const RSS_FEEDS = [
   { name: 'CNN Brasil', url: 'https://www.cnnbrasil.com.br/economia/feed/' },
   { name: 'InfoMoney', url: 'https://www.infomoney.com.br/feed/' },
   { name: 'Valor Econômico', url: 'https://valor.globo.com/rss/economia' },
+  { name: 'SBVC', url: 'https://sbvc.com.br/feed/' },
 ];
 
-// Simple sentiment keywords for basic analysis
+// Enhanced sentiment keywords for better analysis
 const POSITIVE_KEYWORDS = [
   'crescimento', 'alta', 'aumento', 'lucro', 'ganho', 'recorde', 'otimismo',
-  'recuperação', 'expansão', 'positivo', 'melhora', 'sucesso', 'valorização'
+  'recuperação', 'expansão', 'positivo', 'melhora', 'sucesso', 'valorização',
+  'superávit', 'investimento', 'emprego', 'contratação', 'aquecimento', 'impulso'
 ];
 
 const NEGATIVE_KEYWORDS = [
   'queda', 'baixa', 'perda', 'crise', 'inflação', 'recessão', 'desemprego',
-  'déficit', 'prejuízo', 'negativo', 'risco', 'colapso', 'falência'
+  'déficit', 'prejuízo', 'negativo', 'risco', 'colapso', 'falência', 'demissão',
+  'retração', 'estagnação', 'endividamento', 'calote', 'inadimplência', 'escassez'
 ];
 
 function calculateSentiment(title: string): number {
@@ -29,11 +32,11 @@ function calculateSentiment(title: string): number {
   let score = 0;
   
   POSITIVE_KEYWORDS.forEach(word => {
-    if (lowerTitle.includes(word)) score += 0.2;
+    if (lowerTitle.includes(word)) score += 0.15;
   });
   
   NEGATIVE_KEYWORDS.forEach(word => {
-    if (lowerTitle.includes(word)) score -= 0.2;
+    if (lowerTitle.includes(word)) score -= 0.15;
   });
   
   // Clamp between -1 and 1
@@ -68,7 +71,7 @@ function extractItemsFromRSS(xml: string, sourceName: string): Array<{
   // Simple XML parsing for RSS items
   const itemMatches = xml.match(/<item>([\s\S]*?)<\/item>/gi) || [];
   
-  for (const itemXml of itemMatches.slice(0, 20)) { // Limit to 20 items per feed
+  for (const itemXml of itemMatches.slice(0, 25)) { // Limit to 25 items per feed
     const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/i);
     const linkMatch = itemXml.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>|<link>(.*?)<\/link>/i);
     const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/i);

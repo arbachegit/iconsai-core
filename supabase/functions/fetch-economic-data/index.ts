@@ -69,7 +69,8 @@ serve(async (req) => {
     }
 
     let totalRecordsInserted = 0;
-    const results: Array<{ indicator: string; records: number; status: string }> = [];
+    let newRecordsCount = 0;
+    const results: Array<{ indicator: string; records: number; status: string; newRecords: number }> = [];
 
     for (const indicator of indicators) {
       try {
@@ -84,7 +85,7 @@ serve(async (req) => {
 
         const response = await fetch(apiConfig.base_url);
         if (!response.ok) {
-          results.push({ indicator: indicator.name, records: 0, status: 'error' });
+          results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
           continue;
         }
 
@@ -122,32 +123,68 @@ serve(async (req) => {
         }
 
         if (valuesToInsert.length > 0) {
+          // Check for existing records to detect NEW data
+          const { data: existingRecords } = await supabase
+            .from('indicator_values')
+            .select('reference_date')
+            .eq('indicator_id', indicator.id);
+
+          const existingDates = new Set((existingRecords || []).map(r => r.reference_date));
+          const newValues = valuesToInsert.filter(v => !existingDates.has(v.reference_date));
+
           const { error: insertError } = await supabase
             .from('indicator_values')
             .upsert(valuesToInsert, { onConflict: 'indicator_id,reference_date', ignoreDuplicates: false });
 
           if (insertError) {
-            results.push({ indicator: indicator.name, records: 0, status: 'error' });
+            results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
           } else {
             totalRecordsInserted += valuesToInsert.length;
-            results.push({ indicator: indicator.name, records: valuesToInsert.length, status: 'success' });
+            newRecordsCount += newValues.length;
+            results.push({ 
+              indicator: indicator.name, 
+              records: valuesToInsert.length, 
+              status: 'success',
+              newRecords: newValues.length
+            });
+
+            // If NEW records were inserted, dispatch notification
+            if (newValues.length > 0) {
+              const latestValue = valuesToInsert[valuesToInsert.length - 1];
+              console.log(`[FETCH-ECONOMIC] NEW data detected for ${indicator.name}: ${newValues.length} records`);
+              
+              // Dispatch notification for new economic data
+              try {
+                await supabase.functions.invoke('send-email', {
+                  body: {
+                    eventType: 'new_economic_data',
+                    to: null, // Will use admin settings
+                    subject: `Novo indicador disponível: ${indicator.name}`,
+                    body: `Novo indicador disponível: ${indicator.name} referente a ${latestValue.reference_date}. Valor: ${latestValue.value}${indicator.unit ? ` ${indicator.unit}` : ''}.`
+                  }
+                });
+              } catch (notifyError) {
+                console.error('[FETCH-ECONOMIC] Notification error:', notifyError);
+              }
+            }
           }
         }
       } catch (err) {
         console.error(`[FETCH-ECONOMIC] Error:`, err);
-        results.push({ indicator: indicator.name, records: 0, status: 'error' });
+        results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
       }
     }
 
+    // Audit log
     await supabase.from('user_activity_logs').insert({
       user_email: 'system@knowyou.app',
       action_category: 'ECONOMIC_DATA_FETCH',
-      action: `Fetched economic data | Total: ${totalRecordsInserted}`,
-      details: { results, totalRecordsInserted }
+      action: `Fetched economic data | Total: ${totalRecordsInserted} | New: ${newRecordsCount}`,
+      details: { results, totalRecordsInserted, newRecordsCount }
     });
 
     return new Response(
-      JSON.stringify({ success: true, recordsInserted: totalRecordsInserted, results }),
+      JSON.stringify({ success: true, recordsInserted: totalRecordsInserted, newRecordsCount, results }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

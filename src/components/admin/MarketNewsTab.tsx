@@ -20,7 +20,7 @@ interface NewsItem {
   created_at: string;
 }
 
-const SOURCES = ['Todos', 'CNN Brasil', 'InfoMoney', 'SBVC', 'Valor Econômico', 'Exame'];
+const SOURCES = ['Todos', 'CNN Brasil', 'InfoMoney', 'SBVC', 'Valor Econômico'];
 
 export default function MarketNewsTab() {
   const [news, setNews] = useState<NewsItem[]>([]);
