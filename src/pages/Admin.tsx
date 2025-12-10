@@ -305,8 +305,8 @@ const Admin = () => {
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
 
-      {/* Main content wrapper with dynamic left margin */}
-      <div className={`${sidebarWidth} transition-all duration-500 ease-in-out min-h-screen flex flex-col`}>
+      {/* Main content wrapper with dynamic left margin - explicit z-index for visibility */}
+      <div className={`${sidebarWidth} relative z-10 transition-all duration-500 ease-in-out min-h-screen flex flex-col`}>
         {/* Header - inside main content area, not overlapping sidebar */}
         <header className={`h-14 bg-background/80 backdrop-blur-md border-b border-border/50 fixed top-0 right-0 z-30 flex items-center justify-between px-6 transition-all duration-500 ease-in-out ${isSidebarCollapsed ? 'left-[72px]' : 'left-[280px]'}`}>
           {/* Left: Logo + Admin Panel title */}
@@ -326,40 +326,42 @@ const Admin = () => {
             <div className="flex items-center gap-5">
               {/* Language Selector with Tooltip */}
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full"
-                        disabled={isChangingLanguage}
-                      >
-                        {isChangingLanguage ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Languages className="h-4 w-4" />
-                            <span className="text-xs font-semibold">{currentLanguage.abbr}</span>
-                          </>
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="min-w-[140px]">
-                      {languages.map((lang) => (
-                        <DropdownMenuItem
-                          key={lang.code}
-                          onClick={() => handleLanguageChange(lang.code)}
-                          className={`flex items-center gap-3 cursor-pointer ${
-                            i18n.language === lang.code ? "bg-accent" : ""
-                          }`}
+              <TooltipTrigger asChild>
+                  <div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full"
+                          disabled={isChangingLanguage}
                         >
-                          <span className="text-xs font-bold text-muted-foreground w-5">{lang.abbr}</span>
-                          <span>{lang.label}</span>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                          {isChangingLanguage ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Languages className="h-4 w-4" />
+                              <span className="text-xs font-semibold">{currentLanguage.abbr}</span>
+                            </>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-[140px]">
+                        {languages.map((lang) => (
+                          <DropdownMenuItem
+                            key={lang.code}
+                            onClick={() => handleLanguageChange(lang.code)}
+                            className={`flex items-center gap-3 cursor-pointer ${
+                              i18n.language === lang.code ? "bg-accent" : ""
+                            }`}
+                          >
+                            <span className="text-xs font-bold text-muted-foreground w-5">{lang.abbr}</span>
+                            <span>{lang.label}</span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
                   <p>Mudar Idioma</p>
@@ -397,7 +399,7 @@ const Admin = () => {
         </header>
 
         {/* Main content - explicit visibility and min-height for safe mode */}
-        <main className="flex-1 overflow-y-auto pt-14 min-h-[calc(100vh-3.5rem)] opacity-100 visible">
+        <main className="flex-1 overflow-y-auto pt-14 min-h-[calc(100vh-3.5rem)] opacity-100 visible bg-background">
           <div className="p-8">
             <div className="max-w-7xl mx-auto">
               <ErrorBoundary key={activeTab} fallbackMessage="Erro ao carregar este módulo do painel admin">
