@@ -170,11 +170,11 @@ export const DashboardTab = () => {
       
       const conversasCount = chatAnalytics?.filter(c => 
         c.started_at?.startsWith(dateStr)
-      ).length || Math.floor(Math.random() * 300 + 100);
+      ).length ?? 0;
       
       const docsCount = documentsData?.filter(d => 
         d.created_at?.startsWith(dateStr)
-      ).length || Math.floor(Math.random() * 200 + 50);
+      ).length ?? 0;
       
       days.push({
         name: dayName.charAt(0).toUpperCase() + dayName.slice(1),
