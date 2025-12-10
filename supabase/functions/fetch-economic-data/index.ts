@@ -82,9 +82,11 @@ serve(async (req) => {
         if (!apiConfig) continue;
 
         console.log(`[FETCH-ECONOMIC] Fetching ${indicator.name} from ${apiConfig.provider}...`);
+        console.log(`[FETCH-ECONOMIC] URL: ${apiConfig.base_url}`);
 
         const response = await fetch(apiConfig.base_url);
         if (!response.ok) {
+          console.error(`[FETCH-ECONOMIC] API error for ${indicator.name}: ${response.status}`);
           results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
           continue;
         }
@@ -93,7 +95,10 @@ serve(async (req) => {
         let valuesToInsert: Array<{ indicator_id: string; reference_date: string; value: number }> = [];
 
         if (apiConfig.provider === 'BCB') {
+          // BCB returns array of {data: "DD/MM/YYYY", valor: "X.XX"}
           const bcbData = data as BCBDataPoint[];
+          console.log(`[FETCH-ECONOMIC] BCB data points received: ${bcbData.length}`);
+          
           valuesToInsert = bcbData.map((item) => {
             const [day, month, year] = item.data.split('/');
             return {
@@ -102,24 +107,58 @@ serve(async (req) => {
               value: parseFloat(item.valor.replace(',', '.')),
             };
           }).filter(v => !isNaN(v.value));
+          
         } else if (apiConfig.provider === 'IBGE') {
+          // IBGE SIDRA returns complex nested structure
           const ibgeData = data as IBGEResult[];
+          console.log(`[FETCH-ECONOMIC] IBGE response received, parsing...`);
+          
           if (ibgeData.length > 0 && ibgeData[0].resultados) {
-            const series = ibgeData[0].resultados[0]?.series[0]?.serie || {};
-            valuesToInsert = Object.entries(series).map(([period, value]) => {
-              let refDate: string;
-              if (period.length === 6) {
-                refDate = `${period.substring(0, 4)}-${period.substring(4, 6)}-01`;
-              } else {
-                refDate = `${period}-01-01`;
+            const resultados = ibgeData[0].resultados;
+            
+            // Handle multiple series (e.g., when there are classification filters)
+            for (const resultado of resultados) {
+              const series = resultado.series;
+              if (series && series.length > 0) {
+                for (const serie of series) {
+                  const serieData = serie.serie || {};
+                  
+                  for (const [period, value] of Object.entries(serieData)) {
+                    if (!value || value === '-' || value === '...') continue;
+                    
+                    let refDate: string;
+                    // IBGE period formats: YYYYMM (monthly), YYYY (annual), YYYYQN (quarterly)
+                    if (period.length === 6) {
+                      // Monthly: YYYYMM -> YYYY-MM-01
+                      refDate = `${period.substring(0, 4)}-${period.substring(4, 6)}-01`;
+                    } else if (period.length === 4) {
+                      // Annual: YYYY -> YYYY-01-01
+                      refDate = `${period}-01-01`;
+                    } else if (period.length === 5 && period.includes('Q')) {
+                      // Quarterly: YYYYQN -> approximate to quarter start
+                      const year = period.substring(0, 4);
+                      const quarter = parseInt(period.substring(5));
+                      const month = ((quarter - 1) * 3 + 1).toString().padStart(2, '0');
+                      refDate = `${year}-${month}-01`;
+                    } else {
+                      refDate = `${period}-01-01`;
+                    }
+                    
+                    const numValue = parseFloat(value.replace(',', '.'));
+                    if (!isNaN(numValue)) {
+                      valuesToInsert.push({
+                        indicator_id: indicator.id,
+                        reference_date: refDate,
+                        value: numValue,
+                      });
+                    }
+                  }
+                }
               }
-              return {
-                indicator_id: indicator.id,
-                reference_date: refDate,
-                value: parseFloat(value.replace(',', '.')),
-              };
-            }).filter(v => !isNaN(v.value));
+            }
           }
+          
+          console.log(`[FETCH-ECONOMIC] IBGE parsed values: ${valuesToInsert.length}`);
         }
 
         if (valuesToInsert.length > 0) {
@@ -132,11 +171,14 @@ serve(async (req) => {
           const existingDates = new Set((existingRecords || []).map(r => r.reference_date));
           const newValues = valuesToInsert.filter(v => !existingDates.has(v.reference_date));
 
+          console.log(`[FETCH-ECONOMIC] ${indicator.name}: ${valuesToInsert.length} total, ${newValues.length} NEW records`);
+
           const { error: insertError } = await supabase
             .from('indicator_values')
             .upsert(valuesToInsert, { onConflict: 'indicator_id,reference_date', ignoreDuplicates: false });
 
           if (insertError) {
+            console.error(`[FETCH-ECONOMIC] Insert error for ${indicator.name}:`, insertError);
             results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
           } else {
             totalRecordsInserted += valuesToInsert.length;
@@ -163,14 +205,18 @@ serve(async (req) => {
                     body: `Novo indicador disponível: ${indicator.name} referente a ${latestValue.reference_date}. Valor: ${latestValue.value}${indicator.unit ? ` ${indicator.unit}` : ''}.`
                   }
                 });
+                console.log(`[FETCH-ECONOMIC] Notification dispatched for ${indicator.name}`);
               } catch (notifyError) {
                 console.error('[FETCH-ECONOMIC] Notification error:', notifyError);
               }
             }
           }
+        } else {
+          console.log(`[FETCH-ECONOMIC] No values to insert for ${indicator.name}`);
+          results.push({ indicator: indicator.name, records: 0, status: 'no_data', newRecords: 0 });
         }
       } catch (err) {
-        console.error(`[FETCH-ECONOMIC] Error:`, err);
+        console.error(`[FETCH-ECONOMIC] Error processing ${indicator.name}:`, err);
         results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
       }
     }
@@ -182,6 +228,8 @@ serve(async (req) => {
       action: `Fetched economic data | Total: ${totalRecordsInserted} | New: ${newRecordsCount}`,
       details: { results, totalRecordsInserted, newRecordsCount }
     });
+
+    console.log(`[FETCH-ECONOMIC] Complete. Total: ${totalRecordsInserted}, New: ${newRecordsCount}`);
 
     return new Response(
       JSON.stringify({ success: true, recordsInserted: totalRecordsInserted, newRecordsCount, results }),
