@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SaasRagArchitectureDiagram } from "./SaasRagArchitectureDiagram";
+import SaasRagArchitectureDiagram from "./SaasRagArchitectureDiagram";
 
 type SimulationPhase = 'idle' | 'request' | 'routing' | 'check-adapter' | 'load-adapter' | 'inference' | 'response' | 'complete';
 
