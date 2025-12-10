@@ -1,10 +1,10 @@
-import { Square, X, Play, Pause, Headphones, Loader2 } from "lucide-react";
+import { X, Play, Pause, Headphones, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 
 export function FloatingAudioPlayer() {
-  const { floatingPlayerState, togglePlayPause, stopPlayback, closePlayer } = useAudioPlayer();
+  const { floatingPlayerState, togglePlayPause, closePlayer } = useAudioPlayer();
 
   if (!floatingPlayerState) return null;
 
@@ -56,16 +56,6 @@ export function FloatingAudioPlayer() {
           ) : (
             <Play className="h-5 w-5 text-primary" />
           )}
-        </Button>
-
-        {/* Stop - always enabled, resets to beginning */}
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={stopPlayback}
-          className="h-9 w-9"
-        >
-          <Square className="h-4 w-4" />
         </Button>
 
         {/* Close */}
