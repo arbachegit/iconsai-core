@@ -1,18 +1,29 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ZoomIn, ZoomOut, RotateCcw, Shield, Zap, Database, Share2, Headphones, Play, Pause, Square, Download, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 
 export const DynamicSLMArchitectureDiagram = () => {
   const [zoom, setZoom] = useState(100);
   const [animationKey, setAnimationKey] = useState(0);
   const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { transferToFloating } = useAudioPlayer();
 
   const AUDIO_URL = "https://gmflpmcepempcygdrayv.supabase.co/storage/v1/object/public/tooltip-audio/audio-contents/bc4eff8f-6306-415b-a86b-88298ad56e59.mp3";
   const AUDIO_TITLE = "🔒 O Segredo da Produtividade Duplicada: SLMs, Paredes de Titânio e o Orquestrador de Dados";
+
+  // Transfer audio to floating player on unmount if playing
+  useEffect(() => {
+    return () => {
+      if (audioRef.current && (audioRef.current.paused === false || audioRef.current.currentTime > 0)) {
+        transferToFloating(AUDIO_TITLE, AUDIO_URL, audioRef.current);
+      }
+    };
+  }, [transferToFloating]);
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 20, 150));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 20, 60));

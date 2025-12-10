@@ -1,17 +1,28 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, RotateCcw, Shield, Zap, Server, Headphones, Play, Pause, Square, Download, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 
 const HyperModularSLMDiagram = () => {
   const [zoom, setZoom] = useState(1);
   const [animationKey, setAnimationKey] = useState(0);
   const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { transferToFloating } = useAudioPlayer();
 
   const AUDIO_URL = "https://gmflpmcepempcygdrayv.supabase.co/storage/v1/object/public/tooltip-audio/audio-contents/65c265c8-e54b-4f7e-96f1-44136000ed7b.mp3";
   const AUDIO_TITLE = "🛡️Paredes de Titânio e Gênios Hiperfocados";
+
+  // Transfer audio to floating player on unmount if playing
+  useEffect(() => {
+    return () => {
+      if (audioRef.current && (audioRef.current.paused === false || audioRef.current.currentTime > 0)) {
+        transferToFloating(AUDIO_TITLE, AUDIO_URL, audioRef.current);
+      }
+    };
+  }, [transferToFloating]);
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 1.5));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.5));

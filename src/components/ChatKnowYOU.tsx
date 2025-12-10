@@ -14,7 +14,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 
 import { CopyButton } from "./CopyButton";
-import { FloatingAudioPlayer } from "./FloatingAudioPlayer";
+import { ChatFloatingAudioPlayer } from "./ChatFloatingAudioPlayer";
 import { cn } from "@/lib/utils";
 import ContextualSuggestions from "./ContextualSuggestions";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -698,12 +698,18 @@ export default function ChatKnowYOU() {
       </form>
       
       {/* Floating Audio Player */}
-      <FloatingAudioPlayer isVisible={showFloatingPlayer && currentlyPlayingIndex !== null} currentTime={audioProgress.currentTime} duration={audioProgress.duration} onStop={() => {
-      stopAudio();
-      setShowFloatingPlayer(false);
-    }} onClose={() => {
-      stopAudio();
-      setShowFloatingPlayer(false);
-    }} />
+      <ChatFloatingAudioPlayer 
+        isVisible={showFloatingPlayer && currentlyPlayingIndex !== null} 
+        currentTime={audioProgress.currentTime} 
+        duration={audioProgress.duration} 
+        onStop={() => {
+          stopAudio();
+          setShowFloatingPlayer(false);
+        }} 
+        onClose={() => {
+          stopAudio();
+          setShowFloatingPlayer(false);
+        }} 
+      />
     </div>;
 }

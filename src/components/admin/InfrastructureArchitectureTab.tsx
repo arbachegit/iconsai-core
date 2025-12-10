@@ -24,12 +24,13 @@ import {
   FileImage,
   Activity
 } from "lucide-react";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import ArchitectureCard from "./ArchitectureCard";
 import SaasRagArchitectureDiagram from "./SaasRagArchitectureDiagram";
 import DepartmentArchitectureDiagram from "./DepartmentArchitectureDiagram";
-import DynamicSLMArchitectureDiagram from "./DynamicSLMArchitectureDiagram";
+import { DynamicSLMArchitectureDiagram } from "./DynamicSLMArchitectureDiagram";
 import HyperModularSLMDiagram from "./HyperModularSLMDiagram";
+import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 
 type SimulationPhase = 'idle' | 'request' | 'routing' | 'check-adapter' | 'load-adapter' | 'inference' | 'response' | 'complete';
 type ViewMode = 'cards' | 'gpu' | 'department-choice' | 'department-static' | 'department-dynamic' | 'saas-choice' | 'saas-static' | 'saas-dynamic';
@@ -44,9 +45,12 @@ export const InfrastructureArchitectureTab = () => {
   const [currentPhase, setCurrentPhase] = useState<SimulationPhase>('idle');
   const [adapterLoaded, setAdapterLoaded] = useState(false);
 
-  // Audio player state
+  // Audio player state (local)
   const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // Global audio player context
+  const { transferToFloating } = useAudioPlayer();
   
   const AUDIO_URL = "https://gmflpmcepempcygdrayv.supabase.co/storage/v1/object/public/tooltip-audio/audio-contents/e137c34e-4523-406a-a7bc-35ac598cc9f6.mp3";
   const AUDIO_TITLE = "AI Escalável: O Segredo dos 90% Mais Barato! 💰";
@@ -93,6 +97,16 @@ export const InfrastructureArchitectureTab = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Transfer audio to floating player when navigating away from GPU view
+  const handleBackFromGpu = () => {
+    if (audioRef.current && (audioState === 'playing' || audioState === 'paused')) {
+      transferToFloating(AUDIO_TITLE, AUDIO_URL, audioRef.current);
+      audioRef.current = null;
+      setAudioState('idle');
+    }
+    setSelectedView('cards');
   };
 
   // Restart background animations periodically
@@ -342,7 +356,7 @@ export const InfrastructureArchitectureTab = () => {
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        <BackButton />
+        <BackButton onClick={handleBackFromGpu} />
         
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
