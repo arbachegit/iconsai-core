@@ -164,12 +164,19 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [floatingPlayerState, startProgressTracking, stopProgressTracking]);
 
   const stopPlayback = useCallback(() => {
+    // 1. Stop progress tracking FIRST to prevent race conditions
+    stopProgressTracking();
+    
+    // 2. Pause and reset the audio element
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
-    stopProgressTracking();
-    // Keep the player visible but in stopped state (not playing, not paused)
+    
+    // 3. Update ref immediately to prevent stale state checks
+    isPlayingRef.current = false;
+    
+    // 4. Update global state - player stays visible in stopped state
     setFloatingPlayerState(prev => prev ? {
       ...prev,
       isPlaying: false,
