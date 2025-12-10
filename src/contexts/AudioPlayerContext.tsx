@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useRef, ReactNode, useCallback } from "react";
+import { createContext, useContext, useState, useRef, ReactNode, useCallback, useMemo, useEffect } from "react";
 
 interface AudioPlayerState {
   isPlaying: boolean;
@@ -24,6 +24,16 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const [floatingPlayerState, setFloatingPlayerState] = useState<AudioPlayerState | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
+  
+  // Stable refs to avoid recreating callbacks - CRITICAL for preventing re-renders
+  const currentAudioUrlRef = useRef<string | null>(null);
+  const isPlayingRef = useRef<boolean>(false);
+  
+  // Sync refs with state changes
+  useEffect(() => {
+    currentAudioUrlRef.current = floatingPlayerState?.audioUrl ?? null;
+    isPlayingRef.current = floatingPlayerState?.isPlaying ?? false;
+  }, [floatingPlayerState?.audioUrl, floatingPlayerState?.isPlaying]);
 
   const startProgressTracking = useCallback(() => {
     if (progressInterval.current) {
@@ -47,11 +57,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Main function to start playing audio - creates and manages its own Audio element
+  // Main function to start playing audio - uses REFS for stable dependencies
   const playAudio = useCallback((title: string, audioUrl: string) => {
-    // If same audio is already loaded, just toggle play/pause
-    if (floatingPlayerState?.audioUrl === audioUrl && audioRef.current) {
-      if (floatingPlayerState.isPlaying) {
+    // Use refs for comparison - NOT state (avoids callback recreation)
+    if (currentAudioUrlRef.current === audioUrl && audioRef.current) {
+      if (isPlayingRef.current) {
         audioRef.current.pause();
         stopProgressTracking();
         setFloatingPlayerState(prev => prev ? {
@@ -116,7 +126,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     };
 
     audio.load();
-  }, [floatingPlayerState?.audioUrl, floatingPlayerState?.isPlaying, startProgressTracking, stopProgressTracking]);
+  }, [startProgressTracking, stopProgressTracking]); // STABLE dependencies only
 
   const togglePlayPause = useCallback(() => {
     if (!audioRef.current || !floatingPlayerState) return;
@@ -179,14 +189,17 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     setFloatingPlayerState(null);
   }, [stopProgressTracking]);
 
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    floatingPlayerState,
+    playAudio,
+    togglePlayPause,
+    stopPlayback,
+    closePlayer,
+  }), [floatingPlayerState, playAudio, togglePlayPause, stopPlayback, closePlayer]);
+
   return (
-    <AudioPlayerContext.Provider value={{ 
-      floatingPlayerState, 
-      playAudio,
-      togglePlayPause,
-      stopPlayback,
-      closePlayer,
-    }}>
+    <AudioPlayerContext.Provider value={contextValue}>
       {children}
     </AudioPlayerContext.Provider>
   );

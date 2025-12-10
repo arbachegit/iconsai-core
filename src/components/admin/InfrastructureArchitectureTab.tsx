@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,23 @@ import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 
 type SimulationPhase = 'idle' | 'request' | 'routing' | 'check-adapter' | 'load-adapter' | 'inference' | 'response' | 'complete';
 type ViewMode = 'cards' | 'gpu' | 'department-choice' | 'department-static' | 'department-dynamic' | 'saas-choice' | 'saas-static' | 'saas-dynamic';
+
+// EXTRACTED: BackButton outside component to prevent recreation on every render
+interface BackButtonProps {
+  onClick: () => void;
+}
+
+const BackButton = memo(({ onClick }: BackButtonProps) => (
+  <Button 
+    variant="outline" 
+    onClick={onClick}
+    className="gap-2"
+    type="button"
+  >
+    <ArrowLeft className="h-4 w-4" />
+    Voltar
+  </Button>
+));
 
 export const InfrastructureArchitectureTab = () => {
   const [selectedView, setSelectedView] = useState<ViewMode>('cards');
@@ -184,35 +201,17 @@ export const InfrastructureArchitectureTab = () => {
     );
   }
 
-  // Render back button for all detail views
-  const BackButton = ({ onClick }: { onClick?: () => void }) => {
-    const handleClick = () => {
-      if (onClick) {
-        onClick();
-      } else {
-        setSelectedView('cards');
-      }
-    };
-
-    return (
-      <Button 
-        variant="outline" 
-        onClick={handleClick}
-        className="gap-2"
-        type="button"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Voltar
-      </Button>
-    );
-  };
+  // Handler functions for navigation - stable references
+  const goToCards = () => setSelectedView('cards');
+  const goToDepartmentChoice = () => setSelectedView('department-choice');
+  const goToSaasChoice = () => setSelectedView('saas-choice');
 
   // Render department choice view (sub-cards)
   if (selectedView === 'department-choice') {
     return (
       <TooltipProvider>
         <div className="space-y-6">
-          <BackButton />
+          <BackButton onClick={goToCards} />
           
           <div>
             <h2 className="text-2xl font-bold text-gradient">Uma Empresa, Vários Departamentos</h2>
@@ -249,7 +248,7 @@ export const InfrastructureArchitectureTab = () => {
     return (
       <TooltipProvider>
         <div className="space-y-6">
-          <BackButton onClick={() => setSelectedView('department-choice')} />
+          <BackButton onClick={goToDepartmentChoice} />
           <DepartmentArchitectureDiagram />
         </div>
       </TooltipProvider>
@@ -261,7 +260,7 @@ export const InfrastructureArchitectureTab = () => {
     return (
       <TooltipProvider>
         <div className="space-y-6">
-          <BackButton onClick={() => setSelectedView('department-choice')} />
+          <BackButton onClick={goToDepartmentChoice} />
           <DynamicSLMArchitectureDiagram />
         </div>
       </TooltipProvider>
@@ -273,7 +272,7 @@ export const InfrastructureArchitectureTab = () => {
     return (
       <TooltipProvider>
         <div className="space-y-6">
-          <BackButton />
+          <BackButton onClick={goToCards} />
           
           <div>
             <h2 className="text-2xl font-bold text-gradient">Empresas Diferentes</h2>
@@ -310,7 +309,7 @@ export const InfrastructureArchitectureTab = () => {
     return (
       <TooltipProvider>
         <div className="space-y-6">
-          <BackButton onClick={() => setSelectedView('saas-choice')} />
+          <BackButton onClick={goToSaasChoice} />
           <SaasRagArchitectureDiagram />
         </div>
       </TooltipProvider>
@@ -322,7 +321,7 @@ export const InfrastructureArchitectureTab = () => {
     return (
       <TooltipProvider>
         <div className="space-y-6">
-          <BackButton onClick={() => setSelectedView('saas-choice')} />
+          <BackButton onClick={goToSaasChoice} />
           <HyperModularSLMDiagram />
         </div>
       </TooltipProvider>
@@ -333,7 +332,7 @@ export const InfrastructureArchitectureTab = () => {
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        <BackButton />
+        <BackButton onClick={goToCards} />
         
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
