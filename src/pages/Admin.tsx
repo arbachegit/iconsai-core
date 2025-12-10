@@ -296,7 +296,7 @@ const Admin = () => {
   const sidebarWidth = isSidebarCollapsed ? 'ml-[72px]' : 'ml-[280px]';
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen w-full bg-background overflow-hidden">
       {/* Sidebar - Fixed full height */}
       <AdminSidebar 
         activeTab={activeTab} 
@@ -400,7 +400,7 @@ const Admin = () => {
         <main className="flex-1 overflow-y-auto pt-14">
           <div className="p-8">
             <div className="max-w-7xl mx-auto">
-              <ErrorBoundary fallbackMessage="Erro ao carregar este módulo do painel admin">
+              <ErrorBoundary key={activeTab} fallbackMessage="Erro ao carregar este módulo do painel admin">
                 {renderTab()}
               </ErrorBoundary>
             </div>
