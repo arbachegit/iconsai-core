@@ -56,17 +56,41 @@ serve(async (req) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
+    // Detect provider from URL
+    const isBCB = baseUrl.includes('api.bcb.gov.br');
+    const isIBGE = baseUrl.includes('servicodados.ibge.gov.br');
+
+    // Dynamic headers based on provider
+    const requestHeaders: Record<string, string> = {};
+    
+    if (isBCB) {
+      // BCB API is sensitive - don't send Accept header when formato=json is in URL
+      console.log(`[TEST-API] BCB API detected - using minimal headers`);
+    } else if (isIBGE) {
+      requestHeaders['Accept'] = 'application/json';
+      console.log(`[TEST-API] IBGE API detected - using JSON Accept header`);
+    } else {
+      requestHeaders['Accept'] = '*/*';
+      requestHeaders['User-Agent'] = 'Mozilla/5.0 (compatible; KnowYOU/1.0)';
+      console.log(`[TEST-API] Generic API - using standard headers`);
+    }
+
+    console.log(`[TEST-API] Request headers:`, requestHeaders);
+
     const startTime = performance.now();
 
     try {
-      const response = await fetch(baseUrl, {
+      const fetchOptions: RequestInit = {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'KnowYOU-HealthCheck/1.0',
-        },
         signal: controller.signal,
-      });
+      };
+      
+      // Only add headers if we have any
+      if (Object.keys(requestHeaders).length > 0) {
+        fetchOptions.headers = requestHeaders;
+      }
+
+      const response = await fetch(baseUrl, fetchOptions);
 
       clearTimeout(timeoutId);
       const endTime = performance.now();
