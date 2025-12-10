@@ -24,7 +24,8 @@ import {
   Activity,
   Globe,
   MessageCircle,
-  Sparkles
+  Sparkles,
+  Brain
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -331,73 +332,50 @@ const Arquitetura = () => {
             <path id="outputPath" d="M820,160 C650,220 350,220 180,160" fill="none" />
           </defs>
 
-          {/* Human Brain (Left) */}
+          {/* Human Brain (Left) - Using Lucide Brain Icon */}
           <g transform="translate(100, 140)">
             {/* Outer glow ring */}
-            <circle r="70" fill="none" stroke="#ec4899" strokeWidth="1" opacity="0.3">
-              <animate attributeName="r" values="65;72;65" dur="3s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.2;0.4;0.2" dur="3s" repeatCount="indefinite" />
+            <circle r="70" fill="none" stroke="#ec4899" strokeWidth="2" opacity="0.4">
+              <animate attributeName="r" values="65;75;65" dur="3s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.2;0.5;0.2" dur="3s" repeatCount="indefinite" />
             </circle>
             
-            {/* Brain shape - organic */}
-            <path 
-              d="M0,-50 C25,-55 45,-42 55,-25 C65,-5 58,20 48,35 C38,50 18,55 0,53 C-18,55 -38,50 -48,35 C-58,20 -65,-5 -55,-25 C-45,-42 -25,-55 0,-50 Z"
-              fill="url(#humanBrainGrad)"
-              filter="url(#brainGlowPink)"
-            />
+            {/* Background circle */}
+            <circle r="55" fill="url(#humanBrainGrad)" opacity="0.2" />
+            <circle r="48" fill="#1e1b4b" opacity="0.8" />
             
-            {/* Brain folds/wrinkles */}
-            <g stroke="#fff" strokeWidth="2" fill="none" opacity="0.4">
-              <path d="M-35,-22 Q-18,-35 0,-22 Q18,-35 35,-22" />
-              <path d="M-30,0 Q-12,-12 8,0 Q25,-12 40,0" />
-              <path d="M-25,22 Q0,10 25,22" />
-            </g>
+            {/* Lucide Brain Icon via foreignObject */}
+            <foreignObject x="-32" y="-32" width="64" height="64">
+              <div className="w-full h-full flex items-center justify-center">
+                <Brain className="w-14 h-14 text-pink-400 drop-shadow-[0_0_12px_rgba(236,72,153,0.8)]" />
+              </div>
+            </foreignObject>
             
             {/* Label */}
             <text y="85" textAnchor="middle" fill="#f472b6" fontSize="14" fontWeight="700">Cérebro Humano</text>
           </g>
 
-          {/* AI Brain (Right) - CPU/Chip styled as brain */}
+          {/* AI Brain (Right) - Using Lucide Sparkles Icon */}
           <g transform="translate(900, 140)">
             {/* Outer glow ring */}
-            <circle r="70" fill="none" stroke="#06b6d4" strokeWidth="1" opacity="0.3">
-              <animate attributeName="r" values="65;72;65" dur="3s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.2;0.4;0.2" dur="3s" repeatCount="indefinite" />
+            <circle r="70" fill="none" stroke="#06b6d4" strokeWidth="2" opacity="0.4">
+              <animate attributeName="r" values="65;75;65" dur="3s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.2;0.5;0.2" dur="3s" repeatCount="indefinite" />
             </circle>
             
-            {/* Brain shape with circuits */}
-            <path 
-              d="M0,-50 C25,-55 45,-42 55,-25 C65,-5 58,20 48,35 C38,50 18,55 0,53 C-18,55 -38,50 -48,35 C-58,20 -65,-5 -55,-25 C-45,-42 -25,-55 0,-50 Z"
-              fill="url(#aiBrainGrad)"
-              filter="url(#brainGlowCyan)"
-            />
+            {/* Background circle */}
+            <circle r="55" fill="url(#aiBrainGrad)" opacity="0.2" />
+            <circle r="48" fill="#0c1929" opacity="0.8" />
             
-            {/* Circuit patterns inside brain */}
-            <g stroke="#0f172a" strokeWidth="2" fill="none" opacity="0.5">
-              <path d="M-32,-20 L-15,-20 L-15,-8 L0,-8 L0,5 L18,5" />
-              <path d="M0,-38 L0,-22 L12,-22 L12,-5" />
-              <path d="M-22,12 L-5,12 L-5,28 L12,28" />
-              <path d="M18,-18 L28,-18 L28,8 L38,8" />
-            </g>
-            
-            {/* Circuit nodes */}
-            <g fill="#22d3ee">
-              <circle cx="-32" cy="-20" r="4">
-                <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite" />
-              </circle>
-              <circle cx="0" cy="5" r="4">
-                <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" begin="0.3s" repeatCount="indefinite" />
-              </circle>
-              <circle cx="12" cy="28" r="4">
-                <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" begin="0.6s" repeatCount="indefinite" />
-              </circle>
-              <circle cx="38" cy="8" r="4">
-                <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" begin="0.9s" repeatCount="indefinite" />
-              </circle>
-            </g>
+            {/* Lucide Sparkles Icon via foreignObject */}
+            <foreignObject x="-32" y="-32" width="64" height="64">
+              <div className="w-full h-full flex items-center justify-center">
+                <Sparkles className="w-14 h-14 text-cyan-400 drop-shadow-[0_0_12px_rgba(6,182,212,0.8)]" />
+              </div>
+            </foreignObject>
 
-            {/* IA Label inside */}
-            <text y="8" textAnchor="middle" fill="#0f172a" fontSize="22" fontWeight="900">IA</text>
+            {/* IA Label below icon */}
+            <text y="10" textAnchor="middle" fill="#22d3ee" fontSize="16" fontWeight="900" opacity="0.9">IA</text>
             
             {/* Label below */}
             <text y="85" textAnchor="middle" fill="#22d3ee" fontSize="14" fontWeight="700">Cérebro Computacional</text>
@@ -525,24 +503,28 @@ const Arquitetura = () => {
   if (selectedView === 'cards') {
     return (
       <TooltipProvider>
-        <div className="min-h-screen bg-background relative overflow-hidden">
-          {/* Animated Background */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" className="opacity-[0.08]">
+        <div className="min-h-screen relative overflow-hidden">
+          {/* FULL PAGE CYBERPUNK HERO BACKGROUND */}
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0a1628] to-[#0d1b2a]">
+            <svg width="100%" height="100%" className="absolute inset-0">
               <defs>
-                {/* Animated gradient */}
-                <linearGradient id="bgFlowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.5">
-                    <animate attributeName="stop-opacity" values="0.3;0.7;0.3" dur="4s" repeatCount="indefinite" />
+                {/* Cyberpunk gradient */}
+                <linearGradient id="heroGradientCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.9">
+                    <animate attributeName="stop-opacity" values="0.5;0.9;0.5" dur="4s" repeatCount="indefinite" />
                   </stop>
-                  <stop offset="100%" stopColor="hsl(180, 70%, 50%)" stopOpacity="0.5">
-                    <animate attributeName="stop-opacity" values="0.7;0.3;0.7" dur="4s" repeatCount="indefinite" />
+                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.7">
+                    <animate attributeName="stop-opacity" values="0.7;0.4;0.7" dur="5s" repeatCount="indefinite" />
                   </stop>
+                </linearGradient>
+                <linearGradient id="heroGradientPurple" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="#ec4899" stopOpacity="0.6" />
                 </linearGradient>
                 
                 {/* Glow filter */}
-                <filter id="bgGlow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="2" result="blur" />
+                <filter id="heroGlow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="4" result="blur" />
                   <feMerge>
                     <feMergeNode in="blur" />
                     <feMergeNode in="SourceGraphic" />
@@ -550,177 +532,140 @@ const Arquitetura = () => {
                 </filter>
               </defs>
 
-              {/* Floating nodes with pulse animation */}
-              {[
-                { x: '10%', y: '20%', delay: '0s' },
-                { x: '25%', y: '70%', delay: '0.5s' },
-                { x: '40%', y: '15%', delay: '1s' },
-                { x: '55%', y: '80%', delay: '1.5s' },
-                { x: '70%', y: '30%', delay: '2s' },
-                { x: '85%', y: '60%', delay: '2.5s' },
-                { x: '15%', y: '45%', delay: '3s' },
-                { x: '90%', y: '15%', delay: '0.3s' },
-                { x: '50%', y: '50%', delay: '1.2s' },
-                { x: '75%', y: '85%', delay: '1.8s' },
-              ].map((node, i) => (
-                <g key={i} filter="url(#bgGlow)">
-                  {/* Server/Node icon */}
-                  <rect 
-                    x={node.x} 
-                    y={node.y} 
-                    width="24" 
-                    height="30" 
-                    rx="3"
-                    fill="none" 
-                    stroke="url(#bgFlowGradient)" 
-                    strokeWidth="1.5"
+              {/* Hexagonal circuit grid pattern */}
+              {Array.from({ length: 30 }).map((_, i) => {
+                const col = i % 10;
+                const row = Math.floor(i / 10);
+                const x = col * 120 + (row % 2 === 0 ? 0 : 60);
+                const y = row * 100 + 30;
+                return (
+                  <polygon
+                    key={`hero-hex-${i}`}
+                    points={`${x + 30},${y} ${x + 60},${y + 17} ${x + 60},${y + 52} ${x + 30},${y + 69} ${x},${y + 52} ${x},${y + 17}`}
+                    fill="none"
+                    stroke="url(#heroGradientCyan)"
+                    strokeWidth="0.5"
+                    opacity="0.15"
                   >
-                    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" begin={node.delay} repeatCount="indefinite" />
-                  </rect>
-                  <line x1={`calc(${node.x} + 4px)`} y1={`calc(${node.y} + 8px)`} x2={`calc(${node.x} + 20px)`} y2={`calc(${node.y} + 8px)`} stroke="url(#bgFlowGradient)" strokeWidth="1">
-                    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" begin={node.delay} repeatCount="indefinite" />
-                  </line>
-                  <line x1={`calc(${node.x} + 4px)`} y1={`calc(${node.y} + 14px)`} x2={`calc(${node.x} + 20px)`} y2={`calc(${node.y} + 14px)`} stroke="url(#bgFlowGradient)" strokeWidth="1">
-                    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" begin={node.delay} repeatCount="indefinite" />
-                  </line>
-                  <line x1={`calc(${node.x} + 4px)`} y1={`calc(${node.y} + 20px)`} x2={`calc(${node.x} + 20px)`} y2={`calc(${node.y} + 20px)`} stroke="url(#bgFlowGradient)" strokeWidth="1">
-                    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" begin={node.delay} repeatCount="indefinite" />
-                  </line>
+                    <animate attributeName="opacity" values="0.05;0.25;0.05" dur={`${4 + (i % 4)}s`} begin={`${i * 0.15}s`} repeatCount="indefinite" />
+                  </polygon>
+                );
+              })}
+
+              {/* Flowing code streams - vertical */}
+              {['01101', '10010', '11100', '00111', '10101', '01110', '11001', '00100'].map((code, i) => (
+                <text
+                  key={`hero-code-${i}`}
+                  x={`${8 + i * 12}%`}
+                  y="-5%"
+                  fill="url(#heroGradientCyan)"
+                  fontSize="10"
+                  fontFamily="monospace"
+                  opacity="0"
+                >
+                  <animate attributeName="y" values="-5%;105%" dur={`${8 + i * 1.5}s`} begin={`${i * 1.2}s`} repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0;0.5;0.5;0" dur={`${8 + i * 1.5}s`} begin={`${i * 1.2}s`} repeatCount="indefinite" />
+                  {code}
+                </text>
+              ))}
+
+              {/* Network nodes pulsing with connections */}
+              {[
+                { x: '8%', y: '15%' }, { x: '22%', y: '35%' }, { x: '15%', y: '65%' }, { x: '35%', y: '20%' },
+                { x: '45%', y: '50%' }, { x: '55%', y: '25%' }, { x: '65%', y: '70%' }, { x: '78%', y: '40%' },
+                { x: '85%', y: '18%' }, { x: '92%', y: '60%' }, { x: '50%', y: '85%' }, { x: '30%', y: '80%' }
+              ].map((node, i) => (
+                <g key={`hero-node-${i}`} filter="url(#heroGlow)">
+                  <circle cx={node.x} cy={node.y} r="3" fill="url(#heroGradientCyan)" opacity="0.6">
+                    <animate attributeName="r" values="2;5;2" dur={`${2.5 + i * 0.3}s`} repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.3;0.8;0.3" dur={`${2.5 + i * 0.3}s`} repeatCount="indefinite" />
+                  </circle>
                 </g>
               ))}
 
-              {/* Floating connection lines */}
+              {/* Animated connection lines between nodes */}
               {[
-                { x1: '12%', y1: '22%', x2: '38%', y2: '17%', delay: '0s' },
-                { x1: '42%', y1: '17%', x2: '68%', y2: '32%', delay: '0.5s' },
-                { x1: '72%', y1: '32%', x2: '88%', y2: '17%', delay: '1s' },
-                { x1: '27%', y1: '72%', x2: '53%', y2: '52%', delay: '1.5s' },
-                { x1: '57%', y1: '82%', x2: '73%', y2: '87%', delay: '2s' },
-                { x1: '17%', y1: '47%', x2: '23%', y2: '72%', delay: '2.5s' },
-                { x1: '87%', y1: '62%', x2: '92%', y2: '17%', delay: '0.8s' },
+                { x1: '8%', y1: '15%', x2: '22%', y2: '35%' },
+                { x1: '22%', y1: '35%', x2: '35%', y2: '20%' },
+                { x1: '35%', y1: '20%', x2: '55%', y2: '25%' },
+                { x1: '55%', y1: '25%', x2: '78%', y2: '40%' },
+                { x1: '78%', y1: '40%', x2: '85%', y2: '18%' },
+                { x1: '15%', y1: '65%', x2: '45%', y2: '50%' },
+                { x1: '45%', y1: '50%', x2: '65%', y2: '70%' },
+                { x1: '65%', y1: '70%', x2: '92%', y2: '60%' },
+                { x1: '30%', y1: '80%', x2: '50%', y2: '85%' },
+                { x1: '50%', y1: '85%', x2: '65%', y2: '70%' }
               ].map((line, i) => (
-                <line 
-                  key={i}
-                  x1={line.x1} 
-                  y1={line.y1} 
-                  x2={line.x2} 
-                  y2={line.y2} 
-                  stroke="url(#bgFlowGradient)" 
+                <line
+                  key={`hero-conn-${i}`}
+                  x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2}
+                  stroke="url(#heroGradientCyan)"
                   strokeWidth="1"
                   strokeDasharray="6,4"
+                  opacity="0.3"
                 >
-                  <animate attributeName="stroke-dashoffset" from="0" to="-20" dur="2s" begin={line.delay} repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0.2;0.6;0.2" dur="4s" begin={line.delay} repeatCount="indefinite" />
+                  <animate attributeName="stroke-dashoffset" from="0" to="-20" dur="2s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.15;0.4;0.15" dur={`${3 + i * 0.3}s`} repeatCount="indefinite" />
                 </line>
               ))}
 
-              {/* Floating CPU/Chip symbols */}
+              {/* Server wireframes with pulsing */}
               {[
-                { x: '30%', y: '40%', size: 40, delay: '0.2s' },
-                { x: '65%', y: '55%', size: 35, delay: '1.2s' },
-                { x: '80%', y: '40%', size: 45, delay: '2.2s' },
-              ].map((chip, i) => (
-                <g key={`chip-${i}`} transform={`translate(${chip.x}, ${chip.y})`}>
-                  {/* CPU body */}
-                  <rect 
-                    x="-15" 
-                    y="-15" 
-                    width="30" 
-                    height="30" 
-                    rx="2"
-                    fill="none" 
-                    stroke="url(#bgFlowGradient)" 
-                    strokeWidth="1.5"
-                  >
-                    <animate attributeName="opacity" values="0.2;0.7;0.2" dur="5s" begin={chip.delay} repeatCount="indefinite" />
+                { x: 80, y: 120 }, { x: 250, y: 280 }, { x: 450, y: 150 },
+                { x: 700, y: 320 }, { x: 900, y: 180 }, { x: 1100, y: 350 }
+              ].map((server, i) => (
+                <g key={`hero-server-${i}`} transform={`translate(${server.x}, ${server.y})`} opacity="0.25">
+                  <rect x="0" y="0" width="40" height="55" rx="3" fill="none" stroke="url(#heroGradientCyan)" strokeWidth="1.5">
+                    <animate attributeName="opacity" values="0.2;0.6;0.2" dur={`${4 + i}s`} repeatCount="indefinite" />
                   </rect>
-                  {/* CPU pins */}
-                  {[-10, -3, 4, 11].map((pos, j) => (
-                    <g key={j}>
-                      <line x1={pos.toString()} y1="-15" x2={pos.toString()} y2="-22" stroke="url(#bgFlowGradient)" strokeWidth="1">
-                        <animate attributeName="opacity" values="0.2;0.7;0.2" dur="5s" begin={chip.delay} repeatCount="indefinite" />
-                      </line>
-                      <line x1={pos.toString()} y1="15" x2={pos.toString()} y2="22" stroke="url(#bgFlowGradient)" strokeWidth="1">
-                        <animate attributeName="opacity" values="0.2;0.7;0.2" dur="5s" begin={chip.delay} repeatCount="indefinite" />
-                      </line>
-                      <line x1="-15" y1={pos.toString()} x2="-22" y2={pos.toString()} stroke="url(#bgFlowGradient)" strokeWidth="1">
-                        <animate attributeName="opacity" values="0.2;0.7;0.2" dur="5s" begin={chip.delay} repeatCount="indefinite" />
-                      </line>
-                      <line x1="15" y1={pos.toString()} x2="22" y2={pos.toString()} stroke="url(#bgFlowGradient)" strokeWidth="1">
-                        <animate attributeName="opacity" values="0.2;0.7;0.2" dur="5s" begin={chip.delay} repeatCount="indefinite" />
-                      </line>
-                    </g>
+                  {/* Server rack lines */}
+                  {[12, 24, 36].map((lineY, j) => (
+                    <line key={j} x1="5" y1={lineY} x2="35" y2={lineY} stroke="url(#heroGradientCyan)" strokeWidth="1">
+                      <animate attributeName="opacity" values="0.2;0.7;0.2" dur={`${3 + j}s`} begin={`${i * 0.5}s`} repeatCount="indefinite" />
+                    </line>
                   ))}
-                  {/* CPU core */}
-                  <rect x="-8" y="-8" width="16" height="16" rx="1" fill="url(#bgFlowGradient)">
-                    <animate attributeName="opacity" values="0.1;0.4;0.1" dur="5s" begin={chip.delay} repeatCount="indefinite" />
-                  </rect>
+                  {/* Status LEDs */}
+                  <circle cx="8" cy="8" r="2" fill="#22d3ee">
+                    <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" begin={`${i * 0.3}s`} repeatCount="indefinite" />
+                  </circle>
                 </g>
               ))}
 
-              {/* Cloud symbols */}
-              {[
-                { x: '20%', y: '25%', delay: '0.7s' },
-                { x: '78%', y: '70%', delay: '1.7s' },
-              ].map((cloud, i) => (
-                <g key={`cloud-${i}`} transform={`translate(${cloud.x}, ${cloud.y})`}>
-                  <path 
-                    d="M-20,10 C-25,10 -28,5 -25,0 C-25,-5 -20,-8 -15,-7 C-12,-15 0,-15 5,-8 C12,-12 22,-8 22,0 C28,2 28,10 22,12 L-20,12 Z" 
-                    fill="none" 
-                    stroke="url(#bgFlowGradient)" 
-                    strokeWidth="1.5"
-                  >
-                    <animate attributeName="opacity" values="0.2;0.6;0.2" dur="6s" begin={cloud.delay} repeatCount="indefinite" />
-                  </path>
-                </g>
-              ))}
-
-              {/* Data packets flowing */}
-              {[0, 1, 2, 3, 4].map((i) => (
-                <circle 
-                  key={`packet-${i}`}
-                  r="3" 
-                  fill="url(#bgFlowGradient)"
-                >
-                  <animate 
-                    attributeName="cx" 
-                    values="5%;25%;50%;75%;95%" 
-                    dur={`${8 + i * 2}s`} 
-                    begin={`${i * 1.5}s`} 
-                    repeatCount="indefinite" 
-                  />
-                  <animate 
-                    attributeName="cy" 
-                    values={`${20 + i * 15}%;${40 + i * 10}%;${30 + i * 12}%;${50 + i * 8}%;${25 + i * 14}%`}
-                    dur={`${8 + i * 2}s`} 
-                    begin={`${i * 1.5}s`} 
-                    repeatCount="indefinite" 
-                  />
-                  <animate attributeName="opacity" values="0;0.8;0.8;0" dur={`${8 + i * 2}s`} begin={`${i * 1.5}s`} repeatCount="indefinite" />
+              {/* Data particles flowing across screen */}
+              {Array.from({ length: 15 }).map((_, i) => (
+                <circle key={`hero-particle-${i}`} r="2" fill="url(#heroGradientCyan)" opacity="0">
+                  <animate attributeName="cx" values={`${-5 + (i % 5) * 2}%;${105}%`} dur={`${10 + i * 2}s`} begin={`${i * 0.8}s`} repeatCount="indefinite" />
+                  <animate attributeName="cy" values={`${10 + (i % 8) * 10}%;${15 + ((i + 3) % 7) * 12}%;${8 + (i % 9) * 10}%`} dur={`${10 + i * 2}s`} begin={`${i * 0.8}s`} repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0;0.7;0.7;0" dur={`${10 + i * 2}s`} begin={`${i * 0.8}s`} repeatCount="indefinite" />
                 </circle>
               ))}
 
-              {/* Binary streams */}
-              {[
-                { x: '5%', y: '90%', text: '01001010', delay: '0s' },
-                { x: '92%', y: '5%', text: '11010110', delay: '2s' },
-                { x: '45%', y: '92%', text: '10110011', delay: '4s' },
-              ].map((binary, i) => (
-                <text 
-                  key={`binary-${i}`}
-                  x={binary.x} 
-                  y={binary.y} 
-                  fill="url(#bgFlowGradient)" 
-                  fontSize="10" 
-                  fontFamily="monospace"
-                >
-                  <animate attributeName="opacity" values="0;0.5;0" dur="6s" begin={binary.delay} repeatCount="indefinite" />
-                  {binary.text}
-                </text>
-              ))}
+              {/* Large decorative circuit paths */}
+              <path
+                d="M0,200 Q200,150 400,200 T800,180 T1200,220"
+                fill="none"
+                stroke="url(#heroGradientPurple)"
+                strokeWidth="1"
+                strokeDasharray="10,8"
+                opacity="0.2"
+              >
+                <animate attributeName="stroke-dashoffset" from="0" to="-36" dur="4s" repeatCount="indefinite" />
+              </path>
+              <path
+                d="M0,400 Q300,350 600,420 T1200,380"
+                fill="none"
+                stroke="url(#heroGradientCyan)"
+                strokeWidth="1"
+                strokeDasharray="8,6"
+                opacity="0.15"
+              >
+                <animate attributeName="stroke-dashoffset" from="0" to="-28" dur="5s" repeatCount="indefinite" />
+              </path>
             </svg>
           </div>
           
+          {/* Content layer above background */}
+          <div className="relative z-10">
           {renderHeader()}
           <div className="max-w-7xl mx-auto px-6 pb-12 space-y-8 relative z-10">
             <div className="text-center py-6">
@@ -759,6 +704,7 @@ const Arquitetura = () => {
 
             {/* Brain Flow Animation */}
             {renderBrainFlowAnimation()}
+          </div>
           </div>
         </div>
       </TooltipProvider>
