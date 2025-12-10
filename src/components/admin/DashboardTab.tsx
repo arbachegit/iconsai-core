@@ -23,9 +23,16 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+import { useState, useEffect } from "react";
+
 export const DashboardTab = () => {
+  const [isMounted, setIsMounted] = useState(false);
   const { analytics, isLoading: analyticsLoading } = useChatAnalytics();
   const { settings, isLoading: settingsLoading } = useAdminSettings();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Fetch documents metrics
   const { data: docsData, isLoading: docsLoading } = useQuery({
@@ -53,7 +60,15 @@ export const DashboardTab = () => {
 
   const isLoading = analyticsLoading || settingsLoading || docsLoading || ragLoading;
 
-  // Safe mode: always render something visible
+  // Safe mode: always render something visible during mount
+  if (!isMounted) {
+    return (
+      <div className="flex items-center justify-center h-64 min-h-[256px] bg-background">
+        <div className="text-muted-foreground">Carregando painel...</div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64 min-h-[256px]">
