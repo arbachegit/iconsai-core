@@ -923,6 +923,9 @@ export default function ApiManagementTab() {
                         onSelect={setConfigStartDate}
                         initialFocus
                         className="pointer-events-auto"
+                        captionLayout="dropdown-buttons"
+                        fromYear={2000}
+                        toYear={2030}
                       />
                     </PopoverContent>
                   </Popover>
@@ -950,6 +953,9 @@ export default function ApiManagementTab() {
                         onSelect={setConfigEndDate}
                         initialFocus
                         className="pointer-events-auto"
+                        captionLayout="dropdown-buttons"
+                        fromYear={2000}
+                        toYear={2030}
                       />
                     </PopoverContent>
                   </Popover>

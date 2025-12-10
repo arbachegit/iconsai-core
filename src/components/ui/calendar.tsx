@@ -11,12 +11,18 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
+      className={cn("p-3 pointer-events-auto", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
+        caption_label: "text-sm font-medium hidden",
+        caption_dropdowns: "flex gap-1 justify-center",
+        dropdown: "px-2 py-1 rounded-md bg-muted border border-border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer",
+        dropdown_month: "font-medium",
+        dropdown_year: "font-medium",
+        dropdown_icon: "ml-1 h-4 w-4 opacity-50",
+        vhidden: "hidden",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
