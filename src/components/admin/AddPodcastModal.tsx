@@ -44,16 +44,23 @@ export const AddPodcastModal = ({ open, onOpenChange, onPodcastCreated }: AddPod
 
   const fetchSpotifyMetadata = async (episodeId: string): Promise<SpotifyMetadata | null> => {
     try {
-      const episodeUrl = `https://open.spotify.com/episode/${episodeId}`;
-      const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(episodeUrl)}`;
-      
-      const response = await fetch(oembedUrl);
-      if (!response.ok) return null;
-      
-      const data = await response.json();
+      const { data, error } = await supabase.functions.invoke('fetch-spotify-metadata', {
+        body: { episodeId },
+      });
+
+      if (error) {
+        console.error("Error fetching Spotify metadata:", error);
+        return null;
+      }
+
+      if (data?.error) {
+        console.error("Spotify API error:", data.error);
+        return null;
+      }
+
       return {
         title: data.title || "Podcast",
-        description: data.provider_name ? `${data.provider_name}` : "Episódio do Spotify",
+        description: data.description || "Episódio do Spotify",
       };
     } catch (error) {
       console.error("Error fetching Spotify metadata:", error);
