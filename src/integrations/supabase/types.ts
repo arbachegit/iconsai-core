@@ -1724,11 +1724,14 @@ export type Database = {
           description: string | null
           id: string
           last_checked_at: string | null
+          last_http_status: number | null
           last_latency_ms: number | null
+          last_sync_metadata: Json | null
           method: string | null
           name: string
           provider: string
           status: string | null
+          target_table: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1737,11 +1740,14 @@ export type Database = {
           description?: string | null
           id?: string
           last_checked_at?: string | null
+          last_http_status?: number | null
           last_latency_ms?: number | null
+          last_sync_metadata?: Json | null
           method?: string | null
           name: string
           provider?: string
           status?: string | null
+          target_table?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1750,11 +1756,14 @@ export type Database = {
           description?: string | null
           id?: string
           last_checked_at?: string | null
+          last_http_status?: number | null
           last_latency_ms?: number | null
+          last_sync_metadata?: Json | null
           method?: string | null
           name?: string
           provider?: string
           status?: string | null
+          target_table?: string | null
           updated_at?: string | null
         }
         Relationships: []
