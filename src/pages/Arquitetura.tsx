@@ -1160,7 +1160,7 @@ const Arquitetura = () => {
             </CardContent>
           </Card>
 
-          {/* Main Architecture SVG - Simplified version */}
+          {/* Main Architecture SVG - Full AI Process Flow Animation */}
           <Card className="overflow-hidden">
             <CardContent className="p-6">
               <div 
@@ -1169,103 +1169,430 @@ const Arquitetura = () => {
               >
                 <svg 
                   key={animationKey}
-                  viewBox="0 0 900 700" 
-                  className="w-full h-auto min-h-[600px]"
-                  style={{ minWidth: '800px' }}
+                  viewBox="0 0 1000 750" 
+                  className="w-full h-auto min-h-[650px]"
+                  style={{ minWidth: '900px' }}
                 >
                   {/* Definitions */}
                   <defs>
+                    {/* Glow filters */}
                     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
                       <feMerge>
                         <feMergeNode in="coloredBlur"/>
                         <feMergeNode in="SourceGraphic"/>
                       </feMerge>
                     </filter>
+                    <filter id="glowStrong" x="-50%" y="-50%" width="200%" height="200%">
+                      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                    
+                    {/* Gradients */}
+                    <linearGradient id="requestGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#a855f7" />
+                      <stop offset="100%" stopColor="#ec4899" />
+                    </linearGradient>
+                    <linearGradient id="routingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#3b82f6" />
+                      <stop offset="100%" stopColor="#06b6d4" />
+                    </linearGradient>
+                    <linearGradient id="vectorDbGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#8b5cf6" />
+                      <stop offset="100%" stopColor="#a855f7" />
+                    </linearGradient>
+                    <linearGradient id="relationalDbGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#3b82f6" />
+                      <stop offset="100%" stopColor="#1d4ed8" />
+                    </linearGradient>
+                    <linearGradient id="gpuGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#22c55e" />
+                      <stop offset="100%" stopColor="#16a34a" />
+                    </linearGradient>
+                    <linearGradient id="s3Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#f97316" />
+                      <stop offset="100%" stopColor="#ea580c" />
+                    </linearGradient>
+                    <linearGradient id="responseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#06b6d4" />
+                      <stop offset="100%" stopColor="#22d3ee" />
+                    </linearGradient>
+                    
+                    {/* Animation paths */}
+                    <path id="pathUserToAPI" d="M500,70 L500,130" />
+                    <path id="pathAPIToOrchestrator" d="M500,170 L500,230" />
+                    <path id="pathToVectorDB" d="M500,290 Q350,320 200,360" />
+                    <path id="pathToRelationalDB" d="M500,290 Q650,320 800,360" />
+                    <path id="pathOrchestratorToGPU" d="M500,290 L500,420" />
+                    <path id="pathVectorToGPU" d="M200,420 Q350,480 420,480" />
+                    <path id="pathS3ToGPU" d="M900,480 L720,480" />
+                    <path id="pathGPUToResponse" d="M500,560 L500,640" />
+                    <path id="pathResponseToUser" d="M500,680 Q200,600 100,100" />
+                    
+                    {/* Arrow marker */}
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                      <polygon points="0 0, 10 3.5, 0 7" fill="hsl(var(--primary))" />
+                    </marker>
                   </defs>
 
                   {/* Background Grid */}
-                  <g opacity="0.1">
+                  <g opacity="0.08">
+                    {Array.from({ length: 25 }).map((_, i) => (
+                      <line key={`v-${i}`} x1={i * 40} y1="0" x2={i * 40} y2="750" stroke="#06b6d4" strokeWidth="0.5" />
+                    ))}
                     {Array.from({ length: 20 }).map((_, i) => (
-                      <line 
-                        key={`v-${i}`} 
-                        x1={i * 45} 
-                        y1="0" 
-                        x2={i * 45} 
-                        y2="700" 
-                        stroke="hsl(var(--primary))" 
-                        strokeWidth="0.5"
-                      />
-                    ))}
-                    {Array.from({ length: 16 }).map((_, i) => (
-                      <line 
-                        key={`h-${i}`} 
-                        x1="0" 
-                        y1={i * 45} 
-                        x2="900" 
-                        y2={i * 45} 
-                        stroke="hsl(var(--primary))" 
-                        strokeWidth="0.5"
-                      />
+                      <line key={`h-${i}`} x1="0" y1={i * 40} x2="1000" y2={i * 40} stroke="#06b6d4" strokeWidth="0.5" />
                     ))}
                   </g>
 
-                  {/* GPU Container */}
-                  <rect x="200" y="150" width="500" height="400" rx="20" fill="hsl(var(--card))" stroke="hsl(var(--primary))" strokeWidth="2" />
-                  <text x="450" y="190" textAnchor="middle" fill="hsl(var(--primary))" fontSize="18" fontWeight="bold">
-                    GPU Instance (AWS g5.xlarge)
-                  </text>
-
-                  {/* Base Model */}
-                  <rect x="300" y="250" width="300" height="80" rx="10" fill="hsl(var(--primary)/0.2)" stroke="hsl(var(--primary))" strokeWidth="2" />
-                  <text x="450" y="290" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="14" fontWeight="bold">
-                    Base Model (Shared)
-                  </text>
-                  <text x="450" y="310" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="12">
-                    Llama 3.2 3B / Qwen 2.5 3B
-                  </text>
-
-                  {/* LoRA Adapters */}
-                  <g>
-                    <rect x="250" y="380" width="120" height="60" rx="8" fill="hsl(188 100% 50% / 0.2)" stroke="hsl(188 100% 50%)" strokeWidth="2" />
-                    <text x="310" y="415" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="12" fontWeight="bold">LoRA A</text>
-                  </g>
-                  <g>
-                    <rect x="390" y="380" width="120" height="60" rx="8" fill="hsl(280 100% 60% / 0.2)" stroke="hsl(280 100% 60%)" strokeWidth="2" />
-                    <text x="450" y="415" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="12" fontWeight="bold">LoRA B</text>
-                  </g>
-                  <g>
-                    <rect x="530" y="380" width="120" height="60" rx="8" fill="hsl(142 100% 50% / 0.2)" stroke="hsl(142 100% 50%)" strokeWidth="2" />
-                    <text x="590" y="415" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="12" fontWeight="bold">LoRA C</text>
-                  </g>
-
-                  {/* S3 Storage */}
-                  <rect x="700" y="350" width="150" height="100" rx="10" fill="hsl(32 100% 50% / 0.2)" stroke="hsl(32 100% 50%)" strokeWidth="2" />
-                  <text x="775" y="390" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="12" fontWeight="bold">S3 Storage</text>
-                  <text x="775" y="410" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">LoRA Adapters</text>
-                  <text x="775" y="430" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">(~50MB each)</text>
-
-                  {/* Connection lines */}
-                  <line x1="650" y1="400" x2="700" y2="400" stroke="hsl(32 100% 50%)" strokeWidth="2" strokeDasharray="5,5" />
-
-                  {/* Request flow indicator */}
-                  <circle cx="450" cy="100" r="30" fill="hsl(var(--primary)/0.3)" stroke="hsl(var(--primary))" strokeWidth="2">
-                    {isSimulating && (
-                      <animate attributeName="r" values="30;35;30" dur="1s" repeatCount="indefinite" />
+                  {/* ============ COMPONENT BLOCKS ============ */}
+                  
+                  {/* 1. USER / COMPANY - Top */}
+                  <g filter={currentPhase === 'request' ? 'url(#glowStrong)' : undefined}>
+                    <rect x="420" y="30" width="160" height="50" rx="25" 
+                      fill={currentPhase === 'request' ? 'url(#requestGrad)' : '#1e1b4b'} 
+                      stroke="#a855f7" strokeWidth="2" 
+                      opacity={currentPhase === 'request' ? 1 : 0.7}
+                    />
+                    <text x="500" y="62" textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">
+                      👤 Empresa / Usuário
+                    </text>
+                    {currentPhase === 'request' && (
+                      <rect x="420" y="30" width="160" height="50" rx="25" fill="none" stroke="#a855f7" strokeWidth="3">
+                        <animate attributeName="stroke-opacity" values="1;0.3;1" dur="0.5s" repeatCount="indefinite" />
+                      </rect>
                     )}
-                  </circle>
-                  <text x="450" y="105" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="12" fontWeight="bold">API</text>
+                  </g>
 
-                  {/* Flow arrows */}
-                  <path d="M450 130 L450 150" stroke="hsl(var(--primary))" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                  <path d="M450 330 L310 380" stroke="hsl(188 100% 50%)" strokeWidth="2" />
-                  <path d="M450 330 L450 380" stroke="hsl(280 100% 60%)" strokeWidth="2" />
-                  <path d="M450 330 L590 380" stroke="hsl(142 100% 50%)" strokeWidth="2" />
+                  {/* 2. API GATEWAY */}
+                  <g filter={currentPhase === 'routing' ? 'url(#glowStrong)' : undefined}>
+                    <rect x="420" y="120" width="160" height="60" rx="10" 
+                      fill={currentPhase === 'routing' ? 'url(#routingGrad)' : '#0c2d48'} 
+                      stroke="#3b82f6" strokeWidth="2"
+                      opacity={currentPhase === 'routing' ? 1 : 0.7}
+                    />
+                    <text x="500" y="148" textAnchor="middle" fill="#fff" fontSize="13" fontWeight="bold">🔌 API Gateway</text>
+                    <text x="500" y="168" textAnchor="middle" fill="#94a3b8" fontSize="10">REST / WebSocket</text>
+                    {currentPhase === 'routing' && (
+                      <rect x="420" y="120" width="160" height="60" rx="10" fill="none" stroke="#3b82f6" strokeWidth="3">
+                        <animate attributeName="stroke-opacity" values="1;0.3;1" dur="0.5s" repeatCount="indefinite" />
+                      </rect>
+                    )}
+                  </g>
 
+                  {/* 3. ORCHESTRATOR */}
+                  <g filter={currentPhase === 'check-adapter' ? 'url(#glowStrong)' : undefined}>
+                    <rect x="400" y="220" width="200" height="80" rx="12" 
+                      fill={currentPhase === 'check-adapter' ? 'url(#routingGrad)' : '#0f2942'} 
+                      stroke="#06b6d4" strokeWidth="2"
+                      opacity={['check-adapter', 'load-adapter'].includes(currentPhase) ? 1 : 0.7}
+                    />
+                    <text x="500" y="250" textAnchor="middle" fill="#fff" fontSize="13" fontWeight="bold">🎯 Orquestrador</text>
+                    <text x="500" y="270" textAnchor="middle" fill="#94a3b8" fontSize="10">Route by company_id</text>
+                    <text x="500" y="288" textAnchor="middle" fill="#22d3ee" fontSize="10" fontWeight="bold">
+                      {currentPhase === 'check-adapter' ? '🔍 Verificando adapter...' : 
+                       currentPhase === 'load-adapter' ? '⬇️ Carregando LoRA...' : 'Idle'}
+                    </text>
+                    {currentPhase === 'check-adapter' && (
+                      <rect x="400" y="220" width="200" height="80" rx="12" fill="none" stroke="#06b6d4" strokeWidth="3">
+                        <animate attributeName="stroke-opacity" values="1;0.3;1" dur="0.5s" repeatCount="indefinite" />
+                      </rect>
+                    )}
+                  </g>
+
+                  {/* 4. VECTOR DB (RAG) - Left */}
+                  <g filter={currentPhase === 'check-adapter' ? 'url(#glow)' : undefined}>
+                    <rect x="100" y="340" width="180" height="100" rx="12" 
+                      fill={currentPhase === 'check-adapter' ? 'url(#vectorDbGrad)' : '#1e1b4b'} 
+                      stroke="#8b5cf6" strokeWidth="2"
+                      opacity={currentPhase === 'check-adapter' ? 1 : 0.6}
+                    />
+                    <text x="190" y="375" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="bold">🧠 Vector DB</text>
+                    <text x="190" y="395" textAnchor="middle" fill="#c4b5fd" fontSize="10">RAG Embeddings</text>
+                    <text x="190" y="415" textAnchor="middle" fill="#a78bfa" fontSize="9">pgvector / Pinecone</text>
+                    <text x="190" y="432" textAnchor="middle" fill="#22d3ee" fontSize="9" fontWeight="bold">
+                      {currentPhase === 'check-adapter' ? '🔎 Buscando contexto...' : ''}
+                    </text>
+                    {currentPhase === 'check-adapter' && (
+                      <circle cx="270" cy="350" r="8" fill="#8b5cf6">
+                        <animate attributeName="opacity" values="1;0.3;1" dur="0.3s" repeatCount="indefinite" />
+                      </circle>
+                    )}
+                  </g>
+
+                  {/* 5. RELATIONAL DB - Right */}
+                  <g filter={currentPhase === 'check-adapter' ? 'url(#glow)' : undefined}>
+                    <rect x="720" y="340" width="180" height="100" rx="12" 
+                      fill={currentPhase === 'check-adapter' ? 'url(#relationalDbGrad)' : '#0c2d48'} 
+                      stroke="#3b82f6" strokeWidth="2"
+                      opacity={currentPhase === 'check-adapter' ? 1 : 0.6}
+                    />
+                    <text x="810" y="375" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="bold">💾 Relational DB</text>
+                    <text x="810" y="395" textAnchor="middle" fill="#93c5fd" fontSize="10">PostgreSQL / Supabase</text>
+                    <text x="810" y="415" textAnchor="middle" fill="#60a5fa" fontSize="9">Users, Configs, Logs</text>
+                    <text x="810" y="432" textAnchor="middle" fill="#22d3ee" fontSize="9" fontWeight="bold">
+                      {currentPhase === 'check-adapter' ? '🔎 Validando empresa...' : ''}
+                    </text>
+                    {currentPhase === 'check-adapter' && (
+                      <circle cx="730" cy="350" r="8" fill="#3b82f6">
+                        <animate attributeName="opacity" values="1;0.3;1" dur="0.3s" repeatCount="indefinite" />
+                      </circle>
+                    )}
+                  </g>
+
+                  {/* 6. S3 STORAGE - Far Right */}
+                  <g filter={currentPhase === 'load-adapter' ? 'url(#glowStrong)' : undefined}>
+                    <rect x="850" y="460" width="120" height="80" rx="10" 
+                      fill={currentPhase === 'load-adapter' ? 'url(#s3Grad)' : '#422006'} 
+                      stroke="#f97316" strokeWidth="2"
+                      opacity={currentPhase === 'load-adapter' ? 1 : 0.6}
+                    />
+                    <text x="910" y="490" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="bold">📦 S3 Storage</text>
+                    <text x="910" y="508" textAnchor="middle" fill="#fdba74" fontSize="9">LoRA Adapters</text>
+                    <text x="910" y="525" textAnchor="middle" fill="#fb923c" fontSize="9">(~50MB each)</text>
+                    {currentPhase === 'load-adapter' && (
+                      <rect x="850" y="460" width="120" height="80" rx="10" fill="none" stroke="#f97316" strokeWidth="3">
+                        <animate attributeName="stroke-opacity" values="1;0.3;1" dur="0.3s" repeatCount="indefinite" />
+                      </rect>
+                    )}
+                  </g>
+
+                  {/* 7. GPU CLUSTER - Main Processing Area */}
+                  <g filter={currentPhase === 'inference' ? 'url(#glowStrong)' : undefined}>
+                    <rect x="300" y="420" width="400" height="160" rx="16" 
+                      fill={currentPhase === 'inference' ? '#052e16' : '#0a1f0a'} 
+                      stroke="#22c55e" strokeWidth="3"
+                      opacity={currentPhase === 'inference' ? 1 : 0.8}
+                    />
+                    <text x="500" y="448" textAnchor="middle" fill="#22c55e" fontSize="14" fontWeight="bold">
+                      ⚡ GPU Cluster (AWS g5.xlarge)
+                    </text>
+                    
+                    {/* Base Model inside GPU */}
+                    <rect x="340" y="460" width="160" height="50" rx="8" fill="#134e4a" stroke="#14b8a6" strokeWidth="2" />
+                    <text x="420" y="485" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="bold">Base Model</text>
+                    <text x="420" y="500" textAnchor="middle" fill="#5eead4" fontSize="9">Llama 3.2 / Qwen 2.5</text>
+                    
+                    {/* LoRA Adapter inside GPU */}
+                    <rect x="520" y="460" width="140" height="50" rx="8" 
+                      fill={adapterLoaded ? '#065f46' : '#1e293b'} 
+                      stroke={adapterLoaded ? '#10b981' : '#475569'} strokeWidth="2"
+                    >
+                      {currentPhase === 'load-adapter' && (
+                        <animate attributeName="fill" values="#1e293b;#065f46;#1e293b" dur="0.5s" repeatCount="indefinite" />
+                      )}
+                    </rect>
+                    <text x="590" y="485" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="bold">
+                      {adapterLoaded ? '✓ LoRA A' : 'LoRA Slot'}
+                    </text>
+                    <text x="590" y="500" textAnchor="middle" fill={adapterLoaded ? '#6ee7b7' : '#94a3b8'} fontSize="9">
+                      {adapterLoaded ? 'Loaded!' : 'Waiting...'}
+                    </text>
+                    
+                    {/* SLM Inference */}
+                    <rect x="380" y="520" width="240" height="45" rx="8" 
+                      fill={currentPhase === 'inference' ? '#166534' : '#14532d'} 
+                      stroke="#4ade80" strokeWidth="2"
+                    >
+                      {currentPhase === 'inference' && (
+                        <animate attributeName="fill" values="#14532d;#166534;#14532d" dur="0.3s" repeatCount="indefinite" />
+                      )}
+                    </rect>
+                    <text x="500" y="548" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="bold">
+                      {currentPhase === 'inference' ? '🔥 SLM Processing...' : '🧠 SLM Inference Engine'}
+                    </text>
+                    
+                    {currentPhase === 'inference' && (
+                      <g>
+                        <circle cx="340" cy="545" r="6" fill="#4ade80">
+                          <animate attributeName="opacity" values="1;0.2;1" dur="0.2s" repeatCount="indefinite" />
+                        </circle>
+                        <circle cx="660" cy="545" r="6" fill="#4ade80">
+                          <animate attributeName="opacity" values="0.2;1;0.2" dur="0.2s" repeatCount="indefinite" />
+                        </circle>
+                      </g>
+                    )}
+                  </g>
+
+                  {/* 8. RESPONSE - Bottom */}
+                  <g filter={currentPhase === 'response' || currentPhase === 'complete' ? 'url(#glowStrong)' : undefined}>
+                    <rect x="400" y="620" width="200" height="60" rx="12" 
+                      fill={currentPhase === 'complete' ? '#065f46' : currentPhase === 'response' ? 'url(#responseGrad)' : '#0c4a6e'} 
+                      stroke={currentPhase === 'complete' ? '#10b981' : '#06b6d4'} strokeWidth="2"
+                      opacity={['response', 'complete'].includes(currentPhase) ? 1 : 0.6}
+                    />
+                    <text x="500" y="648" textAnchor="middle" fill="#fff" fontSize="13" fontWeight="bold">
+                      {currentPhase === 'complete' ? '✅ Resposta Entregue!' : '📤 Response'}
+                    </text>
+                    <text x="500" y="668" textAnchor="middle" fill={currentPhase === 'complete' ? '#6ee7b7' : '#7dd3fc'} fontSize="10">
+                      {currentPhase === 'complete' ? 'Latência: ~150ms' : 'JSON / Stream'}
+                    </text>
+                    {currentPhase === 'complete' && (
+                      <circle cx="500" cy="650" r="40" fill="none" stroke="#10b981" strokeWidth="2" opacity="0">
+                        <animate attributeName="r" values="20;60" dur="1s" fill="freeze" />
+                        <animate attributeName="opacity" values="0.8;0" dur="1s" fill="freeze" />
+                      </circle>
+                    )}
+                  </g>
+
+                  {/* ============ CONNECTION LINES ============ */}
+                  
+                  {/* User → API */}
+                  <path d="M500,80 L500,120" stroke="#a855f7" strokeWidth="2" strokeDasharray="6,3" opacity="0.6" />
+                  
+                  {/* API → Orchestrator */}
+                  <path d="M500,180 L500,220" stroke="#3b82f6" strokeWidth="2" strokeDasharray="6,3" opacity="0.6" />
+                  
+                  {/* Orchestrator → Vector DB */}
+                  <path d="M400,270 Q300,300 280,340" stroke="#8b5cf6" strokeWidth="2" strokeDasharray="6,3" opacity="0.5" />
+                  
+                  {/* Orchestrator → Relational DB */}
+                  <path d="M600,270 Q700,300 720,340" stroke="#3b82f6" strokeWidth="2" strokeDasharray="6,3" opacity="0.5" />
+                  
+                  {/* Orchestrator → GPU */}
+                  <path d="M500,300 L500,420" stroke="#22c55e" strokeWidth="3" strokeDasharray="8,4" opacity="0.6" />
+                  
+                  {/* Vector DB → GPU (RAG context) */}
+                  <path d="M280,420 Q320,450 340,480" stroke="#8b5cf6" strokeWidth="2" strokeDasharray="5,3" opacity="0.4" />
+                  
+                  {/* S3 → GPU (LoRA loading) */}
+                  <path d="M850,500 L700,500" stroke="#f97316" strokeWidth="2" strokeDasharray="6,3" opacity={currentPhase === 'load-adapter' ? 1 : 0.4} />
+                  
+                  {/* GPU → Response */}
+                  <path d="M500,580 L500,620" stroke="#06b6d4" strokeWidth="3" strokeDasharray="8,4" opacity="0.6" />
+
+                  {/* ============ ANIMATED DATA PACKETS ============ */}
+                  
+                  {/* Packet: User → API (Phase: request) */}
+                  {currentPhase === 'request' && (
+                    <g>
+                      <circle r="10" fill="#a855f7" filter="url(#glow)">
+                        <animateMotion dur="0.8s" fill="freeze">
+                          <mpath href="#pathUserToAPI" />
+                        </animateMotion>
+                        <animate attributeName="opacity" values="1;0.6;1" dur="0.3s" repeatCount="indefinite" />
+                      </circle>
+                      <circle r="6" fill="#ec4899">
+                        <animateMotion dur="0.8s" fill="freeze">
+                          <mpath href="#pathUserToAPI" />
+                        </animateMotion>
+                      </circle>
+                    </g>
+                  )}
+
+                  {/* Packet: API → Orchestrator (Phase: routing) */}
+                  {currentPhase === 'routing' && (
+                    <g>
+                      <circle r="10" fill="#3b82f6" filter="url(#glow)">
+                        <animateMotion dur="0.8s" fill="freeze">
+                          <mpath href="#pathAPIToOrchestrator" />
+                        </animateMotion>
+                      </circle>
+                      <circle r="5" fill="#06b6d4">
+                        <animateMotion dur="0.8s" fill="freeze">
+                          <mpath href="#pathAPIToOrchestrator" />
+                        </animateMotion>
+                      </circle>
+                    </g>
+                  )}
+
+                  {/* Packets: Orchestrator → DBs (Phase: check-adapter) */}
+                  {currentPhase === 'check-adapter' && (
+                    <g>
+                      {/* To Vector DB */}
+                      <circle r="8" fill="#8b5cf6" filter="url(#glow)">
+                        <animateMotion dur="1s" fill="freeze">
+                          <mpath href="#pathToVectorDB" />
+                        </animateMotion>
+                      </circle>
+                      {/* To Relational DB */}
+                      <circle r="8" fill="#3b82f6" filter="url(#glow)">
+                        <animateMotion dur="1s" fill="freeze">
+                          <mpath href="#pathToRelationalDB" />
+                        </animateMotion>
+                      </circle>
+                      {/* To GPU */}
+                      <circle r="10" fill="#22c55e" filter="url(#glow)">
+                        <animateMotion dur="1.2s" fill="freeze">
+                          <mpath href="#pathOrchestratorToGPU" />
+                        </animateMotion>
+                      </circle>
+                    </g>
+                  )}
+
+                  {/* Packet: S3 → GPU (Phase: load-adapter) */}
+                  {currentPhase === 'load-adapter' && (
+                    <g>
+                      <rect x="-20" y="-10" width="40" height="20" rx="4" fill="#f97316" filter="url(#glow)">
+                        <animateMotion dur="1.2s" fill="freeze">
+                          <mpath href="#pathS3ToGPU" />
+                        </animateMotion>
+                      </rect>
+                      <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="8" fontWeight="bold">
+                        <animateMotion dur="1.2s" fill="freeze">
+                          <mpath href="#pathS3ToGPU" />
+                        </animateMotion>
+                        LoRA
+                      </text>
+                    </g>
+                  )}
+
+                  {/* Packet: GPU → Response (Phase: response) */}
+                  {currentPhase === 'response' && (
+                    <g>
+                      <circle r="12" fill="#06b6d4" filter="url(#glow)">
+                        <animateMotion dur="0.8s" fill="freeze">
+                          <mpath href="#pathGPUToResponse" />
+                        </animateMotion>
+                      </circle>
+                      <circle r="6" fill="#22d3ee">
+                        <animateMotion dur="0.8s" fill="freeze">
+                          <mpath href="#pathGPUToResponse" />
+                        </animateMotion>
+                      </circle>
+                    </g>
+                  )}
+
+                  {/* ============ IDLE STATE - Continuous Flow ============ */}
+                  {currentPhase === 'idle' && !isSimulating && (
+                    <g opacity="0.4">
+                      {/* Slow flowing particles along main path */}
+                      {[0, 3, 6, 9].map((delay) => (
+                        <circle key={`idle-${delay}`} r="4" fill="#06b6d4">
+                          <animate attributeName="cy" values="80;150;260;450;550;640" dur="8s" begin={`${delay}s`} repeatCount="indefinite" />
+                          <animate attributeName="cx" values="500;500;500;500;500;500" dur="8s" begin={`${delay}s`} repeatCount="indefinite" />
+                          <animate attributeName="opacity" values="0;0.6;0.6;0.6;0.6;0" dur="8s" begin={`${delay}s`} repeatCount="indefinite" />
+                        </circle>
+                      ))}
+                    </g>
+                  )}
+
+                  {/* ============ LABELS & LEGEND ============ */}
+                  
                   {/* Cost savings badge */}
-                  <rect x="50" y="500" width="150" height="60" rx="10" fill="hsl(142 100% 50% / 0.2)" stroke="hsl(142 100% 50%)" strokeWidth="2" />
-                  <text x="125" y="525" textAnchor="middle" fill="hsl(142 100% 50%)" fontSize="14" fontWeight="bold">💰 90% Savings</text>
-                  <text x="125" y="545" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">vs dedicated instances</text>
+                  <g transform="translate(50, 620)">
+                    <rect width="120" height="50" rx="10" fill="#052e16" stroke="#22c55e" strokeWidth="2" />
+                    <text x="60" y="28" textAnchor="middle" fill="#4ade80" fontSize="12" fontWeight="bold">💰 90% Savings</text>
+                    <text x="60" y="44" textAnchor="middle" fill="#86efac" fontSize="9">vs dedicated</text>
+                  </g>
+
+                  {/* Multi-tenant badge */}
+                  <g transform="translate(50, 30)">
+                    <rect width="130" height="50" rx="10" fill="#0c4a6e" stroke="#06b6d4" strokeWidth="2" />
+                    <text x="65" y="28" textAnchor="middle" fill="#22d3ee" fontSize="11" fontWeight="bold">🏢 Multi-Tenant</text>
+                    <text x="65" y="44" textAnchor="middle" fill="#7dd3fc" fontSize="9">1 GPU, N empresas</text>
+                  </g>
+
+                  {/* Latency badge */}
+                  <g transform="translate(50, 100)">
+                    <rect width="100" height="40" rx="8" fill="#1e1b4b" stroke="#8b5cf6" strokeWidth="2" />
+                    <text x="50" y="26" textAnchor="middle" fill="#a78bfa" fontSize="10" fontWeight="bold">⚡ ~150ms</text>
+                    <text x="50" y="38" textAnchor="middle" fill="#c4b5fd" fontSize="8">avg latency</text>
+                  </g>
+
                 </svg>
               </div>
             </CardContent>
