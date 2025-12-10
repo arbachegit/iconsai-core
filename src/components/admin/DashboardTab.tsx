@@ -71,7 +71,7 @@ export const DashboardTab = () => {
       const { data } = await supabase
         .from("documents")
         .select("id, status, created_at")
-        .eq("status", "processed");
+        .eq("status", "completed");
       return data || [];
     },
   });
