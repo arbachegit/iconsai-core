@@ -53,7 +53,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, FolderOpen, FolderTree, Tag, XCircle, Info, Eye } from "lucide-react";
+import { Tags, Plus, Edit, Trash2, ChevronDown, Loader2, ChevronLeft, ChevronRight, Download, FileText, FileSpreadsheet, FileJson, FileDown, AlertTriangle, Merge, HelpCircle, Sparkles, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Brain, Zap, Upload, TrendingUp, BarChart3, PieChart, ArrowRightLeft, Target, FolderOpen, FolderTree, Tag as TagIcon, XCircle, Info, Eye } from "lucide-react";
 import { useRef } from "react";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
@@ -82,18 +82,8 @@ import { useSimilarityCalculations } from "./tags/useSimilarityCalculations";
 import { TagUnificationSuggestionsModal } from "./tags/TagUnificationSuggestionsModal";
 import { SimilarityReviewPanel } from "./tags/SimilarityReviewPanel";
 
-interface Tag {
-  id: string;
-  tag_name: string;
-  tag_type: string;
-  confidence: number | null;
-  source: string | null;
-  document_id: string;
-  parent_tag_id: string | null;
-  created_at: string;
-  target_chat?: string | null;
-  synonyms?: string[] | null;
-}
+// Tag interface imported from centralized types
+import type { Tag } from "@/types/tag";
 
 export const TagsManagementTab = () => {
   const [editDialog, setEditDialog] = useState<{ open: boolean; tag: Tag | null; isParent: boolean }>({
@@ -1462,7 +1452,7 @@ export const TagsManagementTab = () => {
                   <span><strong>Tags Parent (Pai)</strong> - Categorias principais (ex: Saúde, Tecnologia)</span>
                 </div>
                 <div className="flex items-start gap-2 ml-4">
-                  <Tag className="h-3.5 w-3.5 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <TagIcon className="h-3.5 w-3.5 text-cyan-400 mt-0.5 flex-shrink-0" />
                   <span><strong>Tags Child (Filha)</strong> - Subcategorias vinculadas a um pai (ex: Cardiologia, IA)</span>
                 </div>
                 <div className="flex items-start gap-2 ml-4">
