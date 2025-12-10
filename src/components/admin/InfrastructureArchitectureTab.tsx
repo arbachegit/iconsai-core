@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,11 @@ import {
   Layers,
   Info,
   Play,
+  Pause,
+  Square,
+  Download,
+  Loader2,
+  Headphones,
   RotateCw,
   CheckCircle2,
   ArrowLeft,
@@ -38,6 +43,54 @@ export const InfrastructureArchitectureTab = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [currentPhase, setCurrentPhase] = useState<SimulationPhase>('idle');
   const [adapterLoaded, setAdapterLoaded] = useState(false);
+
+  // Audio player state
+  const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  const AUDIO_URL = "https://gmflpmcepempcygdrayv.supabase.co/storage/v1/object/public/tooltip-audio/audio-contents/e137c34e-4523-406a-a7bc-35ac598cc9f6.mp3";
+  const AUDIO_TITLE = "AI Escalável: O Segredo dos 90% Mais Barato! 💰";
+
+  const handleAudioPlayPause = async () => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(AUDIO_URL);
+      audioRef.current.onended = () => setAudioState('idle');
+      audioRef.current.oncanplaythrough = () => {
+        setAudioState('playing');
+        audioRef.current?.play();
+      };
+    }
+
+    if (audioState === 'idle' || audioState === 'paused') {
+      setAudioState('loading');
+      if (audioRef.current.readyState >= 3) {
+        setAudioState('playing');
+        audioRef.current.play();
+      } else {
+        audioRef.current.load();
+      }
+    } else if (audioState === 'playing') {
+      audioRef.current.pause();
+      setAudioState('paused');
+    }
+  };
+
+  const handleAudioStop = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setAudioState('idle');
+  };
+
+  const handleAudioDownload = () => {
+    const link = document.createElement('a');
+    link.href = AUDIO_URL;
+    link.download = 'ai-escalavel-90-mais-barato.mp3';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Restart background animations periodically
   useEffect(() => {
@@ -289,16 +342,61 @@ export const InfrastructureArchitectureTab = () => {
         <BackButton />
         
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-shrink-0">
             <h2 className="text-2xl font-bold text-gradient">Arquitetura KY AI SLM</h2>
             <p className="text-muted-foreground mt-1">
               Small Language Model Infrastructure - Base Model + LoRA Adapters
             </p>
           </div>
+
+          {/* Audio Player Compacto */}
+          <div className="flex items-center gap-3 bg-card border border-primary/30 rounded-lg px-4 py-2 flex-shrink-0">
+            <Headphones className="h-4 w-4 text-primary flex-shrink-0" />
+            <span 
+              className="text-sm font-medium max-w-[200px] truncate text-foreground" 
+              title={AUDIO_TITLE}
+            >
+              {AUDIO_TITLE}
+            </span>
+            <div className="flex items-center gap-1">
+              {/* Play/Pause Button */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleAudioPlayPause} 
+                className="h-8 w-8 hover:bg-primary/20"
+              >
+                {audioState === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                {audioState === 'playing' && <Pause className="h-4 w-4 text-primary" />}
+                {(audioState === 'idle' || audioState === 'paused') && <Play className="h-4 w-4 text-primary" />}
+              </Button>
+              
+              {/* Stop Button */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleAudioStop} 
+                disabled={audioState === 'idle'}
+                className="h-8 w-8 hover:bg-primary/20"
+              >
+                <Square className="h-4 w-4" />
+              </Button>
+              
+              {/* Download Button */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleAudioDownload} 
+                className="h-8 w-8 hover:bg-primary/20"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
           
           {/* Zoom Controls */}
-          <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-1">
+          <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-1 flex-shrink-0">
             <Button variant="ghost" size="icon" onClick={handleZoomOut} className="h-8 w-8">
               <ZoomOut className="h-4 w-4" />
             </Button>
