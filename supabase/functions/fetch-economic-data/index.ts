@@ -32,6 +32,67 @@ interface ApiConfig {
   status: string;
 }
 
+// BCB-specific headers to avoid 406 errors
+const BCB_HEADERS = {
+  'Accept': 'application/json, text/plain, */*',
+  'Accept-Encoding': 'identity',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+};
+
+// Format date as DD/MM/YYYY for BCB API
+function formatDateBCB(date: Date): string {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+// Fetch BCB data with chunking to respect 10-year limit
+async function fetchBCBWithChunking(baseUrl: string): Promise<BCBDataPoint[]> {
+  const allData: BCBDataPoint[] = [];
+  
+  // Remove any existing date parameters from URL
+  const cleanUrl = baseUrl.split('&dataInicial')[0].split('?dataInicial')[0];
+  const hasParams = cleanUrl.includes('?');
+  
+  // Define chunks of max 10 years each
+  const today = new Date();
+  const chunks = [
+    { start: '01/01/2010', end: '31/12/2019' },
+    { start: '01/01/2020', end: formatDateBCB(today) }
+  ];
+  
+  console.log(`[FETCH-ECONOMIC] BCB chunking: ${chunks.length} chunks to fetch`);
+  
+  for (const chunk of chunks) {
+    const separator = hasParams ? '&' : '?';
+    const chunkUrl = `${cleanUrl}${separator}dataInicial=${chunk.start}&dataFinal=${chunk.end}`;
+    
+    console.log(`[FETCH-ECONOMIC] BCB chunk: ${chunk.start} to ${chunk.end}`);
+    console.log(`[FETCH-ECONOMIC] BCB URL: ${chunkUrl}`);
+    
+    try {
+      const response = await fetch(chunkUrl, { headers: BCB_HEADERS });
+      
+      if (response.ok) {
+        const data = await response.json() as BCBDataPoint[];
+        allData.push(...data);
+        console.log(`[FETCH-ECONOMIC] BCB chunk success: ${data.length} records`);
+      } else {
+        console.warn(`[FETCH-ECONOMIC] BCB chunk failed: ${response.status} ${response.statusText}`);
+      }
+    } catch (err) {
+      console.warn(`[FETCH-ECONOMIC] BCB chunk error:`, err);
+    }
+    
+    // Small delay between requests to be polite to the API
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  
+  console.log(`[FETCH-ECONOMIC] BCB total records fetched: ${allData.length}`);
+  return allData;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -82,16 +143,24 @@ serve(async (req) => {
         if (!apiConfig) continue;
 
         console.log(`[FETCH-ECONOMIC] Fetching ${indicator.name} from ${apiConfig.provider}...`);
-        console.log(`[FETCH-ECONOMIC] URL: ${apiConfig.base_url}`);
+        console.log(`[FETCH-ECONOMIC] Base URL: ${apiConfig.base_url}`);
 
-        const response = await fetch(apiConfig.base_url);
-        if (!response.ok) {
-          console.error(`[FETCH-ECONOMIC] API error for ${indicator.name}: ${response.status}`);
-          results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
-          continue;
+        let data: unknown;
+        
+        // Use chunking strategy for BCB to avoid 10-year limit (406 error)
+        if (apiConfig.provider === 'BCB') {
+          data = await fetchBCBWithChunking(apiConfig.base_url);
+        } else {
+          // Other providers: standard fetch
+          const response = await fetch(apiConfig.base_url);
+          if (!response.ok) {
+            console.error(`[FETCH-ECONOMIC] API error for ${indicator.name}: ${response.status}`);
+            results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
+            continue;
+          }
+          data = await response.json();
         }
 
-        const data = await response.json();
         let valuesToInsert: Array<{ indicator_id: string; reference_date: string; value: number }> = [];
 
         if (apiConfig.provider === 'BCB') {

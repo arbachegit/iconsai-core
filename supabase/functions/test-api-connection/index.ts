@@ -17,6 +17,14 @@ interface TestResult {
   timeout: boolean;
 }
 
+// Format date as DD/MM/YYYY for BCB API
+function formatDateBCB(date: Date): string {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -61,23 +69,33 @@ serve(async (req) => {
     const isIBGE = baseUrl.includes('servicodados.ibge.gov.br');
 
     // Dynamic headers based on provider
-    const requestHeaders: Record<string, string> = {};
+    const requestHeaders: Record<string, string> = {
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Encoding': 'identity',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    };
+
+    // Construct test URL - for BCB, use a 1-year window to avoid 10-year limit
+    let testUrl = baseUrl;
     
     if (isBCB) {
-      // BCB API rejects Deno's default headers - override with browser-like headers
-      requestHeaders['Accept'] = 'application/json, text/plain, */*';
-      requestHeaders['Accept-Encoding'] = 'identity'; // No compression
-      requestHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-      console.log(`[TEST-API] BCB API detected - using browser-like headers to override Deno defaults`);
+      // BCB API has 10-year limit - test with 1-year window
+      const today = new Date();
+      const oneYearAgo = new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000);
+      
+      // Remove any existing date parameters
+      const cleanUrl = baseUrl.split('&dataInicial')[0].split('?dataInicial')[0];
+      const hasParams = cleanUrl.includes('?');
+      const separator = hasParams ? '&' : '?';
+      
+      testUrl = `${cleanUrl}${separator}dataInicial=${formatDateBCB(oneYearAgo)}&dataFinal=${formatDateBCB(today)}`;
+      
+      console.log(`[TEST-API] BCB API detected - using 1-year window to avoid 10-year limit`);
+      console.log(`[TEST-API] Test URL: ${testUrl}`);
     } else if (isIBGE) {
-      requestHeaders['Accept'] = 'application/json';
-      requestHeaders['Accept-Encoding'] = 'identity';
-      requestHeaders['User-Agent'] = 'Mozilla/5.0 (compatible; KnowYOU/1.0)';
-      console.log(`[TEST-API] IBGE API detected - using JSON Accept header`);
+      console.log(`[TEST-API] IBGE API detected - using standard request`);
     } else {
-      requestHeaders['Accept'] = '*/*';
-      requestHeaders['User-Agent'] = 'Mozilla/5.0 (compatible; KnowYOU/1.0)';
-      console.log(`[TEST-API] Generic API - using standard headers`);
+      console.log(`[TEST-API] Generic API - using standard request`);
     }
 
     console.log(`[TEST-API] Request headers:`, requestHeaders);
@@ -88,14 +106,10 @@ serve(async (req) => {
       const fetchOptions: RequestInit = {
         method: 'GET',
         signal: controller.signal,
+        headers: requestHeaders,
       };
-      
-      // Only add headers if we have any
-      if (Object.keys(requestHeaders).length > 0) {
-        fetchOptions.headers = requestHeaders;
-      }
 
-      const response = await fetch(baseUrl, fetchOptions);
+      const response = await fetch(testUrl, fetchOptions);
 
       clearTimeout(timeoutId);
       const endTime = performance.now();
