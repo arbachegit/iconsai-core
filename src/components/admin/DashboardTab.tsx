@@ -38,7 +38,7 @@ const StatCard = ({
       <Tooltip>
         <TooltipTrigger asChild>
           <button className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors">
-            <Info size={16} />
+            <Info size={20} />
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[250px] text-sm">
