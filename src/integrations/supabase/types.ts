@@ -140,6 +140,42 @@ export type Database = {
         }
         Relationships: []
       }
+      audio_contents: {
+        Row: {
+          audio_url: string
+          created_at: string | null
+          description: string
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          storage_path: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string | null
+          description: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          storage_path?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string | null
+          description?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          storage_path?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       auto_preload_config: {
         Row: {
           check_interval_minutes: number | null
