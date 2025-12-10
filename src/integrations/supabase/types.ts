@@ -838,6 +838,7 @@ export type Database = {
       economic_indicators: {
         Row: {
           api_id: string | null
+          category: string | null
           code: string
           created_at: string | null
           cron_schedule: string | null
@@ -849,6 +850,7 @@ export type Database = {
         }
         Insert: {
           api_id?: string | null
+          category?: string | null
           code: string
           created_at?: string | null
           cron_schedule?: string | null
@@ -860,6 +862,7 @@ export type Database = {
         }
         Update: {
           api_id?: string | null
+          category?: string | null
           code?: string
           created_at?: string | null
           cron_schedule?: string | null
