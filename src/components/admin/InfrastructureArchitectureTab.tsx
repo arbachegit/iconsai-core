@@ -79,6 +79,9 @@ export const InfrastructureArchitectureTab = () => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      audioRef.current.onended = null;
+      audioRef.current.oncanplaythrough = null;
+      audioRef.current = null;
     }
     setAudioState('idle');
   };
