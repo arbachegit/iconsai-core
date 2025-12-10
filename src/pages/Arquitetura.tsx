@@ -513,7 +513,7 @@ const Arquitetura = () => {
             <text y="85" textAnchor="middle" fill="#22d3ee" fontSize="14" fontWeight="700">Cérebro Computacional</text>
           </g>
 
-          {/* INPUT FLOW: Human → AI (Top arc) - SEQUENTIAL: Prompt → MessageCircle → Palavra → MessageCircle → Dados → MessageCircle */}
+          {/* INPUT FLOW: Human → AI (Top arc) - SEQUENTIAL: MessageCircle → Palavra → MessageCircle → Dados → MessageCircle */}
           <g>
             {/* Flow path line */}
             <path 
@@ -537,22 +537,12 @@ const Arquitetura = () => {
               <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
             </path>
 
-            {/* Element 1: Badge "Prompt" - start at 0s, dur 3s */}
+            {/* Element 1: MessageCircle - start at 0s */}
             <g>
               <animateMotion dur="3s" begin="0s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
               <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="0s" repeatCount="indefinite" />
-              <rect x="-38" y="-12" width="76" height="24" rx="12" fill="#ec4899" opacity="0.95" />
-              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Prompt</text>
-            </g>
-            
-            {/* Element 2: MessageCircle - start at 3s */}
-            <g>
-              <animateMotion dur="3s" begin="3s" repeatCount="indefinite" fill="freeze">
-                <mpath href="#inputPath" />
-              </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="3s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <MessageCircle className="w-5 h-5 text-pink-300 drop-shadow-[0_0_8px_rgba(236,72,153,0.9)]" />
@@ -560,22 +550,22 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
             
-            {/* Element 3: Badge "Palavra" - start at 6s */}
+            {/* Element 2: Badge "Palavra" - start at 3s */}
+            <g>
+              <animateMotion dur="3s" begin="3s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="3s" repeatCount="indefinite" />
+              <rect x="-40" y="-12" width="80" height="24" rx="12" fill="#a855f7" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Palavra</text>
+            </g>
+            
+            {/* Element 3: MessageCircle - start at 6s */}
             <g>
               <animateMotion dur="3s" begin="6s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
               <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="6s" repeatCount="indefinite" />
-              <rect x="-40" y="-12" width="80" height="24" rx="12" fill="#a855f7" opacity="0.95" />
-              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Palavra</text>
-            </g>
-            
-            {/* Element 4: MessageCircle - start at 9s */}
-            <g>
-              <animateMotion dur="3s" begin="9s" repeatCount="indefinite" fill="freeze">
-                <mpath href="#inputPath" />
-              </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="9s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <MessageCircle className="w-5 h-5 text-violet-300 drop-shadow-[0_0_8px_rgba(167,139,250,0.9)]" />
@@ -583,22 +573,22 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
             
-            {/* Element 5: Badge "Dados" - start at 12s */}
+            {/* Element 4: Badge "Dados" - start at 9s */}
+            <g>
+              <animateMotion dur="3s" begin="9s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="9s" repeatCount="indefinite" />
+              <rect x="-32" y="-12" width="64" height="24" rx="12" fill="#8b5cf6" opacity="0.95" />
+              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Dados</text>
+            </g>
+            
+            {/* Element 5: MessageCircle - start at 12s */}
             <g>
               <animateMotion dur="3s" begin="12s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
               <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="12s" repeatCount="indefinite" />
-              <rect x="-32" y="-12" width="64" height="24" rx="12" fill="#8b5cf6" opacity="0.95" />
-              <text x="0" y="5" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600">Dados</text>
-            </g>
-            
-            {/* Element 6: MessageCircle - start at 15s */}
-            <g>
-              <animateMotion dur="3s" begin="15s" repeatCount="indefinite" fill="freeze">
-                <mpath href="#inputPath" />
-              </animateMotion>
-              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3s" begin="15s" repeatCount="indefinite" />
               <foreignObject x="-12" y="-12" width="24" height="24">
                 <div className="w-full h-full flex items-center justify-center">
                   <MessageCircle className="w-5 h-5 text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.9)]" />
