@@ -99,6 +99,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (!audioRef.current || !floatingPlayerState) return;
 
     if (floatingPlayerState.isPlaying) {
+      // Currently playing -> pause
       audioRef.current.pause();
       stopProgressTracking();
       setFloatingPlayerState(prev => prev ? {
@@ -107,12 +108,24 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         isPaused: true,
       } : null);
     } else if (floatingPlayerState.isPaused) {
+      // Currently paused -> resume
       audioRef.current.play();
       startProgressTracking();
       setFloatingPlayerState(prev => prev ? {
         ...prev,
         isPlaying: true,
         isPaused: false,
+      } : null);
+    } else {
+      // Stopped state (after STOP button) -> restart from beginning
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
+      startProgressTracking();
+      setFloatingPlayerState(prev => prev ? {
+        ...prev,
+        isPlaying: true,
+        isPaused: false,
+        currentTime: 0,
       } : null);
     }
   }, [floatingPlayerState, startProgressTracking, stopProgressTracking]);
@@ -121,11 +134,15 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
-      audioRef.current.onended = null;
-      audioRef.current = null;
     }
     stopProgressTracking();
-    setFloatingPlayerState(null);
+    // Keep the player visible but in stopped state (not playing, not paused)
+    setFloatingPlayerState(prev => prev ? {
+      ...prev,
+      isPlaying: false,
+      isPaused: false,
+      currentTime: 0,
+    } : null);
   }, [stopProgressTracking]);
 
   const closePlayer = useCallback(() => {
