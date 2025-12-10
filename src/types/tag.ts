@@ -19,27 +19,39 @@ export interface Tag {
 export interface OrphanedTag {
   id: string;
   tag_name: string;
-  parent_tag_id: string;
+  tag_type: string;
+  confidence: number | null;
+  source: string | null;
   document_id: string;
+  parent_tag_id: string | null;
+  created_at: string;
 }
 
 export interface DuplicateGroup {
-  name: string;
+  tag_name: string;
   count: number;
-  tags: Tag[];
+  ids: string[];
 }
 
 export interface SemanticDuplicate {
-  tag1: Tag;
-  tag2: Tag;
+  tag1: string;
+  tag2: string;
   similarity: number;
+  ids: string[];
 }
 
 export interface SimilarChildPair {
-  parentTag: Tag;
-  child1: Tag;
-  child2: Tag;
+  tag1: string;
+  tag2: string;
+  id1: string;
+  id2: string;
   similarity: number;
+}
+
+export interface SimilarChildGroup {
+  parentId: string;
+  parentName: string;
+  pairs: SimilarChildPair[];
 }
 
 export interface TagFormData {

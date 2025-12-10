@@ -46,8 +46,6 @@ const isCacheExpired = (categoryQuery: string): boolean => {
 
 const preloadCategory = async (categoryQuery: string): Promise<boolean> => {
   try {
-    console.log(`[Auto-preload] Recarregando cache: ${categoryQuery || 'all'}`);
-    
     const { data, error } = await supabase.functions.invoke('youtube-videos', {
       body: { category: categoryQuery }
     });
@@ -59,7 +57,6 @@ const preloadCategory = async (categoryQuery: string): Promise<boolean> => {
         videos: data.videos,
         timestamp: Date.now()
       }));
-      console.log(`[Auto-preload] ✓ Cache atualizado: ${categoryQuery || 'all'} (${data.videos.length} vídeos)`);
       return true;
     }
     
@@ -73,7 +70,6 @@ const preloadCategory = async (categoryQuery: string): Promise<boolean> => {
         exceeded: true,
         timestamp: Date.now()
       }));
-      console.log('[Auto-preload] Quota excedida detectada. Pré-carregamento pausado por 24h.');
     }
     
     return false;
@@ -94,15 +90,12 @@ export const useYouTubeAutoPreload = () => {
     const checkAndPreload = async () => {
       // Skip if quota exceeded
       if (isQuotaExceeded()) {
-        console.log('[Auto-preload] Quota excedida. Aguardando liberação.');
         return;
       }
 
       // Check each category
       for (const category of categories) {
         if (isCacheExpired(category.query)) {
-          console.log(`[Auto-preload] Cache expirado detectado: ${category.label}`);
-          
           // Preload in background (don't await to avoid blocking)
           preloadCategory(category.query);
           

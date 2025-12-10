@@ -1,44 +1,16 @@
 import { useMemo } from "react";
 import { calculateSimilarity } from "@/lib/string-similarity";
-import type { Tag } from "@/types/tag";
+import type { 
+  Tag, 
+  OrphanedTag, 
+  DuplicateGroup, 
+  SemanticDuplicate, 
+  SimilarChildPair, 
+  SimilarChildGroup 
+} from "@/types/tag";
 
-export interface OrphanedTag {
-  id: string;
-  tag_name: string;
-  tag_type: string;
-  confidence: number | null;
-  source: string | null;
-  document_id: string;
-  parent_tag_id: string | null;
-  created_at: string;
-}
-
-export interface DuplicateGroup {
-  tag_name: string;
-  count: number;
-  ids: string[];
-}
-
-export interface SemanticDuplicate {
-  tag1: string;
-  tag2: string;
-  similarity: number;
-  ids: string[];
-}
-
-export interface SimilarChildPair {
-  tag1: string;
-  tag2: string;
-  id1: string;
-  id2: string;
-  similarity: number;
-}
-
-export interface SimilarChildGroup {
-  parentId: string;
-  parentName: string;
-  pairs: SimilarChildPair[];
-}
+// Re-export types for backward compatibility
+export type { OrphanedTag, DuplicateGroup, SemanticDuplicate, SimilarChildPair, SimilarChildGroup };
 
 export function useSimilarityCalculations(
   allTags: Tag[] | undefined,
