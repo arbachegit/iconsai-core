@@ -322,9 +322,14 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const { indicatorId, fetchAll, forceRefresh, autoMode } = await req.json().catch(() => ({}));
+    const requestBody = await req.json().catch(() => ({}));
+    const { indicatorId, fetchAll, forceRefresh, autoMode } = requestBody;
 
-    console.log('[FETCH-ECONOMIC] Starting fetch...', { indicatorId, fetchAll, forceRefresh, autoMode });
+    console.log('[FETCH-ECONOMIC] ====== REQUEST RECEIVED ======');
+    console.log('[FETCH-ECONOMIC] Raw request body:', JSON.stringify(requestBody));
+    console.log('[FETCH-ECONOMIC] Parsed parameters:', { indicatorId, fetchAll, forceRefresh, autoMode });
+    console.log('[FETCH-ECONOMIC] forceRefresh type:', typeof forceRefresh);
+    console.log('[FETCH-ECONOMIC] forceRefresh === true:', forceRefresh === true);
 
     // Get indicators to fetch
     let indicatorsQuery = supabase
@@ -348,9 +353,15 @@ serve(async (req) => {
     }
 
     // ====== FORCE REFRESH: Zero-Base Sync with VERIFICATION ======
-    if (forceRefresh) {
+    let zeroBaseExecuted = false;
+    let totalDeleted = 0;
+    
+    if (forceRefresh === true) {
       console.log('[FETCH-ECONOMIC] ☢️☢️☢️ FORCE REFRESH MODE: Nuclear Zero-Base Sync ☢️☢️☢️');
+      console.log('[FETCH-ECONOMIC] forceRefresh is TRUE - executing Zero-Base cleanup');
       console.log('[FETCH-ECONOMIC] Phase 1: Counting records BEFORE deletion...');
+      
+      zeroBaseExecuted = true;
       
       for (const indicator of indicators) {
         // Step 1: Count records BEFORE delete
@@ -381,7 +392,8 @@ serve(async (req) => {
           throw new Error(`Zero-Base DELETE failed for ${indicator.name}: ${deleteError.message}`);
         }
         
-        console.log(`[FETCH-ECONOMIC] ✅ DELETED ${deletedCount ?? 'confirmed'} records for ${indicator.name}`);
+        totalDeleted += deletedCount ?? 0;
+        console.log(`[FETCH-ECONOMIC] ✅ DELETED ${deletedCount ?? 'confirmed'} records for ${indicator.name} (Running total: ${totalDeleted})`);
         
         // Step 3: VERIFY table is truly empty
         const { count: afterCount, error: verifyError } = await supabase
@@ -402,8 +414,11 @@ serve(async (req) => {
         console.log(`[FETCH-ECONOMIC] ✅ VERIFIED: ${indicator.name} table is EMPTY (0 records)`);
       }
       
-      console.log('[FETCH-ECONOMIC] ☢️☢️☢️ Zero-Base cleanup COMPLETE. All tables verified EMPTY. ☢️☢️☢️');
+      console.log(`[FETCH-ECONOMIC] ☢️☢️☢️ Zero-Base cleanup COMPLETE. Total deleted: ${totalDeleted}. All tables verified EMPTY. ☢️☢️☢️`);
       console.log('[FETCH-ECONOMIC] Proceeding with fresh data insertion...');
+    } else {
+      console.log('[FETCH-ECONOMIC] forceRefresh is NOT true - skipping Zero-Base cleanup');
+      console.log('[FETCH-ECONOMIC] forceRefresh value:', forceRefresh);
     }
 
     let totalRecordsInserted = 0;
@@ -710,8 +725,20 @@ serve(async (req) => {
 
     console.log(`[FETCH-ECONOMIC] Complete. Total: ${totalRecordsInserted}, New: ${newRecordsCount}`);
 
+    const responsePayload = { 
+      success: true, 
+      recordsInserted: totalRecordsInserted, 
+      newRecordsCount, 
+      results,
+      zeroBaseExecuted,
+      totalDeleted
+    };
+    
+    console.log('[FETCH-ECONOMIC] ====== FINAL RESPONSE ======');
+    console.log('[FETCH-ECONOMIC] Response payload:', JSON.stringify(responsePayload));
+    
     return new Response(
-      JSON.stringify({ success: true, recordsInserted: totalRecordsInserted, newRecordsCount, results }),
+      JSON.stringify(responsePayload),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
