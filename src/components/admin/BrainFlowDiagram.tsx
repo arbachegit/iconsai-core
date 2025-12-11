@@ -97,6 +97,7 @@ export const BrainFlowDiagram = memo(() => {
         <svg 
           viewBox="0 0 1000 280" 
           className="w-full h-auto relative z-10 py-6"
+          overflow="hidden"
         >
           <defs>
             {/* Human brain gradient - warm magenta/pink */}
@@ -227,7 +228,7 @@ export const BrainFlowDiagram = memo(() => {
 
             {/* INPUT Elements - Continuous flow Human → AI */}
             {inputElements.map((el, index) => (
-              <g key={`input-${index}`}>
+              <g key={`input-${index}`} opacity="0">
                 <animateMotion 
                   dur={`${ANIMATION_DURATION}s`} 
                   begin={`${index * STAGGER_DELAY}s`} 
@@ -294,7 +295,7 @@ export const BrainFlowDiagram = memo(() => {
 
             {/* OUTPUT Elements - Continuous flow AI → Human */}
             {outputElements.map((el, index) => (
-              <g key={`output-${index}`}>
+              <g key={`output-${index}`} opacity="0">
                 <animateMotion 
                   dur={`${ANIMATION_DURATION}s`} 
                   begin={`${index * STAGGER_DELAY}s`} 
