@@ -89,7 +89,7 @@ export default function EconomicIndicatorsTab() {
       const [indicatorsRes, statsRes, apiRes] = await Promise.all([
         supabase.from('economic_indicators').select('*').order('name'),
         supabase.from('indicator_values').select('indicator_id, reference_date').order('reference_date', { ascending: false }),
-        supabase.from('system_api_registry').select('id, name, provider, fetch_start_date, fetch_end_date, last_sync_metadata')
+        supabase.from('system_api_registry').select('id, name, provider, fetch_start_date, fetch_end_date, last_sync_metadata, base_url')
       ]);
 
       if (indicatorsRes.error) throw indicatorsRes.error;
@@ -143,6 +143,10 @@ export default function EconomicIndicatorsTab() {
         const configStart = api?.fetch_start_date?.substring(0, 10) || null;
         const configEnd = api?.fetch_end_date?.substring(0, 10) || null;
         
+        // V7.1 FIX: Check if URL uses negative period (periodos/-N) - if so, ignore date comparison
+        // Negative periods collect ALL available historical data regardless of fetch_start_date
+        const usesNegativePeriod = api?.base_url?.includes('periodos/-');
+        
         // CRITICAL: Indicators with 0 records when API is configured = real problem
         if (recordCount === 0 && api) {
           console.log(`[DISCREPANCY_CRITICAL] ${indicator.name}: 0 records but API configured`);
@@ -157,6 +161,13 @@ export default function EconomicIndicatorsTab() {
             severity: 'critical',
             message: 'Sem dados coletados'
           });
+          return;
+        }
+        
+        // V7.1: Skip date range checks for APIs using negative period format
+        // These APIs fetch all available historical data automatically
+        if (usesNegativePeriod) {
+          console.log(`[V7.1] ${indicator.name}: Uses negative period format (periodos/-N), skipping date comparison`);
           return;
         }
         
