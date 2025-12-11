@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { TrendingUp, RefreshCw, Info, Database, Bell, FileText, BarChart3, LineChart, ShoppingCart } from 'lucide-react';
-import { IndicatorCard, IndicatorDetailSheet } from './indicators';
+import { IndicatorCard, IndicatorDetailModal } from './indicators';
 
 interface Indicator {
   id: string;
@@ -47,9 +47,9 @@ export default function EconomicIndicatorsTab() {
   const [fetchingAll, setFetchingAll] = useState(false);
   const [etlModalOpen, setEtlModalOpen] = useState(false);
   
-  // Detail sheet state
+  // Detail modal state
   const [selectedIndicator, setSelectedIndicator] = useState<Indicator | null>(null);
-  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -116,7 +116,7 @@ export default function EconomicIndicatorsTab() {
 
   const handleCardClick = (indicator: Indicator) => {
     setSelectedIndicator(indicator);
-    setDetailSheetOpen(true);
+    setDetailModalOpen(true);
   };
 
   const getSourceForIndicator = (indicator: Indicator): string => {
@@ -364,12 +364,12 @@ export default function EconomicIndicatorsTab() {
         </section>
       )}
 
-      {/* Detail Sheet */}
-      <IndicatorDetailSheet
+      {/* Detail Modal */}
+      <IndicatorDetailModal
         indicator={selectedIndicator}
         source={selectedIndicator ? getSourceForIndicator(selectedIndicator) : ''}
-        open={detailSheetOpen}
-        onOpenChange={setDetailSheetOpen}
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
         onDataChange={fetchData}
       />
     </div>
