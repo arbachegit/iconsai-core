@@ -65,7 +65,7 @@ interface TestResult {
   syncMetadata: SyncMetadata | null;
 }
 
-const PROVIDERS = ['BCB', 'IBGE', 'Internal', 'Scraper'] as const;
+const PROVIDERS = ['BCB', 'IBGE', 'WorldBank', 'IMF', 'YahooFinance', 'Internal', 'Scraper'] as const;
 
 export default function ApiManagementTab() {
   const { t } = useTranslation();
@@ -86,6 +86,8 @@ export default function ApiManagementTab() {
   const [configAutoEnabled, setConfigAutoEnabled] = useState(false);
   const [configInterval, setConfigInterval] = useState('daily');
   const [apiDiagnosticModalOpen, setApiDiagnosticModalOpen] = useState(false);
+  const [testingAllApis, setTestingAllApis] = useState(false);
+  const [testAllProgress, setTestAllProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
   const [formData, setFormData] = useState({
     name: '',
     provider: 'BCB' as string,
@@ -258,6 +260,48 @@ export default function ApiManagementTab() {
     }
   };
 
+  const handleTestAllConnections = async () => {
+    const activeApis = apis.filter(api => api.status === 'active');
+    if (activeApis.length === 0) {
+      toast.warning('Nenhuma API ativa para testar');
+      return;
+    }
+
+    setTestingAllApis(true);
+    setTestAllProgress({ current: 0, total: activeApis.length, success: 0, failed: 0 });
+
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (let i = 0; i < activeApis.length; i++) {
+      const api = activeApis[i];
+      setTestAllProgress(prev => ({ ...prev, current: i + 1 }));
+
+      try {
+        const { data, error } = await supabase.functions.invoke('test-api-connection', {
+          body: { apiId: api.id, baseUrl: api.base_url }
+        });
+
+        if (error || !data?.success) {
+          failedCount++;
+        } else {
+          successCount++;
+        }
+      } catch {
+        failedCount++;
+      }
+
+      setTestAllProgress(prev => ({ ...prev, success: successCount, failed: failedCount }));
+
+      // Small delay between tests
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    setTestingAllApis(false);
+    toast.success(`Teste concluído: ${successCount}/${activeApis.length} APIs OK`);
+    fetchApis();
+  };
+
   const handleCopyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
     toast.success('URL copiada!');
@@ -315,6 +359,9 @@ export default function ApiManagementTab() {
     switch (provider) {
       case 'BCB': return 'bg-blue-500/20 text-blue-400 border-blue-500/40';
       case 'IBGE': return 'bg-green-500/20 text-green-400 border-green-500/40';
+      case 'WorldBank': return 'bg-sky-500/20 text-sky-400 border-sky-500/40';
+      case 'IMF': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/40';
+      case 'YahooFinance': return 'bg-violet-500/20 text-violet-400 border-violet-500/40';
       case 'Internal': return 'bg-purple-500/20 text-purple-400 border-purple-500/40';
       case 'Scraper': return 'bg-amber-500/20 text-amber-400 border-amber-500/40';
       default: return 'bg-muted text-muted-foreground';
@@ -436,6 +483,24 @@ export default function ApiManagementTab() {
             <CardTitle>Gestão de APIs Externas</CardTitle>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleTestAllConnections}
+              disabled={testingAllApis}
+              className="gap-2"
+            >
+              {testingAllApis ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  {testAllProgress.current}/{testAllProgress.total}
+                </>
+              ) : (
+                <>
+                  <Activity className="h-4 w-4" />
+                  Testar Conexão (Todas)
+                </>
+              )}
+            </Button>
             <Button
               variant="outline"
               onClick={() => setApiDiagnosticModalOpen(true)}

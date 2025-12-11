@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, FileJson, Table as TableIcon, Database, RefreshCw, Eye, Plus, AlertCircle } from "lucide-react";
+import { Loader2, FileJson, Table as TableIcon, Database, RefreshCw, Eye, Plus, AlertCircle, PlayCircle, Braces } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -26,14 +26,24 @@ interface ParsedDataPoint {
   indicator: string;
 }
 
+interface MetadataField {
+  key: string;
+  sampleValue: string;
+  type: string;
+}
+
 export const JsonDataObservabilityTab = () => {
   const [apis, setApis] = useState<ApiWithJson[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedApi, setSelectedApi] = useState<ApiWithJson | null>(null);
   const [showOrganizedModal, setShowOrganizedModal] = useState(false);
   const [showRawModal, setShowRawModal] = useState(false);
+  const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedDataPoint[]>([]);
+  const [metadataFields, setMetadataFields] = useState<MetadataField[]>([]);
   const [insertingId, setInsertingId] = useState<string | null>(null);
+  const [insertingAll, setInsertingAll] = useState(false);
+  const [insertAllProgress, setInsertAllProgress] = useState({ current: 0, total: 0, inserted: 0 });
   const [insertResult, setInsertResult] = useState<{ jsonRecords: number; existingRecords: number; insertedRecords: number } | null>(null);
 
   useEffect(() => {
@@ -109,6 +119,54 @@ export const JsonDataObservabilityTab = () => {
     return parsed.sort((a, b) => b.date.localeCompare(a.date));
   };
 
+  const extractAllMetadataFields = (json: unknown): MetadataField[] => {
+    const fields: MetadataField[] = [];
+    const seen = new Set<string>();
+
+    const extractFields = (obj: unknown, prefix: string = '') => {
+      if (obj === null || obj === undefined) return;
+
+      if (Array.isArray(obj)) {
+        if (obj.length > 0) {
+          extractFields(obj[0], prefix + '[0]');
+        }
+      } else if (typeof obj === 'object') {
+        for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+          const fullKey = prefix ? `${prefix}.${key}` : key;
+          
+          if (!seen.has(fullKey)) {
+            seen.add(fullKey);
+            
+            let sampleValue = '';
+            let type = typeof value;
+            
+            if (value === null) {
+              type = 'null';
+              sampleValue = 'null';
+            } else if (Array.isArray(value)) {
+              type = 'array';
+              sampleValue = `[${value.length} items]`;
+            } else if (typeof value === 'object') {
+              type = 'object';
+              sampleValue = '{...}';
+            } else {
+              sampleValue = String(value).substring(0, 100);
+            }
+            
+            fields.push({ key: fullKey, sampleValue, type });
+          }
+          
+          if (typeof value === 'object' && value !== null) {
+            extractFields(value, fullKey);
+          }
+        }
+      }
+    };
+
+    extractFields(json);
+    return fields.sort((a, b) => a.key.localeCompare(b.key));
+  };
+
   const handleViewOrganized = (api: ApiWithJson) => {
     setSelectedApi(api);
     const data = parseJsonData(api);
@@ -119,6 +177,13 @@ export const JsonDataObservabilityTab = () => {
   const handleViewRaw = (api: ApiWithJson) => {
     setSelectedApi(api);
     setShowRawModal(true);
+  };
+
+  const handleViewMetadata = (api: ApiWithJson) => {
+    setSelectedApi(api);
+    const fields = extractAllMetadataFields(api.last_raw_response);
+    setMetadataFields(fields);
+    setShowMetadataModal(true);
   };
 
   const handleForceInsert = async (api: ApiWithJson) => {
@@ -153,6 +218,62 @@ export const JsonDataObservabilityTab = () => {
     }
   };
 
+  const handleInsertAll = async () => {
+    const apisWithIndicators = apis.filter(api => api.economic_indicators?.length > 0);
+    
+    if (apisWithIndicators.length === 0) {
+      toast.warning('Nenhuma API com indicador configurado');
+      return;
+    }
+
+    setInsertingAll(true);
+    setInsertAllProgress({ current: 0, total: apisWithIndicators.length, inserted: 0 });
+    setInsertResult(null);
+
+    let totalInserted = 0;
+    let totalJsonRecords = 0;
+    let totalExisting = 0;
+
+    for (let i = 0; i < apisWithIndicators.length; i++) {
+      const api = apisWithIndicators[i];
+      const indicatorId = api.economic_indicators[0].id;
+      
+      setInsertAllProgress(prev => ({ ...prev, current: i + 1 }));
+
+      try {
+        const { data, error } = await supabase.functions.invoke('compare-and-insert-missing', {
+          body: { indicatorId }
+        });
+
+        if (!error && data) {
+          totalInserted += data.insertedRecords || 0;
+          totalJsonRecords += data.jsonRecords || 0;
+          totalExisting += data.existingRecords || 0;
+        }
+      } catch (err) {
+        console.error(`Error inserting for ${api.name}:`, err);
+      }
+
+      setInsertAllProgress(prev => ({ ...prev, inserted: totalInserted }));
+
+      // Small delay between inserts
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
+    setInsertingAll(false);
+    setInsertResult({
+      jsonRecords: totalJsonRecords,
+      existingRecords: totalExisting,
+      insertedRecords: totalInserted
+    });
+
+    if (totalInserted > 0) {
+      toast.success(`INSERT ALL concluído: ${totalInserted} registros inseridos`);
+    } else {
+      toast.info('INSERT ALL concluído: todos os registros já existem');
+    }
+  };
+
   const getRecordCount = (api: ApiWithJson): number => {
     return parseJsonData(api).length;
   };
@@ -161,6 +282,9 @@ export const JsonDataObservabilityTab = () => {
     switch (provider) {
       case 'BCB': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'IBGE': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+      case 'WorldBank': return 'bg-sky-500/20 text-sky-400 border-sky-500/30';
+      case 'IMF': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
+      case 'YahooFinance': return 'bg-violet-500/20 text-violet-400 border-violet-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
   };
@@ -185,10 +309,29 @@ export const JsonDataObservabilityTab = () => {
             Visualize e compare dados brutos das APIs externas
           </p>
         </div>
-        <Button onClick={fetchApis} variant="outline" size="sm">
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleInsertAll}
+            disabled={insertingAll || apis.length === 0}
+            className="gap-2"
+          >
+            {insertingAll ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {insertAllProgress.current}/{insertAllProgress.total}
+              </>
+            ) : (
+              <>
+                <PlayCircle className="w-4 h-4" />
+                INSERT ALL
+              </>
+            )}
+          </Button>
+          <Button onClick={fetchApis} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {apis.length === 0 ? (
@@ -213,6 +356,7 @@ export const JsonDataObservabilityTab = () => {
                   <TableHead>Fonte/API</TableHead>
                   <TableHead>Última Atualização</TableHead>
                   <TableHead className="text-center">Registros</TableHead>
+                  <TableHead className="text-center">Metadados Brutos</TableHead>
                   <TableHead className="text-center">JSON Organizado</TableHead>
                   <TableHead className="text-center">JSON Bruto</TableHead>
                   <TableHead className="text-center">Forçar INSERT</TableHead>
@@ -242,6 +386,17 @@ export const JsonDataObservabilityTab = () => {
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant="secondary">{getRecordCount(api)}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewMetadata(api)}
+                        className="gap-1"
+                      >
+                        <Braces className="w-4 h-4" />
+                        Dados
+                      </Button>
                     </TableCell>
                     <TableCell className="text-center">
                       <Button
@@ -288,6 +443,53 @@ export const JsonDataObservabilityTab = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal: Metadados Brutos */}
+      <Dialog open={showMetadataModal} onOpenChange={setShowMetadataModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Braces className="w-5 h-5 text-primary" />
+              Metadados Brutos - {selectedApi?.economic_indicators?.[0]?.name || selectedApi?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Todos os campos (key:value) disponíveis no JSON bruto da API
+          </p>
+          <ScrollArea className="h-[400px] mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Campo (Key)</TableHead>
+                  <TableHead>Valor de Exemplo</TableHead>
+                  <TableHead>Tipo</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {metadataFields.map((field, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell className="font-mono text-sm">{field.key}</TableCell>
+                    <TableCell className="text-sm max-w-xs truncate">{field.sampleValue}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs">
+                        {field.type}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+          <div className="flex justify-between items-center mt-4 pt-4 border-t">
+            <span className="text-sm text-muted-foreground">
+              Total: {metadataFields.length} campos detectados
+            </span>
+            <Button variant="outline" onClick={() => setShowMetadataModal(false)}>
+              Fechar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal: JSON Organizado */}
       <Dialog open={showOrganizedModal} onOpenChange={setShowOrganizedModal}>
@@ -368,7 +570,7 @@ export const JsonDataObservabilityTab = () => {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Database className="w-5 h-5 text-primary" />
-              Resultado do INSERT Mandatório
+              Resultado do INSERT {insertingAll ? 'ALL' : 'Mandatório'}
             </CardTitle>
           </CardHeader>
           <CardContent>
