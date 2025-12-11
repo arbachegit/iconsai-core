@@ -495,7 +495,7 @@ serve(async (req) => {
       }
     }
 
-    // Update database with test results including new telemetry columns
+    // Update database with test results including new telemetry columns AND discovered period
     const newStatus = result.success ? 'active' : 'error';
     const updatePayload: Record<string, unknown> = {
       status: newStatus,
@@ -507,6 +507,19 @@ serve(async (req) => {
     // Include sync metadata if available
     if (result.syncMetadata) {
       updatePayload.last_sync_metadata = result.syncMetadata;
+      
+      // Persist discovered period (governance feature)
+      if (result.syncMetadata.period_start) {
+        updatePayload.discovered_period_start = result.syncMetadata.period_start;
+        console.log(`[TEST-API] [GOVERNANCE] Persisting discovered_period_start: ${result.syncMetadata.period_start}`);
+      }
+      if (result.syncMetadata.period_end) {
+        updatePayload.discovered_period_end = result.syncMetadata.period_end;
+        console.log(`[TEST-API] [GOVERNANCE] Persisting discovered_period_end: ${result.syncMetadata.period_end}`);
+      }
+      if (result.syncMetadata.period_start || result.syncMetadata.period_end) {
+        updatePayload.period_discovery_date = new Date().toISOString();
+      }
     }
 
     const { error: updateError } = await supabase

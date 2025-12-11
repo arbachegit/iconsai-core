@@ -1760,6 +1760,8 @@ export type Database = {
           base_url: string
           created_at: string | null
           description: string | null
+          discovered_period_end: string | null
+          discovered_period_start: string | null
           fetch_end_date: string | null
           fetch_start_date: string | null
           id: string
@@ -1769,6 +1771,7 @@ export type Database = {
           last_sync_metadata: Json | null
           method: string | null
           name: string
+          period_discovery_date: string | null
           provider: string
           status: string | null
           target_table: string | null
@@ -1780,6 +1783,8 @@ export type Database = {
           base_url: string
           created_at?: string | null
           description?: string | null
+          discovered_period_end?: string | null
+          discovered_period_start?: string | null
           fetch_end_date?: string | null
           fetch_start_date?: string | null
           id?: string
@@ -1789,6 +1794,7 @@ export type Database = {
           last_sync_metadata?: Json | null
           method?: string | null
           name: string
+          period_discovery_date?: string | null
           provider?: string
           status?: string | null
           target_table?: string | null
@@ -1800,6 +1806,8 @@ export type Database = {
           base_url?: string
           created_at?: string | null
           description?: string | null
+          discovered_period_end?: string | null
+          discovered_period_start?: string | null
           fetch_end_date?: string | null
           fetch_start_date?: string | null
           id?: string
@@ -1809,6 +1817,7 @@ export type Database = {
           last_sync_metadata?: Json | null
           method?: string | null
           name?: string
+          period_discovery_date?: string | null
           provider?: string
           status?: string | null
           target_table?: string | null

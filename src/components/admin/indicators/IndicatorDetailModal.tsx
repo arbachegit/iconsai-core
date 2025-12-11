@@ -5,12 +5,17 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import { 
   RefreshCw, Plus, Calendar, TrendingUp, DollarSign, Percent, Users, 
   BarChart3, ShoppingCart, Heart, Building2, Car, Fuel, Pill, Tv, 
-  Shirt, Activity, LucideIcon, Trash2 
+  Shirt, Activity, LucideIcon, Trash2, AlertTriangle, Shield, Clock
 } from 'lucide-react';
 import MonthlyMatrixView from './MonthlyMatrixView';
 import AnnualBlocksView from './AnnualBlocksView';
@@ -28,6 +33,16 @@ interface IndicatorValue {
   id: string;
   reference_date: string;
   value: number;
+}
+
+interface ApiGovernance {
+  discovered_period_start: string | null;
+  discovered_period_end: string | null;
+  period_discovery_date: string | null;
+  fetch_start_date: string | null;
+  fetch_end_date: string | null;
+  auto_fetch_enabled: boolean;
+  auto_fetch_interval: string | null;
 }
 
 interface IndicatorDetailModalProps {
@@ -95,11 +110,72 @@ export default function IndicatorDetailModal({
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newDate, setNewDate] = useState('');
   const [newValue, setNewValue] = useState('');
+
+  // Governance state
+  const [governance, setGovernance] = useState<ApiGovernance | null>(null);
+  const [savingGovernance, setSavingGovernance] = useState(false);
+
   useEffect(() => {
     if (indicator && open) {
       fetchValues();
+      fetchGovernance();
     }
   }, [indicator, open]);
+
+  const fetchGovernance = async () => {
+    if (!indicator) return;
+    try {
+      // Get the API config for this indicator
+      const { data: indicatorData } = await supabase
+        .from('economic_indicators')
+        .select('api_id')
+        .eq('id', indicator.id)
+        .single();
+
+      if (!indicatorData?.api_id) return;
+
+      const { data: apiData } = await supabase
+        .from('system_api_registry')
+        .select('discovered_period_start, discovered_period_end, period_discovery_date, fetch_start_date, fetch_end_date, auto_fetch_enabled, auto_fetch_interval')
+        .eq('id', indicatorData.api_id)
+        .single();
+
+      if (apiData) {
+        setGovernance(apiData as ApiGovernance);
+      }
+    } catch (error) {
+      console.error('Error fetching governance:', error);
+    }
+  };
+
+  const handleGovernanceChange = async (field: keyof ApiGovernance, value: unknown) => {
+    if (!indicator || !governance) return;
+    setSavingGovernance(true);
+    try {
+      const { data: indicatorData } = await supabase
+        .from('economic_indicators')
+        .select('api_id')
+        .eq('id', indicator.id)
+        .single();
+
+      if (!indicatorData?.api_id) return;
+
+      const { error } = await supabase
+        .from('system_api_registry')
+        .update({ [field]: value })
+        .eq('id', indicatorData.api_id);
+
+      if (error) throw error;
+      
+      setGovernance(prev => prev ? { ...prev, [field]: value } : null);
+      toast.success('Configuração atualizada');
+    } catch (error) {
+      console.error('Error updating governance:', error);
+      toast.error('Erro ao atualizar configuração');
+    } finally {
+      setSavingGovernance(false);
+    }
+  };
 
   const fetchValues = async () => {
     if (!indicator) return;
@@ -276,7 +352,106 @@ export default function IndicatorDetailModal({
           </DialogHeader>
 
           {/* Content */}
-          <div className="flex-1 overflow-auto px-6 py-4">
+          <div className="flex-1 overflow-auto px-6 py-4 space-y-4">
+            {/* Governance Section */}
+            {governance && (
+              <Card className="border-blue-500/30 bg-blue-500/5">
+                <CardHeader className="py-3">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Shield className="h-4 w-4 text-blue-400" />
+                    Governança de Período
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 py-2">
+                  {/* Discovered Period (READ-ONLY) */}
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground text-xs">
+                      Período de Extração (Descoberto da API)
+                    </Label>
+                    <div className="flex gap-2 flex-wrap">
+                      {governance.discovered_period_start && governance.discovered_period_end ? (
+                        <>
+                          <Badge variant="outline" className="font-mono text-cyan-300 border-cyan-500/40">
+                            📅 {governance.discovered_period_start} → {governance.discovered_period_end}
+                          </Badge>
+                          {governance.period_discovery_date && (
+                            <Badge variant="secondary" className="text-xs">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Descoberto em {format(new Date(governance.period_discovery_date), 'dd/MM/yyyy HH:mm')}
+                            </Badge>
+                          )}
+                        </>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          Não descoberto - Execute "Atualizar via API"
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Discrepancy Alert */}
+                  {governance.discovered_period_start && governance.fetch_start_date && (
+                    (() => {
+                      const discoveredStart = new Date(governance.discovered_period_start);
+                      const configuredStart = new Date(governance.fetch_start_date);
+                      const diffYears = (discoveredStart.getTime() - configuredStart.getTime()) / (1000 * 60 * 60 * 24 * 365);
+                      
+                      if (diffYears > 1) {
+                        return (
+                          <Alert className="border-yellow-500/50 bg-yellow-500/10">
+                            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                            <AlertDescription className="text-sm">
+                              A API possui histórico limitado. Configurado desde <span className="font-mono">{governance.fetch_start_date}</span>, 
+                              mas dados reais começam em <span className="font-mono">{governance.discovered_period_start}</span>.
+                            </AlertDescription>
+                          </Alert>
+                        );
+                      }
+                      return null;
+                    })()
+                  )}
+
+                  {/* Auto Update Toggle */}
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                    <div>
+                      <Label className="text-sm">Atualização Automática</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Buscar novos dados automaticamente
+                      </p>
+                    </div>
+                    <Switch 
+                      checked={governance.auto_fetch_enabled ?? false} 
+                      onCheckedChange={(checked) => handleGovernanceChange('auto_fetch_enabled', checked)}
+                      disabled={savingGovernance}
+                    />
+                  </div>
+
+                  {/* Interval Selector (if auto enabled) */}
+                  {governance.auto_fetch_enabled && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Intervalo de Atualização</Label>
+                      <Select 
+                        value={governance.auto_fetch_interval || 'daily'} 
+                        onValueChange={(value) => handleGovernanceChange('auto_fetch_interval', value)}
+                        disabled={savingGovernance}
+                      >
+                        <SelectTrigger className="w-48">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="6hours">A cada 6 horas</SelectItem>
+                          <SelectItem value="daily">Diário</SelectItem>
+                          <SelectItem value="weekly">Semanal</SelectItem>
+                          <SelectItem value="monthly">Mensal</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Data Content */}
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
