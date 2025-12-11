@@ -223,11 +223,18 @@ export default function IndicatorDetailModal({
                 </div>
                 <div>
                   <DialogTitle className="text-xl">{indicator.name}</DialogTitle>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <Badge variant="outline" className="text-xs">{source}</Badge>
                     <Badge variant="outline" className="text-xs">{getFrequencyLabel(indicator.frequency)}</Badge>
                     {indicator.unit && <Badge variant="secondary" className="text-xs">{indicator.unit}</Badge>}
-                    <Badge variant="secondary" className="text-xs font-mono">{totalRecords} registros</Badge>
+                    <Badge variant="secondary" className="text-xs font-mono bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
+                      📊 {totalRecords} registros carregados
+                    </Badge>
+                    {values.length > 0 && (
+                      <Badge variant="outline" className="text-xs font-mono text-cyan-300 border-cyan-500/40">
+                        📅 {values[values.length - 1]?.reference_date} → {values[0]?.reference_date}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
