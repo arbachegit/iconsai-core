@@ -83,9 +83,14 @@ const Arquitetura = () => {
   // Use global audio player context
   const { playAudio, floatingPlayerState } = useAudioPlayer();
 
-  // Calculate dynamic durations based on speed and spacing
-  const inputDuration = Math.round(45 / animationSpeed);
-  const outputDuration = Math.round(57 / animationSpeed);
+  // Element counts
+  const INPUT_ELEMENT_COUNT = 15;
+  const OUTPUT_ELEMENT_COUNT = 19;
+
+  // Calculate dynamic durations: duration = elementCount * spacing / speed
+  // This ensures all elements are evenly distributed and complete the full path
+  const inputDuration = Math.round((INPUT_ELEMENT_COUNT * elementSpacing) / animationSpeed);
+  const outputDuration = Math.round((OUTPUT_ELEMENT_COUNT * elementSpacing) / animationSpeed);
 
   // Pause/unpause SVG animations
   useEffect(() => {
