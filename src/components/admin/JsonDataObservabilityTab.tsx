@@ -138,7 +138,7 @@ export const JsonDataObservabilityTab = () => {
             seen.add(fullKey);
             
             let sampleValue = '';
-            let fieldType = typeof value;
+            let fieldType: string = typeof value;
             
             if (value === null) {
               fieldType = 'null';
