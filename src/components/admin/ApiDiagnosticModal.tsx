@@ -72,12 +72,22 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
   const [showErrorReport, setShowErrorReport] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setHasRun(false);
+      setResults([]);
+      setApis([]);
+      setShowErrorReport(false);
+    }
+  }, [open]);
+
   // Fetch APIs when modal opens
   useEffect(() => {
-    if (open && !hasRun) {
+    if (open && !hasRun && apis.length === 0) {
       fetchApis();
     }
-  }, [open, hasRun]);
+  }, [open, hasRun, apis.length]);
 
   const fetchApis = async () => {
     const { data, error } = await supabase
