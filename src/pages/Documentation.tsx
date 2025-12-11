@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { DatabaseSchemaObservabilityModal } from '@/components/DatabaseSchemaObservabilityModal';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -487,6 +488,9 @@ const Documentation = () => {
   const [demoSelectedIcon, setDemoSelectedIcon] = useState<string>("");
   const [demoDisabled, setDemoDisabled] = useState<boolean>(false);
   const [demoPlaceholder, setDemoPlaceholder] = useState<string>("Clique para selecionar");
+  
+  // Database Schema Observability Modal
+  const [schemaModalOpen, setSchemaModalOpen] = useState(false);
   const [demoClassName, setDemoClassName] = useState<string>("");
 
   // Persist icon view mode
@@ -1160,169 +1164,42 @@ const Documentation = () => {
 
             <BackToIndex />
 
-            {/* Extensões */}
-            <Card className="p-6">
-              <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-                <GitBranch className="h-6 w-6 text-secondary" />
-                Extensões
-              </h3>
-              <div className="space-y-4">
-                <div className="border-l-4 border-primary pl-4">
-                  <h4 className="font-bold text-lg">pgvector</h4>
-                  <ul className="list-disc list-inside text-muted-foreground space-y-1 mt-2">
-                    <li><strong>Propósito:</strong> Busca semântica via embeddings</li>
-                    <li><strong>Tipo:</strong> VECTOR(1536)</li>
-                    <li><strong>Operador:</strong> <code className="bg-muted px-2 py-1 rounded">&lt;=&gt;</code> (cosine distance)</li>
-                    <li><strong>Uso:</strong> Armazena embeddings gerados pela OpenAI text-embedding-3-small</li>
-                  </ul>
-                </div>
+            {/* Badge único clicável para abrir modal de observabilidade */}
+            <Card className="p-8 text-center bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
+              <Database className="h-16 w-16 mx-auto text-primary/60 mb-4" />
+              <Badge 
+                className="cursor-pointer text-lg px-6 py-3 bg-primary hover:bg-primary/90 transition-colors"
+                onClick={() => setSchemaModalOpen(true)}
+              >
+                <Database className="mr-2 h-5 w-5" />
+                Explorar Schema e Status do BD
+                <span className="ml-2 text-primary-foreground/70">(60+ tabelas)</span>
+              </Badge>
+              <p className="mt-4 text-muted-foreground max-w-lg mx-auto">
+                Clique para visualizar a estrutura completa do banco de dados, contagem de registros em tempo real 
+                e detalhes de cada tabela incluindo tipos de dados, chaves primárias e estrangeiras.
+              </p>
+              <div className="flex justify-center gap-4 mt-6">
+                <Badge variant="outline" className="gap-1">
+                  <Key className="h-3 w-3" />
+                  Chaves PK/FK
+                </Badge>
+                <Badge variant="outline" className="gap-1">
+                  <TableIcon className="h-3 w-3" />
+                  COUNT em tempo real
+                </Badge>
+                <Badge variant="outline" className="gap-1">
+                  <Lock className="h-3 w-3" />
+                  Políticas RLS
+                </Badge>
               </div>
             </Card>
 
-            {/* Tabelas */}
-            <Card className="p-6">
-              <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-                <Table className="h-6 w-6 text-secondary" />
-                Tabelas Principais
-              </h3>
-              
-              {/* documents */}
-              <div className="space-y-6">
-                <div className="border rounded-lg p-4 bg-muted/30">
-                  <h4 className="font-bold text-lg mb-3">documents</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Armazena PDFs processados pelo sistema RAG com metadados enriquecidos por LLM.
-                  </p>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Coluna</th>
-                          <th className="text-left p-2">Tipo</th>
-                          <th className="text-left p-2">Descrição</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        <tr><td className="p-2 font-mono">id</td><td className="p-2">UUID</td><td className="p-2">Identificador único</td></tr>
-                        <tr><td className="p-2 font-mono">filename</td><td className="p-2">TEXT</td><td className="p-2">Nome do arquivo PDF</td></tr>
-                        <tr><td className="p-2 font-mono">target_chat</td><td className="p-2">TEXT</td><td className="p-2">health/study/general (auto-classificado)</td></tr>
-                        <tr><td className="p-2 font-mono">ai_summary</td><td className="p-2">TEXT</td><td className="p-2">Resumo LLM (150-300 palavras)</td></tr>
-                        <tr><td className="p-2 font-mono">implementation_status</td><td className="p-2">TEXT</td><td className="p-2">ready/needs_review/incomplete</td></tr>
-                        <tr><td className="p-2 font-mono">status</td><td className="p-2">TEXT</td><td className="p-2">pending/processing/completed/failed</td></tr>
-                        <tr><td className="p-2 font-mono">total_chunks</td><td className="p-2">INTEGER</td><td className="p-2">Quantidade de chunks criados</td></tr>
-                        <tr><td className="p-2 font-mono">is_readable</td><td className="p-2">BOOLEAN</td><td className="p-2">Validação de legibilidade</td></tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="mt-4 p-3 bg-background rounded border">
-                    <p className="text-sm font-semibold mb-2">Foreign Keys:</p>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• <code>document_chunks.document_id</code> → <code>documents.id</code></li>
-                      <li>• <code>document_tags.document_id</code> → <code>documents.id</code></li>
-                    </ul>
-                  </div>
-                </div>
-
-                {/* document_chunks */}
-                <div className="border rounded-lg p-4 bg-muted/30">
-                  <h4 className="font-bold text-lg mb-3">document_chunks</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Chunks vetorizados com embeddings para busca semântica.
-                  </p>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Coluna</th>
-                          <th className="text-left p-2">Tipo</th>
-                          <th className="text-left p-2">Descrição</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        <tr><td className="p-2 font-mono">id</td><td className="p-2">UUID</td><td className="p-2">Identificador único</td></tr>
-                        <tr><td className="p-2 font-mono">document_id</td><td className="p-2">UUID</td><td className="p-2">FK para documents</td></tr>
-                        <tr><td className="p-2 font-mono">content</td><td className="p-2">TEXT</td><td className="p-2">Texto do chunk (750 palavras)</td></tr>
-                        <tr><td className="p-2 font-mono">embedding</td><td className="p-2">VECTOR(1536)</td><td className="p-2">Vetor para busca semântica</td></tr>
-                        <tr><td className="p-2 font-mono">chunk_index</td><td className="p-2">INTEGER</td><td className="p-2">Ordem no documento</td></tr>
-                        <tr><td className="p-2 font-mono">word_count</td><td className="p-2">INTEGER</td><td className="p-2">Contagem de palavras</td></tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* document_tags */}
-                <div className="border rounded-lg p-4 bg-muted/30">
-                  <h4 className="font-bold text-lg mb-3">document_tags</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Tags hierárquicas (parent/child) geradas por LLM.
-                  </p>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Coluna</th>
-                          <th className="text-left p-2">Tipo</th>
-                          <th className="text-left p-2">Descrição</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        <tr><td className="p-2 font-mono">id</td><td className="p-2">UUID</td><td className="p-2">Identificador único</td></tr>
-                        <tr><td className="p-2 font-mono">document_id</td><td className="p-2">UUID</td><td className="p-2">FK para documents</td></tr>
-                        <tr><td className="p-2 font-mono">tag_name</td><td className="p-2">TEXT</td><td className="p-2">Nome da tag</td></tr>
-                        <tr><td className="p-2 font-mono">tag_type</td><td className="p-2">TEXT</td><td className="p-2">parent/child</td></tr>
-                        <tr><td className="p-2 font-mono">parent_tag_id</td><td className="p-2">UUID</td><td className="p-2">FK para parent tag</td></tr>
-                        <tr><td className="p-2 font-mono">confidence</td><td className="p-2">NUMERIC(3,2)</td><td className="p-2">Score 0.0-1.0</td></tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Outras tabelas resumidas */}
-                <div className="border rounded-lg p-4 bg-muted/30">
-                  <h4 className="font-bold text-lg mb-3">Outras Tabelas</h4>
-                  <ul className="space-y-2 text-sm">
-                    <li>• <strong>conversation_history:</strong> Histórico de conversas com chat_type (study/health)</li>
-                    <li>• <strong>chat_analytics:</strong> Métricas de uso (message_count, audio_plays, topics)</li>
-                    <li>• <strong>admin_settings:</strong> Configurações do painel admin</li>
-                    <li>• <strong>tooltip_contents:</strong> Conteúdo tooltips com áudio TTS</li>
-                    <li>• <strong>generated_images:</strong> Cache de imagens geradas (Nano Banana)</li>
-                    <li>• <strong>user_roles:</strong> RBAC com role 'admin'</li>
-                    <li>• <strong>credits_usage:</strong> Log de consumo de créditos API</li>
-                  </ul>
-                </div>
-              </div>
-            </Card>
-
-            {/* RLS Policies */}
-            <Card className="p-6">
-              <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-                <Lock className="h-6 w-6 text-secondary" />
-                Políticas RLS (Row Level Security)
-              </h3>
-              <div className="space-y-4">
-                <div className="border-l-4 border-destructive pl-4">
-                  <h4 className="font-bold">admin_settings</h4>
-                  <ul className="list-disc list-inside text-muted-foreground text-sm mt-2">
-                    <li>SELECT/UPDATE: Apenas admins autenticados</li>
-                    <li>Protege gmail_notification_email de acesso público</li>
-                  </ul>
-                </div>
-                <div className="border-l-4 border-destructive pl-4">
-                  <h4 className="font-bold">documents</h4>
-                  <ul className="list-disc list-inside text-muted-foreground text-sm mt-2">
-                    <li>INSERT/UPDATE: Sistema pode inserir (verify_jwt = false)</li>
-                    <li>SELECT/DELETE: Apenas admins</li>
-                  </ul>
-                </div>
-                <div className="border-l-4 border-warning pl-4">
-                  <h4 className="font-bold">conversation_history</h4>
-                  <ul className="list-disc list-inside text-muted-foreground text-sm mt-2">
-                    <li>ALL: Acesso público para INSERT/SELECT/UPDATE/DELETE</li>
-                    <li>Permite salvar conversas sem autenticação</li>
-                  </ul>
-                </div>
-              </div>
-            </Card>
+            {/* Modal de Observabilidade */}
+            <DatabaseSchemaObservabilityModal
+              isOpen={schemaModalOpen}
+              onClose={() => setSchemaModalOpen(false)}
+            />
           </section>
 
           {/* ===== BACKEND ===== */}
