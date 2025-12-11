@@ -568,6 +568,14 @@ const Arquitetura = () => {
                   >
                     <mpath href="#inputPath" />
                   </animateMotion>
+                  <animate 
+                    attributeName="opacity" 
+                    values="0;1;1;0" 
+                    keyTimes="0;0.05;0.95;1" 
+                    dur={`${ANIMATION_DURATION}s`} 
+                    begin={`${index * STAGGER_DELAY}s`} 
+                    repeatCount="indefinite"
+                  />
                   {el.type === 'icon' ? (
                     <foreignObject x="-14" y="-14" width="28" height="28">
                       <div className="w-full h-full flex items-center justify-center">
@@ -627,6 +635,14 @@ const Arquitetura = () => {
                   >
                     <mpath href="#outputPath" />
                   </animateMotion>
+                  <animate 
+                    attributeName="opacity" 
+                    values="0;1;1;0" 
+                    keyTimes="0;0.05;0.95;1" 
+                    dur={`${ANIMATION_DURATION}s`} 
+                    begin={`${index * STAGGER_DELAY}s`} 
+                    repeatCount="indefinite"
+                  />
                   {el.type === 'icon' ? (
                     <foreignObject x="-14" y="-14" width="28" height="28">
                       <div className="w-full h-full flex items-center justify-center">
