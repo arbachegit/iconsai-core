@@ -48,6 +48,8 @@ interface DataDiscrepancy {
   actualStart: string | null;
   actualEnd: string | null;
   isDiscrepant: boolean;
+  severity: 'critical' | 'warning' | 'ok'; // critical = 0 records, warning = > 365 days diff, ok = within tolerance
+  message: string;
 }
 
 // Category configuration
@@ -110,11 +112,12 @@ export default function EconomicIndicatorsTab() {
         groupedByIndicator[row.indicator_id].push(row.reference_date);
       });
 
-      // Build discrepancy list
+      // Build discrepancy list with improved logic (eliminate false positives)
       const discrepancies: DataDiscrepancy[] = [];
       const indicatorsList = indicatorsRes.data || [];
       const apiList = apiRes.data || [];
 
+      // First pass: build stats for indicators WITH data
       Object.entries(groupedByIndicator).forEach(([indicatorId, dates]) => {
         const sortedDates = [...dates].sort();
         const actualStart = sortedDates[0] || null;
@@ -126,36 +129,64 @@ export default function EconomicIndicatorsTab() {
           oldestDate: actualStart,
           newestDate: actualEnd
         };
+      });
 
-        // Find indicator and its API config
-        const indicator = indicatorsList.find(i => i.id === indicatorId);
-        if (indicator?.api_id) {
-          const api = apiList.find(a => a.id === indicator.api_id);
-          if (api?.fetch_start_date && api?.fetch_end_date) {
-            const configStart = api.fetch_start_date.substring(0, 10);
-            const configEnd = api.fetch_end_date.substring(0, 10);
-            
-            // Check if actual data range is significantly different from configured range
-            const actualStartYear = actualStart ? parseInt(actualStart.substring(0, 4)) : null;
-            const configStartYear = parseInt(configStart.substring(0, 4));
-            const yearDiff = actualStartYear ? actualStartYear - configStartYear : 0;
-            
-            // Debug logging for discrepancy detection
-            console.log(`[DISCREPANCY_CHECK] ${indicator.name}: config=${configStart}→${configEnd}, actual=${actualStart}→${actualEnd}, yearDiff=${yearDiff}`);
-            
-            // Discrepancy: data starts more than 1 year after configured start
-            if (yearDiff > 1) {
-              console.log(`[DISCREPANCY_DETECTED] ${indicator.name}: yearDiff ${yearDiff} > 1`);
-              discrepancies.push({
-                indicatorId,
-                indicatorName: indicator.name,
-                configuredStart: configStart,
-                configuredEnd: configEnd,
-                actualStart,
-                actualEnd,
-                isDiscrepant: true
-              });
-            }
+      // Second pass: check ALL indicators (including those with 0 records) for discrepancies
+      indicatorsList.forEach(indicator => {
+        const indicatorStats = stats[indicator.id];
+        const recordCount = indicatorStats?.recordCount || 0;
+        const actualStart = indicatorStats?.oldestDate || null;
+        const actualEnd = indicatorStats?.newestDate || null;
+        
+        // Find API config for this indicator
+        const api = indicator.api_id ? apiList.find(a => a.id === indicator.api_id) : null;
+        const configStart = api?.fetch_start_date?.substring(0, 10) || null;
+        const configEnd = api?.fetch_end_date?.substring(0, 10) || null;
+        
+        // CRITICAL: Indicators with 0 records when API is configured = real problem
+        if (recordCount === 0 && api) {
+          console.log(`[DISCREPANCY_CRITICAL] ${indicator.name}: 0 records but API configured`);
+          discrepancies.push({
+            indicatorId: indicator.id,
+            indicatorName: indicator.name,
+            configuredStart: configStart,
+            configuredEnd: configEnd,
+            actualStart: null,
+            actualEnd: null,
+            isDiscrepant: true,
+            severity: 'critical',
+            message: 'Sem dados coletados'
+          });
+          return;
+        }
+        
+        // For indicators WITH data, check if range is significantly different
+        if (configStart && actualStart) {
+          const configDate = new Date(configStart);
+          const actualDate = new Date(actualStart);
+          const daysDiff = Math.floor((actualDate.getTime() - configDate.getTime()) / (1000 * 60 * 60 * 24));
+          
+          console.log(`[DISCREPANCY_CHECK] ${indicator.name}: config=${configStart}, actual=${actualStart}, daysDiff=${daysDiff}`);
+          
+          // FIXED: Ignore differences < 30 days (business days vs calendar days)
+          // This eliminates false positives like 2018-01-01 vs 2018-01-02
+          if (daysDiff > 365) {
+            console.log(`[DISCREPANCY_WARNING] ${indicator.name}: daysDiff ${daysDiff} > 365`);
+            const yearsDiff = Math.floor(daysDiff / 365);
+            discrepancies.push({
+              indicatorId: indicator.id,
+              indicatorName: indicator.name,
+              configuredStart: configStart,
+              configuredEnd: configEnd,
+              actualStart,
+              actualEnd,
+              isDiscrepant: true,
+              severity: 'warning',
+              message: `Dados iniciam ${yearsDiff} ano(s) após configurado`
+            });
+          } else if (daysDiff > 30) {
+            // Minor discrepancy (> 30 days but < 1 year) - log but don't alert
+            console.log(`[DISCREPANCY_MINOR] ${indicator.name}: daysDiff ${daysDiff} (30-365 days, ignored)`);
           }
         }
       });
@@ -301,40 +332,50 @@ export default function EconomicIndicatorsTab() {
   return (
     <TooltipProvider>
     <div className="space-y-8">
-      {/* Status Grid - Quick Overview */}
+      {/* Status Grid - Quick Overview with Green/Yellow/Red indicators */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
         {indicators.map(indicator => {
           const stats = indicatorStats[indicator.id];
           const hasData = (stats?.recordCount || 0) > 0;
           const source = getSourceForIndicator(indicator);
           
+          // Determine status color based on discrepancy severity
+          const discrepancy = dataDiscrepancies.find(d => d.indicatorId === indicator.id);
+          const severity = discrepancy?.severity || (hasData ? 'ok' : 'critical');
+          
+          // Status color mapping: green (ok), yellow (warning), red (critical)
+          const statusColors = {
+            ok: 'bg-emerald-500/10 border-emerald-500/40 hover:bg-emerald-500/20',
+            warning: 'bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/20',
+            critical: 'bg-red-500/10 border-red-500/40 hover:bg-red-500/20'
+          };
+          
+          const iconColors = {
+            ok: { icon: CheckCircle, color: 'text-emerald-500' },
+            warning: { icon: AlertTriangle, color: 'text-amber-500' },
+            critical: { icon: XCircle, color: 'text-red-500' }
+          };
+          
+          const StatusIcon = iconColors[severity].icon;
+          
           return (
             <Tooltip key={indicator.id}>
               <TooltipTrigger asChild>
                 <Card 
-                  className={`p-2 cursor-pointer transition-all hover:scale-[1.02] ${
-                    hasData 
-                      ? 'bg-emerald-500/10 border-emerald-500/40 hover:bg-emerald-500/20' 
-                      : 'bg-red-500/10 border-red-500/40 hover:bg-red-500/20'
-                  }`}
+                  className={`p-2 cursor-pointer transition-all hover:scale-[1.02] ${statusColors[severity]}`}
                   onClick={() => handleCardClick(indicator)}
                 >
                   <div className="text-xs font-medium truncate" title={indicator.name}>
                     {indicator.name.length > 15 ? indicator.name.substring(0, 15) + '...' : indicator.name}
                   </div>
                   <div className="flex items-center gap-1 mt-1">
+                    <StatusIcon className={`h-3 w-3 ${iconColors[severity].color}`} />
                     {hasData ? (
-                      <>
-                        <CheckCircle className="h-3 w-3 text-emerald-500" />
-                        <span className="text-xs text-emerald-400 font-mono">
-                          {stats.recordCount.toLocaleString()}
-                        </span>
-                      </>
+                      <span className={`text-xs font-mono ${severity === 'ok' ? 'text-emerald-400' : severity === 'warning' ? 'text-amber-400' : 'text-red-400'}`}>
+                        {stats.recordCount.toLocaleString()}
+                      </span>
                     ) : (
-                      <>
-                        <XCircle className="h-3 w-3 text-red-500" />
-                        <span className="text-xs text-red-400">Sem dados</span>
-                      </>
+                      <span className="text-xs text-red-400">Sem dados</span>
                     )}
                   </div>
                 </Card>
@@ -346,7 +387,7 @@ export default function EconomicIndicatorsTab() {
                     <Badge variant="outline" className="text-[10px] px-1 py-0">{source}</Badge>
                     <Badge variant="outline" className="text-[10px] px-1 py-0">{indicator.frequency || 'mensal'}</Badge>
                   </div>
-                  {hasData ? (
+                  {severity === 'ok' && hasData && (
                     <>
                       <div className="text-emerald-400">✓ {stats.recordCount.toLocaleString()} registros</div>
                       <div className="flex items-center gap-1 text-muted-foreground">
@@ -354,8 +395,12 @@ export default function EconomicIndicatorsTab() {
                         {stats.oldestDate?.substring(0, 7)} → {stats.newestDate?.substring(0, 7)}
                       </div>
                     </>
-                  ) : (
-                    <div className="text-red-400">✗ Nenhum dado encontrado</div>
+                  )}
+                  {severity === 'warning' && (
+                    <div className="text-amber-400">⚠ {discrepancy?.message}</div>
+                  )}
+                  {severity === 'critical' && (
+                    <div className="text-red-400">✗ {discrepancy?.message || 'Nenhum dado encontrado'}</div>
                   )}
                 </div>
               </TooltipContent>
@@ -516,21 +561,41 @@ export default function EconomicIndicatorsTab() {
         </div>
       </div>
 
-      {/* Data Discrepancy Alert */}
-      {dataDiscrepancies.length > 0 && (
-        <Alert variant="destructive" className="border-amber-500/50 bg-amber-500/10">
-          <AlertTriangle className="h-4 w-4 text-amber-500" />
-          <AlertTitle className="text-amber-400">Inconsistência de Dados Detectada</AlertTitle>
-          <AlertDescription className="text-amber-300/80">
+      {/* Data Discrepancy Alerts - Separated by severity */}
+      {dataDiscrepancies.filter(d => d.severity === 'critical').length > 0 && (
+        <Alert variant="destructive" className="border-red-500/50 bg-red-500/10">
+          <XCircle className="h-4 w-4 text-red-500" />
+          <AlertTitle className="text-red-400">🔴 Indicadores Sem Dados (Crítico)</AlertTitle>
+          <AlertDescription className="text-red-300/80">
             <p className="mb-2">
-              Os seguintes indicadores têm dados fora do período configurado. Execute "Sincronizar Todos" para corrigir:
+              Os seguintes indicadores estão configurados mas não possuem nenhum dado coletado:
             </p>
             <ul className="list-disc list-inside space-y-1 text-sm">
-              {dataDiscrepancies.map(d => (
+              {dataDiscrepancies.filter(d => d.severity === 'critical').map(d => (
                 <li key={d.indicatorId}>
-                  <span className="font-medium">{d.indicatorName}</span>: 
-                  Configurado {d.configuredStart?.substring(0, 4)}-{d.configuredEnd?.substring(0, 4)}, 
-                  mas dados começam em {d.actualStart?.substring(0, 4)}
+                  <span className="font-medium">{d.indicatorName}</span>: {d.message}
+                  {d.configuredStart && ` (Configurado: ${d.configuredStart?.substring(0, 4)}-${d.configuredEnd?.substring(0, 4)})`}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs">Execute "Sincronizar Todos" para coletar os dados.</p>
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {dataDiscrepancies.filter(d => d.severity === 'warning').length > 0 && (
+        <Alert className="border-amber-500/50 bg-amber-500/10">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <AlertTitle className="text-amber-400">🟡 Período de Dados Incompleto</AlertTitle>
+          <AlertDescription className="text-amber-300/80">
+            <p className="mb-2">
+              Os seguintes indicadores têm dados, mas fora do período configurado:
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-sm">
+              {dataDiscrepancies.filter(d => d.severity === 'warning').map(d => (
+                <li key={d.indicatorId}>
+                  <span className="font-medium">{d.indicatorName}</span>: {d.message}
+                  {' '}(Configurado {d.configuredStart?.substring(0, 4)}, dados desde {d.actualStart?.substring(0, 4)})
                 </li>
               ))}
             </ul>
