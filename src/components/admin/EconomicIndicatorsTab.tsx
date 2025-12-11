@@ -7,11 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { TrendingUp, RefreshCw, Info, Database, Bell, FileText, BarChart3, LineChart, ShoppingCart, AlertTriangle, Trash2, CheckCircle, XCircle, Calendar, Activity } from 'lucide-react';
+import { TrendingUp, RefreshCw, Info, Database, Bell, FileText, BarChart3, LineChart, ShoppingCart, AlertTriangle, Trash2, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { IndicatorCard, IndicatorDetailModal } from './indicators';
-import ApiDiagnosticModal from './ApiDiagnosticModal';
 interface Indicator {
   id: string;
   name: string;
@@ -76,9 +75,6 @@ export default function EconomicIndicatorsTab() {
   
   // Detail modal state
   const [selectedIndicator, setSelectedIndicator] = useState<Indicator | null>(null);
-  
-  // API Diagnostic modal state
-  const [apiDiagnosticModalOpen, setApiDiagnosticModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   useEffect(() => {
@@ -545,15 +541,6 @@ export default function EconomicIndicatorsTab() {
 
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
-            onClick={() => setApiDiagnosticModalOpen(true)}
-            disabled={fetchingAll || forceRefreshing}
-            className="gap-2"
-          >
-            <Activity className="h-4 w-4" />
-            Testar APIs
-          </Button>
-          <Button
             onClick={() => handleFetchAll(false)}
             disabled={fetchingAll || forceRefreshing}
             className="gap-2"
@@ -772,12 +759,6 @@ export default function EconomicIndicatorsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* API Diagnostic Modal */}
-      <ApiDiagnosticModal 
-        open={apiDiagnosticModalOpen} 
-        onOpenChange={setApiDiagnosticModalOpen} 
-      />
     </div>
     </TooltipProvider>
   );
