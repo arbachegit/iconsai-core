@@ -437,7 +437,7 @@ function generateIBGESyncMetadata(ibgeData: IBGEResult[]): SyncMetadata {
     for (const serie of resultado.series || []) {
       const serieData = serie.serie || {};
       for (const [period, value] of Object.entries(serieData)) {
-        if (value && value !== '-' && value !== '...') {
+        if (value && value !== '-' && value !== '...' && value !== '..') {
           allPeriods.push(period);
           totalCount++;
           lastValue = value;
@@ -721,7 +721,7 @@ async function fetchIBGEWithChunking(
       for (const serie of resultado.series || []) {
         const serieData = serie.serie || {};
         for (const [period, value] of Object.entries(serieData)) {
-          if (value && value !== '-' && value !== '...') {
+          if (value && value !== '-' && value !== '...' && value !== '..') {
             mergedSerieData[period] = value;
           }
         }
@@ -1011,7 +1011,7 @@ serve(async (req) => {
                   const serieData = serie.serie || {};
                   
                   for (const [period, value] of Object.entries(serieData)) {
-                    if (!value || value === '-' || value === '...') continue;
+                    if (!value || value === '-' || value === '...' || value === '..') continue;
                     
                     let refDate: string;
                     // IBGE period formats: YYYYMM (monthly), YYYY (annual), YYYYQN (quarterly)
