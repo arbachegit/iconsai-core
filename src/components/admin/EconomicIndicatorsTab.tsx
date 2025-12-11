@@ -3,12 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { TrendingUp, RefreshCw, Info, Database, Bell, FileText, BarChart3, LineChart, ShoppingCart, AlertTriangle } from 'lucide-react';
+import { TrendingUp, RefreshCw, Info, Database, Bell, FileText, BarChart3, LineChart, ShoppingCart, AlertTriangle, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { IndicatorCard, IndicatorDetailModal } from './indicators';
-
 interface Indicator {
   id: string;
   name: string;
@@ -60,7 +61,12 @@ export default function EconomicIndicatorsTab() {
   const [dataDiscrepancies, setDataDiscrepancies] = useState<DataDiscrepancy[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchingAll, setFetchingAll] = useState(false);
+  const [forceRefreshing, setForceRefreshing] = useState(false);
   const [etlModalOpen, setEtlModalOpen] = useState(false);
+  
+  // Force refresh confirmation modal
+  const [forceRefreshModalOpen, setForceRefreshModalOpen] = useState(false);
+  const [forceRefreshConfirmed, setForceRefreshConfirmed] = useState(false);
   
   // Detail modal state
   const [selectedIndicator, setSelectedIndicator] = useState<Indicator | null>(null);
@@ -164,18 +170,28 @@ export default function EconomicIndicatorsTab() {
     }
   };
 
-  const handleFetchAll = async () => {
-    setFetchingAll(true);
-    console.log('[SYNC_ALL] Starting synchronization...');
+  const handleFetchAll = async (forceRefresh: boolean = false) => {
+    if (forceRefresh) {
+      setForceRefreshing(true);
+    } else {
+      setFetchingAll(true);
+    }
+    console.log(`[SYNC_ALL] Starting synchronization... forceRefresh=${forceRefresh}`);
+    
     try {
       const response = await supabase.functions.invoke('fetch-economic-data', {
-        body: { fetchAll: true }
+        body: { fetchAll: true, forceRefresh }
       });
 
       if (response.error) throw response.error;
       
       console.log('[SYNC_ALL] Response:', response.data);
-      toast.success(`Todos indicadores atualizados: ${response.data?.recordsInserted || 0} registros`);
+      
+      if (forceRefresh) {
+        toast.success(`☢️ Recarga Zero-Base concluída: ${response.data?.recordsInserted || 0} registros inseridos`);
+      } else {
+        toast.success(`Todos indicadores atualizados: ${response.data?.recordsInserted || 0} registros`);
+      }
       
       // Clear state before refetch to ensure fresh data
       setDataDiscrepancies([]);
@@ -193,7 +209,23 @@ export default function EconomicIndicatorsTab() {
       toast.error('Erro ao buscar dados');
     } finally {
       setFetchingAll(false);
+      setForceRefreshing(false);
+      setForceRefreshModalOpen(false);
+      setForceRefreshConfirmed(false);
     }
+  };
+
+  const handleForceRefreshClick = () => {
+    setForceRefreshConfirmed(false);
+    setForceRefreshModalOpen(true);
+  };
+
+  const handleForceRefreshConfirm = () => {
+    if (!forceRefreshConfirmed) {
+      toast.error('Você deve confirmar que entende a operação');
+      return;
+    }
+    handleFetchAll(true);
   };
 
   const handleCardClick = (indicator: Indicator) => {
@@ -361,14 +393,26 @@ export default function EconomicIndicatorsTab() {
           </Dialog>
         </div>
 
-        <Button
-          onClick={handleFetchAll}
-          disabled={fetchingAll}
-          className="gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${fetchingAll ? 'animate-spin' : ''}`} />
-          Sincronizar Todos
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => handleFetchAll(false)}
+            disabled={fetchingAll || forceRefreshing}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${fetchingAll ? 'animate-spin' : ''}`} />
+            Sincronizar Todos
+          </Button>
+          
+          <Button
+            variant="destructive"
+            onClick={handleForceRefreshClick}
+            disabled={fetchingAll || forceRefreshing}
+            className="gap-2"
+          >
+            <Trash2 className={`h-4 w-4 ${forceRefreshing ? 'animate-spin' : ''}`} />
+            {forceRefreshing ? 'Recarregando...' : 'Forçar Recarga Zero-Base'}
+          </Button>
+        </div>
       </div>
 
       {/* Data Discrepancy Alert */}
@@ -476,6 +520,79 @@ export default function EconomicIndicatorsTab() {
         onOpenChange={setDetailModalOpen}
         onDataChange={fetchData}
       />
+
+      {/* Force Refresh Confirmation Modal */}
+      <Dialog open={forceRefreshModalOpen} onOpenChange={setForceRefreshModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              ☢️ Recarga Zero-Base
+            </DialogTitle>
+            <DialogDescription className="text-left pt-2">
+              Esta operação irá:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <div className="space-y-2 text-sm">
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                <Trash2 className="h-4 w-4 text-destructive mt-0.5" />
+                <div>
+                  <p className="font-medium text-destructive">APAGAR TODOS os dados</p>
+                  <p className="text-muted-foreground">Todos os registros históricos de todos os indicadores serão excluídos permanentemente.</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                <RefreshCw className="h-4 w-4 text-blue-400 mt-0.5" />
+                <div>
+                  <p className="font-medium text-blue-400">RECARREGAR do Zero</p>
+                  <p className="text-muted-foreground">Os dados serão buscados novamente das APIs (BCB, IBGE) usando os períodos configurados (2010-presente).</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox
+                id="force-confirm"
+                checked={forceRefreshConfirmed}
+                onCheckedChange={(checked) => setForceRefreshConfirmed(checked === true)}
+              />
+              <Label
+                htmlFor="force-confirm"
+                className="text-sm font-medium leading-none cursor-pointer"
+              >
+                Confirmo que entendo que todos os dados serão excluídos e recarregados
+              </Label>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setForceRefreshModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleForceRefreshConfirm}
+              disabled={!forceRefreshConfirmed || forceRefreshing}
+              className="gap-2"
+            >
+              {forceRefreshing ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Executando...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Confirmar Recarga
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

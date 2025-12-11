@@ -236,9 +236,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const { indicatorId, fetchAll } = await req.json().catch(() => ({}));
+    const { indicatorId, fetchAll, forceRefresh } = await req.json().catch(() => ({}));
 
-    console.log('[FETCH-ECONOMIC] Starting fetch...', { indicatorId, fetchAll });
+    console.log('[FETCH-ECONOMIC] Starting fetch...', { indicatorId, fetchAll, forceRefresh });
 
     // Get indicators to fetch
     let indicatorsQuery = supabase
@@ -259,6 +259,28 @@ serve(async (req) => {
         JSON.stringify({ success: true, message: 'No indicators to fetch', recordsInserted: 0 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // ====== FORCE REFRESH: Zero-Base Sync ======
+    if (forceRefresh) {
+      console.log('[FETCH-ECONOMIC] ☢️ FORCE REFRESH MODE: Clearing all indicator data before fresh insert');
+      
+      for (const indicator of indicators) {
+        console.log(`[FETCH-ECONOMIC] ☢️ Deleting all data for: ${indicator.name} (${indicator.id})`);
+        
+        const { error: deleteError, count: deletedCount } = await supabase
+          .from('indicator_values')
+          .delete()
+          .eq('indicator_id', indicator.id);
+        
+        if (deleteError) {
+          console.error(`[FETCH-ECONOMIC] ❌ Delete failed for ${indicator.name}:`, deleteError);
+        } else {
+          console.log(`[FETCH-ECONOMIC] ✅ Deleted ${deletedCount ?? 'unknown'} records for ${indicator.name}`);
+        }
+      }
+      
+      console.log('[FETCH-ECONOMIC] ☢️ All data cleared. Proceeding with fresh insert...');
     }
 
     let totalRecordsInserted = 0;
