@@ -311,6 +311,227 @@ function generateIBGESyncMetadata(ibgeData: IBGEResult[]): SyncMetadata {
   return metadata;
 }
 
+// Generate 3-year chunks for IBGE API (YYYYMM format)
+function generateIBGEYearChunks(startDate: Date, endDate: Date): Array<{ start: string; end: string }> {
+  const chunks: Array<{ start: string; end: string }> = [];
+  let currentYear = startDate.getFullYear();
+  const endYear = endDate.getFullYear();
+  const endMonth = endDate.getMonth() + 1;
+  
+  while (currentYear <= endYear) {
+    const chunkEndYear = Math.min(currentYear + 2, endYear); // 3 years per chunk
+    
+    // Format: YYYYMM
+    const chunkStart = `${currentYear}01`;
+    const chunkEnd = chunkEndYear === endYear 
+      ? `${chunkEndYear}${String(endMonth).padStart(2, '0')}` 
+      : `${chunkEndYear}12`;
+    
+    chunks.push({ start: chunkStart, end: chunkEnd });
+    currentYear = chunkEndYear + 1;
+  }
+  
+  return chunks;
+}
+
+// Fetch IBGE data with chunking to avoid HTTP 500 from server overload
+async function fetchIBGEWithChunking(
+  baseUrl: string, 
+  fetchStartDate: string | null, 
+  fetchEndDate: string | null,
+  indicatorName: string = 'Unknown'
+): Promise<IBGEResult[]> {
+  const allData: IBGEResult[] = [];
+  const MAX_RETRIES = 3;
+  
+  // Use configured dates or fallback to defaults
+  const startDate = fetchStartDate ? new Date(fetchStartDate) : new Date('2012-01-01');
+  const endDate = fetchEndDate ? new Date(fetchEndDate) : new Date();
+  
+  console.log(`[FETCH-ECONOMIC] ====== IBGE CHUNKING AUDIT: ${indicatorName} ======`);
+  console.log(`[FETCH-ECONOMIC] [IBGE] Base URL: ${baseUrl}`);
+  console.log(`[FETCH-ECONOMIC] [IBGE] Configured fetch_start_date: ${fetchStartDate}`);
+  console.log(`[FETCH-ECONOMIC] [IBGE] Configured fetch_end_date: ${fetchEndDate}`);
+  console.log(`[FETCH-ECONOMIC] [IBGE] Effective start: ${startDate.toISOString().substring(0, 10)}`);
+  console.log(`[FETCH-ECONOMIC] [IBGE] Effective end: ${endDate.toISOString().substring(0, 10)}`);
+  
+  // Validate dates
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    console.error(`[FETCH-ECONOMIC] ❌ [IBGE] INVALID DATES! Start: ${fetchStartDate}, End: ${fetchEndDate}`);
+    return [];
+  }
+  
+  if (startDate >= endDate) {
+    console.error(`[FETCH-ECONOMIC] ❌ [IBGE] START DATE >= END DATE! No data to fetch.`);
+    return [];
+  }
+  
+  // Generate 3-year chunks
+  const chunks = generateIBGEYearChunks(startDate, endDate);
+  
+  console.log(`[FETCH-ECONOMIC] [IBGE] ${indicatorName} - chunking into ${chunks.length} periods of ~3 years each`);
+  console.log(`[FETCH-ECONOMIC] [IBGE] Chunks:`, JSON.stringify(chunks));
+  
+  // Extract URL pattern - replace hardcoded period with placeholder or find period segment
+  // IBGE URL format: .../periodos/YYYYMM-YYYYMM/...
+  const periodRegex = /\/periodos\/(\d{6})-(\d{6})\//;
+  const periodMatch = baseUrl.match(periodRegex);
+  
+  if (!periodMatch) {
+    console.error(`[FETCH-ECONOMIC] ❌ [IBGE] Cannot find period pattern in URL: ${baseUrl}`);
+    console.error(`[FETCH-ECONOMIC] ❌ [IBGE] Expected format: /periodos/YYYYMM-YYYYMM/`);
+    // Fallback: try single request anyway
+    try {
+      const response = await fetch(baseUrl);
+      if (response.ok) {
+        const data = await response.json();
+        return data as IBGEResult[];
+      }
+    } catch (e) {
+      console.error(`[FETCH-ECONOMIC] ❌ [IBGE] Fallback fetch failed:`, e);
+    }
+    return [];
+  }
+  
+  for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+    const chunk = chunks[chunkIndex];
+    
+    // Replace period in URL with chunk period
+    const chunkUrl = baseUrl.replace(periodRegex, `/periodos/${chunk.start}-${chunk.end}/`);
+    
+    console.log(`[FETCH-ECONOMIC] [IBGE] Chunk ${chunkIndex + 1}/${chunks.length}: ${chunk.start} to ${chunk.end}`);
+    
+    let lastError: Error | null = null;
+    
+    // Retry loop for each chunk
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`[FETCH-ECONOMIC] [IBGE] Attempt ${attempt}/${MAX_RETRIES} - Fetching: ${chunkUrl.substring(0, 150)}...`);
+        
+        const response = await fetch(chunkUrl);
+        
+        console.log(`[FETCH-ECONOMIC] [IBGE] HTTP Status: ${response.status} ${response.statusText}`);
+        
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unable to read response body');
+          console.error(`[FETCH-ECONOMIC] ❌ [IBGE] HTTP ERROR ${response.status}: ${errorText.substring(0, 200)}`);
+          
+          if (response.status === 500) {
+            console.error(`[FETCH-ECONOMIC] ❌ [IBGE] 500 Internal Server Error - IBGE server overloaded. Reducing chunk size may help.`);
+          }
+          
+          lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+          
+          if (attempt < MAX_RETRIES) {
+            const delay = 2000 * attempt; // Longer delay for IBGE
+            console.log(`[FETCH-ECONOMIC] [IBGE] Waiting ${delay}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+          break;
+        }
+        
+        const data = await response.json() as IBGEResult[];
+        
+        if (Array.isArray(data) && data.length > 0) {
+          allData.push(...data);
+          
+          // Count records in this chunk
+          let chunkRecords = 0;
+          if (data[0]?.resultados) {
+            for (const resultado of data[0].resultados) {
+              for (const serie of resultado.series || []) {
+                const serieData = serie.serie || {};
+                chunkRecords += Object.keys(serieData).length;
+              }
+            }
+          }
+          
+          console.log(`[FETCH-ECONOMIC] ✅ [IBGE] Chunk ${chunkIndex + 1} success: ${chunkRecords} records`);
+        } else {
+          console.log(`[FETCH-ECONOMIC] ⚠️ [IBGE] Chunk ${chunkIndex + 1} returned empty data`);
+        }
+        
+        lastError = null;
+        break; // Success, exit retry loop
+        
+      } catch (err) {
+        console.error(`[FETCH-ECONOMIC] ❌ [IBGE] FETCH EXCEPTION on attempt ${attempt}:`, err);
+        lastError = err instanceof Error ? err : new Error(String(err));
+        
+        if (attempt < MAX_RETRIES) {
+          const delay = 2000 * attempt;
+          console.log(`[FETCH-ECONOMIC] [IBGE] Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    if (lastError) {
+      console.error(`[FETCH-ECONOMIC] ❌ [IBGE] CHUNK ${chunkIndex + 1} FAILED after ${MAX_RETRIES} attempts: ${lastError.message}`);
+    }
+    
+    // Longer delay between chunks for IBGE (750ms) to avoid rate limiting
+    if (chunkIndex < chunks.length - 1) {
+      console.log(`[FETCH-ECONOMIC] [IBGE] Waiting 750ms before next chunk...`);
+      await new Promise(resolve => setTimeout(resolve, 750));
+    }
+  }
+  
+  console.log(`[FETCH-ECONOMIC] [IBGE] ${indicatorName} ====== TOTAL CHUNKS FETCHED: ${allData.length} ======`);
+  
+  if (allData.length === 0) {
+    console.warn(`[FETCH-ECONOMIC] ⚠️ [IBGE] WARNING: ZERO DATA CHUNKS FETCHED!`);
+    console.warn(`[FETCH-ECONOMIC] ⚠️ [IBGE] Check: 1) URL format, 2) Date range validity, 3) IBGE API availability`);
+  }
+  
+  // Merge results - IBGE returns array with single element containing nested resultados
+  // We need to merge all chunks into a single coherent structure
+  if (allData.length === 0) return [];
+  if (allData.length === 1) return allData;
+  
+  // Merge multiple IBGE responses into one
+  const mergedResult: IBGEResult = {
+    id: allData[0].id,
+    variavel: allData[0].variavel,
+    unidade: allData[0].unidade,
+    resultados: []
+  };
+  
+  // Merge all series data
+  const mergedSerieData: Record<string, string> = {};
+  
+  for (const ibgeResult of allData) {
+    if (!ibgeResult.resultados) continue;
+    for (const resultado of ibgeResult.resultados) {
+      for (const serie of resultado.series || []) {
+        const serieData = serie.serie || {};
+        for (const [period, value] of Object.entries(serieData)) {
+          if (value && value !== '-' && value !== '...') {
+            mergedSerieData[period] = value;
+          }
+        }
+      }
+    }
+  }
+  
+  // Reconstruct merged result
+  if (allData[0].resultados && allData[0].resultados[0]) {
+    const templateResultado = allData[0].resultados[0];
+    mergedResult.resultados = [{
+      classificacoes: templateResultado.classificacoes,
+      series: [{
+        localidade: templateResultado.series[0]?.localidade || { id: '', nivel: { id: '', nome: '' }, nome: '' },
+        serie: mergedSerieData
+      }]
+    }];
+  }
+  
+  console.log(`[FETCH-ECONOMIC] [IBGE] Merged ${Object.keys(mergedSerieData).length} total periods from ${allData.length} chunks`);
+  
+  return [mergedResult];
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -480,6 +701,15 @@ serve(async (req) => {
           syncMetadata = generateSyncMetadata(bcbData, 'BCB');
           httpStatus = bcbData.length > 0 ? 200 : null;
           console.log(`[FETCH-ECONOMIC] 📊 BCB fetch complete for ${indicator.name}: ${bcbData.length} data points`);
+        } else if (apiConfig.provider === 'IBGE') {
+          // IBGE: Use chunking to avoid HTTP 500 from server overload
+          console.log(`[FETCH-ECONOMIC] 🔄 Starting IBGE fetch with chunking for: ${indicator.name}`);
+          console.log(`[FETCH-ECONOMIC] Using dates for ${indicator.name}: ${effectiveStartDate} to ${apiConfig.fetch_end_date}`);
+          const ibgeData = await fetchIBGEWithChunking(apiConfig.base_url, effectiveStartDate, apiConfig.fetch_end_date, indicator.name);
+          data = ibgeData;
+          syncMetadata = generateIBGESyncMetadata(ibgeData);
+          httpStatus = ibgeData.length > 0 ? 200 : null;
+          console.log(`[FETCH-ECONOMIC] 📊 IBGE fetch complete for ${indicator.name}: ${ibgeData.length} result chunks`);
         } else {
           // Other providers: standard fetch
           const response = await fetch(apiConfig.base_url);
@@ -508,11 +738,6 @@ serve(async (req) => {
             continue;
           }
           data = await response.json();
-          
-          // Generate metadata for IBGE
-          if (apiConfig.provider === 'IBGE') {
-            syncMetadata = generateIBGESyncMetadata(data as IBGEResult[]);
-          }
         }
 
         let valuesToInsert: Array<{ indicator_id: string; reference_date: string; value: number }> = [];
