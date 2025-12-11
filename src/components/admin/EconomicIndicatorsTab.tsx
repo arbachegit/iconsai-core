@@ -70,7 +70,8 @@ export default function EconomicIndicatorsTab() {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (debugSource: string = 'initial') => {
+    console.log(`[ECONOMIC_INDICATORS] fetchData triggered by: ${debugSource}`);
     setLoading(true);
     try {
       // Fetch indicators, stats, and API registry in parallel
@@ -81,6 +82,11 @@ export default function EconomicIndicatorsTab() {
       ]);
 
       if (indicatorsRes.error) throw indicatorsRes.error;
+      
+      console.log(`[ECONOMIC_INDICATORS] Loaded ${indicatorsRes.data?.length || 0} indicators`);
+      console.log(`[ECONOMIC_INDICATORS] Loaded ${statsRes.data?.length || 0} indicator values`);
+      console.log(`[ECONOMIC_INDICATORS] Loaded ${apiRes.data?.length || 0} API registry entries`);
+      
       setIndicators(indicatorsRes.data || []);
       setApiRegistry((apiRes.data || []) as unknown as ApiRegistry[]);
 
@@ -123,8 +129,12 @@ export default function EconomicIndicatorsTab() {
             const configStartYear = parseInt(configStart.substring(0, 4));
             const yearDiff = actualStartYear ? actualStartYear - configStartYear : 0;
             
+            // Debug logging for discrepancy detection
+            console.log(`[DISCREPANCY_CHECK] ${indicator.name}: config=${configStart}→${configEnd}, actual=${actualStart}→${actualEnd}, yearDiff=${yearDiff}`);
+            
             // Discrepancy: data starts more than 1 year after configured start
             if (yearDiff > 1) {
+              console.log(`[DISCREPANCY_DETECTED] ${indicator.name}: yearDiff ${yearDiff} > 1`);
               discrepancies.push({
                 indicatorId,
                 indicatorName: indicator.name,
@@ -139,10 +149,15 @@ export default function EconomicIndicatorsTab() {
         }
       });
 
+      console.log(`[ECONOMIC_INDICATORS] Total discrepancies found: ${discrepancies.length}`);
+      if (discrepancies.length > 0) {
+        console.log('[ECONOMIC_INDICATORS] Discrepancy details:', discrepancies);
+      }
+
       setIndicatorStats(stats);
       setDataDiscrepancies(discrepancies);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('[ECONOMIC_INDICATORS] Error fetching data:', error);
       toast.error('Erro ao carregar dados');
     } finally {
       setLoading(false);
@@ -151,16 +166,30 @@ export default function EconomicIndicatorsTab() {
 
   const handleFetchAll = async () => {
     setFetchingAll(true);
+    console.log('[SYNC_ALL] Starting synchronization...');
     try {
       const response = await supabase.functions.invoke('fetch-economic-data', {
         body: { fetchAll: true }
       });
 
       if (response.error) throw response.error;
+      
+      console.log('[SYNC_ALL] Response:', response.data);
       toast.success(`Todos indicadores atualizados: ${response.data?.recordsInserted || 0} registros`);
-      fetchData();
+      
+      // Clear state before refetch to ensure fresh data
+      setDataDiscrepancies([]);
+      setIndicatorStats({});
+      
+      // Add small delay to ensure database has committed all changes
+      console.log('[SYNC_ALL] Waiting 1s before refetch...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('[SYNC_ALL] Triggering data refetch...');
+      await fetchData('post-sync');
+      console.log('[SYNC_ALL] Refetch complete');
     } catch (error) {
-      console.error('Error fetching all data:', error);
+      console.error('[SYNC_ALL] Error:', error);
       toast.error('Erro ao buscar dados');
     } finally {
       setFetchingAll(false);
