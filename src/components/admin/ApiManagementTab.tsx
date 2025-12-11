@@ -17,9 +17,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info } from 'lucide-react';
+import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info, Stethoscope } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import ApiDiagnosticModal from './ApiDiagnosticModal';
 
 interface SyncMetadata {
   extracted_count?: number;
@@ -84,6 +85,7 @@ export default function ApiManagementTab() {
   const [configEndDate, setConfigEndDate] = useState<Date | undefined>(undefined);
   const [configAutoEnabled, setConfigAutoEnabled] = useState(false);
   const [configInterval, setConfigInterval] = useState('daily');
+  const [apiDiagnosticModalOpen, setApiDiagnosticModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     provider: 'BCB' as string,
@@ -433,13 +435,22 @@ export default function ApiManagementTab() {
             <Webhook className="h-6 w-6 text-primary" />
             <CardTitle>Gestão de APIs Externas</CardTitle>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => handleOpenDialog()} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Nova API
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setApiDiagnosticModalOpen(true)}
+              className="gap-2"
+            >
+              <Stethoscope className="h-4 w-4" />
+              Gestão de API
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => handleOpenDialog()} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Nova API
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
                 <DialogTitle>
@@ -541,6 +552,7 @@ export default function ApiManagementTab() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -1024,6 +1036,12 @@ export default function ApiManagementTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* API Diagnostic Modal */}
+      <ApiDiagnosticModal 
+        open={apiDiagnosticModalOpen} 
+        onOpenChange={setApiDiagnosticModalOpen} 
+      />
     </div>
   );
 }
