@@ -1167,30 +1167,40 @@ const Documentation = () => {
             {/* Badge único clicável para abrir modal de observabilidade */}
             <Card className="p-8 text-center bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
               <Database className="h-16 w-16 mx-auto text-primary/60 mb-4" />
-              <Badge 
-                className="cursor-pointer text-lg px-6 py-3 bg-primary hover:bg-primary/90 transition-colors"
-                onClick={() => setSchemaModalOpen(true)}
-              >
-                <Database className="mr-2 h-5 w-5" />
-                Explorar Schema e Status do BD
-                <span className="ml-2 text-primary-foreground/70">(60+ tabelas)</span>
-              </Badge>
+              <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
+                <Badge 
+                  className="cursor-pointer text-lg px-6 py-3 bg-primary hover:bg-primary/90 transition-colors"
+                  onClick={() => setSchemaModalOpen(true)}
+                >
+                  <Database className="mr-2 h-5 w-5" />
+                  Explorar Schema por Domínio
+                  <span className="ml-2 text-primary-foreground/70">(60+ tabelas)</span>
+                </Badge>
+              </div>
               <p className="mt-4 text-muted-foreground max-w-lg mx-auto">
-                Clique para visualizar a estrutura completa do banco de dados, contagem de registros em tempo real 
-                e detalhes de cada tabela incluindo tipos de dados, chaves primárias e estrangeiras.
+                Visualize tabelas segmentadas por domínio funcional: Indicadores Econômicos, RAG, ML/AI, 
+                Auditoria, Mídia, Chat, Notificações, Usuários e Sistema. Identifique tabelas multi-domínio com badges coloridas.
               </p>
-              <div className="flex justify-center gap-4 mt-6">
-                <Badge variant="outline" className="gap-1">
-                  <Key className="h-3 w-3" />
-                  Chaves PK/FK
+              <div className="flex flex-wrap justify-center gap-3 mt-6">
+                <Badge variant="outline" className="gap-1 bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
+                  <TrendingUp className="h-3 w-3" />
+                  Econômico
+                </Badge>
+                <Badge variant="outline" className="gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                  <Search className="h-3 w-3" />
+                  RAG
+                </Badge>
+                <Badge variant="outline" className="gap-1 bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30">
+                  <Brain className="h-3 w-3" />
+                  ML/AI
+                </Badge>
+                <Badge variant="outline" className="gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                  <FileText className="h-3 w-3" />
+                  Auditoria
                 </Badge>
                 <Badge variant="outline" className="gap-1">
                   <TableIcon className="h-3 w-3" />
-                  COUNT em tempo real
-                </Badge>
-                <Badge variant="outline" className="gap-1">
-                  <Lock className="h-3 w-3" />
-                  Políticas RLS
+                  COUNT real-time
                 </Badge>
               </div>
             </Card>

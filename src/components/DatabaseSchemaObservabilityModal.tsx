@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -29,14 +30,145 @@ import {
   Eye,
   Key,
   Link2,
-  Hash,
   Loader2,
   X,
   TableIcon,
+  TrendingUp,
+  Brain,
+  ScrollText,
+  Image,
+  MessageCircle,
+  Bell,
+  Users,
+  Settings,
+  Mail,
+  FileText,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Hardcoded descriptions for all 60+ tables
+// ==================== DOMAIN CATEGORIES ====================
+const DOMAIN_CATEGORIES: Record<string, {
+  name: string;
+  icon: React.ElementType;
+  color: string;
+  badgeColor: string;
+  tables: string[];
+}> = {
+  all: {
+    name: 'Todas',
+    icon: Layers,
+    color: 'bg-muted/30 border-border',
+    badgeColor: 'bg-muted text-muted-foreground',
+    tables: [],
+  },
+  economic: {
+    name: 'Indicadores Econômicos',
+    icon: TrendingUp,
+    color: 'bg-green-500/10 border-green-500/30',
+    badgeColor: 'bg-green-500/20 text-green-600 dark:text-green-400',
+    tables: ['economic_indicators', 'indicator_values', 'system_api_registry', 'market_news'],
+  },
+  rag: {
+    name: 'RAG',
+    icon: Search,
+    color: 'bg-blue-500/10 border-blue-500/30',
+    badgeColor: 'bg-blue-500/20 text-blue-600 dark:text-blue-400',
+    tables: ['documents', 'document_chunks', 'document_tags', 'document_versions', 
+             'document_routing_log', 'chat_config', 'chat_routing_rules', 'rag_analytics'],
+  },
+  ml_ai: {
+    name: 'Machine Learning / AI',
+    icon: Brain,
+    color: 'bg-purple-500/10 border-purple-500/30',
+    badgeColor: 'bg-purple-500/20 text-purple-600 dark:text-purple-400',
+    tables: ['maieutic_training_categories', 'deterministic_analysis', 'taxonomy_rules',
+             'tag_merge_rules', 'regional_tone_rules', 'suggestion_audit', 'suggestion_clicks'],
+  },
+  audit: {
+    name: 'Auditoria e Logs',
+    icon: ScrollText,
+    color: 'bg-amber-500/10 border-amber-500/30',
+    badgeColor: 'bg-amber-500/20 text-amber-600 dark:text-amber-400',
+    tables: ['user_activity_logs', 'debug_logs', 'notification_logs', 'tag_modification_logs',
+             'tag_management_events', 'credits_usage', 'integrity_check_log', 'security_scan_results',
+             'security_severity_history', 'documentation_sync_log', 'typing_latency_logs'],
+  },
+  media: {
+    name: 'Mídia e Conteúdo',
+    icon: Image,
+    color: 'bg-pink-500/10 border-pink-500/30',
+    badgeColor: 'bg-pink-500/20 text-pink-600 dark:text-pink-400',
+    tables: ['generated_images', 'image_analytics', 'audio_contents', 'podcast_contents',
+             'section_audio', 'section_contents', 'section_content_versions', 'tooltip_contents'],
+  },
+  chat: {
+    name: 'Chat e Conversa',
+    icon: MessageCircle,
+    color: 'bg-cyan-500/10 border-cyan-500/30',
+    badgeColor: 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400',
+    tables: ['conversation_history', 'chat_analytics', 'user_chat_preferences'],
+  },
+  notifications: {
+    name: 'Notificações',
+    icon: Bell,
+    color: 'bg-orange-500/10 border-orange-500/30',
+    badgeColor: 'bg-orange-500/20 text-orange-600 dark:text-orange-400',
+    tables: ['admin_notifications', 'notification_preferences', 'notification_templates', 
+             'notification_logic_config'],
+  },
+  users: {
+    name: 'Usuários e Autenticação',
+    icon: Users,
+    color: 'bg-indigo-500/10 border-indigo-500/30',
+    badgeColor: 'bg-indigo-500/20 text-indigo-600 dark:text-indigo-400',
+    tables: ['profiles', 'user_roles', 'user_registrations', 'password_recovery_codes', 'user_contacts'],
+  },
+  system: {
+    name: 'Configuração e Sistema',
+    icon: Settings,
+    color: 'bg-slate-500/10 border-slate-500/30',
+    badgeColor: 'bg-slate-500/20 text-slate-600 dark:text-slate-400',
+    tables: ['admin_settings', 'feature_flags', 'auto_preload_config', 'security_alert_config',
+             'system_versions', 'system_increments', 'documentation_versions'],
+  },
+  communication: {
+    name: 'Comunicação',
+    icon: Mail,
+    color: 'bg-teal-500/10 border-teal-500/30',
+    badgeColor: 'bg-teal-500/20 text-teal-600 dark:text-teal-400',
+    tables: ['contact_messages', 'reply_templates'],
+  },
+};
+
+// Multi-domain tables mapping
+const MULTI_DOMAIN_TABLES: Record<string, string[]> = {
+  'documents': ['rag', 'media'],
+  'chat_config': ['rag', 'chat'],
+  'suggestion_audit': ['ml_ai', 'audit'],
+  'suggestion_clicks': ['ml_ai', 'audit'],
+  'deterministic_analysis': ['ml_ai', 'chat'],
+  'credits_usage': ['audit', 'system'],
+  'rag_analytics': ['rag', 'audit'],
+};
+
+// Get domains for a table
+const getTableDomains = (tableName: string): string[] => {
+  if (MULTI_DOMAIN_TABLES[tableName]) {
+    return MULTI_DOMAIN_TABLES[tableName];
+  }
+  
+  const domains: string[] = [];
+  Object.entries(DOMAIN_CATEGORIES).forEach(([key, category]) => {
+    if (key !== 'all' && category.tables.includes(tableName)) {
+      domains.push(key);
+    }
+  });
+  
+  return domains.length > 0 ? domains : ['system']; // Default to system if not categorized
+};
+
+// ==================== TABLE DESCRIPTIONS ====================
 const TABLE_DESCRIPTIONS: Record<string, string> = {
   admin_notifications: 'Notificações do painel administrativo',
   admin_settings: 'Configurações globais do admin (email, WhatsApp, segurança)',
@@ -94,17 +226,10 @@ const TABLE_DESCRIPTIONS: Record<string, string> = {
   typing_latency_logs: 'Logs de latência de digitação',
   user_activity_logs: 'Log de atividades administrativas',
   user_chat_preferences: 'Preferências de chat por sessão',
+  user_contacts: 'Contatos de usuários (email, telefone)',
   user_registrations: 'Registros de usuários pendentes de aprovação',
   user_roles: 'Roles RBAC (user, admin, superadmin)',
-  youtube_cache: 'Cache de metadados de vídeos YouTube',
 };
-
-interface TableInfo {
-  name: string;
-  description: string;
-  count: number | null;
-  isLoadingCount: boolean;
-}
 
 interface ColumnInfo {
   column_name: string;
@@ -127,44 +252,28 @@ export function DatabaseSchemaObservabilityModal({
 }: DatabaseSchemaObservabilityModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [selectedDomain, setSelectedDomain] = useState<string>('all');
   const [tableCounts, setTableCounts] = useState<Record<string, number>>({});
   const [loadingCounts, setLoadingCounts] = useState<Set<string>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch all table names
-  const { data: tableNames = [], isLoading: isLoadingTables, refetch: refetchTables } = useQuery({
-    queryKey: ['db-schema-tables'],
-    queryFn: async () => {
-      // Get tables from the known types
-      const knownTables = Object.keys(TABLE_DESCRIPTIONS);
-      
-      // Also try to get actual tables from a simple query
-      try {
-        const { data, error } = await supabase
-          .from('documents')
-          .select('id')
-          .limit(0);
-        
-        // If we can query, return known tables
-        if (!error) {
-          return knownTables.sort();
-        }
-      } catch {
-        // Fallback to known tables
-      }
-      
-      return knownTables.sort();
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: isOpen,
-  });
+  // Get all unique table names from all domains
+  const allTableNames = useMemo(() => {
+    const tables = new Set<string>();
+    Object.values(DOMAIN_CATEGORIES).forEach(cat => {
+      cat.tables.forEach(t => tables.add(t));
+    });
+    // Add any tables from TABLE_DESCRIPTIONS not in categories
+    Object.keys(TABLE_DESCRIPTIONS).forEach(t => tables.add(t));
+    return Array.from(tables).sort();
+  }, []);
 
   // Fetch counts in background
   useEffect(() => {
-    if (!isOpen || tableNames.length === 0) return;
+    if (!isOpen || allTableNames.length === 0) return;
 
     const fetchCounts = async () => {
-      for (const tableName of tableNames) {
+      for (const tableName of allTableNames) {
         if (tableCounts[tableName] !== undefined) continue;
         
         setLoadingCounts(prev => new Set(prev).add(tableName));
@@ -177,7 +286,7 @@ export function DatabaseSchemaObservabilityModal({
           if (!error && count !== null) {
             setTableCounts(prev => ({ ...prev, [tableName]: count }));
           } else {
-            setTableCounts(prev => ({ ...prev, [tableName]: -1 })); // Error marker
+            setTableCounts(prev => ({ ...prev, [tableName]: -1 }));
           }
         } catch {
           setTableCounts(prev => ({ ...prev, [tableName]: -1 }));
@@ -192,7 +301,36 @@ export function DatabaseSchemaObservabilityModal({
     };
 
     fetchCounts();
-  }, [isOpen, tableNames]);
+  }, [isOpen, allTableNames, tableCounts]);
+
+  // Filter tables by domain and search
+  const filteredTables = useMemo(() => {
+    let tables = allTableNames;
+    
+    // Filter by domain
+    if (selectedDomain !== 'all') {
+      const domainTables = new Set(DOMAIN_CATEGORIES[selectedDomain]?.tables || []);
+      // Also include multi-domain tables
+      Object.entries(MULTI_DOMAIN_TABLES).forEach(([table, domains]) => {
+        if (domains.includes(selectedDomain)) {
+          domainTables.add(table);
+        }
+      });
+      tables = tables.filter(t => domainTables.has(t));
+    }
+    
+    // Filter by search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      tables = tables.filter(
+        name =>
+          name.toLowerCase().includes(query) ||
+          (TABLE_DESCRIPTIONS[name] || '').toLowerCase().includes(query)
+      );
+    }
+    
+    return tables;
+  }, [allTableNames, selectedDomain, searchQuery]);
 
   // Fetch column schema for selected table
   const { data: columns = [], isLoading: isLoadingColumns } = useQuery({
@@ -200,8 +338,7 @@ export function DatabaseSchemaObservabilityModal({
     queryFn: async () => {
       if (!selectedTable) return [];
       
-      // Use a hardcoded approach based on Supabase types
-      // In production, this would query information_schema
+      // Hardcoded schema for key tables
       const columnMap: Record<string, ColumnInfo[]> = {
         documents: [
           { column_name: 'id', data_type: 'uuid', is_nullable: 'NO', column_default: 'gen_random_uuid()', is_primary_key: true, is_foreign_key: false },
@@ -249,32 +386,19 @@ export function DatabaseSchemaObservabilityModal({
         ],
       };
 
-      // Return columns if we have them, otherwise return generic placeholder
       return columnMap[selectedTable] || [
         { column_name: 'id', data_type: 'uuid', is_nullable: 'NO', column_default: 'gen_random_uuid()', is_primary_key: true, is_foreign_key: false },
         { column_name: 'created_at', data_type: 'timestamptz', is_nullable: 'YES', column_default: 'now()', is_primary_key: false, is_foreign_key: false },
       ];
     },
     enabled: !!selectedTable,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000,
   });
-
-  // Filter tables by search
-  const filteredTables = useMemo(() => {
-    if (!searchQuery.trim()) return tableNames;
-    const query = searchQuery.toLowerCase();
-    return tableNames.filter(
-      name =>
-        name.toLowerCase().includes(query) ||
-        (TABLE_DESCRIPTIONS[name] || '').toLowerCase().includes(query)
-    );
-  }, [tableNames, searchQuery]);
 
   // Refresh all counts
   const handleRefresh = async () => {
     setIsRefreshing(true);
     setTableCounts({});
-    await refetchTables();
     setIsRefreshing(false);
   };
 
@@ -284,6 +408,9 @@ export function DatabaseSchemaObservabilityModal({
     if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
     return count.toString();
   };
+
+  // Domain tabs
+  const domainKeys = Object.keys(DOMAIN_CATEGORIES);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -334,6 +461,41 @@ export function DatabaseSchemaObservabilityModal({
             </div>
           </div>
 
+          {/* Domain Tabs - only when not viewing a table */}
+          {!selectedTable && (
+            <div className="mt-4">
+              <Tabs value={selectedDomain} onValueChange={setSelectedDomain}>
+                <TabsList className="w-full h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
+                  {domainKeys.map((key) => {
+                    const domain = DOMAIN_CATEGORIES[key];
+                    const Icon = domain.icon;
+                    const count = key === 'all' 
+                      ? allTableNames.length 
+                      : domain.tables.length + Object.entries(MULTI_DOMAIN_TABLES)
+                          .filter(([_, domains]) => domains.includes(key)).length;
+                    
+                    return (
+                      <TabsTrigger
+                        key={key}
+                        value={key}
+                        className={cn(
+                          "gap-1.5 px-3 py-1.5 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",
+                          "border border-transparent data-[state=active]:border-primary"
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{domain.name}</span>
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                          {count}
+                        </Badge>
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
+              </Tabs>
+            </div>
+          )}
+
           {/* Search bar - only when not viewing a table */}
           {!selectedTable && (
             <div className="relative mt-4 pb-4">
@@ -364,7 +526,10 @@ export function DatabaseSchemaObservabilityModal({
             // Schema Detail View
             <div className="space-y-4">
               {/* Table description */}
-              <Card className="p-4 bg-muted/30">
+              <Card className={cn(
+                "p-4 border-2",
+                DOMAIN_CATEGORIES[getTableDomains(selectedTable)[0]]?.color || "bg-muted/30"
+              )}>
                 <p className="text-sm text-muted-foreground">
                   {TABLE_DESCRIPTIONS[selectedTable] || 'Tabela do banco de dados'}
                 </p>
@@ -377,6 +542,16 @@ export function DatabaseSchemaObservabilityModal({
                         : `${formatCount(tableCounts[selectedTable])} registros`
                       : 'Carregando...'}
                   </Badge>
+                  
+                  {/* Domain badges */}
+                  {getTableDomains(selectedTable).map(domain => (
+                    <Badge 
+                      key={domain} 
+                      className={cn("gap-1", DOMAIN_CATEGORIES[domain]?.badgeColor)}
+                    >
+                      {DOMAIN_CATEGORIES[domain]?.name}
+                    </Badge>
+                  ))}
                 </div>
               </Card>
 
@@ -450,20 +625,31 @@ export function DatabaseSchemaObservabilityModal({
           ) : (
             // Tables Grid View
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {isLoadingTables ? (
-                [...Array(12)].map((_, i) => (
-                  <Skeleton key={i} className="h-32" />
-                ))
+              {filteredTables.length === 0 ? (
+                <div className="col-span-full text-center py-12 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhuma tabela encontrada para os filtros selecionados.</p>
+                </div>
               ) : (
                 filteredTables.map((tableName) => {
                   const count = tableCounts[tableName];
                   const isLoading = loadingCounts.has(tableName);
                   const description = TABLE_DESCRIPTIONS[tableName] || 'Tabela do banco de dados';
+                  const domains = getTableDomains(tableName);
+                  const isMultiDomain = domains.length > 1;
+                  const primaryDomain = domains[0];
+                  const domainConfig = DOMAIN_CATEGORIES[primaryDomain];
 
                   return (
                     <Card
                       key={tableName}
-                      className="p-4 hover:border-primary/50 transition-colors cursor-pointer group"
+                      className={cn(
+                        "p-4 transition-all cursor-pointer group border-2",
+                        "hover:border-primary/50 hover:shadow-md",
+                        isMultiDomain 
+                          ? "bg-gradient-to-br from-transparent via-primary/5 to-transparent" 
+                          : domainConfig?.color
+                      )}
                       onClick={() => setSelectedTable(tableName)}
                     >
                       <div className="flex items-start justify-between mb-2">
@@ -482,13 +668,29 @@ export function DatabaseSchemaObservabilityModal({
                       <h4 className="font-mono font-medium text-sm mb-1 group-hover:text-primary transition-colors">
                         {tableName}
                       </h4>
-                      <p className="text-xs text-muted-foreground line-clamp-2">
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
                         {description}
                       </p>
+                      
+                      {/* Domain badges in footer */}
+                      {isMultiDomain && (
+                        <div className="flex flex-wrap gap-1 pt-2 border-t border-border/50">
+                          {domains.map(domain => (
+                            <Badge 
+                              key={domain} 
+                              variant="outline"
+                              className={cn("text-[10px] px-1.5 py-0", DOMAIN_CATEGORIES[domain]?.badgeColor)}
+                            >
+                              {DOMAIN_CATEGORIES[domain]?.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="w-full mt-3 gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="w-full mt-2 gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Eye className="h-4 w-4" />
                         Ver Schema
