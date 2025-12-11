@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info, Stethoscope, Tag, ChevronDown, Key } from 'lucide-react';
+import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info, Stethoscope, Tag, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Key, ArrowUpDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -68,6 +68,25 @@ interface TestResult {
 
 const PROVIDERS = ['BCB', 'IBGE', 'WorldBank', 'IMF', 'YahooFinance', 'Internal', 'Scraper'] as const;
 
+const ITEMS_PER_PAGE = 10;
+
+type SortColumn = 'name' | 'provider' | 'last_checked_at' | 'extracted_count' | 'period';
+type SortDirection = 'asc' | 'desc';
+
+const QUERY_VARIABLES = [
+  { variable: '{DATA_INICIO_REAL}', purpose: 'Controle de Período Otimizado (Mandatório)', format: 'YYYYMM (Ex: 201501). Usar na URL em vez de "all".' },
+  { variable: '{DATA_FIM}', purpose: 'Fim da Série Histórica', format: 'YYYYMM (Ex: 202512 ou ano atual).' },
+  { variable: 'Localidade (N1)', purpose: 'Nível Geográfico (Padrão)', format: 'N1[all] (Nível Brasil).' },
+  { variable: 'Agregado (Tabela)', purpose: 'Tabela Principal de Dados', format: 'ID numérico (Ex: 1737 para IPCA).' },
+  { variable: 'Variável (Métrica)', purpose: 'Métrica principal de interesse', format: 'ID numérico (Ex: 63 ou 11612).' },
+  { variable: 'Classificação (Filtro)', purpose: 'Filtro de Subgrupos', format: 'Cl=Cxxxx/[ID] (Ex: 12023[46001]).' }
+];
+
+const ADDITIONAL_VARIABLES = [
+  { variable: 'Região', purpose: 'Localidades desagregadas', format: 'N2[all] (Regiões) ou N3[all] (UF).' },
+  { variable: 'Unidade de Medida', purpose: 'Interpretação de volumetria', format: 'Milhões de Reais, Taxa Percentual, etc.' }
+];
+
 export default function ApiManagementTab() {
   const { t } = useTranslation();
   const [apis, setApis] = useState<ApiRegistry[]>([]);
@@ -90,6 +109,10 @@ export default function ApiManagementTab() {
   const [showSchemaModal, setShowSchemaModal] = useState(false);
   const [testingAllApis, setTestingAllApis] = useState(false);
   const [testAllProgress, setTestAllProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
+  const [sortColumn, setSortColumn] = useState<SortColumn>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showVariablesSection, setShowVariablesSection] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     provider: 'BCB' as string,
@@ -468,6 +491,70 @@ export default function ApiManagementTab() {
     return null;
   };
 
+  // Sorting logic
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const getSortIcon = (column: SortColumn) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ChevronUp className="h-3 w-3 text-primary" />
+      : <ChevronDown className="h-3 w-3 text-primary" />;
+  };
+
+  const sortedApis = [...apis].sort((a, b) => {
+    let aVal: string | number;
+    let bVal: string | number;
+    
+    switch (sortColumn) {
+      case 'name':
+        aVal = a.name.toLowerCase();
+        bVal = b.name.toLowerCase();
+        break;
+      case 'provider':
+        aVal = a.provider.toLowerCase();
+        bVal = b.provider.toLowerCase();
+        break;
+      case 'last_checked_at':
+        aVal = a.last_checked_at || '';
+        bVal = b.last_checked_at || '';
+        break;
+      case 'extracted_count':
+        aVal = a.last_sync_metadata?.extracted_count || 0;
+        bVal = b.last_sync_metadata?.extracted_count || 0;
+        break;
+      case 'period':
+        aVal = a.fetch_start_date || '';
+        bVal = b.fetch_start_date || '';
+        break;
+      default:
+        aVal = '';
+        bVal = '';
+    }
+    
+    const comparison = typeof aVal === 'string' 
+      ? aVal.localeCompare(bVal as string)
+      : (aVal as number) - (bVal as number);
+    
+    return sortDirection === 'asc' ? comparison : -comparison;
+  });
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedApis.length / ITEMS_PER_PAGE);
+  const paginatedApis = sortedApis.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -629,13 +716,53 @@ export default function ApiManagementTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Provider</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Nome
+                      {getSortIcon('name')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                    onClick={() => handleSort('provider')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Provider
+                      {getSortIcon('provider')}
+                    </div>
+                  </TableHead>
                   <TableHead className="hidden md:table-cell">URL</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="hidden lg:table-cell">Última Verificação</TableHead>
-                  <TableHead className="hidden xl:table-cell">Dados Extraídos</TableHead>
-                  <TableHead className="hidden xl:table-cell">Período</TableHead>
+                  <TableHead 
+                    className="hidden lg:table-cell cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                    onClick={() => handleSort('last_checked_at')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Última Verificação
+                      {getSortIcon('last_checked_at')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="hidden xl:table-cell cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                    onClick={() => handleSort('extracted_count')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Dados Extraídos
+                      {getSortIcon('extracted_count')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="hidden xl:table-cell cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                    onClick={() => handleSort('period')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Período
+                      {getSortIcon('period')}
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -647,7 +774,7 @@ export default function ApiManagementTab() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  apis.map((api) => (
+                  paginatedApis.map((api) => (
                     <TableRow key={api.id}>
                       <TableCell className="font-medium">
                         <TooltipProvider>
@@ -834,8 +961,123 @@ export default function ApiManagementTab() {
               </TableBody>
             </Table>
           </div>
+          
+          {/* Pagination */}
+          {sortedApis.length > ITEMS_PER_PAGE && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border/40">
+              <span className="text-sm text-muted-foreground">
+                Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, sortedApis.length)} de {sortedApis.length} APIs
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  disabled={currentPage === 1}
+                  className="gap-1"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+                <span className="text-sm px-2">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={currentPage === totalPages}
+                  className="gap-1"
+                >
+                  Próximo
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Query Variables Section */}
+      <Collapsible open={showVariablesSection} onOpenChange={setShowVariablesSection}>
+        <Card className="border-border/40 bg-card/50">
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Key className="h-5 w-5 text-amber-500" />
+                  <CardTitle className="text-base">
+                    Variáveis Chave para Construção de Query (API/SGS/SIDRA)
+                  </CardTitle>
+                </div>
+                <ChevronDown className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                  showVariablesSection && "rotate-180"
+                )} />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 space-y-6">
+              {/* Main Variables Table */}
+              <div>
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Database className="h-4 w-4 text-primary" />
+                  Variáveis Obrigatórias
+                </h4>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[180px]">Variável</TableHead>
+                        <TableHead className="w-[280px]">Finalidade</TableHead>
+                        <TableHead>Formato/Exemplo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {QUERY_VARIABLES.map((v, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-mono text-amber-400 text-sm">{v.variable}</TableCell>
+                          <TableCell className="text-sm">{v.purpose}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{v.format}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Additional Variables Table */}
+              <div>
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Info className="h-4 w-4 text-blue-400" />
+                  Variáveis Adicionais (Metadados Ricos)
+                </h4>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[180px]">Variável</TableHead>
+                        <TableHead className="w-[280px]">Finalidade</TableHead>
+                        <TableHead>Formato/Exemplo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {ADDITIONAL_VARIABLES.map((v, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-mono text-blue-400 text-sm">{v.variable}</TableCell>
+                          <TableCell className="text-sm">{v.purpose}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{v.format}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Test Result Dialog */}
       <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
