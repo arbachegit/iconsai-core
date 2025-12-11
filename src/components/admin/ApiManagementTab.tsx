@@ -17,7 +17,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info, Stethoscope } from 'lucide-react';
+import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info, Stethoscope, Tag, ChevronDown, Key } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ApiDiagnosticModal from './ApiDiagnosticModal';
@@ -86,6 +87,7 @@ export default function ApiManagementTab() {
   const [configAutoEnabled, setConfigAutoEnabled] = useState(false);
   const [configInterval, setConfigInterval] = useState('daily');
   const [apiDiagnosticModalOpen, setApiDiagnosticModalOpen] = useState(false);
+  const [showSchemaModal, setShowSchemaModal] = useState(false);
   const [testingAllApis, setTestingAllApis] = useState(false);
   const [testAllProgress, setTestAllProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
   const [formData, setFormData] = useState({
@@ -795,6 +797,20 @@ export default function ApiManagementTab() {
                               <TooltipContent>Ver Log Detalhado</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setShowSchemaModal(true)}
+                                >
+                                  <Tag className="h-4 w-4 text-purple-500" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Ver Schema das Tabelas</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1110,6 +1126,176 @@ export default function ApiManagementTab() {
         open={apiDiagnosticModalOpen} 
         onOpenChange={setApiDiagnosticModalOpen} 
       />
+
+      {/* Schema Modal */}
+      <Dialog open={showSchemaModal} onOpenChange={setShowSchemaModal}>
+        <DialogContent className="sm:max-w-[800px] max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tag className="h-5 w-5 text-purple-500" />
+              Schema das Tabelas de Indicadores
+            </DialogTitle>
+            <DialogDescription>
+              Estrutura das tabelas utilizadas para armazenar APIs e indicadores econômicos
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="space-y-4">
+              {/* system_api_registry */}
+              <SchemaSection
+                tableName="system_api_registry"
+                description="Configurações das APIs externas"
+                columns={[
+                  { name: 'id', type: 'uuid', nullable: false, isPK: true, description: 'Identificador único' },
+                  { name: 'name', type: 'text', nullable: false, description: 'Nome da API' },
+                  { name: 'provider', type: 'text', nullable: false, description: 'Provedor (BCB, IBGE, etc)' },
+                  { name: 'base_url', type: 'text', nullable: false, description: 'URL base da API' },
+                  { name: 'method', type: 'text', nullable: true, description: 'Método HTTP (GET, POST)' },
+                  { name: 'description', type: 'text', nullable: true, description: 'Descrição da API' },
+                  { name: 'status', type: 'text', nullable: true, description: 'Status (active, inactive)' },
+                  { name: 'target_table', type: 'text', nullable: true, description: 'Tabela destino dos dados' },
+                  { name: 'fetch_start_date', type: 'date', nullable: true, description: 'Data início da coleta' },
+                  { name: 'fetch_end_date', type: 'date', nullable: true, description: 'Data fim da coleta' },
+                  { name: 'auto_fetch_enabled', type: 'boolean', nullable: true, description: 'Busca automática habilitada' },
+                  { name: 'auto_fetch_interval', type: 'text', nullable: true, description: 'Intervalo de busca' },
+                  { name: 'last_checked_at', type: 'timestamp', nullable: true, description: 'Última verificação' },
+                  { name: 'last_http_status', type: 'integer', nullable: true, description: 'Último status HTTP' },
+                  { name: 'last_latency_ms', type: 'integer', nullable: true, description: 'Última latência (ms)' },
+                  { name: 'last_sync_metadata', type: 'jsonb', nullable: true, description: 'Metadados da última sincronização' },
+                  { name: 'created_at', type: 'timestamp', nullable: true, description: 'Data de criação' },
+                  { name: 'updated_at', type: 'timestamp', nullable: true, description: 'Data de atualização' },
+                ]}
+              />
+
+              {/* economic_indicators */}
+              <SchemaSection
+                tableName="economic_indicators"
+                description="Metadados dos indicadores econômicos"
+                columns={[
+                  { name: 'id', type: 'uuid', nullable: false, isPK: true, description: 'Identificador único' },
+                  { name: 'code', type: 'text', nullable: false, description: 'Código do indicador (ex: SELIC)' },
+                  { name: 'name', type: 'text', nullable: false, description: 'Nome do indicador' },
+                  { name: 'category', type: 'text', nullable: true, description: 'Categoria (macro, preços, etc)' },
+                  { name: 'frequency', type: 'text', nullable: true, description: 'Frequência (daily, monthly, yearly)' },
+                  { name: 'unit', type: 'text', nullable: true, description: 'Unidade de medida' },
+                  { name: 'api_id', type: 'uuid', nullable: true, isFK: true, description: 'Referência à API fonte' },
+                  { name: 'cron_schedule', type: 'text', nullable: true, description: 'Agendamento cron' },
+                  { name: 'created_at', type: 'timestamp', nullable: true, description: 'Data de criação' },
+                  { name: 'updated_at', type: 'timestamp', nullable: true, description: 'Data de atualização' },
+                ]}
+              />
+
+              {/* indicator_values */}
+              <SchemaSection
+                tableName="indicator_values"
+                description="Valores coletados dos indicadores"
+                columns={[
+                  { name: 'id', type: 'uuid', nullable: false, isPK: true, description: 'Identificador único' },
+                  { name: 'indicator_id', type: 'uuid', nullable: false, isFK: true, description: 'Referência ao indicador' },
+                  { name: 'reference_date', type: 'date', nullable: false, description: 'Data de referência do valor' },
+                  { name: 'value', type: 'numeric', nullable: false, description: 'Valor do indicador' },
+                  { name: 'created_at', type: 'timestamp', nullable: true, description: 'Data de inserção' },
+                ]}
+              />
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// Schema Section Component
+interface ColumnSchema {
+  name: string;
+  type: string;
+  nullable: boolean;
+  isPK?: boolean;
+  isFK?: boolean;
+  description: string;
+}
+
+interface SchemaSectionProps {
+  tableName: string;
+  description: string;
+  columns: ColumnSchema[];
+}
+
+function SchemaSection({ tableName, description, columns }: SchemaSectionProps) {
+  const [isOpen, setIsOpen] = useState(true);
+  
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'uuid': return 'text-blue-400';
+      case 'text': return 'text-green-400';
+      case 'integer': case 'numeric': return 'text-amber-400';
+      case 'boolean': return 'text-purple-400';
+      case 'timestamp': case 'date': return 'text-cyan-400';
+      case 'jsonb': return 'text-pink-400';
+      default: return 'text-muted-foreground';
+    }
+  };
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger asChild>
+        <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border/40 cursor-pointer hover:bg-muted/50 transition-colors">
+          <div className="flex items-center gap-3">
+            <Database className="h-4 w-4 text-primary" />
+            <div>
+              <span className="font-mono font-medium text-sm">{tableName}</span>
+              <p className="text-xs text-muted-foreground">{description}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs">
+              {columns.length} colunas
+            </Badge>
+            <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+          </div>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-2 border border-border/40 rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/20">
+                <TableHead className="w-[180px]">Coluna</TableHead>
+                <TableHead className="w-[100px]">Tipo</TableHead>
+                <TableHead className="w-[80px] text-center">Null?</TableHead>
+                <TableHead>Descrição</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {columns.map((col) => (
+                <TableRow key={col.name}>
+                  <TableCell className="font-mono text-sm">
+                    <div className="flex items-center gap-1.5">
+                      {col.isPK && <Key className="h-3 w-3 text-amber-500" />}
+                      {col.isFK && <span className="text-blue-400 text-xs">FK</span>}
+                      {col.name}
+                    </div>
+                  </TableCell>
+                  <TableCell className={cn("font-mono text-xs", getTypeColor(col.type))}>
+                    {col.type}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {col.nullable ? (
+                      <span className="text-muted-foreground text-xs">✓</span>
+                    ) : (
+                      <span className="text-red-400 text-xs">✗</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {col.description}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
