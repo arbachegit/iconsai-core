@@ -52,25 +52,180 @@ const BCB_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 };
 
-// ========== V7.2: HTTP/2 RESILIENCE PROTOCOL ==========
+// ========== V7.3: HTTP/2 ULTRA-RESILIENCE PROTOCOL ==========
 
-// Log detailed HTTP/2 error diagnostics
-function logHTTP2Error(error: Error, provider: string, url: string): void {
+// Header strategies for bypassing HTTP/2 negotiation issues
+const HEADER_STRATEGIES = {
+  standard: {
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Encoding': 'gzip, deflate',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Connection': 'keep-alive',
+    'Cache-Control': 'no-cache'
+  },
+  minimal: {
+    'Accept': 'application/json',
+    'User-Agent': 'KnowYOU-DataCollector/1.0'
+  },
+  compatible: {
+    'Accept': 'application/json, text/plain, */*',
+    'User-Agent': 'Mozilla/5.0',
+    'Connection': 'close' // Forces HTTP/1.1 behavior
+  },
+  legacy: {
+    'Accept': '*/*'
+  }
+};
+
+type HeaderStrategy = keyof typeof HEADER_STRATEGIES;
+
+// Enhanced HTTP/2 diagnostic logging V2
+function logHTTP2DiagnosticV2(error: Error, provider: string, url: string, attempt: number, strategy: string): void {
   const isHTTP2 = error.message?.includes('http2');
   const isStream = error.message?.includes('stream error');
+  const isRefused = error.message?.includes('refused') || error.message?.includes('ECONNREFUSED');
   const isIPv6 = url.includes('[') || error.message?.includes('2600:') || error.message?.includes('IPv6');
+  const isTimeout = error.message?.includes('abort') || error.message?.includes('timeout') || error.message?.includes('Timeout');
+  const isReset = error.message?.includes('ECONNRESET') || error.message?.includes('reset');
   
-  console.error(`[HTTP2-DIAGNOSTIC] ================================`);
-  console.error(`[HTTP2-DIAGNOSTIC] Provider: ${provider}`);
-  console.error(`[HTTP2-DIAGNOSTIC] URL: ${url.substring(0, 100)}...`);
-  console.error(`[HTTP2-DIAGNOSTIC] Error Type: ${isHTTP2 ? 'HTTP/2 Protocol' : 'Other'}`);
-  console.error(`[HTTP2-DIAGNOSTIC] Stream Error: ${isStream}`);
-  console.error(`[HTTP2-DIAGNOSTIC] IPv6 Connection: ${isIPv6}`);
-  console.error(`[HTTP2-DIAGNOSTIC] Full Message: ${error.message}`);
-  console.error(`[HTTP2-DIAGNOSTIC] ================================`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2] ════════════════════════════════════════`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2] Provider: ${provider}`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2] Attempt: ${attempt}`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2] Header Strategy: ${strategy}`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2] URL: ${url.substring(0, 100)}...`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2] ─────────────────────────────────────────`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2] Error Classification:`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2]   ├─ HTTP/2 Protocol Error: ${isHTTP2}`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2]   ├─ Stream Error: ${isStream}`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2]   ├─ Connection Refused: ${isRefused}`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2]   ├─ Connection Reset: ${isReset}`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2]   ├─ IPv6 Connection: ${isIPv6}`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2]   └─ Timeout: ${isTimeout}`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2] ─────────────────────────────────────────`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2] Full Message: ${error.message}`);
+  console.error(`[HTTP2-DIAGNOSTIC-V2] ════════════════════════════════════════`);
 }
 
-// Fetch with HTTP/2 resilience - retry with exponential backoff
+// Legacy diagnostic function for backward compatibility
+function logHTTP2Error(error: Error, provider: string, url: string): void {
+  logHTTP2DiagnosticV2(error, provider, url, 0, 'unknown');
+}
+
+// Ultra-resilient fetch for international APIs with 4 retry strategies
+async function fetchWithHTTP2UltraResilience(
+  url: string,
+  providerName: string = 'Unknown',
+  fallbackUrl: string | null = null
+): Promise<{ response: Response | null; usedFallback: boolean; provider: string }> {
+  
+  // 4 attempts with progressive backoff and different header strategies
+  const attempts: Array<{ delay: number; timeout: number; strategy: HeaderStrategy }> = [
+    { delay: 5000, timeout: 45000, strategy: 'standard' },
+    { delay: 10000, timeout: 60000, strategy: 'minimal' },
+    { delay: 20000, timeout: 90000, strategy: 'compatible' },
+    { delay: 30000, timeout: 120000, strategy: 'legacy' }
+  ];
+  
+  console.log(`[HTTP2-ULTRA] ═══════════════════════════════════════════════════`);
+  console.log(`[HTTP2-ULTRA] 🌍 Starting ULTRA-RESILIENT fetch for: ${providerName}`);
+  console.log(`[HTTP2-ULTRA] Primary URL: ${url.substring(0, 80)}...`);
+  console.log(`[HTTP2-ULTRA] Fallback URL: ${fallbackUrl ? 'Available' : 'None'}`);
+  console.log(`[HTTP2-ULTRA] ═══════════════════════════════════════════════════`);
+  
+  // Try primary URL with all 4 strategies
+  for (let i = 0; i < attempts.length; i++) {
+    const { delay, timeout, strategy } = attempts[i];
+    const attemptNum = i + 1;
+    
+    try {
+      console.log(`[HTTP2-ULTRA] [${providerName}] Attempt ${attemptNum}/4 - Strategy: ${strategy} - Timeout: ${timeout}ms`);
+      
+      const headers = HEADER_STRATEGIES[strategy];
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        console.log(`[HTTP2-ULTRA] ✅ [${providerName}] SUCCESS on attempt ${attemptNum} with strategy '${strategy}'`);
+        console.log(`[HTTP2-ULTRA] ✅ HTTP Status: ${response.status}`);
+        return { response, usedFallback: false, provider: providerName };
+      }
+      
+      console.warn(`[HTTP2-ULTRA] ⚠️ [${providerName}] HTTP ${response.status} on attempt ${attemptNum}`);
+      
+    } catch (error) {
+      const err = error as Error;
+      console.error(`[HTTP2-ULTRA] ❌ [${providerName}] Attempt ${attemptNum} FAILED: ${err.message}`);
+      logHTTP2DiagnosticV2(err, providerName, url, attemptNum, strategy);
+      
+      if (i < attempts.length - 1) {
+        console.log(`[HTTP2-ULTRA] [${providerName}] Waiting ${delay}ms before next attempt...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  console.error(`[HTTP2-ULTRA] ❌ [${providerName}] ALL 4 ATTEMPTS FAILED on primary URL`);
+  
+  // STRATEGIC FALLBACK: Try fallback URL if available
+  if (fallbackUrl) {
+    console.log(`[HTTP2-ULTRA] 🔄 [${providerName}] Attempting FALLBACK to WorldBank...`);
+    console.log(`[HTTP2-ULTRA] Fallback URL: ${fallbackUrl.substring(0, 80)}...`);
+    
+    // Use same 4-attempt strategy for fallback
+    for (let i = 0; i < attempts.length; i++) {
+      const { delay, timeout, strategy } = attempts[i];
+      const attemptNum = i + 1;
+      
+      try {
+        console.log(`[HTTP2-ULTRA] [WorldBank-Fallback] Attempt ${attemptNum}/4 - Strategy: ${strategy}`);
+        
+        const headers = HEADER_STRATEGIES[strategy];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        
+        const response = await fetch(fallbackUrl, {
+          method: 'GET',
+          headers,
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          console.log(`[HTTP2-ULTRA] ✅ [WorldBank-Fallback] SUCCESS on attempt ${attemptNum}`);
+          return { response, usedFallback: true, provider: 'WorldBank' };
+        }
+        
+      } catch (error) {
+        const err = error as Error;
+        console.error(`[HTTP2-ULTRA] ❌ [WorldBank-Fallback] Attempt ${attemptNum} FAILED: ${err.message}`);
+        logHTTP2DiagnosticV2(err, 'WorldBank-Fallback', fallbackUrl, attemptNum, strategy);
+        
+        if (i < attempts.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    console.error(`[HTTP2-ULTRA] ❌ FALLBACK ALSO FAILED after 4 attempts`);
+  }
+  
+  console.error(`[HTTP2-ULTRA] ═══════════════════════════════════════════════════`);
+  console.error(`[HTTP2-ULTRA] 💀 TOTAL FAILURE: All attempts exhausted for ${providerName}`);
+  console.error(`[HTTP2-ULTRA] ═══════════════════════════════════════════════════`);
+  
+  return { response: null, usedFallback: false, provider: providerName };
+}
+
+// Standard fetch with HTTP/2 resilience (for backward compatibility)
 async function fetchWithHTTP2Resilience(
   url: string,
   options: RequestInit = {},
@@ -83,17 +238,11 @@ async function fetchWithHTTP2Resilience(
     try {
       console.log(`[HTTP2-RESILIENCE] [${providerName}] Attempt ${attempt + 1}/${maxRetries}`);
       
-      // Headers optimized for maximum HTTP/2 compatibility
       const resilientHeaders: Record<string, string> = {
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Encoding': 'gzip, deflate', // No brotli to avoid issues
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Connection': 'keep-alive',
-        'Cache-Control': 'no-cache',
+        ...HEADER_STRATEGIES.standard,
         ...(options.headers as Record<string, string> || {})
       };
       
-      // Progressive timeout: 30s, 45s, 60s
       const timeout = 30000 + (attempt * 15000);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -106,24 +255,17 @@ async function fetchWithHTTP2Resilience(
       
       clearTimeout(timeoutId);
       
-      console.log(`[HTTP2-RESILIENCE] [${providerName}] Success: HTTP ${response.status} (timeout was ${timeout}ms)`);
+      console.log(`[HTTP2-RESILIENCE] [${providerName}] Success: HTTP ${response.status}`);
       return response;
       
     } catch (error) {
       const err = error as Error;
-      const isHTTP2Error = err.message?.includes('http2 error') || 
-                           err.message?.includes('stream error');
-      
-      console.error(`[HTTP2-RESILIENCE] [${providerName}] Attempt ${attempt + 1} failed:`);
-      console.error(`[HTTP2-RESILIENCE] [${providerName}] Error: ${err.message}`);
-      console.error(`[HTTP2-RESILIENCE] [${providerName}] Is HTTP/2 error: ${isHTTP2Error}`);
-      
-      // Log detailed HTTP/2 diagnostics
+      console.error(`[HTTP2-RESILIENCE] [${providerName}] Attempt ${attempt + 1} failed: ${err.message}`);
       logHTTP2Error(err, providerName, url);
       
       if (attempt < maxRetries - 1) {
         const delay = delays[attempt] || delays[delays.length - 1];
-        console.log(`[HTTP2-RESILIENCE] [${providerName}] Waiting ${delay}ms before retry...`);
+        console.log(`[HTTP2-RESILIENCE] [${providerName}] Waiting ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {
         throw error;
@@ -134,13 +276,14 @@ async function fetchWithHTTP2Resilience(
   throw new Error(`All ${maxRetries} attempts failed for ${providerName}`);
 }
 
-// Fetch international API with strategic fallback (IMF → WorldBank)
+// Fetch international API with ultra-resilience and strategic fallback
 interface InternationalFetchResult {
   success: boolean;
   data: unknown;
   error: string | null;
   provider: string;
   usedFallback: boolean;
+  httpStatus: number | null;
 }
 
 async function fetchInternationalAPI(
@@ -149,57 +292,47 @@ async function fetchInternationalAPI(
   fallbackUrl: string | null,
   indicatorName: string
 ): Promise<InternationalFetchResult> {
-  console.log(`[INTERNATIONAL-API] Fetching ${indicatorName} from ${primaryProvider}`);
+  console.log(`[INTERNATIONAL-API] 🌍 Fetching ${indicatorName} from ${primaryProvider}`);
   
-  try {
-    // Primary attempt with HTTP/2 resilience
-    const response = await fetchWithHTTP2Resilience(primaryUrl, { method: 'GET' }, 3, primaryProvider);
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log(`[INTERNATIONAL-API] ✅ Primary source (${primaryProvider}) success`);
-      return { success: true, data, error: null, provider: primaryProvider, usedFallback: false };
+  // Use ultra-resilient fetch with fallback support
+  const result = await fetchWithHTTP2UltraResilience(primaryUrl, primaryProvider, fallbackUrl);
+  
+  if (result.response) {
+    try {
+      const data = await result.response.json();
+      console.log(`[INTERNATIONAL-API] ✅ Success via ${result.provider} (fallback: ${result.usedFallback})`);
+      return { 
+        success: true, 
+        data, 
+        error: null, 
+        provider: result.provider, 
+        usedFallback: result.usedFallback,
+        httpStatus: result.response.status
+      };
+    } catch (parseError) {
+      console.error(`[INTERNATIONAL-API] ❌ JSON parse error: ${parseError}`);
+      return { 
+        success: false, 
+        data: null, 
+        error: 'JSON parse error', 
+        provider: result.provider, 
+        usedFallback: result.usedFallback,
+        httpStatus: result.response.status
+      };
     }
-    
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    
-  } catch (primaryError) {
-    const err = primaryError as Error;
-    console.error(`[INTERNATIONAL-API] ❌ Primary source (${primaryProvider}) failed: ${err.message}`);
-    logHTTP2Error(err, primaryProvider, primaryUrl);
-    
-    // STRATEGIC FALLBACK: If IMF fails and we have WorldBank fallback
-    if (primaryProvider === 'IMF' && fallbackUrl) {
-      console.log(`[INTERNATIONAL-API] 🔄 Attempting fallback to WorldBank...`);
-      
-      try {
-        const fallbackResponse = await fetchWithHTTP2Resilience(
-          fallbackUrl, { method: 'GET' }, 3, 'WorldBank-Fallback'
-        );
-        
-        if (fallbackResponse.ok) {
-          const fallbackData = await fallbackResponse.json();
-          console.log(`[INTERNATIONAL-API] ✅ Fallback to WorldBank successful`);
-          return { success: true, data: fallbackData, error: null, provider: 'WorldBank', usedFallback: true };
-        }
-      } catch (fallbackError) {
-        const fallbackErr = fallbackError as Error;
-        console.error(`[INTERNATIONAL-API] ❌ Fallback (WorldBank) also failed: ${fallbackErr.message}`);
-        logHTTP2Error(fallbackErr, 'WorldBank-Fallback', fallbackUrl);
-      }
-    }
-    
-    return { 
-      success: false, 
-      data: null, 
-      error: `${primaryProvider} API error: ${err.message}`,
-      provider: primaryProvider,
-      usedFallback: false
-    };
   }
+  
+  return { 
+    success: false, 
+    data: null, 
+    error: `All attempts failed for ${primaryProvider}`, 
+    provider: primaryProvider, 
+    usedFallback: false,
+    httpStatus: null
+  };
 }
 
-// ========== END V7.2 HTTP/2 RESILIENCE ==========
+// ========== END V7.3 HTTP/2 ULTRA-RESILIENCE ==========
 
 // Format date as DD/MM/YYYY for BCB API
 function formatDateBCB(date: Date): string {
@@ -949,19 +1082,27 @@ serve(async (req) => {
           syncMetadata = generateIBGESyncMetadata(ibgeData);
           httpStatus = ibgeData.length > 0 ? 200 : null;
           console.log(`[FETCH-ECONOMIC] 📊 IBGE fetch complete for ${indicator.name}: ${ibgeData.length} result chunks`);
-        } else {
-          // Other providers: standard fetch
-          const response = await fetch(apiConfig.base_url);
-          httpStatus = response.status;
+        } else if (apiConfig.provider === 'IMF' || apiConfig.provider === 'WorldBank' || apiConfig.provider === 'YahooFinance') {
+          // INTERNATIONAL APIS: Use ultra-resilience protocol with fallback
+          console.log(`[FETCH-ECONOMIC] 🌍 Starting INTERNATIONAL fetch for: ${indicator.name}`);
+          console.log(`[FETCH-ECONOMIC] Provider: ${apiConfig.provider}`);
+          console.log(`[FETCH-ECONOMIC] Fallback URL: ${apiConfig.redundant_api_url ? 'Available' : 'None'}`);
           
-          if (!response.ok) {
-            console.error(`[FETCH-ECONOMIC] API error for ${indicator.name}: ${response.status}`);
+          const intlResult = await fetchInternationalAPI(
+            apiConfig.base_url,
+            apiConfig.provider,
+            apiConfig.redundant_api_url,
+            indicator.name
+          );
+          
+          if (!intlResult.success) {
+            console.error(`[FETCH-ECONOMIC] ❌ International API failed for ${indicator.name}: ${intlResult.error}`);
             
             // Update API registry with error status
             await supabase.from('system_api_registry').update({
               status: 'error',
               last_checked_at: new Date().toISOString(),
-              last_http_status: response.status,
+              last_http_status: intlResult.httpStatus,
               last_sync_metadata: {
                 extracted_count: 0,
                 period_start: null,
@@ -969,14 +1110,69 @@ serve(async (req) => {
                 fields_detected: [],
                 last_record_value: null,
                 fetch_timestamp: new Date().toISOString(),
-                error: `HTTP ${response.status}`
+                error: intlResult.error
               }
             }).eq('id', apiConfig.id);
             
             results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
             continue;
           }
-          data = await response.json();
+          
+          httpStatus = intlResult.httpStatus || 200;
+          data = intlResult.data;
+          rawResponse = intlResult.data;
+          
+          console.log(`[FETCH-ECONOMIC] ✅ International fetch success for ${indicator.name} via ${intlResult.provider}`);
+          if (intlResult.usedFallback) {
+            console.log(`[FETCH-ECONOMIC] ⚠️ Used FALLBACK provider: ${intlResult.provider}`);
+          }
+        } else {
+          // Other generic providers: standard fetch with basic resilience
+          console.log(`[FETCH-ECONOMIC] 🔄 Starting generic fetch for: ${indicator.name} (${apiConfig.provider})`);
+          
+          try {
+            const response = await fetchWithHTTP2Resilience(apiConfig.base_url, { method: 'GET' }, 3, apiConfig.provider);
+            httpStatus = response.status;
+            
+            if (!response.ok) {
+              console.error(`[FETCH-ECONOMIC] API error for ${indicator.name}: ${response.status}`);
+              
+              await supabase.from('system_api_registry').update({
+                status: 'error',
+                last_checked_at: new Date().toISOString(),
+                last_http_status: response.status,
+                last_sync_metadata: {
+                  extracted_count: 0,
+                  period_start: null,
+                  period_end: null,
+                  fields_detected: [],
+                  last_record_value: null,
+                  fetch_timestamp: new Date().toISOString(),
+                  error: `HTTP ${response.status}`
+                }
+              }).eq('id', apiConfig.id);
+              
+              results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
+              continue;
+            }
+            data = await response.json();
+          } catch (fetchError) {
+            const err = fetchError as Error;
+            console.error(`[FETCH-ECONOMIC] ❌ Fetch failed for ${indicator.name}: ${err.message}`);
+            
+            await supabase.from('system_api_registry').update({
+              status: 'error',
+              last_checked_at: new Date().toISOString(),
+              last_sync_metadata: {
+                extracted_count: 0,
+                error: err.message,
+                fetch_timestamp: new Date().toISOString()
+              }
+            }).eq('id', apiConfig.id);
+            
+            results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
+            continue;
+          }
         }
 
         let valuesToInsert: Array<{ indicator_id: string; reference_date: string; value: number }> = [];
