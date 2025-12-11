@@ -26,6 +26,9 @@ export default function MonthlyMatrixView({ indicatorId, values, unit, onValueCh
   const [editingCell, setEditingCell] = useState<{ year: number; month: number } | null>(null);
   const [editValue, setEditValue] = useState('');
 
+  // Debug log for visual diagnostic
+  console.log(`[MonthlyMatrixView] Indicator: ${indicatorId}, Received ${values.length} values`);
+
   // Build matrix data: { year: { month: IndicatorValue } }
   const matrixData = useMemo(() => {
     const data: Record<number, Record<number, IndicatorValue>> = {};
@@ -41,7 +44,9 @@ export default function MonthlyMatrixView({ indicatorId, values, unit, onValueCh
       data[year][month] = v;
     });
 
-    return { data, years: Array.from(years).sort((a, b) => b - a) };
+    const sortedYears = Array.from(years).sort((a, b) => b - a);
+    console.log(`[MonthlyMatrixView] Processed ${values.length} values into ${sortedYears.length} years: ${sortedYears.join(', ')}`);
+    return { data, years: sortedYears };
   }, [values]);
 
   // Calculate annual average
