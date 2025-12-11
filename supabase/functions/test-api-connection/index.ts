@@ -27,6 +27,17 @@ interface SyncMetadata {
   fetch_timestamp: string;
 }
 
+interface IBGEResult {
+  id: string;
+  variavel: string;
+  resultados: Array<{
+    series: Array<{
+      localidade: { id: string; nome: string };
+      serie: Record<string, string>;
+    }>;
+  }>;
+}
+
 // Format date as DD/MM/YYYY for BCB API
 function formatDateBCB(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
@@ -39,6 +50,127 @@ function formatDateBCB(date: Date): string {
 function bcbDateToISO(bcbDate: string): string {
   const [day, month, year] = bcbDate.split('/');
   return `${year}-${month}-${day}`;
+}
+
+// Generate 3-year chunks for IBGE API (avoids HTTP 500 errors)
+function generateIBGEYearChunks(startDate: string, endDate: string): Array<{ start: string; end: string; periodFormat: string }> {
+  const chunks: Array<{ start: string; end: string; periodFormat: string }> = [];
+  
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  let chunkStart = new Date(start.getFullYear(), 0, 1);
+  
+  while (chunkStart <= end) {
+    const chunkEnd = new Date(chunkStart.getFullYear() + 2, 11, 31);
+    const actualEnd = chunkEnd > end ? end : chunkEnd;
+    
+    const startYYYYMM = `${chunkStart.getFullYear()}${String(chunkStart.getMonth() + 1).padStart(2, '0')}`;
+    const endYYYYMM = `${actualEnd.getFullYear()}${String(actualEnd.getMonth() + 1).padStart(2, '0')}`;
+    
+    chunks.push({
+      start: chunkStart.toISOString().split('T')[0],
+      end: actualEnd.toISOString().split('T')[0],
+      periodFormat: `${startYYYYMM}-${endYYYYMM}`
+    });
+    
+    chunkStart = new Date(chunkStart.getFullYear() + 3, 0, 1);
+  }
+  
+  console.log(`[TEST-API] Generated ${chunks.length} IBGE chunks from ${startDate} to ${endDate}`);
+  return chunks;
+}
+
+// Fetch IBGE data with chunking (3-year blocks to avoid HTTP 500)
+async function fetchIBGEWithChunking(
+  baseUrl: string,
+  startDate: string,
+  endDate: string,
+  headers: Record<string, string>
+): Promise<{ success: boolean; data: any[]; error: string | null; latencyMs: number; statusCode: number | null }> {
+  const chunks = generateIBGEYearChunks(startDate, endDate);
+  const allData: any[] = [];
+  let totalLatency = 0;
+  let lastStatusCode: number | null = null;
+  
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    const chunkUrl = baseUrl.replace('{PERIOD}', chunk.periodFormat);
+    
+    console.log(`[TEST-API] IBGE chunk ${i + 1}/${chunks.length}: ${chunk.periodFormat}`);
+    
+    const startTime = performance.now();
+    
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout per chunk
+      
+      const response = await fetch(chunkUrl, {
+        method: 'GET',
+        headers,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      totalLatency += performance.now() - startTime;
+      lastStatusCode = response.status;
+      
+      if (!response.ok) {
+        console.error(`[TEST-API] IBGE chunk ${i + 1} failed: HTTP ${response.status}`);
+        // Continue with other chunks even if one fails
+        if (i < chunks.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 750));
+          continue;
+        }
+        if (allData.length === 0) {
+          return { success: false, data: [], error: `HTTP ${response.status}`, latencyMs: totalLatency, statusCode: lastStatusCode };
+        }
+        break;
+      }
+      
+      const text = await response.text();
+      const data = JSON.parse(text) as IBGEResult[];
+      
+      if (Array.isArray(data) && data.length > 0) {
+        // Merge series data from chunks
+        if (allData.length === 0) {
+          allData.push(...data);
+        } else {
+          // Merge series data into existing structure
+          for (const item of data) {
+            const existing = allData.find(d => d.id === item.id);
+            if (existing && existing.resultados?.[0]?.series?.[0]?.serie) {
+              const newSeries = item.resultados?.[0]?.series?.[0]?.serie || {};
+              Object.assign(existing.resultados[0].series[0].serie, newSeries);
+            }
+          }
+        }
+      }
+      
+      console.log(`[TEST-API] IBGE chunk ${i + 1} success: ${data?.[0]?.resultados?.[0]?.series?.[0]?.serie ? Object.keys(data[0].resultados[0].series[0].serie).length : 0} periods`);
+      
+      // Delay between chunks to avoid rate limiting
+      if (i < chunks.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 750));
+      }
+      
+    } catch (error) {
+      console.error(`[TEST-API] IBGE chunk ${i + 1} error:`, error);
+      totalLatency += performance.now() - startTime;
+      
+      if (allData.length === 0 && i === chunks.length - 1) {
+        return { success: false, data: [], error: String(error), latencyMs: totalLatency, statusCode: lastStatusCode };
+      }
+    }
+  }
+  
+  return { 
+    success: allData.length > 0, 
+    data: allData, 
+    error: null, 
+    latencyMs: Math.round(totalLatency),
+    statusCode: lastStatusCode
+  };
 }
 
 // Analyze API response and extract metadata
@@ -71,8 +203,31 @@ function analyzeApiResponse(data: unknown, provider: string): SyncMetadata {
       metadata.period_end = bcbDateToISO(dates[dates.length - 1]);
       metadata.last_record_value = data[data.length - 1].valor;
     }
+    
+    // IBGE format detection
+    if (provider === 'IBGE' && data[0].resultados) {
+      const resultados = data[0].resultados;
+      if (resultados.length > 0 && resultados[0].series?.length > 0) {
+        const serie = resultados[0].series[0].serie || {};
+        const periods = Object.keys(serie).filter(k => serie[k] && serie[k] !== '-');
+        
+        metadata.extracted_count = periods.length;
+        metadata.fields_detected = ['D2C', 'V', 'variavel', 'unidade'];
+        
+        if (periods.length > 0) {
+          periods.sort();
+          const formatPeriod = (p: string) => {
+            if (p.length === 6) return `${p.substring(0, 4)}-${p.substring(4, 6)}-01`;
+            return `${p}-01-01`;
+          };
+          metadata.period_start = formatPeriod(periods[0]);
+          metadata.period_end = formatPeriod(periods[periods.length - 1]);
+          metadata.last_record_value = serie[periods[periods.length - 1]];
+        }
+      }
+    }
   } 
-  // Handle IBGE nested structure
+  // Handle IBGE nested structure (alternative check)
   else if (!Array.isArray(data) && typeof data === 'object') {
     const ibgeData = data as any[];
     if (Array.isArray(ibgeData) && ibgeData.length > 0 && ibgeData[0].resultados) {
@@ -143,6 +298,7 @@ serve(async (req) => {
     const targetTable = apiInfo?.target_table || 'indicator_values';
     
     console.log(`[TEST-API] ====== AUDIT: DATE CONFIGURATION ======`);
+    console.log(`[TEST-API] Provider: ${provider}`);
     console.log(`[TEST-API] Configured fetch_start_date: ${apiInfo?.fetch_start_date}`);
     console.log(`[TEST-API] Configured fetch_end_date: ${apiInfo?.fetch_end_date}`);
 
@@ -159,14 +315,6 @@ serve(async (req) => {
       syncMetadata: null,
     };
 
-    // Create abort controller for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-    // Detect provider from URL
-    const isBCB = baseUrl.includes('api.bcb.gov.br');
-    const isIBGE = baseUrl.includes('servicodados.ibge.gov.br');
-
     // Dynamic headers based on provider
     const requestHeaders: Record<string, string> = {
       'Accept': 'application/json, text/plain, */*',
@@ -174,10 +322,40 @@ serve(async (req) => {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     };
 
-    // Construct test URL - for BCB, use CONFIGURED dates or 1-year fallback
-    let testUrl = baseUrl;
-    
-    if (isBCB) {
+    // Detect provider from URL
+    const isBCB = baseUrl.includes('api.bcb.gov.br');
+    const isIBGE = baseUrl.includes('servicodados.ibge.gov.br');
+    const hasPerioPlaceholder = baseUrl.includes('{PERIOD}');
+
+    // IBGE API with {PERIOD} placeholder - use chunking
+    if (isIBGE && hasPerioPlaceholder) {
+      console.log(`[TEST-API] IBGE API with {PERIOD} placeholder detected - using chunking strategy`);
+      
+      const startDate = apiInfo?.fetch_start_date || '2012-01-01';
+      const endDate = apiInfo?.fetch_end_date || new Date().toISOString().split('T')[0];
+      
+      console.log(`[TEST-API] Fetching IBGE data from ${startDate} to ${endDate} with 3-year chunks`);
+      
+      const startTime = performance.now();
+      const ibgeResult = await fetchIBGEWithChunking(baseUrl, startDate, endDate, requestHeaders);
+      
+      result.latencyMs = ibgeResult.latencyMs;
+      result.statusCode = ibgeResult.statusCode;
+      result.statusText = ibgeResult.success ? 'OK (chunked)' : 'Error';
+      result.contentType = 'application/json';
+      
+      if (ibgeResult.success && ibgeResult.data.length > 0) {
+        result.success = true;
+        result.syncMetadata = analyzeApiResponse(ibgeResult.data, 'IBGE');
+        result.preview = ibgeResult.data.slice(0, 2);
+        console.log(`[TEST-API] IBGE chunked fetch success - ${result.syncMetadata?.extracted_count} periods extracted`);
+      } else {
+        result.error = ibgeResult.error || 'No data returned from IBGE API';
+        console.log(`[TEST-API] IBGE chunked fetch failed: ${result.error}`);
+      }
+    }
+    // BCB API handling
+    else if (isBCB) {
       // Use configured dates from database, or fallback to 1-year window
       const hasConfiguredDates = apiInfo?.fetch_start_date && apiInfo?.fetch_end_date;
       
@@ -200,91 +378,119 @@ serve(async (req) => {
       const hasParams = cleanUrl.includes('?');
       const separator = hasParams ? '&' : '?';
       
-      testUrl = `${cleanUrl}${separator}dataInicial=${formatDateBCB(startDate)}&dataFinal=${formatDateBCB(endDate)}`;
+      const testUrl = `${cleanUrl}${separator}dataInicial=${formatDateBCB(startDate)}&dataFinal=${formatDateBCB(endDate)}`;
       
-      console.log(`[TEST-API] Test URL: ${testUrl}`);
-    } else if (isIBGE) {
-      console.log(`[TEST-API] IBGE API detected - using standard request`);
-    } else {
-      console.log(`[TEST-API] Generic API - using standard request`);
-    }
+      console.log(`[TEST-API] BCB Test URL: ${testUrl}`);
 
-    console.log(`[TEST-API] Request headers:`, requestHeaders);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const startTime = performance.now();
 
-    const startTime = performance.now();
+      try {
+        const response = await fetch(testUrl, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: requestHeaders,
+        });
 
-    try {
-      const fetchOptions: RequestInit = {
-        method: 'GET',
-        signal: controller.signal,
-        headers: requestHeaders,
-      };
+        clearTimeout(timeoutId);
+        result.latencyMs = Math.round(performance.now() - startTime);
+        result.statusCode = response.status;
+        result.statusText = response.statusText;
+        result.contentType = response.headers.get('Content-Type');
 
-      const response = await fetch(testUrl, fetchOptions);
-
-      clearTimeout(timeoutId);
-      const endTime = performance.now();
-
-      result.latencyMs = Math.round(endTime - startTime);
-      result.statusCode = response.status;
-      result.statusText = response.statusText;
-      result.contentType = response.headers.get('Content-Type');
-
-      console.log(`[TEST-API] Response: ${response.status} ${response.statusText} (${result.latencyMs}ms)`);
-
-      // Check if response is OK (200-299)
-      if (response.ok) {
-        // Try to parse JSON response
-        const text = await response.text();
-        
-        try {
-          const data = JSON.parse(text);
-          
-          // Analyze response and extract metadata
-          result.syncMetadata = analyzeApiResponse(data, provider);
-          console.log(`[TEST-API] Sync metadata:`, result.syncMetadata);
-          
-          // Extract preview (first 2 items if array, or first 2 keys if object)
-          if (Array.isArray(data)) {
-            result.preview = data.slice(0, 2);
-          } else if (typeof data === 'object' && data !== null) {
-            // For BCB/IBGE APIs that return objects with arrays
-            const keys = Object.keys(data);
-            if (keys.length > 0 && Array.isArray(data[keys[0]])) {
-              result.preview = data[keys[0]].slice(0, 2);
-            } else {
-              // Just show the object structure
-              result.preview = [data];
-            }
-          } else {
-            result.preview = [{ value: data }];
+        if (response.ok) {
+          const text = await response.text();
+          try {
+            const data = JSON.parse(text);
+            result.syncMetadata = analyzeApiResponse(data, provider);
+            result.preview = Array.isArray(data) ? data.slice(0, 2) : [data];
+            result.success = true;
+          } catch (parseError) {
+            result.error = 'Response is not valid JSON';
+            result.preview = [{ raw: text.substring(0, 200) }];
           }
-          
-          result.success = true;
-          console.log(`[TEST-API] JSON parsed successfully, preview items: ${result.preview?.length}`);
-        } catch (parseError) {
-          // Response is not JSON
-          result.error = 'Response is not valid JSON';
-          result.preview = [{ raw: text.substring(0, 200) + (text.length > 200 ? '...' : '') }];
-          console.log(`[TEST-API] Response is not JSON: ${parseError}`);
+        } else {
+          result.error = `HTTP ${response.status}: ${response.statusText}`;
         }
-      } else {
-        result.error = `HTTP ${response.status}: ${response.statusText}`;
-        console.log(`[TEST-API] HTTP error: ${result.error}`);
+      } catch (fetchError: unknown) {
+        clearTimeout(timeoutId);
+        result.latencyMs = Math.round(performance.now() - startTime);
+        const err = fetchError as Error;
+        if (err.name === 'AbortError') {
+          result.timeout = true;
+          result.error = 'Connection timeout (10s exceeded)';
+        } else {
+          result.error = err.message || 'Network error';
+        }
       }
-    } catch (fetchError: unknown) {
-      clearTimeout(timeoutId);
-      const endTime = performance.now();
-      result.latencyMs = Math.round(endTime - startTime);
+    }
+    // Generic API / IBGE without placeholder - standard request
+    else {
+      console.log(`[TEST-API] Standard API request (no chunking)`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const startTime = performance.now();
 
-      const err = fetchError as Error;
-      if (err.name === 'AbortError') {
-        result.timeout = true;
-        result.error = 'Connection timeout (10s exceeded)';
-        console.log(`[TEST-API] Timeout after ${result.latencyMs}ms`);
-      } else {
-        result.error = err.message || 'Network error';
-        console.log(`[TEST-API] Fetch error: ${err.message}`);
+      try {
+        const response = await fetch(baseUrl, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: requestHeaders,
+        });
+
+        clearTimeout(timeoutId);
+        result.latencyMs = Math.round(performance.now() - startTime);
+        result.statusCode = response.status;
+        result.statusText = response.statusText;
+        result.contentType = response.headers.get('Content-Type');
+
+        console.log(`[TEST-API] Response: ${response.status} ${response.statusText} (${result.latencyMs}ms)`);
+
+        if (response.ok) {
+          const text = await response.text();
+          try {
+            const data = JSON.parse(text);
+            result.syncMetadata = analyzeApiResponse(data, provider);
+            
+            if (Array.isArray(data)) {
+              result.preview = data.slice(0, 2);
+            } else if (typeof data === 'object' && data !== null) {
+              const keys = Object.keys(data);
+              if (keys.length > 0 && Array.isArray(data[keys[0]])) {
+                result.preview = data[keys[0]].slice(0, 2);
+              } else {
+                result.preview = [data];
+              }
+            } else {
+              result.preview = [{ value: data }];
+            }
+            
+            result.success = true;
+            console.log(`[TEST-API] JSON parsed successfully, preview items: ${result.preview?.length}`);
+          } catch (parseError) {
+            result.error = 'Response is not valid JSON';
+            result.preview = [{ raw: text.substring(0, 200) + (text.length > 200 ? '...' : '') }];
+            console.log(`[TEST-API] Response is not JSON: ${parseError}`);
+          }
+        } else {
+          result.error = `HTTP ${response.status}: ${response.statusText}`;
+          console.log(`[TEST-API] HTTP error: ${result.error}`);
+        }
+      } catch (fetchError: unknown) {
+        clearTimeout(timeoutId);
+        result.latencyMs = Math.round(performance.now() - startTime);
+
+        const err = fetchError as Error;
+        if (err.name === 'AbortError') {
+          result.timeout = true;
+          result.error = 'Connection timeout (10s exceeded)';
+          console.log(`[TEST-API] Timeout after ${result.latencyMs}ms`);
+        } else {
+          result.error = err.message || 'Network error';
+          console.log(`[TEST-API] Fetch error: ${err.message}`);
+        }
       }
     }
 
