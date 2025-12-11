@@ -540,57 +540,45 @@ async function fetchIBGEWithChunking(
   console.log(`[FETCH-ECONOMIC] [IBGE]   - Has negative period: ${negativePeriodMatch ? negativePeriodMatch[1] : 'NO'}`);
   console.log(`[FETCH-ECONOMIC] [IBGE]   - Has fixed period: ${fixedPeriodMatch ? `${fixedPeriodMatch[1]}-${fixedPeriodMatch[2]}` : 'NO'}`);
   
-  // ========== V7.1 FIX: CONVERT NEGATIVE PERIOD TO DYNAMIC PERIOD ==========
+  // ========== V7.3 FIX: USE NEGATIVE PERIOD DIRECTLY (NO CONVERSION) ==========
+  // Negative periods like -40 work universally for ALL IBGE aggregates (monthly, quarterly, annual)
+  // Converting to YYYYMM-YYYYMM format breaks quarterly aggregates like PIB
   if (negativePeriodMatch) {
-    console.log(`[FETCH-ECONOMIC] [IBGE] ⚠️ NEGATIVE PERIOD DETECTED: ${negativePeriodMatch[1]}`);
-    console.log(`[FETCH-ECONOMIC] [IBGE] 🔄 V7.1 FIX: CONVERTING to configured dates: ${fetchStartDate} → ${fetchEndDate}`);
+    const negativePeriod = negativePeriodMatch[1];
+    console.log(`[FETCH-ECONOMIC] [IBGE] ✅ NEGATIVE PERIOD DETECTED: ${negativePeriod}`);
+    console.log(`[FETCH-ECONOMIC] [IBGE] ✅ V7.3: Using negative period DIRECTLY (no conversion)`);
+    console.log(`[FETCH-ECONOMIC] [IBGE] ✅ This format works for ALL periodicities (monthly, quarterly, annual)`);
     
-    // Calculate dynamic period based on CONFIGURED dates (not using negative period)
-    const startYYYYMM = startDate.getFullYear().toString() + 
-      String(startDate.getMonth() + 1).padStart(2, '0');
-    const endYYYYMM = endDate.getFullYear().toString() + 
-      String(endDate.getMonth() + 1).padStart(2, '0');
-    
-    // Replace negative period with dynamic YYYYMM-YYYYMM format
-    const dynamicUrl = baseUrl.replace(
-      /\/periodos\/-\d+\//,
-      `/periodos/${startYYYYMM}-${endYYYYMM}/`
-    );
-    
-    console.log(`[FETCH-ECONOMIC] [IBGE] 🎯 ORIGINAL URL: ${baseUrl.substring(0, 150)}...`);
-    console.log(`[FETCH-ECONOMIC] [IBGE] 🎯 DYNAMIC URL:  ${dynamicUrl.substring(0, 150)}...`);
-    console.log(`[FETCH-ECONOMIC] [IBGE] 🎯 Period converted: -${negativePeriodMatch[1]} → ${startYYYYMM}-${endYYYYMM}`);
-    
-    // Now use chunked fetching with the converted URL (has fixed period format now)
-    // We need to update chunks to match the configured dates
-    console.log(`[FETCH-ECONOMIC] [IBGE] Proceeding with ANNUAL chunking for converted URL...`);
-    
-    // Fall through to chunked fetching below by updating baseUrl reference
-    // Set hasPlaceholder = false and fixedPeriodMatch to the new format
+    // SINGLE FETCH with original negative period URL
+    try {
+      console.log(`[FETCH-ECONOMIC] [IBGE] 📤 Fetching: ${baseUrl.substring(0, 150)}...`);
+      const response = await fetch(baseUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (compatible; KnowYOU-Bot/1.0)'
+        }
+      });
+      
+      console.log(`[FETCH-ECONOMIC] [IBGE] HTTP Status: ${response.status} ${response.statusText}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`[FETCH-ECONOMIC] [IBGE] ✅ Single fetch SUCCESS with negative period`);
+        return data as IBGEResult[];
+      } else {
+        const errorText = await response.text();
+        console.error(`[FETCH-ECONOMIC] ❌ [IBGE] HTTP ERROR ${response.status}: ${errorText}`);
+      }
+    } catch (e) {
+      console.error(`[FETCH-ECONOMIC] ❌ [IBGE] Fetch with negative period failed:`, e);
+    }
+    return [];
   }
   
-  // ========== V7.1: Determine effective URL for chunking ==========
-  // If negative period was converted, use the dynamic URL with fixed period format
+  // ========== For non-negative period URLs: proceed with chunking ==========
   let effectiveUrl = baseUrl;
   let effectiveHasPlaceholder = hasPlaceholder;
   let effectiveFixedPeriodMatch = fixedPeriodMatch;
-  
-  if (negativePeriodMatch) {
-    // Negative period was converted - create the effective URL
-    const startYYYYMM = startDate.getFullYear().toString() + 
-      String(startDate.getMonth() + 1).padStart(2, '0');
-    const endYYYYMM = endDate.getFullYear().toString() + 
-      String(endDate.getMonth() + 1).padStart(2, '0');
-    
-    effectiveUrl = baseUrl.replace(
-      /\/periodos\/-\d+\//,
-      `/periodos/${startYYYYMM}-${endYYYYMM}/`
-    );
-    effectiveHasPlaceholder = false;
-    effectiveFixedPeriodMatch = effectiveUrl.match(fixedPeriodRegex);
-    
-    console.log(`[FETCH-ECONOMIC] [IBGE] V7.1: Using converted URL for chunking`);
-  }
   
   // ========== VALIDATE URL CAN BE CHUNKED ==========
   if (!effectiveHasPlaceholder && !effectiveFixedPeriodMatch) {
