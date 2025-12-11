@@ -1,3 +1,4 @@
+// Landing page with lazy-loaded components
 import React, { Suspense, lazy } from "react";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
