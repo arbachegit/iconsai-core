@@ -973,13 +973,28 @@ serve(async (req) => {
             }
           }
 
-          // Update API registry with success telemetry
-          await supabase.from('system_api_registry').update({
+          // Update API registry with success telemetry AND discovered period
+          const registryUpdate: Record<string, unknown> = {
             status: 'active',
             last_checked_at: new Date().toISOString(),
             last_http_status: httpStatus,
             last_sync_metadata: syncMetadata
-          }).eq('id', apiConfig.id);
+          };
+
+          // Persist discovered period (governance feature)
+          if (syncMetadata?.period_start) {
+            registryUpdate.discovered_period_start = syncMetadata.period_start;
+            console.log(`[FETCH-ECONOMIC] [GOVERNANCE] Persisting discovered_period_start: ${syncMetadata.period_start}`);
+          }
+          if (syncMetadata?.period_end) {
+            registryUpdate.discovered_period_end = syncMetadata.period_end;
+            console.log(`[FETCH-ECONOMIC] [GOVERNANCE] Persisting discovered_period_end: ${syncMetadata.period_end}`);
+          }
+          if (syncMetadata?.period_start || syncMetadata?.period_end) {
+            registryUpdate.period_discovery_date = new Date().toISOString();
+          }
+
+          await supabase.from('system_api_registry').update(registryUpdate).eq('id', apiConfig.id);
 
           // If NEW records were inserted, dispatch notification
           if (newValues.length > 0) {
