@@ -405,14 +405,28 @@ serve(async (req) => {
 
           console.log(`[FETCH-ECONOMIC] ${indicator.name}: ${valuesToInsert.length} total, ${newValues.length} NEW records`);
 
-          const { error: insertError } = await supabase
+          // Execute upsert with detailed audit logging
+          console.log(`[FETCH-ECONOMIC] ====== UPSERT AUDIT START: ${indicator.name} ======`);
+          console.log(`[FETCH-ECONOMIC] Attempting upsert of ${valuesToInsert.length} records`);
+          console.log(`[FETCH-ECONOMIC] Date range: ${valuesToInsert[0]?.reference_date} to ${valuesToInsert[valuesToInsert.length - 1]?.reference_date}`);
+          
+          const { error: insertError, count: upsertCount } = await supabase
             .from('indicator_values')
-            .upsert(valuesToInsert, { onConflict: 'indicator_id,reference_date', ignoreDuplicates: false });
+            .upsert(valuesToInsert, { 
+              onConflict: 'indicator_id,reference_date', 
+              ignoreDuplicates: false,
+              count: 'exact'
+            });
 
           if (insertError) {
-            console.error(`[FETCH-ECONOMIC] Insert error for ${indicator.name}:`, insertError);
+            console.error(`[FETCH-ECONOMIC] ❌ UPSERT FAILED for ${indicator.name}:`, insertError);
+            console.error(`[FETCH-ECONOMIC] Error code: ${insertError.code}`);
+            console.error(`[FETCH-ECONOMIC] Error message: ${insertError.message}`);
+            console.error(`[FETCH-ECONOMIC] Error details: ${insertError.details}`);
             results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
           } else {
+            console.log(`[FETCH-ECONOMIC] ✅ UPSERT SUCCESS: ${upsertCount ?? valuesToInsert.length} records persisted for ${indicator.name}`);
+            console.log(`[FETCH-ECONOMIC] ====== UPSERT AUDIT END ======`);
             totalRecordsInserted += valuesToInsert.length;
             newRecordsCount += newValues.length;
             results.push({ 
