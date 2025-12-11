@@ -1,8 +1,7 @@
-import { useState, useEffect, memo, useRef } from "react";
+import { useState, useEffect, memo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
 import { 
   ZoomIn, 
   ZoomOut, 
@@ -74,41 +73,9 @@ const Arquitetura = () => {
   const [currentPhase, setCurrentPhase] = useState<SimulationPhase>('idle');
   const [adapterLoaded, setAdapterLoaded] = useState(false);
 
-  // Brain flow animation controls
-  const [isAnimationPaused, setIsAnimationPaused] = useState(false);
-  const [animationSpeed, setAnimationSpeed] = useState(1); // 0.5x to 2x
-  const [elementSpacing, setElementSpacing] = useState(3); // 1-6 seconds
-  const brainFlowSvgRef = useRef<SVGSVGElement>(null);
-
   // Use global audio player context
   const { playAudio, floatingPlayerState } = useAudioPlayer();
 
-  // Element counts
-  const INPUT_ELEMENT_COUNT = 15;
-  const OUTPUT_ELEMENT_COUNT = 19;
-
-  // Calculate dynamic durations: duration = elementCount * spacing / speed
-  // This ensures all elements are evenly distributed and complete the full path
-  const inputDuration = Math.round((INPUT_ELEMENT_COUNT * elementSpacing) / animationSpeed);
-  const outputDuration = Math.round((OUTPUT_ELEMENT_COUNT * elementSpacing) / animationSpeed);
-
-  // Pause/unpause SVG animations
-  useEffect(() => {
-    const svg = brainFlowSvgRef.current;
-    if (svg) {
-      if (isAnimationPaused) {
-        svg.pauseAnimations();
-      } else {
-        svg.unpauseAnimations();
-      }
-    }
-  }, [isAnimationPaused]);
-
-  // Force re-render when speed or spacing changes
-  useEffect(() => {
-    setAnimationKey(prev => prev + 1);
-  }, [animationSpeed, elementSpacing]);
-  
   const AUDIO_URL = "https://gmflpmcepempcygdrayv.supabase.co/storage/v1/object/public/tooltip-audio/audio-contents/e137c34e-4523-406a-a7bc-35ac598cc9f6.mp3";
   const AUDIO_TITLE = "AI Escalável: O Segredo dos 90% Mais Barato! 💰";
 
@@ -131,14 +98,6 @@ const Arquitetura = () => {
     document.body.removeChild(link);
   };
 
-  useEffect(() => {
-    if (!isSimulating) {
-      const interval = setInterval(() => {
-        setAnimationKey(prev => prev + 1);
-      }, 15000);
-      return () => clearInterval(interval);
-    }
-  }, [isSimulating]);
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 20, 150));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 20, 60));
@@ -435,7 +394,11 @@ const Arquitetura = () => {
 
   // Brain flow animation component - Cognitive Processing Diagram
   const renderBrainFlowAnimation = () => {
-    // INPUT elements pattern: MessageCircle, Palavra, MessageCircle, Dados, MessageCircle, PROMPT (repeat)
+    // Fixed animation parameters for continuous flow
+    const ANIMATION_DURATION = 24; // seconds for full path traversal
+    const STAGGER_DELAY = 4; // seconds between elements (24s / 6 elements = 4s)
+
+    // INPUT elements: [Icon] → Palavra → [Icon] → Dados → [Icon] → PROMPT (6 elements)
     const inputElements = [
       { type: 'icon', color: 'text-pink-300' },
       { type: 'badge', text: 'Palavra', bg: '#a855f7' },
@@ -443,18 +406,9 @@ const Arquitetura = () => {
       { type: 'badge', text: 'Dados', bg: '#8b5cf6' },
       { type: 'icon', color: 'text-pink-300' },
       { type: 'badge', text: 'PROMPT', bg: '#10b981' },
-      { type: 'icon', color: 'text-cyan-300' },
-      { type: 'badge', text: 'Palavra', bg: '#a855f7' },
-      { type: 'icon', color: 'text-pink-300' },
-      { type: 'badge', text: 'Dados', bg: '#8b5cf6' },
-      { type: 'icon', color: 'text-pink-300' },
-      { type: 'badge', text: 'PROMPT', bg: '#10b981' },
-      { type: 'icon', color: 'text-cyan-300' },
-      { type: 'badge', text: 'Palavra', bg: '#a855f7' },
-      { type: 'icon', color: 'text-pink-300' },
     ];
 
-    // OUTPUT elements pattern: Sparkles, VALOR, Sparkles, SOLUÇÃO, Sparkles, EFICIÊNCIA (repeat)
+    // OUTPUT elements: [Icon] → VALOR → [Icon] → SOLUÇÃO → [Icon] → EFICIÊNCIA (6 elements)
     const outputElements = [
       { type: 'icon', color: 'text-cyan-300' },
       { type: 'badge', text: 'VALOR', bg: '#06b6d4', textColor: '#0f172a' },
@@ -462,19 +416,6 @@ const Arquitetura = () => {
       { type: 'badge', text: 'SOLUÇÃO', bg: '#8b5cf6', textColor: '#fff' },
       { type: 'icon', color: 'text-cyan-300' },
       { type: 'badge', text: 'EFICIÊNCIA', bg: '#22d3ee', textColor: '#0f172a', width: 96 },
-      { type: 'icon', color: 'text-violet-300' },
-      { type: 'badge', text: 'VALOR', bg: '#06b6d4', textColor: '#0f172a' },
-      { type: 'icon', color: 'text-cyan-300' },
-      { type: 'badge', text: 'SOLUÇÃO', bg: '#8b5cf6', textColor: '#fff' },
-      { type: 'icon', color: 'text-violet-300' },
-      { type: 'badge', text: 'EFICIÊNCIA', bg: '#22d3ee', textColor: '#0f172a', width: 96 },
-      { type: 'icon', color: 'text-cyan-300' },
-      { type: 'badge', text: 'VALOR', bg: '#06b6d4', textColor: '#0f172a' },
-      { type: 'icon', color: 'text-violet-300' },
-      { type: 'badge', text: 'SOLUÇÃO', bg: '#8b5cf6', textColor: '#fff' },
-      { type: 'icon', color: 'text-cyan-300' },
-      { type: 'badge', text: 'EFICIÊNCIA', bg: '#22d3ee', textColor: '#0f172a', width: 96 },
-      { type: 'icon', color: 'text-violet-300' },
     ];
 
     return (
@@ -486,8 +427,6 @@ const Arquitetura = () => {
 
           {/* Main cognitive flow diagram */}
           <svg 
-            key={animationKey}
-            ref={brainFlowSvgRef}
             viewBox="0 0 1000 280" 
             className="w-full h-auto relative z-10 py-6"
           >
@@ -618,14 +557,14 @@ const Arquitetura = () => {
                 <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
               </path>
 
-              {/* Dynamic INPUT Elements */}
+              {/* INPUT Elements - Continuous flow Human → AI */}
               {inputElements.map((el, index) => (
                 <g key={`input-${index}`}>
                   <animateMotion 
-                    dur={`${inputDuration}s`} 
-                    begin={`${index * elementSpacing}s`} 
+                    dur={`${ANIMATION_DURATION}s`} 
+                    begin={`${index * STAGGER_DELAY}s`} 
                     repeatCount="indefinite" 
-                    fill="freeze"
+                    calcMode="linear"
                   >
                     <mpath href="#inputPath" />
                   </animateMotion>
@@ -677,14 +616,14 @@ const Arquitetura = () => {
                 <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
               </path>
 
-              {/* Dynamic OUTPUT Elements */}
+              {/* OUTPUT Elements - Continuous flow AI → Human */}
               {outputElements.map((el, index) => (
                 <g key={`output-${index}`}>
                   <animateMotion 
-                    dur={`${outputDuration}s`} 
-                    begin={`${index * elementSpacing}s`} 
+                    dur={`${ANIMATION_DURATION}s`} 
+                    begin={`${index * STAGGER_DELAY}s`} 
                     repeatCount="indefinite" 
-                    fill="freeze"
+                    calcMode="linear"
                   >
                     <mpath href="#outputPath" />
                   </animateMotion>
@@ -714,71 +653,6 @@ const Arquitetura = () => {
           </svg>
         </div>
 
-        {/* Animation Controls Panel */}
-        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mt-4 p-4 bg-slate-900/80 rounded-xl border border-cyan-500/30 backdrop-blur-sm">
-          {/* Pause/Play Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsAnimationPaused(!isAnimationPaused)}
-            className="gap-2 border-cyan-500/50 hover:border-cyan-400 hover:bg-cyan-500/10"
-          >
-            {isAnimationPaused ? (
-              <>
-                <Play className="h-4 w-4 text-cyan-400" />
-                <span className="text-cyan-300">Play</span>
-              </>
-            ) : (
-              <>
-                <Pause className="h-4 w-4 text-cyan-400" />
-                <span className="text-cyan-300">Pausar</span>
-              </>
-            )}
-          </Button>
-
-          {/* Speed Control */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-cyan-300/80 whitespace-nowrap">Velocidade</span>
-            <Slider
-              value={[animationSpeed]}
-              onValueChange={(value) => setAnimationSpeed(value[0])}
-              min={0.5}
-              max={2}
-              step={0.1}
-              className="w-24 md:w-32"
-            />
-            <span className="text-xs text-cyan-400 font-mono w-10">{animationSpeed.toFixed(1)}x</span>
-          </div>
-
-          {/* Spacing Control */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-cyan-300/80 whitespace-nowrap">Espaçamento</span>
-            <Slider
-              value={[elementSpacing]}
-              onValueChange={(value) => setElementSpacing(value[0])}
-              min={1}
-              max={6}
-              step={0.5}
-              className="w-24 md:w-32"
-            />
-            <span className="text-xs text-cyan-400 font-mono w-8">{elementSpacing.toFixed(1)}s</span>
-          </div>
-
-          {/* Reset Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setAnimationSpeed(1);
-              setElementSpacing(3);
-              setIsAnimationPaused(false);
-            }}
-            className="gap-1 text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10"
-          >
-            <RotateCcw className="h-3 w-3" />
-            <span className="text-xs">Reset</span>
-          </Button>
-        </div>
       </div>
     );
   };
