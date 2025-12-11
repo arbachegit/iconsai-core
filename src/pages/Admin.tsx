@@ -73,6 +73,7 @@ const UserRegistryTab = lazy(() => import("@/components/admin/UserRegistryTab"))
 const EconomicIndicatorsTab = lazy(() => import("@/components/admin/EconomicIndicatorsTab"));
 const MarketNewsTab = lazy(() => import("@/components/admin/MarketNewsTab"));
 const ApiManagementTab = lazy(() => import("@/components/admin/ApiManagementTab"));
+const JsonDataObservabilityTab = lazy(() => import("@/components/admin/JsonDataObservabilityTab").then(m => ({ default: m.JsonDataObservabilityTab })));
 
 // Loading fallback component
 const TabLoadingFallback = () => (
@@ -81,7 +82,7 @@ const TabLoadingFallback = () => (
   </div>
 );
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -124,6 +125,7 @@ const TAB_LABELS: Record<TabType, string> = {
   "economic-indicators": "Painel de Indicadores",
   "market-news": "Balcão de Notícias",
   "api-management": "Gestão de APIs",
+  "json-data": "JSON Dados",
 };
 
 const Admin = () => {
@@ -290,6 +292,7 @@ const Admin = () => {
         case "economic-indicators": return <EconomicIndicatorsTab />;
         case "market-news": return <MarketNewsTab />;
         case "api-management": return <ApiManagementTab />;
+        case "json-data": return <JsonDataObservabilityTab />;
         default: return <DashboardTab />;
       }
     })();
