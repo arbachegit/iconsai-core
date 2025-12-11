@@ -53,6 +53,8 @@ export function DataAnalysisTab() {
   const [yearRange, setYearRange] = useState<[number, number]>([2015, 2025]);
   const [impactIndicator, setImpactIndicator] = useState<string | null>(null);
   const [impactVariation, setImpactVariation] = useState<number>(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
 
   // Fetch indicators
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
@@ -102,9 +104,14 @@ export function DataAnalysisTab() {
     staleTime: 30000,
   });
 
-  const handleRefresh = () => {
-    refetchIndicators();
-    refetchValues();
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refetchIndicators(), refetchValues()]);
+      setLastUpdate({ count: allValues.length, date: new Date() });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // Get date range for each indicator
@@ -354,10 +361,17 @@ export function DataAnalysisTab() {
             Análise comparativa e correlações entre indicadores econômicos
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Atualizar Dados
-        </Button>
+        <div className="flex items-center gap-3">
+          {lastUpdate && (
+            <span className="text-xs text-muted-foreground">
+              {lastUpdate.count.toLocaleString()} registros • {lastUpdate.date.toLocaleDateString('pt-BR')} {lastUpdate.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="gap-2">
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Atualizando...' : 'Atualizar Dados'}
+          </Button>
+        </div>
       </div>
 
       {/* Indicator Selection Table */}
