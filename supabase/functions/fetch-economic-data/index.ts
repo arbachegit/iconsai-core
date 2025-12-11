@@ -373,15 +373,53 @@ async function fetchIBGEWithChunking(
   console.log(`[FETCH-ECONOMIC] [IBGE] ${indicatorName} - chunking into ${chunks.length} ANNUAL periods`);
   console.log(`[FETCH-ECONOMIC] [IBGE] Chunks:`, JSON.stringify(chunks));
   
-  // Extract URL pattern - replace hardcoded period with placeholder or find period segment
-  // IBGE URL format: .../periodos/YYYYMM-YYYYMM/...
-  const periodRegex = /\/periodos\/(\d{6})-(\d{6})\//;
-  const periodMatch = baseUrl.match(periodRegex);
+  // ========== UNIFIED URL PERIOD DETECTION ==========
+  // Priority 1: Check for {PERIOD} placeholder (dynamic URL)
+  const hasPlaceholder = baseUrl.includes('{PERIOD}');
   
-  if (!periodMatch) {
-    console.error(`[FETCH-ECONOMIC] ❌ [IBGE] Cannot find period pattern in URL: ${baseUrl}`);
-    console.error(`[FETCH-ECONOMIC] ❌ [IBGE] Expected format: /periodos/YYYYMM-YYYYMM/`);
-    // Fallback: try single request anyway
+  // Priority 2: Check for negative period (e.g., -120 = last 120 periods) - NO CHUNKING NEEDED
+  const negativePeriodMatch = baseUrl.match(/\/periodos\/(-\d+)\//);
+  
+  // Priority 3: Check for fixed period format YYYYMM-YYYYMM
+  const fixedPeriodRegex = /\/periodos\/(\d{6})-(\d{6})\//;
+  const fixedPeriodMatch = baseUrl.match(fixedPeriodRegex);
+  
+  console.log(`[FETCH-ECONOMIC] [IBGE] URL Analysis:`);
+  console.log(`[FETCH-ECONOMIC] [IBGE]   - Has {PERIOD} placeholder: ${hasPlaceholder}`);
+  console.log(`[FETCH-ECONOMIC] [IBGE]   - Has negative period: ${negativePeriodMatch ? negativePeriodMatch[1] : 'NO'}`);
+  console.log(`[FETCH-ECONOMIC] [IBGE]   - Has fixed period: ${fixedPeriodMatch ? `${fixedPeriodMatch[1]}-${fixedPeriodMatch[2]}` : 'NO'}`);
+  
+  // ========== HANDLE NEGATIVE PERIOD (NO CHUNKING) ==========
+  if (negativePeriodMatch) {
+    console.log(`[FETCH-ECONOMIC] [IBGE] 🔄 Negative period detected (${negativePeriodMatch[1]}) - fetching without chunking`);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
+      
+      const response = await fetch(baseUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      console.log(`[FETCH-ECONOMIC] [IBGE] HTTP Status: ${response.status}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`[FETCH-ECONOMIC] ✅ [IBGE] Negative period fetch successful`);
+        return data as IBGEResult[];
+      } else {
+        console.error(`[FETCH-ECONOMIC] ❌ [IBGE] Negative period fetch failed: HTTP ${response.status}`);
+        return [];
+      }
+    } catch (e) {
+      console.error(`[FETCH-ECONOMIC] ❌ [IBGE] Negative period fetch exception:`, e);
+      return [];
+    }
+  }
+  
+  // ========== VALIDATE URL CAN BE CHUNKED ==========
+  if (!hasPlaceholder && !fixedPeriodMatch) {
+    console.error(`[FETCH-ECONOMIC] ❌ [IBGE] Cannot chunk URL - no {PERIOD} placeholder or fixed period found`);
+    console.error(`[FETCH-ECONOMIC] ❌ [IBGE] URL: ${baseUrl}`);
+    // Fallback: try single request
     try {
       const response = await fetch(baseUrl);
       if (response.ok) {
@@ -396,9 +434,19 @@ async function fetchIBGEWithChunking(
   
   for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
     const chunk = chunks[chunkIndex];
+    const periodFormat = `${chunk.start}-${chunk.end}`;
     
-    // Replace period in URL with chunk period
-    const chunkUrl = baseUrl.replace(periodRegex, `/periodos/${chunk.start}-${chunk.end}/`);
+    // Build chunk URL based on detected pattern
+    let chunkUrl: string;
+    if (hasPlaceholder) {
+      // Replace {PERIOD} placeholder with actual period
+      chunkUrl = baseUrl.replace('{PERIOD}', periodFormat);
+    } else {
+      // Replace fixed period with chunk period
+      chunkUrl = baseUrl.replace(fixedPeriodRegex, `/periodos/${periodFormat}/`);
+    }
+    
+    console.log(`[FETCH-ECONOMIC] [IBGE] 📤 Chunk URL: ${chunkUrl.substring(0, 180)}...`);
     
     console.log(`[FETCH-ECONOMIC] [IBGE] Chunk ${chunkIndex + 1}/${chunks.length}: ${chunk.start} to ${chunk.end}`);
     
