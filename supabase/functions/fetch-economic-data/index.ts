@@ -393,81 +393,88 @@ serve(async (req) => {
           console.log(`[FETCH-ECONOMIC] IBGE parsed values: ${valuesToInsert.length}`);
         }
 
-        if (valuesToInsert.length > 0) {
-          // Check for existing records to detect NEW data
-          const { data: existingRecords } = await supabase
-            .from('indicator_values')
-            .select('reference_date')
-            .eq('indicator_id', indicator.id);
+        // ====== ZERO VALUES WARNING ======
+        if (valuesToInsert.length === 0) {
+          console.warn(`[FETCH-ECONOMIC] ⚠️ ZERO VALUES WARNING: ${indicator.name}`);
+          console.warn(`[FETCH-ECONOMIC] Provider: ${apiConfig.provider}`);
+          console.warn(`[FETCH-ECONOMIC] Configured dates: ${apiConfig.fetch_start_date} to ${apiConfig.fetch_end_date}`);
+          console.warn(`[FETCH-ECONOMIC] Base URL: ${apiConfig.base_url}`);
+          console.warn(`[FETCH-ECONOMIC] Check if ${apiConfig.provider} API has data for this period`);
+          console.warn(`[FETCH-ECONOMIC] Possible causes: 1) Wrong date format 2) API limit 3) No data in period`);
+          results.push({ indicator: indicator.name, records: 0, status: 'no_data', newRecords: 0 });
+          continue;
+        }
 
-          const existingDates = new Set((existingRecords || []).map(r => r.reference_date));
-          const newValues = valuesToInsert.filter(v => !existingDates.has(v.reference_date));
+        // Check for existing records to detect NEW data
+        const { data: existingRecords } = await supabase
+          .from('indicator_values')
+          .select('reference_date')
+          .eq('indicator_id', indicator.id);
 
-          console.log(`[FETCH-ECONOMIC] ${indicator.name}: ${valuesToInsert.length} total, ${newValues.length} NEW records`);
+        const existingDates = new Set((existingRecords || []).map(r => r.reference_date));
+        const newValues = valuesToInsert.filter(v => !existingDates.has(v.reference_date));
 
-          // Execute upsert with detailed audit logging
-          console.log(`[FETCH-ECONOMIC] ====== UPSERT AUDIT START: ${indicator.name} ======`);
-          console.log(`[FETCH-ECONOMIC] Attempting upsert of ${valuesToInsert.length} records`);
-          console.log(`[FETCH-ECONOMIC] Date range: ${valuesToInsert[0]?.reference_date} to ${valuesToInsert[valuesToInsert.length - 1]?.reference_date}`);
-          
-          const { error: insertError, count: upsertCount } = await supabase
-            .from('indicator_values')
-            .upsert(valuesToInsert, { 
-              onConflict: 'indicator_id,reference_date', 
-              ignoreDuplicates: false,
-              count: 'exact'
-            });
+        console.log(`[FETCH-ECONOMIC] ${indicator.name}: ${valuesToInsert.length} total, ${newValues.length} NEW records`);
 
-          if (insertError) {
-            console.error(`[FETCH-ECONOMIC] ❌ UPSERT FAILED for ${indicator.name}:`, insertError);
-            console.error(`[FETCH-ECONOMIC] Error code: ${insertError.code}`);
-            console.error(`[FETCH-ECONOMIC] Error message: ${insertError.message}`);
-            console.error(`[FETCH-ECONOMIC] Error details: ${insertError.details}`);
-            results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
-          } else {
-            console.log(`[FETCH-ECONOMIC] ✅ UPSERT SUCCESS: ${upsertCount ?? valuesToInsert.length} records persisted for ${indicator.name}`);
-            console.log(`[FETCH-ECONOMIC] ====== UPSERT AUDIT END ======`);
-            totalRecordsInserted += valuesToInsert.length;
-            newRecordsCount += newValues.length;
-            results.push({ 
-              indicator: indicator.name, 
-              records: valuesToInsert.length, 
-              status: 'success',
-              newRecords: newValues.length
-            });
+        // Execute upsert with detailed audit logging
+        console.log(`[FETCH-ECONOMIC] ====== UPSERT AUDIT START: ${indicator.name} ======`);
+        console.log(`[FETCH-ECONOMIC] Attempting upsert of ${valuesToInsert.length} records`);
+        console.log(`[FETCH-ECONOMIC] Date range: ${valuesToInsert[0]?.reference_date} to ${valuesToInsert[valuesToInsert.length - 1]?.reference_date}`);
+        
+        const { error: insertError, count: upsertCount } = await supabase
+          .from('indicator_values')
+          .upsert(valuesToInsert, { 
+            onConflict: 'indicator_id,reference_date', 
+            ignoreDuplicates: false,
+            count: 'exact'
+          });
 
-            // Update API registry with success telemetry
-            await supabase.from('system_api_registry').update({
-              status: 'active',
-              last_checked_at: new Date().toISOString(),
-              last_http_status: httpStatus,
-              last_sync_metadata: syncMetadata
-            }).eq('id', apiConfig.id);
+        if (insertError) {
+          console.error(`[FETCH-ECONOMIC] ❌ UPSERT FAILED for ${indicator.name}:`, insertError);
+          console.error(`[FETCH-ECONOMIC] Error code: ${insertError.code}`);
+          console.error(`[FETCH-ECONOMIC] Error message: ${insertError.message}`);
+          console.error(`[FETCH-ECONOMIC] Error details: ${insertError.details}`);
+          results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
+        } else {
+          console.log(`[FETCH-ECONOMIC] ✅ UPSERT SUCCESS: ${upsertCount ?? valuesToInsert.length} records persisted for ${indicator.name}`);
+          console.log(`[FETCH-ECONOMIC] ====== UPSERT AUDIT END ======`);
+          totalRecordsInserted += valuesToInsert.length;
+          newRecordsCount += newValues.length;
+          results.push({ 
+            indicator: indicator.name, 
+            records: valuesToInsert.length, 
+            status: 'success',
+            newRecords: newValues.length
+          });
 
-            // If NEW records were inserted, dispatch notification
-            if (newValues.length > 0) {
-              const latestValue = valuesToInsert[valuesToInsert.length - 1];
-              console.log(`[FETCH-ECONOMIC] NEW data detected for ${indicator.name}: ${newValues.length} records`);
-              
-              // Dispatch notification for new economic data
-              try {
-                await supabase.functions.invoke('send-email', {
-                  body: {
-                    eventType: 'new_economic_data',
-                    to: null, // Will use admin settings
-                    subject: `Novo indicador disponível: ${indicator.name}`,
-                    body: `Novo indicador disponível: ${indicator.name} referente a ${latestValue.reference_date}. Valor: ${latestValue.value}${indicator.unit ? ` ${indicator.unit}` : ''}.`
-                  }
-                });
-                console.log(`[FETCH-ECONOMIC] Notification dispatched for ${indicator.name}`);
-              } catch (notifyError) {
-                console.error('[FETCH-ECONOMIC] Notification error:', notifyError);
-              }
+          // Update API registry with success telemetry
+          await supabase.from('system_api_registry').update({
+            status: 'active',
+            last_checked_at: new Date().toISOString(),
+            last_http_status: httpStatus,
+            last_sync_metadata: syncMetadata
+          }).eq('id', apiConfig.id);
+
+          // If NEW records were inserted, dispatch notification
+          if (newValues.length > 0) {
+            const latestValue = valuesToInsert[valuesToInsert.length - 1];
+            console.log(`[FETCH-ECONOMIC] NEW data detected for ${indicator.name}: ${newValues.length} records`);
+            
+            // Dispatch notification for new economic data
+            try {
+              await supabase.functions.invoke('send-email', {
+                body: {
+                  eventType: 'new_economic_data',
+                  to: null, // Will use admin settings
+                  subject: `Novo indicador disponível: ${indicator.name}`,
+                  body: `Novo indicador disponível: ${indicator.name} referente a ${latestValue.reference_date}. Valor: ${latestValue.value}${indicator.unit ? ` ${indicator.unit}` : ''}.`
+                }
+              });
+              console.log(`[FETCH-ECONOMIC] Notification dispatched for ${indicator.name}`);
+            } catch (notifyError) {
+              console.error('[FETCH-ECONOMIC] Notification error:', notifyError);
             }
           }
-        } else {
-          console.log(`[FETCH-ECONOMIC] No values to insert for ${indicator.name}`);
-          results.push({ indicator: indicator.name, records: 0, status: 'no_data', newRecords: 0 });
         }
       } catch (err) {
         console.error(`[FETCH-ECONOMIC] Error processing ${indicator.name}:`, err);
