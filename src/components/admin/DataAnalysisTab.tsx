@@ -69,19 +69,37 @@ export function DataAnalysisTab() {
     staleTime: 30000, // 30 seconds
   });
 
-  // Fetch all indicator values
+  // Fetch all indicator values (paginated to bypass 1000 row limit)
   const { data: allValues = [], isLoading: loadingValues, refetch: refetchValues } = useQuery({
     queryKey: ["indicator-values-analysis"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("indicator_values")
-        .select("indicator_id, reference_date, value")
-        .order("reference_date");
-      if (error) throw error;
-      return data as IndicatorValue[];
+      const allData: IndicatorValue[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("indicator_values")
+          .select("indicator_id, reference_date, value")
+          .order("reference_date")
+          .range(from, from + pageSize - 1);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData.push(...(data as IndicatorValue[]));
+          from += pageSize;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      return allData;
     },
     refetchOnWindowFocus: true,
-    staleTime: 30000, // 30 seconds
+    staleTime: 30000,
   });
 
   const handleRefresh = () => {
