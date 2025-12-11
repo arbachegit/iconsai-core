@@ -52,7 +52,7 @@ function bcbDateToISO(bcbDate: string): string {
   return `${year}-${month}-${day}`;
 }
 
-// Generate 3-year chunks for IBGE API (avoids HTTP 500 errors)
+// Generate ANNUAL chunks for IBGE API (avoids HTTP 500 errors from server overload)
 function generateIBGEYearChunks(startDate: string, endDate: string): Array<{ start: string; end: string; periodFormat: string }> {
   const chunks: Array<{ start: string; end: string; periodFormat: string }> = [];
   
@@ -62,7 +62,8 @@ function generateIBGEYearChunks(startDate: string, endDate: string): Array<{ sta
   let chunkStart = new Date(start.getFullYear(), 0, 1);
   
   while (chunkStart <= end) {
-    const chunkEnd = new Date(chunkStart.getFullYear() + 2, 11, 31);
+    // ANNUAL chunks (1 year each) to prevent HTTP 500 from IBGE server overload
+    const chunkEnd = new Date(chunkStart.getFullYear(), 11, 31);
     const actualEnd = chunkEnd > end ? end : chunkEnd;
     
     const startYYYYMM = `${chunkStart.getFullYear()}${String(chunkStart.getMonth() + 1).padStart(2, '0')}`;
@@ -74,14 +75,14 @@ function generateIBGEYearChunks(startDate: string, endDate: string): Array<{ sta
       periodFormat: `${startYYYYMM}-${endYYYYMM}`
     });
     
-    chunkStart = new Date(chunkStart.getFullYear() + 3, 0, 1);
+    chunkStart = new Date(chunkStart.getFullYear() + 1, 0, 1);
   }
   
-  console.log(`[TEST-API] Generated ${chunks.length} IBGE chunks from ${startDate} to ${endDate}`);
+  console.log(`[TEST-API] Generated ${chunks.length} IBGE ANNUAL chunks from ${startDate} to ${endDate}`);
   return chunks;
 }
 
-// Fetch IBGE data with chunking (3-year blocks to avoid HTTP 500)
+// Fetch IBGE data with ANNUAL chunking to avoid HTTP 500 from server overload
 async function fetchIBGEWithChunking(
   baseUrl: string,
   startDate: string,
@@ -103,7 +104,7 @@ async function fetchIBGEWithChunking(
     
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout per chunk
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout per chunk (increased for resilience)
       
       const response = await fetch(chunkUrl, {
         method: 'GET',
@@ -119,7 +120,7 @@ async function fetchIBGEWithChunking(
         console.error(`[TEST-API] IBGE chunk ${i + 1} failed: HTTP ${response.status}`);
         // Continue with other chunks even if one fails
         if (i < chunks.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 750));
+          await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5s delay between chunks
           continue;
         }
         if (allData.length === 0) {
@@ -149,9 +150,9 @@ async function fetchIBGEWithChunking(
       
       console.log(`[TEST-API] IBGE chunk ${i + 1} success: ${data?.[0]?.resultados?.[0]?.series?.[0]?.serie ? Object.keys(data[0].resultados[0].series[0].serie).length : 0} periods`);
       
-      // Delay between chunks to avoid rate limiting
+      // Delay between chunks to avoid rate limiting (1.5s for resilience)
       if (i < chunks.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 750));
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
       
     } catch (error) {
@@ -334,7 +335,7 @@ serve(async (req) => {
       const startDate = apiInfo?.fetch_start_date || '2012-01-01';
       const endDate = apiInfo?.fetch_end_date || new Date().toISOString().split('T')[0];
       
-      console.log(`[TEST-API] Fetching IBGE data from ${startDate} to ${endDate} with 3-year chunks`);
+      console.log(`[TEST-API] Fetching IBGE data from ${startDate} to ${endDate} with ANNUAL chunks`);
       
       const startTime = performance.now();
       const ibgeResult = await fetchIBGEWithChunking(baseUrl, startDate, endDate, requestHeaders);
@@ -383,7 +384,7 @@ serve(async (req) => {
       console.log(`[TEST-API] BCB Test URL: ${testUrl}`);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout (increased for resilience)
       const startTime = performance.now();
 
       try {
@@ -419,7 +420,7 @@ serve(async (req) => {
         const err = fetchError as Error;
         if (err.name === 'AbortError') {
           result.timeout = true;
-          result.error = 'Connection timeout (10s exceeded)';
+          result.error = 'Connection timeout (45s exceeded)';
         } else {
           result.error = err.message || 'Network error';
         }
@@ -430,7 +431,7 @@ serve(async (req) => {
       console.log(`[TEST-API] Standard API request (no chunking)`);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout (increased for resilience)
       const startTime = performance.now();
 
       try {
@@ -485,7 +486,7 @@ serve(async (req) => {
         const err = fetchError as Error;
         if (err.name === 'AbortError') {
           result.timeout = true;
-          result.error = 'Connection timeout (10s exceeded)';
+          result.error = 'Connection timeout (45s exceeded)';
           console.log(`[TEST-API] Timeout after ${result.latencyMs}ms`);
         } else {
           result.error = err.message || 'Network error';
@@ -517,6 +518,31 @@ serve(async (req) => {
       console.error(`[TEST-API] Database update error:`, updateError);
     } else {
       console.log(`[TEST-API] Updated API status to: ${newStatus}, with telemetry data`);
+    }
+
+    // ====== AUTO-ADJUSTMENT: Update fetch_start_date if API history is limited ======
+    if (result.success && result.syncMetadata?.period_start && apiInfo?.fetch_start_date) {
+      const configuredStart = new Date(apiInfo.fetch_start_date);
+      const actualStart = new Date(result.syncMetadata.period_start);
+      const diffDays = (actualStart.getTime() - configuredStart.getTime()) / (1000 * 60 * 60 * 24);
+      
+      if (diffDays > 365) {
+        console.log(`[TEST-API] ⚠️ AUTO-ADJUSTMENT: API history limited. Configured: ${apiInfo.fetch_start_date}, Actual: ${result.syncMetadata.period_start}`);
+        console.log(`[TEST-API] ⚠️ Difference: ${Math.round(diffDays)} days. Updating fetch_start_date to match actual API availability.`);
+        
+        const { error: adjustError } = await supabase
+          .from('system_api_registry')
+          .update({ 
+            fetch_start_date: result.syncMetadata.period_start
+          })
+          .eq('id', apiId);
+        
+        if (adjustError) {
+          console.error(`[TEST-API] ❌ Auto-adjustment failed:`, adjustError);
+        } else {
+          console.log(`[TEST-API] ✅ Auto-adjusted fetch_start_date to ${result.syncMetadata.period_start}`);
+        }
+      }
     }
 
     return new Response(

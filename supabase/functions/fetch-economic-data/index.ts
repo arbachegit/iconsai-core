@@ -160,7 +160,7 @@ async function fetchBCBWithChunking(
           lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
           
           if (attempt < MAX_RETRIES) {
-            const delay = 1000 * attempt;
+            const delay = 5000 * attempt; // 5s, 10s, 15s exponential backoff for BCB resilience
             console.log(`[FETCH-ECONOMIC] [${indicatorName}] Waiting ${delay}ms before retry...`);
             await new Promise(resolve => setTimeout(resolve, delay));
             continue;
@@ -207,7 +207,7 @@ async function fetchBCBWithChunking(
         lastError = err instanceof Error ? err : new Error(String(err));
         
         if (attempt < MAX_RETRIES) {
-          const delay = 1000 * attempt;
+          const delay = 5000 * attempt; // 5s, 10s, 15s exponential backoff
           console.log(`[FETCH-ECONOMIC] [${indicatorName}] Waiting ${delay}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
@@ -311,7 +311,7 @@ function generateIBGESyncMetadata(ibgeData: IBGEResult[]): SyncMetadata {
   return metadata;
 }
 
-// Generate 3-year chunks for IBGE API (YYYYMM format)
+// Generate ANNUAL chunks for IBGE API (YYYYMM format) to prevent HTTP 500 errors
 function generateIBGEYearChunks(startDate: Date, endDate: Date): Array<{ start: string; end: string }> {
   const chunks: Array<{ start: string; end: string }> = [];
   let currentYear = startDate.getFullYear();
@@ -319,7 +319,8 @@ function generateIBGEYearChunks(startDate: Date, endDate: Date): Array<{ start: 
   const endMonth = endDate.getMonth() + 1;
   
   while (currentYear <= endYear) {
-    const chunkEndYear = Math.min(currentYear + 2, endYear); // 3 years per chunk
+    // ANNUAL chunks (1 year each) to prevent HTTP 500 from IBGE server overload
+    const chunkEndYear = Math.min(currentYear, endYear);
     
     // Format: YYYYMM
     const chunkStart = `${currentYear}01`;
@@ -328,7 +329,7 @@ function generateIBGEYearChunks(startDate: Date, endDate: Date): Array<{ start: 
       : `${chunkEndYear}12`;
     
     chunks.push({ start: chunkStart, end: chunkEnd });
-    currentYear = chunkEndYear + 1;
+    currentYear = currentYear + 1;
   }
   
   return chunks;
@@ -369,7 +370,7 @@ async function fetchIBGEWithChunking(
   // Generate 3-year chunks
   const chunks = generateIBGEYearChunks(startDate, endDate);
   
-  console.log(`[FETCH-ECONOMIC] [IBGE] ${indicatorName} - chunking into ${chunks.length} periods of ~3 years each`);
+  console.log(`[FETCH-ECONOMIC] [IBGE] ${indicatorName} - chunking into ${chunks.length} ANNUAL periods`);
   console.log(`[FETCH-ECONOMIC] [IBGE] Chunks:`, JSON.stringify(chunks));
   
   // Extract URL pattern - replace hardcoded period with placeholder or find period segment
@@ -423,7 +424,7 @@ async function fetchIBGEWithChunking(
           lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
           
           if (attempt < MAX_RETRIES) {
-            const delay = 2000 * attempt; // Longer delay for IBGE
+            const delay = 3000 * attempt; // 3s, 6s, 9s exponential backoff for IBGE resilience
             console.log(`[FETCH-ECONOMIC] [IBGE] Waiting ${delay}ms before retry...`);
             await new Promise(resolve => setTimeout(resolve, delay));
             continue;
@@ -460,7 +461,7 @@ async function fetchIBGEWithChunking(
         lastError = err instanceof Error ? err : new Error(String(err));
         
         if (attempt < MAX_RETRIES) {
-          const delay = 2000 * attempt;
+          const delay = 3000 * attempt; // 3s, 6s, 9s exponential backoff
           console.log(`[FETCH-ECONOMIC] [IBGE] Waiting ${delay}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
@@ -471,10 +472,10 @@ async function fetchIBGEWithChunking(
       console.error(`[FETCH-ECONOMIC] ❌ [IBGE] CHUNK ${chunkIndex + 1} FAILED after ${MAX_RETRIES} attempts: ${lastError.message}`);
     }
     
-    // Longer delay between chunks for IBGE (750ms) to avoid rate limiting
+    // Longer delay between chunks for IBGE (1.5s) for resilience and to avoid rate limiting
     if (chunkIndex < chunks.length - 1) {
-      console.log(`[FETCH-ECONOMIC] [IBGE] Waiting 750ms before next chunk...`);
-      await new Promise(resolve => setTimeout(resolve, 750));
+      console.log(`[FETCH-ECONOMIC] [IBGE] Waiting 1500ms before next chunk...`);
+      await new Promise(resolve => setTimeout(resolve, 1500));
     }
   }
   
@@ -901,6 +902,25 @@ serve(async (req) => {
                 });
               } else {
                 console.log(`[FETCH-ECONOMIC] ✅ [GOVERNANCE] Date validation PASSED (${Math.round(diffDays)} days within 30-day tolerance)`);
+              }
+              
+              // ====== AUTO-ADJUSTMENT: Update fetch_start_date if API history is limited ======
+              if (diffDays > 365 && insertedDate > configuredDate) {
+                console.log(`[FETCH-ECONOMIC] ⚠️ AUTO-ADJUSTMENT: API history limited. Configured: ${configuredStart}, Actual: ${firstInsertedDate}`);
+                console.log(`[FETCH-ECONOMIC] ⚠️ Difference: ${Math.round(diffDays)} days. Updating fetch_start_date to match actual API availability.`);
+                
+                const { error: adjustError } = await supabase
+                  .from('system_api_registry')
+                  .update({ 
+                    fetch_start_date: firstInsertedDate
+                  })
+                  .eq('id', apiConfig.id);
+                
+                if (adjustError) {
+                  console.error(`[FETCH-ECONOMIC] ❌ Auto-adjustment failed:`, adjustError);
+                } else {
+                  console.log(`[FETCH-ECONOMIC] ✅ Auto-adjusted fetch_start_date to ${firstInsertedDate}`);
+                }
               }
             }
           }
