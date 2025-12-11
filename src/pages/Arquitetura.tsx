@@ -537,10 +537,12 @@ const Arquitetura = () => {
               <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
             </path>
 
-            {/* 5 INPUT Elements - 20s duration, 4s stagger = 20% spacing */}
-            {/* Element 1: MessageCircle */}
+            {/* 15 INPUT Elements - 45s duration, 3s stagger for conveyor belt effect */}
+            {/* Pattern: MessageCircle, Palavra, MessageCircle, Dados, MessageCircle, PROMPT (repeat 2.5x) */}
+            
+            {/* 1: MessageCircle */}
             <g>
-              <animateMotion dur="20s" begin="0s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="45s" begin="0s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
               <foreignObject x="-14" y="-14" width="28" height="28">
@@ -550,36 +552,60 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
             
-            {/* Element 2: Badge "Palavra" */}
+            {/* 2: Palavra */}
             <g>
-              <animateMotion dur="20s" begin="4s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="45s" begin="3s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
               <rect x="-40" y="-14" width="80" height="28" rx="14" fill="#a855f7" opacity="0.95" />
               <text x="0" y="6" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">Palavra</text>
             </g>
             
-            {/* Element 3: Badge "Dados" */}
+            {/* 3: MessageCircle */}
             <g>
-              <animateMotion dur="20s" begin="8s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="45s" begin="6s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <MessageCircle className="w-6 h-6 text-pink-300 drop-shadow-[0_0_10px_rgba(236,72,153,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 4: Dados */}
+            <g>
+              <animateMotion dur="45s" begin="9s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
               <rect x="-34" y="-14" width="68" height="28" rx="14" fill="#8b5cf6" opacity="0.95" />
               <text x="0" y="6" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">Dados</text>
             </g>
             
-            {/* Element 4: Badge "PROMPT" */}
+            {/* 5: MessageCircle */}
             <g>
-              <animateMotion dur="20s" begin="12s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="45s" begin="12s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <MessageCircle className="w-6 h-6 text-pink-300 drop-shadow-[0_0_10px_rgba(236,72,153,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 6: PROMPT */}
+            <g>
+              <animateMotion dur="45s" begin="15s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
               <rect x="-40" y="-14" width="80" height="28" rx="14" fill="#10b981" opacity="0.95" />
               <text x="0" y="6" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">PROMPT</text>
             </g>
             
-            {/* Element 5: MessageCircle */}
+            {/* 7: MessageCircle */}
             <g>
-              <animateMotion dur="20s" begin="16s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="45s" begin="18s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#inputPath" />
               </animateMotion>
               <foreignObject x="-14" y="-14" width="28" height="28">
@@ -588,9 +614,93 @@ const Arquitetura = () => {
                 </div>
               </foreignObject>
             </g>
+            
+            {/* 8: Palavra */}
+            <g>
+              <animateMotion dur="45s" begin="21s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <rect x="-40" y="-14" width="80" height="28" rx="14" fill="#a855f7" opacity="0.95" />
+              <text x="0" y="6" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">Palavra</text>
+            </g>
+            
+            {/* 9: MessageCircle */}
+            <g>
+              <animateMotion dur="45s" begin="24s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <MessageCircle className="w-6 h-6 text-pink-300 drop-shadow-[0_0_10px_rgba(236,72,153,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 10: Dados */}
+            <g>
+              <animateMotion dur="45s" begin="27s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <rect x="-34" y="-14" width="68" height="28" rx="14" fill="#8b5cf6" opacity="0.95" />
+              <text x="0" y="6" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">Dados</text>
+            </g>
+            
+            {/* 11: MessageCircle */}
+            <g>
+              <animateMotion dur="45s" begin="30s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <MessageCircle className="w-6 h-6 text-pink-300 drop-shadow-[0_0_10px_rgba(236,72,153,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 12: PROMPT */}
+            <g>
+              <animateMotion dur="45s" begin="33s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <rect x="-40" y="-14" width="80" height="28" rx="14" fill="#10b981" opacity="0.95" />
+              <text x="0" y="6" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">PROMPT</text>
+            </g>
+            
+            {/* 13: MessageCircle */}
+            <g>
+              <animateMotion dur="45s" begin="36s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <MessageCircle className="w-6 h-6 text-cyan-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 14: Palavra */}
+            <g>
+              <animateMotion dur="45s" begin="39s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <rect x="-40" y="-14" width="80" height="28" rx="14" fill="#a855f7" opacity="0.95" />
+              <text x="0" y="6" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">Palavra</text>
+            </g>
+            
+            {/* 15: MessageCircle */}
+            <g>
+              <animateMotion dur="45s" begin="42s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#inputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <MessageCircle className="w-6 h-6 text-pink-300 drop-shadow-[0_0_10px_rgba(236,72,153,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
           </g>
 
-          {/* OUTPUT FLOW: AI → Human (Bottom arc) - 5 ELEMENTS EVENLY SPACED */}
+          {/* OUTPUT FLOW: AI → Human (Bottom arc) - 19 ELEMENTS EVENLY SPACED */}
           <g>
             {/* Flow path line */}
             <path 
@@ -614,10 +724,12 @@ const Arquitetura = () => {
               <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
             </path>
 
-            {/* 5 OUTPUT Elements - 20s duration, 4s stagger = 20% spacing */}
-            {/* Element 1: Sparkles */}
+            {/* 19 OUTPUT Elements - 57s duration, 3s stagger for conveyor belt effect */}
+            {/* Pattern: Sparkles, VALOR, Sparkles, SOLUÇÃO, Sparkles, EFICIÊNCIA (repeat ~3x) */}
+            
+            {/* 1: Sparkles */}
             <g>
-              <animateMotion dur="20s" begin="0s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="57s" begin="0s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
               <foreignObject x="-14" y="-14" width="28" height="28">
@@ -627,36 +739,186 @@ const Arquitetura = () => {
               </foreignObject>
             </g>
             
-            {/* Element 2: Badge "VALOR" */}
+            {/* 2: VALOR */}
             <g>
-              <animateMotion dur="20s" begin="4s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="57s" begin="3s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
               <rect x="-30" y="-14" width="60" height="28" rx="14" fill="#06b6d4" opacity="0.95" />
               <text x="0" y="6" textAnchor="middle" fill="#0f172a" fontSize="12" fontWeight="600">VALOR</text>
             </g>
             
-            {/* Element 3: Badge "SOLUÇÃO" */}
+            {/* 3: Sparkles */}
             <g>
-              <animateMotion dur="20s" begin="8s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="57s" begin="6s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-violet-300 drop-shadow-[0_0_10px_rgba(167,139,250,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 4: SOLUÇÃO */}
+            <g>
+              <animateMotion dur="57s" begin="9s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
               <rect x="-40" y="-14" width="80" height="28" rx="14" fill="#8b5cf6" opacity="0.95" />
               <text x="0" y="6" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">SOLUÇÃO</text>
             </g>
             
-            {/* Element 4: Badge "EFICIÊNCIA" */}
+            {/* 5: Sparkles */}
             <g>
-              <animateMotion dur="20s" begin="12s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="57s" begin="12s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-cyan-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 6: EFICIÊNCIA */}
+            <g>
+              <animateMotion dur="57s" begin="15s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
               <rect x="-48" y="-14" width="96" height="28" rx="14" fill="#22d3ee" opacity="0.95" />
               <text x="0" y="6" textAnchor="middle" fill="#0f172a" fontSize="12" fontWeight="600">EFICIÊNCIA</text>
             </g>
             
-            {/* Element 5: Sparkles */}
+            {/* 7: Sparkles */}
             <g>
-              <animateMotion dur="20s" begin="16s" repeatCount="indefinite" fill="freeze">
+              <animateMotion dur="57s" begin="18s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-violet-300 drop-shadow-[0_0_10px_rgba(167,139,250,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 8: VALOR */}
+            <g>
+              <animateMotion dur="57s" begin="21s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <rect x="-30" y="-14" width="60" height="28" rx="14" fill="#06b6d4" opacity="0.95" />
+              <text x="0" y="6" textAnchor="middle" fill="#0f172a" fontSize="12" fontWeight="600">VALOR</text>
+            </g>
+            
+            {/* 9: Sparkles */}
+            <g>
+              <animateMotion dur="57s" begin="24s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-cyan-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 10: SOLUÇÃO */}
+            <g>
+              <animateMotion dur="57s" begin="27s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <rect x="-40" y="-14" width="80" height="28" rx="14" fill="#8b5cf6" opacity="0.95" />
+              <text x="0" y="6" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">SOLUÇÃO</text>
+            </g>
+            
+            {/* 11: Sparkles */}
+            <g>
+              <animateMotion dur="57s" begin="30s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-violet-300 drop-shadow-[0_0_10px_rgba(167,139,250,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 12: EFICIÊNCIA */}
+            <g>
+              <animateMotion dur="57s" begin="33s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <rect x="-48" y="-14" width="96" height="28" rx="14" fill="#22d3ee" opacity="0.95" />
+              <text x="0" y="6" textAnchor="middle" fill="#0f172a" fontSize="12" fontWeight="600">EFICIÊNCIA</text>
+            </g>
+            
+            {/* 13: Sparkles */}
+            <g>
+              <animateMotion dur="57s" begin="36s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-cyan-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 14: VALOR */}
+            <g>
+              <animateMotion dur="57s" begin="39s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <rect x="-30" y="-14" width="60" height="28" rx="14" fill="#06b6d4" opacity="0.95" />
+              <text x="0" y="6" textAnchor="middle" fill="#0f172a" fontSize="12" fontWeight="600">VALOR</text>
+            </g>
+            
+            {/* 15: Sparkles */}
+            <g>
+              <animateMotion dur="57s" begin="42s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-violet-300 drop-shadow-[0_0_10px_rgba(167,139,250,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 16: SOLUÇÃO */}
+            <g>
+              <animateMotion dur="57s" begin="45s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <rect x="-40" y="-14" width="80" height="28" rx="14" fill="#8b5cf6" opacity="0.95" />
+              <text x="0" y="6" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">SOLUÇÃO</text>
+            </g>
+            
+            {/* 17: Sparkles */}
+            <g>
+              <animateMotion dur="57s" begin="48s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <foreignObject x="-14" y="-14" width="28" height="28">
+                <div className="w-full h-full flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-cyan-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.9)]" />
+                </div>
+              </foreignObject>
+            </g>
+            
+            {/* 18: EFICIÊNCIA */}
+            <g>
+              <animateMotion dur="57s" begin="51s" repeatCount="indefinite" fill="freeze">
+                <mpath href="#outputPath" />
+              </animateMotion>
+              <rect x="-48" y="-14" width="96" height="28" rx="14" fill="#22d3ee" opacity="0.95" />
+              <text x="0" y="6" textAnchor="middle" fill="#0f172a" fontSize="12" fontWeight="600">EFICIÊNCIA</text>
+            </g>
+            
+            {/* 19: Sparkles */}
+            <g>
+              <animateMotion dur="57s" begin="54s" repeatCount="indefinite" fill="freeze">
                 <mpath href="#outputPath" />
               </animateMotion>
               <foreignObject x="-14" y="-14" width="28" height="28">
