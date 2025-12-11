@@ -29,6 +29,7 @@ import SaasRagArchitectureDiagram from "./SaasRagArchitectureDiagram";
 import DepartmentArchitectureDiagram from "./DepartmentArchitectureDiagram";
 import { DynamicSLMArchitectureDiagram } from "./DynamicSLMArchitectureDiagram";
 import HyperModularSLMDiagram from "./HyperModularSLMDiagram";
+import { BrainFlowDiagram } from "./BrainFlowDiagram";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 
 type SimulationPhase = 'idle' | 'request' | 'routing' | 'check-adapter' | 'load-adapter' | 'inference' | 'response' | 'complete';
@@ -85,15 +86,7 @@ export const InfrastructureArchitectureTab = () => {
     document.body.removeChild(link);
   };
 
-  // Restart background animations periodically
-  useEffect(() => {
-    if (!isSimulating) {
-      const interval = setInterval(() => {
-        setAnimationKey(prev => prev + 1);
-      }, 15000);
-      return () => clearInterval(interval);
-    }
-  }, [isSimulating]);
+  // NOTE: Removed problematic setInterval that caused flickering by resetting animationKey
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 20, 150));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 20, 60));
@@ -189,6 +182,9 @@ export const InfrastructureArchitectureTab = () => {
               onClick={() => setSelectedView('saas-choice')}
             />
           </div>
+
+          {/* Diagrama de Processamento Cognitivo */}
+          <BrainFlowDiagram />
         </div>
       </TooltipProvider>
     );
