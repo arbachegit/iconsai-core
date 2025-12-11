@@ -7,8 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { TrendingUp, RefreshCw, Info, Database, Bell, FileText, BarChart3, LineChart, ShoppingCart, AlertTriangle, Trash2 } from 'lucide-react';
+import { TrendingUp, RefreshCw, Info, Database, Bell, FileText, BarChart3, LineChart, ShoppingCart, AlertTriangle, Trash2, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { IndicatorCard, IndicatorDetailModal } from './indicators';
 interface Indicator {
   id: string;
@@ -25,6 +26,8 @@ interface IndicatorStats {
   [indicatorId: string]: {
     recordCount: number;
     lastUpdate: string | null;
+    oldestDate: string | null;
+    newestDate: string | null;
   };
 }
 
@@ -119,7 +122,9 @@ export default function EconomicIndicatorsTab() {
         
         stats[indicatorId] = {
           recordCount: dates.length,
-          lastUpdate: dates[dates.length - 1] || null // Most recent by sort
+          lastUpdate: actualEnd,
+          oldestDate: actualStart,
+          newestDate: actualEnd
         };
 
         // Find indicator and its API config
@@ -261,8 +266,75 @@ export default function EconomicIndicatorsTab() {
     );
   }
 
+  // Calculate total records
+  const totalRecords = Object.values(indicatorStats).reduce((acc, s) => acc + s.recordCount, 0);
+
   return (
+    <TooltipProvider>
     <div className="space-y-8">
+      {/* Status Grid - Quick Overview */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
+        {indicators.map(indicator => {
+          const stats = indicatorStats[indicator.id];
+          const hasData = (stats?.recordCount || 0) > 0;
+          const source = getSourceForIndicator(indicator);
+          
+          return (
+            <Tooltip key={indicator.id}>
+              <TooltipTrigger asChild>
+                <Card 
+                  className={`p-2 cursor-pointer transition-all hover:scale-[1.02] ${
+                    hasData 
+                      ? 'bg-emerald-500/10 border-emerald-500/40 hover:bg-emerald-500/20' 
+                      : 'bg-red-500/10 border-red-500/40 hover:bg-red-500/20'
+                  }`}
+                  onClick={() => handleCardClick(indicator)}
+                >
+                  <div className="text-xs font-medium truncate" title={indicator.name}>
+                    {indicator.name.length > 15 ? indicator.name.substring(0, 15) + '...' : indicator.name}
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    {hasData ? (
+                      <>
+                        <CheckCircle className="h-3 w-3 text-emerald-500" />
+                        <span className="text-xs text-emerald-400 font-mono">
+                          {stats.recordCount.toLocaleString()}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-3 w-3 text-red-500" />
+                        <span className="text-xs text-red-400">Sem dados</span>
+                      </>
+                    )}
+                  </div>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                <div className="space-y-1 text-xs">
+                  <div className="font-semibold">{indicator.name}</div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] px-1 py-0">{source}</Badge>
+                    <Badge variant="outline" className="text-[10px] px-1 py-0">{indicator.frequency || 'mensal'}</Badge>
+                  </div>
+                  {hasData ? (
+                    <>
+                      <div className="text-emerald-400">✓ {stats.recordCount.toLocaleString()} registros</div>
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        {stats.oldestDate?.substring(0, 7)} → {stats.newestDate?.substring(0, 7)}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-red-400">✗ Nenhum dado encontrado</div>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -272,7 +344,7 @@ export default function EconomicIndicatorsTab() {
           <div>
             <h2 className="text-xl font-semibold">Cadastro de Dados Econômicos</h2>
             <p className="text-sm text-muted-foreground">
-              {indicators.length} indicadores • {Object.values(indicatorStats).reduce((acc, s) => acc + s.recordCount, 0)} registros
+              {indicators.length} indicadores • {totalRecords.toLocaleString()} registros
             </p>
           </div>
           
@@ -594,5 +666,6 @@ export default function EconomicIndicatorsTab() {
         </DialogContent>
       </Dialog>
     </div>
+    </TooltipProvider>
   );
 }
