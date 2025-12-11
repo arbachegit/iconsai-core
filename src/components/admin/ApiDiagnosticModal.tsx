@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Activity, RefreshCw, CheckCircle, XCircle, AlertTriangle, Clock } from 'lucide-react';
+import { Activity, RefreshCw, CheckCircle, XCircle, AlertTriangle, Clock, FileText, Copy, Check } from 'lucide-react';
 
 interface ApiRegistry {
   id: string;
@@ -42,6 +42,8 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
   const [isRunning, setIsRunning] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hasRun, setHasRun] = useState(false);
+  const [showErrorReport, setShowErrorReport] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Fetch APIs when modal opens
   useEffect(() => {
@@ -194,12 +196,125 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
     setHasRun(false);
     setResults([]);
     setApis([]);
+    setShowErrorReport(false);
     onOpenChange(false);
+  };
+
+  const generateErrorReport = (): string => {
+    const now = new Date().toLocaleString('pt-BR');
+    const errors = results.filter(r => r.testResult === 'NÃO' || r.diagnosis === 'API_NO_HISTORY');
+    
+    if (errors.length === 0) {
+      return `RELATÓRIO DE DIAGNÓSTICO DE APIs\nData: ${now}\n\nNenhum erro encontrado. Todas as APIs estão funcionando corretamente.`;
+    }
+    
+    let report = `RELATÓRIO DE DIAGNÓSTICO DE APIs\nData: ${now}\n\n`;
+    report += `Total de APIs testadas: ${results.length}\n`;
+    report += `APIs com erro ou aviso: ${errors.length}\n\n`;
+    report += `${'='.repeat(60)}\n\n`;
+    
+    errors.forEach((result, index) => {
+      report += `ERRO ${index + 1}\n`;
+      report += `Nome da API: ${result.apiName}\n`;
+      report += `Provedor: ${result.provider}\n`;
+      report += `Status do Teste: ${result.testResult}\n`;
+      
+      if (result.statusCode) {
+        report += `Código HTTP: ${result.statusCode}\n`;
+      }
+      
+      if (result.configuredStart) {
+        report += `Data Inicial Configurada: ${result.configuredStart}\n`;
+      }
+      
+      if (result.firstDateFound) {
+        report += `Primeira Data Encontrada na API: ${result.firstDateFound}\n`;
+      }
+      
+      if (result.diagnosis === 'API_NO_HISTORY') {
+        report += `Tipo de Problema: Histórico Limitado\n`;
+      } else if (result.diagnosis === 'API_ERROR') {
+        report += `Tipo de Problema: Erro de Conexão/Resposta\n`;
+      }
+      
+      if (result.errorMessage) {
+        report += `Mensagem de Erro: ${result.errorMessage}\n`;
+      }
+      
+      if (result.diagnosisMessage) {
+        report += `Diagnóstico: ${result.diagnosisMessage}\n`;
+      }
+      
+      report += `Latência: ${result.latencyMs}ms\n`;
+      report += `\n${'-'.repeat(40)}\n\n`;
+    });
+    
+    return report;
+  };
+
+  const handleCopyReport = async () => {
+    const report = generateErrorReport();
+    await navigator.clipboard.writeText(report);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const successCount = results.filter(r => r.testResult === 'SIM').length;
   const failCount = results.filter(r => r.testResult === 'NÃO').length;
   const historyWarnings = results.filter(r => r.diagnosis === 'API_NO_HISTORY').length;
+  const hasErrors = failCount > 0 || historyWarnings > 0;
+
+  // Error Report Modal
+  if (showErrorReport) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Relatório de Erros
+            </DialogTitle>
+            <DialogDescription>
+              Relatório em texto puro para análise e tratamento dos erros
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="relative">
+              <pre className="bg-muted/50 border rounded-lg p-4 text-sm font-mono whitespace-pre-wrap overflow-x-auto max-h-[50vh] overflow-y-auto">
+                {generateErrorReport()}
+              </pre>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowErrorReport(false)}
+              >
+                Voltar ao Diagnóstico
+              </Button>
+              <Button 
+                onClick={handleCopyReport}
+                className="gap-2"
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4" />
+                    Copiado!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4" />
+                    Copiar Relatório
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -345,10 +460,22 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
                 </div>
               )}
             </div>
-            <Button onClick={handleRetest} variant="outline" className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Testar Novamente
-            </Button>
+            <div className="flex items-center gap-2">
+              {hasErrors && (
+                <Button 
+                  onClick={() => setShowErrorReport(true)} 
+                  variant="outline" 
+                  className="gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                >
+                  <FileText className="h-4 w-4" />
+                  Exportar Erros
+                </Button>
+              )}
+              <Button onClick={handleRetest} variant="outline" className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Testar Novamente
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>
