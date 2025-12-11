@@ -30,6 +30,8 @@ interface ApiConfig {
   provider: string;
   base_url: string;
   status: string;
+  fetch_start_date: string | null;
+  fetch_end_date: string | null;
 }
 
 interface SyncMetadata {
@@ -62,22 +64,57 @@ function bcbDateToISO(bcbDate: string): string {
   return `${year}-${month}-${day}`;
 }
 
-// Fetch BCB data with chunking to respect 10-year limit
-async function fetchBCBWithChunking(baseUrl: string): Promise<BCBDataPoint[]> {
+// Generate 10-year chunks from configured date range
+function generateTenYearChunks(startDate: Date, endDate: Date): Array<{ start: string; end: string }> {
+  const chunks: Array<{ start: string; end: string }> = [];
+  const currentStart = new Date(startDate);
+  
+  while (currentStart < endDate) {
+    const chunkEnd = new Date(currentStart);
+    chunkEnd.setFullYear(chunkEnd.getFullYear() + 10);
+    chunkEnd.setDate(chunkEnd.getDate() - 1); // Last day of 10-year period
+    
+    const effectiveEnd = chunkEnd > endDate ? endDate : chunkEnd;
+    
+    chunks.push({
+      start: formatDateBCB(currentStart),
+      end: formatDateBCB(effectiveEnd)
+    });
+    
+    // Move to next chunk
+    currentStart.setFullYear(currentStart.getFullYear() + 10);
+  }
+  
+  return chunks;
+}
+
+// Fetch BCB data with chunking to respect 10-year limit - NOW USING CONFIGURED DATES
+async function fetchBCBWithChunking(
+  baseUrl: string, 
+  fetchStartDate: string | null, 
+  fetchEndDate: string | null
+): Promise<BCBDataPoint[]> {
   const allData: BCBDataPoint[] = [];
   
   // Remove any existing date parameters from URL
   const cleanUrl = baseUrl.split('&dataInicial')[0].split('?dataInicial')[0];
   const hasParams = cleanUrl.includes('?');
   
-  // Define chunks of max 10 years each
-  const today = new Date();
-  const chunks = [
-    { start: '01/01/2010', end: '31/12/2019' },
-    { start: '01/01/2020', end: formatDateBCB(today) }
-  ];
+  // Use configured dates or fallback to defaults
+  const startDate = fetchStartDate ? new Date(fetchStartDate) : new Date('2010-01-01');
+  const endDate = fetchEndDate ? new Date(fetchEndDate) : new Date();
+  
+  console.log(`[FETCH-ECONOMIC] ====== AUDIT: DATE CONFIGURATION ======`);
+  console.log(`[FETCH-ECONOMIC] Configured fetch_start_date: ${fetchStartDate}`);
+  console.log(`[FETCH-ECONOMIC] Configured fetch_end_date: ${fetchEndDate}`);
+  console.log(`[FETCH-ECONOMIC] Effective start: ${startDate.toISOString().substring(0, 10)}`);
+  console.log(`[FETCH-ECONOMIC] Effective end: ${endDate.toISOString().substring(0, 10)}`);
+  
+  // Generate dynamic chunks based on configured dates
+  const chunks = generateTenYearChunks(startDate, endDate);
   
   console.log(`[FETCH-ECONOMIC] BCB chunking: ${chunks.length} chunks to fetch`);
+  console.log(`[FETCH-ECONOMIC] Chunks generated:`, JSON.stringify(chunks));
   
   for (const chunk of chunks) {
     const separator = hasParams ? '&' : '?';
@@ -105,6 +142,7 @@ async function fetchBCBWithChunking(baseUrl: string): Promise<BCBDataPoint[]> {
   }
   
   console.log(`[FETCH-ECONOMIC] BCB total records fetched: ${allData.length}`);
+  console.log(`[FETCH-ECONOMIC] ====== END AUDIT ======`);
   return allData;
 }
 
@@ -205,7 +243,7 @@ serve(async (req) => {
     // Get indicators to fetch
     let indicatorsQuery = supabase
       .from('economic_indicators')
-      .select(`id, name, code, unit, api_id, system_api_registry!inner (id, name, provider, base_url, status)`)
+      .select(`id, name, code, unit, api_id, system_api_registry!inner (id, name, provider, base_url, status, fetch_start_date, fetch_end_date)`)
       .eq('system_api_registry.status', 'active');
 
     if (!fetchAll && indicatorId) {
@@ -244,8 +282,10 @@ serve(async (req) => {
         let httpStatus: number | null = null;
         
         // Use chunking strategy for BCB to avoid 10-year limit (406 error)
+        // NOW PASSING CONFIGURED DATES FROM DATABASE
         if (apiConfig.provider === 'BCB') {
-          const bcbData = await fetchBCBWithChunking(apiConfig.base_url);
+          console.log(`[FETCH-ECONOMIC] Using configured dates for ${indicator.name}: ${apiConfig.fetch_start_date} to ${apiConfig.fetch_end_date}`);
+          const bcbData = await fetchBCBWithChunking(apiConfig.base_url, apiConfig.fetch_start_date, apiConfig.fetch_end_date);
           data = bcbData;
           syncMetadata = generateSyncMetadata(bcbData, 'BCB');
           httpStatus = bcbData.length > 0 ? 200 : null;

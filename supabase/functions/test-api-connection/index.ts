@@ -132,15 +132,19 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get API provider info
+    // Get API provider info INCLUDING configured dates
     const { data: apiInfo } = await supabase
       .from('system_api_registry')
-      .select('provider, target_table')
+      .select('provider, target_table, fetch_start_date, fetch_end_date')
       .eq('id', apiId)
       .single();
 
     const provider = apiInfo?.provider || 'Unknown';
     const targetTable = apiInfo?.target_table || 'indicator_values';
+    
+    console.log(`[TEST-API] ====== AUDIT: DATE CONFIGURATION ======`);
+    console.log(`[TEST-API] Configured fetch_start_date: ${apiInfo?.fetch_start_date}`);
+    console.log(`[TEST-API] Configured fetch_end_date: ${apiInfo?.fetch_end_date}`);
 
     // Prepare test result
     const result: TestResult = {
@@ -170,22 +174,34 @@ serve(async (req) => {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     };
 
-    // Construct test URL - for BCB, use a 1-year window to avoid 10-year limit
+    // Construct test URL - for BCB, use CONFIGURED dates or 1-year fallback
     let testUrl = baseUrl;
     
     if (isBCB) {
-      // BCB API has 10-year limit - test with 1-year window
-      const today = new Date();
-      const oneYearAgo = new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000);
+      // Use configured dates from database, or fallback to 1-year window
+      const hasConfiguredDates = apiInfo?.fetch_start_date && apiInfo?.fetch_end_date;
+      
+      let startDate: Date;
+      let endDate: Date;
+      
+      if (hasConfiguredDates) {
+        startDate = new Date(apiInfo.fetch_start_date);
+        endDate = new Date(apiInfo.fetch_end_date);
+        console.log(`[TEST-API] BCB API - Using CONFIGURED dates: ${apiInfo.fetch_start_date} to ${apiInfo.fetch_end_date}`);
+      } else {
+        // Fallback to 1-year window for testing
+        endDate = new Date();
+        startDate = new Date(endDate.getTime() - 365 * 24 * 60 * 60 * 1000);
+        console.log(`[TEST-API] BCB API - No configured dates, using 1-year fallback window`);
+      }
       
       // Remove any existing date parameters
       const cleanUrl = baseUrl.split('&dataInicial')[0].split('?dataInicial')[0];
       const hasParams = cleanUrl.includes('?');
       const separator = hasParams ? '&' : '?';
       
-      testUrl = `${cleanUrl}${separator}dataInicial=${formatDateBCB(oneYearAgo)}&dataFinal=${formatDateBCB(today)}`;
+      testUrl = `${cleanUrl}${separator}dataInicial=${formatDateBCB(startDate)}&dataFinal=${formatDateBCB(endDate)}`;
       
-      console.log(`[TEST-API] BCB API detected - using 1-year window to avoid 10-year limit`);
       console.log(`[TEST-API] Test URL: ${testUrl}`);
     } else if (isIBGE) {
       console.log(`[TEST-API] IBGE API detected - using standard request`);

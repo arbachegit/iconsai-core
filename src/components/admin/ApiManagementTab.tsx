@@ -921,6 +921,7 @@ export default function ApiManagementTab() {
                         mode="single"
                         selected={configStartDate}
                         onSelect={setConfigStartDate}
+                        defaultMonth={configStartDate}
                         initialFocus
                         className="pointer-events-auto"
                         captionLayout="dropdown-buttons"
@@ -951,6 +952,7 @@ export default function ApiManagementTab() {
                         mode="single"
                         selected={configEndDate}
                         onSelect={setConfigEndDate}
+                        defaultMonth={configEndDate || configStartDate}
                         initialFocus
                         className="pointer-events-auto"
                         captionLayout="dropdown-buttons"
