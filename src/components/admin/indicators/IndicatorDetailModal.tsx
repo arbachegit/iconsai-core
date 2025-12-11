@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   RefreshCw, Plus, Calendar, TrendingUp, DollarSign, Percent, Users, 
   BarChart3, ShoppingCart, Heart, Building2, Car, Fuel, Pill, Tv, 
-  Shirt, Activity, LucideIcon 
+  Shirt, Activity, LucideIcon, Trash2 
 } from 'lucide-react';
 import MonthlyMatrixView from './MonthlyMatrixView';
 import AnnualBlocksView from './AnnualBlocksView';
@@ -84,12 +85,16 @@ export default function IndicatorDetailModal({
   const [values, setValues] = useState<IndicatorValue[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [forceRefreshing, setForceRefreshing] = useState(false);
+  
+  // Force refresh confirmation modal
+  const [forceRefreshModalOpen, setForceRefreshModalOpen] = useState(false);
+  const [forceRefreshConfirmed, setForceRefreshConfirmed] = useState(false);
   
   // Add new value dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newDate, setNewDate] = useState('');
   const [newValue, setNewValue] = useState('');
-
   useEffect(() => {
     if (indicator && open) {
       fetchValues();
@@ -116,16 +121,28 @@ export default function IndicatorDetailModal({
     }
   };
 
-  const handleFetchData = async () => {
+  const handleFetchData = async (forceRefresh: boolean = false) => {
     if (!indicator) return;
-    setFetching(true);
+    
+    if (forceRefresh) {
+      setForceRefreshing(true);
+    } else {
+      setFetching(true);
+    }
+    
     try {
       const response = await supabase.functions.invoke('fetch-economic-data', {
-        body: { indicatorId: indicator.id }
+        body: { indicatorId: indicator.id, forceRefresh }
       });
 
       if (response.error) throw response.error;
-      toast.success(`Dados atualizados: ${response.data?.recordsInserted || 0} registros`);
+      
+      if (forceRefresh) {
+        toast.success(`☢️ Recarga Zero-Base: ${response.data?.recordsInserted || 0} registros inseridos`);
+      } else {
+        toast.success(`Dados atualizados: ${response.data?.recordsInserted || 0} registros`);
+      }
+      
       fetchValues();
       onDataChange();
     } catch (error) {
@@ -133,7 +150,18 @@ export default function IndicatorDetailModal({
       toast.error('Erro ao buscar dados da API');
     } finally {
       setFetching(false);
+      setForceRefreshing(false);
+      setForceRefreshModalOpen(false);
+      setForceRefreshConfirmed(false);
     }
+  };
+
+  const handleForceRefreshConfirm = () => {
+    if (!forceRefreshConfirmed) {
+      toast.error('Você deve confirmar que entende a operação');
+      return;
+    }
+    handleFetchData(true);
   };
 
   const handleAddValue = async () => {
@@ -206,13 +234,26 @@ export default function IndicatorDetailModal({
               
               <div className="flex items-center gap-2">
                 <Button 
-                  onClick={handleFetchData} 
-                  disabled={fetching}
+                  onClick={() => handleFetchData(false)} 
+                  disabled={fetching || forceRefreshing}
                   className="gap-2"
                   size="sm"
                 >
                   <RefreshCw className={`h-4 w-4 ${fetching ? 'animate-spin' : ''}`} />
                   Atualizar via API
+                </Button>
+                <Button 
+                  variant="destructive"
+                  size="sm" 
+                  className="gap-2"
+                  disabled={fetching || forceRefreshing}
+                  onClick={() => {
+                    setForceRefreshConfirmed(false);
+                    setForceRefreshModalOpen(true);
+                  }}
+                >
+                  <Trash2 className={`h-4 w-4 ${forceRefreshing ? 'animate-spin' : ''}`} />
+                  {forceRefreshing ? 'Recarregando...' : 'Recarregar do Zero'}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -294,6 +335,79 @@ export default function IndicatorDetailModal({
             <Button onClick={handleAddValue} className="gap-2">
               <Plus className="h-4 w-4" />
               Inserir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Force Refresh Confirmation Modal */}
+      <Dialog open={forceRefreshModalOpen} onOpenChange={setForceRefreshModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              ☢️ Recarregar do Zero
+            </DialogTitle>
+            <DialogDescription className="text-left pt-2">
+              Esta operação para <span className="font-semibold">{indicator?.name}</span>:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <div className="space-y-2 text-sm">
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                <Trash2 className="h-4 w-4 text-destructive mt-0.5" />
+                <div>
+                  <p className="font-medium text-destructive">APAGAR todos os dados</p>
+                  <p className="text-muted-foreground">Os {values.length} registros deste indicador serão excluídos.</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                <RefreshCw className="h-4 w-4 text-blue-400 mt-0.5" />
+                <div>
+                  <p className="font-medium text-blue-400">RECARREGAR do Zero</p>
+                  <p className="text-muted-foreground">Os dados serão buscados novamente da API usando o período configurado.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox
+                id="force-confirm-indicator"
+                checked={forceRefreshConfirmed}
+                onCheckedChange={(checked) => setForceRefreshConfirmed(checked === true)}
+              />
+              <Label
+                htmlFor="force-confirm-indicator"
+                className="text-sm font-medium leading-none cursor-pointer"
+              >
+                Confirmo que entendo a operação
+              </Label>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setForceRefreshModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleForceRefreshConfirm}
+              disabled={!forceRefreshConfirmed || forceRefreshing}
+              className="gap-2"
+            >
+              {forceRefreshing ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Executando...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Confirmar
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
