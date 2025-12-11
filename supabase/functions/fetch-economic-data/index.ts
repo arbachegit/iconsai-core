@@ -52,6 +52,155 @@ const BCB_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 };
 
+// ========== V7.2: HTTP/2 RESILIENCE PROTOCOL ==========
+
+// Log detailed HTTP/2 error diagnostics
+function logHTTP2Error(error: Error, provider: string, url: string): void {
+  const isHTTP2 = error.message?.includes('http2');
+  const isStream = error.message?.includes('stream error');
+  const isIPv6 = url.includes('[') || error.message?.includes('2600:') || error.message?.includes('IPv6');
+  
+  console.error(`[HTTP2-DIAGNOSTIC] ================================`);
+  console.error(`[HTTP2-DIAGNOSTIC] Provider: ${provider}`);
+  console.error(`[HTTP2-DIAGNOSTIC] URL: ${url.substring(0, 100)}...`);
+  console.error(`[HTTP2-DIAGNOSTIC] Error Type: ${isHTTP2 ? 'HTTP/2 Protocol' : 'Other'}`);
+  console.error(`[HTTP2-DIAGNOSTIC] Stream Error: ${isStream}`);
+  console.error(`[HTTP2-DIAGNOSTIC] IPv6 Connection: ${isIPv6}`);
+  console.error(`[HTTP2-DIAGNOSTIC] Full Message: ${error.message}`);
+  console.error(`[HTTP2-DIAGNOSTIC] ================================`);
+}
+
+// Fetch with HTTP/2 resilience - retry with exponential backoff
+async function fetchWithHTTP2Resilience(
+  url: string,
+  options: RequestInit = {},
+  maxRetries: number = 3,
+  providerName: string = 'Unknown'
+): Promise<Response> {
+  const delays = [3000, 6000, 12000]; // 3s, 6s, 12s backoff
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log(`[HTTP2-RESILIENCE] [${providerName}] Attempt ${attempt + 1}/${maxRetries}`);
+      
+      // Headers optimized for maximum HTTP/2 compatibility
+      const resilientHeaders: Record<string, string> = {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Encoding': 'gzip, deflate', // No brotli to avoid issues
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Connection': 'keep-alive',
+        'Cache-Control': 'no-cache',
+        ...(options.headers as Record<string, string> || {})
+      };
+      
+      // Progressive timeout: 30s, 45s, 60s
+      const timeout = 30000 + (attempt * 15000);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const response = await fetch(url, {
+        ...options,
+        headers: resilientHeaders,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      console.log(`[HTTP2-RESILIENCE] [${providerName}] Success: HTTP ${response.status} (timeout was ${timeout}ms)`);
+      return response;
+      
+    } catch (error) {
+      const err = error as Error;
+      const isHTTP2Error = err.message?.includes('http2 error') || 
+                           err.message?.includes('stream error');
+      
+      console.error(`[HTTP2-RESILIENCE] [${providerName}] Attempt ${attempt + 1} failed:`);
+      console.error(`[HTTP2-RESILIENCE] [${providerName}] Error: ${err.message}`);
+      console.error(`[HTTP2-RESILIENCE] [${providerName}] Is HTTP/2 error: ${isHTTP2Error}`);
+      
+      // Log detailed HTTP/2 diagnostics
+      logHTTP2Error(err, providerName, url);
+      
+      if (attempt < maxRetries - 1) {
+        const delay = delays[attempt] || delays[delays.length - 1];
+        console.log(`[HTTP2-RESILIENCE] [${providerName}] Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
+  
+  throw new Error(`All ${maxRetries} attempts failed for ${providerName}`);
+}
+
+// Fetch international API with strategic fallback (IMF → WorldBank)
+interface InternationalFetchResult {
+  success: boolean;
+  data: unknown;
+  error: string | null;
+  provider: string;
+  usedFallback: boolean;
+}
+
+async function fetchInternationalAPI(
+  primaryUrl: string,
+  primaryProvider: string,
+  fallbackUrl: string | null,
+  indicatorName: string
+): Promise<InternationalFetchResult> {
+  console.log(`[INTERNATIONAL-API] Fetching ${indicatorName} from ${primaryProvider}`);
+  
+  try {
+    // Primary attempt with HTTP/2 resilience
+    const response = await fetchWithHTTP2Resilience(primaryUrl, { method: 'GET' }, 3, primaryProvider);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`[INTERNATIONAL-API] ✅ Primary source (${primaryProvider}) success`);
+      return { success: true, data, error: null, provider: primaryProvider, usedFallback: false };
+    }
+    
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    
+  } catch (primaryError) {
+    const err = primaryError as Error;
+    console.error(`[INTERNATIONAL-API] ❌ Primary source (${primaryProvider}) failed: ${err.message}`);
+    logHTTP2Error(err, primaryProvider, primaryUrl);
+    
+    // STRATEGIC FALLBACK: If IMF fails and we have WorldBank fallback
+    if (primaryProvider === 'IMF' && fallbackUrl) {
+      console.log(`[INTERNATIONAL-API] 🔄 Attempting fallback to WorldBank...`);
+      
+      try {
+        const fallbackResponse = await fetchWithHTTP2Resilience(
+          fallbackUrl, { method: 'GET' }, 3, 'WorldBank-Fallback'
+        );
+        
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          console.log(`[INTERNATIONAL-API] ✅ Fallback to WorldBank successful`);
+          return { success: true, data: fallbackData, error: null, provider: 'WorldBank', usedFallback: true };
+        }
+      } catch (fallbackError) {
+        const fallbackErr = fallbackError as Error;
+        console.error(`[INTERNATIONAL-API] ❌ Fallback (WorldBank) also failed: ${fallbackErr.message}`);
+        logHTTP2Error(fallbackErr, 'WorldBank-Fallback', fallbackUrl);
+      }
+    }
+    
+    return { 
+      success: false, 
+      data: null, 
+      error: `${primaryProvider} API error: ${err.message}`,
+      provider: primaryProvider,
+      usedFallback: false
+    };
+  }
+}
+
+// ========== END V7.2 HTTP/2 RESILIENCE ==========
+
 // Format date as DD/MM/YYYY for BCB API
 function formatDateBCB(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');

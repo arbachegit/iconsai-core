@@ -38,6 +38,90 @@ interface IBGEResult {
   }>;
 }
 
+// ========== V7.2: HTTP/2 RESILIENCE PROTOCOL ==========
+
+// Log detailed HTTP/2 error diagnostics
+function logHTTP2Error(error: Error, provider: string, url: string): void {
+  const isHTTP2 = error.message?.includes('http2');
+  const isStream = error.message?.includes('stream error');
+  const isIPv6 = url.includes('[') || error.message?.includes('2600:') || error.message?.includes('IPv6');
+  
+  console.error(`[HTTP2-DIAGNOSTIC] ================================`);
+  console.error(`[HTTP2-DIAGNOSTIC] Provider: ${provider}`);
+  console.error(`[HTTP2-DIAGNOSTIC] URL: ${url.substring(0, 100)}...`);
+  console.error(`[HTTP2-DIAGNOSTIC] Error Type: ${isHTTP2 ? 'HTTP/2 Protocol' : 'Other'}`);
+  console.error(`[HTTP2-DIAGNOSTIC] Stream Error: ${isStream}`);
+  console.error(`[HTTP2-DIAGNOSTIC] IPv6 Connection: ${isIPv6}`);
+  console.error(`[HTTP2-DIAGNOSTIC] Full Message: ${error.message}`);
+  console.error(`[HTTP2-DIAGNOSTIC] ================================`);
+}
+
+// Fetch with HTTP/2 resilience - retry with exponential backoff
+async function fetchWithHTTP2Resilience(
+  url: string,
+  options: RequestInit = {},
+  maxRetries: number = 3,
+  providerName: string = 'Unknown'
+): Promise<Response> {
+  const delays = [3000, 6000, 12000]; // 3s, 6s, 12s backoff
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log(`[HTTP2-RESILIENCE] [${providerName}] Attempt ${attempt + 1}/${maxRetries}`);
+      
+      // Headers optimized for maximum HTTP/2 compatibility
+      const resilientHeaders: Record<string, string> = {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Encoding': 'gzip, deflate', // No brotli to avoid issues
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Connection': 'keep-alive',
+        'Cache-Control': 'no-cache',
+        ...(options.headers as Record<string, string> || {})
+      };
+      
+      // Progressive timeout: 30s, 45s, 60s
+      const timeout = 30000 + (attempt * 15000);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const response = await fetch(url, {
+        ...options,
+        headers: resilientHeaders,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      console.log(`[HTTP2-RESILIENCE] [${providerName}] Success: HTTP ${response.status} (timeout was ${timeout}ms)`);
+      return response;
+      
+    } catch (error) {
+      const err = error as Error;
+      const isHTTP2Error = err.message?.includes('http2 error') || 
+                           err.message?.includes('stream error');
+      
+      console.error(`[HTTP2-RESILIENCE] [${providerName}] Attempt ${attempt + 1} failed:`);
+      console.error(`[HTTP2-RESILIENCE] [${providerName}] Error: ${err.message}`);
+      console.error(`[HTTP2-RESILIENCE] [${providerName}] Is HTTP/2 error: ${isHTTP2Error}`);
+      
+      // Log detailed HTTP/2 diagnostics
+      logHTTP2Error(err, providerName, url);
+      
+      if (attempt < maxRetries - 1) {
+        const delay = delays[attempt] || delays[delays.length - 1];
+        console.log(`[HTTP2-RESILIENCE] [${providerName}] Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
+  
+  throw new Error(`All ${maxRetries} attempts failed for ${providerName}`);
+}
+
+// ========== END V7.2 HTTP/2 RESILIENCE ==========
+
 // Format date as DD/MM/YYYY for BCB API
 function formatDateBCB(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
@@ -428,69 +512,136 @@ serve(async (req) => {
     }
     // Generic API / IBGE without placeholder - standard request
     else {
-      console.log(`[TEST-API] Standard API request (no chunking)`);
+      // ========== V7.2: DETECT INTERNATIONAL API FOR HTTP/2 RESILIENCE ==========
+      const isInternationalAPI = ['IMF', 'WorldBank', 'YahooFinance'].includes(provider);
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout (increased for resilience)
-      const startTime = performance.now();
+      if (isInternationalAPI) {
+        console.log(`[TEST-API] 🌍 International API detected: ${provider} - using HTTP/2 resilience protocol`);
+        
+        const startTime = performance.now();
+        
+        try {
+          const response = await fetchWithHTTP2Resilience(baseUrl, { method: 'GET' }, 3, provider);
+          
+          result.latencyMs = Math.round(performance.now() - startTime);
+          result.statusCode = response.status;
+          result.statusText = response.statusText;
+          result.contentType = response.headers.get('Content-Type');
 
-      try {
-        const response = await fetch(baseUrl, {
-          method: 'GET',
-          signal: controller.signal,
-          headers: requestHeaders,
-        });
+          console.log(`[TEST-API] Response: ${response.status} ${response.statusText} (${result.latencyMs}ms)`);
 
-        clearTimeout(timeoutId);
-        result.latencyMs = Math.round(performance.now() - startTime);
-        result.statusCode = response.status;
-        result.statusText = response.statusText;
-        result.contentType = response.headers.get('Content-Type');
-
-        console.log(`[TEST-API] Response: ${response.status} ${response.statusText} (${result.latencyMs}ms)`);
-
-        if (response.ok) {
-          const text = await response.text();
-          try {
-            const data = JSON.parse(text);
-            result.syncMetadata = analyzeApiResponse(data, provider);
-            
-            if (Array.isArray(data)) {
-              result.preview = data.slice(0, 2);
-            } else if (typeof data === 'object' && data !== null) {
-              const keys = Object.keys(data);
-              if (keys.length > 0 && Array.isArray(data[keys[0]])) {
-                result.preview = data[keys[0]].slice(0, 2);
+          if (response.ok) {
+            const text = await response.text();
+            try {
+              const data = JSON.parse(text);
+              result.syncMetadata = analyzeApiResponse(data, provider);
+              
+              if (Array.isArray(data)) {
+                result.preview = data.slice(0, 2);
+              } else if (typeof data === 'object' && data !== null) {
+                const keys = Object.keys(data);
+                if (keys.length > 0 && Array.isArray(data[keys[0]])) {
+                  result.preview = data[keys[0]].slice(0, 2);
+                } else {
+                  result.preview = [data];
+                }
               } else {
-                result.preview = [data];
+                result.preview = [{ value: data }];
               }
-            } else {
-              result.preview = [{ value: data }];
+              
+              result.success = true;
+              console.log(`[TEST-API] ✅ International API JSON parsed successfully, preview items: ${result.preview?.length}`);
+            } catch (parseError) {
+              result.error = 'Response is not valid JSON';
+              result.preview = [{ raw: text.substring(0, 200) + (text.length > 200 ? '...' : '') }];
+              console.log(`[TEST-API] Response is not JSON: ${parseError}`);
             }
-            
-            result.success = true;
-            console.log(`[TEST-API] JSON parsed successfully, preview items: ${result.preview?.length}`);
-          } catch (parseError) {
-            result.error = 'Response is not valid JSON';
-            result.preview = [{ raw: text.substring(0, 200) + (text.length > 200 ? '...' : '') }];
-            console.log(`[TEST-API] Response is not JSON: ${parseError}`);
+          } else {
+            result.error = `HTTP ${response.status}: ${response.statusText}`;
+            console.log(`[TEST-API] HTTP error: ${result.error}`);
           }
-        } else {
-          result.error = `HTTP ${response.status}: ${response.statusText}`;
-          console.log(`[TEST-API] HTTP error: ${result.error}`);
+        } catch (fetchError: unknown) {
+          result.latencyMs = Math.round(performance.now() - startTime);
+          const err = fetchError as Error;
+          
+          // Log detailed HTTP/2 diagnostics
+          logHTTP2Error(err, provider, baseUrl);
+          
+          if (err.name === 'AbortError') {
+            result.timeout = true;
+            result.error = 'Connection timeout (HTTP/2 resilience exceeded)';
+            console.log(`[TEST-API] ❌ Timeout after ${result.latencyMs}ms`);
+          } else {
+            result.error = `HTTP/2 Protocol Error: ${err.message}`;
+            console.log(`[TEST-API] ❌ HTTP/2 Fetch error: ${err.message}`);
+          }
         }
-      } catch (fetchError: unknown) {
-        clearTimeout(timeoutId);
-        result.latencyMs = Math.round(performance.now() - startTime);
+      } else {
+        // Standard API request (non-international)
+        console.log(`[TEST-API] Standard API request (no chunking)`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout (increased for resilience)
+        const startTime = performance.now();
 
-        const err = fetchError as Error;
-        if (err.name === 'AbortError') {
-          result.timeout = true;
-          result.error = 'Connection timeout (45s exceeded)';
-          console.log(`[TEST-API] Timeout after ${result.latencyMs}ms`);
-        } else {
-          result.error = err.message || 'Network error';
-          console.log(`[TEST-API] Fetch error: ${err.message}`);
+        try {
+          const response = await fetch(baseUrl, {
+            method: 'GET',
+            signal: controller.signal,
+            headers: requestHeaders,
+          });
+
+          clearTimeout(timeoutId);
+          result.latencyMs = Math.round(performance.now() - startTime);
+          result.statusCode = response.status;
+          result.statusText = response.statusText;
+          result.contentType = response.headers.get('Content-Type');
+
+          console.log(`[TEST-API] Response: ${response.status} ${response.statusText} (${result.latencyMs}ms)`);
+
+          if (response.ok) {
+            const text = await response.text();
+            try {
+              const data = JSON.parse(text);
+              result.syncMetadata = analyzeApiResponse(data, provider);
+              
+              if (Array.isArray(data)) {
+                result.preview = data.slice(0, 2);
+              } else if (typeof data === 'object' && data !== null) {
+                const keys = Object.keys(data);
+                if (keys.length > 0 && Array.isArray(data[keys[0]])) {
+                  result.preview = data[keys[0]].slice(0, 2);
+                } else {
+                  result.preview = [data];
+                }
+              } else {
+                result.preview = [{ value: data }];
+              }
+              
+              result.success = true;
+              console.log(`[TEST-API] JSON parsed successfully, preview items: ${result.preview?.length}`);
+            } catch (parseError) {
+              result.error = 'Response is not valid JSON';
+              result.preview = [{ raw: text.substring(0, 200) + (text.length > 200 ? '...' : '') }];
+              console.log(`[TEST-API] Response is not JSON: ${parseError}`);
+            }
+          } else {
+            result.error = `HTTP ${response.status}: ${response.statusText}`;
+            console.log(`[TEST-API] HTTP error: ${result.error}`);
+          }
+        } catch (fetchError: unknown) {
+          clearTimeout(timeoutId);
+          result.latencyMs = Math.round(performance.now() - startTime);
+
+          const err = fetchError as Error;
+          if (err.name === 'AbortError') {
+            result.timeout = true;
+            result.error = 'Connection timeout (45s exceeded)';
+            console.log(`[TEST-API] Timeout after ${result.latencyMs}ms`);
+          } else {
+            result.error = err.message || 'Network error';
+            console.log(`[TEST-API] Fetch error: ${err.message}`);
+          }
         }
       }
     }
