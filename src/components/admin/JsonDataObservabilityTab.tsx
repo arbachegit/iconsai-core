@@ -35,6 +35,8 @@ interface MetadataField {
 export const JsonDataObservabilityTab = () => {
   const [apis, setApis] = useState<ApiWithJson[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
   const [selectedApi, setSelectedApi] = useState<ApiWithJson | null>(null);
   const [showOrganizedModal, setShowOrganizedModal] = useState(false);
   const [showRawModal, setShowRawModal] = useState(false);
@@ -50,8 +52,12 @@ export const JsonDataObservabilityTab = () => {
     fetchApis();
   }, []);
 
-  const fetchApis = async () => {
-    setLoading(true);
+  const fetchApis = async (showRefreshing = false) => {
+    if (showRefreshing) {
+      setIsRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const { data, error } = await supabase
         .from('system_api_registry')
@@ -63,13 +69,55 @@ export const JsonDataObservabilityTab = () => {
         .order('last_response_at', { ascending: false });
 
       if (error) throw error;
-      setApis((data || []) as unknown as ApiWithJson[]);
+      const apiData = (data || []) as unknown as ApiWithJson[];
+      setApis(apiData);
+      
+      // Calculate total JSON records
+      let totalRecords = 0;
+      for (const api of apiData) {
+        const parsed = parseJsonDataCount(api);
+        totalRecords += parsed;
+      }
+      
+      setLastUpdate({ count: totalRecords, date: new Date() });
+      
+      if (showRefreshing) {
+        toast.success('Dados JSON atualizados');
+      }
     } catch (error) {
       console.error('Error fetching APIs:', error);
       toast.error('Erro ao carregar dados JSON');
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
+  };
+
+  const parseJsonDataCount = (api: ApiWithJson): number => {
+    const rawJson = api.last_raw_response;
+    if (!rawJson) return 0;
+
+    if (api.provider === 'BCB') {
+      const bcbData = rawJson as Array<{ data: string; valor: string }>;
+      return bcbData.filter(item => item.data && item.valor).length;
+    } else if (api.provider === 'IBGE') {
+      const ibgeData = rawJson as Array<{ resultados?: Array<{ series?: Array<{ serie?: Record<string, string> }> }> }>;
+      let count = 0;
+      if (ibgeData[0]?.resultados) {
+        for (const resultado of ibgeData[0].resultados) {
+          for (const serie of resultado.series || []) {
+            const serieData = serie.serie || {};
+            count += Object.entries(serieData).filter(([, v]) => v && v !== '-' && v !== '...').length;
+          }
+        }
+      }
+      return count;
+    }
+    return 0;
+  };
+
+  const handleRefresh = async () => {
+    await fetchApis(true);
   };
 
   const parseJsonData = (api: ApiWithJson): ParsedDataPoint[] => {
@@ -327,10 +375,17 @@ export const JsonDataObservabilityTab = () => {
               </>
             )}
           </Button>
-          <Button onClick={fetchApis} variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Atualizar
-          </Button>
+          <div className="flex items-center gap-3">
+            {lastUpdate && (
+              <span className="text-xs text-muted-foreground">
+                {lastUpdate.count.toLocaleString()} registros • {lastUpdate.date.toLocaleDateString('pt-BR')} {lastUpdate.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isRefreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Atualizando...' : 'Atualizar'}
+            </Button>
+          </div>
         </div>
       </div>
 
