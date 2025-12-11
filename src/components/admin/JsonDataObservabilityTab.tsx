@@ -29,7 +29,7 @@ interface ParsedDataPoint {
 interface MetadataField {
   key: string;
   sampleValue: string;
-  type: string;
+  fieldType: string;
 }
 
 export const JsonDataObservabilityTab = () => {
@@ -138,22 +138,22 @@ export const JsonDataObservabilityTab = () => {
             seen.add(fullKey);
             
             let sampleValue = '';
-            let type = typeof value;
+            let fieldType = typeof value;
             
             if (value === null) {
-              type = 'null';
+              fieldType = 'null';
               sampleValue = 'null';
             } else if (Array.isArray(value)) {
-              type = 'array';
+              fieldType = 'array';
               sampleValue = `[${value.length} items]`;
             } else if (typeof value === 'object') {
-              type = 'object';
+              fieldType = 'object';
               sampleValue = '{...}';
             } else {
               sampleValue = String(value).substring(0, 100);
             }
             
-            fields.push({ key: fullKey, sampleValue, type });
+            fields.push({ key: fullKey, sampleValue, fieldType });
           }
           
           if (typeof value === 'object' && value !== null) {
@@ -472,7 +472,7 @@ export const JsonDataObservabilityTab = () => {
                     <TableCell className="text-sm max-w-xs truncate">{field.sampleValue}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="text-xs">
-                        {field.type}
+                        {field.fieldType}
                       </Badge>
                     </TableCell>
                   </TableRow>
