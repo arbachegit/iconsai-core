@@ -33,6 +33,7 @@ import {
   LineChartIcon,
   AreaChartIcon,
   Info,
+  RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -73,7 +74,7 @@ export function ChartDatabaseTab() {
   const [showMovingAvg, setShowMovingAvg] = useState(true);
 
   // Fetch indicators
-  const { data: indicators = [], isLoading: loadingIndicators } = useQuery({
+  const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
     queryKey: ["indicators-chart-db"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -83,10 +84,12 @@ export function ChartDatabaseTab() {
       if (error) throw error;
       return data as Indicator[];
     },
+    refetchOnWindowFocus: true,
+    staleTime: 30000,
   });
 
   // Fetch all indicator values
-  const { data: allValues = [], isLoading: loadingValues } = useQuery({
+  const { data: allValues = [], isLoading: loadingValues, refetch: refetchValues } = useQuery({
     queryKey: ["indicator-values-chart-db"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -96,7 +99,14 @@ export function ChartDatabaseTab() {
       if (error) throw error;
       return data as IndicatorValue[];
     },
+    refetchOnWindowFocus: true,
+    staleTime: 30000,
   });
+
+  const handleRefresh = () => {
+    refetchIndicators();
+    refetchValues();
+  };
 
   // Get stats for each indicator
   const indicatorStats = useMemo(() => {
@@ -225,6 +235,10 @@ export function ChartDatabaseTab() {
             Visualização detalhada e análise estatística de indicadores
           </p>
         </div>
+        <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Atualizar Dados
+        </Button>
       </div>
 
       {/* Search */}

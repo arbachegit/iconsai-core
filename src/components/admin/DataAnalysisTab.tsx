@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
-import { TrendingUp, TrendingDown, Minus, BarChart3, Calculator, Loader2, Info, AlertTriangle, Lightbulb, Activity } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, BarChart3, Calculator, Loader2, Info, AlertTriangle, Lightbulb, Activity, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import {
   pearsonCorrelation,
@@ -55,7 +55,7 @@ export function DataAnalysisTab() {
   const [impactVariation, setImpactVariation] = useState<number>(0);
 
   // Fetch indicators
-  const { data: indicators = [], isLoading: loadingIndicators } = useQuery({
+  const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
     queryKey: ["indicators-analysis"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -65,10 +65,12 @@ export function DataAnalysisTab() {
       if (error) throw error;
       return data as Indicator[];
     },
+    refetchOnWindowFocus: true,
+    staleTime: 30000, // 30 seconds
   });
 
   // Fetch all indicator values
-  const { data: allValues = [], isLoading: loadingValues } = useQuery({
+  const { data: allValues = [], isLoading: loadingValues, refetch: refetchValues } = useQuery({
     queryKey: ["indicator-values-analysis"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -78,7 +80,14 @@ export function DataAnalysisTab() {
       if (error) throw error;
       return data as IndicatorValue[];
     },
+    refetchOnWindowFocus: true,
+    staleTime: 30000, // 30 seconds
   });
+
+  const handleRefresh = () => {
+    refetchIndicators();
+    refetchValues();
+  };
 
   // Get date range for each indicator
   const indicatorRanges = useMemo(() => {
@@ -327,6 +336,10 @@ export function DataAnalysisTab() {
             Análise comparativa e correlações entre indicadores econômicos
           </p>
         </div>
+        <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Atualizar Dados
+        </Button>
       </div>
 
       {/* Indicator Selection Table */}
