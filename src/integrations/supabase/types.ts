@@ -1768,11 +1768,15 @@ export type Database = {
           last_checked_at: string | null
           last_http_status: number | null
           last_latency_ms: number | null
+          last_raw_response: Json | null
+          last_response_at: string | null
           last_sync_metadata: Json | null
           method: string | null
           name: string
           period_discovery_date: string | null
           provider: string
+          redundant_aggregate_id: string | null
+          redundant_api_url: string | null
           status: string | null
           target_table: string | null
           updated_at: string | null
@@ -1791,11 +1795,15 @@ export type Database = {
           last_checked_at?: string | null
           last_http_status?: number | null
           last_latency_ms?: number | null
+          last_raw_response?: Json | null
+          last_response_at?: string | null
           last_sync_metadata?: Json | null
           method?: string | null
           name: string
           period_discovery_date?: string | null
           provider?: string
+          redundant_aggregate_id?: string | null
+          redundant_api_url?: string | null
           status?: string | null
           target_table?: string | null
           updated_at?: string | null
@@ -1814,11 +1822,15 @@ export type Database = {
           last_checked_at?: string | null
           last_http_status?: number | null
           last_latency_ms?: number | null
+          last_raw_response?: Json | null
+          last_response_at?: string | null
           last_sync_metadata?: Json | null
           method?: string | null
           name?: string
           period_discovery_date?: string | null
           provider?: string
+          redundant_aggregate_id?: string | null
+          redundant_api_url?: string | null
           status?: string | null
           target_table?: string | null
           updated_at?: string | null

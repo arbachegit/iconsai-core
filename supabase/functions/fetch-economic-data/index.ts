@@ -32,6 +32,8 @@ interface ApiConfig {
   status: string;
   fetch_start_date: string | null;
   fetch_end_date: string | null;
+  redundant_api_url: string | null;
+  redundant_aggregate_id: string | null;
 }
 
 interface SyncMetadata {
@@ -604,7 +606,7 @@ serve(async (req) => {
     // Get indicators to fetch
     let indicatorsQuery = supabase
       .from('economic_indicators')
-      .select(`id, name, code, unit, api_id, system_api_registry!inner (id, name, provider, base_url, status, fetch_start_date, fetch_end_date)`)
+      .select(`id, name, code, unit, api_id, system_api_registry!inner (id, name, provider, base_url, status, fetch_start_date, fetch_end_date, redundant_api_url, redundant_aggregate_id)`)
       .eq('system_api_registry.status', 'active');
 
     if (!fetchAll && indicatorId) {
@@ -710,6 +712,7 @@ serve(async (req) => {
         let data: unknown;
         let syncMetadata: SyncMetadata | null = null;
         let httpStatus: number | null = null;
+        let rawResponse: unknown = null; // Store raw JSON for observability
         
         // ====== AUTO MODE: Calculate dynamic start date ======
         let effectiveStartDate = apiConfig.fetch_start_date;
@@ -745,8 +748,20 @@ serve(async (req) => {
         if (apiConfig.provider === 'BCB') {
           console.log(`[FETCH-ECONOMIC] 🔄 Starting BCB fetch for: ${indicator.name}`);
           console.log(`[FETCH-ECONOMIC] Using dates for ${indicator.name}: ${effectiveStartDate} to ${apiConfig.fetch_end_date}`);
-          const bcbData = await fetchBCBWithChunking(apiConfig.base_url, effectiveStartDate, apiConfig.fetch_end_date, indicator.name);
+          let bcbData = await fetchBCBWithChunking(apiConfig.base_url, effectiveStartDate, apiConfig.fetch_end_date, indicator.name);
+          
+          // CONTINGENCY: If Linha 1 returns zero data and redundant URL exists
+          if (bcbData.length === 0 && apiConfig.redundant_api_url) {
+            console.log(`[FETCH-ECONOMIC] ⚠️ [CONTINGENCY] Linha 1 retornou 0 dados, tentando Linha 2 (redundância)...`);
+            console.log(`[FETCH-ECONOMIC] [CONTINGENCY] URL Redundante: ${apiConfig.redundant_api_url}`);
+            bcbData = await fetchBCBWithChunking(apiConfig.redundant_api_url, effectiveStartDate, apiConfig.fetch_end_date, `${indicator.name} (Linha 2)`);
+            if (bcbData.length > 0) {
+              console.log(`[FETCH-ECONOMIC] ✅ [CONTINGENCY] Linha 2 sucesso: ${bcbData.length} registros`);
+            }
+          }
+          
           data = bcbData;
+          rawResponse = bcbData; // Store for observability
           syncMetadata = generateSyncMetadata(bcbData, 'BCB');
           httpStatus = bcbData.length > 0 ? 200 : null;
           console.log(`[FETCH-ECONOMIC] 📊 BCB fetch complete for ${indicator.name}: ${bcbData.length} data points`);
@@ -754,8 +769,20 @@ serve(async (req) => {
           // IBGE: Use chunking to avoid HTTP 500 from server overload
           console.log(`[FETCH-ECONOMIC] 🔄 Starting IBGE fetch with chunking for: ${indicator.name}`);
           console.log(`[FETCH-ECONOMIC] Using dates for ${indicator.name}: ${effectiveStartDate} to ${apiConfig.fetch_end_date}`);
-          const ibgeData = await fetchIBGEWithChunking(apiConfig.base_url, effectiveStartDate, apiConfig.fetch_end_date, indicator.name);
+          let ibgeData = await fetchIBGEWithChunking(apiConfig.base_url, effectiveStartDate, apiConfig.fetch_end_date, indicator.name);
+          
+          // CONTINGENCY: If Linha 1 returns zero data and redundant URL exists
+          if (ibgeData.length === 0 && apiConfig.redundant_api_url) {
+            console.log(`[FETCH-ECONOMIC] ⚠️ [CONTINGENCY] Linha 1 IBGE retornou 0 dados, tentando Linha 2 (redundância)...`);
+            console.log(`[FETCH-ECONOMIC] [CONTINGENCY] URL Redundante: ${apiConfig.redundant_api_url}`);
+            ibgeData = await fetchIBGEWithChunking(apiConfig.redundant_api_url, effectiveStartDate, apiConfig.fetch_end_date, `${indicator.name} (Linha 2)`);
+            if (ibgeData.length > 0) {
+              console.log(`[FETCH-ECONOMIC] ✅ [CONTINGENCY] Linha 2 IBGE sucesso: ${ibgeData.length} chunks`);
+            }
+          }
+          
           data = ibgeData;
+          rawResponse = ibgeData; // Store for observability
           syncMetadata = generateIBGESyncMetadata(ibgeData);
           httpStatus = ibgeData.length > 0 ? 200 : null;
           console.log(`[FETCH-ECONOMIC] 📊 IBGE fetch complete for ${indicator.name}: ${ibgeData.length} result chunks`);
@@ -978,7 +1005,9 @@ serve(async (req) => {
             status: 'active',
             last_checked_at: new Date().toISOString(),
             last_http_status: httpStatus,
-            last_sync_metadata: syncMetadata
+            last_sync_metadata: syncMetadata,
+            last_raw_response: rawResponse, // Store raw JSON for observability
+            last_response_at: new Date().toISOString()
           };
 
           // Persist discovered period (governance feature)
