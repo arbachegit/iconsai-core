@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { TrendingUp, RefreshCw, Info, Database, Bell, FileText, BarChart3, LineChart, ShoppingCart } from 'lucide-react';
+import { TrendingUp, RefreshCw, Info, Database, Bell, FileText, BarChart3, LineChart, ShoppingCart, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { IndicatorCard, IndicatorDetailModal } from './indicators';
 
 interface Indicator {
@@ -30,6 +31,19 @@ interface ApiRegistry {
   id: string;
   name: string;
   provider: string;
+  fetch_start_date: string | null;
+  fetch_end_date: string | null;
+  last_sync_metadata: Record<string, unknown> | null;
+}
+
+interface DataDiscrepancy {
+  indicatorId: string;
+  indicatorName: string;
+  configuredStart: string | null;
+  configuredEnd: string | null;
+  actualStart: string | null;
+  actualEnd: string | null;
+  isDiscrepant: boolean;
 }
 
 // Category configuration
@@ -43,6 +57,7 @@ export default function EconomicIndicatorsTab() {
   const [indicators, setIndicators] = useState<Indicator[]>([]);
   const [indicatorStats, setIndicatorStats] = useState<IndicatorStats>({});
   const [apiRegistry, setApiRegistry] = useState<ApiRegistry[]>([]);
+  const [dataDiscrepancies, setDataDiscrepancies] = useState<DataDiscrepancy[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchingAll, setFetchingAll] = useState(false);
   const [etlModalOpen, setEtlModalOpen] = useState(false);
@@ -62,14 +77,14 @@ export default function EconomicIndicatorsTab() {
       const [indicatorsRes, statsRes, apiRes] = await Promise.all([
         supabase.from('economic_indicators').select('*').order('name'),
         supabase.from('indicator_values').select('indicator_id, reference_date').order('reference_date', { ascending: false }),
-        supabase.from('system_api_registry').select('id, name, provider')
+        supabase.from('system_api_registry').select('id, name, provider, fetch_start_date, fetch_end_date, last_sync_metadata')
       ]);
 
       if (indicatorsRes.error) throw indicatorsRes.error;
       setIndicators(indicatorsRes.data || []);
-      setApiRegistry(apiRes.data || []);
+      setApiRegistry((apiRes.data || []) as unknown as ApiRegistry[]);
 
-      // Process stats
+      // Process stats with min/max dates for discrepancy detection
       const stats: IndicatorStats = {};
       const groupedByIndicator: Record<string, string[]> = {};
       
@@ -80,14 +95,52 @@ export default function EconomicIndicatorsTab() {
         groupedByIndicator[row.indicator_id].push(row.reference_date);
       });
 
+      // Build discrepancy list
+      const discrepancies: DataDiscrepancy[] = [];
+      const indicatorsList = indicatorsRes.data || [];
+      const apiList = apiRes.data || [];
+
       Object.entries(groupedByIndicator).forEach(([indicatorId, dates]) => {
+        const sortedDates = [...dates].sort();
+        const actualStart = sortedDates[0] || null;
+        const actualEnd = sortedDates[sortedDates.length - 1] || null;
+        
         stats[indicatorId] = {
           recordCount: dates.length,
-          lastUpdate: dates[0] || null
+          lastUpdate: dates[dates.length - 1] || null // Most recent by sort
         };
+
+        // Find indicator and its API config
+        const indicator = indicatorsList.find(i => i.id === indicatorId);
+        if (indicator?.api_id) {
+          const api = apiList.find(a => a.id === indicator.api_id);
+          if (api?.fetch_start_date && api?.fetch_end_date) {
+            const configStart = api.fetch_start_date.substring(0, 10);
+            const configEnd = api.fetch_end_date.substring(0, 10);
+            
+            // Check if actual data range is significantly different from configured range
+            const actualStartYear = actualStart ? parseInt(actualStart.substring(0, 4)) : null;
+            const configStartYear = parseInt(configStart.substring(0, 4));
+            const yearDiff = actualStartYear ? actualStartYear - configStartYear : 0;
+            
+            // Discrepancy: data starts more than 1 year after configured start
+            if (yearDiff > 1) {
+              discrepancies.push({
+                indicatorId,
+                indicatorName: indicator.name,
+                configuredStart: configStart,
+                configuredEnd: configEnd,
+                actualStart,
+                actualEnd,
+                isDiscrepant: true
+              });
+            }
+          }
+        }
       });
 
       setIndicatorStats(stats);
+      setDataDiscrepancies(discrepancies);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Erro ao carregar dados');
@@ -288,6 +341,28 @@ export default function EconomicIndicatorsTab() {
           Sincronizar Todos
         </Button>
       </div>
+
+      {/* Data Discrepancy Alert */}
+      {dataDiscrepancies.length > 0 && (
+        <Alert variant="destructive" className="border-amber-500/50 bg-amber-500/10">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <AlertTitle className="text-amber-400">Inconsistência de Dados Detectada</AlertTitle>
+          <AlertDescription className="text-amber-300/80">
+            <p className="mb-2">
+              Os seguintes indicadores têm dados fora do período configurado. Execute "Sincronizar Todos" para corrigir:
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-sm">
+              {dataDiscrepancies.map(d => (
+                <li key={d.indicatorId}>
+                  <span className="font-medium">{d.indicatorName}</span>: 
+                  Configurado {d.configuredStart?.substring(0, 4)}-{d.configuredEnd?.substring(0, 4)}, 
+                  mas dados começam em {d.actualStart?.substring(0, 4)}
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Macro Indicators Section */}
       {groupedIndicators.macro.length > 0 && (
