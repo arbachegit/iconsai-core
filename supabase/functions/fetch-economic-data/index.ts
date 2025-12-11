@@ -236,9 +236,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const { indicatorId, fetchAll, forceRefresh } = await req.json().catch(() => ({}));
+    const { indicatorId, fetchAll, forceRefresh, autoMode } = await req.json().catch(() => ({}));
 
-    console.log('[FETCH-ECONOMIC] Starting fetch...', { indicatorId, fetchAll, forceRefresh });
+    console.log('[FETCH-ECONOMIC] Starting fetch...', { indicatorId, fetchAll, forceRefresh, autoMode });
 
     // Get indicators to fetch
     let indicatorsQuery = supabase
@@ -261,26 +261,63 @@ serve(async (req) => {
       );
     }
 
-    // ====== FORCE REFRESH: Zero-Base Sync ======
+    // ====== FORCE REFRESH: Zero-Base Sync with VERIFICATION ======
     if (forceRefresh) {
-      console.log('[FETCH-ECONOMIC] ☢️ FORCE REFRESH MODE: Clearing all indicator data before fresh insert');
+      console.log('[FETCH-ECONOMIC] ☢️☢️☢️ FORCE REFRESH MODE: Nuclear Zero-Base Sync ☢️☢️☢️');
+      console.log('[FETCH-ECONOMIC] Phase 1: Counting records BEFORE deletion...');
       
       for (const indicator of indicators) {
-        console.log(`[FETCH-ECONOMIC] ☢️ Deleting all data for: ${indicator.name} (${indicator.id})`);
+        // Step 1: Count records BEFORE delete
+        const { count: beforeCount, error: countError } = await supabase
+          .from('indicator_values')
+          .select('*', { count: 'exact', head: true })
+          .eq('indicator_id', indicator.id);
+        
+        if (countError) {
+          console.error(`[FETCH-ECONOMIC] ❌ Count failed for ${indicator.name}:`, countError);
+          continue;
+        }
+        
+        console.log(`[FETCH-ECONOMIC] ☢️ ${indicator.name}: ${beforeCount ?? 0} records BEFORE delete`);
+        
+        // Step 2: Execute DELETE with count confirmation
+        console.log(`[FETCH-ECONOMIC] ☢️ Executing DELETE for: ${indicator.name} (${indicator.id})`);
         
         const { error: deleteError, count: deletedCount } = await supabase
           .from('indicator_values')
-          .delete()
+          .delete({ count: 'exact' })
           .eq('indicator_id', indicator.id);
         
         if (deleteError) {
-          console.error(`[FETCH-ECONOMIC] ❌ Delete failed for ${indicator.name}:`, deleteError);
-        } else {
-          console.log(`[FETCH-ECONOMIC] ✅ Deleted ${deletedCount ?? 'unknown'} records for ${indicator.name}`);
+          console.error(`[FETCH-ECONOMIC] ❌ DELETE FAILED for ${indicator.name}:`, deleteError);
+          console.error(`[FETCH-ECONOMIC] Error code: ${deleteError.code}`);
+          console.error(`[FETCH-ECONOMIC] Error message: ${deleteError.message}`);
+          throw new Error(`Zero-Base DELETE failed for ${indicator.name}: ${deleteError.message}`);
         }
+        
+        console.log(`[FETCH-ECONOMIC] ✅ DELETED ${deletedCount ?? 'confirmed'} records for ${indicator.name}`);
+        
+        // Step 3: VERIFY table is truly empty
+        const { count: afterCount, error: verifyError } = await supabase
+          .from('indicator_values')
+          .select('*', { count: 'exact', head: true })
+          .eq('indicator_id', indicator.id);
+        
+        if (verifyError) {
+          console.error(`[FETCH-ECONOMIC] ❌ Verification failed for ${indicator.name}:`, verifyError);
+          throw new Error(`Zero-Base verification failed for ${indicator.name}`);
+        }
+        
+        if (afterCount && afterCount > 0) {
+          console.error(`[FETCH-ECONOMIC] ❌ CRITICAL: ${afterCount} records STILL EXIST after DELETE!`);
+          throw new Error(`Zero-Base incomplete: ${afterCount} records remain for ${indicator.name}`);
+        }
+        
+        console.log(`[FETCH-ECONOMIC] ✅ VERIFIED: ${indicator.name} table is EMPTY (0 records)`);
       }
       
-      console.log('[FETCH-ECONOMIC] ☢️ All data cleared. Proceeding with fresh insert...');
+      console.log('[FETCH-ECONOMIC] ☢️☢️☢️ Zero-Base cleanup COMPLETE. All tables verified EMPTY. ☢️☢️☢️');
+      console.log('[FETCH-ECONOMIC] Proceeding with fresh data insertion...');
     }
 
     let totalRecordsInserted = 0;
@@ -303,11 +340,40 @@ serve(async (req) => {
         let syncMetadata: SyncMetadata | null = null;
         let httpStatus: number | null = null;
         
+        // ====== AUTO MODE: Calculate dynamic start date ======
+        let effectiveStartDate = apiConfig.fetch_start_date;
+        
+        if (autoMode && !forceRefresh) {
+          console.log(`[FETCH-ECONOMIC] [AUTO MODE] Calculating dynamic start date for ${indicator.name}`);
+          
+          const { data: lastRecord, error: lastRecordError } = await supabase
+            .from('indicator_values')
+            .select('reference_date')
+            .eq('indicator_id', indicator.id)
+            .order('reference_date', { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (lastRecord && !lastRecordError) {
+            const lastDate = new Date(lastRecord.reference_date);
+            lastDate.setDate(lastDate.getDate() + 1);
+            effectiveStartDate = lastDate.toISOString().substring(0, 10);
+            console.log(`[FETCH-ECONOMIC] [AUTO MODE] Last record: ${lastRecord.reference_date}, starting from: ${effectiveStartDate}`);
+          } else {
+            console.log(`[FETCH-ECONOMIC] [AUTO MODE] No existing records, using configured start: ${effectiveStartDate}`);
+          }
+          
+          // Update last_auto_fetch timestamp
+          await supabase.from('system_api_registry').update({
+            last_auto_fetch: new Date().toISOString()
+          }).eq('id', apiConfig.id);
+        }
+
         // Use chunking strategy for BCB to avoid 10-year limit (406 error)
         // NOW PASSING CONFIGURED DATES FROM DATABASE
         if (apiConfig.provider === 'BCB') {
-          console.log(`[FETCH-ECONOMIC] Using configured dates for ${indicator.name}: ${apiConfig.fetch_start_date} to ${apiConfig.fetch_end_date}`);
-          const bcbData = await fetchBCBWithChunking(apiConfig.base_url, apiConfig.fetch_start_date, apiConfig.fetch_end_date);
+          console.log(`[FETCH-ECONOMIC] Using dates for ${indicator.name}: ${effectiveStartDate} to ${apiConfig.fetch_end_date}`);
+          const bcbData = await fetchBCBWithChunking(apiConfig.base_url, effectiveStartDate, apiConfig.fetch_end_date);
           data = bcbData;
           syncMetadata = generateSyncMetadata(bcbData, 'BCB');
           httpStatus = bcbData.length > 0 ? 200 : null;
@@ -468,6 +534,48 @@ serve(async (req) => {
             status: 'success',
             newRecords: newValues.length
           });
+
+          // ====== GOVERNANCE: Validate Start Date ======
+          if (valuesToInsert.length > 0) {
+            const sortedValues = [...valuesToInsert].sort((a, b) => 
+              a.reference_date.localeCompare(b.reference_date)
+            );
+            
+            const firstInsertedDate = sortedValues[0].reference_date;
+            const configuredStart = apiConfig.fetch_start_date;
+            
+            console.log(`[FETCH-ECONOMIC] [GOVERNANCE] First inserted date: ${firstInsertedDate}`);
+            console.log(`[FETCH-ECONOMIC] [GOVERNANCE] Configured start: ${configuredStart}`);
+            
+            if (configuredStart) {
+              const insertedDate = new Date(firstInsertedDate);
+              const configuredDate = new Date(configuredStart);
+              const diffDays = Math.abs((insertedDate.getTime() - configuredDate.getTime()) / (1000 * 60 * 60 * 24));
+              
+              if (diffDays > 30) {
+                console.warn(`[FETCH-ECONOMIC] ⚠️ [GOVERNANCE] DATA GAP DETECTED!`);
+                console.warn(`[FETCH-ECONOMIC] Expected start: ${configuredStart}`);
+                console.warn(`[FETCH-ECONOMIC] Actual start: ${firstInsertedDate}`);
+                console.warn(`[FETCH-ECONOMIC] Gap: ${Math.round(diffDays)} days`);
+                
+                // Log governance alert
+                await supabase.from('user_activity_logs').insert({
+                  user_email: 'system@knowyou.app',
+                  action_category: 'GOVERNANCE_ALERT',
+                  action: `Data gap detected for ${indicator.name}`,
+                  details: { 
+                    indicator: indicator.name,
+                    configuredStart,
+                    actualStart: firstInsertedDate,
+                    gapDays: Math.round(diffDays),
+                    severity: diffDays > 365 ? 'critical' : 'warning'
+                  }
+                });
+              } else {
+                console.log(`[FETCH-ECONOMIC] ✅ [GOVERNANCE] Date validation PASSED (${Math.round(diffDays)} days within 30-day tolerance)`);
+              }
+            }
+          }
 
           // Update API registry with success telemetry
           await supabase.from('system_api_registry').update({
