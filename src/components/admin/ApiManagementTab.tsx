@@ -481,6 +481,9 @@ export default function ApiManagementTab() {
           <div className="flex items-center gap-3">
             <Webhook className="h-6 w-6 text-primary" />
             <CardTitle>Gestão de APIs Externas</CardTitle>
+            <Badge variant="secondary" className="text-xs">
+              {apis.length}
+            </Badge>
           </div>
           <div className="flex items-center gap-2">
             <Button

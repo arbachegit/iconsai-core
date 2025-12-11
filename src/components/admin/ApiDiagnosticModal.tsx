@@ -437,6 +437,9 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
           <DialogTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-primary" />
             Diagnóstico de APIs Externas
+            <Badge variant="secondary" className="text-xs ml-1">
+              {apis.length}
+            </Badge>
           </DialogTitle>
           <DialogDescription>
             Testando conectividade e integridade histórica de todas as APIs configuradas (BCB e IBGE)
