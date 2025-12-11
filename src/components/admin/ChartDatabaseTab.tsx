@@ -72,6 +72,8 @@ export function ChartDatabaseTab() {
   const [selectedIndicator, setSelectedIndicator] = useState<Indicator | null>(null);
   const [chartType, setChartType] = useState<ChartType>("line");
   const [showMovingAvg, setShowMovingAvg] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
 
   // Fetch indicators
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
@@ -121,9 +123,14 @@ export function ChartDatabaseTab() {
     staleTime: 30000,
   });
 
-  const handleRefresh = () => {
-    refetchIndicators();
-    refetchValues();
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refetchIndicators(), refetchValues()]);
+      setLastUpdate({ count: allValues.length, date: new Date() });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // Get stats for each indicator
@@ -253,10 +260,17 @@ export function ChartDatabaseTab() {
             Visualização detalhada e análise estatística de indicadores
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Atualizar Dados
-        </Button>
+        <div className="flex items-center gap-3">
+          {lastUpdate && (
+            <span className="text-xs text-muted-foreground">
+              {lastUpdate.count.toLocaleString()} registros • {lastUpdate.date.toLocaleDateString('pt-BR')} {lastUpdate.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="gap-2">
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Atualizando...' : 'Atualizar Dados'}
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
