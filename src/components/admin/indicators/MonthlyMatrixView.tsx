@@ -160,9 +160,39 @@ export default function MonthlyMatrixView({ indicatorId, values, unit, onValueCh
     return <Minus className="h-3 w-3" />;
   };
 
+  // Calculate date range for display
+  const dateRange = useMemo(() => {
+    if (values.length === 0) return null;
+    const sortedDates = values.map(v => v.reference_date).sort();
+    return {
+      oldest: sortedDates[0],
+      newest: sortedDates[sortedDates.length - 1]
+    };
+  }, [values]);
+
   return (
     <TooltipProvider>
-      <div className="overflow-x-auto">
+      <div className="space-y-2">
+        {/* Info banner */}
+        <div className="flex items-center justify-between px-2 py-1.5 bg-muted/30 rounded-lg border border-border/50">
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="font-medium">
+              📊 {matrixData.years.length} anos carregados
+            </span>
+            {matrixData.years.length > 0 && (
+              <span>
+                ({matrixData.years[matrixData.years.length - 1]} → {matrixData.years[0]})
+              </span>
+            )}
+          </div>
+          {dateRange && (
+            <span className="text-xs text-cyan-400/80 font-mono">
+              {dateRange.oldest} → {dateRange.newest}
+            </span>
+          )}
+        </div>
+        
+        <div className="overflow-x-auto">
         <Table className="min-w-full">
           <TableHeader>
             <TableRow className="bg-muted/30">
@@ -287,6 +317,7 @@ export default function MonthlyMatrixView({ indicatorId, values, unit, onValueCh
             })}
           </TableBody>
         </Table>
+        </div>
       </div>
     </TooltipProvider>
   );

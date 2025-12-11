@@ -89,12 +89,15 @@ function generateTenYearChunks(startDate: Date, endDate: Date): Array<{ start: s
 }
 
 // Fetch BCB data with chunking to respect 10-year limit - NOW USING CONFIGURED DATES
+// Enhanced with retry logic and detailed error tracking
 async function fetchBCBWithChunking(
   baseUrl: string, 
   fetchStartDate: string | null, 
-  fetchEndDate: string | null
+  fetchEndDate: string | null,
+  indicatorName: string = 'Unknown'
 ): Promise<BCBDataPoint[]> {
   const allData: BCBDataPoint[] = [];
+  const MAX_RETRIES = 3;
   
   // Remove any existing date parameters from URL
   const cleanUrl = baseUrl.split('&dataInicial')[0].split('?dataInicial')[0];
@@ -104,45 +107,128 @@ async function fetchBCBWithChunking(
   const startDate = fetchStartDate ? new Date(fetchStartDate) : new Date('2010-01-01');
   const endDate = fetchEndDate ? new Date(fetchEndDate) : new Date();
   
-  console.log(`[FETCH-ECONOMIC] ====== AUDIT: DATE CONFIGURATION ======`);
-  console.log(`[FETCH-ECONOMIC] Configured fetch_start_date: ${fetchStartDate}`);
-  console.log(`[FETCH-ECONOMIC] Configured fetch_end_date: ${fetchEndDate}`);
-  console.log(`[FETCH-ECONOMIC] Effective start: ${startDate.toISOString().substring(0, 10)}`);
-  console.log(`[FETCH-ECONOMIC] Effective end: ${endDate.toISOString().substring(0, 10)}`);
+  console.log(`[FETCH-ECONOMIC] ====== AUDIT: ${indicatorName} ======`);
+  console.log(`[FETCH-ECONOMIC] [${indicatorName}] Base URL: ${cleanUrl}`);
+  console.log(`[FETCH-ECONOMIC] [${indicatorName}] Configured fetch_start_date: ${fetchStartDate}`);
+  console.log(`[FETCH-ECONOMIC] [${indicatorName}] Configured fetch_end_date: ${fetchEndDate}`);
+  console.log(`[FETCH-ECONOMIC] [${indicatorName}] Effective start: ${startDate.toISOString().substring(0, 10)}`);
+  console.log(`[FETCH-ECONOMIC] [${indicatorName}] Effective end: ${endDate.toISOString().substring(0, 10)}`);
+  
+  // Validate dates
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    console.error(`[FETCH-ECONOMIC] ❌ [${indicatorName}] INVALID DATES! Start: ${fetchStartDate}, End: ${fetchEndDate}`);
+    return [];
+  }
+  
+  if (startDate >= endDate) {
+    console.error(`[FETCH-ECONOMIC] ❌ [${indicatorName}] START DATE >= END DATE! No data to fetch.`);
+    return [];
+  }
   
   // Generate dynamic chunks based on configured dates
   const chunks = generateTenYearChunks(startDate, endDate);
   
-  console.log(`[FETCH-ECONOMIC] BCB chunking: ${chunks.length} chunks to fetch`);
-  console.log(`[FETCH-ECONOMIC] Chunks generated:`, JSON.stringify(chunks));
+  console.log(`[FETCH-ECONOMIC] [${indicatorName}] BCB chunking: ${chunks.length} chunks to fetch`);
+  console.log(`[FETCH-ECONOMIC] [${indicatorName}] Chunks:`, JSON.stringify(chunks));
   
-  for (const chunk of chunks) {
+  for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+    const chunk = chunks[chunkIndex];
     const separator = hasParams ? '&' : '?';
     const chunkUrl = `${cleanUrl}${separator}dataInicial=${chunk.start}&dataFinal=${chunk.end}`;
     
-    console.log(`[FETCH-ECONOMIC] BCB chunk: ${chunk.start} to ${chunk.end}`);
-    console.log(`[FETCH-ECONOMIC] BCB URL: ${chunkUrl}`);
+    console.log(`[FETCH-ECONOMIC] [${indicatorName}] Chunk ${chunkIndex + 1}/${chunks.length}: ${chunk.start} to ${chunk.end}`);
     
-    try {
-      const response = await fetch(chunkUrl, { headers: BCB_HEADERS });
-      
-      if (response.ok) {
-        const data = await response.json() as BCBDataPoint[];
+    let lastError: Error | null = null;
+    
+    // Retry loop for each chunk
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`[FETCH-ECONOMIC] [${indicatorName}] Attempt ${attempt}/${MAX_RETRIES} - Fetching: ${chunkUrl}`);
+        
+        const response = await fetch(chunkUrl, { headers: BCB_HEADERS });
+        
+        console.log(`[FETCH-ECONOMIC] [${indicatorName}] HTTP Status: ${response.status} ${response.statusText}`);
+        
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unable to read response body');
+          console.error(`[FETCH-ECONOMIC] ❌ [${indicatorName}] HTTP ERROR ${response.status}: ${errorText.substring(0, 200)}`);
+          
+          if (response.status === 406) {
+            console.error(`[FETCH-ECONOMIC] ❌ [${indicatorName}] 406 Not Acceptable - BCB API rejecting request. Check date range or series code.`);
+          }
+          
+          lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+          
+          if (attempt < MAX_RETRIES) {
+            const delay = 1000 * attempt;
+            console.log(`[FETCH-ECONOMIC] [${indicatorName}] Waiting ${delay}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+          break;
+        }
+        
+        const responseText = await response.text();
+        
+        // Validate JSON response
+        let data: BCBDataPoint[];
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error(`[FETCH-ECONOMIC] ❌ [${indicatorName}] JSON PARSE ERROR:`, parseError);
+          console.error(`[FETCH-ECONOMIC] ❌ [${indicatorName}] Response preview: ${responseText.substring(0, 500)}`);
+          lastError = new Error('Invalid JSON response from BCB');
+          break;
+        }
+        
+        // Validate data structure
+        if (!Array.isArray(data)) {
+          console.error(`[FETCH-ECONOMIC] ❌ [${indicatorName}] UNEXPECTED FORMAT: Response is not an array`);
+          console.error(`[FETCH-ECONOMIC] ❌ [${indicatorName}] Response type: ${typeof data}`);
+          lastError = new Error('BCB response is not an array');
+          break;
+        }
+        
+        // Validate data points have expected fields
+        if (data.length > 0) {
+          const sample = data[0];
+          if (!('data' in sample) || !('valor' in sample)) {
+            console.error(`[FETCH-ECONOMIC] ❌ [${indicatorName}] UNEXPECTED FIELDS: Expected {data, valor}, got ${JSON.stringify(Object.keys(sample))}`);
+          }
+        }
+        
         allData.push(...data);
-        console.log(`[FETCH-ECONOMIC] BCB chunk success: ${data.length} records`);
-      } else {
-        console.warn(`[FETCH-ECONOMIC] BCB chunk failed: ${response.status} ${response.statusText}`);
+        console.log(`[FETCH-ECONOMIC] ✅ [${indicatorName}] Chunk ${chunkIndex + 1} success: ${data.length} records (Total: ${allData.length})`);
+        lastError = null;
+        break; // Success, exit retry loop
+        
+      } catch (err) {
+        console.error(`[FETCH-ECONOMIC] ❌ [${indicatorName}] FETCH EXCEPTION on attempt ${attempt}:`, err);
+        lastError = err instanceof Error ? err : new Error(String(err));
+        
+        if (attempt < MAX_RETRIES) {
+          const delay = 1000 * attempt;
+          console.log(`[FETCH-ECONOMIC] [${indicatorName}] Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       }
-    } catch (err) {
-      console.warn(`[FETCH-ECONOMIC] BCB chunk error:`, err);
     }
     
-    // Small delay between requests to be polite to the API
+    if (lastError) {
+      console.error(`[FETCH-ECONOMIC] ❌ [${indicatorName}] CHUNK ${chunkIndex + 1} FAILED after ${MAX_RETRIES} attempts: ${lastError.message}`);
+    }
+    
+    // Small delay between chunks to be polite to the API
     await new Promise(resolve => setTimeout(resolve, 200));
   }
   
-  console.log(`[FETCH-ECONOMIC] BCB total records fetched: ${allData.length}`);
-  console.log(`[FETCH-ECONOMIC] ====== END AUDIT ======`);
+  console.log(`[FETCH-ECONOMIC] [${indicatorName}] ====== TOTAL RECORDS: ${allData.length} ======`);
+  
+  if (allData.length === 0) {
+    console.warn(`[FETCH-ECONOMIC] ⚠️ [${indicatorName}] WARNING: ZERO DATA POINTS FETCHED!`);
+    console.warn(`[FETCH-ECONOMIC] ⚠️ [${indicatorName}] Check: 1) Series code in URL, 2) Date range validity, 3) API availability`);
+  }
+  
   return allData;
 }
 
@@ -372,11 +458,13 @@ serve(async (req) => {
         // Use chunking strategy for BCB to avoid 10-year limit (406 error)
         // NOW PASSING CONFIGURED DATES FROM DATABASE
         if (apiConfig.provider === 'BCB') {
+          console.log(`[FETCH-ECONOMIC] 🔄 Starting BCB fetch for: ${indicator.name}`);
           console.log(`[FETCH-ECONOMIC] Using dates for ${indicator.name}: ${effectiveStartDate} to ${apiConfig.fetch_end_date}`);
-          const bcbData = await fetchBCBWithChunking(apiConfig.base_url, effectiveStartDate, apiConfig.fetch_end_date);
+          const bcbData = await fetchBCBWithChunking(apiConfig.base_url, effectiveStartDate, apiConfig.fetch_end_date, indicator.name);
           data = bcbData;
           syncMetadata = generateSyncMetadata(bcbData, 'BCB');
           httpStatus = bcbData.length > 0 ? 200 : null;
+          console.log(`[FETCH-ECONOMIC] 📊 BCB fetch complete for ${indicator.name}: ${bcbData.length} data points`);
         } else {
           // Other providers: standard fetch
           const response = await fetch(apiConfig.base_url);
