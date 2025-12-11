@@ -540,9 +540,9 @@ const Arquitetura = () => {
                 </feMerge>
               </filter>
 
-              {/* Motion paths */}
-              <path id="inputPath" d="M180,120 C350,60 650,60 820,120" fill="none" />
-              <path id="outputPath" d="M820,160 C650,220 350,220 180,160" fill="none" />
+              {/* Motion paths - extended to brain centers */}
+              <path id="inputPath" d="M140,120 C350,50 650,50 860,120" fill="none" />
+              <path id="outputPath" d="M860,160 C650,230 350,230 140,160" fill="none" />
             </defs>
 
             {/* === LEFT SIDE: Human Brain === */}
@@ -598,7 +598,7 @@ const Arquitetura = () => {
             <g>
               {/* Flow path line */}
               <path 
-                d="M180,120 C350,60 650,60 820,120" 
+                d="M140,120 C350,50 650,50 860,120" 
                 fill="none" 
                 stroke="url(#inputFlowGrad)" 
                 strokeWidth="4"
@@ -608,7 +608,7 @@ const Arquitetura = () => {
               
               {/* Animated dashes on path */}
               <path 
-                d="M180,120 C350,60 650,60 820,120" 
+                d="M140,120 C350,50 650,50 860,120" 
                 fill="none" 
                 stroke="url(#inputFlowGrad)" 
                 strokeWidth="2"
@@ -657,7 +657,7 @@ const Arquitetura = () => {
             <g>
               {/* Flow path line */}
               <path 
-                d="M820,160 C650,220 350,220 180,160" 
+                d="M860,160 C650,230 350,230 140,160" 
                 fill="none" 
                 stroke="url(#outputFlowGrad)" 
                 strokeWidth="4"
@@ -667,7 +667,7 @@ const Arquitetura = () => {
               
               {/* Animated dashes on path */}
               <path 
-                d="M820,160 C650,220 350,220 180,160" 
+                d="M860,160 C650,230 350,230 140,160" 
                 fill="none" 
                 stroke="url(#outputFlowGrad)" 
                 strokeWidth="2"
