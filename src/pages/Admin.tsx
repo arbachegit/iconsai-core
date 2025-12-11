@@ -74,6 +74,8 @@ const EconomicIndicatorsTab = lazy(() => import("@/components/admin/EconomicIndi
 const MarketNewsTab = lazy(() => import("@/components/admin/MarketNewsTab"));
 const ApiManagementTab = lazy(() => import("@/components/admin/ApiManagementTab"));
 const JsonDataObservabilityTab = lazy(() => import("@/components/admin/JsonDataObservabilityTab").then(m => ({ default: m.JsonDataObservabilityTab })));
+const DataAnalysisTab = lazy(() => import("@/components/admin/DataAnalysisTab"));
+const ChartDatabaseTab = lazy(() => import("@/components/admin/ChartDatabaseTab"));
 
 // Loading fallback component
 const TabLoadingFallback = () => (
@@ -82,7 +84,7 @@ const TabLoadingFallback = () => (
   </div>
 );
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -126,6 +128,8 @@ const TAB_LABELS: Record<TabType, string> = {
   "market-news": "Balcão de Notícias",
   "api-management": "Gestão de APIs",
   "json-data": "JSON Dados",
+  "data-analysis": "Data Analysis",
+  "chart-database": "Chart Data Base",
 };
 
 const Admin = () => {
@@ -293,6 +297,8 @@ const Admin = () => {
         case "market-news": return <MarketNewsTab />;
         case "api-management": return <ApiManagementTab />;
         case "json-data": return <JsonDataObservabilityTab />;
+        case "data-analysis": return <DataAnalysisTab />;
+        case "chart-database": return <ChartDatabaseTab />;
         default: return <DashboardTab />;
       }
     })();
