@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
-import { TrendingUp, TrendingDown, Minus, BarChart3, Calculator, Loader2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, BarChart3, Calculator, Loader2, Info, AlertTriangle, Lightbulb, Activity } from "lucide-react";
 import { format } from "date-fns";
 import {
   pearsonCorrelation,
@@ -18,6 +18,9 @@ import {
   getCorrelationStrength,
   generatePairs,
   predictValue,
+  standardDeviation,
+  mean,
+  coefficientOfVariation,
 } from "@/lib/statistics-utils";
 
 interface Indicator {
@@ -198,6 +201,105 @@ export function DataAnalysisTab() {
       });
   }, [impactIndicator, impactVariation, correlations]);
 
+  // Comparative Chart Analysis
+  const comparativeAnalysis = useMemo(() => {
+    if (selectedIndicators.length < 2) return null;
+
+    const summary = selectedIndicators.map((indId) => {
+      const values = filteredValues
+        .filter((v) => v.indicator_id === indId)
+        .map((v) => v.value);
+      const ind = indicators.find((i) => i.id === indId);
+      const trend = trends.find((t) => t.id === indId);
+      const avg = values.length > 0 ? mean(values) : 0;
+      const stdDev = values.length > 0 ? standardDeviation(values) : 0;
+      const cv = values.length > 0 ? coefficientOfVariation(values) : 0;
+
+      return {
+        id: indId,
+        name: ind?.name || indId,
+        mean: avg,
+        stdDev,
+        cv,
+        trend: trend?.trend || "stable",
+        volatility: cv > 30 ? "Alta" : cv > 15 ? "Média" : "Baixa",
+      };
+    });
+
+    const insights: string[] = [];
+    
+    // Detect strong correlations
+    correlations.filter((c) => Math.abs(c.correlation) > 0.7).forEach((c) => {
+      const type = c.correlation > 0 ? "positiva" : "negativa";
+      insights.push(`${c.name1} e ${c.name2} apresentam correlação ${c.strength.toLowerCase()} ${type} (r=${c.correlation.toFixed(2)})`);
+    });
+
+    // Detect high volatility
+    const highVolatility = summary.filter((s) => s.volatility === "Alta");
+    if (highVolatility.length > 0) {
+      insights.push(`Indicadores com alta volatilidade: ${highVolatility.map((s) => s.name).join(", ")}`);
+    }
+
+    // Detect opposing trends
+    const upTrends = summary.filter((s) => s.trend === "up");
+    const downTrends = summary.filter((s) => s.trend === "down");
+    if (upTrends.length > 0 && downTrends.length > 0) {
+      insights.push(`Tendências opostas detectadas: ${upTrends.map((s) => s.name).join(", ")} (↑) vs ${downTrends.map((s) => s.name).join(", ")} (↓)`);
+    }
+
+    const suggestions: string[] = [];
+    if (correlations.some((c) => Math.abs(c.correlation) > 0.8)) {
+      suggestions.push("Alta correlação sugere previsibilidade entre variáveis - considere usar um indicador como proxy do outro");
+    }
+    if (highVolatility.length > 0) {
+      suggestions.push("Indicadores voláteis podem necessitar de análise de médias móveis para suavização");
+    }
+    suggestions.push(`Período analisado: ${yearRange[0]}-${yearRange[1]} - considere expandir para identificar padrões de longo prazo`);
+
+    return { summary, insights, suggestions };
+  }, [selectedIndicators, filteredValues, indicators, correlations, trends, yearRange]);
+
+  // Simulation Analysis
+  const simulationAnalysis = useMemo(() => {
+    if (!impactIndicator || impactVariation === 0 || impactResults.length === 0) return null;
+
+    const baseIndicator = indicators.find((i) => i.id === impactIndicator);
+    const variationType = impactVariation > 0 ? "aumento" : "redução";
+    
+    const interpretations: string[] = [];
+    const highImpacts = impactResults.filter((r) => Math.abs(r.impact) > 10);
+    const moderateImpacts = impactResults.filter((r) => Math.abs(r.impact) >= 5 && Math.abs(r.impact) <= 10);
+
+    interpretations.push(
+      `Com uma variação de ${impactVariation > 0 ? "+" : ""}${impactVariation}% no ${baseIndicator?.name || "indicador"}, estima-se:`
+    );
+
+    impactResults.forEach((r) => {
+      const direction = r.impact > 0 ? "aumento" : "redução";
+      const correlationType = r.correlation > 0 ? "positiva" : "negativa";
+      interpretations.push(`• ${r.name}: ${direction} de ${Math.abs(r.impact).toFixed(1)}% (correlação ${correlationType})`);
+    });
+
+    const warnings = [
+      "Correlação não implica causalidade - fatores externos podem influenciar os resultados reais",
+      `Simulação baseada em dados históricos (${yearRange[0]}-${yearRange[1]})`,
+      "Relações entre indicadores podem mudar ao longo do tempo",
+    ];
+
+    const recommendations: string[] = [];
+    if (highImpacts.length > 0) {
+      recommendations.push(`Indicadores com impacto >10% requerem atenção especial: ${highImpacts.map((r) => r.name).join(", ")}`);
+    }
+    if (Math.abs(impactVariation) < 5) {
+      recommendations.push("Considere simular cenários mais extremos (-20% a +20%) para avaliar sensibilidade");
+    }
+    if (moderateImpacts.length > 0) {
+      recommendations.push(`Monitore indicadores com impacto moderado: ${moderateImpacts.map((r) => r.name).join(", ")}`);
+    }
+
+    return { interpretations, warnings, recommendations };
+  }, [impactIndicator, impactVariation, impactResults, indicators, yearRange]);
+
   const toggleIndicator = (id: string) => {
     setSelectedIndicators((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
@@ -373,6 +475,71 @@ export function DataAnalysisTab() {
             </CardContent>
           </Card>
 
+          {/* Comparative Chart Analysis */}
+          {comparativeAnalysis && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-primary" />
+                  Análise do Gráfico Comparativo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Summary */}
+                <div>
+                  <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                    <TrendingUp className="h-4 w-4 text-blue-500" />
+                    Resumo Estatístico por Indicador
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {comparativeAnalysis.summary.map((s) => (
+                      <div key={s.id} className="p-2 bg-background/60 rounded-md text-sm">
+                        <span className="font-medium">{s.name}</span>
+                        <div className="text-muted-foreground text-xs mt-1">
+                          Média: {s.mean.toFixed(2)} | Tendência: {s.trend === "up" ? "↑" : s.trend === "down" ? "↓" : "→"} | Volatilidade: {s.volatility}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Insights */}
+                {comparativeAnalysis.insights.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                      <Info className="h-4 w-4 text-amber-500" />
+                      Insights Detectados
+                    </h4>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      {comparativeAnalysis.insights.map((insight, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="text-amber-500">•</span>
+                          {insight}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Suggestions */}
+                <div>
+                  <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                    <Lightbulb className="h-4 w-4 text-green-500" />
+                    Sugestões
+                  </h4>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    {comparativeAnalysis.suggestions.map((suggestion, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-green-500">•</span>
+                        {suggestion}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Trend Analysis */}
           <Card>
             <CardHeader>
@@ -489,6 +656,68 @@ export function DataAnalysisTab() {
               )}
             </CardContent>
           </Card>
+
+          {/* Simulation Analysis */}
+          {simulationAnalysis && (
+            <Card className="bg-accent/5 border-accent/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-accent-foreground" />
+                  Análise da Simulação
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Interpretations */}
+                <div>
+                  <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                    <Info className="h-4 w-4 text-blue-500" />
+                    Interpretação
+                  </h4>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    {simulationAnalysis.interpretations.map((interp, idx) => (
+                      <li key={idx} className={idx === 0 ? "font-medium text-foreground" : ""}>
+                        {interp}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Warnings */}
+                <div>
+                  <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    Avisos Metodológicos
+                  </h4>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    {simulationAnalysis.warnings.map((warning, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-amber-500">•</span>
+                        {warning}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Recommendations */}
+                {simulationAnalysis.recommendations.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                      <Lightbulb className="h-4 w-4 text-green-500" />
+                      Recomendações
+                    </h4>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      {simulationAnalysis.recommendations.map((rec, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="text-green-500">•</span>
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
 
