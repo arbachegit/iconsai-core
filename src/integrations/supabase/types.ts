@@ -266,6 +266,39 @@ export type Database = {
         }
         Relationships: []
       }
+      brazilian_ufs: {
+        Row: {
+          capital: string | null
+          created_at: string | null
+          id: string
+          region_code: string
+          region_name: string
+          uf_code: number
+          uf_name: string
+          uf_sigla: string
+        }
+        Insert: {
+          capital?: string | null
+          created_at?: string | null
+          id?: string
+          region_code: string
+          region_name: string
+          uf_code: number
+          uf_name: string
+          uf_sigla: string
+        }
+        Update: {
+          capital?: string | null
+          created_at?: string | null
+          id?: string
+          region_code?: string
+          region_name?: string
+          uf_code?: number
+          uf_name?: string
+          uf_sigla?: string
+        }
+        Relationships: []
+      }
       chat_analytics: {
         Row: {
           audio_plays: number | null
@@ -943,6 +976,7 @@ export type Database = {
           cron_schedule: string | null
           frequency: string | null
           id: string
+          is_regional: boolean | null
           name: string
           unit: string | null
           updated_at: string | null
@@ -955,6 +989,7 @@ export type Database = {
           cron_schedule?: string | null
           frequency?: string | null
           id?: string
+          is_regional?: boolean | null
           name: string
           unit?: string | null
           updated_at?: string | null
@@ -967,6 +1002,7 @@ export type Database = {
           cron_schedule?: string | null
           frequency?: string | null
           id?: string
+          is_regional?: boolean | null
           name?: string
           unit?: string | null
           updated_at?: string | null
@@ -1070,6 +1106,48 @@ export type Database = {
           success?: boolean
         }
         Relationships: []
+      }
+      indicator_regional_values: {
+        Row: {
+          created_at: string | null
+          id: string
+          indicator_id: string
+          reference_date: string
+          uf_code: number
+          value: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          indicator_id: string
+          reference_date: string
+          uf_code: number
+          value: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          indicator_id?: string
+          reference_date?: string
+          uf_code?: number
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "indicator_regional_values_indicator_id_fkey"
+            columns: ["indicator_id"]
+            isOneToOne: false
+            referencedRelation: "economic_indicators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "indicator_regional_values_uf_code_fkey"
+            columns: ["uf_code"]
+            isOneToOne: false
+            referencedRelation: "brazilian_ufs"
+            referencedColumns: ["uf_code"]
+          },
+        ]
       }
       indicator_values: {
         Row: {
