@@ -692,67 +692,94 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
           </Table>
         </div>
 
-        {/* Summary */}
-        {!isRunning && results.length > 0 && (
-          <div className="flex items-center justify-between p-4 bg-muted/20 rounded-lg border">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-emerald-400" />
-                <span className="text-sm">
-                  <span className="font-semibold text-emerald-400">{successCount}</span>
-                  <span className="text-muted-foreground"> de {results.length} APIs funcionando</span>
-                </span>
+        {/* Summary - Expanded Statistics */}
+        {!isRunning && results.length > 0 && (() => {
+          const functionalApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount && r.extractedCount > 0).length;
+          const connectionErrors = results.filter(r => r.testResult === 'NÃO').length;
+          const naApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount === 0).length;
+          const partialCoverage = results.filter(r => r.diagnosis === 'PARTIAL_HISTORY' || r.diagnosis === 'API_NO_HISTORY').length;
+          const hasProblems = connectionErrors > 0 || naApis > 0 || partialCoverage > 0;
+          
+          return (
+            <div className="space-y-3 p-4 bg-muted/20 rounded-lg border">
+              {/* Statistics Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="flex items-center gap-2 p-2 bg-emerald-500/10 rounded border border-emerald-500/20">
+                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <div>
+                    <div className="text-lg font-bold text-emerald-400">{functionalApis}</div>
+                    <div className="text-[10px] text-muted-foreground">APIs Funcionais</div>
+                  </div>
+                </div>
+                <div className={`flex items-center gap-2 p-2 rounded border ${connectionErrors > 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-muted/30 border-muted'}`}>
+                  <XCircle className={`h-4 w-4 ${connectionErrors > 0 ? 'text-red-400' : 'text-muted-foreground'}`} />
+                  <div>
+                    <div className={`text-lg font-bold ${connectionErrors > 0 ? 'text-red-400' : 'text-muted-foreground'}`}>{connectionErrors}</div>
+                    <div className="text-[10px] text-muted-foreground">Erros Conexão</div>
+                  </div>
+                </div>
+                <div className={`flex items-center gap-2 p-2 rounded border ${naApis > 0 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-muted/30 border-muted'}`}>
+                  <AlertTriangle className={`h-4 w-4 ${naApis > 0 ? 'text-amber-400' : 'text-muted-foreground'}`} />
+                  <div>
+                    <div className={`text-lg font-bold ${naApis > 0 ? 'text-amber-400' : 'text-muted-foreground'}`}>{naApis}</div>
+                    <div className="text-[10px] text-muted-foreground">Dados N/A</div>
+                  </div>
+                </div>
+                <div className={`flex items-center gap-2 p-2 rounded border ${partialCoverage > 0 ? 'bg-orange-500/10 border-orange-500/20' : 'bg-muted/30 border-muted'}`}>
+                  <AlertTriangle className={`h-4 w-4 ${partialCoverage > 0 ? 'text-orange-400' : 'text-muted-foreground'}`} />
+                  <div>
+                    <div className={`text-lg font-bold ${partialCoverage > 0 ? 'text-orange-400' : 'text-muted-foreground'}`}>{partialCoverage}</div>
+                    <div className="text-[10px] text-muted-foreground">Cobertura Parcial</div>
+                  </div>
+                </div>
               </div>
-              {failCount > 0 && (
-                <div className="flex items-center gap-2">
-                  <XCircle className="h-4 w-4 text-red-400" />
-                  <span className="text-sm text-red-400">{failCount} com falha</span>
+              
+              {/* Actions */}
+              <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                <div className="text-xs text-muted-foreground">
+                  Total: {results.length} APIs testadas
                 </div>
-              )}
-              {historyWarnings > 0 && (
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-400" />
-                  <span className="text-sm text-amber-400">{historyWarnings} sem histórico completo</span>
+                  {hasProblems && (
+                    <>
+                      <Button 
+                        onClick={handleCopyReport}
+                        variant="outline" 
+                        size="sm"
+                        className="gap-2 border-red-500/40 text-red-400 hover:bg-red-500/10"
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="h-3 w-3" />
+                            Copiado!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3" />
+                            Copiar Relatório
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        onClick={() => setShowErrorReport(true)} 
+                        variant="outline" 
+                        size="sm"
+                        className="gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                      >
+                        <FileText className="h-3 w-3" />
+                        Ver Relatório
+                      </Button>
+                    </>
+                  )}
+                  <Button onClick={handleRetest} variant="outline" size="sm" className="gap-2">
+                    <RefreshCw className="h-3 w-3" />
+                    Testar Novamente
+                  </Button>
                 </div>
-              )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {hasErrors && (
-                <>
-                  <Button 
-                    onClick={handleCopyReport}
-                    variant="outline" 
-                    className="gap-2 border-red-500/40 text-red-400 hover:bg-red-500/10"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="h-4 w-4" />
-                        Copiado!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4" />
-                        Copiar Erros
-                      </>
-                    )}
-                  </Button>
-                  <Button 
-                    onClick={() => setShowErrorReport(true)} 
-                    variant="outline" 
-                    className="gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
-                  >
-                    <FileText className="h-4 w-4" />
-                    Ver Relatório
-                  </Button>
-                </>
-              )}
-              <Button onClick={handleRetest} variant="outline" className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Testar Novamente
-              </Button>
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </DialogContent>
     </Dialog>
   );
