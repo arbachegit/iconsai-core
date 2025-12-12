@@ -77,6 +77,29 @@ export default function EconomicIndicatorsTab() {
   const [selectedIndicator, setSelectedIndicator] = useState<Indicator | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
 
+  // ========== REALTIME SYNC: Auto-refresh on system_api_registry changes ==========
+  useEffect(() => {
+    const channel = supabase
+      .channel('economic-indicators-api-sync')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',  // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'system_api_registry'
+        },
+        (payload) => {
+          console.log('[REALTIME] 🔄 EconomicIndicators - system_api_registry changed:', payload.eventType);
+          fetchData('realtime-sync');
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   useEffect(() => {
     fetchData();
   }, []);

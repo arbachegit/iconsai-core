@@ -52,6 +52,8 @@ interface ApiRegistry {
   fetch_end_date: string | null;
   auto_fetch_enabled: boolean | null;
   auto_fetch_interval: string | null;
+  discovered_period_start: string | null;
+  discovered_period_end: string | null;
 }
 
 interface TestResult {
@@ -125,6 +127,29 @@ export default function ApiManagementTab() {
 
   useEffect(() => {
     fetchApis();
+  }, []);
+
+  // ========== REALTIME SYNC: Auto-refresh on system_api_registry changes ==========
+  useEffect(() => {
+    const channel = supabase
+      .channel('api-management-sync')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',  // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'system_api_registry'
+        },
+        (payload) => {
+          console.log('[REALTIME] 🔄 ApiManagement - system_api_registry changed:', payload.eventType);
+          fetchApis();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchApis = async () => {
@@ -871,22 +896,58 @@ export default function ApiManagementTab() {
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      {/* Período - Clickable */}
+                      {/* Período - Dual Date Display (Configurada vs Real) */}
                       <TableCell className="hidden xl:table-cell">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 gap-1.5 border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400"
-                          onClick={() => handleOpenConfigModal(api)}
-                        >
-                          <Settings className="h-3 w-3" />
-                          {getConfiguredPeriod(api) || 'Configurar'}
-                          {api.auto_fetch_enabled && (
-                            <Badge variant="outline" className="ml-1 text-[9px] px-1 py-0 border-cyan-500/40 text-cyan-400">
-                              Auto
+                        <div className="flex flex-col gap-1">
+                          {/* Configured Date */}
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-500/40 text-blue-400 font-normal">
+                              Configurada
                             </Badge>
-                          )}
-                        </Button>
+                            <span className="text-xs text-blue-300">
+                              {api.fetch_start_date ? format(new Date(api.fetch_start_date), 'MM/yyyy') : '—'}
+                            </span>
+                          </div>
+                          {/* Real/Discovered Date */}
+                          <div className="flex items-center gap-1.5">
+                            <Badge 
+                              variant="outline" 
+                              className={cn(
+                                "text-[10px] px-1.5 py-0 font-normal",
+                                api.discovered_period_start && api.fetch_start_date && 
+                                  new Date(api.discovered_period_start).getFullYear() === new Date(api.fetch_start_date).getFullYear()
+                                  ? "border-green-500/40 text-green-400"
+                                  : "border-yellow-500/40 text-yellow-400"
+                              )}
+                            >
+                              Real
+                            </Badge>
+                            <span className={cn(
+                              "text-xs",
+                              api.discovered_period_start && api.fetch_start_date && 
+                                new Date(api.discovered_period_start).getFullYear() === new Date(api.fetch_start_date).getFullYear()
+                                ? "text-green-300"
+                                : "text-yellow-300"
+                            )}>
+                              {api.discovered_period_start ? format(new Date(api.discovered_period_start), 'MM/yyyy') : 'Não descoberta'}
+                            </span>
+                          </div>
+                          {/* Settings Button */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 gap-1 mt-0.5 border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px]"
+                            onClick={() => handleOpenConfigModal(api)}
+                          >
+                            <Settings className="h-3 w-3" />
+                            Configurar
+                            {api.auto_fetch_enabled && (
+                              <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 border-cyan-500/40 text-cyan-400">
+                                Auto
+                              </Badge>
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
