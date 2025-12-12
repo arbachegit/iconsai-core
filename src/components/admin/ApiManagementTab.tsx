@@ -70,7 +70,7 @@ interface TestResult {
   syncMetadata: SyncMetadata | null;
 }
 
-const PROVIDERS = ['BCB', 'IBGE', 'WorldBank', 'IMF', 'YahooFinance', 'Internal', 'Scraper'] as const;
+const PROVIDERS = ['BCB', 'IBGE', 'IPEADATA', 'WorldBank', 'IMF', 'YahooFinance', 'Internal', 'Scraper'] as const;
 
 const ITEMS_PER_PAGE = 10;
 

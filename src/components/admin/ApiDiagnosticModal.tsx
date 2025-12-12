@@ -94,7 +94,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
     const { data, error } = await supabase
       .from('system_api_registry')
       .select('id, name, provider, base_url, fetch_start_date, fetch_end_date, target_table, last_http_status, last_sync_metadata, last_checked_at')
-      .in('provider', ['BCB', 'IBGE', 'WorldBank'])
+      .in('provider', ['BCB', 'IBGE', 'IPEADATA', 'WorldBank'])
       .order('provider', { ascending: true });
 
     if (error) {
@@ -436,7 +436,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
             </Badge>
           </DialogTitle>
           <DialogDescription>
-            Testando conectividade e integridade histórica de todas as APIs configuradas (BCB, IBGE e WorldBank)
+            Testando conectividade e integridade histórica de todas as APIs configuradas (BCB, IBGE, IPEADATA e WorldBank)
           </DialogDescription>
         </DialogHeader>
 
