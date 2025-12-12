@@ -289,33 +289,60 @@ function analyzeApiResponse(data: unknown, provider: string): SyncMetadata {
       metadata.last_record_value = data[data.length - 1].valor;
     }
     
-    // SIDRA format: flat array with D3C (period code) and D3N (period name) - used by demographic indicators
-    // First row is header, data rows have V field for value
+    // SIDRA format: flat array with DxC fields - used by demographic indicators
+    // First row is header, data rows may have V field with values like ".." for unavailable
+    // CRITICAL: Extract period from ALL rows BEFORE filtering for valid values
     if (provider === 'IBGE' && data[0].D3C !== undefined) {
       // Skip first row (header row with field descriptions)
-      const dataRows = data.slice(1).filter((row: any) => row.V && row.V !== '..' && row.V !== '-');
+      const allRows = data.slice(1);
       
-      metadata.extracted_count = dataRows.length;
+      // Find the period field dynamically - look for DxC field containing year-like values (4-6 digits)
+      // Priority: D3C (most common), D4C, D5C for complex tables with more dimensions
+      const findPeriodField = (rows: any[]): string | null => {
+        const candidates = ['D3C', 'D4C', 'D5C'];
+        for (const field of candidates) {
+          if (rows[0]?.[field]) {
+            const value = String(rows[0][field]);
+            // Check if it looks like a year (4 digits) or year-month (6 digits)
+            if (/^\d{4,6}$/.test(value)) {
+              return field;
+            }
+          }
+        }
+        return null;
+      };
       
-      if (dataRows.length > 0) {
-        // Extract unique periods from D3C field and sort
-        const periods = [...new Set(dataRows.map((row: any) => row.D3C))].filter(p => p).sort() as string[];
+      const periodField = findPeriodField(allRows);
+      console.log(`[TEST-API] SIDRA detected period field: ${periodField} from ${allRows.length} rows`);
+      
+      // Extract periods from ALL rows (not just valid V values) to ensure period detection
+      if (periodField && allRows.length > 0) {
+        const allPeriods = [...new Set(allRows.map((row: any) => row[periodField]))]
+          .filter(p => p && /^\d{4,6}$/.test(String(p)))
+          .sort() as string[];
         
-        if (periods.length > 0) {
-          // D3C contains year code (e.g., "2018", "201801" for monthly)
-          const formatPeriod = (p: string) => {
-            if (p.length === 4) return `${p}-01-01`; // Annual: YYYY
-            if (p.length === 6) return `${p.substring(0, 4)}-${p.substring(4, 6)}-01`; // Monthly: YYYYMM
-            return `${p}-01-01`;
-          };
-          
-          metadata.period_start = formatPeriod(periods[0]);
-          metadata.period_end = formatPeriod(periods[periods.length - 1]);
-          metadata.last_record_value = String(dataRows[dataRows.length - 1].V);
-          
-          console.log(`[TEST-API] SIDRA parsed: ${dataRows.length} records, period ${metadata.period_start} to ${metadata.period_end}`);
+        const formatPeriod = (p: string) => {
+          if (p.length === 4) return `${p}-01-01`; // Annual: YYYY
+          if (p.length === 6) return `${p.substring(0, 4)}-${p.substring(4, 6)}-01`; // Monthly: YYYYMM
+          return `${p}-01-01`;
+        };
+        
+        if (allPeriods.length > 0) {
+          metadata.period_start = formatPeriod(allPeriods[0]);
+          metadata.period_end = formatPeriod(allPeriods[allPeriods.length - 1]);
+          console.log(`[TEST-API] SIDRA period extracted: ${metadata.period_start} to ${metadata.period_end}`);
         }
       }
+      
+      // Now filter for valid values to get count and last value
+      const validRows = allRows.filter((row: any) => row.V && row.V !== '..' && row.V !== '-');
+      metadata.extracted_count = allRows.length; // Report total rows, not just valid
+      
+      if (validRows.length > 0) {
+        metadata.last_record_value = String(validRows[validRows.length - 1].V);
+      }
+      
+      console.log(`[TEST-API] SIDRA parsed: ${allRows.length} total rows, ${validRows.length} with valid values, period ${metadata.period_start} to ${metadata.period_end}`);
     }
     
     // IBGE nested format detection (aggregated results)
