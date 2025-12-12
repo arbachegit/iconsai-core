@@ -24,6 +24,21 @@ interface IBGEResult {
   }>;
 }
 
+// IPEADATA OData v4 response structure
+interface IPEADATADataPoint {
+  SERCODIGO: string;
+  VALDATA: string;       // ISO date: "2024-01-01T00:00:00-03:00"
+  VALVALOR: number;      // Numeric value
+  NIVNOME?: string;      // Level name (optional)
+  TERCODIGO?: string;    // Territory code (optional)
+}
+
+interface IPEADATAResponse {
+  '@odata.context'?: string;
+  '@odata.nextLink'?: string;
+  value: IPEADATADataPoint[];
+}
+
 interface ApiConfig {
   id: string;
   name: string;
@@ -622,6 +637,158 @@ function generateIBGESyncMetadata(ibgeData: IBGEResult[]): SyncMetadata {
   return metadata;
 }
 
+// Generate sync metadata for IPEADATA
+function generateIPEADATASyncMetadata(ipedataResponse: IPEADATAResponse | unknown): SyncMetadata {
+  const metadata: SyncMetadata = {
+    extracted_count: 0,
+    period_start: null,
+    period_end: null,
+    fields_detected: ['VALDATA', 'VALVALOR', 'SERCODIGO'],
+    last_record_value: null,
+    fetch_timestamp: new Date().toISOString()
+  };
+
+  // Handle OData response with 'value' array
+  const response = ipedataResponse as { value?: IPEADATADataPoint[] };
+  if (!response?.value || !Array.isArray(response.value)) return metadata;
+
+  const dataArray = response.value;
+  if (dataArray.length === 0) return metadata;
+
+  metadata.extracted_count = dataArray.length;
+
+  // Sort by date and extract period range
+  const sortedByDate = [...dataArray]
+    .filter(item => item.VALDATA && item.VALVALOR !== null && item.VALVALOR !== undefined)
+    .sort((a, b) => a.VALDATA.localeCompare(b.VALDATA));
+
+  if (sortedByDate.length > 0) {
+    // IPEADATA dates are ISO format: "2024-01-01T00:00:00-03:00"
+    metadata.period_start = sortedByDate[0].VALDATA.substring(0, 10);
+    metadata.period_end = sortedByDate[sortedByDate.length - 1].VALDATA.substring(0, 10);
+    metadata.last_record_value = String(sortedByDate[sortedByDate.length - 1].VALVALOR);
+  }
+
+  return metadata;
+}
+
+// Fetch IPEADATA with OData filter support
+async function fetchIPEADATA(
+  baseUrl: string,
+  fetchStartDate: string | null,
+  fetchEndDate: string | null,
+  indicatorName: string = 'Unknown'
+): Promise<IPEADATADataPoint[]> {
+  console.log(`[FETCH-ECONOMIC] ====== IPEADATA FETCH: ${indicatorName} ======`);
+  console.log(`[FETCH-ECONOMIC] [IPEADATA] Base URL: ${baseUrl}`);
+  console.log(`[FETCH-ECONOMIC] [IPEADATA] Configured fetch_start_date: ${fetchStartDate}`);
+  console.log(`[FETCH-ECONOMIC] [IPEADATA] Configured fetch_end_date: ${fetchEndDate}`);
+
+  // Build URL with OData filter if date is configured
+  let fetchUrl = baseUrl;
+  
+  if (fetchStartDate) {
+    // OData filter syntax: $filter=VALDATA ge YYYY-MM-DD
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    fetchUrl = `${baseUrl}${separator}$filter=VALDATA ge ${fetchStartDate}`;
+    console.log(`[FETCH-ECONOMIC] [IPEADATA] Applied OData filter: VALDATA ge ${fetchStartDate}`);
+  }
+
+  console.log(`[FETCH-ECONOMIC] [IPEADATA] Final URL: ${fetchUrl.substring(0, 200)}...`);
+
+  const MAX_RETRIES = 3;
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`[FETCH-ECONOMIC] [IPEADATA] Attempt ${attempt}/${MAX_RETRIES}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
+      
+      const response = await fetch(fetchUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (compatible; KnowYOU-DataCollector/1.0)'
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      console.log(`[FETCH-ECONOMIC] [IPEADATA] HTTP Status: ${response.status} ${response.statusText}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unable to read response');
+        console.error(`[FETCH-ECONOMIC] ❌ [IPEADATA] HTTP ERROR ${response.status}: ${errorText.substring(0, 200)}`);
+        
+        if (attempt < MAX_RETRIES) {
+          const delay = 3000 * attempt;
+          console.log(`[FETCH-ECONOMIC] [IPEADATA] Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        return [];
+      }
+      
+      const jsonData = await response.json() as IPEADATAResponse;
+      
+      // OData response has 'value' array containing the data
+      if (jsonData.value && Array.isArray(jsonData.value)) {
+        console.log(`[FETCH-ECONOMIC] ✅ [IPEADATA] SUCCESS: ${jsonData.value.length} records fetched`);
+        
+        // Handle pagination if @odata.nextLink exists
+        let allData = [...jsonData.value];
+        let nextLink = jsonData['@odata.nextLink'];
+        let pageCount = 1;
+        
+        while (nextLink && pageCount < 50) { // Safety limit: max 50 pages
+          pageCount++;
+          console.log(`[FETCH-ECONOMIC] [IPEADATA] Fetching page ${pageCount}...`);
+          
+          try {
+            const nextResponse = await fetch(nextLink, {
+              method: 'GET',
+              headers: { 'Accept': 'application/json' }
+            });
+            
+            if (!nextResponse.ok) break;
+            
+            const nextData = await nextResponse.json() as IPEADATAResponse;
+            if (nextData.value && Array.isArray(nextData.value)) {
+              allData = [...allData, ...nextData.value];
+              nextLink = nextData['@odata.nextLink'];
+            } else {
+              break;
+            }
+          } catch (pageError) {
+            console.error(`[FETCH-ECONOMIC] [IPEADATA] Pagination error on page ${pageCount}:`, pageError);
+            break;
+          }
+        }
+        
+        console.log(`[FETCH-ECONOMIC] [IPEADATA] Total records after pagination: ${allData.length}`);
+        return allData;
+      } else {
+        console.warn(`[FETCH-ECONOMIC] ⚠️ [IPEADATA] Unexpected response format - no 'value' array`);
+        return [];
+      }
+      
+    } catch (err) {
+      console.error(`[FETCH-ECONOMIC] ❌ [IPEADATA] FETCH EXCEPTION on attempt ${attempt}:`, err);
+      
+      if (attempt < MAX_RETRIES) {
+        const delay = 3000 * attempt;
+        console.log(`[FETCH-ECONOMIC] [IPEADATA] Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  console.error(`[FETCH-ECONOMIC] ❌ [IPEADATA] ALL ${MAX_RETRIES} ATTEMPTS FAILED for ${indicatorName}`);
+  return [];
+}
+
 // Generate sync metadata for WorldBank data
 function generateWorldBankSyncMetadata(worldBankData: unknown): SyncMetadata {
   const metadata: SyncMetadata = {
@@ -1141,6 +1308,28 @@ serve(async (req) => {
           syncMetadata = generateIBGESyncMetadata(ibgeData);
           httpStatus = ibgeData.length > 0 ? 200 : null;
           console.log(`[FETCH-ECONOMIC] 📊 IBGE fetch complete for ${indicator.name}: ${ibgeData.length} result chunks`);
+        } else if (apiConfig.provider === 'IPEADATA') {
+          // IPEADATA: OData v4 API with filter support
+          console.log(`[FETCH-ECONOMIC] 🔄 Starting IPEADATA fetch for: ${indicator.name}`);
+          console.log(`[FETCH-ECONOMIC] Using dates for ${indicator.name}: ${effectiveStartDate} to ${apiConfig.fetch_end_date}`);
+          
+          let ipeadataData = await fetchIPEADATA(apiConfig.base_url, effectiveStartDate, apiConfig.fetch_end_date, indicator.name);
+          
+          // CONTINGENCY: If primary returns zero data and redundant URL exists
+          if (ipeadataData.length === 0 && apiConfig.redundant_api_url) {
+            console.log(`[FETCH-ECONOMIC] ⚠️ [CONTINGENCY] IPEADATA Linha 1 retornou 0 dados, tentando Linha 2 (redundância)...`);
+            console.log(`[FETCH-ECONOMIC] [CONTINGENCY] URL Redundante: ${apiConfig.redundant_api_url}`);
+            ipeadataData = await fetchIPEADATA(apiConfig.redundant_api_url, effectiveStartDate, apiConfig.fetch_end_date, `${indicator.name} (Linha 2)`);
+            if (ipeadataData.length > 0) {
+              console.log(`[FETCH-ECONOMIC] ✅ [CONTINGENCY] Linha 2 IPEADATA sucesso: ${ipeadataData.length} registros`);
+            }
+          }
+          
+          data = { value: ipeadataData };
+          rawResponse = { value: ipeadataData.slice(0, 50) }; // Limit for observability
+          syncMetadata = generateIPEADATASyncMetadata({ value: ipeadataData });
+          httpStatus = ipeadataData.length > 0 ? 200 : null;
+          console.log(`[FETCH-ECONOMIC] 📊 IPEADATA fetch complete for ${indicator.name}: ${ipeadataData.length} data points`);
         } else if (apiConfig.provider === 'IMF' || apiConfig.provider === 'WorldBank' || apiConfig.provider === 'YahooFinance') {
           // INTERNATIONAL APIS: Use ultra-resilience protocol with fallback
           console.log(`[FETCH-ECONOMIC] 🌍 Starting INTERNATIONAL fetch for: ${indicator.name}`);
@@ -1338,6 +1527,37 @@ serve(async (req) => {
           // Generate sync metadata for WorldBank
           syncMetadata = generateWorldBankSyncMetadata(data);
           console.log(`[FETCH-ECONOMIC] WorldBank syncMetadata generated: extracted_count=${syncMetadata.extracted_count}, period=${syncMetadata.period_start} to ${syncMetadata.period_end}`);
+        } else if (apiConfig.provider === 'IPEADATA') {
+          // ====== IPEADATA PARSER ======
+          // IPEADATA OData returns { value: [{SERCODIGO, VALDATA, VALVALOR, ...}] }
+          console.log(`[FETCH-ECONOMIC] IPEADATA response received, parsing...`);
+          
+          const ipeadataResponse = data as { value?: IPEADATADataPoint[] };
+          
+          if (ipeadataResponse?.value && Array.isArray(ipeadataResponse.value)) {
+            console.log(`[FETCH-ECONOMIC] IPEADATA data array has ${ipeadataResponse.value.length} items`);
+            
+            for (const item of ipeadataResponse.value) {
+              if (item.VALVALOR === null || item.VALVALOR === undefined) continue;
+              if (!item.VALDATA) continue;
+              
+              // IPEADATA date is ISO format: "2024-01-01T00:00:00-03:00"
+              const refDate = item.VALDATA.substring(0, 10);
+              const numValue = typeof item.VALVALOR === 'number' ? item.VALVALOR : parseFloat(String(item.VALVALOR));
+              
+              if (!isNaN(numValue)) {
+                valuesToInsert.push({
+                  indicator_id: indicator.id,
+                  reference_date: refDate,
+                  value: numValue,
+                });
+              }
+            }
+          } else {
+            console.warn(`[FETCH-ECONOMIC] IPEADATA unexpected format:`, typeof data);
+          }
+          
+          console.log(`[FETCH-ECONOMIC] IPEADATA parsed values: ${valuesToInsert.length}`);
         }
 
         // ====== ZERO VALUES WARNING ======

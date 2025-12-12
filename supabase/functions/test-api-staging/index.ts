@@ -63,7 +63,15 @@ function extractVariables(data: unknown): Array<{
   // Handle array response (most common for APIs)
   let sampleRecord: Record<string, unknown> | null = null;
   
-  if (Array.isArray(data) && data.length > 0) {
+  // IPEADATA OData format: { value: [...] }
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>;
+    if (obj.value && Array.isArray(obj.value) && obj.value.length > 0) {
+      sampleRecord = obj.value[0] as Record<string, unknown>;
+    }
+  }
+  
+  if (!sampleRecord && Array.isArray(data) && data.length > 0) {
     sampleRecord = data[0] as Record<string, unknown>;
   } else if (data && typeof data === 'object') {
     // Check for nested arrays (IBGE style)
@@ -101,6 +109,17 @@ function detectPeriodRange(data: unknown): { start: string | null; end: string |
   const extractDates = (obj: unknown) => {
     if (!obj) return;
     
+    // IPEADATA OData format: { value: [...] }
+    if (typeof obj === 'object' && !Array.isArray(obj)) {
+      const record = obj as Record<string, unknown>;
+      if (record.value && Array.isArray(record.value)) {
+        for (const item of record.value) {
+          extractDates(item);
+        }
+        return;
+      }
+    }
+    
     if (Array.isArray(obj)) {
       for (const item of obj) {
         extractDates(item);
@@ -116,16 +135,20 @@ function detectPeriodRange(data: unknown): { start: string | null; end: string |
         // Check date-like fields
         if (lowerKey.includes('data') || lowerKey.includes('date') || 
             lowerKey.includes('periodo') || lowerKey.includes('period')) {
-          if (typeof value === 'string') {
+        if (typeof value === 'string') {
             // Try parsing YYYYMM format
             if (/^\d{6}$/.test(value)) {
               const year = parseInt(value.substring(0, 4));
               const month = parseInt(value.substring(4, 6)) - 1;
               dates.push(new Date(year, month, 1));
             }
-            // Try parsing YYYY-MM-DD format
+            // Try parsing YYYY-MM-DD format (standard ISO)
             else if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
               dates.push(new Date(value));
+            }
+            // Try parsing IPEADATA format: "2024-01-01T00:00:00-03:00"
+            else if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
+              dates.push(new Date(value.substring(0, 10)));
             }
             // Try parsing DD/MM/YYYY format
             else if (/^\d{2}\/\d{2}\/\d{4}/.test(value)) {

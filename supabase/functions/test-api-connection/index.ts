@@ -331,7 +331,38 @@ function analyzeApiResponse(data: unknown, provider: string): SyncMetadata {
         }
       }
     }
-  } 
+  }
+  
+  // IPEADATA OData format: { value: [{SERCODIGO, VALDATA, VALVALOR, ...}] }
+  if (!Array.isArray(data) && typeof data === 'object') {
+    const odataResponse = data as { value?: any[] };
+    if (odataResponse.value && Array.isArray(odataResponse.value) && odataResponse.value.length > 0) {
+      const dataArray = odataResponse.value;
+      
+      // Filter valid items with VALDATA and VALVALOR
+      const validItems = dataArray.filter((item: any) => 
+        item.VALDATA && item.VALVALOR !== null && item.VALVALOR !== undefined
+      );
+      
+      metadata.extracted_count = validItems.length;
+      metadata.fields_detected = Object.keys(dataArray[0]);
+      
+      if (validItems.length > 0) {
+        // Sort by VALDATA (ISO format: "2024-01-01T00:00:00-03:00")
+        const sortedItems = [...validItems].sort((a: any, b: any) => 
+          a.VALDATA.localeCompare(b.VALDATA)
+        );
+        
+        // Extract date (first 10 chars of ISO string)
+        metadata.period_start = sortedItems[0].VALDATA.substring(0, 10);
+        metadata.period_end = sortedItems[sortedItems.length - 1].VALDATA.substring(0, 10);
+        metadata.last_record_value = String(sortedItems[sortedItems.length - 1].VALVALOR);
+        
+        console.log(`[TEST-API] IPEADATA parsed: ${validItems.length} records, period ${metadata.period_start} to ${metadata.period_end}`);
+      }
+    }
+  }
+  
   // Handle IBGE nested structure (alternative check)
   else if (!Array.isArray(data) && typeof data === 'object') {
     const ibgeData = data as any[];
