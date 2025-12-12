@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Activity, RefreshCw, CheckCircle, XCircle, AlertTriangle, Clock, FileText, Copy, Check, Database, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatDate } from '@/lib/date-utils';
 
 interface SyncMetadata {
   extracted_count?: number;
@@ -284,14 +285,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
     onOpenChange(false);
   };
 
-  const formatDate = (dateStr: string | null): string => {
-    if (!dateStr) return 'N/A';
-    try {
-      return format(new Date(dateStr), 'dd/MM/yyyy', { locale: ptBR });
-    } catch {
-      return dateStr.substring(0, 10);
-    }
-  };
+  // Using centralized formatDate from @/lib/date-utils (imported via date-fns format)
 
   const generateErrorReport = (): string => {
     const now = new Date().toLocaleString('pt-BR');

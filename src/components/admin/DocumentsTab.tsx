@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { DebouncedInput } from "@/components/ui/debounced-input";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -2065,7 +2066,7 @@ export const DocumentsTab = () => {
             {/* Search Bar */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar por nome, conteúdo ou resumo..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+              <DebouncedInput placeholder="Buscar por nome, conteúdo ou resumo..." value={searchQuery} onChange={setSearchQuery} delay={300} className="pl-10" />
             </div>
             
             {/* Filters Row */}

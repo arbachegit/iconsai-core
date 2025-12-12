@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { formatDateTime } from '@/lib/date-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -310,7 +311,8 @@ export const DocumentationSyncTab: React.FC = () => {
     return `${(ms / 1000).toFixed(2)}s`;
   };
 
-  const formatDate = (dateStr: string) => {
+  // formatDate moved to centralized utility
+  const formatLocalDateTime = (dateStr: string) => {
     return new Date(dateStr).toLocaleString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -388,7 +390,7 @@ export const DocumentationSyncTab: React.FC = () => {
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                Última sincronização: {formatDate(lastSync.started_at)}
+                Última sincronização: {formatDateTime(lastSync.started_at)}
               </span>
               <span className="flex items-center gap-1">
                 <Timer className="w-4 h-4" />
@@ -915,7 +917,7 @@ export const DocumentationSyncTab: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatDate(log.started_at)}
+                          {formatDateTime(log.started_at)}
                         </TableCell>
                         <TableCell>{getTriggerBadge(log.trigger_type)}</TableCell>
                         <TableCell>{formatDuration(log.duration_ms)}</TableCell>
