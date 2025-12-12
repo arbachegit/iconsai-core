@@ -287,62 +287,159 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
 
   // Using centralized formatDate from @/lib/date-utils (imported via date-fns format)
 
-  const generateErrorReport = (): string => {
-    const now = new Date().toLocaleString('pt-BR');
-    const errors = results.filter(r => r.testResult === 'NÃO' || r.diagnosis === 'API_NO_HISTORY' || r.diagnosis === 'PARTIAL_HISTORY');
+  const generateProblemAnalysis = (result: ApiTestResult): string => {
+    const analyses: string[] = [];
     
-    if (errors.length === 0) {
-      return `RELATÓRIO DE DIAGNÓSTICO DE APIs\nData: ${now}\n\nNenhum erro encontrado. Todas as APIs estão funcionando corretamente.`;
+    // N/A - API returned valid response but no data
+    if (result.extractedCount === 0 && result.testResult === 'SIM') {
+      analyses.push(
+        `A API retornou resposta HTTP válida (${result.statusCode || 200}) mas sem registros de dados.\n` +
+        `  Causas prováveis:\n` +
+        `  • Série histórica descontinuada ou ainda não publicada para o período solicitado\n` +
+        `  • Parâmetros de consulta (datas, códigos) podem estar incorretos\n` +
+        `  • Formato de requisição incompatível com a estrutura esperada pela API\n` +
+        `  Recomendação: Verificar documentação da API e validar parâmetros de período`
+      );
     }
     
-    let report = `RELATÓRIO DE DIAGNÓSTICO DE APIs\nData: ${now}\n\n`;
-    report += `Total de APIs testadas: ${results.length}\n`;
-    report += `APIs com erro ou aviso: ${errors.length}\n\n`;
-    report += `${'='.repeat(70)}\n\n`;
+    // Connection/HTTP error
+    if (result.testResult === 'NÃO') {
+      analyses.push(
+        `Falha na comunicação com a API (HTTP ${result.statusCode || 'timeout'}).\n` +
+        `  Causas prováveis:\n` +
+        `  • Servidor da API temporariamente indisponível ou em manutenção\n` +
+        `  • Rate limiting (excesso de requisições em curto período)\n` +
+        `  • Timeout de rede ou bloqueio por firewall\n` +
+        `  • URL do endpoint alterada ou descontinuada\n` +
+        `  Recomendação: Tentar novamente em alguns minutos; verificar se URL está atualizada`
+      );
+    }
     
-    errors.forEach((result, index) => {
-      report += `ERRO ${index + 1}\n`;
-      report += `${'─'.repeat(40)}\n`;
-      report += `Nome da API: ${result.apiName}\n`;
+    // No history data
+    if (result.diagnosis === 'API_NO_HISTORY') {
+      analyses.push(
+        `API funcional mas sem dados históricos disponíveis.\n` +
+        `  Causas prováveis:\n` +
+        `  • A série pode ter sido descontinuada ou migrada para outro endpoint\n` +
+        `  • Dados históricos foram removidos ou arquivados\n` +
+        `  • Período solicitado anterior ao início da coleta de dados\n` +
+        `  Recomendação: Verificar período de disponibilidade na documentação oficial`
+      );
+    }
+    
+    // Partial history
+    if (result.diagnosis === 'PARTIAL_HISTORY') {
+      const coverageInfo = result.coveragePercent !== null ? ` (${result.coveragePercent}% de cobertura)` : '';
+      analyses.push(
+        `Cobertura incompleta do período configurado${coverageInfo}.\n` +
+        `  Causas prováveis:\n` +
+        `  • Série iniciou após a data inicial configurada\n` +
+        `  • Lacunas na publicação de dados em determinados períodos\n` +
+        `  • Dados mais recentes ainda não foram publicados\n` +
+        `  Recomendação: Ajustar período de coleta para coincidir com disponibilidade real`
+      );
+    }
+    
+    // Period unavailable
+    if (result.firstDateFound === null && result.extractedCount && result.extractedCount > 0) {
+      analyses.push(
+        `Dados extraídos mas período não identificado.\n` +
+        `  Causas prováveis:\n` +
+        `  • Formato de data na resposta JSON difere do padrão esperado\n` +
+        `  • Campo de data possui nome não reconhecido pelo parser\n` +
+        `  Recomendação: Verificar estrutura JSON e ajustar parsing se necessário`
+      );
+    }
+    
+    return analyses.length > 0 ? analyses.join('\n\n') : 'Sem problemas identificados.';
+  };
+
+  const generateErrorReport = (): string => {
+    const now = new Date().toLocaleString('pt-BR');
+    
+    // Expanded filter to include all problem types
+    const problems = results.filter(r => 
+      r.testResult === 'NÃO' || 
+      r.diagnosis === 'API_NO_HISTORY' || 
+      r.diagnosis === 'PARTIAL_HISTORY' ||
+      r.extractedCount === 0 ||
+      r.coveragePercent === null ||
+      r.firstDateFound === null
+    );
+    
+    // Statistics
+    const functional = results.filter(r => r.testResult === 'SIM' && r.extractedCount && r.extractedCount > 0).length;
+    const connectionErrors = results.filter(r => r.testResult === 'NÃO').length;
+    const naApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount === 0).length;
+    const partialCoverage = results.filter(r => r.diagnosis === 'PARTIAL_HISTORY' || r.diagnosis === 'API_NO_HISTORY').length;
+    
+    let report = `${'═'.repeat(70)}\n`;
+    report += `            RELATÓRIO DE DIAGNÓSTICO DE APIs\n`;
+    report += `${'═'.repeat(70)}\n`;
+    report += `Data de Geração: ${now}\n\n`;
+    
+    // Legend section
+    report += `LEGENDA DE PROBLEMAS:\n`;
+    report += `${'─'.repeat(70)}\n`;
+    report += `• N/A (Não Disponível): API retornou resposta válida mas sem dados para\n`;
+    report += `  o período solicitado. Possíveis causas: série descontinuada, dados ainda\n`;
+    report += `  não publicados, ou formato de requisição inválido.\n\n`;
+    report += `• Cobertura Incompleta: API não possui dados para todo o período configurado.\n`;
+    report += `  Possíveis causas: série iniciou após data configurada, ou dados\n`;
+    report += `  históricos foram removidos.\n\n`;
+    report += `• Período Indisponível: API não retornou informações de período válidas.\n`;
+    report += `  Possíveis causas: formato de resposta inesperado, ou erro de parsing.\n\n`;
+    report += `• Erro de Conexão: Falha ao comunicar com a API.\n`;
+    report += `  Possíveis causas: timeout, servidor indisponível, ou rate limiting.\n\n`;
+    report += `${'═'.repeat(70)}\n\n`;
+    
+    // Statistics summary
+    report += `RESUMO ESTATÍSTICO:\n`;
+    report += `${'─'.repeat(70)}\n`;
+    report += `  Total de APIs Testadas:     ${results.length}\n`;
+    report += `  ✓ APIs Funcionais:          ${functional}\n`;
+    report += `  ✗ APIs com Erro Conexão:    ${connectionErrors}\n`;
+    report += `  ○ APIs com Dados N/A:       ${naApis}\n`;
+    report += `  ◐ APIs com Cobertura Parcial: ${partialCoverage}\n`;
+    report += `\n${'═'.repeat(70)}\n\n`;
+    
+    if (problems.length === 0) {
+      report += `✓ Nenhum problema encontrado. Todas as APIs estão funcionando corretamente.\n`;
+      return report;
+    }
+    
+    report += `DETALHAMENTO DOS PROBLEMAS (${problems.length} APIs):\n`;
+    report += `${'═'.repeat(70)}\n\n`;
+    
+    problems.forEach((result, index) => {
+      const problemType = result.testResult === 'NÃO' ? '✗ ERRO' : 
+                          result.extractedCount === 0 ? '○ N/A' :
+                          result.diagnosis === 'API_NO_HISTORY' ? '◐ SEM HISTÓRICO' :
+                          result.diagnosis === 'PARTIAL_HISTORY' ? '◐ PARCIAL' : '⚠ AVISO';
+      
+      report += `[${problemType}] ${index + 1}. ${result.apiName}\n`;
+      report += `${'─'.repeat(50)}\n`;
       report += `Provedor: ${result.provider}\n`;
       report += `Tabela Destino: ${result.targetTable || 'Não definida'}\n`;
-      report += `URL Base: ${result.baseUrl}\n\n`;
+      report += `URL: ${result.baseUrl}\n\n`;
       
-      report += `PERÍODO CONFIGURADO:\n`;
-      report += `  Data Inicial: ${result.configuredStart || 'Não definida'}\n`;
-      report += `  Data Final: ${result.configuredEnd || 'Não definida'}\n\n`;
+      report += `PERÍODO:\n`;
+      report += `  Encontrado: ${result.firstDateFound || 'N/A'} → ${result.lastDateFound || 'N/A'}\n`;
+      report += `  Cobertura: ${result.coveragePercent !== null ? `${result.coveragePercent}%` : 'N/A'}\n\n`;
       
-      report += `PERÍODO ENCONTRADO NA API:\n`;
-      report += `  Primeira Data: ${result.firstDateFound || 'Não disponível'}\n`;
-      report += `  Última Data: ${result.lastDateFound || 'Não disponível'}\n`;
-      report += `  Cobertura: ${result.coveragePercent !== null ? `${result.coveragePercent}%` : 'Não calculada'}\n\n`;
-      
-      report += `DADOS EXTRAÍDOS:\n`;
-      report += `  Quantidade de Registros: ${result.extractedCount?.toLocaleString() || 0}\n`;
-      report += `  Campos Detectados: ${result.fieldsDetected?.join(', ') || 'Nenhum'}\n`;
+      report += `DADOS:\n`;
+      report += `  Registros: ${result.extractedCount?.toLocaleString() || 0}\n`;
+      report += `  Campos: ${result.fieldsDetected?.join(', ') || 'Nenhum detectado'}\n`;
       report += `  Último Valor: ${result.lastRecordValue !== null ? result.lastRecordValue.toLocaleString('pt-BR') : 'N/A'}\n\n`;
       
-      report += `STATUS DO TESTE:\n`;
-      report += `  Resultado: ${result.testResult}\n`;
-      if (result.statusCode) {
-        report += `  Código HTTP: ${result.statusCode}\n`;
-      }
-      report += `  Latência: ${result.latencyMs}ms\n\n`;
+      report += `STATUS: ${result.testResult} | HTTP: ${result.statusCode || 'N/A'} | Latência: ${result.latencyMs}ms\n\n`;
       
-      if (result.diagnosis === 'API_NO_HISTORY') {
-        report += `TIPO DE PROBLEMA: Histórico Limitado\n`;
-      } else if (result.diagnosis === 'PARTIAL_HISTORY') {
-        report += `TIPO DE PROBLEMA: Histórico Parcial\n`;
-      } else if (result.diagnosis === 'API_ERROR') {
-        report += `TIPO DE PROBLEMA: Erro de Conexão/Resposta\n`;
-      }
+      report += `ANÁLISE DO PROBLEMA:\n`;
+      report += generateProblemAnalysis(result);
+      report += `\n`;
       
       if (result.errorMessage) {
-        report += `Mensagem de Erro: ${result.errorMessage}\n`;
-      }
-      
-      if (result.diagnosisMessage) {
-        report += `Diagnóstico: ${result.diagnosisMessage}\n`;
+        report += `\nMensagem de Erro Original: ${result.errorMessage}\n`;
       }
       
       report += `\n${'═'.repeat(70)}\n\n`;
