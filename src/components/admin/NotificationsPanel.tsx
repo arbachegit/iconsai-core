@@ -1,4 +1,4 @@
-import { Bell, Check, Trash2, FileText, MessageSquare, AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
+import { Bell, Check, Trash2, FileText, MessageSquare, AlertCircle, CheckCircle, RefreshCw, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,6 +25,8 @@ const getNotificationIcon = (type: string) => {
       return <CheckCircle className="h-4 w-4 text-green-500" />;
     case 'doc_stuck':
       return <RefreshCw className="h-4 w-4 text-yellow-500" />;
+    case 'api_ready_for_implementation':
+      return <Rocket className="h-4 w-4 text-green-500" />;
     default:
       return <Bell className="h-4 w-4" />;
   }

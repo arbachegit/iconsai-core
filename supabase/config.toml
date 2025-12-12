@@ -137,3 +137,6 @@ verify_jwt = false
 
 [functions.compare-and-insert-missing]
 verify_jwt = false
+
+[functions.test-api-staging]
+verify_jwt = false
