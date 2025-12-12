@@ -49,6 +49,7 @@ interface ApiConfig {
   fetch_end_date: string | null;
   redundant_api_url: string | null;
   redundant_aggregate_id: string | null;
+  target_table: string | null;
 }
 
 interface SyncMetadata {
@@ -1128,7 +1129,7 @@ serve(async (req) => {
     // Get indicators to fetch
     let indicatorsQuery = supabase
       .from('economic_indicators')
-      .select(`id, name, code, unit, api_id, system_api_registry!inner (id, name, provider, base_url, status, fetch_start_date, fetch_end_date, redundant_api_url, redundant_aggregate_id)`)
+      .select(`id, name, code, unit, api_id, is_regional, system_api_registry!inner (id, name, provider, base_url, status, fetch_start_date, fetch_end_date, redundant_api_url, redundant_aggregate_id, target_table)`)
       .eq('system_api_registry.status', 'active');
 
     if (!fetchAll && indicatorId) {
@@ -1444,15 +1445,32 @@ serve(async (req) => {
           const ibgeData = data as IBGEResult[];
           console.log(`[FETCH-ECONOMIC] IBGE response received, parsing...`);
           
+          // Check if this is a regional indicator (has UF data)
+          const isRegionalIndicator = (indicator as any).is_regional === true || 
+            apiConfig.target_table === 'indicator_regional_values';
+          
+          // Array for regional values (by UF)
+          const regionalValuesToInsert: Array<{ indicator_id: string; uf_code: number; reference_date: string; value: number }> = [];
+          
           if (ibgeData.length > 0 && ibgeData[0].resultados) {
             const resultados = ibgeData[0].resultados;
             
-            // Handle multiple series (e.g., when there are classification filters)
+            // Handle multiple series (e.g., when there are classification filters or UF data)
             for (const resultado of resultados) {
               const series = resultado.series;
               if (series && series.length > 0) {
                 for (const serie of series) {
                   const serieData = serie.serie || {};
+                  const localidade = serie.localidade;
+                  
+                  // Check if this is UF-level data (nivel.id === "N3" or localidade.id is a 2-digit UF code)
+                  const isUFData = localidade && (
+                    localidade.nivel?.id === 'N3' || 
+                    (localidade.id && localidade.id.length === 2 && !isNaN(parseInt(localidade.id)))
+                  );
+                  const ufCode = isUFData ? parseInt(localidade.id) : null;
+                  
+                  console.log(`[FETCH-ECONOMIC] [IBGE] Processing serie - localidade: ${localidade?.nome || 'N/A'}, isUF: ${isUFData}, ufCode: ${ufCode}`);
                   
                   for (const [period, value] of Object.entries(serieData)) {
                     if (!value || value === '-' || value === '...' || value === '..') continue;
@@ -1477,11 +1495,22 @@ serve(async (req) => {
                     
                     const numValue = parseFloat(value.replace(',', '.'));
                     if (!isNaN(numValue)) {
-                      valuesToInsert.push({
-                        indicator_id: indicator.id,
-                        reference_date: refDate,
-                        value: numValue,
-                      });
+                      if (isRegionalIndicator && ufCode && ufCode >= 11 && ufCode <= 53) {
+                        // Regional data: insert into indicator_regional_values
+                        regionalValuesToInsert.push({
+                          indicator_id: indicator.id,
+                          uf_code: ufCode,
+                          reference_date: refDate,
+                          value: numValue,
+                        });
+                      } else {
+                        // National data: insert into indicator_values
+                        valuesToInsert.push({
+                          indicator_id: indicator.id,
+                          reference_date: refDate,
+                          value: numValue,
+                        });
+                      }
                     }
                   }
                 }
@@ -1489,7 +1518,56 @@ serve(async (req) => {
             }
           }
           
-          console.log(`[FETCH-ECONOMIC] IBGE parsed values: ${valuesToInsert.length}`);
+          console.log(`[FETCH-ECONOMIC] IBGE parsed: ${valuesToInsert.length} national values, ${regionalValuesToInsert.length} regional values`);
+          
+          // Insert regional values if any
+          if (regionalValuesToInsert.length > 0) {
+            console.log(`[FETCH-ECONOMIC] 📍 Inserting ${regionalValuesToInsert.length} regional values into indicator_regional_values`);
+            
+            const { error: regionalInsertError, count: regionalCount } = await supabase
+              .from('indicator_regional_values')
+              .upsert(regionalValuesToInsert, { 
+                onConflict: 'indicator_id,uf_code,reference_date', 
+                ignoreDuplicates: false,
+                count: 'exact'
+              });
+            
+            if (regionalInsertError) {
+              console.error(`[FETCH-ECONOMIC] ❌ Regional insert error:`, regionalInsertError);
+            } else {
+              console.log(`[FETCH-ECONOMIC] ✅ Regional insert SUCCESS: ${regionalCount ?? regionalValuesToInsert.length} records`);
+              totalRecordsInserted += regionalValuesToInsert.length;
+            }
+            
+            // Skip national insert if we only have regional data
+            if (valuesToInsert.length === 0) {
+              results.push({ 
+                indicator: indicator.name, 
+                records: regionalValuesToInsert.length, 
+                status: 'success',
+                newRecords: regionalValuesToInsert.length
+              });
+              
+              // Update API registry
+              await supabase.from('system_api_registry').update({
+                status: 'active',
+                last_checked_at: new Date().toISOString(),
+                last_http_status: httpStatus,
+                last_sync_metadata: {
+                  extracted_count: regionalValuesToInsert.length,
+                  period_start: regionalValuesToInsert[0]?.reference_date,
+                  period_end: regionalValuesToInsert[regionalValuesToInsert.length - 1]?.reference_date,
+                  fields_detected: ['indicator_id', 'uf_code', 'reference_date', 'value'],
+                  last_record_value: String(regionalValuesToInsert[regionalValuesToInsert.length - 1]?.value),
+                  fetch_timestamp: new Date().toISOString(),
+                  type: 'regional'
+                },
+                last_response_at: new Date().toISOString()
+              }).eq('id', apiConfig.id);
+              
+              continue;
+            }
+          }
         } else if (apiConfig.provider === 'WorldBank') {
           // ====== WORLDBANK PARSER ======
           // WorldBank returns [metadata, dataArray]
