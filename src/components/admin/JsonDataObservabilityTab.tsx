@@ -137,6 +137,13 @@ export const JsonDataObservabilityTab = () => {
         }
       }
       return count;
+    } else if (api.provider === 'WorldBank') {
+      // WorldBank format: [metadata, dataArray]
+      const worldBankData = rawJson as [unknown, Array<{ date?: string; value?: number | string | null }>];
+      if (Array.isArray(worldBankData) && worldBankData.length >= 2 && Array.isArray(worldBankData[1])) {
+        return worldBankData[1].filter(item => item.value !== null && item.value !== undefined && item.date).length;
+      }
+      return 0;
     }
     return 0;
   };
@@ -184,6 +191,20 @@ export const JsonDataObservabilityTab = () => {
                 indicator: indicatorName
               });
             }
+          }
+        }
+      }
+    } else if (api.provider === 'WorldBank') {
+      // WorldBank format: [metadata, dataArray]
+      const worldBankData = rawJson as [unknown, Array<{ date?: string; value?: number | string | null; country?: { value: string }; indicator?: { value: string } }>];
+      if (Array.isArray(worldBankData) && worldBankData.length >= 2 && Array.isArray(worldBankData[1])) {
+        for (const item of worldBankData[1]) {
+          if (item.value !== null && item.value !== undefined && item.date) {
+            parsed.push({
+              date: `${item.date}-01-01`,
+              value: typeof item.value === 'string' ? parseFloat(item.value) : item.value,
+              indicator: item.indicator?.value || indicatorName
+            });
           }
         }
       }
