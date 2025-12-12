@@ -77,7 +77,7 @@ const JsonDataObservabilityTab = lazy(() => import("@/components/admin/JsonDataO
 const DataAnalysisTab = lazy(() => import("@/components/admin/DataAnalysisTab"));
 const ChartDatabaseTab = lazy(() => import("@/components/admin/ChartDatabaseTab"));
 const JsonTestTab = lazy(() => import("@/components/admin/JsonTestTab"));
-const RegionalIndicatorsTab = lazy(() => import("@/components/admin/RegionalIndicatorsTab").then(m => ({ default: m.RegionalIndicatorsTab })));
+const RegionalIndicatorsTab = lazy(() => import("@/components/admin/RegionalIndicatorsTab"));
 
 // Loading fallback component
 const TabLoadingFallback = () => (

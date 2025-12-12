@@ -389,3 +389,5 @@ export function RegionalIndicatorsTab() {
     </div>
   );
 }
+
+export default RegionalIndicatorsTab;
