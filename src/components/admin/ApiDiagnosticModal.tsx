@@ -621,14 +621,33 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
             </div>
             <div className="flex items-center gap-2">
               {hasErrors && (
-                <Button 
-                  onClick={() => setShowErrorReport(true)} 
-                  variant="outline" 
-                  className="gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
-                >
-                  <FileText className="h-4 w-4" />
-                  Exportar Erros
-                </Button>
+                <>
+                  <Button 
+                    onClick={handleCopyReport}
+                    variant="outline" 
+                    className="gap-2 border-red-500/40 text-red-400 hover:bg-red-500/10"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        Copiado!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        Copiar Erros
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    onClick={() => setShowErrorReport(true)} 
+                    variant="outline" 
+                    className="gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Ver Relatório
+                  </Button>
+                </>
               )}
               <Button onClick={handleRetest} variant="outline" className="gap-2">
                 <RefreshCw className="h-4 w-4" />
