@@ -201,7 +201,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
           // Calculate coverage
           const coverage = calculateCoverage(configStart, configEnd, firstDate, lastDate);
           
-          // Diagnose historical integrity
+          // Diagnose historical integrity - Protocol V7.0: Accept native period limitations
           let diagnosis: 'OK' | 'API_NO_HISTORY' | 'PARTIAL_HISTORY' = 'OK';
           let diagnosisMessage: string | null = null;
           
@@ -210,14 +210,21 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
             const actualDate = new Date(firstDate);
             const daysDiff = Math.floor((actualDate.getTime() - configDate.getTime()) / (1000 * 60 * 60 * 24));
             
-            if (daysDiff > 365) {
+            // Protocol V7.0: If API returns data but starts after configured date,
+            // this is a NATIVE LIMITATION of the data source, not an error.
+            // Accept the actual period as the "real" period and suppress warnings.
+            const isNativePeriodLimitation = daysDiff > 30 && extractedCount > 0;
+            
+            if (isNativePeriodLimitation) {
+              // Series starts later than configured - this is acceptable per V7.0
+              // Register actual period as DATA_INICIO_REAL and suppress alert
+              diagnosis = 'OK'; // Changed from PARTIAL_HISTORY to OK
+              diagnosisMessage = `Período nativo: ${firstDate} (fonte não possui dados anteriores)`;
+              console.log(`[API_DIAGNOSTIC] V7.0: Accepting native period ${firstDate} for ${api.name}`);
+            } else if (daysDiff > 365 && extractedCount === 0) {
               const yearsDiff = Math.floor(daysDiff / 365);
               diagnosis = 'API_NO_HISTORY';
               diagnosisMessage = `API não possui dados antes de ${firstDate} (${yearsDiff} ano(s) após configurado)`;
-            } else if (daysDiff > 30) {
-              const monthsDiff = Math.floor(daysDiff / 30);
-              diagnosis = 'PARTIAL_HISTORY';
-              diagnosisMessage = `Histórico inicia ${monthsDiff} mês(es) após o configurado`;
             }
           }
           
