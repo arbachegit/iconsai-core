@@ -24,6 +24,38 @@ interface IBGEResult {
   }>;
 }
 
+// Helper to fetch ALL records with pagination (bypassing 1000 row limit)
+async function fetchAllExistingDates(
+  supabase: any,
+  indicatorId: string
+): Promise<Set<string>> {
+  const PAGE_SIZE = 1000;
+  const allDates: string[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('indicator_values')
+      .select('reference_date')
+      .eq('indicator_id', indicatorId)
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      allDates.push(...data.map((r: { reference_date: string }) => r.reference_date));
+      offset += PAGE_SIZE;
+      hasMore = data.length === PAGE_SIZE;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  console.log(`[COMPARE-INSERT] Fetched ${allDates.length} existing records (paginated)`);
+  return new Set(allDates);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -135,18 +167,8 @@ serve(async (req) => {
       );
     }
 
-    // 3. Get existing records from indicator_values
-    const { data: existingRecords, error: existingError } = await supabase
-      .from('indicator_values')
-      .select('reference_date')
-      .eq('indicator_id', indicatorId);
-
-    if (existingError) {
-      console.error('[COMPARE-INSERT] Error fetching existing records:', existingError);
-      throw existingError;
-    }
-
-    const existingDates = new Set((existingRecords || []).map(r => r.reference_date));
+    // 3. Get ALL existing records from indicator_values (with pagination)
+    const existingDates = await fetchAllExistingDates(supabase, indicatorId);
     console.log(`[COMPARE-INSERT] Existing records in DB: ${existingDates.size}`);
 
     // 4. Find missing records (in JSON but not in DB)
@@ -166,35 +188,54 @@ serve(async (req) => {
       );
     }
 
-    // 5. INSERT only missing records (never UPDATE/DELETE)
+    // 5. UPSERT missing records in batches (handles duplicates gracefully)
     const valuesToInsert = missingValues.map(v => ({
       indicator_id: indicatorId,
       reference_date: v.reference_date,
       value: v.value
     }));
 
-    const { error: insertError, count } = await supabase
-      .from('indicator_values')
-      .insert(valuesToInsert, { count: 'exact' });
+    // Process in batches of 500 to avoid timeout
+    const BATCH_SIZE = 500;
+    let totalInserted = 0;
+    let totalSkipped = 0;
 
-    if (insertError) {
-      console.error('[COMPARE-INSERT] INSERT error:', insertError);
-      throw insertError;
+    for (let i = 0; i < valuesToInsert.length; i += BATCH_SIZE) {
+      const batch = valuesToInsert.slice(i, i + BATCH_SIZE);
+      
+      // Use upsert with onConflict to skip duplicates gracefully
+      const { error: upsertError, count } = await supabase
+        .from('indicator_values')
+        .upsert(batch, { 
+          onConflict: 'indicator_id,reference_date',
+          ignoreDuplicates: true,  // Skip existing records instead of updating
+          count: 'exact'
+        });
+
+      if (upsertError) {
+        console.error(`[COMPARE-INSERT] Batch ${Math.floor(i/BATCH_SIZE) + 1} error:`, upsertError);
+        // Continue with next batch instead of failing completely
+        totalSkipped += batch.length;
+      } else {
+        totalInserted += count ?? batch.length;
+        console.log(`[COMPARE-INSERT] Batch ${Math.floor(i/BATCH_SIZE) + 1}: inserted ${count ?? batch.length} records`);
+      }
     }
 
-    console.log(`[COMPARE-INSERT] ✅ Successfully inserted ${count ?? valuesToInsert.length} missing records`);
+    console.log(`[COMPARE-INSERT] ✅ Total inserted: ${totalInserted}, skipped: ${totalSkipped}`);
 
     // 6. Log the operation
     await supabase.from('user_activity_logs').insert({
       user_email: 'system@knowyou.app',
       action_category: 'MANDATORY_INSERT',
-      action: `Inserted ${count ?? valuesToInsert.length} missing records for ${indicator.name}`,
+      action: `Inserted ${totalInserted} missing records for ${indicator.name}`,
       details: { 
         indicatorId,
         indicatorName: indicator.name,
         jsonRecords: parsedValues.length,
         existingRecords: existingDates.size,
-        insertedRecords: count ?? valuesToInsert.length
+        insertedRecords: totalInserted,
+        skippedRecords: totalSkipped
       }
     });
 
@@ -203,8 +244,9 @@ serve(async (req) => {
         success: true, 
         jsonRecords: parsedValues.length, 
         existingRecords: existingDates.size, 
-        insertedRecords: count ?? valuesToInsert.length,
-        message: `Inserted ${count ?? valuesToInsert.length} missing records`
+        insertedRecords: totalInserted,
+        skippedRecords: totalSkipped,
+        message: `Inserted ${totalInserted} missing records${totalSkipped > 0 ? `, skipped ${totalSkipped}` : ''}`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -212,7 +254,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('[COMPARE-INSERT] Fatal error:', error);
     return new Response(
-      JSON.stringify({ error: String(error) }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
