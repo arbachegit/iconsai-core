@@ -289,8 +289,37 @@ function analyzeApiResponse(data: unknown, provider: string): SyncMetadata {
       metadata.last_record_value = data[data.length - 1].valor;
     }
     
-    // IBGE format detection
-    if (provider === 'IBGE' && data[0].resultados) {
+    // SIDRA format: flat array with D3C (period code) and D3N (period name) - used by demographic indicators
+    // First row is header, data rows have V field for value
+    if (provider === 'IBGE' && data[0].D3C !== undefined) {
+      // Skip first row (header row with field descriptions)
+      const dataRows = data.slice(1).filter((row: any) => row.V && row.V !== '..' && row.V !== '-');
+      
+      metadata.extracted_count = dataRows.length;
+      
+      if (dataRows.length > 0) {
+        // Extract unique periods from D3C field and sort
+        const periods = [...new Set(dataRows.map((row: any) => row.D3C))].filter(p => p).sort() as string[];
+        
+        if (periods.length > 0) {
+          // D3C contains year code (e.g., "2018", "201801" for monthly)
+          const formatPeriod = (p: string) => {
+            if (p.length === 4) return `${p}-01-01`; // Annual: YYYY
+            if (p.length === 6) return `${p.substring(0, 4)}-${p.substring(4, 6)}-01`; // Monthly: YYYYMM
+            return `${p}-01-01`;
+          };
+          
+          metadata.period_start = formatPeriod(periods[0]);
+          metadata.period_end = formatPeriod(periods[periods.length - 1]);
+          metadata.last_record_value = String(dataRows[dataRows.length - 1].V);
+          
+          console.log(`[TEST-API] SIDRA parsed: ${dataRows.length} records, period ${metadata.period_start} to ${metadata.period_end}`);
+        }
+      }
+    }
+    
+    // IBGE nested format detection (aggregated results)
+    else if (provider === 'IBGE' && data[0].resultados) {
       const resultados = data[0].resultados;
       if (resultados.length > 0 && resultados[0].series?.length > 0) {
         const serie = resultados[0].series[0].serie || {};
