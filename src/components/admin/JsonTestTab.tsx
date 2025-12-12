@@ -48,7 +48,7 @@ interface StagingApi {
   created_at: string;
 }
 
-const PROVIDERS = ['BCB', 'IBGE', 'WorldBank', 'IMF', 'YahooFinance', 'Internal', 'Scraper'] as const;
+const DEFAULT_PROVIDERS = ['BCB', 'IBGE', 'WorldBank', 'IMF', 'YahooFinance', 'Internal', 'Scraper'];
 
 export default function JsonTestTab() {
   const [stagingApis, setStagingApis] = useState<StagingApi[]>([]);
@@ -59,6 +59,11 @@ export default function JsonTestTab() {
   const [variableSelections, setVariableSelections] = useState<Record<string, boolean>>({});
   const [simulationSelections, setSimulationSelections] = useState<Record<string, boolean>>({});
   const [lastTriggerTime, setLastTriggerTime] = useState<Date | null>(null);
+  
+  // Dynamic providers list
+  const [providers, setProviders] = useState<string[]>(DEFAULT_PROVIDERS);
+  const [isAddingProvider, setIsAddingProvider] = useState(false);
+  const [newProviderName, setNewProviderName] = useState('');
   
   const [newApiForm, setNewApiForm] = useState({
     name: '',
@@ -499,19 +504,68 @@ export default function JsonTestTab() {
             
             <div className="space-y-2">
               <Label htmlFor="api-provider">Provedor *</Label>
-              <Select
-                value={newApiForm.provider}
-                onValueChange={(value) => setNewApiForm(prev => ({ ...prev, provider: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROVIDERS.map(p => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isAddingProvider ? (
+                <div className="flex gap-2">
+                  <Input
+                    value={newProviderName}
+                    onChange={(e) => setNewProviderName(e.target.value.toUpperCase())}
+                    placeholder="Nome do novo provedor"
+                    className="flex-1"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (newProviderName.trim()) {
+                        const trimmed = newProviderName.trim();
+                        if (!providers.includes(trimmed)) {
+                          setProviders(prev => [...prev, trimmed]);
+                        }
+                        setNewApiForm(prev => ({ ...prev, provider: trimmed }));
+                        setNewProviderName('');
+                        setIsAddingProvider(false);
+                        toast.success(`Provedor "${trimmed}" adicionado`);
+                      }
+                    }}
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setNewProviderName('');
+                      setIsAddingProvider(false);
+                    }}
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Select
+                    value={newApiForm.provider}
+                    onValueChange={(value) => setNewApiForm(prev => ({ ...prev, provider: value }))}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {providers.map(p => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsAddingProvider(true)}
+                    title="Adicionar novo provedor"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
             </div>
             
             <div className="space-y-2">
