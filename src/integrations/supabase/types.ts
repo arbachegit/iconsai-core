@@ -140,6 +140,69 @@ export type Database = {
         }
         Relationships: []
       }
+      api_test_staging: {
+        Row: {
+          all_variables: Json | null
+          base_url: string
+          created_at: string | null
+          description: string | null
+          discovered_period_end: string | null
+          discovered_period_start: string | null
+          error_message: string | null
+          http_status: number | null
+          id: string
+          implementation_params: Json | null
+          is_functional: boolean | null
+          last_raw_response: Json | null
+          name: string
+          provider: string
+          selected_variables: Json | null
+          status: string | null
+          test_timestamp: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          all_variables?: Json | null
+          base_url: string
+          created_at?: string | null
+          description?: string | null
+          discovered_period_end?: string | null
+          discovered_period_start?: string | null
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          implementation_params?: Json | null
+          is_functional?: boolean | null
+          last_raw_response?: Json | null
+          name: string
+          provider?: string
+          selected_variables?: Json | null
+          status?: string | null
+          test_timestamp?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          all_variables?: Json | null
+          base_url?: string
+          created_at?: string | null
+          description?: string | null
+          discovered_period_end?: string | null
+          discovered_period_start?: string | null
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          implementation_params?: Json | null
+          is_functional?: boolean | null
+          last_raw_response?: Json | null
+          name?: string
+          provider?: string
+          selected_variables?: Json | null
+          status?: string | null
+          test_timestamp?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       audio_contents: {
         Row: {
           audio_url: string
