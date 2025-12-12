@@ -675,6 +675,12 @@ serve(async (req) => {
       last_http_status: result.statusCode,
     };
 
+    // Include raw JSON response if available (for JSON Observability tab)
+    if (result.preview && result.preview.length > 0) {
+      updatePayload.last_raw_response = result.preview;
+      console.log(`[TEST-API] [RAW_RESPONSE] Persisting last_raw_response with ${result.preview.length} preview items`);
+    }
+
     // Include sync metadata if available
     if (result.syncMetadata) {
       updatePayload.last_sync_metadata = result.syncMetadata;
