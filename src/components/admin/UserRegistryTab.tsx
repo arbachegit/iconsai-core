@@ -13,8 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateTime } from "@/lib/date-utils";
+import { logger } from "@/lib/logger";
 import { 
   Search, 
   Download, 
@@ -297,7 +297,7 @@ export const UserRegistryTab = () => {
       if (error) throw error;
       setExistingEmails(data.existingEmails || []);
     } catch (err) {
-      console.error('Error checking existing emails:', err);
+      logger.error('Error checking existing emails:', err);
       toast.error('Erro ao verificar emails existentes');
     } finally {
       setIsCheckingEmails(false);
@@ -947,7 +947,7 @@ export const UserRegistryTab = () => {
                             <TableCell>{renderRoleBadge(reg.role)}</TableCell>
                             <TableCell>{renderStatusBadge(reg.status)}</TableCell>
                             <TableCell className="text-sm text-muted-foreground">
-                              {format(new Date(reg.requested_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                              {formatDateTime(reg.requested_at)}
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">

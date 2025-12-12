@@ -1,8 +1,7 @@
 import { LucideIcon, TrendingUp, DollarSign, Percent, Users, BarChart3, ShoppingCart, Heart, Building2, Car, Fuel, Pill, Tv, Shirt, Activity } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { formatDate } from '@/lib/date-utils';
 
 interface Indicator {
   id: string;
@@ -72,9 +71,7 @@ export default function IndicatorCard({ indicator, recordCount, lastUpdate, sour
   const colors = getCategoryColors(indicator.category);
   const frequencyLabel = getFrequencyLabel(indicator.frequency);
   
-  const formattedLastUpdate = lastUpdate 
-    ? format(new Date(lastUpdate), "dd/MM/yyyy", { locale: ptBR })
-    : '--';
+  const formattedLastUpdate = lastUpdate ? formatDate(lastUpdate) : '--';
 
   return (
     <Card 

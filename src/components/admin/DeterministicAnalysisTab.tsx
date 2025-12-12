@@ -26,9 +26,8 @@ import {
   FileText,
   Sparkles
 } from "lucide-react";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from "recharts";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
+import { formatDateTime } from "@/lib/date-utils";
 
 const QUESTION_TYPE_ICONS: Record<string, any> = {
   binary: Binary,
@@ -531,7 +530,7 @@ export const DeterministicAnalysisTab = () => {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
-                          {format(new Date(analysis.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                          {formatDateTime(analysis.created_at)}
                         </TableCell>
                       </TableRow>
                     ))

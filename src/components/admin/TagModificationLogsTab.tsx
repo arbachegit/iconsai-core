@@ -34,8 +34,7 @@ import {
   BookOpen,
   ArrowRight
 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateTime } from "@/lib/date-utils";
 import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { toast } from "sonner";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
@@ -297,7 +296,7 @@ export const TagModificationLogsTab = () => {
                 paginatedLogs.map((log) => (
                   <TableRow key={log.id} className="hover:bg-muted/50">
                     <TableCell className="text-sm text-muted-foreground">
-                      {format(new Date(log.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                      {formatDateTime(log.created_at)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

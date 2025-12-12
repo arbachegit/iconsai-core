@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateTime, formatDateTimeAt } from "@/lib/date-utils";
 import {
   Mail,
   MessageCircle,
@@ -280,7 +279,7 @@ export const NotificationLogsTab = () => {
               logs.map((log) => (
                 <TableRow key={log.id} className="hover:bg-muted/30">
                   <TableCell className="font-mono text-sm">
-                    {format(new Date(log.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                    {formatDateTime(log.created_at)}
                   </TableCell>
                   <TableCell>{getEventTypeBadge(log.event_type)}</TableCell>
                   <TableCell className="text-center">
@@ -381,7 +380,7 @@ export const NotificationLogsTab = () => {
                   <div className="space-y-1 col-span-2">
                     <Label className="text-xs text-muted-foreground">Data/Hora</Label>
                     <p className="text-sm">
-                      {format(new Date(selectedLog.created_at), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR })}
+                      {formatDateTimeAt(selectedLog.created_at)}
                     </p>
                   </div>
                 </div>
