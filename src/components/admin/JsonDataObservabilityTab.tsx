@@ -37,6 +37,7 @@ export const JsonDataObservabilityTab = () => {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
+  const [lastTriggerTime, setLastTriggerTime] = useState<Date | null>(null);
   const [selectedApi, setSelectedApi] = useState<ApiWithJson | null>(null);
   const [showOrganizedModal, setShowOrganizedModal] = useState(false);
   const [showRawModal, setShowRawModal] = useState(false);
@@ -65,6 +66,7 @@ export const JsonDataObservabilityTab = () => {
         },
         (payload) => {
           console.log('[REALTIME] 🔄 system_api_registry changed:', payload.eventType);
+          setLastTriggerTime(new Date());
           fetchApis(true); // Auto-refresh on changes
         }
       )
@@ -376,8 +378,13 @@ export const JsonDataObservabilityTab = () => {
             <FileJson className="w-6 h-6 text-primary" />
             JSON Dados - Observabilidade
             <Badge variant="secondary" className="ml-2 text-base font-semibold">
-              {apis.length} Indicadores
+              {apis.length}
             </Badge>
+            {lastTriggerTime && (
+              <span className="text-xs text-muted-foreground font-normal ml-2">
+                Último sync: {lastTriggerTime.toLocaleTimeString('pt-BR')}
+              </span>
+            )}
           </h2>
           <p className="text-muted-foreground mt-1">
             Visualize e compare dados brutos das APIs externas

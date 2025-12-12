@@ -115,6 +115,7 @@ export default function ApiManagementTab() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [showVariablesSection, setShowVariablesSection] = useState(false);
+  const [lastTriggerTime, setLastTriggerTime] = useState<Date | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     provider: 'BCB' as string,
@@ -142,6 +143,7 @@ export default function ApiManagementTab() {
         },
         (payload) => {
           console.log('[REALTIME] 🔄 ApiManagement - system_api_registry changed:', payload.eventType);
+          setLastTriggerTime(new Date());
           fetchApis();
         }
       )
@@ -598,6 +600,11 @@ export default function ApiManagementTab() {
             <Badge variant="secondary" className="text-xs">
               {apis.length}
             </Badge>
+            {lastTriggerTime && (
+              <span className="text-xs text-muted-foreground ml-2">
+                Último sync: {lastTriggerTime.toLocaleTimeString('pt-BR')}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button

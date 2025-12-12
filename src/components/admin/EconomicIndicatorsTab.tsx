@@ -76,6 +76,7 @@ export default function EconomicIndicatorsTab() {
   // Detail modal state
   const [selectedIndicator, setSelectedIndicator] = useState<Indicator | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [lastTriggerTime, setLastTriggerTime] = useState<Date | null>(null);
 
   // ========== REALTIME SYNC: Auto-refresh on system_api_registry changes ==========
   useEffect(() => {
@@ -90,6 +91,7 @@ export default function EconomicIndicatorsTab() {
         },
         (payload) => {
           console.log('[REALTIME] 🔄 EconomicIndicators - system_api_registry changed:', payload.eventType);
+          setLastTriggerTime(new Date());
           fetchData('realtime-sync');
         }
       )
@@ -646,6 +648,11 @@ export default function EconomicIndicatorsTab() {
             <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/40">
               {groupedIndicators.macro.length} indicadores
             </Badge>
+            {lastTriggerTime && (
+              <span className="text-xs text-muted-foreground ml-2">
+                Último sync: {lastTriggerTime.toLocaleTimeString('pt-BR')}
+              </span>
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {groupedIndicators.macro.map(indicator => (
