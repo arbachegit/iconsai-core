@@ -311,6 +311,26 @@ function analyzeApiResponse(data: unknown, provider: string): SyncMetadata {
         }
       }
     }
+    
+    // WorldBank format: [metadata, dataArray] where dataArray contains {date: "YYYY", value: number|null}
+    if (provider === 'WorldBank' && data.length >= 2) {
+      const dataArray = data[1];
+      if (Array.isArray(dataArray) && dataArray.length > 0) {
+        const validItems = dataArray.filter((item: any) => item.value !== null && item.value !== undefined);
+        metadata.extracted_count = validItems.length;
+        metadata.fields_detected = Object.keys(dataArray[0]);
+        
+        if (validItems.length > 0) {
+          // Sort by date (YYYY format)
+          const dates = validItems.map((item: any) => item.date).sort();
+          metadata.period_start = `${dates[0]}-01-01`;
+          metadata.period_end = `${dates[dates.length - 1]}-01-01`;
+          metadata.last_record_value = String(validItems[validItems.length - 1].value);
+          
+          console.log(`[TEST-API] WorldBank parsed: ${validItems.length} records, period ${dates[0]} to ${dates[dates.length - 1]}`);
+        }
+      }
+    }
   } 
   // Handle IBGE nested structure (alternative check)
   else if (!Array.isArray(data) && typeof data === 'object') {
