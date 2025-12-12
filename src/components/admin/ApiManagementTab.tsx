@@ -116,6 +116,7 @@ export default function ApiManagementTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showVariablesSection, setShowVariablesSection] = useState(false);
   const [lastTriggerTime, setLastTriggerTime] = useState<Date | null>(null);
+  const [viewConfigApi, setViewConfigApi] = useState<ApiRegistry | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     provider: 'BCB' as string,
@@ -899,9 +900,15 @@ export default function ApiManagementTab() {
                         </TooltipProvider>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={getProviderColor(api.provider)}>
+                        <button
+                          onClick={() => setViewConfigApi(api)}
+                          className={cn(
+                            "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer hover:opacity-80",
+                            getProviderColor(api.provider)
+                          )}
+                        >
                           {api.provider}
-                        </Badge>
+                        </button>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 max-w-[300px]">
@@ -1545,6 +1552,97 @@ export default function ApiManagementTab() {
               />
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Configuration Modal - Read Only */}
+      <Dialog open={!!viewConfigApi} onOpenChange={(open) => !open && setViewConfigApi(null)}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Info className="h-5 w-5 text-primary" />
+              Configuração da API
+            </DialogTitle>
+            <DialogDescription>
+              Parâmetros configurados para esta API
+            </DialogDescription>
+          </DialogHeader>
+          {viewConfigApi && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Nome</Label>
+                  <div className="p-2.5 bg-muted/50 rounded-md border border-border/40 text-sm">
+                    {viewConfigApi.name}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Provider</Label>
+                  <div className="p-2.5 bg-muted/50 rounded-md border border-border/40">
+                    <Badge variant="outline" className={getProviderColor(viewConfigApi.provider)}>
+                      {viewConfigApi.provider}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">URL do Endpoint</Label>
+                <div className="p-2.5 bg-muted/50 rounded-md border border-border/40 text-sm font-mono break-all">
+                  {viewConfigApi.base_url}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Método HTTP</Label>
+                  <div className="p-2.5 bg-muted/50 rounded-md border border-border/40 text-sm">
+                    {viewConfigApi.method}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Status</Label>
+                  <div className="p-2.5 bg-muted/50 rounded-md border border-border/40 text-sm flex items-center gap-2">
+                    {viewConfigApi.status === 'active' ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span>Ativo</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 text-red-500" />
+                        <span>Inativo</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Tabela Destino</Label>
+                  <div className="p-2.5 bg-muted/50 rounded-md border border-border/40 text-sm font-mono">
+                    {viewConfigApi.target_table || 'indicator_values'}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Descrição</Label>
+                <div className="p-2.5 bg-muted/50 rounded-md border border-border/40 text-sm min-h-[60px]">
+                  {viewConfigApi.description || <span className="text-muted-foreground italic">Sem descrição</span>}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewConfigApi(null)}>
+              Fechar
+            </Button>
+            <Button onClick={() => {
+              if (viewConfigApi) {
+                handleOpenDialog(viewConfigApi);
+                setViewConfigApi(null);
+              }
+            }}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
