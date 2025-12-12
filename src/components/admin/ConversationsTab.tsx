@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { DebouncedInput } from "@/components/ui/debounced-input";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -158,10 +159,11 @@ export const ConversationsTab = () => {
         <CardContent>
           <div className="flex gap-4 mb-6">
             <div className="flex-1">
-              <Input
+              <DebouncedInput
                 placeholder="Buscar por título ou ID da sessão..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={setSearchTerm}
+                delay={300}
                 className="w-full"
               />
             </div>
