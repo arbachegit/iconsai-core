@@ -52,7 +52,26 @@ const BCB_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 };
 
-// ========== V7.3: HTTP/2 ULTRA-RESILIENCE PROTOCOL ==========
+// ========== V7.4: HTTP/1.1 FORCED CLIENT - ERRADICAÇÃO HTTP/2 PROTOCOL ERRORS ==========
+
+// Lazy-initialized HTTP/1.1-only client to bypass HTTP/2 negotiation issues with IMF/WorldBank
+let http1OnlyClient: Deno.HttpClient | null = null;
+
+function getHttp1OnlyClient(): Deno.HttpClient {
+  if (!http1OnlyClient) {
+    console.log('[HTTP-CLIENT] 🔧 Creating HTTP/1.1-only client (HTTP/2 DISABLED)');
+    http1OnlyClient = Deno.createHttpClient({
+      http1: true,   // Enable HTTP/1.1
+      http2: false,  // ⚠️ CRITICAL: DISABLE HTTP/2 to prevent stream errors
+      poolMaxIdlePerHost: 5,
+      poolIdleTimeout: 30000
+    });
+    console.log('[HTTP-CLIENT] ✅ HTTP/1.1-only client created successfully');
+  }
+  return http1OnlyClient;
+}
+
+// ========== V7.4: HTTP/2 ULTRA-RESILIENCE PROTOCOL ==========
 
 // Header strategies for bypassing HTTP/2 negotiation issues
 const HEADER_STRATEGIES = {
@@ -128,9 +147,13 @@ async function fetchWithHTTP2UltraResilience(
   
   console.log(`[HTTP2-ULTRA] ═══════════════════════════════════════════════════`);
   console.log(`[HTTP2-ULTRA] 🌍 Starting ULTRA-RESILIENT fetch for: ${providerName}`);
+  console.log(`[HTTP2-ULTRA] 🔒 Protocol: HTTP/1.1 FORCED (HTTP/2 DISABLED)`);
   console.log(`[HTTP2-ULTRA] Primary URL: ${url.substring(0, 80)}...`);
   console.log(`[HTTP2-ULTRA] Fallback URL: ${fallbackUrl ? 'Available' : 'None'}`);
   console.log(`[HTTP2-ULTRA] ═══════════════════════════════════════════════════`);
+  
+  // Get HTTP/1.1-only client to bypass HTTP/2 protocol errors
+  const httpClient = getHttp1OnlyClient();
   
   // Try primary URL with all 4 strategies
   for (let i = 0; i < attempts.length; i++) {
@@ -138,16 +161,18 @@ async function fetchWithHTTP2UltraResilience(
     const attemptNum = i + 1;
     
     try {
-      console.log(`[HTTP2-ULTRA] [${providerName}] Attempt ${attemptNum}/4 - Strategy: ${strategy} - Timeout: ${timeout}ms`);
+      console.log(`[HTTP2-ULTRA] [${providerName}] Attempt ${attemptNum}/4 - Strategy: ${strategy} - Timeout: ${timeout}ms - HTTP/1.1`);
       
       const headers = HEADER_STRATEGIES[strategy];
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       
+      // @ts-ignore - Deno.HttpClient is valid in Deno runtime
       const response = await fetch(url, {
         method: 'GET',
         headers,
-        signal: controller.signal
+        signal: controller.signal,
+        client: httpClient  // ← FORCE HTTP/1.1 via custom client
       });
       
       clearTimeout(timeoutId);
@@ -185,16 +210,18 @@ async function fetchWithHTTP2UltraResilience(
       const attemptNum = i + 1;
       
       try {
-        console.log(`[HTTP2-ULTRA] [WorldBank-Fallback] Attempt ${attemptNum}/4 - Strategy: ${strategy}`);
+        console.log(`[HTTP2-ULTRA] [WorldBank-Fallback] Attempt ${attemptNum}/4 - Strategy: ${strategy} - HTTP/1.1`);
         
         const headers = HEADER_STRATEGIES[strategy];
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
         
+        // @ts-ignore - Deno.HttpClient is valid in Deno runtime
         const response = await fetch(fallbackUrl, {
           method: 'GET',
           headers,
-          signal: controller.signal
+          signal: controller.signal,
+          client: httpClient  // ← FORCE HTTP/1.1 via custom client
         });
         
         clearTimeout(timeoutId);
