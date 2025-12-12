@@ -48,7 +48,7 @@ interface StagingApi {
   created_at: string;
 }
 
-const DEFAULT_PROVIDERS = ['BCB', 'IBGE', 'WorldBank', 'IMF', 'YahooFinance', 'Internal', 'Scraper'];
+const DEFAULT_PROVIDERS = ['BCB', 'IBGE', 'IPEADATA', 'WorldBank', 'IMF', 'YahooFinance', 'Internal', 'Scraper'];
 
 export default function JsonTestTab() {
   const [stagingApis, setStagingApis] = useState<StagingApi[]>([]);
