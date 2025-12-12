@@ -622,6 +622,38 @@ function generateIBGESyncMetadata(ibgeData: IBGEResult[]): SyncMetadata {
   return metadata;
 }
 
+// Generate sync metadata for WorldBank data
+function generateWorldBankSyncMetadata(worldBankData: unknown): SyncMetadata {
+  const metadata: SyncMetadata = {
+    extracted_count: 0,
+    period_start: null,
+    period_end: null,
+    fields_detected: ['date', 'value', 'indicator', 'country'],
+    last_record_value: null,
+    fetch_timestamp: new Date().toISOString()
+  };
+
+  if (!Array.isArray(worldBankData) || worldBankData.length < 2) return metadata;
+
+  const dataArray = worldBankData[1];
+  if (!Array.isArray(dataArray) || dataArray.length === 0) return metadata;
+
+  // Filter valid entries and sort by date
+  const validEntries = dataArray
+    .filter((item: { date?: string; value?: number | string | null }) => 
+      item.value !== null && item.value !== undefined && item.date)
+    .sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
+
+  if (validEntries.length === 0) return metadata;
+
+  metadata.extracted_count = validEntries.length;
+  metadata.period_start = `${validEntries[0].date}-01-01`;
+  metadata.period_end = `${validEntries[validEntries.length - 1].date}-01-01`;
+  metadata.last_record_value = String(validEntries[validEntries.length - 1].value);
+
+  return metadata;
+}
+
 // Generate ANNUAL chunks for IBGE API (YYYYMM format) to prevent HTTP 500 errors
 function generateIBGEYearChunks(startDate: Date, endDate: Date): Array<{ start: string; end: string }> {
   const chunks: Array<{ start: string; end: string }> = [];
@@ -1302,6 +1334,10 @@ serve(async (req) => {
           }
           
           console.log(`[FETCH-ECONOMIC] WorldBank parsed values: ${valuesToInsert.length}`);
+          
+          // Generate sync metadata for WorldBank
+          syncMetadata = generateWorldBankSyncMetadata(data);
+          console.log(`[FETCH-ECONOMIC] WorldBank syncMetadata generated: extracted_count=${syncMetadata.extracted_count}, period=${syncMetadata.period_start} to ${syncMetadata.period_end}`);
         }
 
         // ====== ZERO VALUES WARNING ======
