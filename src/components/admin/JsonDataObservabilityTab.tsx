@@ -52,6 +52,29 @@ export const JsonDataObservabilityTab = () => {
     fetchApis();
   }, []);
 
+  // ========== REALTIME SYNC: Auto-refresh on system_api_registry changes ==========
+  useEffect(() => {
+    const channel = supabase
+      .channel('json-observability-api-sync')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',  // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'system_api_registry'
+        },
+        (payload) => {
+          console.log('[REALTIME] 🔄 system_api_registry changed:', payload.eventType);
+          fetchApis(true); // Auto-refresh on changes
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const fetchApis = async (showRefreshing = false) => {
     if (showRefreshing) {
       setIsRefreshing(true);
@@ -352,6 +375,9 @@ export const JsonDataObservabilityTab = () => {
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <FileJson className="w-6 h-6 text-primary" />
             JSON Dados - Observabilidade
+            <Badge variant="secondary" className="ml-2 text-base font-semibold">
+              {apis.length} Indicadores
+            </Badge>
           </h2>
           <p className="text-muted-foreground mt-1">
             Visualize e compare dados brutos das APIs externas
