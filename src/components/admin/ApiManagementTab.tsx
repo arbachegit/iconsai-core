@@ -96,6 +96,7 @@ export default function ApiManagementTab() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingApi, setEditingApi] = useState<ApiRegistry | null>(null);
   const [testingApiId, setTestingApiId] = useState<string | null>(null);
+  const [syncingApiId, setSyncingApiId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [showResultDialog, setShowResultDialog] = useState(false);
   const [testedApiName, setTestedApiName] = useState<string>('');
@@ -359,6 +360,47 @@ export default function ApiManagementTab() {
     navigator.clipboard.writeText(url);
     toast.success('URL copiada!');
   };
+
+  const handleSyncData = async (api: ApiRegistry) => {
+    // Find linked indicator for this API
+    const { data: indicators, error: indicatorError } = await supabase
+      .from('economic_indicators')
+      .select('id, name')
+      .eq('api_id', api.id);
+    
+    if (indicatorError || !indicators || indicators.length === 0) {
+      toast.error(`Nenhum indicador vinculado à API "${api.name}". Crie um indicador vinculado primeiro.`);
+      return;
+    }
+    
+    setSyncingApiId(api.id);
+    
+    try {
+      for (const indicator of indicators) {
+        console.log(`[SYNC] Sincronizando indicador: ${indicator.name} (${indicator.id})`);
+        
+        const { data, error } = await supabase.functions.invoke('fetch-economic-data', {
+          body: { indicatorId: indicator.id }
+        });
+
+        if (error) {
+          console.error(`[SYNC] Erro ao sincronizar ${indicator.name}:`, error);
+          toast.error(`Erro ao sincronizar ${indicator.name}: ${error.message}`);
+        } else {
+          console.log(`[SYNC] Resultado para ${indicator.name}:`, data);
+          const insertedCount = data?.results?.[0]?.insertedCount || data?.insertedCount || 0;
+          toast.success(`${indicator.name}: ${insertedCount} registros inseridos`);
+        }
+      }
+      
+      fetchApis();
+    } catch (error) {
+      console.error('[SYNC] Erro geral:', error);
+      toast.error('Erro ao sincronizar dados');
+    } finally {
+      setSyncingApiId(null);
+    }
+  }
 
   const handleViewLog = (api: ApiRegistry) => {
     setSelectedApiForLog(api);
@@ -1170,6 +1212,25 @@ export default function ApiManagementTab() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  onClick={() => handleSyncData(api)}
+                                  disabled={syncingApiId === api.id || api.status !== 'active'}
+                                >
+                                  {syncingApiId === api.id ? (
+                                    <RefreshCw className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Database className="h-4 w-4 text-green-500" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Sincronizar Dados</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
                                   onClick={() => handleViewLog(api)}
                                   disabled={!api.last_sync_metadata}
                                 >
@@ -1471,6 +1532,7 @@ export default function ApiManagementTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
 
       {/* API Diagnostic Modal */}
