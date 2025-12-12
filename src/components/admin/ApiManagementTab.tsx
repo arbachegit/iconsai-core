@@ -759,10 +759,10 @@ export default function ApiManagementTab() {
                       {getSortIcon('provider')}
                     </div>
                   </TableHead>
-                  <TableHead className="hidden md:table-cell">URL</TableHead>
+                  <TableHead>URL</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead 
-                    className="hidden lg:table-cell cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                    className="cursor-pointer hover:bg-muted/50 transition-colors select-none"
                     onClick={() => handleSort('last_checked_at')}
                   >
                     <div className="flex items-center gap-1">
@@ -771,7 +771,7 @@ export default function ApiManagementTab() {
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="hidden xl:table-cell cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                    className="cursor-pointer hover:bg-muted/50 transition-colors select-none"
                     onClick={() => handleSort('extracted_count')}
                   >
                     <div className="flex items-center gap-1">
@@ -780,7 +780,7 @@ export default function ApiManagementTab() {
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="hidden xl:table-cell cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                    className="cursor-pointer hover:bg-muted/50 transition-colors select-none"
                     onClick={() => handleSort('period')}
                   >
                     <div className="flex items-center gap-1">
@@ -822,8 +822,8 @@ export default function ApiManagementTab() {
                           {api.provider}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <div className="flex items-center gap-1 max-w-[200px]">
+                      <TableCell>
+                        <div className="flex items-center gap-1 max-w-[300px]">
                           <span className="text-xs text-muted-foreground truncate">
                             {api.base_url}
                           </span>
@@ -860,7 +860,7 @@ export default function ApiManagementTab() {
                           {getStatusDisplay(api)}
                         </button>
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell">
+                      <TableCell>
                         {api.last_checked_at ? (
                           <TooltipProvider>
                             <Tooltip>
@@ -879,7 +879,7 @@ export default function ApiManagementTab() {
                         )}
                       </TableCell>
                       {/* Dados Extraídos */}
-                      <TableCell className="hidden xl:table-cell">
+                      <TableCell>
                         {api.last_sync_metadata?.extracted_count ? (
                           <div className="space-y-0.5">
                             <div className="font-medium text-sm">
@@ -897,7 +897,7 @@ export default function ApiManagementTab() {
                         )}
                       </TableCell>
                       {/* Período - Dual Date Display (Configurada vs Real) */}
-                      <TableCell className="hidden xl:table-cell">
+                      <TableCell>
                         <div className="flex flex-col gap-1">
                           {/* Configured Date */}
                           <div className="flex items-center gap-1.5">
