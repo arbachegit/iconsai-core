@@ -1269,6 +1269,39 @@ serve(async (req) => {
           }
           
           console.log(`[FETCH-ECONOMIC] IBGE parsed values: ${valuesToInsert.length}`);
+        } else if (apiConfig.provider === 'WorldBank') {
+          // ====== WORLDBANK PARSER ======
+          // WorldBank returns [metadata, dataArray]
+          // Each item: {date: "YYYY", value: number|null, ...}
+          console.log(`[FETCH-ECONOMIC] WorldBank response received, parsing...`);
+          
+          if (Array.isArray(data) && data.length >= 2) {
+            const dataArray = data[1];
+            
+            if (Array.isArray(dataArray)) {
+              console.log(`[FETCH-ECONOMIC] WorldBank data array has ${dataArray.length} items`);
+              
+              for (const item of dataArray) {
+                if (item.value === null || item.value === undefined) continue;
+                
+                // WorldBank date is just "YYYY" for annual data
+                const refDate = `${item.date}-01-01`;
+                const numValue = typeof item.value === 'number' ? item.value : parseFloat(item.value);
+                
+                if (!isNaN(numValue)) {
+                  valuesToInsert.push({
+                    indicator_id: indicator.id,
+                    reference_date: refDate,
+                    value: numValue,
+                  });
+                }
+              }
+            }
+          } else {
+            console.warn(`[FETCH-ECONOMIC] WorldBank unexpected format:`, typeof data);
+          }
+          
+          console.log(`[FETCH-ECONOMIC] WorldBank parsed values: ${valuesToInsert.length}`);
         }
 
         // ====== ZERO VALUES WARNING ======
