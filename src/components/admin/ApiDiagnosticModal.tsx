@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Activity, RefreshCw, CheckCircle, XCircle, AlertTriangle, Clock, FileText, Copy, Check, Database, Calendar, TrendingUp } from 'lucide-react';
+import { Activity, RefreshCw, CheckCircle, XCircle, AlertTriangle, Clock, FileText, Copy, Check, Database, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -93,7 +93,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
     const { data, error } = await supabase
       .from('system_api_registry')
       .select('id, name, provider, base_url, fetch_start_date, fetch_end_date, target_table, last_http_status, last_sync_metadata, last_checked_at')
-      .in('provider', ['BCB', 'IBGE'])
+      .in('provider', ['BCB', 'IBGE', 'WorldBank'])
       .order('provider', { ascending: true });
 
     if (error) {
@@ -442,7 +442,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
             </Badge>
           </DialogTitle>
           <DialogDescription>
-            Testando conectividade e integridade histórica de todas as APIs configuradas (BCB e IBGE)
+            Testando conectividade e integridade histórica de todas as APIs configuradas (BCB, IBGE e WorldBank)
           </DialogDescription>
         </DialogHeader>
 
@@ -462,27 +462,21 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30">
-                <TableHead className="w-[22%]">API</TableHead>
-                <TableHead className="w-[18%]">
+                <TableHead className="w-[26%]">API</TableHead>
+                <TableHead className="w-[20%]">
                   <div className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    Período Config.
+                    Período
                   </div>
                 </TableHead>
-                <TableHead className="w-[18%]">
-                  <div className="flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" />
-                    Período Real
-                  </div>
-                </TableHead>
-                <TableHead className="w-[10%] text-center">Status</TableHead>
-                <TableHead className="w-[16%]">
+                <TableHead className="w-[12%] text-center">Status</TableHead>
+                <TableHead className="w-[20%]">
                   <div className="flex items-center gap-1">
                     <Database className="h-3 w-3" />
                     Registros
                   </div>
                 </TableHead>
-                <TableHead className="w-[16%]">Cobertura</TableHead>
+                <TableHead className="w-[22%]">Cobertura</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -496,6 +490,8 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
                           className={`text-[10px] px-1.5 py-0 ${
                             result.provider === 'BCB' 
                               ? 'bg-blue-500/20 border-blue-500/40 text-blue-400' 
+                              : result.provider === 'WorldBank'
+                              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
                               : 'bg-purple-500/20 border-purple-500/40 text-purple-400'
                           }`}
                         >
@@ -509,21 +505,6 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
                         </div>
                       )}
                     </div>
-                  </TableCell>
-                  
-                  <TableCell>
-                    {result.configuredStart ? (
-                      <div className="space-y-0.5">
-                        <div className="text-xs font-mono text-muted-foreground">
-                          {formatDate(result.configuredStart)}
-                        </div>
-                        <div className="text-xs font-mono text-muted-foreground">
-                          → {formatDate(result.configuredEnd)}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground italic">Não configurado</span>
-                    )}
                   </TableCell>
                   
                   <TableCell>
