@@ -981,7 +981,7 @@ export default function ApiManagementTab() {
                       <TableCell>
                         <div className="flex flex-col gap-2">
                           {/* Discovered Period */}
-                          <div className="text-[7px] font-medium">
+                          <div className="text-[11px] font-medium">
                             {api.discovered_period_start && api.discovered_period_end ? (
                               <span className="text-foreground">
                                 {format(new Date(api.discovered_period_start), 'dd/MM/yyyy')} → {format(new Date(api.discovered_period_end), 'dd/MM/yyyy')}
