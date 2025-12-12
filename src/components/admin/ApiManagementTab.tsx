@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info, Stethoscope, Tag, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Key, ArrowUpDown } from 'lucide-react';
@@ -101,12 +101,12 @@ export default function ApiManagementTab() {
   const [testedApiName, setTestedApiName] = useState<string>('');
   const [showLogModal, setShowLogModal] = useState(false);
   const [selectedApiForLog, setSelectedApiForLog] = useState<ApiRegistry | null>(null);
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [configApi, setConfigApi] = useState<ApiRegistry | null>(null);
-  const [configStartDate, setConfigStartDate] = useState<Date | undefined>(undefined);
-  const [configEndDate, setConfigEndDate] = useState<Date | undefined>(undefined);
-  const [configAutoEnabled, setConfigAutoEnabled] = useState(false);
-  const [configInterval, setConfigInterval] = useState('daily');
+  const [schedulePopoverOpen, setSchedulePopoverOpen] = useState<string | null>(null);
+  const [configScheduleFrequency, setConfigScheduleFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [configScheduleHour, setConfigScheduleHour] = useState('09');
+  const [configScheduleMinute, setConfigScheduleMinute] = useState('00');
+  const [configScheduleAmPm, setConfigScheduleAmPm] = useState<'AM' | 'PM'>('AM');
+  const [configScheduleDay, setConfigScheduleDay] = useState('monday');
   const [apiDiagnosticModalOpen, setApiDiagnosticModalOpen] = useState(false);
   const [showSchemaModal, setShowSchemaModal] = useState(false);
   const [testingAllApis, setTestingAllApis] = useState(false);
@@ -364,37 +364,111 @@ export default function ApiManagementTab() {
     setShowLogModal(true);
   };
 
-  const handleOpenConfigModal = (api: ApiRegistry) => {
-    setConfigApi(api);
-    setConfigStartDate(api.fetch_start_date ? new Date(api.fetch_start_date) : new Date('2010-01-01'));
-    setConfigEndDate(api.fetch_end_date ? new Date(api.fetch_end_date) : undefined);
-    setConfigAutoEnabled(api.auto_fetch_enabled || false);
-    setConfigInterval(api.auto_fetch_interval || 'daily');
-    setShowConfigModal(true);
+  const handleToggleAutoFetch = async (api: ApiRegistry, enabled: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('system_api_registry')
+        .update({ auto_fetch_enabled: enabled })
+        .eq('id', api.id);
+
+      if (error) throw error;
+      toast.success(enabled ? 'Atualização automática ativada' : 'Atualização automática desativada');
+      fetchApis();
+    } catch (error) {
+      console.error('Error toggling auto fetch:', error);
+      toast.error('Erro ao alterar configuração');
+    }
   };
 
-  const handleSaveConfig = async () => {
-    if (!configApi) return;
+  const handleOpenSchedulePopover = (api: ApiRegistry) => {
+    // Parse existing interval: format is "daily|09:00" or "weekly|monday|09:00" or "monthly|last|09:00"
+    const interval = api.auto_fetch_interval || 'daily|09:00';
+    const parts = interval.split('|');
+    
+    setConfigScheduleFrequency(parts[0] as 'daily' | 'weekly' | 'monthly');
+    
+    if (parts[0] === 'daily' && parts[1]) {
+      const [hour, minute] = parts[1].split(':');
+      const hourNum = parseInt(hour);
+      setConfigScheduleAmPm(hourNum >= 12 ? 'PM' : 'AM');
+      setConfigScheduleHour(String(hourNum > 12 ? hourNum - 12 : (hourNum === 0 ? 12 : hourNum)).padStart(2, '0'));
+      setConfigScheduleMinute(minute || '00');
+    } else if (parts[0] === 'weekly' && parts[1] && parts[2]) {
+      setConfigScheduleDay(parts[1]);
+      const [hour, minute] = parts[2].split(':');
+      const hourNum = parseInt(hour);
+      setConfigScheduleAmPm(hourNum >= 12 ? 'PM' : 'AM');
+      setConfigScheduleHour(String(hourNum > 12 ? hourNum - 12 : (hourNum === 0 ? 12 : hourNum)).padStart(2, '0'));
+      setConfigScheduleMinute(minute || '00');
+    } else if (parts[0] === 'monthly' && parts[2]) {
+      const [hour, minute] = parts[2].split(':');
+      const hourNum = parseInt(hour);
+      setConfigScheduleAmPm(hourNum >= 12 ? 'PM' : 'AM');
+      setConfigScheduleHour(String(hourNum > 12 ? hourNum - 12 : (hourNum === 0 ? 12 : hourNum)).padStart(2, '0'));
+      setConfigScheduleMinute(minute || '00');
+    } else {
+      setConfigScheduleHour('09');
+      setConfigScheduleMinute('00');
+      setConfigScheduleAmPm('AM');
+      setConfigScheduleDay('monday');
+    }
+    
+    setSchedulePopoverOpen(api.id);
+  };
+
+  const handleSaveSchedule = async (apiId: string) => {
+    // Convert to 24h format
+    let hour24 = parseInt(configScheduleHour);
+    if (configScheduleAmPm === 'PM' && hour24 !== 12) hour24 += 12;
+    if (configScheduleAmPm === 'AM' && hour24 === 12) hour24 = 0;
+    const timeStr = `${String(hour24).padStart(2, '0')}:${configScheduleMinute}`;
+    
+    let intervalValue: string;
+    switch (configScheduleFrequency) {
+      case 'daily':
+        intervalValue = `daily|${timeStr}`;
+        break;
+      case 'weekly':
+        intervalValue = `weekly|${configScheduleDay}|${timeStr}`;
+        break;
+      case 'monthly':
+        intervalValue = `monthly|last|${timeStr}`;
+        break;
+    }
     
     try {
       const { error } = await supabase
         .from('system_api_registry')
-        .update({
-          fetch_start_date: configStartDate ? format(configStartDate, 'yyyy-MM-dd') : null,
-          fetch_end_date: configEndDate ? format(configEndDate, 'yyyy-MM-dd') : null,
-          auto_fetch_enabled: configAutoEnabled,
-          auto_fetch_interval: configInterval
-        })
-        .eq('id', configApi.id);
+        .update({ auto_fetch_interval: intervalValue })
+        .eq('id', apiId);
 
       if (error) throw error;
-      toast.success('Configuração salva com sucesso');
-      setShowConfigModal(false);
+      toast.success('Configuração de horário salva');
+      setSchedulePopoverOpen(null);
       fetchApis();
     } catch (error) {
-      console.error('Error saving config:', error);
+      console.error('Error saving schedule:', error);
       toast.error('Erro ao salvar configuração');
     }
+  };
+
+  const getScheduleLabel = (interval: string | null) => {
+    if (!interval) return 'Diário 09:00';
+    const parts = interval.split('|');
+    const freq = parts[0];
+    
+    if (freq === 'daily' && parts[1]) {
+      return `Diário ${parts[1]}`;
+    } else if (freq === 'weekly' && parts[1] && parts[2]) {
+      const dayLabels: Record<string, string> = {
+        monday: 'Seg', tuesday: 'Ter', wednesday: 'Qua', 
+        thursday: 'Qui', friday: 'Sex', saturday: 'Sáb', sunday: 'Dom'
+      };
+      return `${dayLabels[parts[1]] || parts[1]} ${parts[2]}`;
+    } else if (freq === 'monthly' && parts[2]) {
+      return `Último dia ${parts[2]}`;
+    }
+    return interval;
   };
 
   const getIntervalLabel = (interval: string) => {
@@ -903,57 +977,163 @@ export default function ApiManagementTab() {
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      {/* Período - Dual Date Display (Configurada vs Real) */}
+                      {/* Período - Discovered Only + Auto Toggle */}
                       <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {/* Configured Date */}
-                          <div className="flex items-center gap-1.5">
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-500/40 text-blue-400 font-normal">
-                              Configurada
-                            </Badge>
-                            <span className="text-xs text-blue-300">
-                              {api.fetch_start_date ? format(new Date(api.fetch_start_date), 'MM/yyyy') : '—'}
-                            </span>
+                        <div className="flex flex-col gap-2">
+                          {/* Discovered Period */}
+                          <div className="text-sm font-medium">
+                            {api.discovered_period_start && api.discovered_period_end ? (
+                              <span className="text-foreground">
+                                {format(new Date(api.discovered_period_start), 'dd/MM/yyyy')} → {format(new Date(api.discovered_period_end), 'dd/MM/yyyy')}
+                              </span>
+                            ) : api.discovered_period_start ? (
+                              <span className="text-foreground">
+                                {format(new Date(api.discovered_period_start), 'dd/MM/yyyy')} → Hoje
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </div>
-                          {/* Real/Discovered Date */}
-                          <div className="flex items-center gap-1.5">
-                            <Badge 
-                              variant="outline" 
-                              className={cn(
-                                "text-[10px] px-1.5 py-0 font-normal",
-                                api.discovered_period_start && api.fetch_start_date && 
-                                  new Date(api.discovered_period_start).getFullYear() === new Date(api.fetch_start_date).getFullYear()
-                                  ? "border-green-500/40 text-green-400"
-                                  : "border-yellow-500/40 text-yellow-400"
-                              )}
-                            >
-                              Real
-                            </Badge>
-                            <span className={cn(
-                              "text-xs",
-                              api.discovered_period_start && api.fetch_start_date && 
-                                new Date(api.discovered_period_start).getFullYear() === new Date(api.fetch_start_date).getFullYear()
-                                ? "text-green-300"
-                                : "text-yellow-300"
-                            )}>
-                              {api.discovered_period_start ? format(new Date(api.discovered_period_start), 'MM/yyyy') : 'Não descoberta'}
-                            </span>
-                          </div>
-                          {/* Settings Button */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 gap-1 mt-0.5 border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px]"
-                            onClick={() => handleOpenConfigModal(api)}
-                          >
-                            <Settings className="h-3 w-3" />
-                            Configurar
+                          
+                          {/* Auto Toggle + Settings */}
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={api.auto_fetch_enabled || false}
+                              onCheckedChange={(checked) => handleToggleAutoFetch(api, checked)}
+                              className="scale-75"
+                            />
+                            <span className="text-xs text-muted-foreground">Auto</span>
+                            
                             {api.auto_fetch_enabled && (
-                              <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 border-cyan-500/40 text-cyan-400">
-                                Auto
+                              <Popover 
+                                open={schedulePopoverOpen === api.id} 
+                                onOpenChange={(open) => {
+                                  if (open) {
+                                    handleOpenSchedulePopover(api);
+                                  } else {
+                                    setSchedulePopoverOpen(null);
+                                  }
+                                }}
+                              >
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <Settings className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-72 p-4" align="start">
+                                  <div className="space-y-4">
+                                    <div className="flex items-center gap-2">
+                                      <Clock className="h-4 w-4 text-cyan-400" />
+                                      <span className="text-sm font-medium">Configurar Atualização</span>
+                                    </div>
+                                    
+                                    {/* Frequency Selector */}
+                                    <div className="space-y-2">
+                                      <Label className="text-xs text-muted-foreground">Frequência</Label>
+                                      <Select 
+                                        value={configScheduleFrequency} 
+                                        onValueChange={(v) => setConfigScheduleFrequency(v as 'daily' | 'weekly' | 'monthly')}
+                                      >
+                                        <SelectTrigger className="h-8">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="daily">Diária</SelectItem>
+                                          <SelectItem value="weekly">Semanal</SelectItem>
+                                          <SelectItem value="monthly">Mensal</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    
+                                    {/* Weekly: Day Selector */}
+                                    {configScheduleFrequency === 'weekly' && (
+                                      <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground">Dia da Semana</Label>
+                                        <Select value={configScheduleDay} onValueChange={setConfigScheduleDay}>
+                                          <SelectTrigger className="h-8">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="monday">Segunda-feira</SelectItem>
+                                            <SelectItem value="tuesday">Terça-feira</SelectItem>
+                                            <SelectItem value="wednesday">Quarta-feira</SelectItem>
+                                            <SelectItem value="thursday">Quinta-feira</SelectItem>
+                                            <SelectItem value="friday">Sexta-feira</SelectItem>
+                                            <SelectItem value="saturday">Sábado</SelectItem>
+                                            <SelectItem value="sunday">Domingo</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Monthly: Info */}
+                                    {configScheduleFrequency === 'monthly' && (
+                                      <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+                                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-xs text-muted-foreground">Último dia de cada mês</span>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Time Selector */}
+                                    <div className="space-y-2">
+                                      <Label className="text-xs text-muted-foreground">Horário</Label>
+                                      <div className="flex items-center gap-2">
+                                        <Select value={configScheduleHour} onValueChange={setConfigScheduleHour}>
+                                          <SelectTrigger className="h-8 w-16">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+                                              <SelectItem key={h} value={h}>{h}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <span className="text-muted-foreground">:</span>
+                                        <Select value={configScheduleMinute} onValueChange={setConfigScheduleMinute}>
+                                          <SelectTrigger className="h-8 w-16">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {['00', '15', '30', '45'].map(m => (
+                                              <SelectItem key={m} value={m}>{m}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <Select value={configScheduleAmPm} onValueChange={(v) => setConfigScheduleAmPm(v as 'AM' | 'PM')}>
+                                          <SelectTrigger className="h-8 w-16">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="AM">AM</SelectItem>
+                                            <SelectItem value="PM">PM</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                    
+                                    <Button 
+                                      size="sm" 
+                                      className="w-full gap-2"
+                                      onClick={() => handleSaveSchedule(api.id)}
+                                    >
+                                      <CheckCircle className="h-3.5 w-3.5" />
+                                      Salvar
+                                    </Button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                            
+                            {api.auto_fetch_enabled && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-cyan-500/40 text-cyan-400">
+                                {getScheduleLabel(api.auto_fetch_interval)}
                               </Badge>
                             )}
-                          </Button>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
@@ -1285,151 +1465,6 @@ export default function ApiManagementTab() {
         </DialogContent>
       </Dialog>
 
-      {/* Configuration Modal */}
-      <Dialog open={showConfigModal} onOpenChange={setShowConfigModal}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-emerald-500" />
-              Configurar Período e Automação
-            </DialogTitle>
-            <DialogDescription>
-              {configApi?.name}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6 py-4">
-            {/* Section A: Intervalo de Coleta */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4 text-emerald-400" />
-                <Label className="text-sm font-medium">Intervalo de Coleta</Label>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Data Início</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !configStartDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {configStartDate ? format(configStartDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={configStartDate}
-                        onSelect={setConfigStartDate}
-                        defaultMonth={configStartDate}
-                        initialFocus
-                        className="pointer-events-auto"
-                        captionLayout="dropdown-buttons"
-                        fromYear={2000}
-                        toYear={2030}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Data Fim</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !configEndDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {configEndDate ? format(configEndDate, "dd/MM/yyyy", { locale: ptBR }) : "Até Hoje"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={configEndDate}
-                        onSelect={setConfigEndDate}
-                        defaultMonth={configEndDate || configStartDate}
-                        initialFocus
-                        className="pointer-events-auto"
-                        captionLayout="dropdown-buttons"
-                        fromYear={2000}
-                        toYear={2030}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-border/40" />
-
-            {/* Section B: Busca Automatizada */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 text-cyan-400" />
-                <Label className="text-sm font-medium">Busca Automatizada</Label>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border/40">
-                <div className="space-y-0.5">
-                  <Label className="text-sm">Habilitar Busca Automática</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Preenche lacunas e busca novos registros
-                  </p>
-                </div>
-                <Switch
-                  checked={configAutoEnabled}
-                  onCheckedChange={setConfigAutoEnabled}
-                />
-              </div>
-
-              {configAutoEnabled && (
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Intervalo de Verificação</Label>
-                  <Select value={configInterval} onValueChange={setConfigInterval}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="6hours">A cada 6 horas</SelectItem>
-                      <SelectItem value="daily">Diário</SelectItem>
-                      <SelectItem value="weekly">Semanal</SelectItem>
-                      <SelectItem value="monthly">Mensal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                <Info className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
-                <p className="text-xs text-blue-300">
-                  O sistema irá consultar a API automaticamente neste intervalo para preencher lacunas de dados ou buscar novos registros após a Data Fim.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfigModal(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveConfig} className="gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* API Diagnostic Modal */}
       <ApiDiagnosticModal 
