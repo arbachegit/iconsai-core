@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Check, X, Pencil, Trash2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 interface IndicatorValue {
   id: string;
@@ -26,8 +27,7 @@ export default function MonthlyMatrixView({ indicatorId, values, unit, onValueCh
   const [editingCell, setEditingCell] = useState<{ year: number; month: number } | null>(null);
   const [editValue, setEditValue] = useState('');
 
-  // Debug log for visual diagnostic
-  console.log(`[MonthlyMatrixView] Indicator: ${indicatorId}, Received ${values.length} values`);
+  logger.debug(`[MonthlyMatrixView] Indicator: ${indicatorId}, Received ${values.length} values`);
 
   // Build matrix data: { year: { month: IndicatorValue } }
   const matrixData = useMemo(() => {
@@ -45,7 +45,7 @@ export default function MonthlyMatrixView({ indicatorId, values, unit, onValueCh
     });
 
     const sortedYears = Array.from(years).sort((a, b) => b - a);
-    console.log(`[MonthlyMatrixView] Processed ${values.length} values into ${sortedYears.length} years: ${sortedYears.join(', ')}`);
+    logger.debug(`[MonthlyMatrixView] Processed ${values.length} values into ${sortedYears.length} years`);
     return { data, years: sortedYears };
   }, [values]);
 
@@ -119,7 +119,7 @@ export default function MonthlyMatrixView({ indicatorId, values, unit, onValueCh
       setEditingCell(null);
       onValueChange();
     } catch (error) {
-      console.error('Error saving value:', error);
+      logger.error('Error saving value:', error);
       toast.error('Erro ao salvar');
     }
   };
@@ -137,7 +137,7 @@ export default function MonthlyMatrixView({ indicatorId, values, unit, onValueCh
       toast.success('Registro excluído');
       onValueChange();
     } catch (error) {
-      console.error('Error deleting:', error);
+      logger.error('Error deleting:', error);
       toast.error('Erro ao excluir');
     }
   };

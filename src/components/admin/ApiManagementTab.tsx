@@ -21,7 +21,9 @@ import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, Externa
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatDateTime, formatRelative } from '@/lib/date-utils';
 import ApiDiagnosticModal from './ApiDiagnosticModal';
+import { logger } from '@/lib/logger';
 
 interface SyncMetadata {
   extracted_count?: number;
@@ -144,7 +146,7 @@ export default function ApiManagementTab() {
           table: 'system_api_registry'
         },
         (payload) => {
-          console.log('[REALTIME] 🔄 ApiManagement - system_api_registry changed:', payload.eventType);
+          logger.debug('[REALTIME] ApiManagement - system_api_registry changed:', payload.eventType);
           setLastTriggerTime(new Date());
           fetchApis();
         }
@@ -167,7 +169,7 @@ export default function ApiManagementTab() {
       if (error) throw error;
       setApis((data || []) as ApiRegistry[]);
     } catch (error) {
-      console.error('Error fetching APIs:', error);
+      logger.error('Error fetching APIs:', error);
       toast.error('Erro ao carregar APIs');
     } finally {
       setLoading(false);
@@ -244,7 +246,7 @@ export default function ApiManagementTab() {
       setIsDialogOpen(false);
       fetchApis();
     } catch (error) {
-      console.error('Error saving API:', error);
+      logger.error('Error saving API:', error);
       toast.error('Erro ao salvar API');
     }
   };
@@ -262,7 +264,7 @@ export default function ApiManagementTab() {
       toast.success('API excluída com sucesso');
       fetchApis();
     } catch (error) {
-      console.error('Error deleting API:', error);
+      logger.error('Error deleting API:', error);
       toast.error('Erro ao excluir API');
     }
   };
@@ -279,7 +281,7 @@ export default function ApiManagementTab() {
       toast.success(`API ${newStatus === 'active' ? 'ativada' : 'desativada'}`);
       fetchApis();
     } catch (error) {
-      console.error('Error toggling status:', error);
+      logger.error('Error toggling status:', error);
       toast.error('Erro ao alterar status');
     }
   };
@@ -307,7 +309,7 @@ export default function ApiManagementTab() {
       // Refresh to show updated status
       fetchApis();
     } catch (error) {
-      console.error('Error testing connection:', error);
+      logger.error('Error testing connection:', error);
       toast.error('Erro ao testar conexão');
     } finally {
       setTestingApiId(null);
@@ -377,17 +379,16 @@ export default function ApiManagementTab() {
     
     try {
       for (const indicator of indicators) {
-        console.log(`[SYNC] Sincronizando indicador: ${indicator.name} (${indicator.id})`);
+        logger.debug(`[SYNC] Sincronizando indicador: ${indicator.name} (${indicator.id})`);
         
         const { data, error } = await supabase.functions.invoke('fetch-economic-data', {
           body: { indicatorId: indicator.id }
         });
 
         if (error) {
-          console.error(`[SYNC] Erro ao sincronizar ${indicator.name}:`, error);
+          logger.error(`[SYNC] Erro ao sincronizar ${indicator.name}:`, error);
           toast.error(`Erro ao sincronizar ${indicator.name}: ${error.message}`);
         } else {
-          console.log(`[SYNC] Resultado para ${indicator.name}:`, data);
           const insertedCount = data?.results?.[0]?.insertedCount || data?.insertedCount || 0;
           toast.success(`${indicator.name}: ${insertedCount} registros inseridos`);
         }
@@ -395,7 +396,7 @@ export default function ApiManagementTab() {
       
       fetchApis();
     } catch (error) {
-      console.error('[SYNC] Erro geral:', error);
+      logger.error('[SYNC] Erro geral:', error);
       toast.error('Erro ao sincronizar dados');
     } finally {
       setSyncingApiId(null);
@@ -418,7 +419,7 @@ export default function ApiManagementTab() {
       toast.success(enabled ? 'Atualização automática ativada' : 'Atualização automática desativada');
       fetchApis();
     } catch (error) {
-      console.error('Error toggling auto fetch:', error);
+      logger.error('Error toggling auto fetch:', error);
       toast.error('Erro ao alterar configuração');
     }
   };

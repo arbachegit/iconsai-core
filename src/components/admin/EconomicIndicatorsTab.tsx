@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -79,7 +80,7 @@ export default function EconomicIndicatorsTab() {
           table: 'system_api_registry'
         },
         (payload) => {
-          console.log('[REALTIME] 🔄 EconomicIndicators - system_api_registry changed:', payload.eventType);
+          logger.debug('[REALTIME] EconomicIndicators - system_api_registry changed:', payload.eventType);
           setLastTriggerTime(new Date());
           fetchData('realtime-sync');
         }
@@ -96,7 +97,7 @@ export default function EconomicIndicatorsTab() {
   }, []);
 
   const fetchData = async (debugSource: string = 'initial') => {
-    console.log(`[ECONOMIC_INDICATORS] fetchData triggered by: ${debugSource}`);
+    logger.debug(`[ECONOMIC_INDICATORS] fetchData triggered by: ${debugSource}`);
     setLoading(true);
     try {
       // Fetch indicators, stats, and API registry in parallel
@@ -108,9 +109,7 @@ export default function EconomicIndicatorsTab() {
 
       if (indicatorsRes.error) throw indicatorsRes.error;
       
-      console.log(`[ECONOMIC_INDICATORS] Loaded ${indicatorsRes.data?.length || 0} indicators`);
-      console.log(`[ECONOMIC_INDICATORS] Loaded ${statsRes.data?.length || 0} indicator values`);
-      console.log(`[ECONOMIC_INDICATORS] Loaded ${apiRes.data?.length || 0} API registry entries`);
+      logger.debug(`[ECONOMIC_INDICATORS] Loaded ${indicatorsRes.data?.length || 0} indicators, ${statsRes.data?.length || 0} values, ${apiRes.data?.length || 0} APIs`);
       
       setIndicators(indicatorsRes.data || []);
       setApiRegistry((apiRes.data || []) as unknown as ApiRegistry[]);
@@ -142,7 +141,7 @@ export default function EconomicIndicatorsTab() {
 
       setIndicatorStats(stats);
     } catch (error) {
-      console.error('[ECONOMIC_INDICATORS] Error fetching data:', error);
+      logger.error('[ECONOMIC_INDICATORS] Error fetching data:', error);
       toast.error('Erro ao carregar dados');
     } finally {
       setLoading(false);
@@ -150,9 +149,7 @@ export default function EconomicIndicatorsTab() {
   };
 
   const handleFetchAll = async (forceRefresh: boolean = false) => {
-    console.log('[ZERO-BASE] ====== handleFetchAll CALLED ======');
-    console.log(`[ZERO-BASE] forceRefresh parameter: ${forceRefresh}`);
-    console.log(`[ZERO-BASE] Request body will be:`, JSON.stringify({ fetchAll: true, forceRefresh }));
+    logger.debug('[ZERO-BASE] handleFetchAll called with forceRefresh:', forceRefresh);
     
     if (forceRefresh) {
       setForceRefreshing(true);
@@ -162,14 +159,12 @@ export default function EconomicIndicatorsTab() {
     }
     
     try {
-      console.log('[ZERO-BASE] Invoking Edge Function...');
+      logger.debug('[ZERO-BASE] Invoking Edge Function...');
       const response = await supabase.functions.invoke('fetch-economic-data', {
         body: { fetchAll: true, forceRefresh }
       });
 
-      console.log('[ZERO-BASE] Edge Function response received');
-      console.log('[ZERO-BASE] Response data:', JSON.stringify(response.data, null, 2));
-      console.log('[ZERO-BASE] Response error:', response.error);
+      logger.debug('[ZERO-BASE] Response received:', response.data);
 
       if (response.error) throw response.error;
       
@@ -184,10 +179,10 @@ export default function EconomicIndicatorsTab() {
             `☢️ Zero-Base CONFIRMADO: ${deletedCount} registros limpos, ${insertedCount} inseridos`,
             { duration: 8000 }
           );
-          console.log(`[ZERO-BASE] ✅ CONFIRMED: Deleted ${deletedCount}, Inserted ${insertedCount}`);
+          logger.debug(`[ZERO-BASE] CONFIRMED: Deleted ${deletedCount}, Inserted ${insertedCount}`);
         } else {
           toast.warning('⚠️ Zero-Base pode não ter sido executado - verifique os logs do servidor', { duration: 8000 });
-          console.warn('[ZERO-BASE] ⚠️ WARNING: zeroBaseExecuted flag not found in response');
+          logger.warn('[ZERO-BASE] zeroBaseExecuted flag not found in response');
         }
       } else {
         toast.success(`Todos indicadores atualizados: ${response.data?.recordsInserted || 0} registros`);
@@ -197,14 +192,12 @@ export default function EconomicIndicatorsTab() {
       setIndicatorStats({});
       
       // Add small delay to ensure database has committed all changes
-      console.log('[SYNC_ALL] Waiting 1s before refetch...');
+      logger.debug('[SYNC_ALL] Waiting 1s before refetch...');
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      console.log('[SYNC_ALL] Triggering data refetch...');
       await fetchData('post-sync');
-      console.log('[SYNC_ALL] Refetch complete');
     } catch (error) {
-      console.error('[ZERO-BASE] ❌ ERROR:', error);
+      logger.error('[ZERO-BASE] Error:', error);
       toast.dismiss('zero-base-progress');
       toast.error('Erro ao buscar dados');
     } finally {
@@ -216,22 +209,16 @@ export default function EconomicIndicatorsTab() {
   };
 
   const handleForceRefreshClick = () => {
-    console.log('[ZERO-BASE] Force refresh button clicked - opening modal');
     setForceRefreshConfirmed(false);
     setForceRefreshModalOpen(true);
   };
 
   const handleForceRefreshConfirm = () => {
-    console.log('[ZERO-BASE] Confirm button clicked');
-    console.log('[ZERO-BASE] forceRefreshConfirmed state:', forceRefreshConfirmed);
-    
     if (!forceRefreshConfirmed) {
       toast.error('Você deve confirmar que entende a operação');
-      console.log('[ZERO-BASE] Confirmation checkbox not checked - aborting');
       return;
     }
     
-    console.log('[ZERO-BASE] ✅ Confirmation valid - calling handleFetchAll(true)');
     handleFetchAll(true);
   };
 
