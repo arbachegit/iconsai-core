@@ -16,7 +16,9 @@ export type NotificationEventType =
   // User Registration
   | 'user_registration_request'
   | 'user_registration_approved'
-  | 'user_registration_rejected';
+  | 'user_registration_rejected'
+  // API Testing
+  | 'api_ready_for_implementation';
 
 interface NotificationTemplate {
   id: string;
@@ -435,5 +437,26 @@ export const notifyUserRegistrationRejected = (userName: string, userEmail: stri
       user_name: userName,
       user_email: userEmail,
       rejection_reason: reason || 'Sem motivo especificado'
+    }
+  });
+
+// API Testing
+export const notifyApiReadyForImplementation = (
+  apiName: string, 
+  provider: string, 
+  selectedVariables: string[], 
+  periodStart: string, 
+  periodEnd: string
+) => 
+  dispatchNotification({
+    eventType: 'api_ready_for_implementation',
+    subject: `Nova API Pronta: ${apiName}`,
+    message: `A API ${apiName} está pronta para implementação`,
+    metadata: {
+      api_name: apiName,
+      provider: provider,
+      selected_variables: selectedVariables.join(', '),
+      period_start: periodStart || 'N/A',
+      period_end: periodEnd || 'N/A'
     }
   });

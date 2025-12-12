@@ -20,6 +20,7 @@ import {
 import { formatDateTime } from '@/lib/date-utils';
 import { logger } from '@/lib/logger';
 import { AdminTitleWithInfo } from './AdminTitleWithInfo';
+import { notifyApiReadyForImplementation } from '@/lib/notification-dispatcher';
 
 interface ApiVariable {
   name: string;
@@ -248,7 +249,7 @@ export default function JsonTestTab() {
 
       if (updateError) throw updateError;
 
-      // Create notification for admin
+      // Create notification for admin (in-app bell)
       const { error: notifError } = await supabase
         .from('admin_notifications')
         .insert({
@@ -259,7 +260,26 @@ export default function JsonTestTab() {
         });
 
       if (notifError) {
-        logger.error('Error creating notification:', notifError);
+        logger.error('Error creating in-app notification:', notifError);
+      }
+
+      // Dispatch multi-channel notification (Email + WhatsApp)
+      const dispatchResult = await notifyApiReadyForImplementation(
+        api.name,
+        api.provider,
+        api.selected_variables.map(v => v.name),
+        api.discovered_period_start || '',
+        api.discovered_period_end || ''
+      );
+
+      if (dispatchResult.emailSent) {
+        logger.info('[JsonTestTab] Email notification sent for API implementation');
+      }
+      if (dispatchResult.whatsappSent) {
+        logger.info('[JsonTestTab] WhatsApp notification sent for API implementation');
+      }
+      if (dispatchResult.errors.length > 0) {
+        logger.warn('[JsonTestTab] Notification dispatch errors:', dispatchResult.errors);
       }
 
       toast.success('API marcada para implementação! Verifique as notificações.');

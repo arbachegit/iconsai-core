@@ -75,6 +75,7 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
   document_failed: { icon: AlertTriangle, category: 'system', description: 'Falha no processamento de documento', hasLogicConfig: true },
   new_contact_message: { icon: MessageCircle, category: 'system', description: 'Nova mensagem de contato recebida', hasLogicConfig: true },
   new_conversation: { icon: MessageSquare, category: 'system', description: 'Nova conversa iniciada no chat', hasLogicConfig: true },
+  api_ready_for_implementation: { icon: Zap, category: 'system', description: 'API testada e pronta para implementação', hasLogicConfig: false },
 };
 
 const CATEGORY_LABELS: Record<string, { title: string; icon: React.ComponentType<{ className?: string }> }> = {
