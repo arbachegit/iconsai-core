@@ -1952,17 +1952,84 @@ export default function ApiManagementTab() {
               </div>
             )}
 
-            {/* Stats */}
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>{syncAllProgress.success} sucesso</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <XCircle className="h-4 w-4 text-red-500" />
-                <span>{syncAllProgress.failed} falha</span>
-              </div>
-            </div>
+            {/* Stats with Three Counters */}
+            {(() => {
+              const successWithData = syncProgressItems.filter(
+                item => item.success && (item.insertedCount ?? 0) > 0
+              ).length;
+              const successNoData = syncProgressItems.filter(
+                item => item.success && item.insertedCount === 0
+              ).length;
+              
+              return (
+                <div className="flex items-center gap-3 text-sm flex-wrap">
+                  {/* Verde - Sucesso com dados */}
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span className="text-green-400">{successWithData} com dados</span>
+                  </div>
+                  {/* Amarelo - Sucesso sem dados */}
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                    <span className="text-amber-400">{successNoData} sem dados</span>
+                  </div>
+                  {/* Vermelho - Falhas */}
+                  <div className="flex items-center gap-1.5">
+                    <XCircle className="h-4 w-4 text-red-500" />
+                    <span className="text-red-400">{syncAllProgress.failed} falha</span>
+                  </div>
+                  {/* Tooltip de Ajuda */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground cursor-help ml-auto" />
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs">
+                        <div className="space-y-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
+                            <span><strong>Verde:</strong> Registros inseridos com sucesso</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
+                            <span><strong>Amarelo:</strong> API OK, mas sem novos dados (já existem ou fonte sem valores)</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <XCircle className="h-3 w-3 text-red-500 shrink-0" />
+                            <span><strong>Vermelho:</strong> Erro de conexão ou falha na sincronização</span>
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              );
+            })()}
+
+            {/* Collapsible Section for APIs with 0 records */}
+            {syncProgressItems.filter(item => item.success && item.insertedCount === 0).length > 0 && (
+              <Collapsible className="border border-amber-500/30 rounded-md">
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-amber-500/10 hover:bg-amber-500/15 transition-colors rounded-t-md">
+                  <div className="flex items-center gap-2 text-sm text-amber-400">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>Por que algumas APIs retornaram 0 registros?</span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-amber-400" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="p-3 space-y-2 text-xs text-muted-foreground bg-amber-500/5 rounded-b-md">
+                  <p className="font-medium text-foreground">Possíveis causas:</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                    <li>Dados já sincronizados anteriormente (sem novos registros)</li>
+                    <li>Fonte IBGE retornou valores inválidos (<code className="bg-muted px-1 rounded">...</code>, <code className="bg-muted px-1 rounded">..</code>, <code className="bg-muted px-1 rounded">-</code>)</li>
+                    <li>Período configurado não possui dados disponíveis</li>
+                    <li>Variável demográfica ainda não divulgada pelo IBGE</li>
+                  </ul>
+                  <p className="pt-2 text-muted-foreground/80">
+                    <strong className="text-foreground">Recomendação:</strong> Verifique as URLs das APIs afetadas ou consulte diretamente o SIDRA IBGE para confirmar a disponibilidade dos dados.
+                  </p>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
 
             {/* Results List - Scrollable */}
             <ScrollArea className="h-[300px] border border-border/40 rounded-md">
