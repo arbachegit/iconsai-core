@@ -54,7 +54,7 @@ interface ApiTestResult {
   lastSyncAt: string | null;
   // Error info
   errorMessage: string | null;
-  diagnosis: 'OK' | 'API_NO_HISTORY' | 'PARTIAL_HISTORY' | 'API_ERROR' | 'LOW_COVERAGE' | 'PENDING';
+  diagnosis: 'OK' | 'API_NO_HISTORY' | 'PARTIAL_HISTORY' | 'API_ERROR' | 'LOW_COVERAGE' | 'COVERAGE_INDETERMINATE' | 'PENDING';
   diagnosisMessage: string | null;
   coveragePercent: number | null;
 }
@@ -139,15 +139,20 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
   };
 
   const calculateCoverage = (configStart: string | null, configEnd: string | null, actualStart: string | null, actualEnd: string | null): number | null => {
-    if (!configStart || !configEnd || !actualStart) return null;
+    // If no actual start date found, coverage is indeterminate
+    if (!actualStart) return null;
     
-    const configStartDate = new Date(configStart);
-    const configEndDate = new Date(configEnd);
+    // Use today as effective end date if configEnd is null
+    const effectiveConfigEnd = configEnd || new Date().toISOString().substring(0, 10);
+    // Use a reasonable default start (2010) if configStart is null
+    const effectiveConfigStart = configStart || '2010-01-01';
+    
+    const configStartDate = new Date(effectiveConfigStart);
+    const configEndDate = new Date(effectiveConfigEnd);
     const actualStartDate = new Date(actualStart);
     const actualEndDate = actualEnd ? new Date(actualEnd) : new Date();
     
     const configDays = Math.abs(configEndDate.getTime() - configStartDate.getTime()) / (1000 * 60 * 60 * 24);
-    const actualDays = Math.abs(actualEndDate.getTime() - actualStartDate.getTime()) / (1000 * 60 * 60 * 24);
     
     if (configDays === 0) return 100;
     
@@ -203,11 +208,17 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
           
           // Diagnose historical integrity - Protocol V7.0: Accept native period limitations
           // NEW: Coverage < 50% is now treated as LOW_COVERAGE error
-          let diagnosis: 'OK' | 'API_NO_HISTORY' | 'PARTIAL_HISTORY' | 'LOW_COVERAGE' = 'OK';
+          let diagnosis: 'OK' | 'API_NO_HISTORY' | 'PARTIAL_HISTORY' | 'LOW_COVERAGE' | 'COVERAGE_INDETERMINATE' = 'OK';
           let diagnosisMessage: string | null = null;
           
+          // Check for COVERAGE_INDETERMINATE (has data but period not detected)
+          if (coverage === null && extractedCount > 0) {
+            diagnosis = 'COVERAGE_INDETERMINATE';
+            diagnosisMessage = `${extractedCount} registros extraídos mas período não identificado`;
+            console.log(`[API_DIAGNOSTIC] COVERAGE_INDETERMINATE: ${api.name} has ${extractedCount} records but no period`);
+          }
           // Check for LOW_COVERAGE first (< 50%)
-          if (coverage !== null && coverage < 50 && extractedCount > 0) {
+          else if (coverage !== null && coverage < 50 && extractedCount > 0) {
             diagnosis = 'LOW_COVERAGE';
             diagnosisMessage = `Cobertura insuficiente: ${coverage}% (mínimo 50% requerido)`;
             console.log(`[API_DIAGNOSTIC] LOW_COVERAGE: ${api.name} has only ${coverage}% coverage`);
@@ -367,8 +378,20 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
       );
     }
     
+    // Coverage indeterminate - has data but no period parsed
+    if (result.diagnosis === 'COVERAGE_INDETERMINATE') {
+      analyses.push(
+        `⚠️ COBERTURA INDETERMINADA: ${result.extractedCount} registros foram extraídos mas período não identificado.\n` +
+        `  Causas prováveis:\n` +
+        `  • Parser não reconhece formato de datas da API (D3C, D4C, etc.)\n` +
+        `  • Campo de período possui estrutura não prevista\n` +
+        `  • Resposta JSON possui formato nested não esperado\n` +
+        `  Recomendação: Verificar logs do Edge Function test-api-connection e estrutura JSON`
+      );
+    }
+    
     // Period unavailable
-    if (result.firstDateFound === null && result.extractedCount && result.extractedCount > 0) {
+    if (result.firstDateFound === null && result.extractedCount && result.extractedCount > 0 && result.diagnosis !== 'COVERAGE_INDETERMINATE') {
       analyses.push(
         `Dados extraídos mas período não identificado.\n` +
         `  Causas prováveis:\n` +
@@ -389,17 +412,19 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
       r.testResult === 'NÃO' || 
       r.diagnosis === 'API_NO_HISTORY' || 
       r.diagnosis === 'PARTIAL_HISTORY' ||
+      r.diagnosis === 'LOW_COVERAGE' ||
+      r.diagnosis === 'COVERAGE_INDETERMINATE' ||
       r.extractedCount === 0 ||
-      r.coveragePercent === null ||
       r.firstDateFound === null
     );
     
     // Statistics
-    const functional = results.filter(r => r.testResult === 'SIM' && r.extractedCount && r.extractedCount > 0 && r.diagnosis !== 'LOW_COVERAGE').length;
+    const functional = results.filter(r => r.testResult === 'SIM' && r.extractedCount && r.extractedCount > 0 && r.diagnosis !== 'LOW_COVERAGE' && r.diagnosis !== 'COVERAGE_INDETERMINATE').length;
     const connectionErrors = results.filter(r => r.testResult === 'NÃO').length;
     const naApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount === 0).length;
     const partialCoverage = results.filter(r => r.diagnosis === 'PARTIAL_HISTORY' || r.diagnosis === 'API_NO_HISTORY').length;
     const lowCoverage = results.filter(r => r.diagnosis === 'LOW_COVERAGE').length;
+    const indeterminateCoverage = results.filter(r => r.diagnosis === 'COVERAGE_INDETERMINATE').length;
     
     let report = `${'═'.repeat(70)}\n`;
     report += `            RELATÓRIO DE DIAGNÓSTICO DE APIs\n`;
@@ -422,6 +447,9 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
     report += `• Cobertura Baixa (< 50%): API retornou dados insuficientes.\n`;
     report += `  Possíveis causas: parser incorreto, dados regionais não salvos,\n`;
     report += `  ou série descontinuada. CRÍTICO: requer investigação imediata.\n\n`;
+    report += `• Cobertura Indeterminada: API retornou dados mas período não foi parseado.\n`;
+    report += `  Possíveis causas: formato de datas não reconhecido (D3C, D4C, etc),\n`;
+    report += `  ou estrutura JSON inesperada. Requer análise do parser.\n\n`;
     report += `${'═'.repeat(70)}\n\n`;
     
     // Statistics summary
@@ -433,6 +461,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
     report += `  ○ APIs com Dados N/A:       ${naApis}\n`;
     report += `  ◐ APIs com Cobertura Parcial: ${partialCoverage}\n`;
     report += `  ⚠ APIs com Cobertura < 50%: ${lowCoverage}\n`;
+    report += `  ? APIs com Período Indeterminado: ${indeterminateCoverage}\n`;
     report += `\n${'═'.repeat(70)}\n\n`;
     
     if (problems.length === 0) {
@@ -447,6 +476,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
       const problemType = result.testResult === 'NÃO' ? '✗ ERRO' : 
                           result.extractedCount === 0 ? '○ N/A' :
                           result.diagnosis === 'LOW_COVERAGE' ? '⚠ COBERTURA CRÍTICA' :
+                          result.diagnosis === 'COVERAGE_INDETERMINATE' ? '? PERÍODO INDET.' :
                           result.diagnosis === 'API_NO_HISTORY' ? '◐ SEM HISTÓRICO' :
                           result.diagnosis === 'PARTIAL_HISTORY' ? '◐ PARCIAL' : '⚠ AVISO';
       
@@ -489,6 +519,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
   };
 
   const getCoverageColor = (coverage: number | null, diagnosis: string): string => {
+    if (diagnosis === 'COVERAGE_INDETERMINATE') return 'text-amber-500'; // Warning for indeterminate
     if (coverage === null) return 'text-muted-foreground';
     if (diagnosis === 'LOW_COVERAGE') return 'text-red-500'; // Critical coverage error
     if (diagnosis === 'API_NO_HISTORY') return 'text-red-400';
@@ -503,7 +534,8 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
   const failCount = results.filter(r => r.testResult === 'NÃO').length;
   const historyWarnings = results.filter(r => r.diagnosis === 'API_NO_HISTORY' || r.diagnosis === 'PARTIAL_HISTORY').length;
   const lowCoverageCount = results.filter(r => r.diagnosis === 'LOW_COVERAGE').length;
-  const hasErrors = failCount > 0 || historyWarnings > 0 || lowCoverageCount > 0;
+  const indeterminateCount = results.filter(r => r.diagnosis === 'COVERAGE_INDETERMINATE').length;
+  const hasErrors = failCount > 0 || historyWarnings > 0 || lowCoverageCount > 0 || indeterminateCount > 0;
 
   // Error Report Modal
   if (showErrorReport) {
@@ -698,20 +730,29 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
                             <div 
                               className={`h-full rounded-full transition-all ${
                                 result.diagnosis === 'OK' ? 'bg-emerald-500' :
-                                result.diagnosis === 'PARTIAL_HISTORY' ? 'bg-amber-500' : 'bg-red-500'
+                                result.diagnosis === 'PARTIAL_HISTORY' ? 'bg-amber-500' : 
+                                result.diagnosis === 'COVERAGE_INDETERMINATE' ? 'bg-amber-500' : 'bg-red-500'
                               }`}
                               style={{ width: `${result.coveragePercent || 0}%` }}
                             />
                           </div>
                           <span className={`text-xs font-medium ${getCoverageColor(result.coveragePercent, result.diagnosis)}`}>
-                            {result.coveragePercent !== null ? `${result.coveragePercent}%` : 'N/A'}
+                            {result.diagnosis === 'COVERAGE_INDETERMINATE' ? '?' : 
+                             result.coveragePercent !== null ? `${result.coveragePercent}%` : 'N/A'}
                           </span>
                         </div>
                         {result.diagnosis !== 'OK' && (
                           <div className="flex items-center gap-1">
-                            <AlertTriangle className={`h-3 w-3 ${result.diagnosis === 'LOW_COVERAGE' ? 'text-red-500' : 'text-amber-400'}`} />
-                            <span className={`text-[10px] truncate ${result.diagnosis === 'LOW_COVERAGE' ? 'text-red-500 font-medium' : 'text-amber-400'}`} title={result.diagnosisMessage || ''}>
+                            <AlertTriangle className={`h-3 w-3 ${
+                              result.diagnosis === 'LOW_COVERAGE' ? 'text-red-500' : 
+                              result.diagnosis === 'COVERAGE_INDETERMINATE' ? 'text-amber-500' : 'text-amber-400'
+                            }`} />
+                            <span className={`text-[10px] truncate ${
+                              result.diagnosis === 'LOW_COVERAGE' ? 'text-red-500 font-medium' : 
+                              result.diagnosis === 'COVERAGE_INDETERMINATE' ? 'text-amber-500 font-medium' : 'text-amber-400'
+                            }`} title={result.diagnosisMessage || ''}>
                               {result.diagnosis === 'LOW_COVERAGE' ? 'Cobertura < 50%' :
+                               result.diagnosis === 'COVERAGE_INDETERMINATE' ? 'Período não detectado' :
                                result.diagnosis === 'API_NO_HISTORY' ? 'Sem histórico' : 'Parcial'}
                             </span>
                           </div>
@@ -731,12 +772,13 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
 
         {/* Summary - Expanded Statistics */}
         {!isRunning && results.length > 0 && (() => {
-          const functionalApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount && r.extractedCount > 0 && r.diagnosis !== 'LOW_COVERAGE').length;
+          const functionalApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount && r.extractedCount > 0 && r.diagnosis !== 'LOW_COVERAGE' && r.diagnosis !== 'COVERAGE_INDETERMINATE').length;
           const connectionErrors = results.filter(r => r.testResult === 'NÃO').length;
           const naApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount === 0).length;
           const partialCoverage = results.filter(r => r.diagnosis === 'PARTIAL_HISTORY' || r.diagnosis === 'API_NO_HISTORY').length;
           const lowCoverageApis = results.filter(r => r.diagnosis === 'LOW_COVERAGE').length;
-          const hasProblems = connectionErrors > 0 || naApis > 0 || partialCoverage > 0 || lowCoverageApis > 0;
+          const indeterminateApis = results.filter(r => r.diagnosis === 'COVERAGE_INDETERMINATE').length;
+          const hasProblems = connectionErrors > 0 || naApis > 0 || partialCoverage > 0 || lowCoverageApis > 0 || indeterminateApis > 0;
           
           return (
             <div className="space-y-3 p-4 bg-muted/20 rounded-lg border">
