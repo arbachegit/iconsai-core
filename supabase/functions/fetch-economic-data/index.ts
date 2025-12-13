@@ -846,13 +846,202 @@ function generateIBGEYearChunks(startDate: Date, endDate: Date): Array<{ start: 
   return chunks;
 }
 
+// ========== NUCLEAR FIX V8.0: SIDRA FLAT DETECTION & DIRECT FETCH ==========
+
+// Interface for SIDRA Flat row structure
+interface SidraFlatRow {
+  NC?: string;   // Nível code
+  NN?: string;   // Nível nome
+  MC?: string;   // Município/UF code
+  MN?: string;   // Município/UF nome
+  V?: string;    // Valor
+  D1C?: string;  // Dimensão 1 code (often UF code for regional)
+  D1N?: string;  // Dimensão 1 nome
+  D2C?: string;  // Dimensão 2 code (often variable code)
+  D2N?: string;  // Dimensão 2 nome
+  D3C?: string;  // Dimensão 3 code (often period)
+  D3N?: string;  // Dimensão 3 nome
+  D4C?: string;  // Dimensão 4 code
+  D4N?: string;  // Dimensão 4 nome
+  [key: string]: string | undefined;
+}
+
+// Type for IBGE response - can be either format
+type IBGEResponseData = IBGEResult[] | SidraFlatRow[];
+
+// Detect if URL is SIDRA Flat API (apisidra.ibge.gov.br)
+function isSidraFlatURL(url: string): boolean {
+  return url.includes('apisidra.ibge.gov.br');
+}
+
+// Fetch SIDRA Flat directly (NO CHUNKING - returns all data at once)
+async function fetchSidraFlatDirect(
+  baseUrl: string,
+  indicatorName: string = 'Unknown'
+): Promise<SidraFlatRow[]> {
+  const MAX_RETRIES = 3;
+  
+  console.log(`[FETCH-ECONOMIC] ====== SIDRA FLAT DIRECT FETCH: ${indicatorName} ======`);
+  console.log(`[FETCH-ECONOMIC] [SIDRA-FLAT] URL: ${baseUrl.substring(0, 150)}...`);
+  console.log(`[FETCH-ECONOMIC] [SIDRA-FLAT] ⚡ Using DIRECT FETCH (no chunking) - SIDRA Flat APIs return all data at once`);
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`[FETCH-ECONOMIC] [SIDRA-FLAT] Attempt ${attempt}/${MAX_RETRIES}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for large responses
+      
+      const response = await fetch(baseUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (compatible; KnowYOU-DataCollector/1.0)'
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      console.log(`[FETCH-ECONOMIC] [SIDRA-FLAT] HTTP Status: ${response.status} ${response.statusText}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unable to read response');
+        console.error(`[FETCH-ECONOMIC] ❌ [SIDRA-FLAT] HTTP ERROR ${response.status}: ${errorText.substring(0, 200)}`);
+        
+        if (attempt < MAX_RETRIES) {
+          const delay = 3000 * attempt;
+          console.log(`[FETCH-ECONOMIC] [SIDRA-FLAT] Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        return [];
+      }
+      
+      const data = await response.json();
+      
+      if (!Array.isArray(data)) {
+        console.error(`[FETCH-ECONOMIC] ❌ [SIDRA-FLAT] Response is not an array! Type: ${typeof data}`);
+        return [];
+      }
+      
+      // SIDRA Flat: first row is header, rest is data
+      const totalRows = data.length;
+      const dataRows = totalRows > 1 ? totalRows - 1 : 0;
+      
+      console.log(`[FETCH-ECONOMIC] ✅ [SIDRA-FLAT] SUCCESS: ${totalRows} total rows (${dataRows} data rows, 1 header)`);
+      
+      // Log sample data for debugging
+      if (data.length >= 2) {
+        console.log(`[FETCH-ECONOMIC] [SIDRA-FLAT] Header row keys: ${Object.keys(data[0] || {}).join(', ')}`);
+        console.log(`[FETCH-ECONOMIC] [SIDRA-FLAT] First data row: D1C=${data[1]?.D1C}, D2C=${data[1]?.D2C}, D3C=${data[1]?.D3C}, V=${data[1]?.V}`);
+      }
+      
+      return data as SidraFlatRow[];
+      
+    } catch (err) {
+      console.error(`[FETCH-ECONOMIC] ❌ [SIDRA-FLAT] FETCH EXCEPTION on attempt ${attempt}:`, err);
+      
+      if (attempt < MAX_RETRIES) {
+        const delay = 3000 * attempt;
+        console.log(`[FETCH-ECONOMIC] [SIDRA-FLAT] Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  console.error(`[FETCH-ECONOMIC] ❌ [SIDRA-FLAT] ALL ${MAX_RETRIES} ATTEMPTS FAILED for ${indicatorName}`);
+  return [];
+}
+
+// Generate sync metadata from SIDRA Flat response
+function generateSidraFlatSyncMetadata(data: SidraFlatRow[]): SyncMetadata {
+  const metadata: SyncMetadata = {
+    extracted_count: 0,
+    period_start: null,
+    period_end: null,
+    fields_detected: ['D1C', 'D2C', 'D3C', 'V'],
+    last_record_value: null,
+    fetch_timestamp: new Date().toISOString()
+  };
+
+  if (!data || data.length < 2) return metadata; // Need header + at least 1 data row
+
+  // Skip header row
+  const dataRows = data.slice(1);
+  metadata.extracted_count = dataRows.length;
+
+  // Extract periods dynamically (check D3C, D4C, D5C)
+  const periods: string[] = [];
+  let lastValue: string | null = null;
+  
+  // Find period field
+  const periodFields = ['D3C', 'D4C', 'D5C'];
+  let periodField: string | null = null;
+  
+  for (const field of periodFields) {
+    const testValue = dataRows[0]?.[field];
+    if (testValue && /^\d{4,6}$/.test(testValue)) {
+      periodField = field;
+      break;
+    }
+  }
+
+  if (periodField) {
+    for (const row of dataRows) {
+      const period = row[periodField];
+      const value = row.V;
+      
+      if (period && /^\d{4,6}$/.test(period) && value && value !== '..' && value !== '-' && value !== '...') {
+        periods.push(period);
+        lastValue = value;
+      }
+    }
+  }
+
+  if (periods.length > 0) {
+    periods.sort();
+    const formatPeriod = (p: string) => {
+      if (p.length === 6) return `${p.substring(0, 4)}-${p.substring(4, 6)}-01`;
+      return `${p}-01-01`;
+    };
+    metadata.period_start = formatPeriod(periods[0]);
+    metadata.period_end = formatPeriod(periods[periods.length - 1]);
+    metadata.last_record_value = lastValue;
+  }
+
+  console.log(`[FETCH-ECONOMIC] [SIDRA-FLAT] Sync metadata: ${metadata.extracted_count} records, period ${metadata.period_start} to ${metadata.period_end}`);
+  
+  return metadata;
+}
+
 // Fetch IBGE data with chunking to avoid HTTP 500 from server overload
+// NUCLEAR FIX: Detects SIDRA Flat URLs and uses direct fetch instead of chunking
 async function fetchIBGEWithChunking(
   baseUrl: string, 
   fetchStartDate: string | null, 
   fetchEndDate: string | null,
   indicatorName: string = 'Unknown'
-): Promise<IBGEResult[]> {
+): Promise<IBGEResponseData> {
+  
+  // ========== NUCLEAR FIX: SIDRA FLAT DETECTION ==========
+  // SIDRA Flat APIs (apisidra.ibge.gov.br) return ALL data in a single response
+  // Chunking CORRUPTS the data because it assumes IBGEResult[] structure
+  // Solution: Detect SIDRA Flat URLs and use DIRECT FETCH without chunking
+  
+  if (isSidraFlatURL(baseUrl)) {
+    console.log(`[FETCH-ECONOMIC] ═══════════════════════════════════════════════════`);
+    console.log(`[FETCH-ECONOMIC] 🎯 NUCLEAR FIX: Detected SIDRA FLAT URL`);
+    console.log(`[FETCH-ECONOMIC] 🎯 Using DIRECT FETCH (no chunking) to preserve data integrity`);
+    console.log(`[FETCH-ECONOMIC] ═══════════════════════════════════════════════════`);
+    
+    const sidraFlatData = await fetchSidraFlatDirect(baseUrl, indicatorName);
+    
+    // Return as-is - the calling code will detect SIDRA Flat format during parsing
+    return sidraFlatData as unknown as IBGEResult[];
+  }
+  
+  // ========== STANDARD IBGE JSON PROCESSING (servicodados.ibge.gov.br) ==========
   const allData: IBGEResult[] = [];
   const MAX_RETRIES = 3;
   
@@ -1290,8 +1479,11 @@ serve(async (req) => {
           console.log(`[FETCH-ECONOMIC] 📊 BCB fetch complete for ${indicator.name}: ${bcbData.length} data points`);
         } else if (apiConfig.provider === 'IBGE') {
           // IBGE: Use chunking to avoid HTTP 500 from server overload
-          console.log(`[FETCH-ECONOMIC] 🔄 Starting IBGE fetch with chunking for: ${indicator.name}`);
+          // NUCLEAR FIX: fetchIBGEWithChunking now detects SIDRA Flat URLs and returns raw data
+          console.log(`[FETCH-ECONOMIC] 🔄 Starting IBGE fetch for: ${indicator.name}`);
           console.log(`[FETCH-ECONOMIC] Using dates for ${indicator.name}: ${effectiveStartDate} to ${apiConfig.fetch_end_date}`);
+          console.log(`[FETCH-ECONOMIC] URL Type: ${isSidraFlatURL(apiConfig.base_url) ? 'SIDRA FLAT (apisidra)' : 'SIDRA JSON (servicodados)'}`);
+          
           let ibgeData = await fetchIBGEWithChunking(apiConfig.base_url, effectiveStartDate, apiConfig.fetch_end_date, indicator.name);
           
           // CONTINGENCY: If Linha 1 returns zero data and redundant URL exists
@@ -1300,15 +1492,29 @@ serve(async (req) => {
             console.log(`[FETCH-ECONOMIC] [CONTINGENCY] URL Redundante: ${apiConfig.redundant_api_url}`);
             ibgeData = await fetchIBGEWithChunking(apiConfig.redundant_api_url, effectiveStartDate, apiConfig.fetch_end_date, `${indicator.name} (Linha 2)`);
             if (ibgeData.length > 0) {
-              console.log(`[FETCH-ECONOMIC] ✅ [CONTINGENCY] Linha 2 IBGE sucesso: ${ibgeData.length} chunks`);
+              console.log(`[FETCH-ECONOMIC] ✅ [CONTINGENCY] Linha 2 IBGE sucesso: ${ibgeData.length} rows/chunks`);
             }
           }
           
           data = ibgeData;
           rawResponse = ibgeData; // Store for observability
-          syncMetadata = generateIBGESyncMetadata(ibgeData);
+          
+          // NUCLEAR FIX: Generate appropriate sync metadata based on data format
+          // SIDRA Flat: array with D2C, D3C, V fields (first row is header)
+          // SIDRA JSON: array with resultados/series structure
+          const isSidraFlatData = Array.isArray(ibgeData) && ibgeData.length > 1 && 
+            (ibgeData as any[])[1]?.D2C !== undefined && (ibgeData as any[])[1]?.V !== undefined;
+          
+          if (isSidraFlatData) {
+            console.log(`[FETCH-ECONOMIC] [IBGE] Generating SIDRA FLAT sync metadata`);
+            syncMetadata = generateSidraFlatSyncMetadata(ibgeData as unknown as SidraFlatRow[]);
+          } else {
+            console.log(`[FETCH-ECONOMIC] [IBGE] Generating SIDRA JSON sync metadata`);
+            syncMetadata = generateIBGESyncMetadata(ibgeData as IBGEResult[]);
+          }
+          
           httpStatus = ibgeData.length > 0 ? 200 : null;
-          console.log(`[FETCH-ECONOMIC] 📊 IBGE fetch complete for ${indicator.name}: ${ibgeData.length} result chunks`);
+          console.log(`[FETCH-ECONOMIC] 📊 IBGE fetch complete for ${indicator.name}: ${ibgeData.length} rows/chunks, metadata: ${syncMetadata.extracted_count} records`);
         } else if (apiConfig.provider === 'IPEADATA') {
           // IPEADATA: OData v4 API with filter support
           console.log(`[FETCH-ECONOMIC] 🔄 Starting IPEADATA fetch for: ${indicator.name}`);
