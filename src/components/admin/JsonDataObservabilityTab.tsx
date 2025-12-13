@@ -126,17 +126,41 @@ export const JsonDataObservabilityTab = () => {
       const bcbData = rawJson as Array<{ data: string; valor: string }>;
       return bcbData.filter(item => item.data && item.valor).length;
     } else if (api.provider === 'IBGE') {
+      // Check for SIDRA flat array format (D1C, D2C, D3C fields)
+      if (Array.isArray(rawJson) && rawJson.length > 0 && typeof rawJson[0] === 'object' && rawJson[0] !== null) {
+        const firstItem = rawJson[0] as Record<string, unknown>;
+        // SIDRA format has D1C, D2C, D3C, V fields
+        if ('D1C' in firstItem || 'D2C' in firstItem || 'D3C' in firstItem) {
+          const sidraData = rawJson as Array<Record<string, string>>;
+          // Skip header row (first element), count rows with valid V value
+          return sidraData.slice(1).filter(row => {
+            const value = row.V;
+            return value && value !== '..' && value !== '-' && value !== '...';
+          }).length;
+        }
+      }
+      
+      // Standard IBGE nested format
       const ibgeData = rawJson as Array<{ resultados?: Array<{ series?: Array<{ serie?: Record<string, string> }> }> }>;
       let count = 0;
       if (ibgeData[0]?.resultados) {
         for (const resultado of ibgeData[0].resultados) {
           for (const serie of resultado.series || []) {
             const serieData = serie.serie || {};
-            count += Object.entries(serieData).filter(([, v]) => v && v !== '-' && v !== '...').length;
+            count += Object.entries(serieData).filter(([, v]) => v && v !== '-' && v !== '...' && v !== '..').length;
           }
         }
       }
       return count;
+    } else if (api.provider === 'IPEADATA') {
+      // IPEADATA OData format: { value: [{VALDATA, VALVALOR, ...}] }
+      const ipeaData = rawJson as { value?: Array<{ VALDATA?: string; VALVALOR?: number | null }> };
+      if (ipeaData?.value && Array.isArray(ipeaData.value)) {
+        return ipeaData.value.filter(item => 
+          item.VALDATA && item.VALVALOR !== null && item.VALVALOR !== undefined
+        ).length;
+      }
+      return 0;
     } else if (api.provider === 'WorldBank') {
       // WorldBank format: [metadata, dataArray]
       const worldBankData = rawJson as [unknown, Array<{ date?: string; value?: number | string | null }>];
@@ -172,13 +196,58 @@ export const JsonDataObservabilityTab = () => {
         }
       }
     } else if (api.provider === 'IBGE') {
-      const ibgeData = rawJson as Array<{ resultados?: Array<{ series?: Array<{ serie?: Record<string, string> }> }> }>;
+      // Check for SIDRA flat array format (D1C, D2C, D3C, V fields)
+      if (Array.isArray(rawJson) && rawJson.length > 0 && typeof rawJson[0] === 'object' && rawJson[0] !== null) {
+        const firstItem = rawJson[0] as Record<string, unknown>;
+        // SIDRA format has D1C, D2C, D3C, V fields
+        if ('D1C' in firstItem || 'D2C' in firstItem || 'D3C' in firstItem) {
+          const sidraData = rawJson as Array<Record<string, string>>;
+          // Skip header row (first element)
+          for (const row of sidraData.slice(1)) {
+            const value = row.V;
+            if (!value || value === '..' || value === '-' || value === '...') continue;
+            
+            // Find period field: D3C is most common, but could be D4C or D5C for some aggregates
+            const periodCode = row.D3C || row.D4C || row.D5C;
+            if (!periodCode) continue;
+            
+            let refDate: string;
+            if (periodCode.length === 4) {
+              // Annual: YYYY -> YYYY-01-01
+              refDate = `${periodCode}-01-01`;
+            } else if (periodCode.length === 6) {
+              // Monthly: YYYYMM -> YYYY-MM-01
+              refDate = `${periodCode.substring(0, 4)}-${periodCode.substring(4, 6)}-01`;
+            } else {
+              refDate = `${periodCode}-01-01`;
+            }
+            
+            // Include UF info if available (D1C = UF code)
+            const ufCode = row.D1C;
+            const ufName = row.D1N;
+            const displayIndicator = ufName ? `${indicatorName} - ${ufName}` : indicatorName;
+            
+            parsed.push({
+              date: refDate,
+              value: parseFloat(value.replace(',', '.')),
+              indicator: displayIndicator
+            });
+          }
+          return parsed.sort((a, b) => b.date.localeCompare(a.date));
+        }
+      }
+      
+      // Standard IBGE nested format
+      const ibgeData = rawJson as Array<{ resultados?: Array<{ series?: Array<{ serie?: Record<string, string>; localidade?: { nome: string } }> }> }>;
       if (ibgeData[0]?.resultados) {
         for (const resultado of ibgeData[0].resultados) {
           for (const serie of resultado.series || []) {
             const serieData = serie.serie || {};
+            const localidadeName = serie.localidade?.nome;
+            const displayIndicator = localidadeName ? `${indicatorName} - ${localidadeName}` : indicatorName;
+            
             for (const [period, value] of Object.entries(serieData)) {
-              if (!value || value === '-' || value === '...') continue;
+              if (!value || value === '-' || value === '...' || value === '..') continue;
               let refDate: string;
               if (period.length === 6) {
                 refDate = `${period.substring(0, 4)}-${period.substring(4, 6)}-01`;
@@ -188,10 +257,27 @@ export const JsonDataObservabilityTab = () => {
               parsed.push({
                 date: refDate,
                 value: parseFloat(value.replace(',', '.')),
-                indicator: indicatorName
+                indicator: displayIndicator
               });
             }
           }
+        }
+      }
+    } else if (api.provider === 'IPEADATA') {
+      // IPEADATA OData format: { value: [{VALDATA, VALVALOR, SERCODIGO, ...}] }
+      const ipeaData = rawJson as { value?: Array<{ VALDATA?: string; VALVALOR?: number | null; SERCODIGO?: string }> };
+      if (ipeaData?.value && Array.isArray(ipeaData.value)) {
+        for (const item of ipeaData.value) {
+          if (!item.VALDATA || item.VALVALOR === null || item.VALVALOR === undefined) continue;
+          
+          // IPEADATA date is ISO format: "2024-01-01T00:00:00-03:00"
+          const refDate = item.VALDATA.substring(0, 10);
+          
+          parsed.push({
+            date: refDate,
+            value: item.VALVALOR,
+            indicator: indicatorName
+          });
         }
       }
     } else if (api.provider === 'WorldBank') {
@@ -376,6 +462,7 @@ export const JsonDataObservabilityTab = () => {
     switch (provider) {
       case 'BCB': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'IBGE': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+      case 'IPEADATA': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
       case 'WorldBank': return 'bg-sky-500/20 text-sky-400 border-sky-500/30';
       case 'IMF': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
       case 'YahooFinance': return 'bg-violet-500/20 text-violet-400 border-violet-500/30';
