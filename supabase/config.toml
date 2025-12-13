@@ -140,3 +140,6 @@ verify_jwt = false
 
 [functions.test-api-staging]
 verify_jwt = false
+
+[functions.auto-sync-indicators]
+verify_jwt = false
