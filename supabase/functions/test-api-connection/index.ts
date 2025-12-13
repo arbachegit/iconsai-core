@@ -13,6 +13,7 @@ interface TestResult {
   statusText: string;
   contentType: string | null;
   preview: any[] | null;
+  fullData: any[] | null; // Full data for storage (up to 500 records)
   error: string | null;
   timeout: boolean;
   syncMetadata: SyncMetadata | null;
@@ -26,6 +27,9 @@ interface SyncMetadata {
   last_record_value: string | null;
   fetch_timestamp: string;
 }
+
+// Maximum records to store in last_raw_response (to avoid storage issues)
+const MAX_RECORDS_FOR_STORAGE = 500;
 
 interface IBGEResult {
   id: string;
@@ -502,6 +506,7 @@ serve(async (req) => {
       statusText: '',
       contentType: null,
       preview: null,
+      fullData: null,
       error: null,
       timeout: false,
       syncMetadata: null,
@@ -540,7 +545,11 @@ serve(async (req) => {
         result.success = true;
         result.syncMetadata = analyzeApiResponse(ibgeResult.data, 'IBGE');
         result.preview = ibgeResult.data.slice(0, 2);
-        console.log(`[TEST-API] IBGE chunked fetch success - ${result.syncMetadata?.extracted_count} periods extracted`);
+        // Store full data (limited to MAX_RECORDS_FOR_STORAGE) for observability
+        result.fullData = Array.isArray(ibgeResult.data) 
+          ? ibgeResult.data.slice(0, MAX_RECORDS_FOR_STORAGE) 
+          : ibgeResult.data;
+        console.log(`[TEST-API] IBGE chunked fetch success - ${result.syncMetadata?.extracted_count} periods extracted, storing ${result.fullData?.length || 0} records`);
       } else {
         result.error = ibgeResult.error || 'No data returned from IBGE API';
         console.log(`[TEST-API] IBGE chunked fetch failed: ${result.error}`);
@@ -597,6 +606,10 @@ serve(async (req) => {
             const data = JSON.parse(text);
             result.syncMetadata = analyzeApiResponse(data, provider);
             result.preview = Array.isArray(data) ? data.slice(0, 2) : [data];
+            // Store full data (limited to MAX_RECORDS_FOR_STORAGE) for observability
+            result.fullData = Array.isArray(data) 
+              ? data.slice(0, MAX_RECORDS_FOR_STORAGE) 
+              : [data];
             result.success = true;
           } catch (parseError) {
             result.error = 'Response is not valid JSON';
@@ -645,19 +658,23 @@ serve(async (req) => {
               
               if (Array.isArray(data)) {
                 result.preview = data.slice(0, 2);
+                result.fullData = data.slice(0, MAX_RECORDS_FOR_STORAGE);
               } else if (typeof data === 'object' && data !== null) {
                 const keys = Object.keys(data);
                 if (keys.length > 0 && Array.isArray(data[keys[0]])) {
                   result.preview = data[keys[0]].slice(0, 2);
+                  result.fullData = data[keys[0]].slice(0, MAX_RECORDS_FOR_STORAGE);
                 } else {
                   result.preview = [data];
+                  result.fullData = [data];
                 }
               } else {
                 result.preview = [{ value: data }];
+                result.fullData = [{ value: data }];
               }
               
               result.success = true;
-              console.log(`[TEST-API] ✅ International API JSON parsed successfully, preview items: ${result.preview?.length}`);
+              console.log(`[TEST-API] ✅ International API JSON parsed successfully, preview items: ${result.preview?.length}, storing ${result.fullData?.length || 0} records`);
             } catch (parseError) {
               result.error = 'Response is not valid JSON';
               result.preview = [{ raw: text.substring(0, 200) + (text.length > 200 ? '...' : '') }];
@@ -714,19 +731,23 @@ serve(async (req) => {
               
               if (Array.isArray(data)) {
                 result.preview = data.slice(0, 2);
+                result.fullData = data.slice(0, MAX_RECORDS_FOR_STORAGE);
               } else if (typeof data === 'object' && data !== null) {
                 const keys = Object.keys(data);
                 if (keys.length > 0 && Array.isArray(data[keys[0]])) {
                   result.preview = data[keys[0]].slice(0, 2);
+                  result.fullData = data[keys[0]].slice(0, MAX_RECORDS_FOR_STORAGE);
                 } else {
                   result.preview = [data];
+                  result.fullData = [data];
                 }
               } else {
                 result.preview = [{ value: data }];
+                result.fullData = [{ value: data }];
               }
               
               result.success = true;
-              console.log(`[TEST-API] JSON parsed successfully, preview items: ${result.preview?.length}`);
+              console.log(`[TEST-API] JSON parsed successfully, preview items: ${result.preview?.length}, storing ${result.fullData?.length || 0} records`);
             } catch (parseError) {
               result.error = 'Response is not valid JSON';
               result.preview = [{ raw: text.substring(0, 200) + (text.length > 200 ? '...' : '') }];
@@ -763,9 +784,14 @@ serve(async (req) => {
     };
 
     // Include raw JSON response if available (for JSON Observability tab)
-    if (result.preview && result.preview.length > 0) {
+    // Use fullData (up to 500 records) instead of preview (2 records) for better observability
+    if (result.fullData && result.fullData.length > 0) {
+      updatePayload.last_raw_response = result.fullData;
+      console.log(`[TEST-API] [RAW_RESPONSE] Persisting last_raw_response with ${result.fullData.length} records (max ${MAX_RECORDS_FOR_STORAGE})`);
+    } else if (result.preview && result.preview.length > 0) {
+      // Fallback to preview if fullData not available
       updatePayload.last_raw_response = result.preview;
-      console.log(`[TEST-API] [RAW_RESPONSE] Persisting last_raw_response with ${result.preview.length} preview items`);
+      console.log(`[TEST-API] [RAW_RESPONSE] Persisting last_raw_response with ${result.preview.length} preview items (fallback)`);
     }
 
     // Include sync metadata if available

@@ -51,16 +51,16 @@ export function SidraDataPreviewModal({
   const parseRawData = (data: unknown): RawDataRow[] => {
     if (!data) return [];
     
-    // Handle array format (SIDRA Flat)
+    // Handle array format (SIDRA Flat) - now receives up to 500 records from backend
     if (Array.isArray(data)) {
-      return data.slice(0, 20) as RawDataRow[]; // First 20 rows (including header)
+      return data as RawDataRow[];
     }
     
     // Handle object with 'value' array (IPEADATA format)
     if (typeof data === 'object' && 'value' in (data as object)) {
       const values = (data as { value: unknown[] }).value;
       if (Array.isArray(values)) {
-        return values.slice(0, 20) as RawDataRow[];
+        return values as RawDataRow[];
       }
     }
     
@@ -180,6 +180,16 @@ export function SidraDataPreviewModal({
             </a>
           </DialogDescription>
         </DialogHeader>
+
+        {/* Sample Indicator Badge */}
+        {displayData.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs border-blue-500/40 text-blue-400">
+              <Info className="h-3 w-3 mr-1" />
+              Exibindo amostra de {displayData.length} registros (máx. 500)
+            </Badge>
+          </div>
+        )}
 
         {/* Stats Banner */}
         {stats && (
