@@ -1441,8 +1441,9 @@ serve(async (req) => {
           }).filter(v => !isNaN(v.value));
           
         } else if (apiConfig.provider === 'IBGE') {
-          // IBGE SIDRA returns complex nested structure
-          const ibgeData = data as IBGEResult[];
+          // IBGE SIDRA returns two formats:
+          // 1) SIDRA JSON: nested structure with resultados/series (servicodados.ibge.gov.br)
+          // 2) SIDRA Flat: flat array with D2C/D3C/V fields (apisidra.ibge.gov.br)
           console.log(`[FETCH-ECONOMIC] IBGE response received, parsing...`);
           
           // Check if this is a regional indicator (has UF data)
@@ -1452,64 +1453,154 @@ serve(async (req) => {
           // Array for regional values (by UF)
           const regionalValuesToInsert: Array<{ indicator_id: string; uf_code: number; reference_date: string; value: number }> = [];
           
-          if (ibgeData.length > 0 && ibgeData[0].resultados) {
-            const resultados = ibgeData[0].resultados;
+          // ======= DETECT SIDRA FLAT FORMAT =======
+          // SIDRA Flat: Array with D2C (UF code), D3C (period), V (value) fields
+          // First row is header, data rows follow
+          const isSidraFlat = Array.isArray(data) && data.length > 1 && 
+            data[0]?.D3C !== undefined && data[0]?.V !== undefined;
+          
+          if (isSidraFlat) {
+            console.log(`[FETCH-ECONOMIC] [IBGE] Detected SIDRA FLAT format (apisidra.ibge.gov.br)`);
+            const sidraData = data as Array<Record<string, string>>;
             
-            // Handle multiple series (e.g., when there are classification filters or UF data)
-            for (const resultado of resultados) {
-              const series = resultado.series;
-              if (series && series.length > 0) {
-                for (const serie of series) {
-                  const serieData = serie.serie || {};
-                  const localidade = serie.localidade;
-                  
-                  // Check if this is UF-level data (nivel.id === "N3" or localidade.id is a 2-digit UF code)
-                  const isUFData = localidade && (
-                    localidade.nivel?.id === 'N3' || 
-                    (localidade.id && localidade.id.length === 2 && !isNaN(parseInt(localidade.id)))
-                  );
-                  const ufCode = isUFData ? parseInt(localidade.id) : null;
-                  
-                  console.log(`[FETCH-ECONOMIC] [IBGE] Processing serie - localidade: ${localidade?.nome || 'N/A'}, isUF: ${isUFData}, ufCode: ${ufCode}`);
-                  
-                  for (const [period, value] of Object.entries(serieData)) {
-                    if (!value || value === '-' || value === '...' || value === '..') continue;
+            // Skip first row (header with field descriptions)
+            const dataRows = sidraData.slice(1);
+            console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat: ${dataRows.length} data rows`);
+            
+            // Detect period field dynamically (D3C most common, then D4C, D5C)
+            const findPeriodField = (rows: any[]): string | null => {
+              const candidates = ['D3C', 'D4C', 'D5C'];
+              for (const field of candidates) {
+                if (rows[0]?.[field]) {
+                  const value = String(rows[0][field]);
+                  if (/^\d{4,6}$/.test(value)) return field;
+                }
+              }
+              return null;
+            };
+            
+            const periodField = findPeriodField(dataRows);
+            console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat period field detected: ${periodField}`);
+            
+            // Check if D2C contains UF codes (2-digit state codes 11-53)
+            const hasUFData = dataRows.some(row => {
+              const d2c = row.D2C;
+              if (!d2c) return false;
+              const code = parseInt(d2c);
+              return !isNaN(code) && code >= 11 && code <= 53;
+            });
+            
+            console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat has UF data (D2C): ${hasUFData}`);
+            console.log(`[FETCH-ECONOMIC] [IBGE] Is regional indicator: ${isRegionalIndicator}`);
+            
+            for (const row of dataRows) {
+              const valueStr = row.V;
+              // Skip invalid values
+              if (!valueStr || valueStr === '..' || valueStr === '-' || valueStr === '...' || valueStr === 'X') continue;
+              
+              const numValue = parseFloat(valueStr.replace(',', '.'));
+              if (isNaN(numValue)) continue;
+              
+              // Extract period from detected field
+              const periodCode = periodField ? row[periodField] : null;
+              if (!periodCode || !/^\d{4,6}$/.test(periodCode)) continue;
+              
+              // Format period to ISO date
+              let refDate: string;
+              if (periodCode.length === 4) {
+                refDate = `${periodCode}-01-01`; // Annual: YYYY
+              } else if (periodCode.length === 6) {
+                refDate = `${periodCode.substring(0, 4)}-${periodCode.substring(4, 6)}-01`; // Monthly: YYYYMM
+              } else {
+                refDate = `${periodCode}-01-01`;
+              }
+              
+              // Extract UF code from D2C
+              const ufCodeStr = row.D2C;
+              const ufCode = ufCodeStr ? parseInt(ufCodeStr) : null;
+              
+              if (hasUFData && isRegionalIndicator && ufCode && ufCode >= 11 && ufCode <= 53) {
+                // Regional data: insert into indicator_regional_values
+                regionalValuesToInsert.push({
+                  indicator_id: indicator.id,
+                  uf_code: ufCode,
+                  reference_date: refDate,
+                  value: numValue,
+                });
+              } else if (!hasUFData || !isRegionalIndicator) {
+                // National data: insert into indicator_values
+                valuesToInsert.push({
+                  indicator_id: indicator.id,
+                  reference_date: refDate,
+                  value: numValue,
+                });
+              }
+            }
+            
+            console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat parsed: ${valuesToInsert.length} national, ${regionalValuesToInsert.length} regional`);
+          } else {
+            // ======= SIDRA JSON FORMAT (servicodados.ibge.gov.br) =======
+            const ibgeData = data as IBGEResult[];
+            
+            if (ibgeData.length > 0 && ibgeData[0].resultados) {
+              const resultados = ibgeData[0].resultados;
+              
+              // Handle multiple series (e.g., when there are classification filters or UF data)
+              for (const resultado of resultados) {
+                const series = resultado.series;
+                if (series && series.length > 0) {
+                  for (const serie of series) {
+                    const serieData = serie.serie || {};
+                    const localidade = serie.localidade;
                     
-                    let refDate: string;
-                    // IBGE period formats: YYYYMM (monthly), YYYY (annual), YYYYQN (quarterly)
-                    if (period.length === 6) {
-                      // Monthly: YYYYMM -> YYYY-MM-01
-                      refDate = `${period.substring(0, 4)}-${period.substring(4, 6)}-01`;
-                    } else if (period.length === 4) {
-                      // Annual: YYYY -> YYYY-01-01
-                      refDate = `${period}-01-01`;
-                    } else if (period.length === 5 && period.includes('Q')) {
-                      // Quarterly: YYYYQN -> approximate to quarter start
-                      const year = period.substring(0, 4);
-                      const quarter = parseInt(period.substring(5));
-                      const month = ((quarter - 1) * 3 + 1).toString().padStart(2, '0');
-                      refDate = `${year}-${month}-01`;
-                    } else {
-                      refDate = `${period}-01-01`;
-                    }
+                    // Check if this is UF-level data (nivel.id === "N3" or localidade.id is a 2-digit UF code)
+                    const isUFData = localidade && (
+                      localidade.nivel?.id === 'N3' || 
+                      (localidade.id && localidade.id.length === 2 && !isNaN(parseInt(localidade.id)))
+                    );
+                    const ufCode = isUFData ? parseInt(localidade.id) : null;
                     
-                    const numValue = parseFloat(value.replace(',', '.'));
-                    if (!isNaN(numValue)) {
-                      if (isRegionalIndicator && ufCode && ufCode >= 11 && ufCode <= 53) {
-                        // Regional data: insert into indicator_regional_values
-                        regionalValuesToInsert.push({
-                          indicator_id: indicator.id,
-                          uf_code: ufCode,
-                          reference_date: refDate,
-                          value: numValue,
-                        });
+                    console.log(`[FETCH-ECONOMIC] [IBGE] Processing serie - localidade: ${localidade?.nome || 'N/A'}, isUF: ${isUFData}, ufCode: ${ufCode}`);
+                    
+                    for (const [period, value] of Object.entries(serieData)) {
+                      if (!value || value === '-' || value === '...' || value === '..') continue;
+                      
+                      let refDate: string;
+                      // IBGE period formats: YYYYMM (monthly), YYYY (annual), YYYYQN (quarterly)
+                      if (period.length === 6) {
+                        // Monthly: YYYYMM -> YYYY-MM-01
+                        refDate = `${period.substring(0, 4)}-${period.substring(4, 6)}-01`;
+                      } else if (period.length === 4) {
+                        // Annual: YYYY -> YYYY-01-01
+                        refDate = `${period}-01-01`;
+                      } else if (period.length === 5 && period.includes('Q')) {
+                        // Quarterly: YYYYQN -> approximate to quarter start
+                        const year = period.substring(0, 4);
+                        const quarter = parseInt(period.substring(5));
+                        const month = ((quarter - 1) * 3 + 1).toString().padStart(2, '0');
+                        refDate = `${year}-${month}-01`;
                       } else {
-                        // National data: insert into indicator_values
-                        valuesToInsert.push({
-                          indicator_id: indicator.id,
-                          reference_date: refDate,
-                          value: numValue,
-                        });
+                        refDate = `${period}-01-01`;
+                      }
+                      
+                      const numValue = parseFloat(value.replace(',', '.'));
+                      if (!isNaN(numValue)) {
+                        if (isRegionalIndicator && ufCode && ufCode >= 11 && ufCode <= 53) {
+                          // Regional data: insert into indicator_regional_values
+                          regionalValuesToInsert.push({
+                            indicator_id: indicator.id,
+                            uf_code: ufCode,
+                            reference_date: refDate,
+                            value: numValue,
+                          });
+                        } else {
+                          // National data: insert into indicator_values
+                          valuesToInsert.push({
+                            indicator_id: indicator.id,
+                            reference_date: refDate,
+                            value: numValue,
+                          });
+                        }
                       }
                     }
                   }
