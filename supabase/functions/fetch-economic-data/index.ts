@@ -2058,11 +2058,17 @@ serve(async (req) => {
               });
               
               // Update API registry with detailed metadata - mark as available if data inserted
+              // CRITICAL: Include last_raw_response for regional indicators (previously missing)
+              const rawResponseForRegional = Array.isArray(rawResponse) 
+                ? rawResponse.slice(0, 500) 
+                : rawResponse;
+              
               await supabase.from('system_api_registry').update({
                 status: insertErrors.length > 0 ? 'error' : 'active',
                 last_checked_at: new Date().toISOString(),
                 last_http_status: httpStatus,
                 last_response_at: new Date().toISOString(),
+                last_raw_response: rawResponseForRegional,
                 source_data_status: totalInserted > 0 ? 'available' : 'unavailable',
                 source_data_message: totalInserted > 0 
                   ? `${totalInserted} registros regionais inseridos com sucesso`
