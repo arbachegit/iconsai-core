@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertTriangle, ExternalLink, RefreshCw, Database, AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { AlertTriangle, ExternalLink, RefreshCw, Database, AlertCircle, CheckCircle2, Info, Copy, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -40,12 +40,32 @@ export function SidraDataPreviewModal({
   const [liveData, setLiveData] = useState<RawDataRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [stats, setStats] = useState<{
     totalRows: number;
     validRows: number;
     invalidRows: number;
     invalidPercentage: number;
   } | null>(null);
+
+  // Copy stats to clipboard
+  const copyStatsToClipboard = async () => {
+    if (!stats) return;
+    
+    const textToCopy = `📊 Dados Extraídos - ${apiName}
+
+📌 Total de registros: ${stats.totalRows}
+✅ Registros válidos: ${stats.validRows}
+❌ Registros inválidos: ${stats.invalidRows}
+📈 Taxa de validade: ${100 - stats.invalidPercentage}%
+
+🔗 URL: ${apiUrl}`;
+    
+    await navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    toast.success('Informações copiadas!');
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Parse the raw response to extract data
   const parseRawData = (data: unknown): RawDataRow[] => {
@@ -223,7 +243,20 @@ export function SidraDataPreviewModal({
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={copyStatsToClipboard}
+                className="h-8 w-8 p-0"
+                title="Copiar informações"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <Copy className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                )}
+              </Button>
               <Badge variant={stats.validRows > 0 ? "secondary" : "destructive"}>
                 {stats.validRows} válidos
               </Badge>
