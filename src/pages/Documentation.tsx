@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { DatabaseSchemaObservabilityModal } from '@/components/DatabaseSchemaObservabilityModal';
 import { Card } from '@/components/ui/card';
@@ -939,7 +940,7 @@ const Documentation = () => {
                 </div>
                 <p 
                   className="text-xs text-muted-foreground line-clamp-3 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: result.highlightedText }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(result.highlightedText) }}
                 />
               </button>
             ))}
