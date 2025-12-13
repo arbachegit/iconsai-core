@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertTriangle, ExternalLink, RefreshCw, Database, AlertCircle, CheckCircle2, Info, Copy, Check } from 'lucide-react';
+import { AlertTriangle, ExternalLink, RefreshCw, Database, AlertCircle, CheckCircle2, Info, Copy, Check, Download, FileSpreadsheet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -41,6 +41,7 @@ export function SidraDataPreviewModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedCSV, setCopiedCSV] = useState(false);
   const [stats, setStats] = useState<{
     totalRows: number;
     validRows: number;
@@ -65,6 +66,58 @@ export function SidraDataPreviewModal({
     setCopied(true);
     toast.success('Informações copiadas!');
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Download JSON
+  const downloadJSON = () => {
+    if (!lastRawResponse) {
+      toast.error('Nenhum dado disponível para exportar');
+      return;
+    }
+    
+    const jsonString = JSON.stringify(lastRawResponse, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${apiName.replace(/\s+/g, '_')}_raw_response.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success('JSON exportado com sucesso!');
+  };
+
+  // Copy as CSV
+  const copyAsCSV = async () => {
+    const displayData = liveData || parseRawData(lastRawResponse);
+    if (!displayData || displayData.length === 0) {
+      toast.error('Nenhum dado disponível para copiar');
+      return;
+    }
+    
+    const allColumns = Object.keys(displayData[0] || {});
+    const header = allColumns.join(';');
+    
+    const rows = displayData.map(row => 
+      allColumns.map(col => {
+        const value = row[col] || '';
+        const strValue = String(value);
+        if (strValue.includes(';') || strValue.includes('"') || strValue.includes('\n')) {
+          return `"${strValue.replace(/"/g, '""')}"`;
+        }
+        return strValue;
+      }).join(';')
+    );
+    
+    const csvContent = [header, ...rows].join('\n');
+    
+    await navigator.clipboard.writeText(csvContent);
+    setCopiedCSV(true);
+    toast.success(`CSV copiado! ${displayData.length} registros prontos para colar`);
+    setTimeout(() => setCopiedCSV(false), 2000);
   };
 
   // Parse the raw response to extract data
@@ -285,24 +338,52 @@ export function SidraDataPreviewModal({
 
         {/* Action Buttons */}
         <div className="flex justify-between items-center">
-          <Button
-            variant="outline"
-            onClick={fetchLiveData}
-            disabled={loading}
-            className="gap-2"
-          >
-            {loading ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Carregando...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4" />
-                Buscar Dados Ao Vivo
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={fetchLiveData}
+              disabled={loading}
+              className="gap-2"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Carregando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Buscar Dados Ao Vivo
+                </>
+              )}
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={downloadJSON}
+              disabled={!lastRawResponse}
+              className="gap-2"
+              title="Baixar resposta completa da API como JSON"
+            >
+              <Download className="h-4 w-4" />
+              JSON
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={copyAsCSV}
+              disabled={!lastRawResponse && !liveData}
+              className="gap-2"
+              title="Copiar tabela como CSV para planilhas"
+            >
+              {copiedCSV ? (
+                <Check className="h-4 w-4 text-emerald-500" />
+              ) : (
+                <FileSpreadsheet className="h-4 w-4" />
+              )}
+              CSV
+            </Button>
+          </div>
           {stats?.invalidPercentage === 100 && (
             <TooltipProvider>
               <Tooltip>
