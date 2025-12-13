@@ -61,6 +61,44 @@ interface SyncMetadata {
   fetch_timestamp: string;
 }
 
+// ========== PAC (Pesquisa Anual de Comércio) UF CODE MAPPING ==========
+// PAC Tabela 1407 uses classification codes (c12354) for UFs, not standard IBGE codes
+// This maps PAC category codes to standard IBGE UF codes (11-53)
+const PAC_UF_CODE_MAP: Record<string, number> = {
+  '106775': 11,  // Rondônia
+  '106776': 12,  // Acre
+  '106777': 13,  // Amazonas
+  '106778': 14,  // Roraima
+  '106779': 15,  // Pará
+  '106780': 16,  // Amapá
+  '106781': 17,  // Tocantins
+  '106782': 21,  // Maranhão
+  '106783': 22,  // Piauí
+  '106784': 23,  // Ceará
+  '106785': 24,  // Rio Grande do Norte
+  '106786': 25,  // Paraíba
+  '106787': 26,  // Pernambuco
+  '106788': 27,  // Alagoas
+  '106789': 28,  // Sergipe
+  '106790': 29,  // Bahia
+  '106791': 31,  // Minas Gerais
+  '106792': 32,  // Espírito Santo
+  '106793': 33,  // Rio de Janeiro
+  '106794': 35,  // São Paulo
+  '106795': 41,  // Paraná
+  '106796': 42,  // Santa Catarina
+  '106797': 43,  // Rio Grande do Sul
+  '106798': 50,  // Mato Grosso do Sul
+  '106799': 51,  // Mato Grosso
+  '106800': 52,  // Goiás
+  '106801': 53,  // Distrito Federal
+};
+
+// Detect if URL is PAC Table 1407
+function isPACTable1407(url: string): boolean {
+  return url.includes('/t/1407/') || url.includes('t/1407');
+}
+
 // BCB-specific headers to avoid 406 errors
 const BCB_HEADERS = {
   'Accept': 'application/json, text/plain, */*',
@@ -1700,16 +1738,32 @@ serve(async (req) => {
             const periodField = findPeriodField(dataRows);
             console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat period field detected: ${periodField}`);
             
-          // Check if D1C contains UF codes (2-digit state codes 11-53)
-            // CRITICAL FIX: UF codes are in D1C (Unidade da Federação), NOT D2C (which is Variable code)
-            const hasUFData = dataRows.some(row => {
+            // ========== PAC TABLE 1407 DETECTION ==========
+            // PAC uses different field structure:
+            // - D3C contains UF category codes (106775-106801) which map to IBGE UF codes (11-53)
+            // - D4C contains year (2007, 2008, etc.)
+            const isPAC = isPACTable1407(apiConfig.base_url);
+            console.log(`[FETCH-ECONOMIC] [IBGE] PAC Table 1407 detected: ${isPAC}`);
+            
+            // Check if D1C contains standard UF codes (2-digit state codes 11-53)
+            // Or if D3C contains PAC category codes (106775-106801)
+            const hasStandardUFData = dataRows.some(row => {
               const d1c = row.D1C;
               if (!d1c) return false;
               const code = parseInt(d1c);
               return !isNaN(code) && code >= 11 && code <= 53;
             });
             
-            console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat has UF data (D1C): ${hasUFData}`);
+            const hasPACUFData = isPAC && dataRows.some(row => {
+              const d3c = row.D3C;
+              if (!d3c) return false;
+              return PAC_UF_CODE_MAP[d3c] !== undefined;
+            });
+            
+            const hasUFData = hasStandardUFData || hasPACUFData;
+            
+            console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat has standard UF data (D1C): ${hasStandardUFData}`);
+            console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat has PAC UF data (D3C→mapping): ${hasPACUFData}`);
             console.log(`[FETCH-ECONOMIC] [IBGE] Is regional indicator: ${isRegionalIndicator}`);
             
             // ========== COMPREHENSIVE DEBUGGING FOR SIDRA FLAT PARSING ==========
@@ -1802,16 +1856,29 @@ serve(async (req) => {
                 refDate = `${periodCode}-01-01`;
               }
               
-              // Extract UF code from D1C (Unidade da Federação)
-              const ufCodeStr = row.D1C;
-              const ufCode = ufCodeStr ? parseInt(ufCodeStr) : null;
+              // Extract UF code - handle both standard (D1C) and PAC (D3C→mapping) formats
+              let ufCode: number | null = null;
+              
+              if (isPAC && hasPACUFData) {
+                // PAC Table 1407: UF is in D3C as category code, needs mapping
+                const pacCategoryCode = row.D3C;
+                if (pacCategoryCode && PAC_UF_CODE_MAP[pacCategoryCode]) {
+                  ufCode = PAC_UF_CODE_MAP[pacCategoryCode];
+                }
+              } else {
+                // Standard SIDRA: UF is in D1C as IBGE code
+                const ufCodeStr = row.D1C;
+                ufCode = ufCodeStr ? parseInt(ufCodeStr) : null;
+              }
               
               // Check 6 & 7: UF code validation for regional indicators
               if (hasUFData && isRegionalIndicator) {
                 if (!ufCode) {
                   debugCounters.filteredByNoUfCode++;
                   if (sampleFilteredUfCodes.length < 5) {
-                    sampleFilteredUfCodes.push(`No UF code, D1C="${ufCodeStr}"`);
+                    const srcField = isPAC ? 'D3C' : 'D1C';
+                    const srcValue = isPAC ? row.D3C : row.D1C;
+                    sampleFilteredUfCodes.push(`No UF code, ${srcField}="${srcValue}"`);
                   }
                   continue;
                 }
