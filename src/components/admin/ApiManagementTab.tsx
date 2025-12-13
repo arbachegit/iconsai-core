@@ -1030,7 +1030,7 @@ export default function ApiManagementTab() {
                 variant="outline"
                 onClick={handleRetestPendingApis}
                 disabled={testingAllApis}
-                className="gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                className="gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10 hover:text-amber-400"
               >
                 {testingAllApis ? (
                   <>
