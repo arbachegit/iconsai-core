@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, FileJson, Table as TableIcon, Database, RefreshCw, Eye, Plus, AlertCircle, PlayCircle, Braces } from "lucide-react";
+import { Loader2, FileJson, Table as TableIcon, Database, RefreshCw, Eye, Plus, AlertCircle, PlayCircle, Braces, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -48,6 +48,8 @@ export const JsonDataObservabilityTab = () => {
   const [insertingAll, setInsertingAll] = useState(false);
   const [insertAllProgress, setInsertAllProgress] = useState({ current: 0, total: 0, inserted: 0 });
   const [insertResult, setInsertResult] = useState<{ jsonRecords: number; existingRecords: number; insertedRecords: number } | null>(null);
+  const [sortColumn, setSortColumn] = useState<'name' | 'provider' | 'last_response_at' | 'record_count'>('last_response_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     fetchApis();
@@ -470,6 +472,47 @@ export const JsonDataObservabilityTab = () => {
     }
   };
 
+  const handleSort = (column: typeof sortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortIcon = (column: typeof sortColumn) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="w-4 h-4 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="w-4 h-4 ml-1" />
+      : <ArrowDown className="w-4 h-4 ml-1" />;
+  };
+
+  const sortedApis = useMemo(() => {
+    return [...apis].sort((a, b) => {
+      let comparison = 0;
+      switch (sortColumn) {
+        case 'name':
+          const nameA = a.economic_indicators?.[0]?.name || a.name;
+          const nameB = b.economic_indicators?.[0]?.name || b.name;
+          comparison = nameA.localeCompare(nameB);
+          break;
+        case 'provider':
+          comparison = a.provider.localeCompare(b.provider);
+          break;
+        case 'last_response_at':
+          comparison = new Date(a.last_response_at || 0).getTime() - new Date(b.last_response_at || 0).getTime();
+          break;
+        case 'record_count':
+          comparison = getRecordCount(a) - getRecordCount(b);
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [apis, sortColumn, sortDirection]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -549,9 +592,42 @@ export const JsonDataObservabilityTab = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Fonte/API</TableHead>
-                  <TableHead>Última Atualização</TableHead>
-                  <TableHead className="text-center">Registros</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 select-none"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center">
+                      Fonte/API
+                      {getSortIcon('name')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 select-none"
+                    onClick={() => handleSort('provider')}
+                  >
+                    <div className="flex items-center">
+                      Provider
+                      {getSortIcon('provider')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 select-none"
+                    onClick={() => handleSort('last_response_at')}
+                  >
+                    <div className="flex items-center">
+                      Última Atualização
+                      {getSortIcon('last_response_at')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-center cursor-pointer hover:bg-muted/50 select-none"
+                    onClick={() => handleSort('record_count')}
+                  >
+                    <div className="flex items-center justify-center">
+                      Registros
+                      {getSortIcon('record_count')}
+                    </div>
+                  </TableHead>
                   <TableHead className="text-center">Metadados Brutos</TableHead>
                   <TableHead className="text-center">JSON Organizado</TableHead>
                   <TableHead className="text-center">JSON Bruto</TableHead>
@@ -559,17 +635,17 @@ export const JsonDataObservabilityTab = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {apis.map((api) => (
+                {sortedApis.map((api) => (
                   <TableRow key={api.id}>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={getProviderColor(api.provider)}>
-                          {api.provider}
-                        </Badge>
-                        <span className="font-medium">
-                          {api.economic_indicators?.[0]?.name || api.name}
-                        </span>
-                      </div>
+                      <span className="font-medium">
+                        {api.economic_indicators?.[0]?.name || api.name}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getProviderColor(api.provider)}>
+                        {api.provider}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {api.last_response_at ? (
