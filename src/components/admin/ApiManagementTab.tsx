@@ -439,6 +439,47 @@ export default function ApiManagementTab() {
     fetchApis();
   };
 
+  const handleRetestPendingApis = async () => {
+    const pendingApis = apis.filter(a => a.source_data_status === 'pending_retest');
+    
+    if (pendingApis.length === 0) {
+      toast.info('Nenhuma API pendente de reteste');
+      return;
+    }
+    
+    setTestingAllApis(true);
+    setTestAllProgress({ current: 0, total: pendingApis.length, success: 0, failed: 0 });
+    
+    let successCount = 0;
+    let failedCount = 0;
+    
+    for (let i = 0; i < pendingApis.length; i++) {
+      const api = pendingApis[i];
+      setTestAllProgress(prev => ({ ...prev, current: i + 1 }));
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('test-api-connection', {
+          body: { apiId: api.id }
+        });
+        
+        if (error || !data?.success) {
+          failedCount++;
+        } else {
+          successCount++;
+        }
+      } catch (error) {
+        failedCount++;
+      }
+      
+      setTestAllProgress(prev => ({ ...prev, success: successCount, failed: failedCount }));
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    setTestingAllApis(false);
+    toast.success(`Reteste concluído: ${successCount}/${pendingApis.length} APIs OK`);
+    fetchApis();
+  };
+
   const handleCopyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
     toast.success('URL copiada!');
@@ -983,6 +1024,27 @@ export default function ApiManagementTab() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Show Retestar Todas button only if there are APIs marked as pending_retest */}
+            {apis.filter(a => a.source_data_status === 'pending_retest').length > 0 && (
+              <Button
+                variant="outline"
+                onClick={handleRetestPendingApis}
+                disabled={testingAllApis}
+                className="gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+              >
+                {testingAllApis ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Retestando...
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-4 w-4" />
+                    Retestar Todas ({apis.filter(a => a.source_data_status === 'pending_retest').length})
+                  </>
+                )}
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={handleTestAllConnections}
