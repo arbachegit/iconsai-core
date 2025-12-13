@@ -1494,15 +1494,16 @@ serve(async (req) => {
             const periodField = findPeriodField(dataRows);
             console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat period field detected: ${periodField}`);
             
-            // Check if D2C contains UF codes (2-digit state codes 11-53)
+          // Check if D1C contains UF codes (2-digit state codes 11-53)
+            // CRITICAL FIX: UF codes are in D1C (Unidade da Federação), NOT D2C (which is Variable code)
             const hasUFData = dataRows.some(row => {
-              const d2c = row.D2C;
-              if (!d2c) return false;
-              const code = parseInt(d2c);
+              const d1c = row.D1C;
+              if (!d1c) return false;
+              const code = parseInt(d1c);
               return !isNaN(code) && code >= 11 && code <= 53;
             });
             
-            console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat has UF data (D2C): ${hasUFData}`);
+            console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat has UF data (D1C): ${hasUFData}`);
             console.log(`[FETCH-ECONOMIC] [IBGE] Is regional indicator: ${isRegionalIndicator}`);
             
             for (const row of dataRows) {
@@ -1527,8 +1528,9 @@ serve(async (req) => {
                 refDate = `${periodCode}-01-01`;
               }
               
-              // Extract UF code from D2C
-              const ufCodeStr = row.D2C;
+              // Extract UF code from D1C (Unidade da Federação)
+              // CRITICAL FIX: UF codes are in D1C, NOT D2C (D2C is the variable code like 7169)
+              const ufCodeStr = row.D1C;
               const ufCode = ufCodeStr ? parseInt(ufCodeStr) : null;
               
               if (hasUFData && isRegionalIndicator && ufCode && ufCode >= 11 && ufCode <= 53) {
