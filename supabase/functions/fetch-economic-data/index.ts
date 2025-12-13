@@ -1455,9 +1455,21 @@ serve(async (req) => {
           
           // ======= DETECT SIDRA FLAT FORMAT =======
           // SIDRA Flat: Array with D2C (UF code), D3C (period), V (value) fields
-          // First row is header, data rows follow
+          // CRITICAL FIX: First row is HEADER (contains field descriptions like "Mês", "Unidade Territorial")
+          // Data rows START FROM INDEX 1, not 0 - so we must check data[1] for detection
           const isSidraFlat = Array.isArray(data) && data.length > 1 && 
-            data[0]?.D3C !== undefined && data[0]?.V !== undefined;
+            data[1]?.D2C !== undefined && data[1]?.V !== undefined;
+          
+          console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA FLAT detection check:`);
+          console.log(`[FETCH-ECONOMIC] [IBGE]   - Is array: ${Array.isArray(data)}`);
+          console.log(`[FETCH-ECONOMIC] [IBGE]   - Length: ${Array.isArray(data) ? (data as any[]).length : 'N/A'}`);
+          if (Array.isArray(data) && (data as any[]).length > 1) {
+            console.log(`[FETCH-ECONOMIC] [IBGE]   - data[0] keys: ${Object.keys(data[0] || {}).join(', ')}`);
+            console.log(`[FETCH-ECONOMIC] [IBGE]   - data[1] keys: ${Object.keys(data[1] || {}).join(', ')}`);
+            console.log(`[FETCH-ECONOMIC] [IBGE]   - data[1].D2C: ${(data as any[])[1]?.D2C}`);
+            console.log(`[FETCH-ECONOMIC] [IBGE]   - data[1].V: ${(data as any[])[1]?.V}`);
+          }
+          console.log(`[FETCH-ECONOMIC] [IBGE]   - isSidraFlat result: ${isSidraFlat}`);
           
           if (isSidraFlat) {
             console.log(`[FETCH-ECONOMIC] [IBGE] Detected SIDRA FLAT format (apisidra.ibge.gov.br)`);

@@ -54,7 +54,7 @@ interface ApiTestResult {
   lastSyncAt: string | null;
   // Error info
   errorMessage: string | null;
-  diagnosis: 'OK' | 'API_NO_HISTORY' | 'PARTIAL_HISTORY' | 'API_ERROR' | 'PENDING';
+  diagnosis: 'OK' | 'API_NO_HISTORY' | 'PARTIAL_HISTORY' | 'API_ERROR' | 'LOW_COVERAGE' | 'PENDING';
   diagnosisMessage: string | null;
   coveragePercent: number | null;
 }
@@ -202,10 +202,16 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
           const coverage = calculateCoverage(configStart, configEnd, firstDate, lastDate);
           
           // Diagnose historical integrity - Protocol V7.0: Accept native period limitations
-          let diagnosis: 'OK' | 'API_NO_HISTORY' | 'PARTIAL_HISTORY' = 'OK';
+          // NEW: Coverage < 50% is now treated as LOW_COVERAGE error
+          let diagnosis: 'OK' | 'API_NO_HISTORY' | 'PARTIAL_HISTORY' | 'LOW_COVERAGE' = 'OK';
           let diagnosisMessage: string | null = null;
           
-          if (configStart && firstDate) {
+          // Check for LOW_COVERAGE first (< 50%)
+          if (coverage !== null && coverage < 50 && extractedCount > 0) {
+            diagnosis = 'LOW_COVERAGE';
+            diagnosisMessage = `Cobertura insuficiente: ${coverage}% (mínimo 50% requerido)`;
+            console.log(`[API_DIAGNOSTIC] LOW_COVERAGE: ${api.name} has only ${coverage}% coverage`);
+          } else if (configStart && firstDate) {
             const configDate = new Date(configStart);
             const actualDate = new Date(firstDate);
             const daysDiff = Math.floor((actualDate.getTime() - configDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -347,6 +353,20 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
       );
     }
     
+    // Low coverage (< 50%) - NEW ERROR TYPE
+    if (result.diagnosis === 'LOW_COVERAGE') {
+      analyses.push(
+        `⚠️ COBERTURA CRÍTICA: Apenas ${result.coveragePercent}% dos dados esperados estão disponíveis.\n` +
+        `  Causas prováveis:\n` +
+        `  • Série descontinuada ou migrada para outro endpoint\n` +
+        `  • Problemas de parsing na resposta da API\n` +
+        `  • Dados regionais não estão sendo salvos corretamente no banco\n` +
+        `  • Parser não reconhece formato de resposta (SIDRA Flat vs JSON)\n` +
+        `  Recomendação: Verificar logs do Edge Function para diagnóstico detalhado,\n` +
+        `  re-sincronizar os dados via "Sincronizar Dados" após correção`
+      );
+    }
+    
     // Period unavailable
     if (result.firstDateFound === null && result.extractedCount && result.extractedCount > 0) {
       analyses.push(
@@ -375,10 +395,11 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
     );
     
     // Statistics
-    const functional = results.filter(r => r.testResult === 'SIM' && r.extractedCount && r.extractedCount > 0).length;
+    const functional = results.filter(r => r.testResult === 'SIM' && r.extractedCount && r.extractedCount > 0 && r.diagnosis !== 'LOW_COVERAGE').length;
     const connectionErrors = results.filter(r => r.testResult === 'NÃO').length;
     const naApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount === 0).length;
     const partialCoverage = results.filter(r => r.diagnosis === 'PARTIAL_HISTORY' || r.diagnosis === 'API_NO_HISTORY').length;
+    const lowCoverage = results.filter(r => r.diagnosis === 'LOW_COVERAGE').length;
     
     let report = `${'═'.repeat(70)}\n`;
     report += `            RELATÓRIO DE DIAGNÓSTICO DE APIs\n`;
@@ -398,6 +419,9 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
     report += `  Possíveis causas: formato de resposta inesperado, ou erro de parsing.\n\n`;
     report += `• Erro de Conexão: Falha ao comunicar com a API.\n`;
     report += `  Possíveis causas: timeout, servidor indisponível, ou rate limiting.\n\n`;
+    report += `• Cobertura Baixa (< 50%): API retornou dados insuficientes.\n`;
+    report += `  Possíveis causas: parser incorreto, dados regionais não salvos,\n`;
+    report += `  ou série descontinuada. CRÍTICO: requer investigação imediata.\n\n`;
     report += `${'═'.repeat(70)}\n\n`;
     
     // Statistics summary
@@ -408,6 +432,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
     report += `  ✗ APIs com Erro Conexão:    ${connectionErrors}\n`;
     report += `  ○ APIs com Dados N/A:       ${naApis}\n`;
     report += `  ◐ APIs com Cobertura Parcial: ${partialCoverage}\n`;
+    report += `  ⚠ APIs com Cobertura < 50%: ${lowCoverage}\n`;
     report += `\n${'═'.repeat(70)}\n\n`;
     
     if (problems.length === 0) {
@@ -421,6 +446,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
     problems.forEach((result, index) => {
       const problemType = result.testResult === 'NÃO' ? '✗ ERRO' : 
                           result.extractedCount === 0 ? '○ N/A' :
+                          result.diagnosis === 'LOW_COVERAGE' ? '⚠ COBERTURA CRÍTICA' :
                           result.diagnosis === 'API_NO_HISTORY' ? '◐ SEM HISTÓRICO' :
                           result.diagnosis === 'PARTIAL_HISTORY' ? '◐ PARCIAL' : '⚠ AVISO';
       
@@ -464,17 +490,20 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
 
   const getCoverageColor = (coverage: number | null, diagnosis: string): string => {
     if (coverage === null) return 'text-muted-foreground';
+    if (diagnosis === 'LOW_COVERAGE') return 'text-red-500'; // Critical coverage error
     if (diagnosis === 'API_NO_HISTORY') return 'text-red-400';
     if (diagnosis === 'PARTIAL_HISTORY') return 'text-amber-400';
     if (coverage >= 90) return 'text-emerald-400';
     if (coverage >= 70) return 'text-amber-400';
+    if (coverage < 50) return 'text-red-500'; // Coverage below 50% is critical
     return 'text-red-400';
   };
 
   const successCount = results.filter(r => r.testResult === 'SIM').length;
   const failCount = results.filter(r => r.testResult === 'NÃO').length;
   const historyWarnings = results.filter(r => r.diagnosis === 'API_NO_HISTORY' || r.diagnosis === 'PARTIAL_HISTORY').length;
-  const hasErrors = failCount > 0 || historyWarnings > 0;
+  const lowCoverageCount = results.filter(r => r.diagnosis === 'LOW_COVERAGE').length;
+  const hasErrors = failCount > 0 || historyWarnings > 0 || lowCoverageCount > 0;
 
   // Error Report Modal
   if (showErrorReport) {
@@ -680,9 +709,10 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
                         </div>
                         {result.diagnosis !== 'OK' && (
                           <div className="flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3 text-amber-400" />
-                            <span className="text-[10px] text-amber-400 truncate" title={result.diagnosisMessage || ''}>
-                              {result.diagnosis === 'API_NO_HISTORY' ? 'Sem histórico' : 'Parcial'}
+                            <AlertTriangle className={`h-3 w-3 ${result.diagnosis === 'LOW_COVERAGE' ? 'text-red-500' : 'text-amber-400'}`} />
+                            <span className={`text-[10px] truncate ${result.diagnosis === 'LOW_COVERAGE' ? 'text-red-500 font-medium' : 'text-amber-400'}`} title={result.diagnosisMessage || ''}>
+                              {result.diagnosis === 'LOW_COVERAGE' ? 'Cobertura < 50%' :
+                               result.diagnosis === 'API_NO_HISTORY' ? 'Sem histórico' : 'Parcial'}
                             </span>
                           </div>
                         )}
@@ -701,11 +731,12 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
 
         {/* Summary - Expanded Statistics */}
         {!isRunning && results.length > 0 && (() => {
-          const functionalApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount && r.extractedCount > 0).length;
+          const functionalApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount && r.extractedCount > 0 && r.diagnosis !== 'LOW_COVERAGE').length;
           const connectionErrors = results.filter(r => r.testResult === 'NÃO').length;
           const naApis = results.filter(r => r.testResult === 'SIM' && r.extractedCount === 0).length;
           const partialCoverage = results.filter(r => r.diagnosis === 'PARTIAL_HISTORY' || r.diagnosis === 'API_NO_HISTORY').length;
-          const hasProblems = connectionErrors > 0 || naApis > 0 || partialCoverage > 0;
+          const lowCoverageApis = results.filter(r => r.diagnosis === 'LOW_COVERAGE').length;
+          const hasProblems = connectionErrors > 0 || naApis > 0 || partialCoverage > 0 || lowCoverageApis > 0;
           
           return (
             <div className="space-y-3 p-4 bg-muted/20 rounded-lg border">
@@ -737,6 +768,13 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
                   <div>
                     <div className={`text-lg font-bold ${partialCoverage > 0 ? 'text-orange-400' : 'text-muted-foreground'}`}>{partialCoverage}</div>
                     <div className="text-[10px] text-muted-foreground">Cobertura Parcial</div>
+                  </div>
+                </div>
+                <div className={`flex items-center gap-2 p-2 rounded border ${lowCoverageApis > 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-muted/30 border-muted'}`}>
+                  <XCircle className={`h-4 w-4 ${lowCoverageApis > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+                  <div>
+                    <div className={`text-lg font-bold ${lowCoverageApis > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>{lowCoverageApis}</div>
+                    <div className="text-[10px] text-muted-foreground">Cobertura &lt; 50%</div>
                   </div>
                 </div>
               </div>
