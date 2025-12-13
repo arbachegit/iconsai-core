@@ -1918,6 +1918,8 @@ export type Database = {
           provider: string
           redundant_aggregate_id: string | null
           redundant_api_url: string | null
+          source_data_message: string | null
+          source_data_status: string | null
           status: string | null
           target_table: string | null
           updated_at: string | null
@@ -1945,6 +1947,8 @@ export type Database = {
           provider?: string
           redundant_aggregate_id?: string | null
           redundant_api_url?: string | null
+          source_data_message?: string | null
+          source_data_status?: string | null
           status?: string | null
           target_table?: string | null
           updated_at?: string | null
@@ -1972,6 +1976,8 @@ export type Database = {
           provider?: string
           redundant_aggregate_id?: string | null
           redundant_api_url?: string | null
+          source_data_message?: string | null
+          source_data_status?: string | null
           status?: string | null
           target_table?: string | null
           updated_at?: string | null

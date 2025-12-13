@@ -1872,6 +1872,16 @@ serve(async (req) => {
             if (debugCounters.totalRows > 0 && debugCounters.addedToRegional === 0 && debugCounters.addedToNational === 0) {
               console.log(`[FETCH-ECONOMIC] [DEBUG] ⚠️ CRITICAL: ${debugCounters.totalRows} rows processed but 0 records added!`);
               console.log(`[FETCH-ECONOMIC] [DEBUG] ⚠️ Check the filter breakdown above to identify the issue.`);
+              
+              // AUTO-DETECT UNAVAILABLE SOURCE: If 100% of values were filtered by invalid value, mark API as unavailable
+              const invalidValueRatio = debugCounters.filteredByInvalidValue / debugCounters.totalRows;
+              if (invalidValueRatio >= 0.95) {
+                console.log(`[FETCH-ECONOMIC] [AUTO-DETECT] 🚫 Marking API as SOURCE UNAVAILABLE (${(invalidValueRatio * 100).toFixed(1)}% invalid values)`);
+                await supabase.from('system_api_registry').update({
+                  source_data_status: 'unavailable',
+                  source_data_message: `API retorna ${debugCounters.filteredByInvalidValue}/${debugCounters.totalRows} valores inválidos (.., ..., -, X). IBGE não disponibiliza dados numéricos para esta configuração.`
+                }).eq('id', apiConfig.id);
+              }
             }
             
             console.log(`[FETCH-ECONOMIC] [DEBUG] ========== SIDRA FLAT PARSING END ==========`);
@@ -2047,12 +2057,16 @@ serve(async (req) => {
                 newRecords: finalInsertedCount
               });
               
-              // Update API registry with detailed metadata
+              // Update API registry with detailed metadata - mark as available if data inserted
               await supabase.from('system_api_registry').update({
                 status: insertErrors.length > 0 ? 'error' : 'active',
                 last_checked_at: new Date().toISOString(),
                 last_http_status: httpStatus,
                 last_response_at: new Date().toISOString(),
+                source_data_status: totalInserted > 0 ? 'available' : 'unavailable',
+                source_data_message: totalInserted > 0 
+                  ? `${totalInserted} registros regionais inseridos com sucesso`
+                  : 'Nenhum dado válido encontrado na resposta da API',
                 last_sync_metadata: {
                   extracted_count: regionalValuesToInsert.length,
                   inserted_count: totalInserted,

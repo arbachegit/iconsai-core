@@ -17,12 +17,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info, Stethoscope, Tag, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Key, ArrowUpDown, Eye, Play, Timer, Zap } from 'lucide-react';
+import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info, Stethoscope, Tag, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Key, ArrowUpDown, Eye, Play, Timer, Zap, AlertTriangle, HelpCircle } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Progress } from '@/components/ui/progress';
 import { format, formatDistanceToNow, addDays, addHours, setHours, setMinutes, isAfter, isBefore, startOfDay, endOfDay, getDay, lastDayOfMonth, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatDateTime, formatRelative } from '@/lib/date-utils';
+import { SidraDataPreviewModal } from './SidraDataPreviewModal';
 import ApiDiagnosticModal from './ApiDiagnosticModal';
 import { logger } from '@/lib/logger';
 
@@ -65,12 +66,15 @@ interface ApiRegistry {
   target_table: string | null;
   last_http_status: number | null;
   last_sync_metadata: SyncMetadata | null;
+  last_raw_response: unknown;
   fetch_start_date: string | null;
   fetch_end_date: string | null;
   auto_fetch_enabled: boolean | null;
   auto_fetch_interval: string | null;
   discovered_period_start: string | null;
   discovered_period_end: string | null;
+  source_data_status: string | null;
+  source_data_message: string | null;
 }
 
 interface TestResult {
@@ -149,6 +153,12 @@ export default function ApiManagementTab() {
   const [showSyncProgressModal, setShowSyncProgressModal] = useState(false);
   const [syncProgressItems, setSyncProgressItems] = useState<SyncResultItem[]>([]);
   const [currentSyncingName, setCurrentSyncingName] = useState('');
+  
+  // Raw data preview modal
+  const [showDataPreviewModal, setShowDataPreviewModal] = useState(false);
+  const [previewApiName, setPreviewApiName] = useState('');
+  const [previewApiUrl, setPreviewApiUrl] = useState('');
+  const [previewRawResponse, setPreviewRawResponse] = useState<unknown>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -1085,20 +1095,44 @@ export default function ApiManagementTab() {
                   paginatedApis.map((api) => (
                     <TableRow key={api.id}>
                       <TableCell className="font-medium">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help hover:text-primary transition-colors">
-                                {api.name}
-                              </span>
-                            </TooltipTrigger>
-                            {api.description && (
-                              <TooltipContent side="right" className="max-w-[300px]">
-                                <p className="text-sm">{api.description}</p>
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        </TooltipProvider>
+                        <div className="flex items-center gap-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help hover:text-primary transition-colors">
+                                  {api.name}
+                                </span>
+                              </TooltipTrigger>
+                              {api.description && (
+                                <TooltipContent side="right" className="max-w-[300px]">
+                                  <p className="text-sm">{api.description}</p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
+                          {/* Source Data Status Badge */}
+                          {api.source_data_status === 'unavailable' && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
+                                    <AlertTriangle className="h-2.5 w-2.5" />
+                                    Fonte N/A
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[280px]">
+                                  <p className="font-medium mb-1">Dados Indisponíveis na Fonte</p>
+                                  <p className="text-xs">{api.source_data_message || 'O IBGE não disponibiliza dados numéricos para esta combinação de variável/categoria/período.'}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {api.source_data_status === 'pending_retest' && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-500">
+                              Retestar
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <button
@@ -1191,21 +1225,70 @@ export default function ApiManagementTab() {
                       </TableCell>
                       {/* Dados Extraídos */}
                       <TableCell>
-                        {api.last_sync_metadata?.extracted_count ? (
-                          <div className="space-y-0.5">
-                            <div className="font-medium text-sm">
-                              {api.last_sync_metadata.extracted_count.toLocaleString()} registros
+                        <div className="flex items-center gap-2">
+                          {api.source_data_status === 'unavailable' ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-destructive/70">0 válidos</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={() => {
+                                        setPreviewApiName(api.name);
+                                        setPreviewApiUrl(api.base_url);
+                                        setPreviewRawResponse(api.last_raw_response);
+                                        setShowDataPreviewModal(true);
+                                      }}
+                                    >
+                                      <Eye className="h-3.5 w-3.5 text-destructive" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Ver dados brutos da fonte</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             </div>
-                            {api.last_sync_metadata.fields_detected && api.last_sync_metadata.fields_detected.length > 0 && (
-                              <div className="text-xs text-muted-foreground">
-                                {api.last_sync_metadata.fields_detected.slice(0, 3).join(', ')}
-                                {api.last_sync_metadata.fields_detected.length > 3 && '...'}
+                          ) : api.last_sync_metadata?.extracted_count ? (
+                            <div className="flex items-center gap-2">
+                              <div className="space-y-0.5">
+                                <div className="font-medium text-sm">
+                                  {api.last_sync_metadata.extracted_count.toLocaleString()} registros
+                                </div>
+                                {api.last_sync_metadata.fields_detected && api.last_sync_metadata.fields_detected.length > 0 && (
+                                  <div className="text-xs text-muted-foreground">
+                                    {api.last_sync_metadata.fields_detected.slice(0, 3).join(', ')}
+                                    {api.last_sync_metadata.fields_detected.length > 3 && '...'}
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
+                              {/* Preview button for APIs with data */}
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={() => {
+                                        setPreviewApiName(api.name);
+                                        setPreviewApiUrl(api.base_url);
+                                        setPreviewRawResponse(api.last_raw_response);
+                                        setShowDataPreviewModal(true);
+                                      }}
+                                    >
+                                      <FileJson className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Ver preview de dados brutos</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </div>
                       </TableCell>
                       {/* Período - Discovered Only + Auto Toggle */}
                       <TableCell>
@@ -2090,6 +2173,15 @@ export default function ApiManagementTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* SIDRA Data Preview Modal */}
+      <SidraDataPreviewModal
+        open={showDataPreviewModal}
+        onOpenChange={setShowDataPreviewModal}
+        apiName={previewApiName}
+        apiUrl={previewApiUrl}
+        lastRawResponse={previewRawResponse}
+      />
     </div>
   );
 }
