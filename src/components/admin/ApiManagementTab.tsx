@@ -17,13 +17,28 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info, Stethoscope, Tag, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Key, ArrowUpDown, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info, Stethoscope, Tag, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Key, ArrowUpDown, Eye, Play, Timer, Zap } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { format, formatDistanceToNow } from 'date-fns';
+import { Progress } from '@/components/ui/progress';
+import { format, formatDistanceToNow, addDays, addHours, setHours, setMinutes, isAfter, isBefore, startOfDay, endOfDay, getDay, lastDayOfMonth, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatDateTime, formatRelative } from '@/lib/date-utils';
 import ApiDiagnosticModal from './ApiDiagnosticModal';
 import { logger } from '@/lib/logger';
+
+interface SyncResultItem {
+  name: string;
+  success: boolean;
+  insertedCount?: number;
+  error?: string;
+}
+
+interface AutoSyncStats {
+  total: number;
+  daily: number;
+  weekly: number;
+  monthly: number;
+}
 
 interface SyncMetadata {
   extracted_count?: number;
@@ -124,6 +139,17 @@ export default function ApiManagementTab() {
   const [viewConfigApi, setViewConfigApi] = useState<ApiRegistry | null>(null);
   const [urlViewModalOpen, setUrlViewModalOpen] = useState(false);
   const [urlToView, setUrlToView] = useState('');
+  
+  // Cron job config section
+  const [showCronSection, setShowCronSection] = useState(true);
+  const [autoSyncStats, setAutoSyncStats] = useState<AutoSyncStats>({ total: 0, daily: 0, weekly: 0, monthly: 0 });
+  const [triggeringManualSync, setTriggeringManualSync] = useState(false);
+  
+  // Mass sync with progress modal
+  const [showSyncProgressModal, setShowSyncProgressModal] = useState(false);
+  const [syncProgressItems, setSyncProgressItems] = useState<SyncResultItem[]>([]);
+  const [currentSyncingName, setCurrentSyncingName] = useState('');
+  
   const [formData, setFormData] = useState({
     name: '',
     provider: 'BCB' as string,
@@ -171,12 +197,53 @@ export default function ApiManagementTab() {
         .order('name', { ascending: true });
 
       if (error) throw error;
-      setApis((data || []) as ApiRegistry[]);
+      const apiData = (data || []) as ApiRegistry[];
+      setApis(apiData);
+      
+      // Calculate auto-sync stats
+      const autoEnabled = apiData.filter(a => a.auto_fetch_enabled);
+      const stats: AutoSyncStats = {
+        total: autoEnabled.length,
+        daily: autoEnabled.filter(a => (a.auto_fetch_interval || '').startsWith('daily')).length,
+        weekly: autoEnabled.filter(a => (a.auto_fetch_interval || '').startsWith('weekly')).length,
+        monthly: autoEnabled.filter(a => (a.auto_fetch_interval || '').startsWith('monthly')).length,
+      };
+      setAutoSyncStats(stats);
     } catch (error) {
       logger.error('Error fetching APIs:', error);
       toast.error('Erro ao carregar APIs');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Calculate next cron execution time (daily at 3 AM)
+  const getNextCronExecution = (): Date => {
+    const now = new Date();
+    const today3AM = setMinutes(setHours(startOfDay(now), 3), 0);
+    
+    if (isAfter(now, today3AM)) {
+      // Already past 3 AM today, next is tomorrow
+      return addDays(today3AM, 1);
+    }
+    return today3AM;
+  };
+
+  const handleTriggerManualSync = async () => {
+    setTriggeringManualSync(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-sync-indicators', {
+        body: { manualTrigger: true }
+      });
+      
+      if (error) throw error;
+      toast.success(`Sincronização manual executada: ${data?.synced_count || 0} APIs processadas`);
+      fetchApis();
+    } catch (error) {
+      logger.error('Error triggering manual sync:', error);
+      toast.error('Erro ao executar sincronização manual');
+    } finally {
+      setTriggeringManualSync(false);
     }
   };
 
@@ -420,12 +487,15 @@ export default function ApiManagementTab() {
     
     setSyncingAllApis(true);
     setSyncAllProgress({ current: 0, total: indicators.length, success: 0, failed: 0 });
+    setSyncProgressItems([]);
+    setShowSyncProgressModal(true);
     
     let successCount = 0;
     let failedCount = 0;
     
     for (let i = 0; i < indicators.length; i++) {
       const indicator = indicators[i];
+      setCurrentSyncingName(indicator.name);
       setSyncAllProgress(prev => ({ ...prev, current: i + 1 }));
       
       try {
@@ -436,13 +506,28 @@ export default function ApiManagementTab() {
         if (error) {
           failedCount++;
           logger.error(`[SYNC-ALL] Erro ${indicator.name}:`, error);
+          setSyncProgressItems(prev => [...prev, { 
+            name: indicator.name, 
+            success: false, 
+            error: error.message 
+          }]);
         } else {
           successCount++;
           const insertedCount = data?.results?.[0]?.insertedCount || data?.insertedCount || 0;
           logger.debug(`[SYNC-ALL] ${indicator.name}: ${insertedCount} registros`);
+          setSyncProgressItems(prev => [...prev, { 
+            name: indicator.name, 
+            success: true, 
+            insertedCount 
+          }]);
         }
-      } catch {
+      } catch (err) {
         failedCount++;
+        setSyncProgressItems(prev => [...prev, { 
+          name: indicator.name, 
+          success: false, 
+          error: 'Erro desconhecido' 
+        }]);
       }
       
       setSyncAllProgress(prev => ({ ...prev, success: successCount, failed: failedCount }));
@@ -452,6 +537,7 @@ export default function ApiManagementTab() {
     }
     
     setSyncingAllApis(false);
+    setCurrentSyncingName('');
     toast.success(`Sincronização concluída: ${successCount}/${indicators.length} indicadores OK`);
     fetchApis();
   };
@@ -763,6 +849,115 @@ export default function ApiManagementTab() {
 
   return (
     <div className="space-y-6">
+      {/* Cron Job Configuration Section */}
+      <Collapsible open={showCronSection} onOpenChange={setShowCronSection}>
+        <Card className="border-border/40 bg-card/50">
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Timer className="h-5 w-5 text-cyan-500" />
+                  <CardTitle className="text-base">Configuração de Sincronização Automática</CardTitle>
+                  <Badge variant="outline" className="border-green-500/40 text-green-400">
+                    Ativo
+                  </Badge>
+                </div>
+                <ChevronDown className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                  showCronSection && "rotate-180"
+                )} />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Job Info */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Zap className="h-4 w-4 text-amber-500" />
+                    <span className="font-medium">Job: auto-sync-indicators-daily</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    <span>Schedule: 0 3 * * * (Diário às 03:00)</span>
+                  </div>
+                </div>
+
+                {/* Next Execution */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <CalendarIcon className="h-4 w-4 text-emerald-500" />
+                    <span className="font-medium">Próxima execução:</span>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-md border border-border/40">
+                    <div className="text-sm font-medium">
+                      {format(getNextCronExecution(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatDistanceToNow(getNextCronExecution(), { addSuffix: true, locale: ptBR })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Auto-Sync Stats */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Database className="h-4 w-4 text-violet-500" />
+                    <span className="font-medium">APIs com auto-sync:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {autoSyncStats.total} total
+                    </Badge>
+                    {autoSyncStats.daily > 0 && (
+                      <Badge variant="outline" className="text-xs border-blue-500/40 text-blue-400">
+                        {autoSyncStats.daily} Diária
+                      </Badge>
+                    )}
+                    {autoSyncStats.weekly > 0 && (
+                      <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-400">
+                        {autoSyncStats.weekly} Semanal
+                      </Badge>
+                    )}
+                    {autoSyncStats.monthly > 0 && (
+                      <Badge variant="outline" className="text-xs border-purple-500/40 text-purple-400">
+                        {autoSyncStats.monthly} Mensal
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Manual Trigger Button */}
+              <div className="mt-4 pt-4 border-t border-border/40">
+                <Button
+                  variant="outline"
+                  onClick={handleTriggerManualSync}
+                  disabled={triggeringManualSync}
+                  className="gap-2"
+                >
+                  {triggeringManualSync ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Executando...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4" />
+                      Executar Agora
+                    </>
+                  )}
+                </Button>
+                <span className="ml-3 text-xs text-muted-foreground">
+                  Executa a sincronização automática imediatamente
+                </span>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
       <Card className="border-border/40 bg-card/50">
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1716,6 +1911,99 @@ export default function ApiManagementTab() {
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Abrir
               </a>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mass Sync Progress Modal */}
+      <Dialog open={showSyncProgressModal} onOpenChange={setShowSyncProgressModal}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-primary" />
+              Sincronização em Massa
+            </DialogTitle>
+            <DialogDescription>
+              Sincronizando indicadores econômicos
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Progress Bar */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Progresso</span>
+                <span className="font-medium">
+                  {syncAllProgress.current}/{syncAllProgress.total}
+                </span>
+              </div>
+              <Progress 
+                value={syncAllProgress.total > 0 ? (syncAllProgress.current / syncAllProgress.total) * 100 : 0} 
+                className="h-2"
+              />
+            </div>
+
+            {/* Current Item */}
+            {syncingAllApis && currentSyncingName && (
+              <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border border-border/40">
+                <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm">Sincronizando: <strong>{currentSyncingName}</strong></span>
+              </div>
+            )}
+
+            {/* Stats */}
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>{syncAllProgress.success} sucesso</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <XCircle className="h-4 w-4 text-red-500" />
+                <span>{syncAllProgress.failed} falha</span>
+              </div>
+            </div>
+
+            {/* Results List */}
+            <ScrollArea className="max-h-[250px]">
+              <div className="space-y-1">
+                {syncProgressItems.map((item, i) => (
+                  <div 
+                    key={i} 
+                    className={cn(
+                      "flex items-center justify-between p-2 rounded-md text-sm",
+                      item.success ? "bg-green-500/10" : "bg-red-500/10"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      {item.success ? (
+                        <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                      ) : (
+                        <XCircle className="h-3.5 w-3.5 text-red-500" />
+                      )}
+                      <span className={item.success ? "text-green-400" : "text-red-400"}>
+                        {item.name}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {item.success 
+                        ? `${item.insertedCount || 0} registros` 
+                        : item.error
+                      }
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSyncProgressModal(false)}
+              disabled={syncingAllApis}
+            >
+              {syncingAllApis ? 'Aguarde...' : 'Fechar'}
             </Button>
           </DialogFooter>
         </DialogContent>
