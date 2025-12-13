@@ -1918,7 +1918,7 @@ export default function ApiManagementTab() {
 
       {/* Mass Sync Progress Modal */}
       <Dialog open={showSyncProgressModal} onOpenChange={setShowSyncProgressModal}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Database className="h-5 w-5 text-primary" />
@@ -1964,30 +1964,45 @@ export default function ApiManagementTab() {
               </div>
             </div>
 
-            {/* Results List */}
-            <ScrollArea className="max-h-[250px]">
-              <div className="space-y-1">
+            {/* Results List - Scrollable */}
+            <ScrollArea className="h-[300px] border border-border/40 rounded-md">
+              <div className="space-y-1 p-2">
                 {syncProgressItems.map((item, i) => (
                   <div 
                     key={i} 
                     className={cn(
                       "flex items-center justify-between p-2 rounded-md text-sm",
-                      item.success ? "bg-green-500/10" : "bg-red-500/10"
+                      item.success 
+                        ? (item.insertedCount === 0 ? "bg-amber-500/10" : "bg-green-500/10") 
+                        : "bg-red-500/10"
                     )}
                   >
                     <div className="flex items-center gap-2">
                       {item.success ? (
-                        <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                        item.insertedCount === 0 ? (
+                          <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                        ) : (
+                          <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                        )
                       ) : (
                         <XCircle className="h-3.5 w-3.5 text-red-500" />
                       )}
-                      <span className={item.success ? "text-green-400" : "text-red-400"}>
+                      <span className={cn(
+                        item.success 
+                          ? (item.insertedCount === 0 ? "text-amber-400" : "text-green-400") 
+                          : "text-red-400"
+                      )}>
                         {item.name}
                       </span>
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className={cn(
+                      "text-xs",
+                      item.success && item.insertedCount === 0 
+                        ? "text-amber-400" 
+                        : "text-muted-foreground"
+                    )}>
                       {item.success 
-                        ? `${item.insertedCount || 0} registros` 
+                        ? (item.insertedCount === 0 ? '⚠️ 0 registros' : `${item.insertedCount} registros`) 
                         : item.error
                       }
                     </span>
