@@ -1712,17 +1712,85 @@ serve(async (req) => {
             console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat has UF data (D1C): ${hasUFData}`);
             console.log(`[FETCH-ECONOMIC] [IBGE] Is regional indicator: ${isRegionalIndicator}`);
             
+            // ========== COMPREHENSIVE DEBUGGING FOR SIDRA FLAT PARSING ==========
+            console.log(`[FETCH-ECONOMIC] [DEBUG] ========== SIDRA FLAT PARSING START ==========`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Total data rows to parse: ${dataRows.length}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Period field: ${periodField}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Has UF data: ${hasUFData}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Is regional indicator: ${isRegionalIndicator}`);
+            
+            // Log first 3 raw rows for inspection
+            console.log(`[FETCH-ECONOMIC] [DEBUG] First 3 raw rows:`);
+            for (let i = 0; i < Math.min(3, dataRows.length); i++) {
+              console.log(`[FETCH-ECONOMIC] [DEBUG]   Row ${i}: ${JSON.stringify(dataRows[i])}`);
+            }
+            
+            // Debug counters
+            let debugCounters = {
+              totalRows: dataRows.length,
+              filteredByEmptyValue: 0,
+              filteredByInvalidValue: 0,
+              filteredByNaN: 0,
+              filteredByNoPeriod: 0,
+              filteredByInvalidPeriod: 0,
+              filteredByNoUfCode: 0,
+              filteredByInvalidUfCode: 0,
+              addedToRegional: 0,
+              addedToNational: 0,
+              skippedOther: 0,
+            };
+            
+            // Sample filtered values for debugging
+            let sampleFilteredValues: string[] = [];
+            let sampleFilteredPeriods: string[] = [];
+            let sampleFilteredUfCodes: string[] = [];
+            
             for (const row of dataRows) {
               const valueStr = row.V;
-              // Skip invalid values
-              if (!valueStr || valueStr === '..' || valueStr === '-' || valueStr === '...' || valueStr === 'X') continue;
               
+              // Check 1: Empty value
+              if (!valueStr) {
+                debugCounters.filteredByEmptyValue++;
+                continue;
+              }
+              
+              // Check 2: Invalid value markers
+              if (valueStr === '..' || valueStr === '-' || valueStr === '...' || valueStr === 'X') {
+                debugCounters.filteredByInvalidValue++;
+                if (sampleFilteredValues.length < 5) {
+                  sampleFilteredValues.push(valueStr);
+                }
+                continue;
+              }
+              
+              // Check 3: NaN after parsing
               const numValue = parseFloat(valueStr.replace(',', '.'));
-              if (isNaN(numValue)) continue;
+              if (isNaN(numValue)) {
+                debugCounters.filteredByNaN++;
+                if (sampleFilteredValues.length < 5) {
+                  sampleFilteredValues.push(`NaN from: "${valueStr}"`);
+                }
+                continue;
+              }
               
-              // Extract period from detected field
+              // Check 4: Period extraction
               const periodCode = periodField ? row[periodField] : null;
-              if (!periodCode || !/^\d{4,6}$/.test(periodCode)) continue;
+              if (!periodCode) {
+                debugCounters.filteredByNoPeriod++;
+                if (sampleFilteredPeriods.length < 5) {
+                  sampleFilteredPeriods.push(`No period in field ${periodField}`);
+                }
+                continue;
+              }
+              
+              // Check 5: Period format validation
+              if (!/^\d{4,6}$/.test(periodCode)) {
+                debugCounters.filteredByInvalidPeriod++;
+                if (sampleFilteredPeriods.length < 5) {
+                  sampleFilteredPeriods.push(`Invalid: "${periodCode}"`);
+                }
+                continue;
+              }
               
               // Format period to ISO date
               let refDate: string;
@@ -1735,28 +1803,78 @@ serve(async (req) => {
               }
               
               // Extract UF code from D1C (Unidade da Federação)
-              // CRITICAL FIX: UF codes are in D1C, NOT D2C (D2C is the variable code like 7169)
               const ufCodeStr = row.D1C;
               const ufCode = ufCodeStr ? parseInt(ufCodeStr) : null;
               
-              if (hasUFData && isRegionalIndicator && ufCode && ufCode >= 11 && ufCode <= 53) {
-                // Regional data: insert into indicator_regional_values
+              // Check 6 & 7: UF code validation for regional indicators
+              if (hasUFData && isRegionalIndicator) {
+                if (!ufCode) {
+                  debugCounters.filteredByNoUfCode++;
+                  if (sampleFilteredUfCodes.length < 5) {
+                    sampleFilteredUfCodes.push(`No UF code, D1C="${ufCodeStr}"`);
+                  }
+                  continue;
+                }
+                if (ufCode < 11 || ufCode > 53) {
+                  debugCounters.filteredByInvalidUfCode++;
+                  if (sampleFilteredUfCodes.length < 5) {
+                    sampleFilteredUfCodes.push(`Invalid UF: ${ufCode}`);
+                  }
+                  continue;
+                }
+                
+                // SUCCESS: Add to regional
                 regionalValuesToInsert.push({
                   indicator_id: indicator.id,
                   uf_code: ufCode,
                   reference_date: refDate,
                   value: numValue,
                 });
+                debugCounters.addedToRegional++;
               } else if (!hasUFData || !isRegionalIndicator) {
-                // National data: insert into indicator_values
+                // SUCCESS: Add to national
                 valuesToInsert.push({
                   indicator_id: indicator.id,
                   reference_date: refDate,
                   value: numValue,
                 });
+                debugCounters.addedToNational++;
+              } else {
+                debugCounters.skippedOther++;
               }
             }
             
+            // ========== COMPREHENSIVE DEBUG OUTPUT ==========
+            console.log(`[FETCH-ECONOMIC] [DEBUG] ========== PARSING RESULTS ==========`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Total rows processed: ${debugCounters.totalRows}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Filtered by empty value: ${debugCounters.filteredByEmptyValue}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Filtered by invalid value (.., -, ..., X): ${debugCounters.filteredByInvalidValue}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Filtered by NaN: ${debugCounters.filteredByNaN}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Filtered by no period: ${debugCounters.filteredByNoPeriod}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Filtered by invalid period format: ${debugCounters.filteredByInvalidPeriod}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Filtered by no UF code: ${debugCounters.filteredByNoUfCode}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Filtered by invalid UF code: ${debugCounters.filteredByInvalidUfCode}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Added to regional: ${debugCounters.addedToRegional}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Added to national: ${debugCounters.addedToNational}`);
+            console.log(`[FETCH-ECONOMIC] [DEBUG] Skipped (other): ${debugCounters.skippedOther}`);
+            
+            if (sampleFilteredValues.length > 0) {
+              console.log(`[FETCH-ECONOMIC] [DEBUG] Sample filtered values: ${sampleFilteredValues.join(', ')}`);
+            }
+            if (sampleFilteredPeriods.length > 0) {
+              console.log(`[FETCH-ECONOMIC] [DEBUG] Sample filtered periods: ${sampleFilteredPeriods.join(', ')}`);
+            }
+            if (sampleFilteredUfCodes.length > 0) {
+              console.log(`[FETCH-ECONOMIC] [DEBUG] Sample filtered UF codes: ${sampleFilteredUfCodes.join(', ')}`);
+            }
+            
+            // Alert if zero records were parsed but rows existed
+            if (debugCounters.totalRows > 0 && debugCounters.addedToRegional === 0 && debugCounters.addedToNational === 0) {
+              console.log(`[FETCH-ECONOMIC] [DEBUG] ⚠️ CRITICAL: ${debugCounters.totalRows} rows processed but 0 records added!`);
+              console.log(`[FETCH-ECONOMIC] [DEBUG] ⚠️ Check the filter breakdown above to identify the issue.`);
+            }
+            
+            console.log(`[FETCH-ECONOMIC] [DEBUG] ========== SIDRA FLAT PARSING END ==========`);
             console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat parsed: ${valuesToInsert.length} national, ${regionalValuesToInsert.length} regional`);
           } else {
             // ======= SIDRA JSON FORMAT (servicodados.ibge.gov.br) =======
