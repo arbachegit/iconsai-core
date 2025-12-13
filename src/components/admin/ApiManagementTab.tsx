@@ -459,7 +459,7 @@ export default function ApiManagementTab() {
       
       try {
         const { data, error } = await supabase.functions.invoke('test-api-connection', {
-          body: { apiId: api.id }
+          body: { apiId: api.id, baseUrl: api.base_url }
         });
         
         if (error || !data?.success) {
