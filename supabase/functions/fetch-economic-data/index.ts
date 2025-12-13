@@ -1833,49 +1833,125 @@ serve(async (req) => {
           
           // Insert regional values if any
           if (regionalValuesToInsert.length > 0) {
-            console.log(`[FETCH-ECONOMIC] 📍 Inserting ${regionalValuesToInsert.length} regional values into indicator_regional_values`);
+            console.log(`[FETCH-ECONOMIC] ========== REGIONAL INSERT START ==========`);
+            console.log(`[FETCH-ECONOMIC] 📍 Indicator: ${indicator.name} (${indicator.id})`);
+            console.log(`[FETCH-ECONOMIC] 📍 Target table: indicator_regional_values`);
+            console.log(`[FETCH-ECONOMIC] 📍 Records to insert: ${regionalValuesToInsert.length}`);
             
-            const { error: regionalInsertError, count: regionalCount } = await supabase
-              .from('indicator_regional_values')
-              .upsert(regionalValuesToInsert, { 
-                onConflict: 'indicator_id,uf_code,reference_date', 
-                ignoreDuplicates: false,
-                count: 'exact'
-              });
+            // Log sample records for debugging
+            const sampleRecords = regionalValuesToInsert.slice(0, 3);
+            console.log(`[FETCH-ECONOMIC] 📍 Sample records (first 3):`, JSON.stringify(sampleRecords, null, 2));
             
-            if (regionalInsertError) {
-              console.error(`[FETCH-ECONOMIC] ❌ Regional insert error:`, regionalInsertError);
-            } else {
-              console.log(`[FETCH-ECONOMIC] ✅ Regional insert SUCCESS: ${regionalCount ?? regionalValuesToInsert.length} records`);
-              totalRecordsInserted += regionalValuesToInsert.length;
+            // Check for unique UF codes in the data
+            const uniqueUFs = [...new Set(regionalValuesToInsert.map(r => r.uf_code))];
+            console.log(`[FETCH-ECONOMIC] 📍 Unique UF codes: ${uniqueUFs.length} (${uniqueUFs.slice(0, 10).join(', ')}${uniqueUFs.length > 10 ? '...' : ''})`);
+            
+            // Check for unique dates
+            const uniqueDates = [...new Set(regionalValuesToInsert.map(r => r.reference_date))].sort();
+            console.log(`[FETCH-ECONOMIC] 📍 Date range: ${uniqueDates[0]} to ${uniqueDates[uniqueDates.length - 1]} (${uniqueDates.length} unique dates)`);
+            
+            // Verify all UF codes are valid (11-53)
+            const invalidUFs = regionalValuesToInsert.filter(r => r.uf_code < 11 || r.uf_code > 53);
+            if (invalidUFs.length > 0) {
+              console.error(`[FETCH-ECONOMIC] ⚠️ WARNING: ${invalidUFs.length} records have invalid UF codes!`);
+              console.error(`[FETCH-ECONOMIC] ⚠️ Invalid UF sample:`, invalidUFs.slice(0, 3));
             }
+            
+            // Batch insert to avoid timeout
+            const BATCH_SIZE = 500;
+            let totalInserted = 0;
+            let insertErrors: string[] = [];
+            
+            for (let batchIdx = 0; batchIdx < regionalValuesToInsert.length; batchIdx += BATCH_SIZE) {
+              const batch = regionalValuesToInsert.slice(batchIdx, batchIdx + BATCH_SIZE);
+              console.log(`[FETCH-ECONOMIC] 📍 Inserting batch ${Math.floor(batchIdx/BATCH_SIZE) + 1}: ${batch.length} records`);
+              
+              const { data: insertedData, error: regionalInsertError, count: regionalCount } = await supabase
+                .from('indicator_regional_values')
+                .upsert(batch, { 
+                  onConflict: 'indicator_id,uf_code,reference_date', 
+                  ignoreDuplicates: false,
+                  count: 'exact'
+                })
+                .select('id');
+              
+              if (regionalInsertError) {
+                console.error(`[FETCH-ECONOMIC] ❌ REGIONAL INSERT ERROR (batch ${Math.floor(batchIdx/BATCH_SIZE) + 1}):`);
+                console.error(`[FETCH-ECONOMIC] ❌ Error message: ${regionalInsertError.message}`);
+                console.error(`[FETCH-ECONOMIC] ❌ Error code: ${regionalInsertError.code}`);
+                console.error(`[FETCH-ECONOMIC] ❌ Error details:`, regionalInsertError.details);
+                console.error(`[FETCH-ECONOMIC] ❌ Error hint: ${regionalInsertError.hint}`);
+                insertErrors.push(regionalInsertError.message);
+                
+                // Try to identify which record is causing the issue
+                if (regionalInsertError.message.includes('foreign key') || regionalInsertError.message.includes('violates')) {
+                  console.error(`[FETCH-ECONOMIC] ❌ FK Violation detected. Checking UF codes...`);
+                  // Query valid UF codes from brazilian_ufs
+                  const { data: validUFs } = await supabase
+                    .from('brazilian_ufs')
+                    .select('uf_code');
+                  const validUFSet = new Set(validUFs?.map(u => u.uf_code) || []);
+                  const problemRecords = batch.filter(r => !validUFSet.has(r.uf_code));
+                  if (problemRecords.length > 0) {
+                    console.error(`[FETCH-ECONOMIC] ❌ Records with invalid UF codes:`, problemRecords.slice(0, 5));
+                  }
+                }
+              } else {
+                const count = insertedData?.length ?? regionalCount ?? batch.length;
+                totalInserted += count;
+                console.log(`[FETCH-ECONOMIC] ✅ Batch ${Math.floor(batchIdx/BATCH_SIZE) + 1} SUCCESS: ${count} records`);
+              }
+            }
+            
+            console.log(`[FETCH-ECONOMIC] ========== REGIONAL INSERT COMPLETE ==========`);
+            console.log(`[FETCH-ECONOMIC] 📍 Total records inserted: ${totalInserted}/${regionalValuesToInsert.length}`);
+            if (insertErrors.length > 0) {
+              console.error(`[FETCH-ECONOMIC] ❌ Total insert errors: ${insertErrors.length}`);
+            }
+            
+            totalRecordsInserted += totalInserted;
+            
+            // Verify insert by counting records
+            const { count: verifyCount } = await supabase
+              .from('indicator_regional_values')
+              .select('*', { count: 'exact', head: true })
+              .eq('indicator_id', indicator.id);
+            console.log(`[FETCH-ECONOMIC] 📍 VERIFICATION: Records in DB for this indicator: ${verifyCount}`);
             
             // Skip national insert if we only have regional data
             if (valuesToInsert.length === 0) {
+              const finalInsertedCount = totalInserted > 0 ? totalInserted : 0;
+              
               results.push({ 
                 indicator: indicator.name, 
-                records: regionalValuesToInsert.length, 
-                status: 'success',
-                newRecords: regionalValuesToInsert.length
+                records: finalInsertedCount, 
+                status: insertErrors.length > 0 ? 'partial' : 'success',
+                newRecords: finalInsertedCount
               });
               
-              // Update API registry
+              // Update API registry with detailed metadata
               await supabase.from('system_api_registry').update({
-                status: 'active',
+                status: insertErrors.length > 0 ? 'error' : 'active',
                 last_checked_at: new Date().toISOString(),
                 last_http_status: httpStatus,
+                last_response_at: new Date().toISOString(),
                 last_sync_metadata: {
                   extracted_count: regionalValuesToInsert.length,
-                  period_start: regionalValuesToInsert[0]?.reference_date,
-                  period_end: regionalValuesToInsert[regionalValuesToInsert.length - 1]?.reference_date,
+                  inserted_count: totalInserted,
+                  period_start: uniqueDates[0],
+                  period_end: uniqueDates[uniqueDates.length - 1],
                   fields_detected: ['indicator_id', 'uf_code', 'reference_date', 'value'],
+                  unique_ufs: uniqueUFs.length,
+                  unique_dates: uniqueDates.length,
                   last_record_value: String(regionalValuesToInsert[regionalValuesToInsert.length - 1]?.value),
                   fetch_timestamp: new Date().toISOString(),
-                  type: 'regional'
-                },
-                last_response_at: new Date().toISOString()
+                  type: 'regional',
+                  errors: insertErrors.length > 0 ? insertErrors : undefined,
+                  verified_count: verifyCount
+                }
               }).eq('id', apiConfig.id);
               
+              console.log(`[FETCH-ECONOMIC] 📍 API registry updated for ${indicator.name}`);
               continue;
             }
           }
