@@ -114,6 +114,8 @@ export default function ApiManagementTab() {
   const [showSchemaModal, setShowSchemaModal] = useState(false);
   const [testingAllApis, setTestingAllApis] = useState(false);
   const [testAllProgress, setTestAllProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
+  const [syncingAllApis, setSyncingAllApis] = useState(false);
+  const [syncAllProgress, setSyncAllProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
   const [sortColumn, setSortColumn] = useState<SortColumn>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -402,6 +404,55 @@ export default function ApiManagementTab() {
       setSyncingApiId(null);
     }
   }
+
+  const handleSyncAllApis = async () => {
+    // Find all APIs with linked indicators
+    const { data: indicators, error: indicatorError } = await supabase
+      .from('economic_indicators')
+      .select('id, name, api_id');
+    
+    if (indicatorError || !indicators || indicators.length === 0) {
+      toast.error('Nenhum indicador encontrado para sincronizar');
+      return;
+    }
+    
+    setSyncingAllApis(true);
+    setSyncAllProgress({ current: 0, total: indicators.length, success: 0, failed: 0 });
+    
+    let successCount = 0;
+    let failedCount = 0;
+    
+    for (let i = 0; i < indicators.length; i++) {
+      const indicator = indicators[i];
+      setSyncAllProgress(prev => ({ ...prev, current: i + 1 }));
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('fetch-economic-data', {
+          body: { indicatorId: indicator.id }
+        });
+        
+        if (error) {
+          failedCount++;
+          logger.error(`[SYNC-ALL] Erro ${indicator.name}:`, error);
+        } else {
+          successCount++;
+          const insertedCount = data?.results?.[0]?.insertedCount || data?.insertedCount || 0;
+          logger.debug(`[SYNC-ALL] ${indicator.name}: ${insertedCount} registros`);
+        }
+      } catch {
+        failedCount++;
+      }
+      
+      setSyncAllProgress(prev => ({ ...prev, success: successCount, failed: failedCount }));
+      
+      // Small delay between syncs
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    setSyncingAllApis(false);
+    toast.success(`Sincronização concluída: ${successCount}/${indicators.length} indicadores OK`);
+    fetchApis();
+  };
 
   const handleViewLog = (api: ApiRegistry) => {
     setSelectedApiForLog(api);
@@ -740,6 +791,24 @@ export default function ApiManagementTab() {
                 <>
                   <Activity className="h-4 w-4" />
                   Testar Conexão (Todas)
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSyncAllApis}
+              disabled={syncingAllApis}
+              className="gap-2"
+            >
+              {syncingAllApis ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  {syncAllProgress.current}/{syncAllProgress.total}
+                </>
+              ) : (
+                <>
+                  <Database className="h-4 w-4" />
+                  Sincronizar Todos
                 </>
               )}
             </Button>
