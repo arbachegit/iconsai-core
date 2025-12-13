@@ -31,6 +31,97 @@ interface SyncMetadata {
 // Maximum records to store in last_raw_response (to avoid storage issues)
 const MAX_RECORDS_FOR_STORAGE = 500;
 
+// Invalid value indicators used by SIDRA/IBGE APIs
+const SIDRA_INVALID_VALUES = ['...', '..', '-', 'X', 'null', '', null, undefined];
+
+/**
+ * INTELLIGENT SAMPLING: Prioritize valid records in the sample
+ * 
+ * Problem: SIDRA data is ordered by UF code (11=RO, 12=AC...).
+ * States like Rondônia and Acre often have NO valid data for PMC indicators,
+ * so taking the first 500 records gives a non-representative sample.
+ * 
+ * Solution: Sample valid records first, then fill with invalid ones to show proportions.
+ */
+function sampleForStorage(data: unknown[], maxRecords: number = MAX_RECORDS_FOR_STORAGE): unknown[] {
+  if (!Array.isArray(data) || data.length === 0) return data || [];
+  if (data.length <= maxRecords) return data;
+  
+  // Check if this looks like SIDRA flat format (has V field)
+  const hasSidraFormat = data.length > 1 && data[1] && typeof data[1] === 'object' && 'V' in (data[1] as object);
+  
+  if (!hasSidraFormat) {
+    // Not SIDRA format - just take first N records
+    return data.slice(0, maxRecords);
+  }
+  
+  // SIDRA format: first row is header, rest are data
+  const header = data[0];
+  const records = data.slice(1);
+  
+  // Separate valid and invalid records
+  const validRecords: unknown[] = [];
+  const invalidRecords: unknown[] = [];
+  
+  for (const row of records) {
+    const r = row as { V?: string };
+    const v = r.V;
+    if (v && !SIDRA_INVALID_VALUES.includes(v)) {
+      validRecords.push(row);
+    } else {
+      invalidRecords.push(row);
+    }
+  }
+  
+  console.log(`[INTELLIGENT-SAMPLING] Total: ${records.length}, Valid: ${validRecords.length}, Invalid: ${invalidRecords.length}`);
+  
+  // Build sample: prioritize valid records, then add some invalid to show distribution
+  const sample: unknown[] = [];
+  const targetSampleSize = maxRecords - 1; // -1 for header
+  
+  if (validRecords.length > 0) {
+    if (validRecords.length <= targetSampleSize * 0.9) {
+      // If valid records are less than 90% of sample, include all valid + some invalid
+      sample.push(...validRecords);
+      const remainingSlots = targetSampleSize - sample.length;
+      if (remainingSlots > 0 && invalidRecords.length > 0) {
+        // Sample invalid records evenly across the dataset
+        const step = Math.max(1, Math.floor(invalidRecords.length / remainingSlots));
+        for (let i = 0; i < invalidRecords.length && sample.length < targetSampleSize; i += step) {
+          sample.push(invalidRecords[i]);
+        }
+      }
+    } else {
+      // Valid records > 90% of sample - sample them evenly for distribution
+      const step = Math.max(1, Math.floor(validRecords.length / (targetSampleSize * 0.9)));
+      for (let i = 0; i < validRecords.length && sample.length < targetSampleSize * 0.9; i += step) {
+        sample.push(validRecords[i]);
+      }
+      // Add some invalid to show they exist
+      const remainingSlots = targetSampleSize - sample.length;
+      if (remainingSlots > 0 && invalidRecords.length > 0) {
+        const invalidStep = Math.max(1, Math.floor(invalidRecords.length / remainingSlots));
+        for (let i = 0; i < invalidRecords.length && sample.length < targetSampleSize; i += invalidStep) {
+          sample.push(invalidRecords[i]);
+        }
+      }
+    }
+  } else {
+    // No valid records - sample invalid records evenly
+    const step = Math.max(1, Math.floor(invalidRecords.length / targetSampleSize));
+    for (let i = 0; i < invalidRecords.length && sample.length < targetSampleSize; i += step) {
+      sample.push(invalidRecords[i]);
+    }
+  }
+  
+  console.log(`[INTELLIGENT-SAMPLING] Sample size: ${sample.length + 1} (with header), valid in sample: ${sample.filter(r => {
+    const row = r as { V?: string };
+    return row.V && !SIDRA_INVALID_VALUES.includes(row.V);
+  }).length}`);
+  
+  return [header, ...sample];
+}
+
 interface IBGEResult {
   id: string;
   variavel: string;
@@ -545,9 +636,9 @@ serve(async (req) => {
         result.success = true;
         result.syncMetadata = analyzeApiResponse(ibgeResult.data, 'IBGE');
         result.preview = ibgeResult.data.slice(0, 2);
-        // Store full data (limited to MAX_RECORDS_FOR_STORAGE) for observability
+        // Store full data with INTELLIGENT SAMPLING (prioritize valid records)
         result.fullData = Array.isArray(ibgeResult.data) 
-          ? ibgeResult.data.slice(0, MAX_RECORDS_FOR_STORAGE) 
+          ? sampleForStorage(ibgeResult.data, MAX_RECORDS_FOR_STORAGE) as any[]
           : ibgeResult.data;
         console.log(`[TEST-API] IBGE chunked fetch success - ${result.syncMetadata?.extracted_count} periods extracted, storing ${result.fullData?.length || 0} records`);
       } else {
@@ -606,9 +697,9 @@ serve(async (req) => {
             const data = JSON.parse(text);
             result.syncMetadata = analyzeApiResponse(data, provider);
             result.preview = Array.isArray(data) ? data.slice(0, 2) : [data];
-            // Store full data (limited to MAX_RECORDS_FOR_STORAGE) for observability
+            // Store full data with INTELLIGENT SAMPLING (prioritize valid records)
             result.fullData = Array.isArray(data) 
-              ? data.slice(0, MAX_RECORDS_FOR_STORAGE) 
+              ? sampleForStorage(data, MAX_RECORDS_FOR_STORAGE) as any[]
               : [data];
             result.success = true;
           } catch (parseError) {
@@ -658,7 +749,7 @@ serve(async (req) => {
               
               if (Array.isArray(data)) {
                 result.preview = data.slice(0, 2);
-                result.fullData = data.slice(0, MAX_RECORDS_FOR_STORAGE);
+                result.fullData = sampleForStorage(data, MAX_RECORDS_FOR_STORAGE) as any[];
               } else if (typeof data === 'object' && data !== null) {
                 const keys = Object.keys(data);
                 if (keys.length > 0 && Array.isArray(data[keys[0]])) {
@@ -731,12 +822,12 @@ serve(async (req) => {
               
               if (Array.isArray(data)) {
                 result.preview = data.slice(0, 2);
-                result.fullData = data.slice(0, MAX_RECORDS_FOR_STORAGE);
+                result.fullData = sampleForStorage(data, MAX_RECORDS_FOR_STORAGE) as any[];
               } else if (typeof data === 'object' && data !== null) {
                 const keys = Object.keys(data);
                 if (keys.length > 0 && Array.isArray(data[keys[0]])) {
                   result.preview = data[keys[0]].slice(0, 2);
-                  result.fullData = data[keys[0]].slice(0, MAX_RECORDS_FOR_STORAGE);
+                  result.fullData = sampleForStorage(data[keys[0]], MAX_RECORDS_FOR_STORAGE) as any[];
                 } else {
                   result.preview = [data];
                   result.fullData = [data];
