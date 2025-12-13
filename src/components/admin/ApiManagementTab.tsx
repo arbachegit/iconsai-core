@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info, Stethoscope, Tag, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Key, ArrowUpDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Webhook, CheckCircle, XCircle, RefreshCw, ExternalLink, Activity, AlertCircle, Clock, Database, FileJson, Copy, Calendar as CalendarIcon, Settings, Info, Stethoscope, Tag, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Key, ArrowUpDown, Eye } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -122,6 +122,8 @@ export default function ApiManagementTab() {
   const [showVariablesSection, setShowVariablesSection] = useState(false);
   const [lastTriggerTime, setLastTriggerTime] = useState<Date | null>(null);
   const [viewConfigApi, setViewConfigApi] = useState<ApiRegistry | null>(null);
+  const [urlViewModalOpen, setUrlViewModalOpen] = useState(false);
+  const [urlToView, setUrlToView] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     provider: 'BCB' as string,
@@ -915,33 +917,55 @@ export default function ApiManagementTab() {
                         </button>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1 max-w-[300px]">
-                          <span className="text-xs text-muted-foreground truncate">
-                            {api.base_url}
-                          </span>
+                        <div className="flex items-center gap-1">
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-5 w-5"
+                                  className="h-6 w-6"
+                                  onClick={() => {
+                                    setUrlToView(api.base_url);
+                                    setUrlViewModalOpen(true);
+                                  }}
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Ver URL</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
                                   onClick={() => handleCopyUrl(api.base_url)}
                                 >
-                                  <Copy className="h-3 w-3" />
+                                  <Copy className="h-3.5 w-3.5" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>Copiar URL</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                          <a
-                            href={api.base_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-muted-foreground hover:text-primary"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <a
+                                  href={api.base_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-accent"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                              </TooltipTrigger>
+                              <TooltipContent>Abrir URL</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -1665,6 +1689,33 @@ export default function ApiManagementTab() {
             }}>
               <Pencil className="h-4 w-4 mr-2" />
               Editar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* URL View Modal */}
+      <Dialog open={urlViewModalOpen} onOpenChange={setUrlViewModalOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-primary" />
+              URL Completa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-4 bg-muted/50 rounded-md border border-border/40">
+            <code className="text-sm break-all whitespace-pre-wrap">{urlToView}</code>
+          </div>
+          <DialogFooter className="flex-row gap-2 sm:justify-end">
+            <Button variant="outline" onClick={() => handleCopyUrl(urlToView)}>
+              <Copy className="h-4 w-4 mr-2" />
+              Copiar
+            </Button>
+            <Button variant="outline" asChild>
+              <a href={urlToView} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Abrir
+              </a>
             </Button>
           </DialogFooter>
         </DialogContent>
