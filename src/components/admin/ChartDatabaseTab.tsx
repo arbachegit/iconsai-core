@@ -8,6 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
+import { StatBadge } from "@/components/shared/StatBadge";
+import { TrendInfoModal } from "@/components/shared/TrendInfoModal";
+import { formatAxisDate, type Frequency } from "@/lib/date-formatters";
+import { useTimeSeriesAnalysis, generateSuggestions } from "@/hooks/useTimeSeriesAnalysis";
 import {
   LineChart,
   Line,
@@ -197,6 +201,7 @@ export function ChartDatabaseTab() {
   const [showMovingAvg, setShowMovingAvg] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
+  const [showTrendModal, setShowTrendModal] = useState(false);
 
   // Fetch indicators with API linkage
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
@@ -960,6 +965,9 @@ export function ChartDatabaseTab() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Trend Info Modal */}
+      <TrendInfoModal open={showTrendModal} onClose={() => setShowTrendModal(false)} />
     </div>
   );
 }

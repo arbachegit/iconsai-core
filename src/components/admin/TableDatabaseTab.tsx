@@ -2,13 +2,14 @@ import { useState, useMemo } from "react";
 import { DebouncedInput } from "@/components/ui/debounced-input";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
+import { StatBadge } from "@/components/shared/StatBadge";
+import { TrendInfoModal } from "@/components/shared/TrendInfoModal";
 import {
   Table,
   TableBody,
@@ -28,13 +29,18 @@ import {
   Hash,
   Activity,
   TrendingUp,
+  TrendingDown,
+  Minus,
   MapPin,
   Calendar,
   X,
+  Info,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { formatDateByFrequency, type Frequency } from "@/lib/date-formatters";
+import { useTimeSeriesAnalysis, generateSuggestions } from "@/hooks/useTimeSeriesAnalysis";
 
 // Provider color styling (same as ApiManagementTab)
 const getProviderColor = (provider: string) => {
@@ -55,12 +61,10 @@ const getProviderColor = (provider: string) => {
 function formatTableValue(value: number, unit: string | null): string {
   const u = (unit || '').toLowerCase();
   
-  // Percentual: 2 decimals + symbol
   if (u.includes('%')) {
     return `${value.toFixed(2)}%`;
   }
   
-  // Real/BRL: currency format
   if (u.includes('r$') || u.includes('mil') || u.includes('reais') || u === 'brl') {
     return value.toLocaleString('pt-BR', { 
       style: 'currency', 
@@ -70,17 +74,14 @@ function formatTableValue(value: number, unit: string | null): string {
     });
   }
   
-  // Dollar: USD format
   if (u.includes('us$') || u.includes('usd') || u.includes('dólar') || u.includes('dollar')) {
     return `$ ${value.toFixed(2)}`;
   }
   
-  // Index: 2 decimals (no symbol)
   if (u.includes('índice') || u.includes('base') || u.includes('index')) {
     return value.toFixed(2);
   }
   
-  // Default: 2 decimals
   return value.toLocaleString('pt-BR', { 
     minimumFractionDigits: 2, 
     maximumFractionDigits: 2 
@@ -205,6 +206,7 @@ export function TableDatabaseTab() {
   const [selectedIndicator, setSelectedIndicator] = useState<IndicatorWithApi | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
+  const [showTrendModal, setShowTrendModal] = useState(false);
 
   // Fetch indicators with API name
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
@@ -389,6 +391,24 @@ export function TableDatabaseTab() {
     
     return groups;
   }, [filteredIndicators]);
+
+  // Prepare data for analysis hook
+  const analysisData = useMemo(() => {
+    if (!selectedIndicatorValues || selectedIndicatorValues.length === 0) return null;
+    return selectedIndicatorValues
+      .filter(v => !v.brazilian_ufs) // National data only for analysis
+      .map(v => ({
+        date: new Date(v.reference_date),
+        value: v.value,
+      }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [selectedIndicatorValues]);
+
+  // Time series analysis
+  const analysis = useTimeSeriesAnalysis(analysisData, selectedIndicator?.frequency as Frequency);
+  const suggestions = useMemo(() => {
+    return generateSuggestions(analysis, selectedIndicator?.unit || null);
+  }, [analysis, selectedIndicator?.unit]);
 
   if (loadingIndicators) {
     return (
@@ -716,18 +736,14 @@ export function TableDatabaseTab() {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <ScrollArea className="h-[350px] border rounded-md">
+              <ScrollArea className="h-[280px] border rounded-md">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>
-                        Data
-                      {selectedIndicatorValues.length > 0 && (
-                          <span className="ml-2 text-xs text-muted-foreground font-normal">
-                            ({selectedIndicatorValues[selectedIndicatorValues.length - 1]?.reference_date.substring(0, 7).split('-').reverse().join('/')} - {selectedIndicatorValues[0]?.reference_date.substring(0, 7).split('-').reverse().join('/')})
-                          </span>
-                        )}
-                      </TableHead>
+                      <TableHead>Data</TableHead>
+                      {selectedIndicator?.is_regional && (
+                        <TableHead>UF</TableHead>
+                      )}
                       <TableHead className="text-right">Valor</TableHead>
                       <TableHead>Indicador</TableHead>
                     </TableRow>
@@ -735,7 +751,7 @@ export function TableDatabaseTab() {
                   <TableBody>
                     {selectedIndicatorValues.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={selectedIndicator?.is_regional ? 4 : 3} className="text-center text-muted-foreground py-8">
                           Nenhum valor encontrado para este indicador.
                         </TableCell>
                       </TableRow>
@@ -743,14 +759,19 @@ export function TableDatabaseTab() {
                       selectedIndicatorValues.map((item, idx) => (
                         <TableRow key={idx}>
                           <TableCell className="font-mono text-sm">
-                            {item.reference_date.substring(0, 7).split('-').reverse().join('/')}
+                            {formatDateByFrequency(item.reference_date, selectedIndicator?.frequency)}
                           </TableCell>
+                          {selectedIndicator?.is_regional && (
+                            <TableCell className="font-mono text-sm">
+                              {item.brazilian_ufs?.uf_sigla || '-'}
+                            </TableCell>
+                          )}
                           <TableCell className="text-right font-mono">
                             {formatTableValue(Number(item.value), selectedIndicator?.unit)}
                           </TableCell>
                           <TableCell className="text-muted-foreground">
                             {selectedIndicator?.name}
-                            {item.brazilian_ufs ? ` - ${item.brazilian_ufs.uf_name}` : ' - Brasil'}
+                            {!selectedIndicator?.is_regional && ' - Brasil'}
                           </TableCell>
                         </TableRow>
                       ))
@@ -760,8 +781,54 @@ export function TableDatabaseTab() {
               </ScrollArea>
             )}
           </div>
+
+          {/* Footer with Statistics */}
+          {analysis && !selectedIndicator?.is_regional && (
+            <div className="px-6 py-4 border-t space-y-4">
+              {/* Statistics Badges */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <StatBadge
+                  label="Média Móvel"
+                  value={analysis.statistics.movingAverage 
+                    ? formatTableValue(analysis.statistics.movingAverage, selectedIndicator?.unit) 
+                    : 'N/A'}
+                />
+                <StatBadge
+                  label="Desvio Padrão"
+                  value={formatTableValue(analysis.statistics.stdDev, selectedIndicator?.unit)}
+                  unit={`CV: ${analysis.statistics.coefficientOfVariation.toFixed(1)}%`}
+                />
+                <StatBadge
+                  label="Tendência"
+                  value={analysis.nextPeriodLabel}
+                  trend={analysis.direction}
+                  onInfoClick={() => setShowTrendModal(true)}
+                />
+              </div>
+
+              {/* Suggestions */}
+              {suggestions.length > 0 && (
+                <div className="p-4 border border-primary/20 rounded-lg bg-muted/30">
+                  <h4 className="text-sm font-medium flex items-center gap-2 mb-3">
+                    <Info className="h-4 w-4 text-primary" />
+                    Sugestões de Análise
+                  </h4>
+                  <ul className="space-y-2">
+                    {suggestions.slice(0, 4).map((suggestion, idx) => (
+                      <li key={idx} className="text-sm text-muted-foreground">
+                        {suggestion}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* Trend Info Modal */}
+      <TrendInfoModal open={showTrendModal} onClose={() => setShowTrendModal(false)} />
     </div>
   );
 }
