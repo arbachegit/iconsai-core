@@ -5,8 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 import {
   Table,
   TableBody,
@@ -31,6 +33,7 @@ import {
   X,
 } from "lucide-react";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 // Provider color styling (same as ApiManagementTab)
@@ -395,7 +398,43 @@ export function TableDatabaseTab() {
     );
   }
 
-  // Render indicator card
+  // Calculate series counts by frequency
+  const seriesCounts = useMemo(() => {
+    const counts = { daily: 0, monthly: 0, quarterly: 0, yearly: 0 };
+    filteredIndicators.forEach(indicator => {
+      const stats = indicatorStats[indicator.id];
+      if (stats && stats.count > 0) {
+        const startDate = new Date(stats.min);
+        const endDate = new Date(stats.max);
+        const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
+        const avgPerMonth = stats.count / Math.max(monthsDiff, 1);
+        
+        if (avgPerMonth > 20) counts.daily++;
+        else if (avgPerMonth > 3) counts.monthly++;
+        else if (avgPerMonth > 0.3) counts.quarterly++;
+        else counts.yearly++;
+      }
+    });
+    return counts;
+  }, [filteredIndicators, indicatorStats]);
+
+  // Calculate date range from data
+  const dateRangeFromData = useMemo(() => {
+    let minDate: string | null = null;
+    let maxDate: string | null = null;
+    
+    combinedValues.forEach(v => {
+      if (!minDate || v.reference_date < minDate) minDate = v.reference_date;
+      if (!maxDate || v.reference_date > maxDate) maxDate = v.reference_date;
+    });
+    
+    return {
+      start: minDate ? new Date(minDate) : null,
+      end: maxDate ? new Date(maxDate) : null
+    };
+  }, [combinedValues]);
+
+  // Render indicator card with knowyou-indicator-card class
   const renderIndicatorCard = (indicator: IndicatorWithApi) => {
     const stats = indicatorStats[indicator.id];
     const unitInfo = formatUnit(indicator.unit);
@@ -406,92 +445,159 @@ export function TableDatabaseTab() {
     const isIndex = u.includes('índice') || u.includes('base') || u.includes('index');
 
     return (
-      <Card
+      <div
         key={indicator.id}
-        className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all"
+        className="knowyou-indicator-card"
         onClick={() => handleCardClick(indicator)}
       >
-        <CardContent className="pt-4 pb-3">
-          {/* Provider badge */}
-          {indicator.api?.provider && (
-            <Badge 
-              variant="outline" 
-              className={cn("w-fit mb-2 text-xs", getProviderColor(indicator.api.provider))}
-            >
-              {indicator.api.provider}
-            </Badge>
-          )}
-          {/* Title */}
-          <h3 className="font-semibold text-sm mb-3 line-clamp-2 min-h-[40px]">
-            {indicator.name}
-          </h3>
-          
-          {/* 2x2 Badge grid */}
-          <div className="grid grid-cols-2 gap-2">
-            {/* Unit badge */}
-            <div className="flex flex-col items-center justify-center border rounded-md py-1.5 bg-muted/30">
-              <span className="text-[9px] text-muted-foreground uppercase">Unidade</span>
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-muted-foreground/50">
-                  {unitInfo.icon}
-                </div>
-                <span className="text-xs font-medium">{unitInfo.label}</span>
+        {/* Provider badge */}
+        {indicator.api?.provider && (
+          <Badge 
+            variant="outline" 
+            className={cn("w-fit mb-2 text-xs", getProviderColor(indicator.api.provider))}
+          >
+            {indicator.api.provider}
+          </Badge>
+        )}
+        {/* Title */}
+        <h3 className="font-semibold text-sm mb-3 line-clamp-2 min-h-[40px]">
+          {indicator.name}
+        </h3>
+        
+        {/* 2x2 Badge grid */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Unit badge */}
+          <div className="flex flex-col items-center justify-center border border-primary/20 rounded-md py-1.5 bg-muted/30">
+            <span className="text-[9px] text-muted-foreground uppercase">Unidade</span>
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-primary/50">
+                {unitInfo.icon}
               </div>
-            </div>
-            
-            {/* Period badge */}
-            <div className="flex flex-col items-center justify-center border rounded-md py-1.5 bg-muted/30">
-              <span className="text-[9px] text-muted-foreground uppercase">Período</span>
-              <span className="text-xs font-medium">{minDate} - {maxDate}</span>
-            </div>
-            
-            {/* Records badge */}
-            <div className="flex flex-col items-center justify-center border rounded-md py-1.5 bg-secondary/50">
-              <span className="text-[9px] text-muted-foreground uppercase">Registros</span>
-              <div className="flex items-center gap-1">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-muted-foreground/50">
-                  <Database className="h-3 w-3 text-muted-foreground" />
-                </div>
-                <span className="text-xs font-medium">{hasData ? stats.count.toLocaleString() : "0"}</span>
-              </div>
-            </div>
-            
-            {/* Last value badge */}
-            <div className="flex flex-col items-center justify-center border rounded-md py-1.5 bg-primary/10 text-primary">
-              <span className="text-[9px] text-muted-foreground uppercase">Último Valor</span>
-              <span className="text-xs font-bold">
-                {hasData ? formatValue(stats.lastValue, indicator.unit, !isIndex) : "N/A"}
-              </span>
+              <span className="text-xs font-medium">{unitInfo.label}</span>
             </div>
           </div>
-        </CardContent>
-      </Card>
+          
+          {/* Period badge */}
+          <div className="flex flex-col items-center justify-center border border-primary/20 rounded-md py-1.5 bg-muted/30">
+            <span className="text-[9px] text-muted-foreground uppercase">Período</span>
+            <span className="text-xs font-medium">{minDate} - {maxDate}</span>
+          </div>
+          
+          {/* Records badge */}
+          <div className="flex flex-col items-center justify-center border border-primary/20 rounded-md py-1.5 bg-secondary/30">
+            <span className="text-[9px] text-muted-foreground uppercase">Registros</span>
+            <div className="flex items-center gap-1">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-primary/50">
+                <Database className="h-3 w-3 text-muted-foreground" />
+              </div>
+              <span className="text-xs font-medium">{hasData ? stats.count.toLocaleString() : "0"}</span>
+            </div>
+          </div>
+          
+          {/* Last value badge */}
+          <div className="flex flex-col items-center justify-center border border-primary/30 rounded-md py-1.5 bg-primary/10">
+            <span className="text-[9px] text-muted-foreground uppercase">Último Valor</span>
+            <span className="text-xs font-bold text-primary">
+              {hasData ? formatValue(stats.lastValue, indicator.unit, !isIndex) : "N/A"}
+            </span>
+          </div>
+        </div>
+      </div>
     );
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+      {/* Header Card */}
+      <div className="knowyou-header-card">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
             <Database className="h-6 w-6 text-primary" />
-            Table Data Base
-          </h2>
-          <p className="text-muted-foreground">
-            Visualização de indicadores econômicos e seus valores
-          </p>
+            <div>
+              <h2 className="text-xl font-bold">Table Data Base</h2>
+              <p className="text-sm text-muted-foreground">
+                Visualização de indicadores econômicos e seus valores
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {lastUpdate && (
+              <span className="text-xs text-muted-foreground">
+                {lastUpdate.count.toLocaleString()} registros • {format(lastUpdate.date, "dd/MM/yyyy")}
+              </span>
+            )}
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="gap-2 knowyou-badge">
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {lastUpdate && (
-            <span className="text-xs text-muted-foreground">
-              {lastUpdate.count.toLocaleString()} registros • {lastUpdate.date.toLocaleDateString('pt-BR')}
-            </span>
-          )}
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="gap-2">
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
+
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="knowyou-metric-card">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Calendar className="h-4 w-4 text-primary" />
+              <span className="text-sm">Período</span>
+            </div>
+            <div className="font-semibold">
+              {dateRangeFromData.start && dateRangeFromData.end ? (
+                <>
+                  {format(dateRangeFromData.start, "MMM/yyyy", { locale: ptBR })} - {' '}
+                  {format(dateRangeFromData.end, "MMM/yyyy", { locale: ptBR })}
+                </>
+              ) : 'Não definido'}
+            </div>
+          </div>
+
+          <div className="knowyou-metric-card">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <RefreshCw className="h-4 w-4 text-primary" />
+              <span className="text-sm">Frequência</span>
+            </div>
+            <Select defaultValue="monthly">
+              <SelectTrigger className="border-primary/30 bg-transparent h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Diário</SelectItem>
+                <SelectItem value="monthly">Mensal</SelectItem>
+                <SelectItem value="quarterly">Trimestral</SelectItem>
+                <SelectItem value="yearly">Anual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="knowyou-metric-card">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <span className="text-sm">Total de Séries</span>
+            </div>
+            <div className="font-semibold text-lg">{filteredIndicators.length} indicadores</div>
+          </div>
+        </div>
+
+        {/* Series Distribution */}
+        <div>
+          <p className="text-sm text-muted-foreground mb-3">Séries Disponíveis:</p>
+          <div className="flex flex-wrap gap-3">
+            <Badge variant="outline" className="knowyou-badge px-4 py-2">
+              <span className="text-primary">Mensal</span>
+              <span className="ml-2 font-bold">{seriesCounts.monthly}</span>
+            </Badge>
+            <Badge variant="outline" className="knowyou-badge px-4 py-2">
+              <span className="text-primary">Trimestral</span>
+              <span className="ml-2 font-bold">{seriesCounts.quarterly}</span>
+            </Badge>
+            <Badge variant="outline" className="knowyou-badge px-4 py-2">
+              <span className="text-primary">Anual</span>
+              <span className="ml-2 font-bold">{seriesCounts.yearly}</span>
+            </Badge>
+            <Badge variant="outline" className="knowyou-badge px-4 py-2">
+              <span className="text-primary">Diário</span>
+              <span className="ml-2 font-bold">{seriesCounts.daily}</span>
+            </Badge>
+          </div>
         </div>
       </div>
 
@@ -503,12 +609,12 @@ export function TableDatabaseTab() {
           value={searchQuery}
           onChange={setSearchQuery}
           delay={300}
-          className="pl-9"
+          className="pl-9 border-primary/30 focus:border-primary"
         />
       </div>
 
-      {/* Grouped Indicator Cards */}
-      <div className="space-y-8">
+      {/* Grouped Indicator Cards with CollapsibleGroup */}
+      <div className="space-y-4">
         {Object.entries(groupedIndicators).map(([key, groupIndicators]) => {
           const group = CATEGORY_GROUPS[key as keyof typeof CATEGORY_GROUPS] || {
             title: 'Outros Indicadores',
@@ -517,19 +623,15 @@ export function TableDatabaseTab() {
           const GroupIcon = group.icon;
 
           return (
-            <div key={key} className="space-y-4">
-              <div className="flex items-center gap-3 border-b pb-2">
-                <GroupIcon className="h-5 w-5 text-primary" />
-                <h3 className="font-bold text-lg">{group.title}</h3>
-                <Badge variant="outline" className="ml-auto">
-                  {groupIndicators.length} indicadores
-                </Badge>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {groupIndicators.map(renderIndicatorCard)}
-              </div>
-            </div>
+            <CollapsibleGroup
+              key={key}
+              title={group.title}
+              icon={<GroupIcon className="h-5 w-5" />}
+              count={groupIndicators.length}
+              defaultExpanded={key !== 'outros'}
+            >
+              {groupIndicators.map(renderIndicatorCard)}
+            </CollapsibleGroup>
           );
         })}
       </div>
@@ -565,7 +667,7 @@ export function TableDatabaseTab() {
             {/* Circular X button with red hover */}
             <button
               onClick={() => setSelectedIndicator(null)}
-              className="h-10 w-10 rounded-full border border-cyan-500/50 flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
+              className="h-10 w-10 rounded-full border border-primary/50 flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
             >
               <X className="h-5 w-5" />
             </button>

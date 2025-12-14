@@ -47,6 +47,33 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        cyan: {
+          DEFAULT: "hsl(191 100% 50%)",
+          50: "hsl(191 100% 95%)",
+          100: "hsl(191 100% 90%)",
+          200: "hsl(191 100% 80%)",
+          300: "hsl(191 100% 70%)",
+          400: "hsl(191 100% 60%)",
+          500: "hsl(191 100% 50%)",
+          600: "hsl(191 100% 40%)",
+          700: "hsl(191 100% 30%)",
+          800: "hsl(191 100% 20%)",
+          900: "hsl(191 100% 10%)",
+        },
+        magenta: {
+          DEFAULT: "hsl(300 100% 50%)",
+          500: "hsl(300 100% 50%)",
+        },
+        surface: {
+          DEFAULT: "hsl(240 10% 10%)",
+          dark: "hsl(240 10% 5%)",
+        },
+      },
+      boxShadow: {
+        'cyan-sm': '0 2px 8px hsl(191 100% 50% / 0.1)',
+        'cyan-md': '0 4px 16px hsl(191 100% 50% / 0.15)',
+        'cyan-lg': '0 8px 32px hsl(191 100% 50% / 0.2)',
+        'cyan-glow': '0 0 20px hsl(191 100% 50% / 0.3)',
       },
       borderRadius: {
         lg: "var(--radius)",

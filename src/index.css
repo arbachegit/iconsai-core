@@ -64,6 +64,13 @@ All colors MUST be HSL.
     --chat-saved-border: 225 30% 32%;
     --chat-message-user-bg: 191 100% 45%;
     --chat-message-ai-bg: 225 35% 18%;
+    
+    /* Cyan design system for knowyou cards */
+    --cyan-hover-fill: 191 100% 50% / 0.08;
+    --cyan-active-fill: 191 100% 50% / 0.15;
+    --shadow-cyan-sm: 0 2px 8px hsl(191 100% 50% / 0.1);
+    --shadow-cyan-md: 0 4px 16px hsl(191 100% 50% / 0.15);
+    --shadow-cyan-lg: 0 8px 32px hsl(191 100% 50% / 0.2);
   }
 }
 
@@ -150,6 +157,162 @@ All colors MUST be HSL.
       transform: translateY(0);
     }
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KNOWYOU AI - DESIGN SYSTEM
+   Cores Cyan, Efeitos 3D, UI Sóbria e Elegante
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Cards - Contorno Cyan com Efeito 3D no Hover */
+.knowyou-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--primary) / 0.3);
+  border-radius: 0.75rem;
+  transition: 
+    transform 0.25s ease,
+    background-color 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.knowyou-card:hover {
+  background: hsl(var(--cyan-hover-fill));
+  border-color: hsl(var(--primary));
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 
+    var(--shadow-cyan-md),
+    0 0 20px hsl(191 100% 50% / 0.1);
+}
+
+.knowyou-card:active {
+  transform: translateY(-2px) scale(1.005);
+  background: hsl(var(--cyan-active-fill));
+}
+
+/* Badges - Contorno Cyan com Efeito Hover */
+.knowyou-badge {
+  background: transparent;
+  border: 1px solid hsl(var(--primary) / 0.3);
+  color: hsl(var(--primary));
+  border-radius: 0.5rem;
+  transition: 
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.knowyou-badge:hover {
+  background: hsl(var(--cyan-hover-fill));
+  border-color: hsl(var(--primary));
+  transform: translateY(-2px);
+  box-shadow: 
+    0 2px 8px hsl(191 100% 50% / 0.2),
+    inset 0 0 12px hsl(191 100% 50% / 0.05);
+}
+
+/* Indicator Cards - Cards de indicadores específicos */
+.knowyou-indicator-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--primary) / 0.3);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: 
+    transform 0.25s ease,
+    background-color 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.knowyou-indicator-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary)), transparent);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.knowyou-indicator-card:hover {
+  background: hsl(var(--cyan-hover-fill));
+  border-color: hsl(var(--primary));
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 
+    var(--shadow-cyan-md),
+    0 0 20px hsl(191 100% 50% / 0.1);
+}
+
+.knowyou-indicator-card:hover::before {
+  opacity: 1;
+}
+
+.knowyou-indicator-card .indicator-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  transition: color 0.15s ease;
+}
+
+.knowyou-indicator-card:hover .indicator-value {
+  color: hsl(var(--primary));
+}
+
+/* Header Card - Styled header for data sections */
+.knowyou-header-card {
+  background: hsl(var(--card) / 0.8);
+  border: 1px solid hsl(var(--primary) / 0.3);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+/* Metric Card - Small metric display cards */
+.knowyou-metric-card {
+  background: hsl(var(--muted) / 0.3);
+  border: 1px solid hsl(var(--primary) / 0.2);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.knowyou-metric-card:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--cyan-hover-fill));
+}
+
+/* Animações */
+@keyframes float-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-cyan {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(191 100% 50% / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(191 100% 50% / 0);
+  }
+}
+
+.animate-float-in {
+  animation: float-in 0.3s ease-out;
+}
+
+.animate-pulse-cyan {
+  animation: pulse-cyan 2s infinite;
 }
 
 @layer base {
