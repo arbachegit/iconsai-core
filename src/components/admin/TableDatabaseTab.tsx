@@ -620,9 +620,9 @@ export function TableDatabaseTab() {
                     <TableRow>
                       <TableHead>
                         Data
-                        {selectedIndicatorValues.length > 0 && (
+                      {selectedIndicatorValues.length > 0 && (
                           <span className="ml-2 text-xs text-muted-foreground font-normal">
-                            ({format(new Date(selectedIndicatorValues[selectedIndicatorValues.length - 1]?.reference_date), "MM/yyyy")} - {format(new Date(selectedIndicatorValues[0]?.reference_date), "MM/yyyy")})
+                            ({selectedIndicatorValues[selectedIndicatorValues.length - 1]?.reference_date.substring(0, 7).split('-').reverse().join('/')} - {selectedIndicatorValues[0]?.reference_date.substring(0, 7).split('-').reverse().join('/')})
                           </span>
                         )}
                       </TableHead>
@@ -641,7 +641,7 @@ export function TableDatabaseTab() {
                       selectedIndicatorValues.map((item, idx) => (
                         <TableRow key={idx}>
                           <TableCell className="font-mono text-sm">
-                            {format(new Date(item.reference_date), "dd/MM/yyyy")}
+                            {item.reference_date.substring(0, 7).split('-').reverse().join('/')}
                           </TableCell>
                           <TableCell className="text-right font-mono">
                             {formatTableValue(Number(item.value), selectedIndicator?.unit)}

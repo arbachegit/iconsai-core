@@ -362,7 +362,7 @@ export function ChartDatabaseTab() {
       .filter((v) => v.indicator_id === selectedIndicator.id)
       .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
       .map((v) => ({
-        date: format(new Date(v.reference_date), "MM/yyyy"),
+        date: v.reference_date.substring(0, 7).split('-').reverse().join('/'),
         value: v.value,
         rawDate: v.reference_date,
       }));

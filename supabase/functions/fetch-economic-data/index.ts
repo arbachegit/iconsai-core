@@ -1863,8 +1863,24 @@ serve(async (req) => {
                 refDate = `${periodCode}-01-01`; // Annual: YYYY
               } else if (periodCode.length === 6) {
                 refDate = `${periodCode.substring(0, 4)}-${periodCode.substring(4, 6)}-01`; // Monthly: YYYYMM
+              } else if (periodCode.length === 1 || periodCode.length === 2) {
+                // Quarterly: Single digit 1-4 represents quarters (PNAD trimestral)
+                // This requires the year from another field - skip if year unknown
+                debugCounters.filteredByInvalidPeriod++;
+                continue;
               } else {
                 refDate = `${periodCode}-01-01`;
+              }
+              
+              // Validate: Reject future dates
+              const today = new Date();
+              const refDateObj = new Date(refDate);
+              if (refDateObj > today) {
+                debugCounters.filteredByInvalidPeriod++;
+                if (sampleFilteredPeriods.length < 5) {
+                  sampleFilteredPeriods.push(`Future date rejected: ${refDate}`);
+                }
+                continue;
               }
               
               // Extract UF code - handle both standard (D1C) and PAC (dynamic field→mapping) formats
@@ -2007,6 +2023,14 @@ serve(async (req) => {
                         refDate = `${year}-${month}-01`;
                       } else {
                         refDate = `${period}-01-01`;
+                      }
+                      
+                      // Validate: Reject future dates
+                      const today = new Date();
+                      const refDateObj = new Date(refDate);
+                      if (refDateObj > today) {
+                        console.log(`[FETCH-ECONOMIC] [IBGE] Skipping future date: ${refDate}`);
+                        continue;
                       }
                       
                       const numValue = parseFloat(value.replace(',', '.'));
