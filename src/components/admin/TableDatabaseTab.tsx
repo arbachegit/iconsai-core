@@ -322,6 +322,10 @@ export function TableDatabaseTab() {
   });
 
   const handleCardClick = (indicator: IndicatorWithApi) => {
+    // Reset child modal states before selecting new indicator
+    setShowTableModal(false);
+    setShowSTSModal(false);
+    setShowTrendModal(false);
     setSelectedIndicator(indicator);
   };
 

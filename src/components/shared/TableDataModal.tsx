@@ -94,7 +94,8 @@ export function TableDataModal({
       <div className="fixed inset-0 flex items-center justify-center z-[100] p-4">
         <div 
           className={cn(
-            "relative w-full max-w-4xl h-[85vh]",
+            "relative w-full max-w-4xl",
+            "h-[85vh] max-h-[800px]",
             "bg-[#0A0A0F] border border-cyan-500/30",
             "rounded-xl shadow-2xl shadow-cyan-500/10",
             "overflow-hidden flex flex-col"
