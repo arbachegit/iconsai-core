@@ -574,13 +574,14 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get API provider info INCLUDING configured dates
+    // Get API provider info INCLUDING configured dates and name for audit
     const { data: apiInfo } = await supabase
       .from('system_api_registry')
-      .select('provider, target_table, fetch_start_date, fetch_end_date')
+      .select('name, provider, target_table, fetch_start_date, fetch_end_date')
       .eq('id', apiId)
       .single();
 
+    const apiName = apiInfo?.name || 'Unknown API';
     const provider = apiInfo?.provider || 'Unknown';
     const targetTable = apiInfo?.target_table || 'indicator_values';
     
@@ -937,6 +938,38 @@ serve(async (req) => {
           console.log(`[TEST-API] ✅ Auto-adjusted fetch_start_date to ${result.syncMetadata.period_start}`);
         }
       }
+    }
+
+    // ====== AUDIT LOGGING: Record test result ======
+    const eventType = result.success ? 'CONNECTION_TEST_SUCCESS' : 'CONNECTION_TEST_FAILED';
+    const severity = result.success ? 'SUCCESS' : 'ERROR';
+    const recordCount = result.syncMetadata?.extracted_count || 0;
+    const description = result.success 
+      ? `Teste de conexão bem-sucedido para "${apiName}". ${recordCount} registros retornados em ${result.latencyMs}ms.`
+      : `Falha no teste de conexão para "${apiName}": ${result.error || 'Erro desconhecido'}`;
+
+    try {
+      await supabase.rpc('log_api_event', {
+        p_api_id: apiId,
+        p_api_name: apiName,
+        p_event_type: eventType,
+        p_event_category: 'CONNECTION',
+        p_severity: severity,
+        p_action_description: description,
+        p_request_payload: { url: baseUrl, provider },
+        p_response_payload: result.success ? {
+          status: result.statusCode,
+          recordCount,
+          sampleFields: result.syncMetadata?.fields_detected || []
+        } : null,
+        p_error_message: result.error || null,
+        p_records_affected: recordCount,
+        p_execution_time_ms: result.latencyMs,
+        p_http_status: result.statusCode
+      });
+      console.log(`[TEST-API] Audit log recorded: ${eventType}`);
+    } catch (auditError) {
+      console.error('[TEST-API] Failed to record audit log:', auditError);
     }
 
     return new Response(
