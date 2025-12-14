@@ -415,17 +415,36 @@ export function TableDatabaseTab() {
     return groups;
   }, [filteredIndicators]);
 
-  // Prepare data for analysis hook
+  // Prepare data for analysis hook - aggregate regional data by period for national analysis
   const analysisData = useMemo(() => {
     if (!selectedIndicatorValues || selectedIndicatorValues.length === 0) return null;
-    return selectedIndicatorValues
-      .filter(v => !v.brazilian_ufs) // National data only for analysis
-      .map(v => ({
-        date: new Date(v.reference_date),
-        value: v.value,
-      }))
+    
+    // Check if this is a regional indicator (PAC, PMC regional, etc.)
+    const isRegional = selectedIndicator?.is_regional === true;
+    
+    if (!isRegional) {
+      // National data - use existing logic
+      return selectedIndicatorValues
+        .filter(v => !v.brazilian_ufs)
+        .map(v => ({
+          date: new Date(v.reference_date),
+          value: v.value,
+        }))
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+    }
+    
+    // Regional data (PAC) - aggregate all UFs by period for national total
+    const aggregated: Record<string, number> = {};
+    selectedIndicatorValues.forEach(v => {
+      const date = v.reference_date;
+      if (!aggregated[date]) aggregated[date] = 0;
+      aggregated[date] += v.value;
+    });
+    
+    return Object.entries(aggregated)
+      .map(([date, value]) => ({ date: new Date(date), value }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [selectedIndicatorValues]);
+  }, [selectedIndicatorValues, selectedIndicator?.is_regional]);
 
   // Time series analysis
   const analysis = useTimeSeriesAnalysis(analysisData, selectedIndicator?.frequency as Frequency);
@@ -439,12 +458,24 @@ export function TableDatabaseTab() {
     return runStructuralTimeSeries(analysisData, selectedIndicator?.frequency as Frequency || 'monthly');
   }, [analysisData, selectedIndicator?.frequency]);
 
-  // Get current (last) value for STS modal
+  // Get current (last) value for STS modal - aggregate for regional indicators
   const currentValue = useMemo(() => {
     if (!selectedIndicatorValues || selectedIndicatorValues.length === 0) return 0;
-    const nationalValues = selectedIndicatorValues.filter(v => !v.brazilian_ufs);
-    return nationalValues.length > 0 ? nationalValues[0].value : 0;
-  }, [selectedIndicatorValues]);
+    
+    const isRegional = selectedIndicator?.is_regional === true;
+    
+    if (!isRegional) {
+      const nationalValues = selectedIndicatorValues.filter(v => !v.brazilian_ufs);
+      return nationalValues.length > 0 ? nationalValues[0].value : 0;
+    }
+    
+    // For regional indicators, get sum of most recent period
+    const maxDate = selectedIndicatorValues.reduce((max, v) => 
+      v.reference_date > max ? v.reference_date : max, '');
+    return selectedIndicatorValues
+      .filter(v => v.reference_date === maxDate)
+      .reduce((sum, v) => sum + v.value, 0);
+  }, [selectedIndicatorValues, selectedIndicator?.is_regional]);
 
   // Calculate series counts by frequency - MUST be before early return
   const seriesCounts = useMemo(() => {
