@@ -1875,7 +1875,7 @@ serve(async (req) => {
                   '04': '10'  // Q4 → October
                 };
                 
-                if (quarterToMonth[suffix] && linkedIndicator?.frequency === 'quarterly') {
+                if (quarterToMonth[suffix] && (indicator as any)?.frequency === 'quarterly') {
                   // This is quarterly data (PNAD trimestral, etc.)
                   refDate = `${year}-${quarterToMonth[suffix]}-01`;
                   console.log(`[FETCH-ECONOMIC] [SIDRA-FLAT] Quarterly mapping: ${periodCode} → ${refDate}`);
