@@ -656,96 +656,98 @@ export function TableDatabaseTab() {
         })}
       </div>
 
-      {/* View Modal */}
+      {/* View Modal - NUCLEAR FIX: fundos opacos, z-index correto, footer fixo */}
       <Dialog open={!!selectedIndicator} onOpenChange={(open) => {
         if (!open) setSelectedIndicator(null);
       }}>
-        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 [&>button]:hidden">
-          {/* Custom Header with X button */}
-          <div className="flex items-center justify-between p-6 pb-4 border-b">
-          <div className="flex items-center gap-3">
-            <Database className="h-5 w-5 text-primary" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold">{selectedIndicator?.name}</h2>
-                {selectedIndicator?.api?.provider && (
-                  <Badge 
-                    variant="outline" 
-                    className={getProviderColor(selectedIndicator.api.provider)}
-                  >
-                    {selectedIndicator.api.provider}
-                  </Badge>
-                )}
+        <DialogContent className="max-w-4xl h-[90vh] max-h-[900px] flex flex-col p-0 bg-[#0A0A0F] overflow-hidden [&>button]:hidden">
+          {/* HEADER - flex-shrink-0, bg opaco, z-10 */}
+          <div className="flex-shrink-0 flex items-center justify-between p-6 pb-4 border-b border-cyan-500/20 bg-[#0A0A0F] z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                <Database className="h-5 w-5 text-cyan-500" />
               </div>
-              <span className="text-sm text-muted-foreground">
-                {selectedIndicatorValues.length} registros 
-                {selectedIndicatorValues.length === 500 && ' (limitado a 500)'}
-              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-white">{selectedIndicator?.name}</h2>
+                  {selectedIndicator?.api?.provider && (
+                    <Badge 
+                      variant="outline" 
+                      className={cn("text-xs border-cyan-500/50 text-cyan-400", getProviderColor(selectedIndicator.api.provider))}
+                    >
+                      {selectedIndicator.api.provider}
+                    </Badge>
+                  )}
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {selectedIndicatorValues.length} registros 
+                  {selectedIndicatorValues.length === 500 && ' (limitado a 500)'}
+                </span>
+              </div>
             </div>
-          </div>
-            
-            {/* Circular X button with red hover */}
+              
+            {/* Botão fechar - z-60 */}
             <button
               onClick={() => setSelectedIndicator(null)}
-              className="h-10 w-10 rounded-full border border-primary/50 flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
+              className="h-10 w-10 rounded-full border border-cyan-500/30 flex items-center justify-center text-white hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all z-60"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Info Section (Non-Editable) */}
-          <div className="grid grid-cols-3 gap-4 px-6 py-4 border-b">
+          {/* METADADOS - flex-shrink-0, bg opaco */}
+          <div className="flex-shrink-0 grid grid-cols-3 md:grid-cols-6 gap-4 px-6 py-4 border-b border-cyan-500/20 bg-[#0A0A0F]">
             <div>
               <span className="text-xs text-muted-foreground">Código</span>
-              <p className="font-mono text-sm">{selectedIndicator?.code}</p>
+              <p className="font-mono text-sm text-white">{selectedIndicator?.code}</p>
             </div>
             <div>
               <span className="text-xs text-muted-foreground">Unidade</span>
-              <p className="text-sm">{selectedIndicator?.unit || '-'}</p>
+              <p className="text-sm text-white">{selectedIndicator?.unit || '-'}</p>
             </div>
             <div>
               <span className="text-xs text-muted-foreground">Categoria</span>
-              <Badge variant="outline" className="mt-1">
+              <Badge variant="outline" className="mt-1 text-xs">
                 {CATEGORIES[selectedIndicator?.category || ''] || selectedIndicator?.category || '-'}
               </Badge>
             </div>
             <div>
               <span className="text-xs text-muted-foreground">Frequência</span>
               <div className="flex items-center gap-1 mt-1">
-                <Calendar className="h-3 w-3 text-muted-foreground" />
-                <span className="text-sm">{FREQUENCIES[selectedIndicator?.frequency || ''] || selectedIndicator?.frequency || '-'}</span>
+                <Calendar className="h-3 w-3 text-cyan-500" />
+                <span className="text-sm text-white">{FREQUENCIES[selectedIndicator?.frequency || ''] || selectedIndicator?.frequency || '-'}</span>
               </div>
             </div>
             <div>
               <span className="text-xs text-muted-foreground">Regional</span>
               <div className="flex items-center gap-1 mt-1">
-                <MapPin className="h-3 w-3 text-muted-foreground" />
-                <span className="text-sm">{selectedIndicator?.is_regional ? 'Sim (por UF)' : 'Não (Brasil)'}</span>
+                <MapPin className="h-3 w-3 text-cyan-500" />
+                <span className="text-sm text-white">{selectedIndicator?.is_regional ? 'Sim (por UF)' : 'Não (Brasil)'}</span>
               </div>
             </div>
             <div>
               <span className="text-xs text-muted-foreground">API Vinculada</span>
-              <p className="text-sm">{selectedIndicator?.api?.name || 'Nenhuma'}</p>
+              <p className="text-sm text-white truncate">{selectedIndicator?.api?.name || 'Nenhuma'}</p>
             </div>
           </div>
 
-          {/* Values Table */}
-          <div className="flex-1 min-h-0 px-6 py-4">
+          {/* TABELA - flex-1, overflow-y-auto, bg opaco */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 bg-[#0A0A0F]">
             {loadingSelectedValues ? (
               <div className="flex items-center justify-center h-40">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <ScrollArea className="h-[280px] border rounded-md">
+              <div className="border border-cyan-500/20 rounded-md overflow-hidden">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 bg-[#0D0D12] z-10">
                     <TableRow>
-                      <TableHead>Data</TableHead>
+                      <TableHead className="text-cyan-400">Data</TableHead>
                       {selectedIndicator?.is_regional && (
-                        <TableHead>UF</TableHead>
+                        <TableHead className="text-cyan-400">UF</TableHead>
                       )}
-                      <TableHead className="text-right">Valor</TableHead>
-                      <TableHead>Indicador</TableHead>
+                      <TableHead className="text-right text-cyan-400">Valor</TableHead>
+                      <TableHead className="text-cyan-400">Indicador</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -757,16 +759,16 @@ export function TableDatabaseTab() {
                       </TableRow>
                     ) : (
                       selectedIndicatorValues.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="font-mono text-sm">
+                        <TableRow key={idx} className="border-b border-cyan-500/5 hover:bg-cyan-500/5 transition-colors">
+                          <TableCell className="font-mono text-sm text-white">
                             {formatDateByFrequency(item.reference_date, selectedIndicator?.frequency)}
                           </TableCell>
                           {selectedIndicator?.is_regional && (
-                            <TableCell className="font-mono text-sm">
+                            <TableCell className="font-semibold text-sm text-white">
                               {item.brazilian_ufs?.uf_sigla || '-'}
                             </TableCell>
                           )}
-                          <TableCell className="text-right font-mono">
+                          <TableCell className="text-right font-mono text-white">
                             {formatTableValue(Number(item.value), selectedIndicator?.unit)}
                           </TableCell>
                           <TableCell className="text-muted-foreground">
@@ -778,25 +780,52 @@ export function TableDatabaseTab() {
                     )}
                   </TableBody>
                 </Table>
-              </ScrollArea>
+              </div>
             )}
           </div>
 
-          {/* Footer with Statistics */}
-          {analysis && !selectedIndicator?.is_regional && (
-            <div className="px-6 py-4 border-t space-y-4">
-              {/* Statistics Badges */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* FOOTER - flex-shrink-0, bg opaco, z-20, NUNCA TRANSPARENTE */}
+          {analysis && (
+            <div className="flex-shrink-0 px-6 py-4 border-t border-cyan-500/20 bg-[#0D0D12] z-20 space-y-4">
+              {/* 4 BADGES SEPARADOS - grid 2x2 em mobile, 4 em desktop */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <StatBadge
                   label="Média Móvel"
                   value={analysis.statistics.movingAverage 
                     ? formatTableValue(analysis.statistics.movingAverage, selectedIndicator?.unit) 
                     : 'N/A'}
+                  infoTitle="Média Móvel"
+                  infoContent={
+                    <p>
+                      A <strong>média móvel</strong> suaviza flutuações de curto prazo 
+                      para revelar a tendência subjacente. Uma série acima da média móvel 
+                      sugere momento positivo; abaixo indica fraqueza.
+                    </p>
+                  }
                 />
                 <StatBadge
                   label="Desvio Padrão"
                   value={formatTableValue(analysis.statistics.stdDev, selectedIndicator?.unit)}
-                  unit={`CV: ${analysis.statistics.coefficientOfVariation.toFixed(1)}%`}
+                  infoTitle="Desvio Padrão"
+                  infoContent={
+                    <p>
+                      O <strong>desvio padrão</strong> mede a dispersão dos valores em 
+                      relação à média. Um desvio alto indica maior volatilidade e risco; 
+                      um desvio baixo sugere estabilidade.
+                    </p>
+                  }
+                />
+                <StatBadge
+                  label="Coef. Variação"
+                  value={`${analysis.statistics.coefficientOfVariation.toFixed(1)}%`}
+                  infoTitle="Coeficiente de Variação"
+                  infoContent={
+                    <p>
+                      O <strong>coeficiente de variação (CV)</strong> expressa o desvio 
+                      padrão como percentual da média. CV abaixo de 15% indica baixa dispersão; 
+                      entre 15-30% é moderada; acima de 30% é alta volatilidade.
+                    </p>
+                  }
                 />
                 <StatBadge
                   label="Tendência"
@@ -806,16 +835,58 @@ export function TableDatabaseTab() {
                 />
               </div>
 
-              {/* Suggestions */}
+              {/* SUGESTÕES - bg opaco */}
               {suggestions.length > 0 && (
-                <div className="p-4 border border-primary/20 rounded-lg bg-muted/30">
-                  <h4 className="text-sm font-medium flex items-center gap-2 mb-3">
-                    <Info className="h-4 w-4 text-primary" />
+                <div className="p-4 border border-cyan-500/20 rounded-lg bg-[#0D0D12] space-y-3">
+                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <Info className="h-4 w-4 text-cyan-500" />
                     Sugestões de Análise
                   </h4>
-                  <ul className="space-y-2">
-                    {suggestions.slice(0, 4).map((suggestion, idx) => (
-                      <li key={idx} className="text-sm text-muted-foreground">
+                  
+                  {/* Valor Estimado */}
+                  {analysis.forecast && (
+                    <div className="flex items-start gap-2 text-sm">
+                      <span>📌</span>
+                      <div>
+                        <span className="text-cyan-400 font-medium">VALOR ESTIMADO:</span>
+                        <span className="text-white ml-2">
+                          {formatTableValue(analysis.forecast.lower, selectedIndicator?.unit)} - {formatTableValue(analysis.forecast.upper, selectedIndicator?.unit)}
+                        </span>
+                        <span className="text-muted-foreground ml-1">
+                          para {analysis.nextPeriodLabel}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tendência */}
+                  <div className="flex items-start gap-2 text-sm">
+                    <span>📈</span>
+                    <div>
+                      <span className="text-cyan-400 font-medium">TENDÊNCIA:</span>
+                      <span className="text-white ml-2">
+                        {analysis.direction === 'up' ? '↗ Alta' : analysis.direction === 'down' ? '↘ Queda' : '→ Estável'}
+                        {analysis.strength === 'strong' ? ' Forte' : analysis.strength === 'weak' ? ' Leve' : ' Moderada'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Incerteza */}
+                  <div className="flex items-start gap-2 text-sm">
+                    <span>📊</span>
+                    <div>
+                      <span className="text-cyan-400 font-medium">INCERTEZA:</span>
+                      <span className="text-white ml-2">
+                        {analysis.uncertainty === 'low' ? '🟢 Baixa' : analysis.uncertainty === 'high' ? '🔴 Alta' : '🟡 Moderada'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Lista de sugestões adicionais */}
+                  <ul className="space-y-1 pt-2 border-t border-cyan-500/10">
+                    {suggestions.slice(0, 3).map((suggestion, idx) => (
+                      <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                        <span className="text-cyan-500">•</span>
                         {suggestion}
                       </li>
                     ))}
