@@ -82,23 +82,29 @@ export function RegionalIndicatorsTab() {
     }
   });
 
-  // Fetch data availability for each indicator
-  const { data: dataAvailability = {} } = useQuery({
-    queryKey: ['indicator-data-availability'],
+  // Fetch data availability for each indicator using count queries
+  const { data: indicatorsWithData = new Set<string>() } = useQuery({
+    queryKey: ['indicators-with-data', indicators.map(i => i.id).join(',')],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('indicator_regional_values')
-        .select('indicator_id');
+      const withData = new Set<string>();
       
-      if (error) throw error;
+      // Check each indicator for data availability using count
+      await Promise.all(
+        indicators.map(async (ind) => {
+          const { count } = await supabase
+            .from('indicator_regional_values')
+            .select('*', { count: 'exact', head: true })
+            .eq('indicator_id', ind.id);
+          
+          if (count && count > 0) {
+            withData.add(ind.id);
+          }
+        })
+      );
       
-      const counts: Record<string, number> = {};
-      data.forEach(item => {
-        counts[item.indicator_id] = (counts[item.indicator_id] || 0) + 1;
-      });
-      
-      return counts;
-    }
+      return withData;
+    },
+    enabled: indicators.length > 0
   });
 
   // Fetch regional values for selected indicator
@@ -234,7 +240,7 @@ export function RegionalIndicatorsTab() {
               </SelectTrigger>
               <SelectContent>
                 {indicators.map(ind => {
-                  const hasData = (dataAvailability[ind.id] || 0) > 0;
+                  const hasData = indicatorsWithData.has(ind.id);
                   return (
                     <SelectItem key={ind.id} value={ind.id}>
                       <span className="flex items-center gap-2 w-full">
