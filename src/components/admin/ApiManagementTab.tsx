@@ -144,10 +144,19 @@ export default function ApiManagementTab() {
   const [urlViewModalOpen, setUrlViewModalOpen] = useState(false);
   const [urlToView, setUrlToView] = useState('');
   
+  // Search filter
+  const [searchQuery, setSearchQuery] = useState('');
+  
   // Cron job config section
   const [showCronSection, setShowCronSection] = useState(true);
   const [autoSyncStats, setAutoSyncStats] = useState<AutoSyncStats>({ total: 0, daily: 0, weekly: 0, monthly: 0 });
   const [triggeringManualSync, setTriggeringManualSync] = useState(false);
+  
+  // Cron configuration state
+  const [cronHour, setCronHour] = useState('03');
+  const [cronMinute, setCronMinute] = useState('00');
+  const [globalAutoSyncEnabled, setGlobalAutoSyncEnabled] = useState(true);
+  const [defaultFrequency, setDefaultFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   
   // Mass sync with progress modal
   const [showSyncProgressModal, setShowSyncProgressModal] = useState(false);
@@ -168,6 +177,17 @@ export default function ApiManagementTab() {
     description: '',
     status: 'active',
     target_table: 'indicator_values'
+  });
+  
+  // Filtered APIs based on search
+  const filteredApis = apis.filter(api => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      api.name.toLowerCase().includes(query) ||
+      api.provider.toLowerCase().includes(query) ||
+      (api.description || '').toLowerCase().includes(query)
+    );
   });
 
   useEffect(() => {
@@ -846,7 +866,7 @@ export default function ApiManagementTab() {
       : <ChevronDown className="h-3 w-3 text-primary" />;
   };
 
-  const sortedApis = [...apis].sort((a, b) => {
+  const sortedApis = [...filteredApis].sort((a, b) => {
     let aVal: string | number;
     let bVal: string | number;
     
@@ -909,8 +929,12 @@ export default function ApiManagementTab() {
                 <div className="flex items-center gap-3">
                   <Timer className="h-5 w-5 text-cyan-500" />
                   <CardTitle className="text-base">Configuração de Sincronização Automática</CardTitle>
-                  <Badge variant="outline" className="border-green-500/40 text-green-400">
-                    Ativo
+                  <Badge variant="outline" className={cn(
+                    globalAutoSyncEnabled 
+                      ? "border-green-500/40 text-green-400" 
+                      : "border-muted-foreground/40 text-muted-foreground"
+                  )}>
+                    {globalAutoSyncEnabled ? 'Ativo' : 'Inativo'}
                   </Badge>
                 </div>
                 <ChevronDown className={cn(
@@ -922,25 +946,80 @@ export default function ApiManagementTab() {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Job Info */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Global Toggle */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
+                  <Label className="text-sm font-medium flex items-center gap-2">
                     <Zap className="h-4 w-4 text-amber-500" />
-                    <span className="font-medium">Job: auto-sync-indicators-daily</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span>Schedule: 0 3 * * * (Diário às 03:00)</span>
+                    Sincronização Global
+                  </Label>
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-md border border-border/40">
+                    <Switch
+                      checked={globalAutoSyncEnabled}
+                      onCheckedChange={setGlobalAutoSyncEnabled}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {globalAutoSyncEnabled ? 'Habilitado' : 'Desabilitado'}
+                    </span>
                   </div>
                 </div>
 
-                {/* Next Execution */}
+                {/* Schedule Configuration */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <CalendarIcon className="h-4 w-4 text-emerald-500" />
-                    <span className="font-medium">Próxima execução:</span>
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-cyan-500" />
+                    Horário de Execução
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Select value={cronHour} onValueChange={setCronHour}>
+                      <SelectTrigger className="w-20 h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(h => (
+                          <SelectItem key={h} value={h}>{h}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span className="text-muted-foreground">:</span>
+                    <Select value={cronMinute} onValueChange={setCronMinute}>
+                      <SelectTrigger className="w-20 h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['00', '15', '30', '45'].map(m => (
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+                  <p className="text-xs text-muted-foreground">Cron: 0 {cronHour} * * *</p>
+                </div>
+
+                {/* Default Frequency */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-emerald-500" />
+                    Frequência Padrão
+                  </Label>
+                  <Select value={defaultFrequency} onValueChange={(v) => setDefaultFrequency(v as 'daily' | 'weekly' | 'monthly')}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Diária</SelectItem>
+                      <SelectItem value="weekly">Semanal</SelectItem>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Next Execution & Stats */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Database className="h-4 w-4 text-violet-500" />
+                    Próxima Execução
+                  </Label>
                   <div className="p-3 bg-muted/50 rounded-md border border-border/40">
                     <div className="text-sm font-medium">
                       {format(getNextCronExecution(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
@@ -950,34 +1029,29 @@ export default function ApiManagementTab() {
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Auto-Sync Stats */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Database className="h-4 w-4 text-violet-500" />
-                    <span className="font-medium">APIs com auto-sync:</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {autoSyncStats.total} total
-                    </Badge>
-                    {autoSyncStats.daily > 0 && (
-                      <Badge variant="outline" className="text-xs border-blue-500/40 text-blue-400">
-                        {autoSyncStats.daily} Diária
-                      </Badge>
-                    )}
-                    {autoSyncStats.weekly > 0 && (
-                      <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-400">
-                        {autoSyncStats.weekly} Semanal
-                      </Badge>
-                    )}
-                    {autoSyncStats.monthly > 0 && (
-                      <Badge variant="outline" className="text-xs border-purple-500/40 text-purple-400">
-                        {autoSyncStats.monthly} Mensal
-                      </Badge>
-                    )}
-                  </div>
-                </div>
+              {/* Stats Row */}
+              <div className="mt-4 pt-4 border-t border-border/40 flex flex-wrap items-center gap-3">
+                <span className="text-sm text-muted-foreground">APIs com auto-sync:</span>
+                <Badge variant="secondary" className="text-xs">
+                  {autoSyncStats.total} total
+                </Badge>
+                {autoSyncStats.daily > 0 && (
+                  <Badge variant="outline" className="text-xs border-blue-500/40 text-blue-400">
+                    {autoSyncStats.daily} Diária
+                  </Badge>
+                )}
+                {autoSyncStats.weekly > 0 && (
+                  <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-400">
+                    {autoSyncStats.weekly} Semanal
+                  </Badge>
+                )}
+                {autoSyncStats.monthly > 0 && (
+                  <Badge variant="outline" className="text-xs border-purple-500/40 text-purple-400">
+                    {autoSyncStats.monthly} Mensal
+                  </Badge>
+                )}
               </div>
 
               {/* Manual Trigger Button */}
@@ -1010,12 +1084,13 @@ export default function ApiManagementTab() {
       </Collapsible>
 
       <Card className="border-border/40 bg-card/50">
-        <CardHeader className="flex flex-row items-center justify-between">
+        {/* Title Row */}
+        <CardHeader className="pb-4">
           <div className="flex items-center gap-3">
             <Webhook className="h-6 w-6 text-primary" />
-            <CardTitle>Gestão de APIs Externas</CardTitle>
+            <CardTitle className="text-xl">Gestão de APIs Externas</CardTitle>
             <Badge variant="secondary" className="text-xs">
-              {apis.length}
+              {filteredApis.length}{searchQuery && ` de ${apis.length}`}
             </Badge>
             {lastTriggerTime && (
               <span className="text-xs text-muted-foreground ml-2">
@@ -1023,75 +1098,110 @@ export default function ApiManagementTab() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            {/* Show Retestar Todas button only if there are APIs marked as pending_retest */}
-            {apis.filter(a => a.source_data_status === 'pending_retest').length > 0 && (
+        </CardHeader>
+
+        <CardContent className="pt-0">
+          {/* Search + Actions Row */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 pb-4 border-b border-border/40">
+            {/* Search Field */}
+            <div className="relative w-full md:w-80">
+              <Input
+                placeholder="Buscar por nome, provider..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9 h-9"
+              />
+              <Activity className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+                  onClick={() => setSearchQuery('')}
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Retestar Todas button - only if pending_retest */}
+              {apis.filter(a => a.source_data_status === 'pending_retest').length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRetestPendingApis}
+                  disabled={testingAllApis}
+                  className="gap-1.5 border-amber-500/40 text-amber-400 hover:bg-red-600 hover:text-white hover:border-red-600"
+                >
+                  {testingAllApis ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      Retestando...
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Retestar ({apis.filter(a => a.source_data_status === 'pending_retest').length})
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 variant="outline"
-                onClick={handleRetestPendingApis}
+                size="sm"
+                onClick={handleTestAllConnections}
                 disabled={testingAllApis}
-                className="gap-2 border-amber-500/40 text-amber-400 hover:bg-red-600 hover:text-white hover:border-red-600"
+                className="gap-1.5"
               >
                 {testingAllApis ? (
                   <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Retestando...
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    {testAllProgress.current}/{testAllProgress.total}
                   </>
                 ) : (
                   <>
-                    <AlertTriangle className="h-4 w-4" />
-                    Retestar Todas ({apis.filter(a => a.source_data_status === 'pending_retest').length})
+                    <Activity className="h-3.5 w-3.5" />
+                    Testar Conexão
                   </>
                 )}
               </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={handleTestAllConnections}
-              disabled={testingAllApis}
-              className="gap-2"
-            >
-              {testingAllApis ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  {testAllProgress.current}/{testAllProgress.total}
-                </>
-              ) : (
-                <>
-                  <Activity className="h-4 w-4" />
-                  Testar Conexão (Todas)
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleSyncAllApis}
-              disabled={syncingAllApis}
-              className="gap-2"
-            >
-              {syncingAllApis ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  {syncAllProgress.current}/{syncAllProgress.total}
-                </>
-              ) : (
-                <>
-                  <Database className="h-4 w-4" />
-                  Sincronizar Todos
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setApiDiagnosticModalOpen(true)}
-              className="gap-2"
-            >
-              <Stethoscope className="h-4 w-4" />
-              Gestão de API
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncAllApis}
+                disabled={syncingAllApis}
+                className="gap-1.5"
+              >
+                {syncingAllApis ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    {syncAllProgress.current}/{syncAllProgress.total}
+                  </>
+                ) : (
+                  <>
+                    <Database className="h-3.5 w-3.5" />
+                    Sincronizar Todos
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setApiDiagnosticModalOpen(true)}
+                className="gap-1.5"
+              >
+                <Stethoscope className="h-3.5 w-3.5" />
+                Gestão de API
+              </Button>
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
+
+          {/* Table */}
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -1147,10 +1257,10 @@ export default function ApiManagementTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {apis.length === 0 ? (
+                {filteredApis.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                      Nenhuma API cadastrada
+                      {searchQuery ? 'Nenhuma API encontrada para a busca' : 'Nenhuma API cadastrada'}
                     </TableCell>
                   </TableRow>
                 ) : (
