@@ -26,6 +26,7 @@ import { formatDateTime, formatRelative } from '@/lib/date-utils';
 import { SidraDataPreviewModal } from './SidraDataPreviewModal';
 import ApiDiagnosticModal from './ApiDiagnosticModal';
 import { logger } from '@/lib/logger';
+import { EconomicCloseButton } from './EconomicCloseButton';
 
 interface SyncResultItem {
   name: string;
@@ -1723,7 +1724,8 @@ export default function ApiManagementTab() {
 
       {/* Test Result Dialog */}
       <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] [&>button]:hidden">
+          <EconomicCloseButton onClick={() => setShowResultDialog(false)} />
           <DialogHeader>
             <DialogTitle className={`flex items-center gap-2 ${testResult?.success ? 'text-green-500' : 'text-red-500'}`}>
               {testResult?.success ? (
@@ -1829,7 +1831,8 @@ export default function ApiManagementTab() {
 
       {/* Raw Log Modal */}
       <Dialog open={showLogModal} onOpenChange={setShowLogModal}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] [&>button]:hidden">
+          <EconomicCloseButton onClick={() => setShowLogModal(false)} />
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileJson className="h-5 w-5 text-amber-500" />
@@ -1869,7 +1872,8 @@ export default function ApiManagementTab() {
 
       {/* Schema Modal */}
       <Dialog open={showSchemaModal} onOpenChange={setShowSchemaModal}>
-        <DialogContent className="sm:max-w-[800px] max-h-[85vh]">
+        <DialogContent className="sm:max-w-[800px] max-h-[85vh] [&>button]:hidden">
+          <EconomicCloseButton onClick={() => setShowSchemaModal(false)} />
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Tag className="h-5 w-5 text-purple-500" />
@@ -1945,7 +1949,8 @@ export default function ApiManagementTab() {
 
       {/* View Configuration Modal - Read Only */}
       <Dialog open={!!viewConfigApi} onOpenChange={(open) => !open && setViewConfigApi(null)}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] [&>button]:hidden">
+          <EconomicCloseButton onClick={() => setViewConfigApi(null)} />
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Info className="h-5 w-5 text-primary" />
@@ -2036,7 +2041,8 @@ export default function ApiManagementTab() {
 
       {/* URL View Modal */}
       <Dialog open={urlViewModalOpen} onOpenChange={setUrlViewModalOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl [&>button]:hidden">
+          <EconomicCloseButton onClick={() => setUrlViewModalOpen(false)} />
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5 text-primary" />
@@ -2063,7 +2069,8 @@ export default function ApiManagementTab() {
 
       {/* Mass Sync Progress Modal */}
       <Dialog open={showSyncProgressModal} onOpenChange={setShowSyncProgressModal}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto [&>button]:hidden">
+          <EconomicCloseButton onClick={() => setShowSyncProgressModal(false)} />
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Database className="h-5 w-5 text-primary" />

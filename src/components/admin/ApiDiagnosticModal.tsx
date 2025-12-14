@@ -9,6 +9,7 @@ import { Activity, RefreshCw, CheckCircle, XCircle, AlertTriangle, Clock, FileTe
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatDate } from '@/lib/date-utils';
+import { EconomicCloseButton } from './EconomicCloseButton';
 
 interface SyncMetadata {
   extracted_count?: number;
@@ -541,7 +542,8 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
   if (showErrorReport) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto [&>button]:hidden">
+          <EconomicCloseButton onClick={handleClose} />
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
@@ -591,7 +593,8 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto [&>button]:hidden">
+        <EconomicCloseButton onClick={handleClose} />
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-primary" />

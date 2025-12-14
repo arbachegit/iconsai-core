@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { TrendingUp, RefreshCw, Info, Database, Bell, FileText, BarChart3, LineChart, ShoppingCart, Trash2, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { IndicatorCard, IndicatorDetailModal } from './indicators';
+import { EconomicCloseButton } from './EconomicCloseButton';
 interface Indicator {
   id: string;
   name: string;
@@ -352,7 +353,8 @@ export default function EconomicIndicatorsTab() {
                 <Info className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl [&>button]:hidden">
+              <EconomicCloseButton onClick={() => setEtlModalOpen(false)} />
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <RefreshCw className="h-5 w-5 text-primary" />
@@ -577,7 +579,8 @@ export default function EconomicIndicatorsTab() {
 
       {/* Force Refresh Confirmation Modal */}
       <Dialog open={forceRefreshModalOpen} onOpenChange={setForceRefreshModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md [&>button]:hidden">
+          <EconomicCloseButton onClick={() => setForceRefreshModalOpen(false)} />
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <Trash2 className="h-5 w-5" />
