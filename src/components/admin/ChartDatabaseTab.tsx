@@ -433,21 +433,12 @@ export function ChartDatabaseTab() {
     return result;
   }, [statistics]);
 
-  if (loadingIndicators || loadingValues) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  // Calculate series counts by frequency
+  // Calculate series counts by frequency - MUST be before early return
   const seriesCounts = useMemo(() => {
     const counts = { daily: 0, monthly: 0, quarterly: 0, yearly: 0 };
     filteredIndicators.forEach(indicator => {
       const stats = indicatorStats[indicator.id];
       if (stats && stats.count > 0) {
-        // Estimate frequency based on data count and period
         const startDate = new Date(stats.min);
         const endDate = new Date(stats.max);
         const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
@@ -462,7 +453,7 @@ export function ChartDatabaseTab() {
     return counts;
   }, [filteredIndicators, indicatorStats]);
 
-  // Calculate date range from data
+  // Calculate date range from data - MUST be before early return
   const dateRangeFromData = useMemo(() => {
     let minDate: string | null = null;
     let maxDate: string | null = null;
@@ -477,6 +468,14 @@ export function ChartDatabaseTab() {
       end: maxDate ? new Date(maxDate) : null
     };
   }, [combinedValues]);
+
+  if (loadingIndicators || loadingValues) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   // Render indicator card with knowyou-indicator-card class
   const renderIndicatorCard = (indicator: Indicator) => {
