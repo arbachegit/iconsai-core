@@ -93,8 +93,13 @@ const CATEGORY_GROUPS = {
 function formatUnit(unit: string | null): { label: string; icon: React.ReactNode } {
   if (!unit) return { label: 'N/A', icon: <Hash className="h-3 w-3" /> };
   const u = unit.toLowerCase();
-  if (u.includes('r$') || u.includes('mil') || u.includes('reais')) {
+  // BRL e valores em Reais
+  if (u.includes('r$') || u.includes('mil') || u.includes('reais') || u === 'brl') {
     return { label: 'R$', icon: <DollarSign className="h-3 w-3" /> };
+  }
+  // Dólar/USD
+  if (u.includes('us$') || u.includes('usd') || u.includes('dólar') || u.includes('dollar')) {
+    return { label: '$', icon: <DollarSign className="h-3 w-3" /> };
   }
   if (u.includes('%')) {
     return { label: '%', icon: <Percent className="h-3 w-3" /> };
@@ -108,16 +113,30 @@ function formatUnit(unit: string | null): { label: string; icon: React.ReactNode
   return { label: unit.substring(0, 6), icon: <Hash className="h-3 w-3" /> };
 }
 
-// Format large values
-function formatValue(value: number, unit: string | null): string {
+// Format large values with optional unit display
+function formatValue(value: number, unit: string | null, includeUnit: boolean = false): string {
   const u = (unit || '').toLowerCase();
-  if (u.includes('r$') || u.includes('mil')) {
-    if (value >= 1e12) return `${(value / 1e12).toFixed(1)} tri`;
-    if (value >= 1e9) return `${(value / 1e9).toFixed(1)} bi`;
-    if (value >= 1e6) return `${(value / 1e6).toFixed(1)} mi`;
-    if (value >= 1e3) return `${(value / 1e3).toFixed(1)} mil`;
+  const isIndex = u.includes('índice') || u.includes('base') || u.includes('index');
+  
+  // Valores em Reais (incluindo BRL)
+  if (u.includes('r$') || u.includes('mil') || u.includes('reais') || u === 'brl') {
+    let formatted = '';
+    if (value >= 1e12) formatted = `${(value / 1e12).toFixed(1)} tri`;
+    else if (value >= 1e9) formatted = `${(value / 1e9).toFixed(1)} bi`;
+    else if (value >= 1e6) formatted = `${(value / 1e6).toFixed(1)} mi`;
+    else if (value >= 1e3) formatted = `${(value / 1e3).toFixed(1)} mil`;
+    else formatted = value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+    return includeUnit && !isIndex ? `R$ ${formatted}` : formatted;
   }
-  return value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  
+  const formatted = value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  
+  if (includeUnit && !isIndex) {
+    if (u.includes('%')) return `${formatted}%`;
+    if (u.includes('us$') || u.includes('usd') || u.includes('dólar') || u.includes('dollar')) return `R$ ${formatted}`;
+  }
+  
+  return formatted;
 }
 
 export function ChartDatabaseTab() {
@@ -371,6 +390,8 @@ export function ChartDatabaseTab() {
     const unitInfo = formatUnit(indicator.unit);
     const minDate = format(new Date(stats.min), "MM/yy");
     const maxDate = format(new Date(stats.max), "MM/yy");
+    const u = (indicator.unit || '').toLowerCase();
+    const isIndex = u.includes('índice') || u.includes('base') || u.includes('index');
 
     return (
       <Card
@@ -386,28 +407,39 @@ export function ChartDatabaseTab() {
           
           {/* 2x2 Badge grid */}
           <div className="grid grid-cols-2 gap-2">
-            {/* Unit badge */}
-            <div className="flex items-center justify-center gap-1.5 border rounded-md py-2 bg-muted/30">
-              {unitInfo.icon}
-              <span className="text-xs font-medium">{unitInfo.label}</span>
+            {/* Unit badge with label */}
+            <div className="flex flex-col items-center justify-center border rounded-md py-1.5 bg-muted/30">
+              <span className="text-[9px] text-muted-foreground uppercase">Unidade</span>
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-white shadow-sm">
+                  {unitInfo.icon}
+                </div>
+                <span className="text-xs font-medium">{unitInfo.label}</span>
+              </div>
             </div>
             
-            {/* Period badge */}
+            {/* Period badge with label */}
             <div className="flex flex-col items-center justify-center border rounded-md py-1.5 bg-muted/30">
               <span className="text-[9px] text-muted-foreground uppercase">Período</span>
               <span className="text-xs font-medium">{minDate} - {maxDate}</span>
             </div>
             
-            {/* Records badge */}
-            <div className="flex items-center justify-center gap-1 border rounded-md py-2 bg-secondary/50">
-              <Database className="h-3 w-3 text-muted-foreground" />
-              <span className="text-xs font-medium">{stats.count.toLocaleString()}</span>
+            {/* Records badge with label */}
+            <div className="flex flex-col items-center justify-center border rounded-md py-1.5 bg-secondary/50">
+              <span className="text-[9px] text-muted-foreground uppercase">Registros</span>
+              <div className="flex items-center gap-1">
+                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-white shadow-sm">
+                  <Database className="h-3 w-3 text-muted-foreground" />
+                </div>
+                <span className="text-xs font-medium">{stats.count.toLocaleString()}</span>
+              </div>
             </div>
             
-            {/* Last value badge */}
-            <div className="flex items-center justify-center border rounded-md py-2 bg-primary/10 text-primary">
+            {/* Last value badge with label and unit */}
+            <div className="flex flex-col items-center justify-center border rounded-md py-1.5 bg-primary/10 text-primary">
+              <span className="text-[9px] text-muted-foreground uppercase">Último Valor</span>
               <span className="text-xs font-bold">
-                {formatValue(stats.lastValue, indicator.unit)}
+                {formatValue(stats.lastValue, indicator.unit, !isIndex)}
               </span>
             </div>
           </div>
