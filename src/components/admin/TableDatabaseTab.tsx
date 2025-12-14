@@ -706,14 +706,35 @@ export function TableDatabaseTab() {
                 </span>
               </div>
             </div>
+            
+            {/* Botões: Ver Tabela + Fechar */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowTableModal(true);
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2",
+                  "bg-cyan-500/10 hover:bg-cyan-500/20",
+                  "border border-cyan-500/30 hover:border-cyan-500/50",
+                  "rounded-lg transition-all duration-200 text-white"
+                )}
+              >
+                <Database className="h-4 w-4 text-cyan-500" />
+                <span className="font-medium">Ver Tabela</span>
+              </button>
               
-            {/* Botão fechar - z-60 */}
-            <button
-              onClick={() => setSelectedIndicator(null)}
-              className="h-10 w-10 rounded-full border border-cyan-500/30 flex items-center justify-center text-white hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all z-60"
-            >
-              <X className="h-5 w-5" />
-            </button>
+              <button
+                type="button"
+                onClick={() => setSelectedIndicator(null)}
+                className="h-10 w-10 rounded-full border border-cyan-500/30 flex items-center justify-center text-white hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* METADADOS - flex-shrink-0, bg opaco */}
@@ -752,26 +773,6 @@ export function TableDatabaseTab() {
             </div>
           </div>
 
-          {/* BOTÃO VER TABELA - centralizado */}
-          <div className="flex flex-col items-center justify-center py-8 border-b border-cyan-500/10 bg-[#0A0A0F]">
-            <button
-              type="button"
-              onClick={() => setShowTableModal(true)}
-              className={cn(
-                "flex items-center gap-2 px-6 py-3",
-                "bg-cyan-500/10 hover:bg-cyan-500/20",
-                "border border-cyan-500/30 hover:border-cyan-500/50",
-                "rounded-lg transition-all duration-200"
-              )}
-            >
-              <Database className="h-5 w-5 text-cyan-500" />
-              <span className="text-white font-medium">Ver Tabela</span>
-            </button>
-            <span className="text-sm text-muted-foreground mt-2">
-              {selectedIndicatorValues.length} registros
-              {selectedIndicatorValues.length === 500 && ' (limitado a 500)'}
-            </span>
-          </div>
 
           {/* FOOTER - flex-shrink-0, bg opaco, z-20, NUNCA TRANSPARENTE */}
           {analysis && (
