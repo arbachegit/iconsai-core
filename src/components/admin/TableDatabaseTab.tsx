@@ -1,16 +1,20 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { DebouncedInput } from "@/components/ui/debounced-input";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Search,
   Database,
@@ -21,13 +25,11 @@ import {
   Percent,
   Hash,
   Activity,
-  Plus,
   TrendingUp,
-  Trash2,
-  Save,
+  MapPin,
+  Calendar,
 } from "lucide-react";
 import { format } from "date-fns";
-import { toast } from "sonner";
 
 interface Indicator {
   id: string;
@@ -51,6 +53,16 @@ interface ApiRegistry {
   name: string;
 }
 
+interface IndicatorWithApi extends Indicator {
+  api?: ApiRegistry | null;
+}
+
+interface IndicatorValueWithUF {
+  reference_date: string;
+  value: number;
+  brazilian_ufs?: { uf_name: string; uf_sigla: string } | null;
+}
+
 // Category groups for organization
 const CATEGORY_GROUPS = {
   financial: {
@@ -70,19 +82,19 @@ const CATEGORY_GROUPS = {
   }
 };
 
-const CATEGORIES = [
-  { value: "macro", label: "Macroeconômico" },
-  { value: "regional", label: "Regional" },
-  { value: "pmc", label: "PMC" },
-  { value: "pac", label: "PAC" },
-];
+const CATEGORIES: Record<string, string> = {
+  macro: "Macroeconômico",
+  regional: "Regional",
+  pmc: "PMC",
+  pac: "PAC",
+};
 
-const FREQUENCIES = [
-  { value: "daily", label: "Diária" },
-  { value: "monthly", label: "Mensal" },
-  { value: "quarterly", label: "Trimestral" },
-  { value: "annual", label: "Anual" },
-];
+const FREQUENCIES: Record<string, string> = {
+  daily: "Diária",
+  monthly: "Mensal",
+  quarterly: "Trimestral",
+  annual: "Anual",
+};
 
 // Format unit for display
 function formatUnit(unit: string | null): { label: string; icon: React.ReactNode } {
@@ -132,49 +144,24 @@ function formatValue(value: number, unit: string | null, includeUnit: boolean = 
 }
 
 export function TableDatabaseTab() {
-  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedIndicator, setSelectedIndicator] = useState<Indicator | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [selectedIndicator, setSelectedIndicator] = useState<IndicatorWithApi | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    code: "",
-    unit: "",
-    category: "macro",
-    frequency: "monthly",
-    is_regional: false,
-    api_id: "",
-  });
-
-  // Fetch indicators
+  // Fetch indicators with API name
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
     queryKey: ["indicators-table-db"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("economic_indicators")
-        .select("id, name, code, unit, category, frequency, is_regional, api_id")
+        .select("id, name, code, unit, category, frequency, is_regional, api_id, system_api_registry(id, name)")
         .order("name");
       if (error) throw error;
-      return data as Indicator[];
-    },
-  });
-
-  // Fetch APIs for dropdown
-  const { data: apis = [] } = useQuery({
-    queryKey: ["apis-for-indicators"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("system_api_registry")
-        .select("id, name")
-        .order("name");
-      if (error) throw error;
-      return data as ApiRegistry[];
+      return (data || []).map((item: any) => ({
+        ...item,
+        api: item.system_api_registry,
+      })) as IndicatorWithApi[];
     },
   });
 
@@ -238,120 +225,37 @@ export function TableDatabaseTab() {
     },
   });
 
-  // Create mutation
-  const createMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from("economic_indicators").insert({
-        name: data.name,
-        code: data.code,
-        unit: data.unit || null,
-        category: data.category,
-        frequency: data.frequency,
-        is_regional: data.is_regional,
-        api_id: data.api_id || null,
-      });
-      if (error) throw error;
+  // Fetch values for the selected indicator modal
+  const { data: selectedIndicatorValues = [], isLoading: loadingSelectedValues } = useQuery({
+    queryKey: ["selected-indicator-values", selectedIndicator?.id],
+    queryFn: async () => {
+      if (!selectedIndicator) return [];
+      
+      if (selectedIndicator.is_regional) {
+        const { data, error } = await supabase
+          .from("indicator_regional_values")
+          .select("reference_date, value, brazilian_ufs!inner(uf_name, uf_sigla)")
+          .eq("indicator_id", selectedIndicator.id)
+          .order("reference_date", { ascending: false })
+          .limit(500);
+        if (error) throw error;
+        return (data || []) as IndicatorValueWithUF[];
+      } else {
+        const { data, error } = await supabase
+          .from("indicator_values")
+          .select("reference_date, value")
+          .eq("indicator_id", selectedIndicator.id)
+          .order("reference_date", { ascending: false })
+          .limit(500);
+        if (error) throw error;
+        return (data || []) as IndicatorValueWithUF[];
+      }
     },
-    onSuccess: () => {
-      toast.success("Indicador criado com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ["indicators-table-db"] });
-      setIsCreating(false);
-      resetForm();
-    },
-    onError: (error: any) => {
-      toast.error(`Erro ao criar: ${error.message}`);
-    },
+    enabled: !!selectedIndicator?.id,
   });
 
-  // Update mutation
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
-      const { error } = await supabase
-        .from("economic_indicators")
-        .update({
-          name: data.name,
-          code: data.code,
-          unit: data.unit || null,
-          category: data.category,
-          frequency: data.frequency,
-          is_regional: data.is_regional,
-          api_id: data.api_id || null,
-        })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Indicador atualizado!");
-      queryClient.invalidateQueries({ queryKey: ["indicators-table-db"] });
-      setSelectedIndicator(null);
-      setIsEditing(false);
-      resetForm();
-    },
-    onError: (error: any) => {
-      toast.error(`Erro ao atualizar: ${error.message}`);
-    },
-  });
-
-  // Delete mutation
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("economic_indicators").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Indicador excluído!");
-      queryClient.invalidateQueries({ queryKey: ["indicators-table-db"] });
-      setSelectedIndicator(null);
-      setDeleteConfirmOpen(false);
-      resetForm();
-    },
-    onError: (error: any) => {
-      toast.error(`Erro ao excluir: ${error.message}`);
-    },
-  });
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      code: "",
-      unit: "",
-      category: "macro",
-      frequency: "monthly",
-      is_regional: false,
-      api_id: "",
-    });
-  };
-
-  const handleCardClick = (indicator: Indicator) => {
+  const handleCardClick = (indicator: IndicatorWithApi) => {
     setSelectedIndicator(indicator);
-    setFormData({
-      name: indicator.name,
-      code: indicator.code,
-      unit: indicator.unit || "",
-      category: indicator.category || "macro",
-      frequency: indicator.frequency || "monthly",
-      is_regional: indicator.is_regional || false,
-      api_id: indicator.api_id || "",
-    });
-    setIsEditing(true);
-  };
-
-  const handleNewIndicator = () => {
-    resetForm();
-    setIsCreating(true);
-  };
-
-  const handleSave = () => {
-    if (!formData.name || !formData.code) {
-      toast.error("Nome e código são obrigatórios!");
-      return;
-    }
-
-    if (isCreating) {
-      createMutation.mutate(formData);
-    } else if (selectedIndicator) {
-      updateMutation.mutate({ id: selectedIndicator.id, data: formData });
-    }
   };
 
   const handleRefresh = async () => {
@@ -411,7 +315,7 @@ export function TableDatabaseTab() {
 
   // Group indicators by category
   const groupedIndicators = useMemo(() => {
-    const groups: Record<string, Indicator[]> = {};
+    const groups: Record<string, IndicatorWithApi[]> = {};
     
     Object.entries(CATEGORY_GROUPS).forEach(([key, group]) => {
       const groupItems = filteredIndicators.filter(i => group.codes.includes(i.code));
@@ -438,7 +342,7 @@ export function TableDatabaseTab() {
   }
 
   // Render indicator card
-  const renderIndicatorCard = (indicator: Indicator) => {
+  const renderIndicatorCard = (indicator: IndicatorWithApi) => {
     const stats = indicatorStats[indicator.id];
     const unitInfo = formatUnit(indicator.unit);
     const hasData = stats && stats.count > 0;
@@ -512,7 +416,7 @@ export function TableDatabaseTab() {
             Table Data Base
           </h2>
           <p className="text-muted-foreground">
-            Gerenciamento CRUD de indicadores econômicos
+            Visualização de indicadores econômicos e seus valores
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -524,10 +428,6 @@ export function TableDatabaseTab() {
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="gap-2">
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Atualizar
-          </Button>
-          <Button size="sm" onClick={handleNewIndicator} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Novo Indicador
           </Button>
         </div>
       </div>
@@ -571,161 +471,113 @@ export function TableDatabaseTab() {
         })}
       </div>
 
-      {/* CRUD Modal */}
-      <Dialog open={isEditing || isCreating} onOpenChange={(open) => {
-        if (!open) {
-          setIsEditing(false);
-          setIsCreating(false);
-          setSelectedIndicator(null);
-          resetForm();
-        }
+      {/* View Modal */}
+      <Dialog open={!!selectedIndicator} onOpenChange={(open) => {
+        if (!open) setSelectedIndicator(null);
       }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Database className="h-5 w-5" />
-              {isCreating ? "Novo Indicador" : `Editar: ${selectedIndicator?.name}`}
+              {selectedIndicator?.name}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Nome do indicador"
-              />
+          {/* Info Section (Non-Editable) */}
+          <div className="grid grid-cols-3 gap-4 py-4 border-b">
+            <div>
+              <span className="text-xs text-muted-foreground">Código</span>
+              <p className="font-mono text-sm">{selectedIndicator?.code}</p>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="code">Código *</Label>
-              <Input
-                id="code"
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                placeholder="Código único (ex: IPCA_BCB)"
-              />
+            <div>
+              <span className="text-xs text-muted-foreground">Unidade</span>
+              <p className="text-sm">{selectedIndicator?.unit || '-'}</p>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="unit">Unidade</Label>
-              <Input
-                id="unit"
-                value={formData.unit}
-                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                placeholder="Ex: %, R$, Índice"
-              />
+            <div>
+              <span className="text-xs text-muted-foreground">Categoria</span>
+              <Badge variant="outline" className="mt-1">
+                {CATEGORIES[selectedIndicator?.category || ''] || selectedIndicator?.category || '-'}
+              </Badge>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Categoria</Label>
-                <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Frequência</Label>
-                <Select value={formData.frequency} onValueChange={(v) => setFormData({ ...formData, frequency: v })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FREQUENCIES.map((freq) => (
-                      <SelectItem key={freq.value} value={freq.value}>{freq.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div>
+              <span className="text-xs text-muted-foreground">Frequência</span>
+              <div className="flex items-center gap-1 mt-1">
+                <Calendar className="h-3 w-3 text-muted-foreground" />
+                <span className="text-sm">{FREQUENCIES[selectedIndicator?.frequency || ''] || selectedIndicator?.frequency || '-'}</span>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label>API Vinculada</Label>
-              <Select value={formData.api_id || "none"} onValueChange={(v) => setFormData({ ...formData, api_id: v === "none" ? "" : v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma API (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
-                  {apis.map((api) => (
-                    <SelectItem key={api.id} value={api.id}>{api.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div>
+              <span className="text-xs text-muted-foreground">Regional</span>
+              <div className="flex items-center gap-1 mt-1">
+                <MapPin className="h-3 w-3 text-muted-foreground" />
+                <span className="text-sm">{selectedIndicator?.is_regional ? 'Sim (por UF)' : 'Não (Brasil)'}</span>
+              </div>
             </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="is_regional"
-                checked={formData.is_regional}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_regional: !!checked })}
-              />
-              <Label htmlFor="is_regional" className="cursor-pointer">
-                É indicador regional (dados por UF)
-              </Label>
+            <div>
+              <span className="text-xs text-muted-foreground">API Vinculada</span>
+              <p className="text-sm">{selectedIndicator?.api?.name || 'Nenhuma'}</p>
             </div>
           </div>
 
-          <DialogFooter className="flex justify-between">
-            {!isCreating && (
-              <Button
-                variant="destructive"
-                onClick={() => setDeleteConfirmOpen(true)}
-                disabled={deleteMutation.isPending}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Excluir
-              </Button>
+          {/* Values Table */}
+          <div className="flex-1 min-h-0 mt-4">
+            {loadingSelectedValues ? (
+              <div className="flex items-center justify-center h-40">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <ScrollArea className="h-[350px] border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead>Indicador</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedIndicatorValues.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                          Nenhum valor encontrado para este indicador.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      selectedIndicatorValues.map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-mono text-sm">
+                            {format(new Date(item.reference_date), "dd/MM/yyyy")}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {Number(item.value).toLocaleString('pt-BR', { 
+                              minimumFractionDigits: 2, 
+                              maximumFractionDigits: 4 
+                            })}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {selectedIndicator?.name}
+                            {item.brazilian_ufs ? ` - ${item.brazilian_ufs.uf_name}` : ' - Brasil'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
             )}
-            <div className="flex gap-2 ml-auto">
-              <Button variant="outline" onClick={() => {
-                setIsEditing(false);
-                setIsCreating(false);
-                setSelectedIndicator(null);
-                resetForm();
-              }}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending}>
-                <Save className="h-4 w-4 mr-2" />
-                {createMutation.isPending || updateMutation.isPending ? "Salvando..." : "Salvar"}
-              </Button>
-            </div>
-          </DialogFooter>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-between items-center mt-4 pt-4 border-t">
+            <span className="text-sm text-muted-foreground">
+              Total: {selectedIndicatorValues.length} registros {selectedIndicatorValues.length === 500 && '(limitado a 500)'}
+            </span>
+            <Button variant="outline" onClick={() => setSelectedIndicator(null)}>
+              Fechar
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o indicador "{selectedIndicator?.name}"? 
-              Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => selectedIndicator && deleteMutation.mutate(selectedIndicator.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
