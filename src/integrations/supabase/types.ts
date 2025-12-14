@@ -152,6 +152,89 @@ export type Database = {
         }
         Relationships: []
       }
+      api_audit_logs: {
+        Row: {
+          action_description: string
+          api_id: string | null
+          api_name: string
+          created_at: string
+          environment: string | null
+          error_message: string | null
+          error_stack: string | null
+          event_category: string
+          event_type: string
+          execution_time_ms: number | null
+          http_status: number | null
+          id: string
+          ip_address: unknown
+          records_affected: number | null
+          request_payload: Json | null
+          response_payload: Json | null
+          session_id: string | null
+          severity: string
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+          user_role: string | null
+        }
+        Insert: {
+          action_description: string
+          api_id?: string | null
+          api_name: string
+          created_at?: string
+          environment?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          event_category: string
+          event_type: string
+          execution_time_ms?: number | null
+          http_status?: number | null
+          id?: string
+          ip_address?: unknown
+          records_affected?: number | null
+          request_payload?: Json | null
+          response_payload?: Json | null
+          session_id?: string | null
+          severity?: string
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          action_description?: string
+          api_id?: string | null
+          api_name?: string
+          created_at?: string
+          environment?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          event_category?: string
+          event_type?: string
+          execution_time_ms?: number | null
+          http_status?: number | null
+          id?: string
+          ip_address?: unknown
+          records_affected?: number | null
+          request_payload?: Json | null
+          response_payload?: Json | null
+          session_id?: string | null
+          severity?: string
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_audit_logs_api_id_fkey"
+            columns: ["api_id"]
+            isOneToOne: false
+            referencedRelation: "system_api_registry"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_test_staging: {
         Row: {
           all_variables: Json | null
@@ -2553,6 +2636,30 @@ export type Database = {
         Returns: undefined
       }
       initialize_chat_config_stats: { Args: never; Returns: undefined }
+      log_api_event: {
+        Args: {
+          p_action_description: string
+          p_api_id: string
+          p_api_name: string
+          p_error_message?: string
+          p_error_stack?: string
+          p_event_category: string
+          p_event_type: string
+          p_execution_time_ms?: number
+          p_http_status?: number
+          p_ip_address?: unknown
+          p_records_affected?: number
+          p_request_payload?: Json
+          p_response_payload?: Json
+          p_session_id?: string
+          p_severity: string
+          p_user_agent?: string
+          p_user_email?: string
+          p_user_id?: string
+          p_user_role?: string
+        }
+        Returns: string
+      }
       log_credit_usage: {
         Args: {
           p_error_code?: string

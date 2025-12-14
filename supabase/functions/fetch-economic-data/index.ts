@@ -2462,6 +2462,22 @@ serve(async (req) => {
       } catch (err) {
         console.error(`[FETCH-ECONOMIC] Error processing ${indicator.name}:`, err);
         results.push({ indicator: indicator.name, records: 0, status: 'error', newRecords: 0 });
+        
+        // Log sync failure
+        try {
+          await supabase.rpc('log_api_event', {
+            p_api_id: indicator.api_id,
+            p_api_name: indicator.name,
+            p_event_type: 'SYNC_FAILED',
+            p_event_category: 'SYNC',
+            p_severity: 'ERROR',
+            p_action_description: `Falha na sincronização de "${indicator.name}": ${String(err)}`,
+            p_error_message: String(err),
+            p_records_affected: 0
+          });
+        } catch (logErr) {
+          console.error('[FETCH-ECONOMIC] Audit log error:', logErr);
+        }
       }
     }
 
@@ -2474,6 +2490,31 @@ serve(async (req) => {
     });
 
     console.log(`[FETCH-ECONOMIC] Complete. Total: ${totalRecordsInserted}, New: ${newRecordsCount}`);
+
+    // ====== API AUDIT LOGGING: Record sync completion for each processed API ======
+    // Log success for APIs that had data inserted
+    for (const result of results) {
+      if (result.status === 'success' && result.records > 0) {
+        const apiEntry = indicators.find(i => i.name === result.indicator);
+        if (apiEntry) {
+          try {
+            await supabase.rpc('log_api_event', {
+              p_api_id: apiEntry.api_id,
+              p_api_name: result.indicator,
+              p_event_type: result.newRecords > 0 ? 'DATA_INSERTED' : 'SYNC_SUCCESS',
+              p_event_category: result.newRecords > 0 ? 'DATA' : 'SYNC',
+              p_severity: 'SUCCESS',
+              p_action_description: result.newRecords > 0 
+                ? `${result.newRecords} novos registros inseridos para "${result.indicator}"`
+                : `Sincronização concluída para "${result.indicator}": ${result.records} registros (sem novos dados)`,
+              p_records_affected: result.newRecords || result.records
+            });
+          } catch (logErr) {
+            console.error('[FETCH-ECONOMIC] Audit log error:', logErr);
+          }
+        }
+      }
+    }
 
     const responsePayload = { 
       success: true, 
