@@ -1675,14 +1675,27 @@ serve(async (req) => {
           const bcbData = data as BCBDataPoint[];
           console.log(`[FETCH-ECONOMIC] BCB data points received: ${bcbData.length}`);
           
+          // Future date validation - reject dates after today
+          const today = new Date();
+          today.setHours(23, 59, 59, 999);
+          
           valuesToInsert = bcbData.map((item) => {
             const [day, month, year] = item.data.split('/');
+            const refDate = `${year}-${month}-${day}`;
+            const refDateObj = new Date(refDate);
+            
+            // Reject future dates
+            if (refDateObj > today) {
+              console.warn(`[FETCH-ECONOMIC] [BCB] Rejecting future date: ${refDate}`);
+              return null;
+            }
+            
             return {
               indicator_id: indicator.id,
-              reference_date: `${year}-${month}-${day}`,
+              reference_date: refDate,
               value: parseFloat(item.valor.replace(',', '.')),
             };
-          }).filter(v => !isNaN(v.value));
+          }).filter((v): v is { indicator_id: string; reference_date: string; value: number } => v !== null && !isNaN(v.value));
           
         } else if (apiConfig.provider === 'IBGE') {
           // IBGE SIDRA returns two formats:
