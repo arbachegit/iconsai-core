@@ -139,7 +139,7 @@ export function TableDataModal({
           </div>
 
           {/* Table Content - scrollable */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 bg-[#0A0A0F]">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 bg-[#0A0A0F]">
             {isLoading ? (
               <div className="flex items-center justify-center h-40">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -189,24 +189,6 @@ export function TableDataModal({
                 </Table>
               </div>
             )}
-          </div>
-
-          {/* Footer */}
-          <div className="flex-shrink-0 px-6 py-4 border-t border-cyan-500/20 bg-[#0D0D12]">
-            <button
-              type="button"
-              onClick={onClose}
-              className={cn(
-                "w-full py-2",
-                "bg-cyan-500/10 hover:bg-cyan-500/20",
-                "border border-cyan-500/30 hover:border-cyan-500/50",
-                "rounded-lg",
-                "text-sm font-medium text-white",
-                "transition-all duration-200"
-              )}
-            >
-              Fechar
-            </button>
           </div>
         </div>
       </div>

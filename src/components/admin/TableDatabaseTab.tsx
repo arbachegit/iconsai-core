@@ -678,8 +678,13 @@ export function TableDatabaseTab() {
       </div>
 
       {/* View Modal - NUCLEAR FIX: fundos opacos, z-index correto, footer fixo */}
-      <Dialog open={!!selectedIndicator} onOpenChange={(open) => {
-        if (!open) setSelectedIndicator(null);
+<Dialog open={!!selectedIndicator} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedIndicator(null);
+          setShowTableModal(false);
+          setShowSTSModal(false);
+          setShowTrendModal(false);
+        }
       }}>
         <DialogContent className="max-w-4xl h-[90vh] max-h-[900px] flex flex-col p-0 bg-[#0A0A0F] overflow-hidden [&>button]:hidden">
           {/* HEADER - flex-shrink-0, bg opaco, z-10 */}
@@ -903,27 +908,29 @@ export function TableDatabaseTab() {
       {/* Trend Info Modal */}
       <TrendInfoModal open={showTrendModal} onClose={() => setShowTrendModal(false)} />
 
-      {/* Table Data Modal */}
-      <TableDataModal
-        isOpen={showTableModal}
-        onClose={() => setShowTableModal(false)}
-        indicatorName={selectedIndicator?.name || ''}
-        indicatorCode={selectedIndicator?.code || ''}
-        isRegional={selectedIndicator?.is_regional || false}
-        data={selectedIndicatorValues}
-        unit={selectedIndicator?.unit || null}
-        frequency={selectedIndicator?.frequency || null}
-        isLoading={loadingSelectedValues}
-      />
+      {/* Table Data Modal - só renderiza se tem indicador selecionado */}
+      {selectedIndicator && (
+        <TableDataModal
+          isOpen={showTableModal}
+          onClose={() => setShowTableModal(false)}
+          indicatorName={selectedIndicator.name}
+          indicatorCode={selectedIndicator.code}
+          isRegional={selectedIndicator.is_regional || false}
+          data={selectedIndicatorValues}
+          unit={selectedIndicator.unit || null}
+          frequency={selectedIndicator.frequency || null}
+          isLoading={loadingSelectedValues}
+        />
+      )}
 
-      {/* STS Analysis Modal */}
-      {stsData && analysis && (
+      {/* STS Analysis Modal - só renderiza se tem indicador E dados */}
+      {selectedIndicator && stsData && analysis && (
         <STSAnalysisModal
           isOpen={showSTSModal}
           onClose={() => setShowSTSModal(false)}
-          indicatorName={selectedIndicator?.name || ''}
-          unit={selectedIndicator?.unit || null}
-          frequency={selectedIndicator?.frequency || null}
+          indicatorName={selectedIndicator.name}
+          unit={selectedIndicator.unit || null}
+          frequency={selectedIndicator.frequency || null}
           stsData={stsData}
           statistics={{
             mean: analysis.statistics.mean,
