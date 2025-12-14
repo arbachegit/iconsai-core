@@ -78,6 +78,7 @@ const DataAnalysisTab = lazy(() => import("@/components/admin/DataAnalysisTab"))
 const ChartDatabaseTab = lazy(() => import("@/components/admin/ChartDatabaseTab"));
 const JsonTestTab = lazy(() => import("@/components/admin/JsonTestTab"));
 const RegionalIndicatorsTab = lazy(() => import("@/components/admin/RegionalIndicatorsTab"));
+const TableDatabaseTab = lazy(() => import("@/components/admin/TableDatabaseTab"));
 
 // Loading fallback component
 const TabLoadingFallback = () => (
@@ -86,7 +87,7 @@ const TabLoadingFallback = () => (
   </div>
 );
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -134,6 +135,7 @@ const TAB_LABELS: Record<TabType, string> = {
   "chart-database": "Chart Data Base",
   "json-test": "Teste de JSON",
   "regional-indicators": "Indicadores Regionais",
+  "table-database": "Table Data Base",
 };
 
 const Admin = () => {
@@ -305,6 +307,7 @@ const Admin = () => {
         case "chart-database": return <ChartDatabaseTab />;
         case "json-test": return <JsonTestTab />;
         case "regional-indicators": return <RegionalIndicatorsTab />;
+        case "table-database": return <TableDatabaseTab />;
         default: return <DashboardTab />;
       }
     })();
