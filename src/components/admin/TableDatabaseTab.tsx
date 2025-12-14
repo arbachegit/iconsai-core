@@ -88,6 +88,7 @@ interface IndicatorValue {
 interface ApiRegistry {
   id: string;
   name: string;
+  provider: string | null;
 }
 
 interface IndicatorWithApi extends Indicator {
@@ -192,7 +193,7 @@ export function TableDatabaseTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("economic_indicators")
-        .select("id, name, code, unit, category, frequency, is_regional, api_id, system_api_registry(id, name)")
+        .select("id, name, code, unit, category, frequency, is_regional, api_id, system_api_registry(id, name, provider)")
         .order("name");
       if (error) throw error;
       return (data || []).map((item: any) => ({
@@ -395,6 +396,12 @@ export function TableDatabaseTab() {
         onClick={() => handleCardClick(indicator)}
       >
         <CardContent className="pt-4 pb-3">
+          {/* Provider badge */}
+          {indicator.api?.provider && (
+            <Badge variant="secondary" className="w-fit mb-2 text-xs">
+              {indicator.api.provider}
+            </Badge>
+          )}
           {/* Title */}
           <h3 className="font-semibold text-sm mb-3 line-clamp-2 min-h-[40px]">
             {indicator.name}
@@ -512,19 +519,24 @@ export function TableDatabaseTab() {
       <Dialog open={!!selectedIndicator} onOpenChange={(open) => {
         if (!open) setSelectedIndicator(null);
       }}>
-        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0">
+        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 [&>button]:hidden">
           {/* Custom Header with X button */}
           <div className="flex items-center justify-between p-6 pb-4 border-b">
-            <div className="flex items-center gap-3">
-              <Database className="h-5 w-5 text-primary" />
-              <div>
+          <div className="flex items-center gap-3">
+            <Database className="h-5 w-5 text-primary" />
+            <div>
+              <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold">{selectedIndicator?.name}</h2>
-                <span className="text-sm text-muted-foreground">
-                  {selectedIndicatorValues.length} registros
-                  {selectedIndicatorValues.length === 500 && ' (limitado a 500)'}
-                </span>
+                {selectedIndicator?.api?.provider && (
+                  <Badge variant="outline">{selectedIndicator.api.provider}</Badge>
+                )}
               </div>
+              <span className="text-sm text-muted-foreground">
+                {selectedIndicatorValues.length} registros 
+                {selectedIndicatorValues.length === 500 && ' (limitado a 500)'}
+              </span>
             </div>
+          </div>
             
             {/* Circular X button with red hover */}
             <button
