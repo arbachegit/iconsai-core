@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, FileJson, Table as TableIcon, Database, RefreshCw, Eye, Plus, AlertCircle, PlayCircle, Braces, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Loader2, FileJson, Table as TableIcon, Database, RefreshCw, Eye, Plus, AlertCircle, PlayCircle, Braces, ArrowUpDown, ArrowUp, ArrowDown, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -50,6 +51,7 @@ export const JsonDataObservabilityTab = () => {
   const [insertResult, setInsertResult] = useState<{ jsonRecords: number; existingRecords: number; insertedRecords: number } | null>(null);
   const [sortColumn, setSortColumn] = useState<'name' | 'provider' | 'last_response_at' | 'record_count'>('last_response_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchApis();
@@ -491,7 +493,19 @@ export const JsonDataObservabilityTab = () => {
   };
 
   const sortedApis = useMemo(() => {
-    return [...apis].sort((a, b) => {
+    // First filter by search query
+    const filtered = apis.filter(api => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      const indicatorName = api.economic_indicators?.[0]?.name || '';
+      return (
+        api.name.toLowerCase().includes(query) ||
+        indicatorName.toLowerCase().includes(query) ||
+        api.provider.toLowerCase().includes(query)
+      );
+    });
+
+    return filtered.sort((a, b) => {
       let comparison = 0;
       switch (sortColumn) {
         case 'name':
@@ -511,7 +525,7 @@ export const JsonDataObservabilityTab = () => {
       }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [apis, sortColumn, sortDirection]);
+  }, [apis, sortColumn, sortDirection, searchQuery]);
 
   if (loading) {
     return (
@@ -540,6 +554,15 @@ export const JsonDataObservabilityTab = () => {
           <p className="text-muted-foreground mt-1">
             Visualize e compare dados brutos das APIs externas
           </p>
+          <div className="relative mt-3 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome, indicador ou provedor..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
