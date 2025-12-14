@@ -1862,7 +1862,27 @@ serve(async (req) => {
               if (periodCode.length === 4) {
                 refDate = `${periodCode}-01-01`; // Annual: YYYY
               } else if (periodCode.length === 6) {
-                refDate = `${periodCode.substring(0, 4)}-${periodCode.substring(4, 6)}-01`; // Monthly: YYYYMM
+                // Check if this is quarterly data (YYYYQQ where QQ is 01-04)
+                const year = periodCode.substring(0, 4);
+                const suffix = periodCode.substring(4, 6);
+                
+                // Quarterly indicators: suffix 01-04 represents Q1-Q4
+                // Map to first month of each quarter
+                const quarterToMonth: Record<string, string> = {
+                  '01': '01', // Q1 → January
+                  '02': '04', // Q2 → April
+                  '03': '07', // Q3 → July
+                  '04': '10'  // Q4 → October
+                };
+                
+                if (quarterToMonth[suffix] && linkedIndicator?.frequency === 'quarterly') {
+                  // This is quarterly data (PNAD trimestral, etc.)
+                  refDate = `${year}-${quarterToMonth[suffix]}-01`;
+                  console.log(`[FETCH-ECONOMIC] [SIDRA-FLAT] Quarterly mapping: ${periodCode} → ${refDate}`);
+                } else {
+                  // Standard monthly: YYYYMM
+                  refDate = `${year}-${suffix}-01`;
+                }
               } else if (periodCode.length === 1 || periodCode.length === 2) {
                 // Quarterly: Single digit 1-4 represents quarters (PNAD trimestral)
                 // This requires the year from another field - skip if year unknown
