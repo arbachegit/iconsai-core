@@ -28,8 +28,45 @@ import {
   TrendingUp,
   MapPin,
   Calendar,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
+
+// Format value for table display based on unit type
+function formatTableValue(value: number, unit: string | null): string {
+  const u = (unit || '').toLowerCase();
+  
+  // Percentual: 2 decimals + symbol
+  if (u.includes('%')) {
+    return `${value.toFixed(2)}%`;
+  }
+  
+  // Real/BRL: currency format
+  if (u.includes('r$') || u.includes('mil') || u.includes('reais') || u === 'brl') {
+    return value.toLocaleString('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+  
+  // Dollar: USD format
+  if (u.includes('us$') || u.includes('usd') || u.includes('dólar') || u.includes('dollar')) {
+    return `$ ${value.toFixed(2)}`;
+  }
+  
+  // Index: 2 decimals (no symbol)
+  if (u.includes('índice') || u.includes('base') || u.includes('index')) {
+    return value.toFixed(2);
+  }
+  
+  // Default: 2 decimals
+  return value.toLocaleString('pt-BR', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+  });
+}
 
 interface Indicator {
   id: string;
@@ -475,16 +512,31 @@ export function TableDatabaseTab() {
       <Dialog open={!!selectedIndicator} onOpenChange={(open) => {
         if (!open) setSelectedIndicator(null);
       }}>
-        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              {selectedIndicator?.name}
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0">
+          {/* Custom Header with X button */}
+          <div className="flex items-center justify-between p-6 pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <Database className="h-5 w-5 text-primary" />
+              <div>
+                <h2 className="text-lg font-semibold">{selectedIndicator?.name}</h2>
+                <span className="text-sm text-muted-foreground">
+                  {selectedIndicatorValues.length} registros
+                  {selectedIndicatorValues.length === 500 && ' (limitado a 500)'}
+                </span>
+              </div>
+            </div>
+            
+            {/* Circular X button with red hover */}
+            <button
+              onClick={() => setSelectedIndicator(null)}
+              className="h-10 w-10 rounded-full border border-cyan-500/50 flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
 
           {/* Info Section (Non-Editable) */}
-          <div className="grid grid-cols-3 gap-4 py-4 border-b">
+          <div className="grid grid-cols-3 gap-4 px-6 py-4 border-b">
             <div>
               <span className="text-xs text-muted-foreground">Código</span>
               <p className="font-mono text-sm">{selectedIndicator?.code}</p>
@@ -520,7 +572,7 @@ export function TableDatabaseTab() {
           </div>
 
           {/* Values Table */}
-          <div className="flex-1 min-h-0 mt-4">
+          <div className="flex-1 min-h-0 px-6 py-4">
             {loadingSelectedValues ? (
               <div className="flex items-center justify-center h-40">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -530,7 +582,14 @@ export function TableDatabaseTab() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Data</TableHead>
+                      <TableHead>
+                        Data
+                        {selectedIndicatorValues.length > 0 && (
+                          <span className="ml-2 text-xs text-muted-foreground font-normal">
+                            ({format(new Date(selectedIndicatorValues[selectedIndicatorValues.length - 1]?.reference_date), "MM/yyyy")} - {format(new Date(selectedIndicatorValues[0]?.reference_date), "MM/yyyy")})
+                          </span>
+                        )}
+                      </TableHead>
                       <TableHead className="text-right">Valor</TableHead>
                       <TableHead>Indicador</TableHead>
                     </TableRow>
@@ -549,10 +608,7 @@ export function TableDatabaseTab() {
                             {format(new Date(item.reference_date), "dd/MM/yyyy")}
                           </TableCell>
                           <TableCell className="text-right font-mono">
-                            {Number(item.value).toLocaleString('pt-BR', { 
-                              minimumFractionDigits: 2, 
-                              maximumFractionDigits: 4 
-                            })}
+                            {formatTableValue(Number(item.value), selectedIndicator?.unit)}
                           </TableCell>
                           <TableCell className="text-muted-foreground">
                             {selectedIndicator?.name}
@@ -565,16 +621,6 @@ export function TableDatabaseTab() {
                 </Table>
               </ScrollArea>
             )}
-          </div>
-
-          {/* Footer */}
-          <div className="flex justify-between items-center mt-4 pt-4 border-t">
-            <span className="text-sm text-muted-foreground">
-              Total: {selectedIndicatorValues.length} registros {selectedIndicatorValues.length === 500 && '(limitado a 500)'}
-            </span>
-            <Button variant="outline" onClick={() => setSelectedIndicator(null)}>
-              Fechar
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
