@@ -1754,16 +1754,27 @@ serve(async (req) => {
               return !isNaN(code) && code >= 11 && code <= 53;
             });
             
-            const hasPACUFData = isPAC && dataRows.some(row => {
-              const d3c = row.D3C;
-              if (!d3c) return false;
-              return PAC_UF_CODE_MAP[d3c] !== undefined;
-            });
+            // PAC Table 1407 with c12354/all: UF category codes can be in D3C, D4C, or D5C
+            // depending on URL structure. Search all fields for PAC codes 106775-106801
+            const findPACUFField = (rows: any[]): string | null => {
+              const candidates = ['D3C', 'D4C', 'D5C', 'D2C'];
+              for (const field of candidates) {
+                const hasValidPACCode = rows.some(row => {
+                  const value = row[field];
+                  return value && PAC_UF_CODE_MAP[value] !== undefined;
+                });
+                if (hasValidPACCode) return field;
+              }
+              return null;
+            };
+            
+            const pacUfField = isPAC ? findPACUFField(dataRows) : null;
+            const hasPACUFData = !!pacUfField;
             
             const hasUFData = hasStandardUFData || hasPACUFData;
             
             console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat has standard UF data (D1C): ${hasStandardUFData}`);
-            console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat has PAC UF data (D3C→mapping): ${hasPACUFData}`);
+            console.log(`[FETCH-ECONOMIC] [IBGE] SIDRA Flat has PAC UF data: ${hasPACUFData}, field: ${pacUfField}`);
             console.log(`[FETCH-ECONOMIC] [IBGE] Is regional indicator: ${isRegionalIndicator}`);
             
             // ========== COMPREHENSIVE DEBUGGING FOR SIDRA FLAT PARSING ==========
@@ -1856,12 +1867,12 @@ serve(async (req) => {
                 refDate = `${periodCode}-01-01`;
               }
               
-              // Extract UF code - handle both standard (D1C) and PAC (D3C→mapping) formats
+              // Extract UF code - handle both standard (D1C) and PAC (dynamic field→mapping) formats
               let ufCode: number | null = null;
               
-              if (isPAC && hasPACUFData) {
-                // PAC Table 1407: UF is in D3C as category code, needs mapping
-                const pacCategoryCode = row.D3C;
+              if (isPAC && hasPACUFData && pacUfField) {
+                // PAC Table 1407: UF is in dynamically detected field as category code, needs mapping
+                const pacCategoryCode = row[pacUfField];
                 if (pacCategoryCode && PAC_UF_CODE_MAP[pacCategoryCode]) {
                   ufCode = PAC_UF_CODE_MAP[pacCategoryCode];
                 }
@@ -1876,8 +1887,8 @@ serve(async (req) => {
                 if (!ufCode) {
                   debugCounters.filteredByNoUfCode++;
                   if (sampleFilteredUfCodes.length < 5) {
-                    const srcField = isPAC ? 'D3C' : 'D1C';
-                    const srcValue = isPAC ? row.D3C : row.D1C;
+                    const srcField = isPAC ? (pacUfField || 'D3C') : 'D1C';
+                    const srcValue = isPAC ? row[srcField] : row.D1C;
                     sampleFilteredUfCodes.push(`No UF code, ${srcField}="${srcValue}"`);
                   }
                   continue;
