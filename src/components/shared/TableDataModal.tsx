@@ -5,6 +5,7 @@ import {
   MapPin,
   Database
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import {
   Table,
   TableBody,
@@ -81,16 +82,16 @@ export function TableDataModal({
 }: TableDataModalProps) {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <>
       {/* Overlay */}
       <div 
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70]"
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100]"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 flex items-center justify-center z-[70] p-4">
+      <div className="fixed inset-0 flex items-center justify-center z-[100] p-4">
         <div 
           className={cn(
             "relative w-full max-w-4xl h-[85vh]",
@@ -209,7 +210,8 @@ export function TableDataModal({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 

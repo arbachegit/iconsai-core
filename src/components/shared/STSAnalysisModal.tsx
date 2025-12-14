@@ -7,6 +7,7 @@ import {
   BarChart3,
   Activity
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { type STSResult, formatSTSValue } from '@/lib/structural-time-series';
 
@@ -89,16 +90,16 @@ export function STSAnalysisModal({
     return unit || '';
   };
 
-  return (
+  return createPortal(
     <>
       {/* Overlay */}
       <div 
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70]"
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100]"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 flex items-center justify-center z-[70] p-4">
+      <div className="fixed inset-0 flex items-center justify-center z-[100] p-4">
         <div 
           className={cn(
             "relative w-full max-w-2xl max-h-[85vh]",
@@ -334,7 +335,8 @@ export function STSAnalysisModal({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
