@@ -1,9 +1,8 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogOut, Globe, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
 import { DashboardSidebar, type DashboardTabType } from "@/components/dashboard/DashboardSidebar";
 
@@ -114,7 +113,7 @@ const DashboardAdmin = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between px-4 shrink-0">
+      <header className="h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-4 shrink-0">
         {/* Logo */}
         <div className="flex items-center gap-3">
           <img 
@@ -124,34 +123,12 @@ const DashboardAdmin = () => {
           />
           <span className="font-semibold text-sm">Dashboard</span>
         </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleBackToApp}
-            className="gap-2"
-          >
-            <Globe className="h-4 w-4" />
-            Voltar ao APP
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className="gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="h-4 w-4" />
-            Sair
-          </Button>
-        </div>
       </header>
 
       {/* Main Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
 
         {/* Content */}
         <main className="flex-1 overflow-auto bg-muted/30">
