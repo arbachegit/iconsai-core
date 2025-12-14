@@ -411,7 +411,7 @@ export function ChartDatabaseTab() {
             <div className="flex flex-col items-center justify-center border rounded-md py-1.5 bg-muted/30">
               <span className="text-[9px] text-muted-foreground uppercase">Unidade</span>
               <div className="flex items-center gap-1.5">
-                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-white shadow-sm">
+              <div className="flex items-center justify-center w-5 h-5 rounded-full border border-muted-foreground/50">
                   {unitInfo.icon}
                 </div>
                 <span className="text-xs font-medium">{unitInfo.label}</span>
@@ -428,7 +428,7 @@ export function ChartDatabaseTab() {
             <div className="flex flex-col items-center justify-center border rounded-md py-1.5 bg-secondary/50">
               <span className="text-[9px] text-muted-foreground uppercase">Registros</span>
               <div className="flex items-center gap-1">
-                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-white shadow-sm">
+              <div className="flex items-center justify-center w-5 h-5 rounded-full border border-muted-foreground/50">
                   <Database className="h-3 w-3 text-muted-foreground" />
                 </div>
                 <span className="text-xs font-medium">{stats.count.toLocaleString()}</span>
