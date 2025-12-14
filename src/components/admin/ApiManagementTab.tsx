@@ -157,6 +157,9 @@ export default function ApiManagementTab() {
   const [cronMinute, setCronMinute] = useState('00');
   const [globalAutoSyncEnabled, setGlobalAutoSyncEnabled] = useState(true);
   const [defaultFrequency, setDefaultFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [isEditingCron, setIsEditingCron] = useState(false);
+  const [savingCronConfig, setSavingCronConfig] = useState(false);
+  const [cronConfigLoaded, setCronConfigLoaded] = useState(false);
   
   // Mass sync with progress modal
   const [showSyncProgressModal, setShowSyncProgressModal] = useState(false);
@@ -192,6 +195,7 @@ export default function ApiManagementTab() {
 
   useEffect(() => {
     fetchApis();
+    fetchCronConfig();
   }, []);
 
   // ========== REALTIME SYNC: Auto-refresh on system_api_registry changes ==========
@@ -217,6 +221,73 @@ export default function ApiManagementTab() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const fetchCronConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('api_sync_enabled, api_sync_cron_hour, api_sync_cron_minute, api_sync_default_frequency')
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setGlobalAutoSyncEnabled(data.api_sync_enabled ?? true);
+        setCronHour(data.api_sync_cron_hour || '03');
+        setCronMinute(data.api_sync_cron_minute || '00');
+        setDefaultFrequency((data.api_sync_default_frequency as 'daily' | 'weekly' | 'monthly') || 'daily');
+      }
+      setCronConfigLoaded(true);
+    } catch (error) {
+      logger.error('Error fetching cron config:', error);
+      setCronConfigLoaded(true);
+    }
+  };
+
+  const handleSaveCronConfig = async () => {
+    setSavingCronConfig(true);
+    try {
+      const { error } = await supabase
+        .from('admin_settings')
+        .update({
+          api_sync_enabled: globalAutoSyncEnabled,
+          api_sync_cron_hour: cronHour,
+          api_sync_cron_minute: cronMinute,
+          api_sync_default_frequency: defaultFrequency
+        })
+        .not('id', 'is', null);
+
+      if (error) throw error;
+
+      // Log to user_activity_logs for audit trail
+      await supabase.from('user_activity_logs').insert({
+        action_category: 'API_CONFIGURATION',
+        action: 'CRON_CONFIG_UPDATE',
+        user_email: 'admin',
+        details: {
+          api_sync_enabled: globalAutoSyncEnabled,
+          cron_hour: cronHour,
+          cron_minute: cronMinute,
+          default_frequency: defaultFrequency,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      toast.success('Configuração de sincronização salva com sucesso');
+      setIsEditingCron(false);
+    } catch (error) {
+      logger.error('Error saving cron config:', error);
+      toast.error('Erro ao salvar configuração');
+    } finally {
+      setSavingCronConfig(false);
+    }
+  };
+
+  const handleCancelCronEdit = () => {
+    // Reload original values from DB
+    fetchCronConfig();
+    setIsEditingCron(false);
+  };
 
   const fetchApis = async () => {
     try {
@@ -247,16 +318,18 @@ export default function ApiManagementTab() {
     }
   };
 
-  // Calculate next cron execution time (daily at 3 AM)
+  // Calculate next cron execution time based on configured hour/minute
   const getNextCronExecution = (): Date => {
     const now = new Date();
-    const today3AM = setMinutes(setHours(startOfDay(now), 3), 0);
+    const hour = parseInt(cronHour, 10);
+    const minute = parseInt(cronMinute, 10);
+    const todayScheduled = setMinutes(setHours(startOfDay(now), hour), minute);
     
-    if (isAfter(now, today3AM)) {
-      // Already past 3 AM today, next is tomorrow
-      return addDays(today3AM, 1);
+    if (isAfter(now, todayScheduled)) {
+      // Already past scheduled time today, next is tomorrow
+      return addDays(todayScheduled, 1);
     }
-    return today3AM;
+    return todayScheduled;
   };
 
   const handleTriggerManualSync = async () => {
@@ -957,6 +1030,7 @@ export default function ApiManagementTab() {
                     <Switch
                       checked={globalAutoSyncEnabled}
                       onCheckedChange={setGlobalAutoSyncEnabled}
+                      disabled={!isEditingCron}
                     />
                     <span className="text-sm text-muted-foreground">
                       {globalAutoSyncEnabled ? 'Habilitado' : 'Desabilitado'}
@@ -971,7 +1045,7 @@ export default function ApiManagementTab() {
                     Horário de Execução
                   </Label>
                   <div className="flex items-center gap-2">
-                    <Select value={cronHour} onValueChange={setCronHour}>
+                    <Select value={cronHour} onValueChange={setCronHour} disabled={!isEditingCron}>
                       <SelectTrigger className="w-20 h-9">
                         <SelectValue />
                       </SelectTrigger>
@@ -982,7 +1056,7 @@ export default function ApiManagementTab() {
                       </SelectContent>
                     </Select>
                     <span className="text-muted-foreground">:</span>
-                    <Select value={cronMinute} onValueChange={setCronMinute}>
+                    <Select value={cronMinute} onValueChange={setCronMinute} disabled={!isEditingCron}>
                       <SelectTrigger className="w-20 h-9">
                         <SelectValue />
                       </SelectTrigger>
@@ -993,7 +1067,7 @@ export default function ApiManagementTab() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <p className="text-xs text-muted-foreground">Cron: 0 {cronHour} * * *</p>
+                  <p className="text-xs text-muted-foreground">Cron: {cronMinute} {cronHour} * * *</p>
                 </div>
 
                 {/* Default Frequency */}
@@ -1002,7 +1076,11 @@ export default function ApiManagementTab() {
                     <CalendarIcon className="h-4 w-4 text-emerald-500" />
                     Frequência Padrão
                   </Label>
-                  <Select value={defaultFrequency} onValueChange={(v) => setDefaultFrequency(v as 'daily' | 'weekly' | 'monthly')}>
+                  <Select 
+                    value={defaultFrequency} 
+                    onValueChange={(v) => setDefaultFrequency(v as 'daily' | 'weekly' | 'monthly')}
+                    disabled={!isEditingCron}
+                  >
                     <SelectTrigger className="h-9">
                       <SelectValue />
                     </SelectTrigger>
@@ -1054,8 +1132,49 @@ export default function ApiManagementTab() {
                 )}
               </div>
 
-              {/* Manual Trigger Button */}
-              <div className="mt-4 pt-4 border-t border-border/40">
+              {/* Action Buttons Row */}
+              <div className="mt-4 pt-4 border-t border-border/40 flex flex-wrap items-center gap-3">
+                {isEditingCron ? (
+                  <>
+                    <Button
+                      onClick={handleSaveCronConfig}
+                      disabled={savingCronConfig}
+                      className="gap-2"
+                    >
+                      {savingCronConfig ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4" />
+                          Salvar
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleCancelCronEdit}
+                      disabled={savingCronConfig}
+                    >
+                      Cancelar
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditingCron(true)}
+                    className="gap-2"
+                    disabled={!cronConfigLoaded}
+                  >
+                    <Settings className="h-4 w-4" />
+                    Configurar
+                  </Button>
+                )}
+                
+                <div className="border-l border-border/40 h-6 mx-2" />
+                
                 <Button
                   variant="outline"
                   onClick={handleTriggerManualSync}
@@ -1074,7 +1193,7 @@ export default function ApiManagementTab() {
                     </>
                   )}
                 </Button>
-                <span className="ml-3 text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   Executa a sincronização automática imediatamente
                 </span>
               </div>
