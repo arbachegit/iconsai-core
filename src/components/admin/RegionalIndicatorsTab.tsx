@@ -67,17 +67,18 @@ export function RegionalIndicatorsTab() {
     }
   });
 
-  // Fetch regional indicators
+  // Fetch regional indicators - only those with linked API
   const { data: indicators = [], isLoading: loadingIndicators } = useQuery({
-    queryKey: ['regional-indicators'],
+    queryKey: ['regional-indicators-with-api'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('economic_indicators')
-        .select('id, name, code, unit, is_regional')
+        .select('id, name, code, unit, is_regional, api_id')
         .eq('is_regional', true)
+        .not('api_id', 'is', null)
         .order('name');
       if (error) throw error;
-      return data as Indicator[];
+      return data as (Indicator & { api_id: string })[];
     }
   });
 
