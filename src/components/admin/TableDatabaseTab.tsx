@@ -723,6 +723,7 @@ export function TableDatabaseTab() {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  setShowSTSModal(false); // Fechar modal irmão
                   setShowTableModal(true);
                 }}
                 className={cn(
@@ -901,7 +902,10 @@ export function TableDatabaseTab() {
                   unit={selectedIndicator?.unit || null}
                   frequency={selectedIndicator?.frequency || null}
                   indicatorName={selectedIndicator?.name || ''}
-                  onOpenAnalysis={() => setShowSTSModal(true)}
+                  onOpenAnalysis={() => {
+                    setShowTableModal(false); // Fechar modal irmão
+                    setShowSTSModal(true);
+                  }}
                 />
               )}
             </div>

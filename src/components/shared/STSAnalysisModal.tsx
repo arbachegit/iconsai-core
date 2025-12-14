@@ -92,14 +92,14 @@ export function STSAnalysisModal({
 
   return createPortal(
     <>
-      {/* Overlay */}
+      {/* Overlay - z-[110] para ficar acima do TableDataModal */}
       <div 
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100]"
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110]"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="fixed inset-0 flex items-center justify-center z-[100] p-4">
+      {/* Modal - z-[110] */}
+      <div className="fixed inset-0 flex items-center justify-center z-[110] p-4">
         <div 
           className={cn(
             "relative w-full max-w-2xl",
@@ -135,8 +135,9 @@ export function STSAnalysisModal({
             </div>
           </div>
 
-          {/* Scrollable content */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-6">
+          {/* Scrollable content - estrutura correta para scroll */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="h-full overflow-y-auto px-6 py-4 space-y-6">
             
             {/* Section 1: Trend Analysis */}
             <section>
@@ -316,6 +317,7 @@ export function STSAnalysisModal({
               </div>
             </section>
 
+            </div>
           </div>
         </div>
       </div>
