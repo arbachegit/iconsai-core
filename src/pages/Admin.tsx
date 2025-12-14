@@ -216,22 +216,17 @@ const Admin = () => {
 
         setUserEmail(user.email || null);
 
-        // Check if user has admin or superadmin role
+        // Check if user has SUPERADMIN role (exclusive access to /admin)
         const { data: roleData } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", user.id)
-          .in("role", ["admin", "superadmin"])
+          .eq("role", "superadmin")
           .maybeSingle();
 
         if (!roleData) {
-          toast({
-            title: "Acesso negado",
-            description: "Você não tem permissões de administrador.",
-            variant: "destructive",
-          });
-          await supabase.auth.signOut();
-          navigate("/admin/login");
+          // Silently redirect non-superadmin users to /dashboard
+          navigate("/dashboard");
           return;
         }
       } catch (error) {
