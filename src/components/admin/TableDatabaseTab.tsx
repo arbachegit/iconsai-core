@@ -31,6 +31,22 @@ import {
   X,
 } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+
+// Provider color styling (same as ApiManagementTab)
+const getProviderColor = (provider: string) => {
+  switch (provider) {
+    case 'BCB': return 'bg-blue-500/20 text-blue-400 border-blue-500/40';
+    case 'IBGE': return 'bg-green-500/20 text-green-400 border-green-500/40';
+    case 'IPEADATA': return 'bg-orange-500/20 text-orange-400 border-orange-500/40';
+    case 'WorldBank': return 'bg-sky-500/20 text-sky-400 border-sky-500/40';
+    case 'IMF': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/40';
+    case 'YahooFinance': return 'bg-violet-500/20 text-violet-400 border-violet-500/40';
+    case 'Internal': return 'bg-purple-500/20 text-purple-400 border-purple-500/40';
+    case 'Scraper': return 'bg-amber-500/20 text-amber-400 border-amber-500/40';
+    default: return 'bg-muted text-muted-foreground';
+  }
+};
 
 // Format value for table display based on unit type
 function formatTableValue(value: number, unit: string | null): string {
@@ -398,7 +414,10 @@ export function TableDatabaseTab() {
         <CardContent className="pt-4 pb-3">
           {/* Provider badge */}
           {indicator.api?.provider && (
-            <Badge variant="secondary" className="w-fit mb-2 text-xs">
+            <Badge 
+              variant="outline" 
+              className={cn("w-fit mb-2 text-xs", getProviderColor(indicator.api.provider))}
+            >
               {indicator.api.provider}
             </Badge>
           )}
@@ -528,7 +547,12 @@ export function TableDatabaseTab() {
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold">{selectedIndicator?.name}</h2>
                 {selectedIndicator?.api?.provider && (
-                  <Badge variant="outline">{selectedIndicator.api.provider}</Badge>
+                  <Badge 
+                    variant="outline" 
+                    className={getProviderColor(selectedIndicator.api.provider)}
+                  >
+                    {selectedIndicator.api.provider}
+                  </Badge>
                 )}
               </div>
               <span className="text-sm text-muted-foreground">
