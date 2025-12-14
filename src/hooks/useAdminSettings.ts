@@ -17,6 +17,10 @@ interface AdminSettings {
   ml_accuracy_last_alert: string | null;
   doc_sync_time: string | null;
   doc_sync_alert_email: string | null;
+  api_sync_enabled: boolean | null;
+  api_sync_cron_hour: string | null;
+  api_sync_cron_minute: string | null;
+  api_sync_default_frequency: string | null;
 }
 
 export const useAdminSettings = () => {

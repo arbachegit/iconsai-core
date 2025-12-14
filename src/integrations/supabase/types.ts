@@ -49,6 +49,10 @@ export type Database = {
           alert_email: string | null
           alert_enabled: boolean | null
           alert_threshold: number | null
+          api_sync_cron_hour: string | null
+          api_sync_cron_minute: string | null
+          api_sync_default_frequency: string | null
+          api_sync_enabled: boolean | null
           auto_play_audio: boolean | null
           chat_audio_enabled: boolean | null
           created_at: string | null
@@ -80,6 +84,10 @@ export type Database = {
           alert_email?: string | null
           alert_enabled?: boolean | null
           alert_threshold?: number | null
+          api_sync_cron_hour?: string | null
+          api_sync_cron_minute?: string | null
+          api_sync_default_frequency?: string | null
+          api_sync_enabled?: boolean | null
           auto_play_audio?: boolean | null
           chat_audio_enabled?: boolean | null
           created_at?: string | null
@@ -111,6 +119,10 @@ export type Database = {
           alert_email?: string | null
           alert_enabled?: boolean | null
           alert_threshold?: number | null
+          api_sync_cron_hour?: string | null
+          api_sync_cron_minute?: string | null
+          api_sync_default_frequency?: string | null
+          api_sync_enabled?: boolean | null
           auto_play_audio?: boolean | null
           chat_audio_enabled?: boolean | null
           created_at?: string | null
