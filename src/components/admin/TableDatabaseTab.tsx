@@ -715,7 +715,7 @@ export function TableDatabaseTab() {
               title={group.title}
               icon={<GroupIcon className="h-5 w-5" />}
               count={groupIndicators.length}
-              defaultExpanded={key !== 'outros'}
+              defaultExpanded={false}
             >
               {groupIndicators.map(renderIndicatorCard)}
             </CollapsibleGroup>
