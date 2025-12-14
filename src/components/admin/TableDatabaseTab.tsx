@@ -5,11 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 import { StatBadge } from "@/components/shared/StatBadge";
 import { TrendInfoModal } from "@/components/shared/TrendInfoModal";
+import { STSOutputPanel } from "@/components/shared/STSOutputPanel";
+import { STSAnalysisModal } from "@/components/shared/STSAnalysisModal";
 import {
   Table,
   TableBody,
@@ -35,12 +36,16 @@ import {
   Calendar,
   X,
   Info,
+  Pin,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { formatDateByFrequency, type Frequency } from "@/lib/date-formatters";
 import { useTimeSeriesAnalysis, generateSuggestions } from "@/hooks/useTimeSeriesAnalysis";
+import { runStructuralTimeSeries, type STSResult } from "@/lib/structural-time-series";
 
 // Provider color styling (same as ApiManagementTab)
 const getProviderColor = (provider: string) => {
@@ -207,6 +212,7 @@ export function TableDatabaseTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
   const [showTrendModal, setShowTrendModal] = useState(false);
+  const [showSTSModal, setShowSTSModal] = useState(false);
 
   // Fetch indicators with API name
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
@@ -409,6 +415,19 @@ export function TableDatabaseTab() {
   const suggestions = useMemo(() => {
     return generateSuggestions(analysis, selectedIndicator?.unit || null);
   }, [analysis, selectedIndicator?.unit]);
+
+  // Full STS analysis
+  const stsData = useMemo<STSResult | null>(() => {
+    if (!analysisData || analysisData.length < 3) return null;
+    return runStructuralTimeSeries(analysisData, selectedIndicator?.frequency as Frequency || 'monthly');
+  }, [analysisData, selectedIndicator?.frequency]);
+
+  // Get current (last) value for STS modal
+  const currentValue = useMemo(() => {
+    if (!selectedIndicatorValues || selectedIndicatorValues.length === 0) return 0;
+    const nationalValues = selectedIndicatorValues.filter(v => !v.brazilian_ufs);
+    return nationalValues.length > 0 ? nationalValues[0].value : 0;
+  }, [selectedIndicatorValues]);
 
   // Calculate series counts by frequency - MUST be before early return
   const seriesCounts = useMemo(() => {
@@ -835,7 +854,7 @@ export function TableDatabaseTab() {
                 />
               </div>
 
-              {/* SUGESTÕES - bg opaco */}
+              {/* SUGESTÕES - bg opaco, sem emojis */}
               {suggestions.length > 0 && (
                 <div className="p-4 border border-cyan-500/20 rounded-lg bg-[#0D0D12] space-y-3">
                   <h4 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -846,7 +865,7 @@ export function TableDatabaseTab() {
                   {/* Valor Estimado */}
                   {analysis.forecast && (
                     <div className="flex items-start gap-2 text-sm">
-                      <span>📌</span>
+                      <Pin className="h-4 w-4 text-cyan-500 flex-shrink-0 mt-0.5" />
                       <div>
                         <span className="text-cyan-400 font-medium">VALOR ESTIMADO:</span>
                         <span className="text-white ml-2">
@@ -861,7 +880,13 @@ export function TableDatabaseTab() {
 
                   {/* Tendência */}
                   <div className="flex items-start gap-2 text-sm">
-                    <span>📈</span>
+                    {analysis.direction === 'up' ? (
+                      <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                    ) : analysis.direction === 'down' ? (
+                      <TrendingDown className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <Minus className="h-4 w-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                    )}
                     <div>
                       <span className="text-cyan-400 font-medium">TENDÊNCIA:</span>
                       <span className="text-white ml-2">
@@ -873,25 +898,32 @@ export function TableDatabaseTab() {
 
                   {/* Incerteza */}
                   <div className="flex items-start gap-2 text-sm">
-                    <span>📊</span>
+                    <BarChart3 className="h-4 w-4 text-cyan-500 flex-shrink-0 mt-0.5" />
                     <div>
                       <span className="text-cyan-400 font-medium">INCERTEZA:</span>
-                      <span className="text-white ml-2">
-                        {analysis.uncertainty === 'low' ? '🟢 Baixa' : analysis.uncertainty === 'high' ? '🔴 Alta' : '🟡 Moderada'}
+                      <span className="text-white ml-2 flex items-center gap-1">
+                        {analysis.uncertainty === 'low' ? (
+                          <><CheckCircle2 className="h-3 w-3 text-green-500" /> Baixa</>
+                        ) : analysis.uncertainty === 'high' ? (
+                          <><AlertTriangle className="h-3 w-3 text-red-500" /> Alta</>
+                        ) : (
+                          <><AlertTriangle className="h-3 w-3 text-yellow-500" /> Moderada</>
+                        )}
                       </span>
                     </div>
                   </div>
-
-                  {/* Lista de sugestões adicionais */}
-                  <ul className="space-y-1 pt-2 border-t border-cyan-500/10">
-                    {suggestions.slice(0, 3).map((suggestion, idx) => (
-                      <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
-                        <span className="text-cyan-500">•</span>
-                        {suggestion}
-                      </li>
-                    ))}
-                  </ul>
                 </div>
+              )}
+
+              {/* STS OUTPUT PANEL */}
+              {stsData && (
+                <STSOutputPanel
+                  data={stsData}
+                  unit={selectedIndicator?.unit || null}
+                  frequency={selectedIndicator?.frequency || null}
+                  indicatorName={selectedIndicator?.name || ''}
+                  onOpenAnalysis={() => setShowSTSModal(true)}
+                />
               )}
             </div>
           )}
@@ -900,6 +932,25 @@ export function TableDatabaseTab() {
 
       {/* Trend Info Modal */}
       <TrendInfoModal open={showTrendModal} onClose={() => setShowTrendModal(false)} />
+
+      {/* STS Analysis Modal */}
+      {stsData && analysis && (
+        <STSAnalysisModal
+          isOpen={showSTSModal}
+          onClose={() => setShowSTSModal(false)}
+          indicatorName={selectedIndicator?.name || ''}
+          unit={selectedIndicator?.unit || null}
+          frequency={selectedIndicator?.frequency || null}
+          stsData={stsData}
+          statistics={{
+            mean: analysis.statistics.mean,
+            movingAverage: analysis.statistics.movingAverage,
+            stdDev: analysis.statistics.stdDev,
+            coefficientOfVariation: analysis.statistics.coefficientOfVariation,
+          }}
+          currentValue={currentValue}
+        />
+      )}
     </div>
   );
 }

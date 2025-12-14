@@ -95,7 +95,7 @@ export function generateSuggestions(analysis: TimeSeriesAnalysis | null, unit: s
   if (!analysis) return [];
 
   const result: string[] = [];
-  const { statistics, forecast, direction, uncertainty, nextPeriodLabel } = analysis;
+  const { statistics, forecast, direction, uncertainty, nextPeriodLabel, strength } = analysis;
 
   // Format value helper
   const formatValue = (value: number): string => {
@@ -110,48 +110,49 @@ export function generateSuggestions(analysis: TimeSeriesAnalysis | null, unit: s
     return value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
   };
 
-  // Forecast suggestion
+  // Forecast suggestion (no emojis)
   if (forecast.value !== 0) {
     const changeSymbol = direction === 'up' ? '↗' : direction === 'down' ? '↘' : '→';
     const changeLabel = direction === 'up' ? 'Alta' : direction === 'down' ? 'Baixa' : 'Estabilidade';
+    const strengthLabel = strength === 'strong' ? 'forte' : strength === 'weak' ? 'leve' : 'moderada';
     result.push(
-      `📌 VALOR ESTIMADO: ${formatValue(forecast.lower)} - ${formatValue(forecast.upper)} para ${nextPeriodLabel}`
+      `VALOR ESTIMADO: ${formatValue(forecast.lower)} - ${formatValue(forecast.upper)} para ${nextPeriodLabel}`
     );
     result.push(
-      `📈 TENDÊNCIA: ${changeSymbol} ${changeLabel} prevista para o próximo período`
+      `TENDÊNCIA: ${changeSymbol} ${changeLabel} ${strengthLabel} prevista para o próximo período`
     );
   }
 
-  // Uncertainty
+  // Uncertainty (no emojis)
   const uncertaintyLabels = { low: 'Baixa', moderate: 'Moderada', high: 'Alta' };
   const confidencePercent = Math.round(forecast.confidence * 100);
   result.push(
-    `📊 GRAU DE INCERTEZA: ${uncertaintyLabels[uncertainty]} (${confidencePercent}% de confiança)`
+    `GRAU DE INCERTEZA: ${uncertaintyLabels[uncertainty]} (${confidencePercent}% de confiança)`
   );
 
-  // Moving average insight
+  // Moving average insight (no emojis)
   if (statistics.movingAverage !== null) {
     const maLabel = statistics.movingAverage > statistics.mean ? 'acima' : 'abaixo';
     result.push(
-      `📈 MÉDIA MÓVEL: ${formatValue(statistics.movingAverage)} - ${maLabel} da média histórica`
+      `MÉDIA MÓVEL: ${formatValue(statistics.movingAverage)} - ${maLabel} da média histórica`
     );
   }
 
-  // Coefficient of variation insight
+  // Coefficient of variation insight (no emojis)
   if (statistics.coefficientOfVariation > 30) {
     result.push(
-      `⚠️ VOLATILIDADE: Alta variabilidade detectada (CV: ${statistics.coefficientOfVariation.toFixed(1)}%). Considere analisar períodos específicos.`
+      `VOLATILIDADE: Alta variabilidade detectada (CV: ${statistics.coefficientOfVariation.toFixed(1)}%). Considere analisar períodos específicos.`
     );
   } else if (statistics.coefficientOfVariation < 10) {
     result.push(
-      `✅ ESTABILIDADE: Baixa volatilidade (CV: ${statistics.coefficientOfVariation.toFixed(1)}%). Série previsível.`
+      `ESTABILIDADE: Baixa volatilidade (CV: ${statistics.coefficientOfVariation.toFixed(1)}%). Série previsível.`
     );
   }
 
-  // R² insight
+  // R² insight (no emojis)
   if (statistics.r2 > 0.7) {
     result.push(
-      `📈 TENDÊNCIA CLARA: R² de ${(statistics.r2 * 100).toFixed(1)}% indica tendência bem definida.`
+      `TENDÊNCIA CLARA: R² de ${(statistics.r2 * 100).toFixed(1)}% indica tendência bem definida.`
     );
   }
 
