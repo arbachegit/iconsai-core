@@ -542,8 +542,9 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
   if (showErrorReport) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto [&>button]:hidden">
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden [&>button]:hidden">
           <EconomicCloseButton onClick={handleClose} />
+          <div className="overflow-y-auto max-h-[calc(85vh-2rem)]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
@@ -586,6 +587,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
               </Button>
             </div>
           </div>
+          </div>
         </DialogContent>
       </Dialog>
     );
@@ -593,8 +595,9 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto [&>button]:hidden">
+      <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden [&>button]:hidden">
         <EconomicCloseButton onClick={handleClose} />
+        <div className="overflow-y-auto max-h-[calc(85vh-2rem)]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-primary" />
@@ -870,6 +873,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
             </div>
           );
         })()}
+        </div>
       </DialogContent>
     </Dialog>
   );
