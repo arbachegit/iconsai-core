@@ -37,6 +37,7 @@ import {
   Percent,
   Hash,
   Activity,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -54,6 +55,8 @@ interface Indicator {
   code: string;
   unit: string | null;
   category: string | null;
+  api_id: string | null;
+  api?: { id: string; name: string; provider: string | null } | null;
 }
 
 interface IndicatorValue {
@@ -139,6 +142,34 @@ function formatValue(value: number, unit: string | null, includeUnit: boolean = 
   return formatted;
 }
 
+// Format value for statistics display (with unit formatting like TableDatabaseTab)
+function formatStatValue(value: number, unit: string | null): string {
+  const u = (unit || '').toLowerCase();
+  
+  // Percentual: 2 casas decimais + símbolo %
+  if (u.includes('%')) {
+    return `${value.toFixed(2)}%`;
+  }
+  
+  // Real/BRL: formato moeda
+  if (u.includes('r$') || u.includes('mil') || u.includes('reais') || u === 'brl') {
+    return value.toLocaleString('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+  
+  // Dólar/USD: formato moeda USD
+  if (u.includes('us$') || u.includes('usd') || u.includes('dólar') || u.includes('dollar')) {
+    return `$ ${value.toFixed(2)}`;
+  }
+  
+  // Índice ou padrão: 2 casas decimais
+  return value.toFixed(2);
+}
+
 export function ChartDatabaseTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndicator, setSelectedIndicator] = useState<Indicator | null>(null);
@@ -153,11 +184,14 @@ export function ChartDatabaseTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("economic_indicators")
-        .select("id, name, code, unit, category")
+        .select("id, name, code, unit, category, api_id, system_api_registry(id, name, provider)")
         .not('api_id', 'is', null)
         .order("name");
       if (error) throw error;
-      return data as Indicator[];
+      return (data || []).map((item: any) => ({
+        ...item,
+        api: item.system_api_registry || null,
+      })) as Indicator[];
     },
     refetchOnWindowFocus: true,
     staleTime: 30000,
@@ -400,6 +434,12 @@ export function ChartDatabaseTab() {
         onClick={() => setSelectedIndicator(indicator)}
       >
         <CardContent className="pt-4 pb-3">
+          {/* Provider badge */}
+          {indicator.api?.provider && (
+            <Badge variant="secondary" className="w-fit mb-2 text-xs">
+              {indicator.api.provider}
+            </Badge>
+          )}
           {/* Horizontal title */}
           <h3 className="font-semibold text-sm mb-3 line-clamp-2 min-h-[40px]">
             {indicator.name}
@@ -517,19 +557,38 @@ export function ChartDatabaseTab() {
 
       {/* Detail Modal */}
       <Dialog open={!!selectedIndicator} onOpenChange={() => setSelectedIndicator(null)}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              {selectedIndicator?.name}
-              {selectedIndicator?.unit && (
-                <Badge variant="secondary">{selectedIndicator.unit}</Badge>
-              )}
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 [&>button]:hidden">
+          {/* Custom Header */}
+          <div className="flex items-center justify-between p-6 pb-4 border-b sticky top-0 bg-background z-10">
+            <div className="flex items-center gap-3">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">{selectedIndicator?.name}</h2>
+                  {selectedIndicator?.api?.provider && (
+                    <Badge variant="outline">{selectedIndicator.api.provider}</Badge>
+                  )}
+                  {selectedIndicator?.unit && (
+                    <Badge variant="secondary">{selectedIndicator.unit}</Badge>
+                  )}
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {selectedData.length} registros
+                </span>
+              </div>
+            </div>
+            
+            {/* Circular X button with red hover */}
+            <button
+              onClick={() => setSelectedIndicator(null)}
+              className="h-10 w-10 rounded-full border border-cyan-500/50 flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
 
           {selectedIndicator && statistics && (
-            <div className="space-y-6">
+            <div className="p-6 space-y-6">
               {/* Chart Type Selector */}
               <div className="flex items-center gap-4">
                 <span className="text-sm font-medium">Tipo de Gráfico:</span>
@@ -654,13 +713,13 @@ export function ChartDatabaseTab() {
                 <Card className="bg-muted/30">
                   <CardContent className="pt-4 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Média</p>
-                    <p className="text-xl font-bold">{statistics.mean.toFixed(2)}</p>
+                    <p className="text-xl font-bold">{formatStatValue(statistics.mean, selectedIndicator?.unit)}</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-muted/30">
                   <CardContent className="pt-4 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Desvio Padrão</p>
-                    <p className="text-xl font-bold">{statistics.stdDev.toFixed(2)}</p>
+                    <p className="text-xl font-bold">{formatStatValue(statistics.stdDev, selectedIndicator?.unit)}</p>
                   </CardContent>
                 </Card>
                 <Card className="bg-muted/30">
@@ -693,11 +752,11 @@ export function ChartDatabaseTab() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">Mínimo:</span>
-                      <span className="ml-2 font-medium">{statistics.min.toFixed(2)}</span>
+                      <span className="ml-2 font-medium">{formatStatValue(statistics.min, selectedIndicator?.unit)}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Máximo:</span>
-                      <span className="ml-2 font-medium">{statistics.max.toFixed(2)}</span>
+                      <span className="ml-2 font-medium">{formatStatValue(statistics.max, selectedIndicator?.unit)}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Coef. Angular:</span>
