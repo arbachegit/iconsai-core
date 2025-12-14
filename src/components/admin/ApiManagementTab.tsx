@@ -2039,6 +2039,137 @@ export default function ApiManagementTab() {
         </DialogContent>
       </Dialog>
 
+      {/* API Create/Edit Modal */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] [&>button]:hidden">
+          <EconomicCloseButton onClick={() => setIsDialogOpen(false)} />
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {editingApi ? (
+                <>
+                  <Pencil className="h-5 w-5 text-primary" />
+                  Editar API
+                </>
+              ) : (
+                <>
+                  <Plus className="h-5 w-5 text-primary" />
+                  Nova API
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {editingApi ? 'Atualize os dados da API' : 'Cadastre uma nova API externa'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Ex: IPCA Mensal"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="provider">Provider</Label>
+                <Select
+                  value={formData.provider}
+                  onValueChange={(value) => setFormData({ ...formData, provider: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROVIDERS.map((provider) => (
+                      <SelectItem key={provider} value={provider}>
+                        {provider}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="base_url">URL do Endpoint *</Label>
+              <Input
+                id="base_url"
+                value={formData.base_url}
+                onChange={(e) => setFormData({ ...formData, base_url: e.target.value })}
+                placeholder="https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados"
+                className="font-mono text-sm"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="method">Método HTTP</Label>
+                <Select
+                  value={formData.method}
+                  onValueChange={(value) => setFormData({ ...formData, method: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GET">GET</SelectItem>
+                    <SelectItem value="POST">POST</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => setFormData({ ...formData, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativo</SelectItem>
+                    <SelectItem value="inactive">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="target_table">Tabela Destino</Label>
+                <Select
+                  value={formData.target_table}
+                  onValueChange={(value) => setFormData({ ...formData, target_table: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="indicator_values">indicator_values</SelectItem>
+                    <SelectItem value="indicator_regional_values">indicator_regional_values</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Descrição opcional da API..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave}>
+              {editingApi ? 'Salvar Alterações' : 'Criar API'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* URL View Modal */}
       <Dialog open={urlViewModalOpen} onOpenChange={setUrlViewModalOpen}>
         <DialogContent className="sm:max-w-2xl [&>button]:hidden">
