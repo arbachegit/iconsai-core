@@ -322,11 +322,23 @@ export function TableDatabaseTab() {
   });
 
   const handleCardClick = (indicator: IndicatorWithApi) => {
-    // Reset child modal states before selecting new indicator
+    // Reset child modal states antes de selecionar novo indicador
     setShowTableModal(false);
     setShowSTSModal(false);
     setShowTrendModal(false);
     setSelectedIndicator(indicator);
+  };
+
+  const handleOpenTableModal = () => {
+    setShowSTSModal(false);
+    setShowTrendModal(false);
+    setShowTableModal(true);
+  };
+
+  const handleOpenSTSModal = () => {
+    setShowTableModal(false);
+    setShowTrendModal(false);
+    setShowSTSModal(true);
   };
 
   const handleRefresh = async () => {
@@ -470,7 +482,7 @@ export function TableDatabaseTab() {
       end: maxDate ? new Date(maxDate) : null
     };
   }, [combinedValues]);
-
+  
   if (loadingIndicators) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -681,8 +693,8 @@ export function TableDatabaseTab() {
         })}
       </div>
 
-      {/* View Modal - NUCLEAR FIX: fundos opacos, z-index correto, footer fixo */}
-<Dialog open={!!selectedIndicator} onOpenChange={(open) => {
+      {/* View Modal - modais filhos como overlays internos */}
+      <Dialog open={!!selectedIndicator} onOpenChange={(open) => {
         if (!open) {
           setSelectedIndicator(null);
           setShowTableModal(false);
@@ -690,8 +702,8 @@ export function TableDatabaseTab() {
           setShowTrendModal(false);
         }
       }}>
-        <DialogContent className="max-w-4xl h-[90vh] max-h-[900px] flex flex-col p-0 bg-[#0A0A0F] overflow-hidden [&>button]:hidden">
-          {/* HEADER - flex-shrink-0, bg opaco, z-10 */}
+        <DialogContent className="relative max-w-4xl h-[90vh] max-h-[900px] flex flex-col p-0 bg-[#0A0A0F] overflow-hidden [&>button]:hidden">
+          {/* HEADER */}
           <div className="flex-shrink-0 flex items-center justify-between p-6 pb-4 border-b border-cyan-500/20 bg-[#0A0A0F] z-10">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
@@ -723,8 +735,7 @@ export function TableDatabaseTab() {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setShowSTSModal(false); // Fechar modal irmão
-                  setShowTableModal(true);
+                  handleOpenTableModal();
                 }}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2",
@@ -747,7 +758,7 @@ export function TableDatabaseTab() {
             </div>
           </div>
 
-          {/* METADADOS - flex-shrink-0, bg opaco */}
+          {/* METADADOS */}
           <div className="flex-shrink-0 grid grid-cols-3 md:grid-cols-6 gap-4 px-6 py-4 border-b border-cyan-500/20 bg-[#0A0A0F]">
             <div>
               <span className="text-xs text-muted-foreground">Código</span>
@@ -783,11 +794,9 @@ export function TableDatabaseTab() {
             </div>
           </div>
 
-
-          {/* FOOTER - flex-shrink-0, bg opaco, z-20, NUNCA TRANSPARENTE */}
+          {/* FOOTER / ANÁLISE */}
           {analysis && (
             <div className="flex-shrink-0 px-6 py-4 border-t border-cyan-500/20 bg-[#0D0D12] z-20 space-y-4">
-              {/* 4 BADGES SEPARADOS - grid 2x2 em mobile, 4 em desktop */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <StatBadge
                   label="Média Móvel"
@@ -835,15 +844,12 @@ export function TableDatabaseTab() {
                 />
               </div>
 
-              {/* SUGESTÕES COMPACTAS - bg opaco */}
               {suggestions.length > 0 && (
                 <div className="p-4 border border-cyan-500/20 rounded-lg bg-[#0D0D12] space-y-3">
                   <h4 className="text-sm font-semibold text-white flex items-center gap-2">
                     <Info className="h-4 w-4 text-cyan-500" />
                     Sugestões de Análise
                   </h4>
-                  
-                  {/* Valor Estimado - linha inteira */}
                   {analysis.forecast && (
                     <div className="flex items-start gap-2 text-sm">
                       <Pin className="h-4 w-4 text-cyan-500 flex-shrink-0 mt-0.5" />
@@ -858,10 +864,7 @@ export function TableDatabaseTab() {
                       </div>
                     </div>
                   )}
-
-                  {/* TENDÊNCIA + INCERTEZA lado a lado */}
                   <div className="grid grid-cols-2 gap-4">
-                    {/* Tendência */}
                     <div className="flex items-center gap-2 text-sm">
                       {analysis.direction === 'up' ? (
                         <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0" />
@@ -876,8 +879,6 @@ export function TableDatabaseTab() {
                         {analysis.strength === 'strong' ? ' Forte' : analysis.strength === 'weak' ? ' Leve' : ' Mod.'}
                       </span>
                     </div>
-                    
-                    {/* Incerteza */}
                     <div className="flex items-center gap-2 text-sm">
                       <BarChart3 className="h-4 w-4 text-cyan-500 flex-shrink-0" />
                       <span className="text-cyan-400 font-medium">INCERTEZA:</span>
@@ -895,60 +896,55 @@ export function TableDatabaseTab() {
                 </div>
               )}
 
-              {/* STS OUTPUT PANEL */}
               {stsData && (
                 <STSOutputPanel
                   data={stsData}
                   unit={selectedIndicator?.unit || null}
                   frequency={selectedIndicator?.frequency || null}
                   indicatorName={selectedIndicator?.name || ''}
-                  onOpenAnalysis={() => {
-                    setShowTableModal(false); // Fechar modal irmão
-                    setShowSTSModal(true);
-                  }}
+                  onOpenAnalysis={handleOpenSTSModal}
                 />
               )}
             </div>
+          )}
+
+          {/* Modais filhos como overlays ABSOLUTOS dentro do Dialog */}
+          {selectedIndicator && (
+            <TableDataModal
+              isOpen={showTableModal}
+              onClose={() => setShowTableModal(false)}
+              indicatorName={selectedIndicator.name}
+              indicatorCode={selectedIndicator.code}
+              isRegional={selectedIndicator.is_regional || false}
+              data={selectedIndicatorValues}
+              unit={selectedIndicator.unit || null}
+              frequency={selectedIndicator.frequency || null}
+              isLoading={loadingSelectedValues}
+            />
+          )}
+
+          {selectedIndicator && stsData && analysis && (
+            <STSAnalysisModal
+              isOpen={showSTSModal}
+              onClose={() => setShowSTSModal(false)}
+              indicatorName={selectedIndicator.name}
+              unit={selectedIndicator.unit || null}
+              frequency={selectedIndicator.frequency || null}
+              stsData={stsData}
+              statistics={{
+                mean: analysis.statistics.mean,
+                movingAverage: analysis.statistics.movingAverage,
+                stdDev: analysis.statistics.stdDev,
+                coefficientOfVariation: analysis.statistics.coefficientOfVariation,
+              }}
+              currentValue={currentValue}
+            />
           )}
         </DialogContent>
       </Dialog>
 
       {/* Trend Info Modal */}
       <TrendInfoModal open={showTrendModal} onClose={() => setShowTrendModal(false)} />
-
-      {/* Table Data Modal - só renderiza se tem indicador selecionado */}
-      {selectedIndicator && (
-        <TableDataModal
-          isOpen={showTableModal}
-          onClose={() => setShowTableModal(false)}
-          indicatorName={selectedIndicator.name}
-          indicatorCode={selectedIndicator.code}
-          isRegional={selectedIndicator.is_regional || false}
-          data={selectedIndicatorValues}
-          unit={selectedIndicator.unit || null}
-          frequency={selectedIndicator.frequency || null}
-          isLoading={loadingSelectedValues}
-        />
-      )}
-
-      {/* STS Analysis Modal - só renderiza se tem indicador E dados */}
-      {selectedIndicator && stsData && analysis && (
-        <STSAnalysisModal
-          isOpen={showSTSModal}
-          onClose={() => setShowSTSModal(false)}
-          indicatorName={selectedIndicator.name}
-          unit={selectedIndicator.unit || null}
-          frequency={selectedIndicator.frequency || null}
-          stsData={stsData}
-          statistics={{
-            mean: analysis.statistics.mean,
-            movingAverage: analysis.statistics.movingAverage,
-            stdDev: analysis.statistics.stdDev,
-            coefficientOfVariation: analysis.statistics.coefficientOfVariation,
-          }}
-          currentValue={currentValue}
-        />
-      )}
     </div>
   );
 }

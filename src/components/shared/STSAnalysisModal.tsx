@@ -7,7 +7,6 @@ import {
   BarChart3,
   Activity
 } from 'lucide-react';
-import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { type STSResult, formatSTSValue } from '@/lib/structural-time-series';
 
@@ -90,55 +89,44 @@ export function STSAnalysisModal({
     return unit || '';
   };
 
-  return createPortal(
-    <>
-      {/* Overlay - z-[110] para ficar acima do TableDataModal */}
+  return (
+    <div className="absolute inset-0 z-[110] flex items-center justify-center p-4">
+      {/* Overlay - agora relativo ao Dialog pai */}
       <div 
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110]"
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal - z-[110] */}
-      <div className="fixed inset-0 flex items-center justify-center z-[110] p-4">
-        <div 
-          className={cn(
-            "relative w-full max-w-2xl",
-            "h-[85vh] max-h-[700px]",
-            "bg-[#0A0A0F] border border-cyan-500/30",
-            "rounded-xl shadow-2xl shadow-cyan-500/10",
-            "overflow-hidden flex flex-col"
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Modal Header */}
-          <div className="flex-shrink-0 px-6 py-4 border-b border-cyan-500/20 bg-[#0D0D12]">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-cyan-500" />
-                  Análise Completa
-                </h3>
-                <p className="text-sm text-muted-foreground">{indicatorName}</p>
-              </div>
-              <button
-                onClick={onClose}
-                className={cn(
-                  "w-10 h-10 rounded-full",
-                  "border border-cyan-500/30",
-                  "flex items-center justify-center",
-                  "hover:bg-cyan-500/10 hover:border-cyan-500/50",
-                  "transition-all duration-200"
-                )}
-              >
-                <X className="h-5 w-5 text-white" />
-              </button>
+      {/* Modal */}
+      <div className="relative w-full max-w-2xl h-[85vh] max-h-[700px] bg-[#0A0A0F] border border-cyan-500/30 rounded-xl shadow-2xl shadow-cyan-500/10 overflow-hidden flex flex-col">
+        {/* Modal Header */}
+        <div className="flex-shrink-0 px-6 py-4 border-b border-cyan-500/20 bg-[#0D0D12]">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Activity className="h-5 w-5 text-cyan-500" />
+                Análise Completa
+              </h3>
+              <p className="text-sm text-muted-foreground">{indicatorName}</p>
             </div>
+            <button
+              onClick={onClose}
+              className={cn(
+                "w-10 h-10 rounded-full",
+                "border border-cyan-500/30",
+                "flex items-center justify-center",
+                "hover:bg-cyan-500/10 hover:border-cyan-500/50",
+                "transition-all duration-200"
+              )}
+            >
+              <X className="h-5 w-5 text-white" />
+            </button>
           </div>
+        </div>
 
-          {/* Scrollable content - estrutura correta para scroll */}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <div className="h-full overflow-y-auto px-6 py-4 space-y-6">
-            
+        {/* Scrollable content - estrutura correta para scroll */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="h-full overflow-y-auto px-6 py-4 space-y-6">
             {/* Section 1: Trend Analysis */}
             <section>
               <h4 className="text-sm font-semibold text-cyan-400 flex items-center gap-2 mb-3">
@@ -316,13 +304,10 @@ export function STSAnalysisModal({
                 </p>
               </div>
             </section>
-
-            </div>
           </div>
         </div>
       </div>
-    </>,
-    document.body
+    </div>
   );
 }
 
