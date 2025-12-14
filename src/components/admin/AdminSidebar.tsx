@@ -58,7 +58,7 @@ import {
 } from "lucide-react";
 
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "dashboard-external";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -275,6 +275,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       label: "ANALYTICS",
       icon: BarChart3,
       items: [
+        { id: "dashboard-external" as TabType, label: "Dashboard", icon: LayoutDashboard },
         { id: "data-analysis" as TabType, label: "Data Analysis", icon: TrendingUp },
         { id: "chart-database" as TabType, label: "Chart Data Base", icon: Database },
       ]
@@ -453,7 +454,14 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                           key={item.id}
                           variant={isActive ? "default" : "ghost"}
                           className={`group w-full justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105"} transition-all duration-300 ease-in-out`}
-                          onClick={() => onTabChange(item.id)}
+                          onClick={() => {
+                            // Navigate to external dashboard page
+                            if (item.id === "dashboard-external") {
+                              navigate("/dashboard");
+                            } else {
+                              onTabChange(item.id);
+                            }
+                          }}
                         >
                           <Icon className="w-4 h-4 shrink-0 group-hover:text-black" />
                           <span className="truncate">{item.label}</span>
