@@ -651,12 +651,12 @@ export function TableDatabaseTab() {
 
             <div className="space-y-2">
               <Label>API Vinculada</Label>
-              <Select value={formData.api_id} onValueChange={(v) => setFormData({ ...formData, api_id: v })}>
+              <Select value={formData.api_id || "none"} onValueChange={(v) => setFormData({ ...formData, api_id: v === "none" ? "" : v })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma API (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="none">Nenhuma</SelectItem>
                   {apis.map((api) => (
                     <SelectItem key={api.id} value={api.id}>{api.name}</SelectItem>
                   ))}
