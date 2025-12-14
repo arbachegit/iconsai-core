@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import MonthlyMatrixView from './MonthlyMatrixView';
 import AnnualBlocksView from './AnnualBlocksView';
+import { EconomicCloseButton } from '../EconomicCloseButton';
 
 interface Indicator {
   id: string;
@@ -289,7 +290,8 @@ export default function IndicatorDetailModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col p-0 [&>button]:hidden">
+          <EconomicCloseButton onClick={() => onOpenChange(false)} />
           {/* Header */}
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20">
             <div className="flex items-center justify-between gap-4">
@@ -483,7 +485,8 @@ export default function IndicatorDetailModal({
 
       {/* Add Value Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md [&>button]:hidden">
+          <EconomicCloseButton onClick={() => setAddDialogOpen(false)} />
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-primary" />
@@ -524,7 +527,8 @@ export default function IndicatorDetailModal({
 
       {/* Force Refresh Confirmation Modal */}
       <Dialog open={forceRefreshModalOpen} onOpenChange={setForceRefreshModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md [&>button]:hidden">
+          <EconomicCloseButton onClick={() => setForceRefreshModalOpen(false)} />
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <Trash2 className="h-5 w-5" />
