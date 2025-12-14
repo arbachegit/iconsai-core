@@ -139,57 +139,61 @@ export function TableDataModal({
             </button>
           </div>
 
-          {/* Table Content - scrollable */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 bg-[#0A0A0F]">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-40">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="border border-cyan-500/20 rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader className="sticky top-0 bg-[#0D0D12] z-10">
-                    <TableRow>
-                      <TableHead className="text-cyan-400">Data</TableHead>
-                      {isRegional && (
-                        <TableHead className="text-cyan-400">UF</TableHead>
-                      )}
-                      <TableHead className="text-right text-cyan-400">Valor</TableHead>
-                      <TableHead className="text-cyan-400">Indicador</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={isRegional ? 4 : 3} className="text-center text-muted-foreground py-8">
-                          Nenhum valor encontrado para este indicador.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      data.map((item, idx) => (
-                        <TableRow key={idx} className="border-b border-cyan-500/5 hover:bg-cyan-500/5 transition-colors">
-                          <TableCell className="font-mono text-sm text-white">
-                            {formatDateByFrequency(item.reference_date, frequency)}
-                          </TableCell>
+          {/* Table Content - estrutura correta para scroll */}
+          <div className="flex-1 min-h-0 overflow-hidden bg-[#0A0A0F]">
+            <div className="h-full overflow-y-auto px-6 py-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-40">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="border border-cyan-500/20 rounded-md">
+                  <div className="max-h-[calc(85vh-180px)] overflow-y-auto">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-[#0D0D12] z-10">
+                        <TableRow>
+                          <TableHead className="text-cyan-400">Data</TableHead>
                           {isRegional && (
-                            <TableCell className="font-semibold text-sm text-white">
-                              {item.brazilian_ufs?.uf_sigla || '-'}
-                            </TableCell>
+                            <TableHead className="text-cyan-400">UF</TableHead>
                           )}
-                          <TableCell className="text-right font-mono text-white">
-                            {formatTableValue(Number(item.value), unit)}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {indicatorName}
-                            {!isRegional && ' - Brasil'}
-                          </TableCell>
+                          <TableHead className="text-right text-cyan-400">Valor</TableHead>
+                          <TableHead className="text-cyan-400">Indicador</TableHead>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                      </TableHeader>
+                      <TableBody>
+                        {data.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={isRegional ? 4 : 3} className="text-center text-muted-foreground py-8">
+                              Nenhum valor encontrado para este indicador.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          data.map((item, idx) => (
+                            <TableRow key={idx} className="border-b border-cyan-500/5 hover:bg-cyan-500/5 transition-colors">
+                              <TableCell className="font-mono text-sm text-white">
+                                {formatDateByFrequency(item.reference_date, frequency)}
+                              </TableCell>
+                              {isRegional && (
+                                <TableCell className="font-semibold text-sm text-white">
+                                  {item.brazilian_ufs?.uf_sigla || '-'}
+                                </TableCell>
+                              )}
+                              <TableCell className="text-right font-mono text-white">
+                                {formatTableValue(Number(item.value), unit)}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {indicatorName}
+                                {!isRegional && ' - Brasil'}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
