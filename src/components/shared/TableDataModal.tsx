@@ -15,8 +15,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { cn } from '@/lib/utils';
-import { formatDateByFrequency } from '@/lib/date-formatters';
+import { cn } from "@/lib/utils";
+import { formatDateByFrequency } from "@/lib/date-formatters";
 
 interface IndicatorValueWithUF {
   reference_date: string;
@@ -44,28 +44,28 @@ const FREQUENCIES: Record<string, string> = {
 };
 
 function formatTableValue(value: number, unit: string | null): string {
-  const u = (unit || '').toLowerCase();
-  
-  if (u.includes('%')) {
+  const u = (unit || "").toLowerCase();
+
+  if (u.includes("%")) {
     return `${value.toFixed(2)}%`;
   }
-  
-  if (u.includes('r$') || u.includes('mil') || u.includes('reais') || u === 'brl') {
-    return value.toLocaleString('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL',
+
+  if (u.includes("r$") || u.includes("mil") || u.includes("reais") || u === "brl") {
+    return value.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     });
   }
-  
-  if (u.includes('us$') || u.includes('usd') || u.includes('dólar') || u.includes('dollar')) {
+
+  if (u.includes("us$") || u.includes("usd") || u.includes("dólar") || u.includes("dollar")) {
     return `$ ${value.toFixed(2)}`;
   }
-  
-  return value.toLocaleString('pt-BR', { 
-    minimumFractionDigits: 2, 
-    maximumFractionDigits: 2 
+
+  return value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
 
@@ -82,17 +82,17 @@ export function TableDataModal({
 }: TableDataModalProps) {
   if (!isOpen) return null;
 
-  return createPortal(
+  return (
     <>
-      {/* Overlay */}
-      <div 
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100]"
+      {/* Overlay agora relativo ao Dialog pai */}
+      <div
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm z-[100]"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 flex items-center justify-center z-[100] p-4">
-        <div 
+      <div className="absolute inset-0 flex items-center justify-center z-[100] p-4">
+        <div
           className={cn(
             "relative w-full max-w-4xl",
             "h-[85vh] max-h-[800px]",
@@ -112,11 +112,11 @@ export function TableDataModal({
                   <span className="font-mono">{indicatorCode}</span>
                   <div className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {FREQUENCIES[frequency || ''] || frequency || '-'}
+                    {FREQUENCIES[frequency || ""] || frequency || "-"}
                   </div>
                   <div className="flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
-                    {isRegional ? 'Por UF' : 'Brasil'}
+                    {isRegional ? "Por UF" : "Brasil"}
                   </div>
                   <Badge variant="outline" className="text-xs">
                     {data.length} registros
@@ -163,19 +163,25 @@ export function TableDataModal({
                       <TableBody>
                         {data.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={isRegional ? 4 : 3} className="text-center text-muted-foreground py-8">
+                            <TableCell
+                              colSpan={isRegional ? 4 : 3}
+                              className="text-center text-muted-foreground py-8"
+                            >
                               Nenhum valor encontrado para este indicador.
                             </TableCell>
                           </TableRow>
                         ) : (
                           data.map((item, idx) => (
-                            <TableRow key={idx} className="border-b border-cyan-500/5 hover:bg-cyan-500/5 transition-colors">
+                            <TableRow
+                              key={idx}
+                              className="border-b border-cyan-500/5 hover:bg-cyan-500/5 transition-colors"
+                            >
                               <TableCell className="font-mono text-sm text-white">
                                 {formatDateByFrequency(item.reference_date, frequency)}
                               </TableCell>
                               {isRegional && (
                                 <TableCell className="font-semibold text-sm text-white">
-                                  {item.brazilian_ufs?.uf_sigla || '-'}
+                                  {item.brazilian_ufs?.uf_sigla || "-"}
                                 </TableCell>
                               )}
                               <TableCell className="text-right font-mono text-white">
@@ -183,7 +189,7 @@ export function TableDataModal({
                               </TableCell>
                               <TableCell className="text-muted-foreground">
                                 {indicatorName}
-                                {!isRegional && ' - Brasil'}
+                                {!isRegional && " - Brasil"}
                               </TableCell>
                             </TableRow>
                           ))
@@ -197,8 +203,7 @@ export function TableDataModal({
           </div>
         </div>
       </div>
-    </>,
-    document.body
+    </>
   );
 }
 
