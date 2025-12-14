@@ -11,7 +11,6 @@ const DashboardTab = lazy(() => import("@/components/admin/DashboardTab").then(m
 const DataAnalysisTab = lazy(() => import("@/components/admin/DataAnalysisTab").then(m => ({ default: m.DataAnalysisTab })));
 const ChartDatabaseTab = lazy(() => import("@/components/admin/ChartDatabaseTab").then(m => ({ default: m.ChartDatabaseTab })));
 const TableDatabaseTab = lazy(() => import("@/components/admin/TableDatabaseTab").then(m => ({ default: m.TableDatabaseTab })));
-const ApiAuditLogsTab = lazy(() => import("@/components/admin/ApiAuditLogsTab").then(m => ({ default: m.ApiAuditLogsTab })));
 const AIChat = lazy(() => import("@/components/dashboard/AIChat").then(m => ({ default: m.AIChat })));
 const DataAnalyticsUF = lazy(() => import("@/components/dashboard/DataAnalyticsUF").then(m => ({ default: m.DataAnalyticsUF })));
 
@@ -98,8 +97,6 @@ const DashboardAdmin = () => {
             <TableDatabaseTab />
           </div>
         );
-      case "api-audit-logs":
-        return <ApiAuditLogsTab />;
       default:
         return <DashboardTab />;
     }

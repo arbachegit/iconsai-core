@@ -18,11 +18,10 @@ import {
   Search,
   ChevronUp,
   ChevronDown,
-  Settings,
-  FileText
+  Settings
 } from "lucide-react";
 
-export type DashboardTabType = "indicators" | "ai" | "data-analysis" | "analytics-uf" | "chart-database" | "table-database" | "api-audit-logs";
+export type DashboardTabType = "indicators" | "ai" | "data-analysis" | "analytics-uf" | "chart-database" | "table-database";
 
 interface DashboardSidebarProps {
   activeTab: DashboardTabType;
@@ -39,7 +38,6 @@ const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType 
   { id: "analytics-uf", label: "Data Analytics UF", icon: MapPin },
   { id: "chart-database", label: "Chart Data Base", icon: Database },
   { id: "table-database", label: "Table Data Base", icon: Database },
-  { id: "api-audit-logs", label: "Log de APIs", icon: FileText },
 ];
 
 export function DashboardSidebar({ 
