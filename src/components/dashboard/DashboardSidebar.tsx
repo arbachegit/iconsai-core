@@ -22,7 +22,7 @@ import {
   FileText
 } from "lucide-react";
 
-export type DashboardTabType = "indicators" | "ai" | "analytics" | "analytics-uf" | "charts" | "api-audit-logs";
+export type DashboardTabType = "indicators" | "ai" | "data-analysis" | "analytics-uf" | "chart-database" | "table-database" | "api-audit-logs";
 
 interface DashboardSidebarProps {
   activeTab: DashboardTabType;
@@ -35,9 +35,10 @@ interface DashboardSidebarProps {
 const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType }[] = [
   { id: "indicators", label: "Indicadores de Uso", icon: BarChart3 },
   { id: "ai", label: "IA", icon: Bot },
-  { id: "analytics", label: "Data Analytics", icon: TrendingUp },
+  { id: "data-analysis", label: "Data Analysis", icon: TrendingUp },
   { id: "analytics-uf", label: "Data Analytics UF", icon: MapPin },
-  { id: "charts", label: "Chart Database", icon: Database },
+  { id: "chart-database", label: "Chart Data Base", icon: Database },
+  { id: "table-database", label: "Table Data Base", icon: Database },
   { id: "api-audit-logs", label: "Log de APIs", icon: FileText },
 ];
 
