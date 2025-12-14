@@ -25,6 +25,7 @@ const DashboardAdmin = () => {
   const [activeTab, setActiveTab] = useState<DashboardTabType>("indicators");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Check authentication and role
   useEffect(() => {
@@ -69,10 +70,6 @@ const DashboardAdmin = () => {
     navigate("/admin/login");
   };
 
-  const handleBackToApp = () => {
-    navigate("/");
-  };
-
   const renderContent = () => {
     switch (activeTab) {
       case "indicators":
@@ -111,24 +108,32 @@ const DashboardAdmin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-4 shrink-0">
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <img 
-            src={knowyouAdminLogo} 
-            alt="KnowYOU Admin" 
-            className="h-8 w-auto"
-          />
-          <span className="font-semibold text-sm">Dashboard</span>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background flex w-full">
+      {/* Fixed Sidebar */}
+      <DashboardSidebar 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        onLogout={handleLogout}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+      />
 
-      {/* Main Layout */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
-        <DashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
+      {/* Main content with dynamic margin */}
+      <div 
+        className={`flex-1 flex flex-col transition-all duration-500 ease-in-out ${isSidebarCollapsed ? 'ml-[72px]' : 'ml-[256px]'}`}
+      >
+        {/* Header */}
+        <header className="h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-4 shrink-0">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <img 
+              src={knowyouAdminLogo} 
+              alt="KnowYOU Admin" 
+              className="h-8 w-auto"
+            />
+            <span className="font-semibold text-sm">Dashboard</span>
+          </div>
+        </header>
 
         {/* Content */}
         <main className="flex-1 overflow-auto bg-muted/30">
