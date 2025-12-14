@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, TrendingUp, TrendingDown, Users, Heart, Baby, Globe } from "lucide-react";
+import { Loader2, MapPin, TrendingUp, TrendingDown, Users, Heart, Baby, Globe, Check, X } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, Cell } from "recharts";
 
 interface BrazilianUF {
@@ -79,6 +79,25 @@ export function RegionalIndicatorsTab() {
         .order('name');
       if (error) throw error;
       return data as (Indicator & { api_id: string })[];
+    }
+  });
+
+  // Fetch data availability for each indicator
+  const { data: dataAvailability = {} } = useQuery({
+    queryKey: ['indicator-data-availability'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('indicator_regional_values')
+        .select('indicator_id');
+      
+      if (error) throw error;
+      
+      const counts: Record<string, number> = {};
+      data.forEach(item => {
+        counts[item.indicator_id] = (counts[item.indicator_id] || 0) + 1;
+      });
+      
+      return counts;
     }
   });
 
@@ -214,14 +233,22 @@ export function RegionalIndicatorsTab() {
                 <SelectValue placeholder="Selecione um indicador" />
               </SelectTrigger>
               <SelectContent>
-                {indicators.map(ind => (
-                  <SelectItem key={ind.id} value={ind.id}>
-                    <span className="flex items-center gap-2">
-                      {getIndicatorIcon(ind.code)}
-                      {ind.name}
-                    </span>
-                  </SelectItem>
-                ))}
+                {indicators.map(ind => {
+                  const hasData = (dataAvailability[ind.id] || 0) > 0;
+                  return (
+                    <SelectItem key={ind.id} value={ind.id}>
+                      <span className="flex items-center gap-2 w-full">
+                        {getIndicatorIcon(ind.code)}
+                        <span className="flex-1">{ind.name}</span>
+                        {hasData ? (
+                          <Check className="h-4 w-4 text-green-500 ml-2" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-500 ml-2" />
+                        )}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
