@@ -16,7 +16,7 @@ export function CollapsibleGroup({
   icon,
   count,
   children,
-  defaultExpanded = true,
+  defaultExpanded = false,
 }: CollapsibleGroupProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
