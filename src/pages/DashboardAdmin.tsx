@@ -10,6 +10,7 @@ import { DashboardSidebar, type DashboardTabType } from "@/components/dashboard/
 const DashboardTab = lazy(() => import("@/components/admin/DashboardTab").then(m => ({ default: m.DashboardTab })));
 const DataAnalysisTab = lazy(() => import("@/components/admin/DataAnalysisTab").then(m => ({ default: m.DataAnalysisTab })));
 const ChartDatabaseTab = lazy(() => import("@/components/admin/ChartDatabaseTab").then(m => ({ default: m.ChartDatabaseTab })));
+const TableDatabaseTab = lazy(() => import("@/components/admin/TableDatabaseTab").then(m => ({ default: m.TableDatabaseTab })));
 const ApiAuditLogsTab = lazy(() => import("@/components/admin/ApiAuditLogsTab").then(m => ({ default: m.ApiAuditLogsTab })));
 const AIChat = lazy(() => import("@/components/dashboard/AIChat").then(m => ({ default: m.AIChat })));
 const DataAnalyticsUF = lazy(() => import("@/components/dashboard/DataAnalyticsUF").then(m => ({ default: m.DataAnalyticsUF })));
@@ -77,7 +78,7 @@ const DashboardAdmin = () => {
         return <DashboardTab />;
       case "ai":
         return <AIChat />;
-      case "analytics":
+      case "data-analysis":
         return (
           <div className="p-6">
             <DataAnalysisTab />
@@ -85,10 +86,16 @@ const DashboardAdmin = () => {
         );
       case "analytics-uf":
         return <DataAnalyticsUF />;
-      case "charts":
+      case "chart-database":
         return (
           <div className="p-6">
             <ChartDatabaseTab />
+          </div>
+        );
+      case "table-database":
+        return (
+          <div className="p-6">
+            <TableDatabaseTab />
           </div>
         );
       case "api-audit-logs":
