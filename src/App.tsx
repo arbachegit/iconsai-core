@@ -9,6 +9,7 @@ import Admin from "./pages/Admin";
 import AdminLogin from "./pages/AdminLogin";
 import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
 import { FloatingAudioPlayer } from "./components/FloatingAudioPlayer";
+import { useApiRegistrySync } from "./hooks/useApiRegistrySync";
 
 // Lazy load non-critical pages
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -28,31 +29,39 @@ const PageLoader = () => (
 
 const queryClient = new QueryClient();
 
+// Component that activates API Registry sync
+const ApiRegistrySyncProvider = ({ children }: { children: React.ReactNode }) => {
+  useApiRegistrySync();
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AudioPlayerProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin/signup" element={<AdminSignup />} />
-              <Route path="/admin/reset-password" element={<AdminResetPassword />} />
-              <Route path="/admin/dashboard" element={<Dashboard />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/dashboard" element={<DashboardAdmin />} />
-              <Route path="/docs" element={<Documentation />} />
-              <Route path="/arquitetura" element={<Arquitetura />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-        {/* Global Floating Audio Player */}
-        <FloatingAudioPlayer />
+        <ApiRegistrySyncProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin/signup" element={<AdminSignup />} />
+                <Route path="/admin/reset-password" element={<AdminResetPassword />} />
+                <Route path="/admin/dashboard" element={<Dashboard />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/dashboard" element={<DashboardAdmin />} />
+                <Route path="/docs" element={<Documentation />} />
+                <Route path="/arquitetura" element={<Arquitetura />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+          {/* Global Floating Audio Player */}
+          <FloatingAudioPlayer />
+        </ApiRegistrySyncProvider>
       </TooltipProvider>
     </AudioPlayerProvider>
   </QueryClientProvider>
