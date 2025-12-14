@@ -11,6 +11,7 @@ import {
   TrendingUp, 
   MapPin, 
   Database,
+  Table2,
   Monitor,
   LogOut,
   Menu,
@@ -21,7 +22,7 @@ import {
   Settings
 } from "lucide-react";
 
-export type DashboardTabType = "indicators" | "ai" | "analytics" | "analytics-uf" | "charts";
+export type DashboardTabType = "indicators" | "ai" | "analytics" | "analytics-uf" | "charts" | "table-db";
 
 interface DashboardSidebarProps {
   activeTab: DashboardTabType;
@@ -37,6 +38,7 @@ const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType 
   { id: "analytics", label: "Data Analytics", icon: TrendingUp },
   { id: "analytics-uf", label: "Data Analytics UF", icon: MapPin },
   { id: "charts", label: "Chart Database", icon: Database },
+  { id: "table-db", label: "Table Data Base", icon: Table2 },
 ];
 
 export function DashboardSidebar({ 

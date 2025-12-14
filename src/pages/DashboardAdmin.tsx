@@ -12,6 +12,7 @@ const DataAnalysisTab = lazy(() => import("@/components/admin/DataAnalysisTab").
 const ChartDatabaseTab = lazy(() => import("@/components/admin/ChartDatabaseTab").then(m => ({ default: m.ChartDatabaseTab })));
 const AIChat = lazy(() => import("@/components/dashboard/AIChat").then(m => ({ default: m.AIChat })));
 const DataAnalyticsUF = lazy(() => import("@/components/dashboard/DataAnalyticsUF").then(m => ({ default: m.DataAnalyticsUF })));
+const TableDatabaseTab = lazy(() => import("@/components/dashboard/TableDatabaseTab").then(m => ({ default: m.TableDatabaseTab })));
 
 // Loading fallback
 const TabLoader = () => (
@@ -90,6 +91,8 @@ const DashboardAdmin = () => {
             <ChartDatabaseTab />
           </div>
         );
+      case "table-db":
+        return <TableDatabaseTab />;
       default:
         return <DashboardTab />;
     }
