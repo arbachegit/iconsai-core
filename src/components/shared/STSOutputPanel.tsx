@@ -81,7 +81,12 @@ export function STSOutputPanel({
           Saída do Modelo STS (State-Space)
         </h4>
         <button
-          onClick={onOpenAnalysis}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onOpenAnalysis();
+          }}
           className={cn(
             "flex items-center gap-1",
             "px-3 py-1.5",

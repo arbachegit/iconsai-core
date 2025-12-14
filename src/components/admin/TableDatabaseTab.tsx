@@ -11,6 +11,7 @@ import { StatBadge } from "@/components/shared/StatBadge";
 import { TrendInfoModal } from "@/components/shared/TrendInfoModal";
 import { STSOutputPanel } from "@/components/shared/STSOutputPanel";
 import { STSAnalysisModal } from "@/components/shared/STSAnalysisModal";
+import { TableDataModal } from "@/components/shared/TableDataModal";
 import {
   Table,
   TableBody,
@@ -213,6 +214,7 @@ export function TableDatabaseTab() {
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
   const [showTrendModal, setShowTrendModal] = useState(false);
   const [showSTSModal, setShowSTSModal] = useState(false);
+  const [showTableModal, setShowTableModal] = useState(false);
 
   // Fetch indicators with API name
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
@@ -750,57 +752,25 @@ export function TableDatabaseTab() {
             </div>
           </div>
 
-          {/* TABELA - flex-1, overflow-y-auto, bg opaco */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 bg-[#0A0A0F]">
-            {loadingSelectedValues ? (
-              <div className="flex items-center justify-center h-40">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="border border-cyan-500/20 rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader className="sticky top-0 bg-[#0D0D12] z-10">
-                    <TableRow>
-                      <TableHead className="text-cyan-400">Data</TableHead>
-                      {selectedIndicator?.is_regional && (
-                        <TableHead className="text-cyan-400">UF</TableHead>
-                      )}
-                      <TableHead className="text-right text-cyan-400">Valor</TableHead>
-                      <TableHead className="text-cyan-400">Indicador</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedIndicatorValues.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={selectedIndicator?.is_regional ? 4 : 3} className="text-center text-muted-foreground py-8">
-                          Nenhum valor encontrado para este indicador.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      selectedIndicatorValues.map((item, idx) => (
-                        <TableRow key={idx} className="border-b border-cyan-500/5 hover:bg-cyan-500/5 transition-colors">
-                          <TableCell className="font-mono text-sm text-white">
-                            {formatDateByFrequency(item.reference_date, selectedIndicator?.frequency)}
-                          </TableCell>
-                          {selectedIndicator?.is_regional && (
-                            <TableCell className="font-semibold text-sm text-white">
-                              {item.brazilian_ufs?.uf_sigla || '-'}
-                            </TableCell>
-                          )}
-                          <TableCell className="text-right font-mono text-white">
-                            {formatTableValue(Number(item.value), selectedIndicator?.unit)}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {selectedIndicator?.name}
-                            {!selectedIndicator?.is_regional && ' - Brasil'}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+          {/* BOTÃO VER TABELA - centralizado */}
+          <div className="flex flex-col items-center justify-center py-8 border-b border-cyan-500/10 bg-[#0A0A0F]">
+            <button
+              type="button"
+              onClick={() => setShowTableModal(true)}
+              className={cn(
+                "flex items-center gap-2 px-6 py-3",
+                "bg-cyan-500/10 hover:bg-cyan-500/20",
+                "border border-cyan-500/30 hover:border-cyan-500/50",
+                "rounded-lg transition-all duration-200"
+              )}
+            >
+              <Database className="h-5 w-5 text-cyan-500" />
+              <span className="text-white font-medium">Ver Tabela</span>
+            </button>
+            <span className="text-sm text-muted-foreground mt-2">
+              {selectedIndicatorValues.length} registros
+              {selectedIndicatorValues.length === 500 && ' (limitado a 500)'}
+            </span>
           </div>
 
           {/* FOOTER - flex-shrink-0, bg opaco, z-20, NUNCA TRANSPARENTE */}
@@ -854,7 +824,7 @@ export function TableDatabaseTab() {
                 />
               </div>
 
-              {/* SUGESTÕES - bg opaco, sem emojis */}
+              {/* SUGESTÕES COMPACTAS - bg opaco */}
               {suggestions.length > 0 && (
                 <div className="p-4 border border-cyan-500/20 rounded-lg bg-[#0D0D12] space-y-3">
                   <h4 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -862,7 +832,7 @@ export function TableDatabaseTab() {
                     Sugestões de Análise
                   </h4>
                   
-                  {/* Valor Estimado */}
+                  {/* Valor Estimado - linha inteira */}
                   {analysis.forecast && (
                     <div className="flex items-start gap-2 text-sm">
                       <Pin className="h-4 w-4 text-cyan-500 flex-shrink-0 mt-0.5" />
@@ -878,36 +848,35 @@ export function TableDatabaseTab() {
                     </div>
                   )}
 
-                  {/* Tendência */}
-                  <div className="flex items-start gap-2 text-sm">
-                    {analysis.direction === 'up' ? (
-                      <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                    ) : analysis.direction === 'down' ? (
-                      <TrendingDown className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <Minus className="h-4 w-4 text-yellow-500 flex-shrink-0 mt-0.5" />
-                    )}
-                    <div>
+                  {/* TENDÊNCIA + INCERTEZA lado a lado */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Tendência */}
+                    <div className="flex items-center gap-2 text-sm">
+                      {analysis.direction === 'up' ? (
+                        <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      ) : analysis.direction === 'down' ? (
+                        <TrendingDown className="h-4 w-4 text-red-500 flex-shrink-0" />
+                      ) : (
+                        <Minus className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                      )}
                       <span className="text-cyan-400 font-medium">TENDÊNCIA:</span>
-                      <span className="text-white ml-2">
+                      <span className="text-white">
                         {analysis.direction === 'up' ? '↗ Alta' : analysis.direction === 'down' ? '↘ Queda' : '→ Estável'}
-                        {analysis.strength === 'strong' ? ' Forte' : analysis.strength === 'weak' ? ' Leve' : ' Moderada'}
+                        {analysis.strength === 'strong' ? ' Forte' : analysis.strength === 'weak' ? ' Leve' : ' Mod.'}
                       </span>
                     </div>
-                  </div>
-
-                  {/* Incerteza */}
-                  <div className="flex items-start gap-2 text-sm">
-                    <BarChart3 className="h-4 w-4 text-cyan-500 flex-shrink-0 mt-0.5" />
-                    <div>
+                    
+                    {/* Incerteza */}
+                    <div className="flex items-center gap-2 text-sm">
+                      <BarChart3 className="h-4 w-4 text-cyan-500 flex-shrink-0" />
                       <span className="text-cyan-400 font-medium">INCERTEZA:</span>
-                      <span className="text-white ml-2 flex items-center gap-1">
+                      <span className="text-white flex items-center gap-1">
                         {analysis.uncertainty === 'low' ? (
                           <><CheckCircle2 className="h-3 w-3 text-green-500" /> Baixa</>
                         ) : analysis.uncertainty === 'high' ? (
                           <><AlertTriangle className="h-3 w-3 text-red-500" /> Alta</>
                         ) : (
-                          <><AlertTriangle className="h-3 w-3 text-yellow-500" /> Moderada</>
+                          <><AlertTriangle className="h-3 w-3 text-yellow-500" /> Mod.</>
                         )}
                       </span>
                     </div>
@@ -932,6 +901,19 @@ export function TableDatabaseTab() {
 
       {/* Trend Info Modal */}
       <TrendInfoModal open={showTrendModal} onClose={() => setShowTrendModal(false)} />
+
+      {/* Table Data Modal */}
+      <TableDataModal
+        isOpen={showTableModal}
+        onClose={() => setShowTableModal(false)}
+        indicatorName={selectedIndicator?.name || ''}
+        indicatorCode={selectedIndicator?.code || ''}
+        isRegional={selectedIndicator?.is_regional || false}
+        data={selectedIndicatorValues}
+        unit={selectedIndicator?.unit || null}
+        frequency={selectedIndicator?.frequency || null}
+        isLoading={loadingSelectedValues}
+      />
 
       {/* STS Analysis Modal */}
       {stsData && analysis && (
