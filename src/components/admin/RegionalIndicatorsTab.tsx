@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, TrendingUp, TrendingDown, Users, Heart, Baby, Globe, Check, X } from "lucide-react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, Cell } from "recharts";
+import { Loader2, MapPin, TrendingUp, TrendingDown, Users, Heart, Baby, Globe, Check, X, LineChart as LineChartIcon } from "lucide-react";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, Cell, LineChart, Line } from "recharts";
+import { linearRegression, movingAverage } from "@/lib/statistics-utils";
 
 interface BrazilianUF {
   id: string;
@@ -204,6 +205,54 @@ export function RegionalIndicatorsTab() {
 
   const selectedIndicatorData = indicators.find(i => i.id === selectedIndicator);
 
+  // Time series data with moving average and trend line
+  const timeSeriesData = useMemo(() => {
+    if (!regionalValues.length || !selectedIndicator) return [];
+
+    // Group values by date (average of all UFs per date)
+    const valuesByDate: Record<string, number[]> = {};
+    regionalValues.forEach(v => {
+      const date = v.reference_date;
+      if (!valuesByDate[date]) valuesByDate[date] = [];
+      valuesByDate[date].push(v.value);
+    });
+
+    // Calculate average per date
+    const sortedData = Object.entries(valuesByDate)
+      .map(([date, values]) => ({
+        date,
+        value: values.reduce((a, b) => a + b, 0) / values.length
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (sortedData.length < 2) return [];
+
+    // Calculate moving average (period 3)
+    const values = sortedData.map(d => d.value);
+    const ma = movingAverage(values, 3);
+
+    // Calculate linear regression
+    const xValues = sortedData.map((_, i) => i);
+    const regression = linearRegression(xValues, values);
+
+    // Add MA and trend lines to data
+    return sortedData.map((d, i) => ({
+      ...d,
+      displayDate: d.date.length > 7 ? d.date.substring(0, 7) : d.date,
+      movingAvg: i >= 1 && i < sortedData.length - 1 ? ma[i - 1] : null,
+      trend: regression.slope * i + regression.intercept
+    }));
+  }, [regionalValues, selectedIndicator]);
+
+  // R² calculation for display
+  const regressionR2 = useMemo(() => {
+    if (timeSeriesData.length < 2) return 0;
+    const values = timeSeriesData.map(d => d.value);
+    const xValues = timeSeriesData.map((_, i) => i);
+    const { r2 } = linearRegression(xValues, values);
+    return r2;
+  }, [timeSeriesData]);
+
   const isLoading = loadingUFs || loadingIndicators || loadingValues;
 
   const getIndicatorIcon = (code: string) => {
@@ -384,6 +433,78 @@ export function RegionalIndicatorsTab() {
                 </BarChart>
               </ResponsiveContainer>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Time Series Chart */}
+      {selectedIndicator && timeSeriesData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LineChartIcon className="h-5 w-5 text-primary" />
+              Série Histórica Completa
+              <Badge variant="outline" className="ml-2">
+                R² = {(regressionR2 * 100).toFixed(1)}%
+              </Badge>
+            </CardTitle>
+            <CardDescription>
+              Evolução temporal com média móvel (3 períodos) e linha de tendência por regressão linear
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+              <LineChart 
+                data={timeSeriesData} 
+                margin={{ top: 5, right: 30, left: 20, bottom: 50 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis 
+                  dataKey="displayDate" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={60}
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis tickFormatter={(v) => v.toLocaleString('pt-BR')} />
+                <RechartsTooltip 
+                  formatter={(value: number, name: string) => [
+                    value?.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) || 'N/A',
+                    name === 'value' ? 'Valor Médio' : name === 'movingAvg' ? 'Média Móvel' : 'Tendência'
+                  ]}
+                  labelFormatter={(label) => `Data: ${label}`}
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="value" 
+                  name="Valor Médio" 
+                  stroke="#3B82F6" 
+                  strokeWidth={2}
+                  dot={{ r: 2 }}
+                  activeDot={{ r: 4 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="movingAvg" 
+                  name="Média Móvel (3p)" 
+                  stroke="#10B981" 
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                  connectNulls
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="trend" 
+                  name="Tendência (Regressão)" 
+                  stroke="#EF4444" 
+                  strokeWidth={2}
+                  strokeDasharray="10 5"
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       )}

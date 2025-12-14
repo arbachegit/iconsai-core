@@ -145,7 +145,7 @@ export function BrazilMap({ hoveredState, selectedState, onHover, onSelect }: Br
       {/* Tooltip */}
       {hoveredState && (
         <div
-          className="absolute bg-background/95 backdrop-blur-sm border border-border text-foreground px-3 py-1.5 rounded-md text-sm font-medium pointer-events-none z-10 shadow-lg"
+          className="absolute bg-white backdrop-blur-sm border border-gray-300 text-black px-3 py-1.5 rounded-md text-sm font-bold pointer-events-none z-10 shadow-lg"
           style={{
             left: tooltipPos.x,
             top: tooltipPos.y,
