@@ -10,8 +10,8 @@ import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 import { StatBadge } from "@/components/shared/StatBadge";
 import { TrendInfoModal } from "@/components/shared/TrendInfoModal";
 import { STSOutputPanel } from "@/components/shared/STSOutputPanel";
-import { STSAnalysisModal } from "@/components/shared/STSAnalysisModal";
-import { TableDataModal } from "@/components/shared/TableDataModal";
+import { STSAnalysisContent } from "@/components/shared/STSAnalysisContent";
+import { TableDataContent } from "@/components/shared/TableDataContent";
 import {
   Table,
   TableBody,
@@ -207,14 +207,15 @@ function formatValue(value: number, unit: string | null, includeUnit: boolean = 
   return formatted;
 }
 
+type DialogView = 'detail' | 'table' | 'sts';
+
 export function TableDatabaseTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndicator, setSelectedIndicator] = useState<IndicatorWithApi | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
   const [showTrendModal, setShowTrendModal] = useState(false);
-  const [showSTSModal, setShowSTSModal] = useState(false);
-  const [showTableModal, setShowTableModal] = useState(false);
+  const [currentView, setCurrentView] = useState<DialogView>('detail');
 
   // Fetch indicators with API name
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
@@ -322,23 +323,21 @@ export function TableDatabaseTab() {
   });
 
   const handleCardClick = (indicator: IndicatorWithApi) => {
-    // Reset child modal states antes de selecionar novo indicador
-    setShowTableModal(false);
-    setShowSTSModal(false);
+    setCurrentView('detail');
     setShowTrendModal(false);
     setSelectedIndicator(indicator);
   };
 
-  const handleOpenTableModal = () => {
-    setShowSTSModal(false);
-    setShowTrendModal(false);
-    setShowTableModal(true);
+  const handleOpenTableView = () => {
+    setCurrentView('table');
   };
 
-  const handleOpenSTSModal = () => {
-    setShowTableModal(false);
-    setShowTrendModal(false);
-    setShowSTSModal(true);
+  const handleOpenSTSView = () => {
+    setCurrentView('sts');
+  };
+
+  const handleBackToDetail = () => {
+    setCurrentView('detail');
   };
 
   const handleRefresh = async () => {
@@ -693,226 +692,20 @@ export function TableDatabaseTab() {
         })}
       </div>
 
-      {/* View Modal - modais filhos como overlays internos */}
+      {/* View Modal - view switching architecture */}
       <Dialog open={!!selectedIndicator} onOpenChange={(open) => {
         if (!open) {
           setSelectedIndicator(null);
-          setShowTableModal(false);
-          setShowSTSModal(false);
+          setCurrentView('detail');
           setShowTrendModal(false);
         }
       }}>
-        <DialogContent className="relative max-w-4xl h-[90vh] max-h-[900px] flex flex-col p-0 bg-[#0A0A0F] overflow-hidden [&>button]:hidden">
-          {/* HEADER */}
-          <div className="flex-shrink-0 flex items-center justify-between p-6 pb-4 border-b border-cyan-500/20 bg-[#0A0A0F] z-10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                <Database className="h-5 w-5 text-cyan-500" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold text-white">{selectedIndicator?.name}</h2>
-                  {selectedIndicator?.api?.provider && (
-                    <Badge 
-                      variant="outline" 
-                      className={cn("text-xs border-cyan-500/50 text-cyan-400", getProviderColor(selectedIndicator.api.provider))}
-                    >
-                      {selectedIndicator.api.provider}
-                    </Badge>
-                  )}
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {selectedIndicatorValues.length} registros 
-                  {selectedIndicatorValues.length === 500 && ' (limitado a 500)'}
-                </span>
-              </div>
-            </div>
-            
-            {/* Botões: Ver Tabela + Fechar */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleOpenTableModal();
-                }}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2",
-                  "bg-cyan-500/10 hover:bg-cyan-500/20",
-                  "border border-cyan-500/30 hover:border-cyan-500/50",
-                  "rounded-lg transition-all duration-200 text-white"
-                )}
-              >
-                <Database className="h-4 w-4 text-cyan-500" />
-                <span className="font-medium">Ver Tabela</span>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => setSelectedIndicator(null)}
-                className="h-10 w-10 rounded-full border border-cyan-500/30 flex items-center justify-center text-white hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* METADADOS */}
-          <div className="flex-shrink-0 grid grid-cols-3 md:grid-cols-6 gap-4 px-6 py-4 border-b border-cyan-500/20 bg-[#0A0A0F]">
-            <div>
-              <span className="text-xs text-muted-foreground">Código</span>
-              <p className="font-mono text-sm text-white">{selectedIndicator?.code}</p>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">Unidade</span>
-              <p className="text-sm text-white">{selectedIndicator?.unit || '-'}</p>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">Categoria</span>
-              <Badge variant="outline" className="mt-1 text-xs">
-                {CATEGORIES[selectedIndicator?.category || ''] || selectedIndicator?.category || '-'}
-              </Badge>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">Frequência</span>
-              <div className="flex items-center gap-1 mt-1">
-                <Calendar className="h-3 w-3 text-cyan-500" />
-                <span className="text-sm text-white">{FREQUENCIES[selectedIndicator?.frequency || ''] || selectedIndicator?.frequency || '-'}</span>
-              </div>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">Regional</span>
-              <div className="flex items-center gap-1 mt-1">
-                <MapPin className="h-3 w-3 text-cyan-500" />
-                <span className="text-sm text-white">{selectedIndicator?.is_regional ? 'Sim (por UF)' : 'Não (Brasil)'}</span>
-              </div>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">API Vinculada</span>
-              <p className="text-sm text-white truncate">{selectedIndicator?.api?.name || 'Nenhuma'}</p>
-            </div>
-          </div>
-
-          {/* FOOTER / ANÁLISE */}
-          {analysis && (
-            <div className="flex-shrink-0 px-6 py-4 border-t border-cyan-500/20 bg-[#0D0D12] z-20 space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatBadge
-                  label="Média Móvel"
-                  value={analysis.statistics.movingAverage 
-                    ? formatTableValue(analysis.statistics.movingAverage, selectedIndicator?.unit) 
-                    : 'N/A'}
-                  infoTitle="Média Móvel"
-                  infoContent={
-                    <p>
-                      A <strong>média móvel</strong> suaviza flutuações de curto prazo 
-                      para revelar a tendência subjacente. Uma série acima da média móvel 
-                      sugere momento positivo; abaixo indica fraqueza.
-                    </p>
-                  }
-                />
-                <StatBadge
-                  label="Desvio Padrão"
-                  value={formatTableValue(analysis.statistics.stdDev, selectedIndicator?.unit)}
-                  infoTitle="Desvio Padrão"
-                  infoContent={
-                    <p>
-                      O <strong>desvio padrão</strong> mede a dispersão dos valores em 
-                      relação à média. Um desvio alto indica maior volatilidade e risco; 
-                      um desvio baixo sugere estabilidade.
-                    </p>
-                  }
-                />
-                <StatBadge
-                  label="Coef. Variação"
-                  value={`${analysis.statistics.coefficientOfVariation.toFixed(1)}%`}
-                  infoTitle="Coeficiente de Variação"
-                  infoContent={
-                    <p>
-                      O <strong>coeficiente de variação (CV)</strong> expressa o desvio 
-                      padrão como percentual da média. CV abaixo de 15% indica baixa dispersão; 
-                      entre 15-30% é moderada; acima de 30% é alta volatilidade.
-                    </p>
-                  }
-                />
-                <StatBadge
-                  label="Tendência"
-                  value={analysis.nextPeriodLabel}
-                  trend={analysis.direction}
-                  onInfoClick={() => setShowTrendModal(true)}
-                />
-              </div>
-
-              {suggestions.length > 0 && (
-                <div className="p-4 border border-cyan-500/20 rounded-lg bg-[#0D0D12] space-y-3">
-                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <Info className="h-4 w-4 text-cyan-500" />
-                    Sugestões de Análise
-                  </h4>
-                  {analysis.forecast && (
-                    <div className="flex items-start gap-2 text-sm">
-                      <Pin className="h-4 w-4 text-cyan-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <span className="text-cyan-400 font-medium">VALOR ESTIMADO:</span>
-                        <span className="text-white ml-2">
-                          {formatTableValue(analysis.forecast.lower, selectedIndicator?.unit)} - {formatTableValue(analysis.forecast.upper, selectedIndicator?.unit)}
-                        </span>
-                        <span className="text-muted-foreground ml-1">
-                          para {analysis.nextPeriodLabel}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-2 text-sm">
-                      {analysis.direction === 'up' ? (
-                        <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0" />
-                      ) : analysis.direction === 'down' ? (
-                        <TrendingDown className="h-4 w-4 text-red-500 flex-shrink-0" />
-                      ) : (
-                        <Minus className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-                      )}
-                      <span className="text-cyan-400 font-medium">TENDÊNCIA:</span>
-                      <span className="text-white">
-                        {analysis.direction === 'up' ? '↗ Alta' : analysis.direction === 'down' ? '↘ Queda' : '→ Estável'}
-                        {analysis.strength === 'strong' ? ' Forte' : analysis.strength === 'weak' ? ' Leve' : ' Mod.'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <BarChart3 className="h-4 w-4 text-cyan-500 flex-shrink-0" />
-                      <span className="text-cyan-400 font-medium">INCERTEZA:</span>
-                      <span className="text-white flex items-center gap-1">
-                        {analysis.uncertainty === 'low' ? (
-                          <><CheckCircle2 className="h-3 w-3 text-green-500" /> Baixa</>
-                        ) : analysis.uncertainty === 'high' ? (
-                          <><AlertTriangle className="h-3 w-3 text-red-500" /> Alta</>
-                        ) : (
-                          <><AlertTriangle className="h-3 w-3 text-yellow-500" /> Mod.</>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {stsData && (
-                <STSOutputPanel
-                  data={stsData}
-                  unit={selectedIndicator?.unit || null}
-                  frequency={selectedIndicator?.frequency || null}
-                  indicatorName={selectedIndicator?.name || ''}
-                  onOpenAnalysis={handleOpenSTSModal}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Modais filhos como overlays ABSOLUTOS dentro do Dialog */}
-          {selectedIndicator && (
-            <TableDataModal
-              isOpen={showTableModal}
-              onClose={() => setShowTableModal(false)}
+        <DialogContent className="max-w-4xl h-[90vh] max-h-[900px] flex flex-col p-0 bg-[#0A0A0F] overflow-hidden [&>button]:hidden">
+          
+          {/* VIEW: TABLE */}
+          {currentView === 'table' && selectedIndicator && (
+            <TableDataContent
+              onBack={handleBackToDetail}
               indicatorName={selectedIndicator.name}
               indicatorCode={selectedIndicator.code}
               isRegional={selectedIndicator.is_regional || false}
@@ -923,10 +716,10 @@ export function TableDatabaseTab() {
             />
           )}
 
-          {selectedIndicator && stsData && analysis && (
-            <STSAnalysisModal
-              isOpen={showSTSModal}
-              onClose={() => setShowSTSModal(false)}
+          {/* VIEW: STS ANALYSIS */}
+          {currentView === 'sts' && selectedIndicator && stsData && analysis && (
+            <STSAnalysisContent
+              onBack={handleBackToDetail}
               indicatorName={selectedIndicator.name}
               unit={selectedIndicator.unit || null}
               frequency={selectedIndicator.frequency || null}
@@ -939,6 +732,212 @@ export function TableDatabaseTab() {
               }}
               currentValue={currentValue}
             />
+          )}
+
+          {/* VIEW: DETAIL (default) */}
+          {currentView === 'detail' && (
+            <>
+              {/* HEADER */}
+              <div className="flex-shrink-0 flex items-center justify-between p-6 pb-4 border-b border-cyan-500/20 bg-[#0A0A0F] z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                    <Database className="h-5 w-5 text-cyan-500" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-semibold text-white">{selectedIndicator?.name}</h2>
+                      {selectedIndicator?.api?.provider && (
+                        <Badge 
+                          variant="outline" 
+                          className={cn("text-xs border-cyan-500/50 text-cyan-400", getProviderColor(selectedIndicator.api.provider))}
+                        >
+                          {selectedIndicator.api.provider}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {selectedIndicatorValues.length} registros 
+                      {selectedIndicatorValues.length === 500 && ' (limitado a 500)'}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Botões: Ver Tabela + Fechar */}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleOpenTableView}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2",
+                      "bg-cyan-500/10 hover:bg-cyan-500/20",
+                      "border border-cyan-500/30 hover:border-cyan-500/50",
+                      "rounded-lg transition-all duration-200 text-white"
+                    )}
+                  >
+                    <Database className="h-4 w-4 text-cyan-500" />
+                    <span className="font-medium">Ver Tabela</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIndicator(null)}
+                    className="h-10 w-10 rounded-full border border-cyan-500/30 flex items-center justify-center text-white hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* METADADOS */}
+              <div className="flex-shrink-0 grid grid-cols-3 md:grid-cols-6 gap-4 px-6 py-4 border-b border-cyan-500/20 bg-[#0A0A0F]">
+                <div>
+                  <span className="text-xs text-muted-foreground">Código</span>
+                  <p className="font-mono text-sm text-white">{selectedIndicator?.code}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Unidade</span>
+                  <p className="text-sm text-white">{selectedIndicator?.unit || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Categoria</span>
+                  <Badge variant="outline" className="mt-1 text-xs">
+                    {CATEGORIES[selectedIndicator?.category || ''] || selectedIndicator?.category || '-'}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Frequência</span>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Calendar className="h-3 w-3 text-cyan-500" />
+                    <span className="text-sm text-white">{FREQUENCIES[selectedIndicator?.frequency || ''] || selectedIndicator?.frequency || '-'}</span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Regional</span>
+                  <div className="flex items-center gap-1 mt-1">
+                    <MapPin className="h-3 w-3 text-cyan-500" />
+                    <span className="text-sm text-white">{selectedIndicator?.is_regional ? 'Sim (por UF)' : 'Não (Brasil)'}</span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">API Vinculada</span>
+                  <p className="text-sm text-white truncate">{selectedIndicator?.api?.name || 'Nenhuma'}</p>
+                </div>
+              </div>
+
+              {/* FOOTER / ANÁLISE */}
+              {analysis && (
+                <div className="flex-shrink-0 px-6 py-4 border-t border-cyan-500/20 bg-[#0D0D12] z-20 space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <StatBadge
+                      label="Média Móvel"
+                      value={analysis.statistics.movingAverage 
+                        ? formatTableValue(analysis.statistics.movingAverage, selectedIndicator?.unit) 
+                        : 'N/A'}
+                      infoTitle="Média Móvel"
+                      infoContent={
+                        <p>
+                          A <strong>média móvel</strong> suaviza flutuações de curto prazo 
+                          para revelar a tendência subjacente. Uma série acima da média móvel 
+                          sugere momento positivo; abaixo indica fraqueza.
+                        </p>
+                      }
+                    />
+                    <StatBadge
+                      label="Desvio Padrão"
+                      value={formatTableValue(analysis.statistics.stdDev, selectedIndicator?.unit)}
+                      infoTitle="Desvio Padrão"
+                      infoContent={
+                        <p>
+                          O <strong>desvio padrão</strong> mede a dispersão dos valores em 
+                          relação à média. Um desvio alto indica maior volatilidade e risco; 
+                          um desvio baixo sugere estabilidade.
+                        </p>
+                      }
+                    />
+                    <StatBadge
+                      label="Coef. Variação"
+                      value={`${analysis.statistics.coefficientOfVariation.toFixed(1)}%`}
+                      infoTitle="Coeficiente de Variação"
+                      infoContent={
+                        <p>
+                          O <strong>coeficiente de variação (CV)</strong> expressa o desvio 
+                          padrão como percentual da média. CV abaixo de 15% indica baixa dispersão; 
+                          entre 15-30% é moderada; acima de 30% é alta volatilidade.
+                        </p>
+                      }
+                    />
+                    <StatBadge
+                      label="Tendência"
+                      value={analysis.nextPeriodLabel}
+                      trend={analysis.direction}
+                      onInfoClick={() => setShowTrendModal(true)}
+                    />
+                  </div>
+
+                  {suggestions.length > 0 && (
+                    <div className="p-4 border border-cyan-500/20 rounded-lg bg-[#0D0D12] space-y-3">
+                      <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                        <Info className="h-4 w-4 text-cyan-500" />
+                        Sugestões de Análise
+                      </h4>
+                      {analysis.forecast && (
+                        <div className="flex items-start gap-2 text-sm">
+                          <Pin className="h-4 w-4 text-cyan-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <span className="text-cyan-400 font-medium">VALOR ESTIMADO:</span>
+                            <span className="text-white ml-2">
+                              {formatTableValue(analysis.forecast.lower, selectedIndicator?.unit)} - {formatTableValue(analysis.forecast.upper, selectedIndicator?.unit)}
+                            </span>
+                            <span className="text-muted-foreground ml-1">
+                              para {analysis.nextPeriodLabel}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-2 text-sm">
+                          {analysis.direction === 'up' ? (
+                            <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          ) : analysis.direction === 'down' ? (
+                            <TrendingDown className="h-4 w-4 text-red-500 flex-shrink-0" />
+                          ) : (
+                            <Minus className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                          )}
+                          <span className="text-cyan-400 font-medium">TENDÊNCIA:</span>
+                          <span className="text-white">
+                            {analysis.direction === 'up' ? '↗ Alta' : analysis.direction === 'down' ? '↘ Queda' : '→ Estável'}
+                            {analysis.strength === 'strong' ? ' Forte' : analysis.strength === 'weak' ? ' Leve' : ' Mod.'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <BarChart3 className="h-4 w-4 text-cyan-500 flex-shrink-0" />
+                          <span className="text-cyan-400 font-medium">INCERTEZA:</span>
+                          <span className="text-white flex items-center gap-1">
+                            {analysis.uncertainty === 'low' ? (
+                              <><CheckCircle2 className="h-3 w-3 text-green-500" /> Baixa</>
+                            ) : analysis.uncertainty === 'high' ? (
+                              <><AlertTriangle className="h-3 w-3 text-red-500" /> Alta</>
+                            ) : (
+                              <><AlertTriangle className="h-3 w-3 text-yellow-500" /> Mod.</>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {stsData && (
+                    <STSOutputPanel
+                      data={stsData}
+                      unit={selectedIndicator?.unit || null}
+                      frequency={selectedIndicator?.frequency || null}
+                      indicatorName={selectedIndicator?.name || ''}
+                      onOpenAnalysis={handleOpenSTSView}
+                    />
+                  )}
+                </div>
+              )}
+            </>
           )}
         </DialogContent>
       </Dialog>
