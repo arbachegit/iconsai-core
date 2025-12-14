@@ -8,7 +8,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AlertTriangle, ExternalLink, RefreshCw, Database, AlertCircle, CheckCircle2, Info, Copy, Check, Download, FileSpreadsheet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { EconomicCloseButton } from './EconomicCloseButton';
 
 interface SidraDataPreviewModalProps {
   open: boolean;
@@ -235,8 +234,7 @@ export function SidraDataPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[85vh] [&>button]:hidden">
-        <EconomicCloseButton onClick={() => onOpenChange(false)} />
+      <DialogContent className="max-w-5xl max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Database className="h-5 w-5 text-primary" />
