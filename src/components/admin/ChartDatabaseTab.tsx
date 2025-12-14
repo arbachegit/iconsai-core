@@ -5,8 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   LineChart,
@@ -35,6 +33,10 @@ import {
   AreaChartIcon,
   Info,
   RefreshCw,
+  DollarSign,
+  Percent,
+  Hash,
+  Activity,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -68,6 +70,56 @@ const CHART_ICONS: Record<ChartType, React.ReactNode> = {
   area: <AreaChartIcon className="h-4 w-4" />,
 };
 
+// Category groups for organization
+const CATEGORY_GROUPS = {
+  financial: {
+    title: 'Indicadores Financeiros Globais',
+    icon: TrendingUp,
+    codes: ['IPCA', 'IPCA_BCB', 'SELIC', 'SELIC_IPEADATA', 'SELIC_OVER', 'CDI', 'DOLAR', 'DOLAR_PTAX_COMPRA', 'PIB', 'NY.GDP.PCAP.PP.CD', '4099', 'POP_RESIDENTE']
+  },
+  pmc: {
+    title: 'PMC - Pesquisa Mensal do Comércio',
+    icon: BarChart3,
+    codes: ['PMC', 'PMC_COMB', 'PMC_FARM', 'PMC_MOV', 'PMC_VEST', 'PMC_CONST', 'PMC_VEIC', 'PMC_COMBUSTIVEIS_UF', 'PMC_FARMACIA_UF', 'PMC_MOVEIS_UF', 'PMC_VESTUARIO_UF', 'PMC_CONSTRUCAO_UF', 'PMC_VEICULOS_UF', 'PMC_VAREJO_UF']
+  },
+  pac: {
+    title: 'PAC - Pesquisa Anual do Comércio',
+    icon: DollarSign,
+    codes: ['PAC_TOTAL_RB_UF', 'PAC_VAREJO_RB_UF', 'PAC_ATACADO_RB_UF', 'PAC_VEICULOS_RB_UF', 'PAC_HIPER_RB_UF', 'PAC_COMBUSTIVEIS_RB_UF', 'PAC_ALIMENTOS_RB_UF', 'PAC_TECIDOS_RB_UF', 'PAC_INFORMATICA_RB_UF']
+  }
+};
+
+// Format unit for display
+function formatUnit(unit: string | null): { label: string; icon: React.ReactNode } {
+  if (!unit) return { label: 'N/A', icon: <Hash className="h-3 w-3" /> };
+  const u = unit.toLowerCase();
+  if (u.includes('r$') || u.includes('mil') || u.includes('reais')) {
+    return { label: 'R$', icon: <DollarSign className="h-3 w-3" /> };
+  }
+  if (u.includes('%')) {
+    return { label: '%', icon: <Percent className="h-3 w-3" /> };
+  }
+  if (u.includes('índice') || u.includes('base') || u.includes('index')) {
+    return { label: 'Índice', icon: <Activity className="h-3 w-3" /> };
+  }
+  if (u.includes('pessoas') || u.includes('quantidade') || u.includes('pop')) {
+    return { label: 'Qtd', icon: <Hash className="h-3 w-3" /> };
+  }
+  return { label: unit.substring(0, 6), icon: <Hash className="h-3 w-3" /> };
+}
+
+// Format large values
+function formatValue(value: number, unit: string | null): string {
+  const u = (unit || '').toLowerCase();
+  if (u.includes('r$') || u.includes('mil')) {
+    if (value >= 1e12) return `${(value / 1e12).toFixed(1)} tri`;
+    if (value >= 1e9) return `${(value / 1e9).toFixed(1)} bi`;
+    if (value >= 1e6) return `${(value / 1e6).toFixed(1)} mi`;
+    if (value >= 1e3) return `${(value / 1e3).toFixed(1)} mil`;
+  }
+  return value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+}
+
 export function ChartDatabaseTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndicator, setSelectedIndicator] = useState<Indicator | null>(null);
@@ -76,13 +128,14 @@ export function ChartDatabaseTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
 
-  // Fetch indicators
+  // Fetch indicators with API linkage
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
     queryKey: ["indicators-chart-db"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("economic_indicators")
         .select("id, name, code, unit, category")
+        .not('api_id', 'is', null)
         .order("name");
       if (error) throw error;
       return data as Indicator[];
@@ -124,20 +177,58 @@ export function ChartDatabaseTab() {
     staleTime: 30000,
   });
 
+  // Fetch regional values for PAC indicators
+  const { data: regionalValues = [] } = useQuery({
+    queryKey: ["regional-values-chart-db"],
+    queryFn: async () => {
+      const allData: IndicatorValue[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("indicator_regional_values")
+          .select("indicator_id, reference_date, value")
+          .order("reference_date")
+          .range(from, from + pageSize - 1);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData.push(...(data as IndicatorValue[]));
+          from += pageSize;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      return allData;
+    },
+    refetchOnWindowFocus: true,
+    staleTime: 30000,
+  });
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
       await Promise.all([refetchIndicators(), refetchValues()]);
-      setLastUpdate({ count: allValues.length, date: new Date() });
+      setLastUpdate({ count: allValues.length + regionalValues.length, date: new Date() });
     } finally {
       setIsRefreshing(false);
     }
   };
 
+  // Combined values (national + regional)
+  const combinedValues = useMemo(() => {
+    return [...allValues, ...regionalValues];
+  }, [allValues, regionalValues]);
+
   // Get stats for each indicator
   const indicatorStats = useMemo(() => {
     const stats: Record<string, { count: number; min: string; max: string; lastValue: number }> = {};
-    allValues.forEach((v) => {
+    combinedValues.forEach((v) => {
       if (!stats[v.indicator_id]) {
         stats[v.indicator_id] = {
           count: 0,
@@ -156,24 +247,49 @@ export function ChartDatabaseTab() {
       }
     });
     return stats;
-  }, [allValues]);
+  }, [combinedValues]);
 
-  // Filter indicators by search
+  // Filter indicators by search and only show those with data
   const filteredIndicators = useMemo(() => {
-    if (!searchQuery.trim()) return indicators;
-    const q = searchQuery.toLowerCase();
-    return indicators.filter(
-      (i) =>
-        i.name.toLowerCase().includes(q) ||
-        i.code.toLowerCase().includes(q) ||
-        (i.category && i.category.toLowerCase().includes(q))
-    );
-  }, [indicators, searchQuery]);
+    let filtered = indicators.filter(i => indicatorStats[i.id]?.count > 0);
+    
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (i) =>
+          i.name.toLowerCase().includes(q) ||
+          i.code.toLowerCase().includes(q) ||
+          (i.category && i.category.toLowerCase().includes(q))
+      );
+    }
+    return filtered;
+  }, [indicators, searchQuery, indicatorStats]);
+
+  // Group indicators by category
+  const groupedIndicators = useMemo(() => {
+    const groups: Record<string, Indicator[]> = {};
+    
+    Object.entries(CATEGORY_GROUPS).forEach(([key, group]) => {
+      const groupItems = filteredIndicators.filter(i => group.codes.includes(i.code));
+      if (groupItems.length > 0) {
+        groups[key] = groupItems;
+      }
+    });
+    
+    // Add "Outros" group for uncategorized indicators
+    const categorizedCodes = Object.values(CATEGORY_GROUPS).flatMap(g => g.codes);
+    const uncategorized = filteredIndicators.filter(i => !categorizedCodes.includes(i.code));
+    if (uncategorized.length > 0) {
+      groups['outros'] = uncategorized;
+    }
+    
+    return groups;
+  }, [filteredIndicators]);
 
   // Get data for selected indicator
   const selectedData = useMemo(() => {
     if (!selectedIndicator) return [];
-    return allValues
+    return combinedValues
       .filter((v) => v.indicator_id === selectedIndicator.id)
       .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
       .map((v) => ({
@@ -181,7 +297,7 @@ export function ChartDatabaseTab() {
         value: v.value,
         rawDate: v.reference_date,
       }));
-  }, [selectedIndicator, allValues]);
+  }, [selectedIndicator, combinedValues]);
 
   // Calculate statistics for selected indicator
   const statistics = useMemo(() => {
@@ -196,7 +312,6 @@ export function ChartDatabaseTab() {
     const cv = coefficientOfVariation(values);
     const movAvg = movingAverage(values, 3);
 
-    // Add trend line data
     const trendLineData = selectedData.map((d, i) => ({
       ...d,
       trendLine: regression.slope * i + regression.intercept,
@@ -248,6 +363,59 @@ export function ChartDatabaseTab() {
     );
   }
 
+  // Render indicator card
+  const renderIndicatorCard = (indicator: Indicator) => {
+    const stats = indicatorStats[indicator.id];
+    if (!stats) return null;
+    
+    const unitInfo = formatUnit(indicator.unit);
+    const minDate = format(new Date(stats.min), "MM/yy");
+    const maxDate = format(new Date(stats.max), "MM/yy");
+
+    return (
+      <Card
+        key={indicator.id}
+        className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all"
+        onClick={() => setSelectedIndicator(indicator)}
+      >
+        <CardContent className="pt-4 pb-3">
+          {/* Horizontal title */}
+          <h3 className="font-semibold text-sm mb-3 line-clamp-2 min-h-[40px]">
+            {indicator.name}
+          </h3>
+          
+          {/* 2x2 Badge grid */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Unit badge */}
+            <div className="flex items-center justify-center gap-1.5 border rounded-md py-2 bg-muted/30">
+              {unitInfo.icon}
+              <span className="text-xs font-medium">{unitInfo.label}</span>
+            </div>
+            
+            {/* Period badge */}
+            <div className="flex flex-col items-center justify-center border rounded-md py-1.5 bg-muted/30">
+              <span className="text-[9px] text-muted-foreground uppercase">Período</span>
+              <span className="text-xs font-medium">{minDate} - {maxDate}</span>
+            </div>
+            
+            {/* Records badge */}
+            <div className="flex items-center justify-center gap-1 border rounded-md py-2 bg-secondary/50">
+              <Database className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs font-medium">{stats.count.toLocaleString()}</span>
+            </div>
+            
+            {/* Last value badge */}
+            <div className="flex items-center justify-center border rounded-md py-2 bg-primary/10 text-primary">
+              <span className="text-xs font-bold">
+                {formatValue(stats.lastValue, indicator.unit)}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -286,48 +454,31 @@ export function ChartDatabaseTab() {
         />
       </div>
 
-      {/* Indicator Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredIndicators.map((indicator) => {
-          const stats = indicatorStats[indicator.id];
+      {/* Grouped Indicator Cards */}
+      <div className="space-y-8">
+        {Object.entries(groupedIndicators).map(([key, groupIndicators]) => {
+          const group = CATEGORY_GROUPS[key as keyof typeof CATEGORY_GROUPS] || {
+            title: 'Outros Indicadores',
+            icon: Database
+          };
+          const GroupIcon = group.icon;
+
           return (
-            <Card
-              key={indicator.id}
-              className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all"
-              onClick={() => setSelectedIndicator(indicator)}
-            >
-              <CardContent className="pt-4">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-sm line-clamp-2">{indicator.name}</h3>
-                  <Badge variant="outline" className="text-xs shrink-0 ml-2">
-                    {indicator.code}
-                  </Badge>
-                </div>
-                {stats ? (
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <div className="flex justify-between">
-                      <span>Registros:</span>
-                      <span className="font-medium">{stats.count}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Período:</span>
-                      <span>
-                        {format(new Date(stats.min), "MM/yy")} - {format(new Date(stats.max), "MM/yy")}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Último valor:</span>
-                      <span className="font-medium">
-                        {stats.lastValue.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
-                        {indicator.unit ? ` ${indicator.unit}` : ""}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">Sem dados</p>
-                )}
-              </CardContent>
-            </Card>
+            <div key={key} className="space-y-4">
+              {/* Group header */}
+              <div className="flex items-center gap-3 border-b pb-2">
+                <GroupIcon className="h-5 w-5 text-primary" />
+                <h3 className="font-bold text-lg">{group.title}</h3>
+                <Badge variant="outline" className="ml-auto">
+                  {groupIndicators.length} indicadores
+                </Badge>
+              </div>
+              
+              {/* Cards grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {groupIndicators.map(renderIndicatorCard)}
+              </div>
+            </div>
           );
         })}
       </div>
@@ -395,7 +546,7 @@ export function ChartDatabaseTab() {
                             type="monotone"
                             dataKey="value"
                             name="Valor"
-                            stroke="#3b82f6"
+                            stroke="hsl(var(--primary))"
                             strokeWidth={2}
                             dot={false}
                           />
@@ -403,7 +554,7 @@ export function ChartDatabaseTab() {
                             type="monotone"
                             dataKey="trendLine"
                             name="Tendência"
-                            stroke="#ef4444"
+                            stroke="hsl(var(--destructive))"
                             strokeWidth={2}
                             strokeDasharray="5 5"
                             dot={false}
@@ -433,7 +584,7 @@ export function ChartDatabaseTab() {
                             }}
                           />
                           <Legend />
-                          <Bar dataKey="value" name="Valor" fill="#3b82f6" />
+                          <Bar dataKey="value" name="Valor" fill="hsl(var(--primary))" />
                           <ReferenceLine y={statistics.mean} stroke="#888" strokeDasharray="3 3" />
                         </BarChart>
                       ) : (
@@ -453,9 +604,9 @@ export function ChartDatabaseTab() {
                             type="monotone"
                             dataKey="value"
                             name="Valor"
-                            fill="#3b82f6"
+                            fill="hsl(var(--primary))"
                             fillOpacity={0.3}
-                            stroke="#3b82f6"
+                            stroke="hsl(var(--primary))"
                             strokeWidth={2}
                           />
                           <ReferenceLine y={statistics.mean} stroke="#888" strokeDasharray="3 3" />
