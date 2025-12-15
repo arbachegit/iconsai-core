@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { useYouTubeAutoPreload } from "@/hooks/useYouTubeAutoPreload";
 
 // Lazy load below-the-fold components
-const ChatKnowYOU = lazy(() => import("@/components/ChatKnowYOU"));
+const ChatStudy = lazy(() => import("@/components/ChatStudy"));
 const MediaCarousel = lazy(() => import("@/components/MediaCarousel").then(m => ({ default: m.MediaCarousel })));
 const DigitalExclusionSection = lazy(() => import("@/components/DigitalExclusionSection").then(m => ({ default: m.DigitalExclusionSection })));
 const TuringLegacy = lazy(() => import("@/components/TuringLegacy"));
@@ -162,7 +162,7 @@ const Index = () => {
             {/* Chat Component - Full Width */}
             <div className="mt-8 w-full">
               <Suspense fallback={<SectionLoader />}>
-                <ChatKnowYOU />
+                <ChatStudy />
               </Suspense>
             </div>
             
