@@ -26,7 +26,7 @@ import FileProcessor from "@/components/chat/FileProcessor";
 import { DataVisualization } from "@/components/chat/DataVisualization";
 import { supabase } from "@/integrations/supabase/client";
 
-// Memoizado para evitar re-renders durante digitação
+// Memoizado para evitar re-renders durante digitação  
 const SentimentIndicator = memo(({
   sentiment
 }: {

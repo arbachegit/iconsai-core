@@ -57,7 +57,7 @@ type SortDirection = "asc" | "desc" | null;
 
 const ROWS_PER_PAGE = 100;
 
-export function DataVisualization({ data, columns, fileName }: DataVisualizationProps) {
+export const DataVisualization = ({ data, columns, fileName }: DataVisualizationProps) => {
   // Table state
   const [currentPage, setCurrentPage] = useState(1);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -520,4 +520,4 @@ export function DataVisualization({ data, columns, fileName }: DataVisualization
       </Tabs>
     </div>
   );
-}
+};
