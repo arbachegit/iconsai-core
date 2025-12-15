@@ -83,12 +83,10 @@ export function RegionalStatesHeader({
         {REGION_ORDER.map((regionCode) => (
           <div key={regionCode} className="flex flex-col gap-1">
             {regionCode === 'CO' ? (
-              <span
-                className="text-[10px] font-semibold uppercase tracking-wide leading-[0.9] -mb-1"
-                style={{ color: REGION_COLORS[regionCode] }}
-              >
-                Centro<br />Oeste
-              </span>
+              <div className="flex flex-col -mt-3" style={{ color: REGION_COLORS[regionCode] }}>
+                <span className="text-[10px] font-semibold uppercase tracking-wide">Centro</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wide -mt-0.5">Oeste</span>
+              </div>
             ) : (
               <span
                 className="text-[10px] font-semibold uppercase tracking-wide truncate"
