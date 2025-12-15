@@ -25,7 +25,11 @@ interface GeoJSON {
   features: GeoFeature[];
 }
 
-const GEOJSON_URL = "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson";
+// Multiple fallback URLs for GeoJSON
+const GEOJSON_URLS = [
+  "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson",
+  "https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR?formato=application/vnd.geo+json&qualidade=minima&intrarregiao=UF"
+];
 
 // Convert GeoJSON coordinates to SVG path
 function coordinatesToPath(coordinates: number[][][][], scale: number, offsetX: number, offsetY: number): string {
@@ -45,20 +49,51 @@ function coordinatesToPath(coordinates: number[][][][], scale: number, offsetX: 
   return path;
 }
 
+// Try fetching from multiple URLs with timeout
+async function fetchWithFallback(urls: string[], timeout = 5000): Promise<GeoJSON | null> {
+  for (const url of urls) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Handle IBGE format (nested structure)
+        if (data.objects?.BR_UF_2022?.geometries) {
+          // IBGE TopoJSON needs conversion - skip for now
+          continue;
+        }
+        return data;
+      }
+    } catch (err) {
+      console.warn(`Failed to fetch from ${url}:`, err);
+    }
+  }
+  return null;
+}
+
 export function BrazilMap({ hoveredState, selectedState, onHover, onSelect }: BrazilMapProps) {
   const [geoData, setGeoData] = useState<GeoJSON | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    fetch(GEOJSON_URL)
-      .then((res) => res.json())
+    fetchWithFallback(GEOJSON_URLS)
       .then((data) => {
-        setGeoData(data);
+        if (data) {
+          setGeoData(data);
+        } else {
+          setError("Não foi possível carregar os dados do mapa. Verifique sua conexão.");
+        }
         setLoading(false);
       })
       .catch((err) => {
         console.error("Error loading Brazil GeoJSON:", err);
+        setError("Erro ao processar dados do mapa.");
         setLoading(false);
       });
   }, []);
@@ -100,10 +135,25 @@ export function BrazilMap({ hoveredState, selectedState, onHover, onSelect }: Br
     );
   }
 
-  if (!geoData) {
+  if (!geoData || error) {
     return (
-      <div className="h-[500px] flex items-center justify-center text-muted-foreground">
-        Erro ao carregar mapa
+      <div className="h-[500px] flex flex-col items-center justify-center text-muted-foreground gap-2">
+        <span>Erro ao carregar mapa</span>
+        {error && <span className="text-xs text-destructive">{error}</span>}
+        <button 
+          onClick={() => {
+            setLoading(true);
+            setError(null);
+            fetchWithFallback(GEOJSON_URLS).then((data) => {
+              if (data) setGeoData(data);
+              else setError("Falha ao reconectar.");
+              setLoading(false);
+            });
+          }}
+          className="text-sm text-primary hover:underline"
+        >
+          Tentar novamente
+        </button>
       </div>
     );
   }
