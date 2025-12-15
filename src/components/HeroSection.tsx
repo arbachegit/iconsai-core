@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, ChevronDown, Heart } from "lucide-react";
+import { ArrowRight, Sparkles, ChevronDown, BookOpen } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AIHistoryPanel } from "./AIHistoryPanel";
 import { useTranslation } from "react-i18next";
@@ -204,13 +204,13 @@ const HeroSection = () => {
                       document.querySelector("#knowyou")?.scrollIntoView({ behavior: "smooth" })
                     }
                   >
-                    <Heart className="mr-2 h-4 w-4" />
-                    {t("hero.ctaHealth")}
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    {t("hero.ctaStudy")}
                     <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[200px] bg-background/95 border-primary/30 text-center duration-300">
-                  <p>{t("hero.ctaHealthTooltip")}</p>
+                  <p>{t("hero.ctaStudyTooltip")}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

@@ -14,8 +14,10 @@
     "subtitle": "Transforming Communication in the Age of Artificial Intelligence",
     "description": "Explore the journey of technological evolution and discover how AI is revolutionizing communication in the healthcare sector with KnowYOU.",
     "ctaHealth": "Learn more about Health",
+    "ctaStudy": "Chat with KnowYOU",
     "ctaHistory": "Explore AI history",
     "ctaHealthTooltip": "Navigate to the interactive KnowYOU section to chat with the health assistant",
+    "ctaStudyTooltip": "Navigate to the interactive KnowYOU section to chat with the study assistant",
     "ctaHistoryTooltip": "Open interactive timeline showing the evolution of Artificial Intelligence since 1950",
     "quote": "The exact moment we stopped just operating machines and started, in fact, thinking with them.",
     "quoteAuthor": "by Fernando Arbache"

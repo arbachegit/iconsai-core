@@ -14,8 +14,10 @@
     "subtitle": "Transformer la Communication à l'Ère de l'Intelligence Artificielle",
     "description": "Explorez le parcours de l'évolution technologique et découvrez comment l'IA révolutionne la communication dans le secteur de la santé avec KnowYOU.",
     "ctaHealth": "En savoir plus sur la Santé",
+    "ctaStudy": "Discutez avec KnowYOU",
     "ctaHistory": "Explorer l'histoire de l'IA",
     "ctaHealthTooltip": "Naviguer vers la section interactive KnowYOU pour discuter avec l'assistant de santé",
+    "ctaStudyTooltip": "Naviguer vers la section interactive KnowYOU pour discuter avec l'assistant d'étude",
     "ctaHistoryTooltip": "Ouvrir la chronologie interactive montrant l'évolution de l'Intelligence Artificielle depuis 1950",
     "quote": "Le moment exact où nous avons cessé de simplement opérer des machines et avons commencé, en fait, à penser avec elles.",
     "quoteAuthor": "par Fernando Arbache"
