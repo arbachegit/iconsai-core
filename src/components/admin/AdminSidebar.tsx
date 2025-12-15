@@ -212,7 +212,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       label: "RAG & Análise",
       icon: Brain,
       items: [
-        { id: "rag-documentation" as TabType, label: "📖 Documentação RAG", icon: BookOpen },
+        { id: "rag-documentation" as TabType, label: "Documentação RAG", icon: BookOpen },
         { id: "rag-metrics" as TabType, label: "Métricas RAG", icon: Database },
         { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
         { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
