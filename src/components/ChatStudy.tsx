@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, memo, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useChatStudy } from "@/hooks/useChatStudy";
-import { Loader2, ImagePlus, Mic, Square, X, ArrowUp, BarChart3, ArrowDown } from "lucide-react";
+import { useChatStudy, type Message } from "@/hooks/useChatStudy";
+import { Loader2, ImagePlus, Mic, Square, X, ArrowUp, BarChart3, ArrowDown, Paperclip, Upload } from "lucide-react";
 import { AudioControls } from "./AudioControls";
 import { useToast } from "@/hooks/use-toast";
 import { MarkdownContent } from "./MarkdownContent";
@@ -11,7 +11,10 @@ import { TypingIndicator } from "./TypingIndicator";
 import knowriskLogo from "@/assets/knowrisk-logo-circular.png";
 import { useTranslation } from "react-i18next";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, MapPin } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
 
 import { CopyButton } from "./CopyButton";
 import { ChatFloatingAudioPlayer } from "./ChatFloatingAudioPlayer";
@@ -19,7 +22,9 @@ import { cn } from "@/lib/utils";
 import ContextualSuggestions from "./ContextualSuggestions";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { mapCityToRegion, getRegionDisplayName, getRegionToneLabel } from "@/lib/region-mapping";
-import { MapPin } from "lucide-react";
+import FileProcessor from "@/components/chat/FileProcessor";
+import { DataVisualization } from "@/components/chat/DataVisualization";
+import { supabase } from "@/integrations/supabase/client";
 
 // Memoizado para evitar re-renders durante digitação
 const SentimentIndicator = memo(({
@@ -78,6 +83,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     transcribeAudio,
     attachDocument,
     detachDocument,
+    addMessage,
   } = useChatStudy({ userRegion });
 
   const [input, setInput] = useState("");
@@ -90,6 +96,11 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   const [isChartMode, setIsChartMode] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
   const [waitingCountdown, setWaitingCountdown] = useState(5);
+
+  // File upload states
+  const [isFileDialogOpen, setIsFileDialogOpen] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [agentCapabilities, setAgentCapabilities] = useState<Record<string, boolean>>({});
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
@@ -123,6 +134,99 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   useEffect(() => {
     requestLocation();
   }, []);
+
+  // Fetch agent capabilities
+  useEffect(() => {
+    const fetchAgentCapabilities = async () => {
+      const { data } = await supabase
+        .from("chat_agents")
+        .select("capabilities")
+        .eq("slug", "study")
+        .single();
+      
+      if (data?.capabilities) {
+        setAgentCapabilities(data.capabilities as Record<string, boolean>);
+      }
+    };
+    fetchAgentCapabilities();
+  }, []);
+
+  // File upload handlers
+  const handleFileLoaded = useCallback((data: any[], fileName: string, columns: string[]) => {
+    setIsFileDialogOpen(false);
+    
+    const fileMessage: Message = {
+      role: "user",
+      content: `Arquivo enviado: ${fileName}`,
+      timestamp: new Date(),
+      type: "file-data",
+      fileData: { data, fileName, columns }
+    };
+    
+    addMessage(fileMessage);
+    
+    const numericCols = columns.filter(col => 
+      data.some(row => !isNaN(Number(row[col])))
+    );
+    
+    sendMessage(`Analise o arquivo ${fileName} com ${data.length} registros e ${columns.length} colunas. Colunas numéricas: ${numericCols.join(", ")}`);
+  }, [addMessage, sendMessage]);
+
+  const processFile = useCallback((file: File) => {
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    
+    if (extension === "csv") {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          handleFileLoaded(results.data as any[], file.name, results.meta.fields || []);
+        },
+      });
+    } else if (extension === "xlsx" || extension === "xls") {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const buffer = e.target?.result as ArrayBuffer;
+        const workbook = XLSX.read(new Uint8Array(buffer), { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(sheet, { defval: "" }) as any[];
+        const columns = data.length > 0 ? Object.keys(data[0]) : [];
+        handleFileLoaded(data, file.name, columns);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  }, [handleFileLoaded]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (agentCapabilities.file_upload) {
+      setIsDraggingFile(true);
+    }
+  }, [agentCapabilities]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (["csv", "xlsx", "xls"].includes(ext || "")) {
+      processFile(file);
+    } else {
+      toast({
+        title: "Formato não suportado",
+        description: "Use arquivos .csv, .xlsx ou .xls",
+        variant: "destructive"
+      });
+    }
+  }, [processFile, toast]);
 
   // Capturar o viewport do ScrollArea após mount
   useEffect(() => {
@@ -581,8 +685,24 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
       </div>
 
       {/* Messages Area */}
-      <div className="relative">
+      <div 
+        className="relative"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <ScrollArea className="h-[500px] p-6 border-2 border-cyan-400/60 bg-[hsl(var(--chat-container-bg))] rounded-lg mx-2 mt-2 mb-1 shadow-[inset_0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(0,0,0,0.3),0_0_15px_rgba(34,211,238,0.3)]" ref={scrollRef}>
+        
+        {/* Drag overlay */}
+        {isDraggingFile && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/80 border-2 border-dashed border-cyan-400 rounded-lg m-2">
+            <div className="text-center">
+              <Upload className="w-12 h-12 mx-auto text-cyan-400 mb-2" />
+              <p className="text-cyan-300 font-medium">Solte o arquivo aqui</p>
+              <p className="text-xs text-muted-foreground">.csv, .xlsx, .xls</p>
+            </div>
+          </div>
+        )}
           {messages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center">
               <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
                 <span className="text-4xl font-bold text-primary-foreground">K</span>
@@ -613,6 +733,14 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           }}>
                   {msg.role === "user" && <CopyButton content={msg.content} />}
                   <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right" : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"}`}>
+                    {/* Render DataVisualization for file-data messages */}
+                    {msg.type === "file-data" && msg.fileData && (
+                      <DataVisualization 
+                        data={msg.fileData.data}
+                        columns={msg.fileData.columns}
+                        fileName={msg.fileData.fileName}
+                      />
+                    )}
                     {msg.imageUrl && <img src={msg.imageUrl} alt={t('chat.generatingImage')} className="max-w-full rounded-lg mb-2" />}
                     <div className="flex items-start gap-2">
                       <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1" />
@@ -699,6 +827,20 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
               <Button type="button" size="icon" variant={isChartMode ? "default" : "ghost"} onClick={toggleChartMode} title="Gráfico" className="h-9 w-9 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
                 <BarChart3 className="w-4 h-4" />
               </Button>
+              
+              {/* File upload button - only if capability enabled */}
+              {agentCapabilities.file_upload && (
+                <Button 
+                  type="button" 
+                  size="icon" 
+                  variant="ghost"
+                  onClick={() => setIsFileDialogOpen(true)}
+                  title="Enviar Arquivo"
+                  className="h-9 w-9 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+              )}
             </div>
             
             {/* Direita: Input (círculo) */}
@@ -725,5 +867,15 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           setShowFloatingPlayer(false);
         }} 
       />
+
+      {/* File Upload Dialog */}
+      <Dialog open={isFileDialogOpen} onOpenChange={setIsFileDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-slate-900 border-cyan-500/30">
+          <DialogHeader>
+            <DialogTitle className="text-cyan-300">Enviar Arquivo</DialogTitle>
+          </DialogHeader>
+          <FileProcessor onDataLoaded={handleFileLoaded} />
+        </DialogContent>
+      </Dialog>
     </div>;
 }
