@@ -587,14 +587,17 @@ const AgentManagementTab: React.FC = () => {
                   Tom Regional
                 </Label>
                 <Select
-                  value={formData.regional_tone || ""}
-                  onValueChange={value => setFormData(prev => ({ ...prev, regional_tone: value }))}
+                  value={formData.regional_tone || "none"}
+                  onValueChange={value => setFormData(prev => ({ 
+                    ...prev, 
+                    regional_tone: value === "none" ? null : value 
+                  }))}
                 >
                   <SelectTrigger className="bg-slate-800 border-cyan-500/30">
                     <SelectValue placeholder="Selecione o tom regional" />
                   </SelectTrigger>
                   <SelectContent className="bg-slate-800 border-cyan-500/30">
-                    <SelectItem value="">Nenhum (neutro)</SelectItem>
+                    <SelectItem value="none">Nenhum (neutro)</SelectItem>
                     {regionalRules.map(rule => (
                       <SelectItem key={rule.id} value={rule.region_code}>
                         {rule.region_name}
@@ -607,7 +610,7 @@ const AgentManagementTab: React.FC = () => {
               <div className="space-y-2">
                 <Label className="text-cyan-400">Conjunto de Pronúncia</Label>
                 <Select
-                  value={formData.pronunciation_set || ""}
+                  value={formData.pronunciation_set || "general"}
                   onValueChange={value => setFormData(prev => ({ ...prev, pronunciation_set: value }))}
                 >
                   <SelectTrigger className="bg-slate-800 border-cyan-500/30">
@@ -624,7 +627,7 @@ const AgentManagementTab: React.FC = () => {
               <div className="space-y-2">
                 <Label className="text-cyan-400">Nível Maiêutico</Label>
                 <Select
-                  value={formData.maieutic_level || ""}
+                  value={formData.maieutic_level || "media"}
                   onValueChange={value => setFormData(prev => ({ ...prev, maieutic_level: value }))}
                 >
                   <SelectTrigger className="bg-slate-800 border-cyan-500/30">
