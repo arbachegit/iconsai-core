@@ -227,10 +227,12 @@ export function ChartDatabaseTab() {
     staleTime: 30000,
   });
 
-  // Fetch all indicator values (paginated to bypass 1000 row limit)
-  const { data: allValues = [], isLoading: loadingValues, refetch: refetchValues } = useQuery({
-    queryKey: ["indicator-values-chart-db"],
+  // Fetch indicator values only for selected indicator (lazy loading)
+  const { data: selectedIndicatorValues = [], isLoading: loadingValues, refetch: refetchValues } = useQuery({
+    queryKey: ["indicator-values-chart-db", selectedIndicator?.id],
     queryFn: async () => {
+      if (!selectedIndicator) return [];
+      
       const allData: IndicatorValue[] = [];
       let from = 0;
       const pageSize = 1000;
@@ -240,6 +242,7 @@ export function ChartDatabaseTab() {
         const { data, error } = await supabase
           .from("indicator_values")
           .select("indicator_id, reference_date, value")
+          .eq("indicator_id", selectedIndicator.id)
           .order("reference_date")
           .range(from, from + pageSize - 1);
         
@@ -256,14 +259,17 @@ export function ChartDatabaseTab() {
       
       return allData;
     },
-    refetchOnWindowFocus: true,
-    staleTime: 30000,
+    enabled: !!selectedIndicator,
+    refetchOnWindowFocus: false,
+    staleTime: 60000,
   });
 
-  // Fetch regional values for PAC indicators
-  const { data: regionalValues = [] } = useQuery({
-    queryKey: ["regional-values-chart-db"],
+  // Fetch regional values only for selected indicator (lazy loading)
+  const { data: selectedRegionalValues = [] } = useQuery({
+    queryKey: ["regional-values-chart-db", selectedIndicator?.id],
     queryFn: async () => {
+      if (!selectedIndicator) return [];
+      
       const allData: IndicatorValue[] = [];
       let from = 0;
       const pageSize = 1000;
@@ -273,6 +279,7 @@ export function ChartDatabaseTab() {
         const { data, error } = await supabase
           .from("indicator_regional_values")
           .select("indicator_id, reference_date, value")
+          .eq("indicator_id", selectedIndicator.id)
           .order("reference_date")
           .range(from, from + pageSize - 1);
         
@@ -289,48 +296,92 @@ export function ChartDatabaseTab() {
       
       return allData;
     },
-    refetchOnWindowFocus: true,
-    staleTime: 30000,
+    enabled: !!selectedIndicator,
+    refetchOnWindowFocus: false,
+    staleTime: 60000,
+  });
+
+  // Fetch summary stats for card display (aggregated stats per indicator)
+  const { data: indicatorStats = {} } = useQuery({
+    queryKey: ["indicator-stats-chart-db"],
+    queryFn: async () => {
+      // Get aggregated stats for national indicators
+      const { data: nationalStats, error: e1 } = await supabase
+        .from("indicator_values")
+        .select("indicator_id, reference_date, value")
+        .order("reference_date", { ascending: true });
+      
+      // Get aggregated stats for regional indicators  
+      const { data: regionalStats, error: e2 } = await supabase
+        .from("indicator_regional_values")
+        .select("indicator_id, reference_date, value")
+        .order("reference_date", { ascending: true });
+      
+      if (e1 || e2) return {};
+      
+      const stats: Record<string, { count: number; min: string; max: string; lastValue: number }> = {};
+      
+      // Process national stats
+      (nationalStats || []).forEach((row: any) => {
+        if (!stats[row.indicator_id]) {
+          stats[row.indicator_id] = {
+            count: 0,
+            min: row.reference_date,
+            max: row.reference_date,
+            lastValue: row.value,
+          };
+        }
+        stats[row.indicator_id].count++;
+        if (row.reference_date < stats[row.indicator_id].min) {
+          stats[row.indicator_id].min = row.reference_date;
+        }
+        if (row.reference_date > stats[row.indicator_id].max) {
+          stats[row.indicator_id].max = row.reference_date;
+          stats[row.indicator_id].lastValue = row.value;
+        }
+      });
+      
+      // Process regional stats
+      (regionalStats || []).forEach((row: any) => {
+        if (!stats[row.indicator_id]) {
+          stats[row.indicator_id] = {
+            count: 0,
+            min: row.reference_date,
+            max: row.reference_date,
+            lastValue: row.value,
+          };
+        }
+        stats[row.indicator_id].count++;
+        if (row.reference_date < stats[row.indicator_id].min) {
+          stats[row.indicator_id].min = row.reference_date;
+        }
+        if (row.reference_date > stats[row.indicator_id].max) {
+          stats[row.indicator_id].max = row.reference_date;
+          stats[row.indicator_id].lastValue = row.value;
+        }
+      });
+      
+      return stats;
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 120000, // 2 minutes cache
   });
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
       await Promise.all([refetchIndicators(), refetchValues()]);
-      setLastUpdate({ count: allValues.length + regionalValues.length, date: new Date() });
+      const totalCount = Object.values(indicatorStats).reduce((sum, stat) => sum + (stat?.count || 0), 0);
+      setLastUpdate({ count: totalCount, date: new Date() });
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  // Combined values (national + regional)
+  // Combined values from selected indicator (national + regional)
   const combinedValues = useMemo(() => {
-    return [...allValues, ...regionalValues];
-  }, [allValues, regionalValues]);
-
-  // Get stats for each indicator
-  const indicatorStats = useMemo(() => {
-    const stats: Record<string, { count: number; min: string; max: string; lastValue: number }> = {};
-    combinedValues.forEach((v) => {
-      if (!stats[v.indicator_id]) {
-        stats[v.indicator_id] = {
-          count: 0,
-          min: v.reference_date,
-          max: v.reference_date,
-          lastValue: v.value,
-        };
-      }
-      stats[v.indicator_id].count++;
-      if (v.reference_date < stats[v.indicator_id].min) {
-        stats[v.indicator_id].min = v.reference_date;
-      }
-      if (v.reference_date > stats[v.indicator_id].max) {
-        stats[v.indicator_id].max = v.reference_date;
-        stats[v.indicator_id].lastValue = v.value;
-      }
-    });
-    return stats;
-  }, [combinedValues]);
+    return [...selectedIndicatorValues, ...selectedRegionalValues];
+  }, [selectedIndicatorValues, selectedRegionalValues]);
 
   // Filter indicators by search and only show those with data
   const filteredIndicators = useMemo(() => {
