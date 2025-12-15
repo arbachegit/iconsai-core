@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { MapPin, Loader2, Search } from "lucide-react";
 import { BrazilMap } from "./BrazilMap";
 import { StateDataPanel } from "./StateDataPanel";
 import { RegionalStatesHeader } from "./RegionalStatesHeader";
@@ -12,6 +13,7 @@ export function DataAnalyticsUF() {
   const [selectedResearch, setSelectedResearch] = useState<string>("none");
   const [hoveredState, setHoveredState] = useState<string | null>(null);
   const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Fetch regional APIs
   const { data: regionalApis, isLoading } = useQuery({
@@ -42,13 +44,77 @@ export function DataAnalyticsUF() {
     },
   });
 
+  // Fetch API to UF mapping for search filtering
+  const { data: apiUfMapping } = useQuery({
+    queryKey: ["api-uf-mapping", regionalApis?.length],
+    queryFn: async () => {
+      const mapping: Record<string, string[]> = {};
+      
+      for (const api of regionalApis || []) {
+        const { data: indicators } = await supabase
+          .from("economic_indicators")
+          .select("id")
+          .eq("api_id", api.id);
+        
+        const indicatorIds = indicators?.map(i => i.id) || [];
+        if (indicatorIds.length === 0) continue;
+        
+        const { data: values } = await supabase
+          .from("indicator_regional_values")
+          .select("uf_code")
+          .in("indicator_id", indicatorIds);
+        
+        const ufCodes = [...new Set(values?.map(v => v.uf_code) || [])];
+        const siglas = (allUfs || [])
+          .filter(uf => ufCodes.includes(uf.uf_code))
+          .map(uf => uf.uf_sigla);
+        
+        mapping[api.id] = siglas;
+      }
+      
+      return mapping;
+    },
+    enabled: !!regionalApis?.length && !!allUfs?.length,
+  });
+
+  // Filter APIs based on search term
+  const filteredApis = useMemo(() => {
+    if (!searchTerm.trim()) return regionalApis || [];
+    
+    const term = searchTerm.toLowerCase().trim();
+    
+    return (regionalApis || []).filter(api => {
+      // Search by API name (product)
+      if (api.name.toLowerCase().includes(term)) return true;
+      
+      // Search by state (sigla or name)
+      const apiStates = apiUfMapping?.[api.id] || [];
+      const matchesState = apiStates.some(sigla => {
+        const uf = allUfs?.find(u => u.uf_sigla === sigla);
+        return sigla.toLowerCase().includes(term) || 
+               uf?.uf_name.toLowerCase().includes(term);
+      });
+      
+      return matchesState;
+    });
+  }, [searchTerm, regionalApis, apiUfMapping, allUfs]);
+
+  // Auto-select first matching API while typing
+  useEffect(() => {
+    if (filteredApis.length > 0 && searchTerm.trim()) {
+      const firstMatch = filteredApis[0];
+      if (firstMatch && selectedResearch !== firstMatch.id) {
+        setSelectedResearch(firstMatch.id);
+      }
+    }
+  }, [filteredApis, searchTerm]);
+
   // Fetch available UF codes for selected research
   const { data: availableUfCodes } = useQuery({
     queryKey: ["available-ufs", selectedResearch],
     queryFn: async () => {
       if (selectedResearch === "none") return [];
       
-      // Get indicators linked to selected API
       const { data: indicators } = await supabase
         .from("economic_indicators")
         .select("id")
@@ -57,7 +123,6 @@ export function DataAnalyticsUF() {
       const indicatorIds = indicators?.map(i => i.id) || [];
       if (indicatorIds.length === 0) return [];
       
-      // Get distinct UF codes from regional values
       const { data: values } = await supabase
         .from("indicator_regional_values")
         .select("uf_code")
@@ -100,21 +165,8 @@ export function DataAnalyticsUF() {
               Carregando pesquisas...
             </div>
           ) : (
-            <div className="flex flex-col lg:flex-row gap-4">
-              <Select value={selectedResearch} onValueChange={setSelectedResearch}>
-                <SelectTrigger className="w-full max-w-md">
-                  <SelectValue placeholder="Selecione uma pesquisa regional" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhum (desativar mapa)</SelectItem>
-                  {regionalApis?.map((api) => (
-                    <SelectItem key={api.id} value={api.id}>
-                      {api.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
+            <div className="space-y-4">
+              {/* States Header at the top - full width */}
               {!isMapDisabled && allUfs && (
                 <RegionalStatesHeader
                   availableStates={availableSiglas}
@@ -123,6 +175,39 @@ export function DataAnalyticsUF() {
                   onHover={setHoveredState}
                   onSelect={setSelectedState}
                 />
+              )}
+
+              {/* Dropdown */}
+              <Select value={selectedResearch} onValueChange={setSelectedResearch}>
+                <SelectTrigger className="w-full max-w-md">
+                  <SelectValue placeholder="Selecione uma pesquisa regional" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum (desativar mapa)</SelectItem>
+                  {filteredApis.map((api) => (
+                    <SelectItem key={api.id} value={api.id}>
+                      {api.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Search input below dropdown */}
+              <div className="relative w-full max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="buscar produto ou estado..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 border-orange-500 focus:border-orange-500 focus-visible:ring-orange-500/20"
+                />
+              </div>
+
+              {/* No results message */}
+              {filteredApis.length === 0 && searchTerm && (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma pesquisa encontrada para "{searchTerm}"
+                </p>
               )}
             </div>
           )}
