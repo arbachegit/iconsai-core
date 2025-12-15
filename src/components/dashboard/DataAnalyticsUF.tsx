@@ -158,15 +158,51 @@ export function DataAnalyticsUF() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Selecionar Pesquisa Regional</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           {isLoading ? (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               Carregando pesquisas...
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* States Header at the top - full width */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left column: Dropdown + Search */}
+              <div className="space-y-3">
+                {/* Dropdown */}
+                <Select value={selectedResearch} onValueChange={setSelectedResearch}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione uma pesquisa regional" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum (desativar mapa)</SelectItem>
+                    {filteredApis.map((api) => (
+                      <SelectItem key={api.id} value={api.id}>
+                        {api.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Search input below dropdown */}
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="buscar produto ou estado..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 border-orange-500 focus:border-orange-500 focus-visible:ring-orange-500/20"
+                  />
+                </div>
+
+                {/* No results message */}
+                {filteredApis.length === 0 && searchTerm && (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma pesquisa encontrada para "{searchTerm}"
+                  </p>
+                )}
+              </div>
+
+              {/* Right column: Regions and States */}
               {!isMapDisabled && allUfs && (
                 <RegionalStatesHeader
                   availableStates={availableSiglas}
@@ -175,39 +211,6 @@ export function DataAnalyticsUF() {
                   onHover={setHoveredState}
                   onSelect={setSelectedState}
                 />
-              )}
-
-              {/* Dropdown */}
-              <Select value={selectedResearch} onValueChange={setSelectedResearch}>
-                <SelectTrigger className="w-full max-w-md">
-                  <SelectValue placeholder="Selecione uma pesquisa regional" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhum (desativar mapa)</SelectItem>
-                  {filteredApis.map((api) => (
-                    <SelectItem key={api.id} value={api.id}>
-                      {api.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Search input below dropdown */}
-              <div className="relative w-full max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="buscar produto ou estado..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 border-orange-500 focus:border-orange-500 focus-visible:ring-orange-500/20"
-                />
-              </div>
-
-              {/* No results message */}
-              {filteredApis.length === 0 && searchTerm && (
-                <p className="text-sm text-muted-foreground">
-                  Nenhuma pesquisa encontrada para "{searchTerm}"
-                </p>
               )}
             </div>
           )}

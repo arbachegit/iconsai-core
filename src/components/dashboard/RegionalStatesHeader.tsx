@@ -79,16 +79,16 @@ export function RegionalStatesHeader({
 
   return (
     <TooltipProvider delayDuration={100}>
-      <div className="flex flex-wrap gap-4 items-start">
+      <div className="grid grid-cols-5 gap-2">
         {REGION_ORDER.map((regionCode) => (
           <div key={regionCode} className="flex flex-col gap-1">
             <span
-              className="text-xs font-semibold uppercase tracking-wide"
+              className="text-[10px] font-semibold uppercase tracking-wide truncate"
               style={{ color: REGION_COLORS[regionCode] }}
             >
               {REGION_NAMES[regionCode]}
             </span>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-0.5">
               {ufsByRegion[regionCode]?.map((uf) => {
                 const available = isAvailable(uf.uf_sigla);
                 return (
@@ -96,7 +96,7 @@ export function RegionalStatesHeader({
                     <TooltipTrigger asChild>
                       <Badge
                         variant="outline"
-                        className={`text-xs px-1.5 py-0.5 transition-all duration-200 ${
+                        className={`text-[10px] px-1 py-0 h-5 transition-all duration-200 ${
                           available ? 'cursor-pointer hover:scale-105' : 'cursor-default opacity-60'
                         }`}
                         style={getBadgeStyle(uf.uf_sigla, regionCode)}
