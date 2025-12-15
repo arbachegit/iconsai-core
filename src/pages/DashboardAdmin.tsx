@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
 import { DashboardSidebar, type DashboardTabType } from "@/components/dashboard/DashboardSidebar";
+import { FloatingChatButton } from "@/components/FloatingChatButton";
 
 // Lazy load tab components
 const DashboardTab = lazy(() => import("@/components/admin/DashboardTab").then(m => ({ default: m.DashboardTab })));
@@ -149,6 +150,9 @@ const DashboardAdmin = () => {
           </Suspense>
         </main>
       </div>
+
+      {/* Floating Chat Button */}
+      <FloatingChatButton />
     </div>
   );
 };
