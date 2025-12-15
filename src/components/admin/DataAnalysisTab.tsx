@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
-import { TrendingUp, TrendingDown, Minus, BarChart3, Calculator, Loader2, Info, AlertTriangle, Lightbulb, Activity, RefreshCw } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, BarChart3, Calculator, Loader2, Info, AlertTriangle, Lightbulb, Activity, RefreshCw, Brain } from "lucide-react";
 import { format } from "date-fns";
+import { runStructuralTimeSeries, STSResult } from "@/lib/structural-time-series";
 import {
   pearsonCorrelation,
   linearRegression,
@@ -213,6 +214,31 @@ export function DataAnalysisTab() {
         currentValue: y[y.length - 1] || 0,
       };
     });
+  }, [selectedIndicators, filteredValues, indicators]);
+
+  // Calculate STS for each selected indicator
+  const stsResults = useMemo(() => {
+    const results: Record<string, { result: STSResult | null; indicator: Indicator | undefined }> = {};
+    
+    selectedIndicators.forEach((indId) => {
+      const values = filteredValues
+        .filter((v) => v.indicator_id === indId)
+        .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
+        .map((v) => ({
+          date: new Date(v.reference_date),
+          value: v.value,
+        }));
+
+      const indicator = indicators.find((i) => i.id === indId);
+      const frequency = indicator?.category === 'daily' ? 'daily' : 'monthly';
+      
+      results[indId] = {
+        result: values.length >= 5 ? runStructuralTimeSeries(values, frequency as any) : null,
+        indicator,
+      };
+    });
+    
+    return results;
   }, [selectedIndicators, filteredValues, indicators]);
 
   // Calculate impact simulation
@@ -566,21 +592,94 @@ export function DataAnalysisTab() {
                   </div>
                 )}
 
-                {/* Suggestions */}
+                {/* STS Output */}
                 <div>
                   <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                    <Lightbulb className="h-4 w-4 text-green-500" />
-                    Sugestões
+                    <Brain className="h-4 w-4 text-cyan-500" />
+                    Saída do Modelo STS (State-Space)
                   </h4>
-                  <ul className="space-y-1 text-sm text-muted-foreground">
-                    {comparativeAnalysis.suggestions.map((suggestion, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <span className="text-green-500">•</span>
-                        {suggestion}
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="space-y-3">
+                    {selectedIndicators.map((indId) => {
+                      const stsData = stsResults[indId];
+                      if (!stsData?.result) return null;
+                      
+                      const { result, indicator } = stsData;
+                      const trendDirection = result.direction === 'up' ? '↑' : result.direction === 'down' ? '↓' : '→';
+                      const trendColor = result.direction === 'up' ? 'text-green-500' : result.direction === 'down' ? 'text-red-500' : 'text-gray-500';
+                      
+                      return (
+                        <div key={indId} className="p-3 bg-background/60 rounded-lg border border-cyan-500/20">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium text-sm">{indicator?.name || indId}</span>
+                            <Badge variant="outline" className={`${trendColor} border-current`}>
+                              {trendDirection} {result.strength}
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                            <div>
+                              <span className="text-muted-foreground">μ<sub>t</sub> (Tendência):</span>
+                              <div className="font-mono font-medium">{result.mu_smoothed.toFixed(2)}</div>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">β<sub>t</sub> (Inclinação):</span>
+                              <div className={`font-mono font-medium ${result.beta_smoothed > 0 ? 'text-green-500' : result.beta_smoothed < 0 ? 'text-red-500' : ''}`}>
+                                {result.beta_smoothed > 0 ? '+' : ''}{result.beta_smoothed.toFixed(4)}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">IC 95%:</span>
+                              <div className="font-mono font-medium">
+                                [{result.mu_ci_low.toFixed(2)}, {result.mu_ci_high.toFixed(2)}]
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Incerteza:</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {result.uncertainty}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="mt-2 pt-2 border-t border-border/50 grid grid-cols-3 gap-2 text-xs">
+                            <div>
+                              <span className="text-muted-foreground">σ²<sub>ε</sub>:</span>
+                              <span className="ml-1 font-mono">{result.sigma2_epsilon.toFixed(4)}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">σ²<sub>η</sub>:</span>
+                              <span className="ml-1 font-mono">{result.sigma2_eta.toFixed(4)}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">σ²<sub>ζ</sub>:</span>
+                              <span className="ml-1 font-mono">{result.sigma2_zeta.toFixed(4)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Sugestões de Análise (moved from Análise do Gráfico Comparativo) */}
+          {comparativeAnalysis && comparativeAnalysis.suggestions.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Lightbulb className="h-5 w-5 text-green-500" />
+                  Sugestões de Análise
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {comparativeAnalysis.suggestions.map((suggestion, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <span className="text-green-500 mt-0.5">•</span>
+                      {suggestion}
+                    </li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
           )}
