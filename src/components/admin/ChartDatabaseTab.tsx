@@ -11,6 +11,9 @@ import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 import { StatBadge } from "@/components/shared/StatBadge";
 import { TrendInfoModal } from "@/components/shared/TrendInfoModal";
 import { STSOutputPanel } from "@/components/shared/STSOutputPanel";
+import { STSAnalysisContent } from "@/components/shared/STSAnalysisContent";
+
+type DialogView = 'detail' | 'sts';
 import { formatAxisDate, type Frequency } from "@/lib/date-formatters";
 import { useTimeSeriesAnalysis, generateSuggestions } from "@/hooks/useTimeSeriesAnalysis";
 import { runStructuralTimeSeries, STSResult } from "@/lib/structural-time-series";
@@ -207,6 +210,7 @@ export function ChartDatabaseTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
   const [showTrendModal, setShowTrendModal] = useState(false);
+  const [currentView, setCurrentView] = useState<DialogView>('detail');
 
   // Fetch indicators with API linkage
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
@@ -464,6 +468,29 @@ export function ChartDatabaseTab() {
     
     return runStructuralTimeSeries(timeSeries, frequency);
   }, [selectedData, selectedIndicator?.frequency]);
+
+  // Calculate current value and moving average for STS analysis view
+  const stsAnalysisProps = useMemo(() => {
+    if (!statistics || !selectedData || selectedData.length === 0) return null;
+    
+    const values = selectedData.map(d => d.value);
+    const currentValue = values[values.length - 1]; // Last value in time series
+    const maValues = movingAverage(values, 3);
+    const latestMA = maValues[maValues.length - 1] || statistics.mean;
+    
+    return {
+      currentValue,
+      movingAverage: latestMA,
+    };
+  }, [statistics, selectedData]);
+
+  // Handlers for view switching
+  const handleOpenStsAnalysis = useCallback(() => setCurrentView('sts'), []);
+  const handleBackToDetail = useCallback(() => setCurrentView('detail'), []);
+  const handleCloseModal = useCallback(() => {
+    setSelectedIndicator(null);
+    setCurrentView('detail');
+  }, []);
 
   // Calculate series counts by frequency - MUST be before early return
   const seriesCounts = useMemo(() => {
@@ -745,41 +772,62 @@ export function ChartDatabaseTab() {
       </div>
 
       {/* Detail Modal */}
-      <Dialog open={!!selectedIndicator} onOpenChange={() => setSelectedIndicator(null)}>
+      <Dialog open={!!selectedIndicator} onOpenChange={handleCloseModal}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 [&>button]:hidden">
-          {/* Custom Header */}
-          <div className="flex items-center justify-between p-6 pb-4 border-b sticky top-0 bg-background z-10">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold">{selectedIndicator?.name}</h2>
-                  {selectedIndicator?.api?.provider && (
-                    <Badge 
-                      variant="outline" 
-                      className={getProviderColor(selectedIndicator.api.provider)}
-                    >
-                      {selectedIndicator.api.provider}
-                    </Badge>
-                  )}
-                  {selectedIndicator?.unit && (
-                    <Badge variant="secondary">{selectedIndicator.unit}</Badge>
-                  )}
+          {/* STS Analysis View */}
+          {currentView === 'sts' && selectedIndicator && stsData && statistics && stsAnalysisProps && (
+            <STSAnalysisContent
+              onBack={handleBackToDetail}
+              indicatorName={selectedIndicator.name}
+              unit={selectedIndicator.unit}
+              frequency={selectedIndicator.frequency}
+              stsData={stsData}
+              statistics={{
+                mean: statistics.mean,
+                movingAverage: stsAnalysisProps.movingAverage,
+                stdDev: statistics.stdDev,
+                coefficientOfVariation: statistics.cv,
+              }}
+              currentValue={stsAnalysisProps.currentValue}
+            />
+          )}
+
+          {/* Detail View */}
+          {currentView === 'detail' && (
+            <>
+              {/* Custom Header */}
+              <div className="flex items-center justify-between p-6 pb-4 border-b sticky top-0 bg-background z-10">
+                <div className="flex items-center gap-3">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-semibold">{selectedIndicator?.name}</h2>
+                      {selectedIndicator?.api?.provider && (
+                        <Badge 
+                          variant="outline" 
+                          className={getProviderColor(selectedIndicator.api.provider)}
+                        >
+                          {selectedIndicator.api.provider}
+                        </Badge>
+                      )}
+                      {selectedIndicator?.unit && (
+                        <Badge variant="secondary">{selectedIndicator.unit}</Badge>
+                      )}
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {selectedData.length} registros
+                    </span>
+                  </div>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  {selectedData.length} registros
-                </span>
+                
+                {/* Circular X button with red hover */}
+                <button
+                  onClick={handleCloseModal}
+                  className="h-10 w-10 rounded-full border border-cyan-500/50 flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-            </div>
-            
-            {/* Circular X button with red hover */}
-            <button
-              onClick={() => setSelectedIndicator(null)}
-              className="h-10 w-10 rounded-full border border-cyan-500/50 flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
 
           {selectedIndicator && statistics && (
             <div className="p-6 space-y-6">
@@ -993,16 +1041,19 @@ export function ChartDatabaseTab() {
                 </CardContent>
               </Card>
 
-              {/* Saída do Modelo STS (State-Space) - substituindo a antiga seção de Sugestões */}
+              {/* Saída do Modelo STS (State-Space) - com botão Ver Análise Completa */}
               {stsData && (
                 <STSOutputPanel
                   data={stsData}
                   unit={selectedIndicator?.unit || null}
                   frequency={selectedIndicator?.frequency || null}
                   indicatorName={selectedIndicator?.name || ''}
+                  onOpenAnalysis={handleOpenStsAnalysis}
                 />
               )}
             </div>
+          )}
+            </>
           )}
         </DialogContent>
       </Dialog>
