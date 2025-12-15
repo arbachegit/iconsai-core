@@ -138,7 +138,7 @@ const TAB_LABELS: Record<TabType, string> = {
   "regional-indicators": "Indicadores Regionais",
   "table-database": "Table Data Base",
   "api-audit-logs": "Log de APIs",
-  "agent-management": "Agentes de Chat",
+  "agent-management": "Gestão de Agentes",
 };
 
 const Admin = () => {
