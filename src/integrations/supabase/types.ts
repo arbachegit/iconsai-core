@@ -2612,7 +2612,16 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      indicator_stats_summary: {
+        Row: {
+          indicator_id: string | null
+          last_value: number | null
+          max_date: string | null
+          min_date: string | null
+          total_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_schema_info: { Args: never; Returns: Json }

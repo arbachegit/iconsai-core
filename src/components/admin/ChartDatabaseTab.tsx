@@ -301,64 +301,25 @@ export function ChartDatabaseTab() {
     staleTime: 60000,
   });
 
-  // Fetch summary stats for card display (aggregated stats per indicator)
-  const { data: indicatorStats = {} } = useQuery({
+  // Fetch summary stats from aggregated view (fast, single query)
+  const { data: indicatorStats = {}, isLoading: loadingStats } = useQuery({
     queryKey: ["indicator-stats-chart-db"],
     queryFn: async () => {
-      // Get aggregated stats for national indicators
-      const { data: nationalStats, error: e1 } = await supabase
-        .from("indicator_values")
-        .select("indicator_id, reference_date, value")
-        .order("reference_date", { ascending: true });
+      const { data, error } = await supabase
+        .from("indicator_stats_summary")
+        .select("indicator_id, total_count, min_date, max_date, last_value");
       
-      // Get aggregated stats for regional indicators  
-      const { data: regionalStats, error: e2 } = await supabase
-        .from("indicator_regional_values")
-        .select("indicator_id, reference_date, value")
-        .order("reference_date", { ascending: true });
-      
-      if (e1 || e2) return {};
+      if (error) throw error;
       
       const stats: Record<string, { count: number; min: string; max: string; lastValue: number }> = {};
       
-      // Process national stats
-      (nationalStats || []).forEach((row: any) => {
-        if (!stats[row.indicator_id]) {
-          stats[row.indicator_id] = {
-            count: 0,
-            min: row.reference_date,
-            max: row.reference_date,
-            lastValue: row.value,
-          };
-        }
-        stats[row.indicator_id].count++;
-        if (row.reference_date < stats[row.indicator_id].min) {
-          stats[row.indicator_id].min = row.reference_date;
-        }
-        if (row.reference_date > stats[row.indicator_id].max) {
-          stats[row.indicator_id].max = row.reference_date;
-          stats[row.indicator_id].lastValue = row.value;
-        }
-      });
-      
-      // Process regional stats
-      (regionalStats || []).forEach((row: any) => {
-        if (!stats[row.indicator_id]) {
-          stats[row.indicator_id] = {
-            count: 0,
-            min: row.reference_date,
-            max: row.reference_date,
-            lastValue: row.value,
-          };
-        }
-        stats[row.indicator_id].count++;
-        if (row.reference_date < stats[row.indicator_id].min) {
-          stats[row.indicator_id].min = row.reference_date;
-        }
-        if (row.reference_date > stats[row.indicator_id].max) {
-          stats[row.indicator_id].max = row.reference_date;
-          stats[row.indicator_id].lastValue = row.value;
-        }
+      (data || []).forEach((row: any) => {
+        stats[row.indicator_id] = {
+          count: row.total_count,
+          min: row.min_date,
+          max: row.max_date,
+          lastValue: row.last_value,
+        };
       });
       
       return stats;
@@ -540,7 +501,7 @@ export function ChartDatabaseTab() {
     };
   }, [combinedValues]);
 
-  if (loadingIndicators || loadingValues) {
+  if (loadingIndicators || loadingStats) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
