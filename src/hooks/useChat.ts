@@ -15,6 +15,12 @@ export interface Message {
   timestamp: Date;
   audioUrl?: string;
   imageUrl?: string;
+  type?: "text" | "file-data";
+  fileData?: {
+    data: any[];
+    fileName: string;
+    columns: string[];
+  };
 }
 
 export type ChatType = "health" | "study";
@@ -594,6 +600,14 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
     });
   }, [toast, t]);
 
+  const addMessage = useCallback((msg: Message) => {
+    setMessages(prev => {
+      const updated = [...prev, msg];
+      saveHistory(updated);
+      return updated;
+    });
+  }, [saveHistory]);
+
   return {
     messages,
     isLoading,
@@ -613,5 +627,6 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
     transcribeAudio,
     attachDocument,
     detachDocument,
+    addMessage,
   };
 }
