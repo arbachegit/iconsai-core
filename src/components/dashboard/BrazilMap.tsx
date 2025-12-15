@@ -6,7 +6,11 @@ interface BrazilMapProps {
   selectedState: string | null;
   onHover: (state: string | null) => void;
   onSelect: (state: string) => void;
+  disabled?: boolean;
+  availableStates?: string[];
 }
+
+const HOVER_COLOR = '#FF00FF'; // Magenta for hover
 
 interface GeoFeature {
   type: string;
@@ -75,7 +79,14 @@ async function fetchWithFallback(urls: string[], timeout = 5000): Promise<GeoJSO
   return null;
 }
 
-export function BrazilMap({ hoveredState, selectedState, onHover, onSelect }: BrazilMapProps) {
+export function BrazilMap({ 
+  hoveredState, 
+  selectedState, 
+  onHover, 
+  onSelect,
+  disabled = false,
+  availableStates = [],
+}: BrazilMapProps) {
   const [geoData, setGeoData] = useState<GeoJSON | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,8 +169,11 @@ export function BrazilMap({ hoveredState, selectedState, onHover, onSelect }: Br
     );
   }
 
+  const hasAvailableStates = availableStates.length > 0;
+  const isStateAvailable = (sigla: string) => !hasAvailableStates || availableStates.includes(sigla);
+
   return (
-    <div className="relative" onMouseMove={handleMouseMove}>
+    <div className={cn("relative", disabled && "opacity-50 pointer-events-none")} onMouseMove={handleMouseMove}>
       <svg
         viewBox="0 0 600 600"
         className="w-full h-auto max-h-[600px]"
@@ -168,25 +182,40 @@ export function BrazilMap({ hoveredState, selectedState, onHover, onSelect }: Br
         {paths.map((state) => {
           const isHovered = hoveredState === state.sigla;
           const isSelected = selectedState === state.sigla;
+          const isAvailable = isStateAvailable(state.sigla);
+          
+          // Determine styles based on availability and state
+          const getStroke = () => {
+            if (isHovered || isSelected) return HOVER_COLOR;
+            if (!isAvailable) return "hsl(var(--muted-foreground) / 0.3)";
+            return "#00FFFF";
+          };
+          
+          const getFill = () => {
+            if (isHovered || isSelected) return "rgba(255, 0, 255, 0.3)";
+            return "transparent";
+          };
           
           return (
             <path
               key={state.sigla}
               d={state.path}
               className={cn(
-                "transition-all duration-300 cursor-pointer",
-                isHovered || isSelected
+                "transition-all duration-300",
+                isAvailable ? "cursor-pointer" : "cursor-default",
+                (isHovered || isSelected) && isAvailable
                   ? "drop-shadow-[0_0_8px_rgba(255,0,255,0.6)]"
                   : ""
               )}
               style={{
-                fill: isHovered || isSelected ? "rgba(255, 0, 255, 0.3)" : "transparent",
-                stroke: isHovered || isSelected ? "#FF00FF" : "#00FFFF",
+                fill: getFill(),
+                stroke: getStroke(),
                 strokeWidth: isHovered || isSelected ? 2 : 1.5,
+                opacity: isAvailable ? 1 : 0.4,
               }}
-              onMouseEnter={() => onHover(state.sigla)}
+              onMouseEnter={() => isAvailable && onHover(state.sigla)}
               onMouseLeave={() => onHover(null)}
-              onClick={() => onSelect(state.sigla)}
+              onClick={() => isAvailable && onSelect(state.sigla)}
             />
           );
         })}
