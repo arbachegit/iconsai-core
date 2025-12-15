@@ -394,6 +394,81 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_agents: {
+        Row: {
+          allowed_tags: string[] | null
+          avatar_url: string | null
+          capabilities: Json | null
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          forbidden_tags: string[] | null
+          greeting_message: string | null
+          id: string
+          is_active: boolean | null
+          maieutic_level: string | null
+          match_count: number | null
+          match_threshold: number | null
+          name: string
+          pronunciation_set: string | null
+          rag_collection: string
+          regional_tone: string | null
+          rejection_message: string | null
+          slug: string
+          suggested_badges: Json | null
+          system_prompt: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          allowed_tags?: string[] | null
+          avatar_url?: string | null
+          capabilities?: Json | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          forbidden_tags?: string[] | null
+          greeting_message?: string | null
+          id?: string
+          is_active?: boolean | null
+          maieutic_level?: string | null
+          match_count?: number | null
+          match_threshold?: number | null
+          name: string
+          pronunciation_set?: string | null
+          rag_collection: string
+          regional_tone?: string | null
+          rejection_message?: string | null
+          slug: string
+          suggested_badges?: Json | null
+          system_prompt?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          allowed_tags?: string[] | null
+          avatar_url?: string | null
+          capabilities?: Json | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          forbidden_tags?: string[] | null
+          greeting_message?: string | null
+          id?: string
+          is_active?: boolean | null
+          maieutic_level?: string | null
+          match_count?: number | null
+          match_threshold?: number | null
+          name?: string
+          pronunciation_set?: string | null
+          rag_collection?: string
+          regional_tone?: string | null
+          rejection_message?: string | null
+          slug?: string
+          suggested_badges?: Json | null
+          system_prompt?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       chat_analytics: {
         Row: {
           audio_plays: number | null
