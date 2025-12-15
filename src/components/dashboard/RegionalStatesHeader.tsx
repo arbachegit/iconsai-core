@@ -82,12 +82,21 @@ export function RegionalStatesHeader({
       <div className="grid grid-cols-5 gap-2">
         {REGION_ORDER.map((regionCode) => (
           <div key={regionCode} className="flex flex-col gap-1">
-            <span
-              className="text-[10px] font-semibold uppercase tracking-wide truncate"
-              style={{ color: REGION_COLORS[regionCode] }}
-            >
-              {REGION_NAMES[regionCode]}
-            </span>
+            {regionCode === 'CO' ? (
+              <span
+                className="text-[10px] font-semibold uppercase tracking-wide leading-[0.9] -mb-1"
+                style={{ color: REGION_COLORS[regionCode] }}
+              >
+                Centro<br />Oeste
+              </span>
+            ) : (
+              <span
+                className="text-[10px] font-semibold uppercase tracking-wide truncate"
+                style={{ color: REGION_COLORS[regionCode] }}
+              >
+                {REGION_NAMES[regionCode]}
+              </span>
+            )}
             <div className="flex flex-wrap gap-0.5">
               {ufsByRegion[regionCode]?.map((uf) => {
                 const available = isAvailable(uf.uf_sigla);
