@@ -197,8 +197,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       label: "Chat & Conversas",
       icon: MessageCircle,
       items: [
+        { id: "agent-management" as TabType, label: "Gestão de Agentes", icon: Bot },
         { id: "chat" as TabType, label: "Chat Config", icon: MessageSquare },
-        { id: "agent-management" as TabType, label: "Agentes de Chat", icon: Bot },
         { id: "maieutic-training" as TabType, label: "Treino IA Maiêutica", icon: Sparkles },
         { id: "chat-scope-config" as TabType, label: "Delimitações", icon: Settings },
         { id: "regional-config" as TabType, label: "Configurações Regionais", icon: Globe },
