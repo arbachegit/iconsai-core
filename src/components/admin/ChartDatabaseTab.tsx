@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 import { StatBadge } from "@/components/shared/StatBadge";
 import { TrendInfoModal } from "@/components/shared/TrendInfoModal";
+import { STSOutputPanel } from "@/components/shared/STSOutputPanel";
 import { formatAxisDate, type Frequency } from "@/lib/date-formatters";
 import { useTimeSeriesAnalysis, generateSuggestions } from "@/hooks/useTimeSeriesAnalysis";
+import { runStructuralTimeSeries, STSResult } from "@/lib/structural-time-series";
 import {
   LineChart,
   Line,
@@ -45,6 +47,8 @@ import {
   X,
   Calendar,
   Info,
+  Brain,
+  Lightbulb,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -79,6 +83,7 @@ interface Indicator {
   code: string;
   unit: string | null;
   category: string | null;
+  frequency: string | null;
   api_id: string | null;
   api?: { id: string; name: string; provider: string | null } | null;
 }
@@ -209,7 +214,7 @@ export function ChartDatabaseTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("economic_indicators")
-        .select("id, name, code, unit, category, api_id, system_api_registry(id, name, provider)")
+        .select("id, name, code, unit, category, frequency, api_id, system_api_registry(id, name, provider)")
         .not('api_id', 'is', null)
         .order("name");
       if (error) throw error;
@@ -432,6 +437,21 @@ export function ChartDatabaseTab() {
 
     return result;
   }, [statistics]);
+
+  // Calculate STS for selected indicator
+  const stsData = useMemo<STSResult | null>(() => {
+    if (!selectedData || selectedData.length < 10) return null;
+    
+    const timeSeries = selectedData.map(d => ({
+      date: d.rawDate,
+      value: d.value
+    }));
+    
+    // Detect frequency based on data pattern
+    const frequency: 'daily' | 'monthly' = selectedIndicator?.frequency === 'daily' ? 'daily' : 'monthly';
+    
+    return runStructuralTimeSeries(timeSeries, frequency);
+  }, [selectedData, selectedIndicator?.frequency]);
 
   // Calculate series counts by frequency - MUST be before early return
   const seriesCounts = useMemo(() => {
@@ -911,12 +931,15 @@ export function ChartDatabaseTab() {
                 </Card>
               </div>
 
-              {/* Additional Stats */}
+              {/* Análise de Tendência - com Sugestões de Análise movidas para cá */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm">Análise de Tendência</CardTitle>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    Análise de Tendência
+                  </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">Mínimo:</span>
@@ -937,28 +960,35 @@ export function ChartDatabaseTab() {
                       <span className="ml-2 font-medium">{(statistics.r2 * 100).toFixed(1)}%</span>
                     </div>
                   </div>
+
+                  {/* Sugestões de Análise - movidas para dentro de Análise de Tendência */}
+                  {suggestions.length > 0 && (
+                    <div className="pt-3 border-t border-border/50">
+                      <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                        <Lightbulb className="h-4 w-4 text-green-500" />
+                        Sugestões de Análise
+                      </h4>
+                      <ul className="space-y-1">
+                        {suggestions.map((s, i) => (
+                          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                            <span className="text-green-500 mt-0.5">•</span>
+                            {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
-              {/* Suggestions */}
-              {suggestions.length > 0 && (
-                <Card className="border-primary/30">
-                  <CardHeader>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Info className="h-4 w-4 text-primary" />
-                      Sugestões de Análise
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {suggestions.map((s, i) => (
-                        <li key={i} className="text-sm text-muted-foreground">
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
+              {/* Saída do Modelo STS (State-Space) - substituindo a antiga seção de Sugestões */}
+              {stsData && (
+                <STSOutputPanel
+                  data={stsData}
+                  unit={selectedIndicator?.unit || null}
+                  frequency={selectedIndicator?.frequency || null}
+                  indicatorName={selectedIndicator?.name || ''}
+                />
               )}
             </div>
           )}

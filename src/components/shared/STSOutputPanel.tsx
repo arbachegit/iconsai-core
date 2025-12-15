@@ -15,7 +15,7 @@ interface STSOutputPanelProps {
   unit: string | null;
   frequency: string | null;
   indicatorName: string;
-  onOpenAnalysis: () => void;
+  onOpenAnalysis?: () => void;
 }
 
 export function STSOutputPanel({
@@ -80,26 +80,28 @@ export function STSOutputPanel({
           <Activity className="h-4 w-4 text-cyan-500" />
           Saída do Modelo STS (State-Space)
         </h4>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onOpenAnalysis();
-          }}
-          className={cn(
-            "flex items-center gap-1",
-            "px-3 py-1.5",
-            "text-sm font-medium text-white",
-            "bg-cyan-500/10 hover:bg-cyan-500/20",
-            "border border-cyan-500/30 hover:border-cyan-500/50",
-            "rounded-lg",
-            "transition-all duration-200"
-          )}
-        >
-          Ver Análise Completa
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        {onOpenAnalysis && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onOpenAnalysis();
+            }}
+            className={cn(
+              "flex items-center gap-1",
+              "px-3 py-1.5",
+              "text-sm font-medium text-white",
+              "bg-cyan-500/10 hover:bg-cyan-500/20",
+              "border border-cyan-500/30 hover:border-cyan-500/50",
+              "rounded-lg",
+              "transition-all duration-200"
+            )}
+          >
+            Ver Análise Completa
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* Main variables grid */}
