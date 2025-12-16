@@ -9,8 +9,10 @@ import {
   TrendingUp,
   AlertTriangle,
   CheckCircle2,
-  Table2
+  Table2,
+  ArrowLeftRight
 } from "lucide-react";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -129,10 +131,21 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
 
   const totalPages = Math.ceil(data.length / ROWS_PER_PAGE);
 
+  // Helper para detectar se valor é data serial do Excel
+  const isExcelDateSerial = (value: any): boolean => {
+    return typeof value === "number" && value > 25569 && value < 60000;
+    // 25569 = 01/01/1970, 60000 = ~2064
+  };
+
   // Helper para parsear números em formato brasileiro (1.234,56)
   const parseNumber = (value: any): number => {
     if (value == null) return 0;
-    if (typeof value === "number") return value;
+    if (value instanceof Date) return 0; // Datas não são valores válidos para Y
+    if (typeof value === "number") {
+      // Rejeitar números que parecem ser datas seriais do Excel
+      if (isExcelDateSerial(value)) return 0;
+      return value;
+    }
     
     const str = String(value).trim();
     // Formato brasileiro: 1.234,56 → 1234.56
@@ -143,6 +156,19 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
     const num = Number(normalized);
     return isNaN(num) ? 0 : num;
   };
+
+  // Detectar se Y parece conter datas e avisar usuário
+  useEffect(() => {
+    if (!yColumn || data.length === 0) return;
+    
+    const dateCount = data.filter(row => 
+      row[yColumn] instanceof Date || isExcelDateSerial(row[yColumn])
+    ).length;
+    
+    if (dateCount > data.length * 0.5) {
+      toast.warning("A coluna Y parece conter datas. Considere trocar os eixos X ↔ Y.");
+    }
+  }, [yColumn, data]);
 
   // Helper para formatar valores do eixo X (datas)
   const formatXValue = (value: any): string => {
@@ -618,22 +644,41 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
         <TabsContent value="grafico" className="m-0 p-4 overflow-hidden">
           {/* Chart Controls */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            {chartType !== "pie" && (
-              <div className="w-full">
-                <label className="text-xs text-slate-400 mb-1 block">Eixo X</label>
-                <Select value={xColumn} onValueChange={setXColumn}>
-                  <SelectTrigger className="bg-slate-800/50 border-cyan-500/20 text-slate-300">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-cyan-500/20">
-                    {columns.map((col) => (
-                      <SelectItem key={col} value={col}>
-                        {col}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          {chartType !== "pie" && (
+              <>
+                <div className="w-full">
+                  <label className="text-xs text-slate-400 mb-1 block">Eixo X</label>
+                  <Select value={xColumn} onValueChange={setXColumn}>
+                    <SelectTrigger className="bg-slate-800/50 border-cyan-500/20 text-slate-300">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-cyan-500/20">
+                      {columns.map((col) => (
+                        <SelectItem key={col} value={col}>
+                          {col}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Botão Swap X ↔ Y */}
+                <div className="flex items-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const tempX = xColumn;
+                      setXColumn(yColumn);
+                      setYColumn(tempX);
+                    }}
+                    title="Trocar eixos X ↔ Y"
+                    className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 h-9"
+                  >
+                    <ArrowLeftRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
             )}
 
             {chartType === "pie" && (
@@ -661,7 +706,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-800 border-cyan-500/20">
-                  {numericColumns.map((col) => (
+                  {columns.map((col) => (
                     <SelectItem key={col} value={col}>
                       {col}
                     </SelectItem>
