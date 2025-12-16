@@ -665,15 +665,21 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                 <tbody>
                   {paginatedData.map((row, idx) => (
                     <tr key={idx} className="border-b border-cyan-500/10 hover:bg-cyan-500/5">
-                      {columns.map((col) => (
-                        <td 
-                          key={col} 
-                          className="text-slate-300 text-center px-1.5 py-0.5 whitespace-nowrap truncate max-w-[120px]"
-                          title={String(row[col] ?? "-")}
-                        >
-                          {row[col] ?? "-"}
-                        </td>
-                      ))}
+                      {columns.map((col) => {
+                        const cellValue = row[col];
+                        const displayValue = cellValue instanceof Date 
+                          ? cellValue.toLocaleDateString('pt-BR') 
+                          : (cellValue ?? "-");
+                        return (
+                          <td 
+                            key={col} 
+                            className="text-slate-300 text-center px-1.5 py-0.5 whitespace-nowrap truncate max-w-[120px]"
+                            title={String(displayValue)}
+                          >
+                            {String(displayValue)}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
