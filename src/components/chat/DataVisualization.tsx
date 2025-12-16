@@ -62,6 +62,13 @@ interface DataVisualizationProps {
 
 type ChartType = "line" | "bar" | "area" | "scatter" | "pie";
 type SortDirection = "asc" | "desc" | null;
+type ColumnType = "date" | "numeric" | "categorical";
+
+interface ColumnAnalysis {
+  name: string;
+  type: ColumnType;
+  uniqueCount: number;
+}
 
 const ROWS_PER_PAGE = 100;
 
@@ -82,20 +89,101 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
   const [chartType, setChartType] = useState<ChartType>("line");
   const [showTrendLine, setShowTrendLine] = useState(false);
 
-  // Detect numeric columns (moved before useEffect that depends on it)
-  const numericColumns = useMemo(() => {
-    return columns.filter((col) => {
-      const values = data.map((row) => row[col]).filter((v) => v != null);
-      return values.length > 0 && values.every((v) => !isNaN(Number(v)));
+  // Helper para detectar se valor é data serial do Excel
+  const isExcelDateSerial = (value: any): boolean => {
+    return typeof value === "number" && value > 25569 && value < 60000;
+  };
+
+  // Sistema de classificação inteligente de colunas
+  const analyzeColumns = useMemo((): ColumnAnalysis[] => {
+    return columns.map(col => {
+      const values = data.map(row => row[col]).filter(v => v != null && v !== "");
+      const uniqueCount = new Set(values.map(String)).size;
+      
+      // Detectar se é coluna de DATA
+      const dateCount = values.filter(v => 
+        v instanceof Date || 
+        isExcelDateSerial(v) ||
+        /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(String(v)) ||
+        /^\d{4}-\d{2}-\d{2}/.test(String(v))
+      ).length;
+      
+      if (dateCount > values.length * 0.5) {
+        return { name: col, type: "date" as ColumnType, uniqueCount };
+      }
+      
+      // Detectar se é coluna NUMÉRICA (incluindo formato BR: 1.234,56)
+      const numericCount = values.filter(v => {
+        if (typeof v === "number" && !isExcelDateSerial(v)) return true;
+        const str = String(v).trim();
+        // Aceita formato BR: 1.234,56 ou formato US: 1,234.56 ou simples: 123
+        const normalized = str.replace(/\./g, "").replace(",", ".");
+        return !isNaN(Number(normalized)) && normalized !== "";
+      }).length;
+      
+      if (numericCount > values.length * 0.7) {
+        return { name: col, type: "numeric" as ColumnType, uniqueCount };
+      }
+      
+      // Caso contrário, é CATEGÓRICA
+      return { name: col, type: "categorical" as ColumnType, uniqueCount };
     });
   }, [data, columns]);
 
-  // Initialize yColumn with first numeric column
+  // Listas filtradas por tipo
+  const dateColumns = useMemo(() => 
+    analyzeColumns.filter(c => c.type === "date").map(c => c.name), 
+    [analyzeColumns]
+  );
+
+  const numericColumnsReal = useMemo(() => 
+    analyzeColumns.filter(c => c.type === "numeric").map(c => c.name), 
+    [analyzeColumns]
+  );
+
+  const categoricalColumns = useMemo(() => 
+    analyzeColumns.filter(c => c.type === "categorical").map(c => c.name), 
+    [analyzeColumns]
+  );
+
+  // Colunas válidas para Y = apenas numéricas (nunca datas ou a mesma do X)
+  const validYColumns = useMemo(() => {
+    return numericColumnsReal.filter(col => col !== xColumn);
+  }, [numericColumnsReal, xColumn]);
+
+  // Colunas válidas para X = datas + categóricas com baixa cardinalidade
+  const validXColumns = useMemo(() => {
+    return analyzeColumns
+      .filter(c => 
+        c.type === "date" || 
+        (c.type === "categorical" && c.uniqueCount <= 50) ||
+        c.name !== yColumn
+      )
+      .map(c => c.name);
+  }, [analyzeColumns, yColumn]);
+
+  // Auto-seleção inteligente de X e Y
   useEffect(() => {
-    if (numericColumns.length > 0 && !yColumn) {
-      setYColumn(numericColumns[0]);
+    // Auto-selecionar melhor X: preferir Data, depois Categórica com poucos valores
+    if (!xColumn || !columns.includes(xColumn)) {
+      const bestX = dateColumns[0] || 
+        categoricalColumns.find(c => {
+          const analysis = analyzeColumns.find(a => a.name === c);
+          return analysis && analysis.uniqueCount < data.length * 0.3;
+        }) || 
+        columns[0];
+      if (bestX) setXColumn(bestX);
     }
-  }, [numericColumns, yColumn]);
+    
+    // Auto-selecionar melhor Y: primeira coluna numérica
+    if (!yColumn || !columns.includes(yColumn)) {
+      const bestY = numericColumnsReal[0];
+      if (bestY) setYColumn(bestY);
+    }
+  }, [columns, dateColumns, numericColumnsReal, categoricalColumns, analyzeColumns, data.length]);
+
+  // Keep old numericColumns for backward compatibility (statistics tab)
+  const numericColumns = numericColumnsReal;
 
   // Sorted data
   const sortedData = useMemo(() => {
@@ -131,11 +219,15 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
 
   const totalPages = Math.ceil(data.length / ROWS_PER_PAGE);
 
-  // Helper para detectar se valor é data serial do Excel
-  const isExcelDateSerial = (value: any): boolean => {
-    return typeof value === "number" && value > 25569 && value < 60000;
-    // 25569 = 01/01/1970, 60000 = ~2064
-  };
+  // Detectar se Y parece conter datas e avisar usuário
+  useEffect(() => {
+    if (!yColumn || data.length === 0) return;
+    
+    const analysis = analyzeColumns.find(a => a.name === yColumn);
+    if (analysis?.type === "date") {
+      toast.warning("A coluna Y parece conter datas. Considere trocar os eixos X ↔ Y.");
+    }
+  }, [yColumn, analyzeColumns, data.length]);
 
   // Helper para parsear números em formato brasileiro (1.234,56)
   const parseNumber = (value: any): number => {
@@ -653,11 +745,16 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-800 border-cyan-500/20">
-                      {columns.map((col) => (
-                        <SelectItem key={col} value={col}>
-                          {col}
-                        </SelectItem>
-                      ))}
+                      {validXColumns.map((col) => {
+                        const analysis = analyzeColumns.find(a => a.name === col);
+                        const icon = analysis?.type === "date" ? "📅" : 
+                                     analysis?.type === "categorical" ? "🏷️" : "🔢";
+                        return (
+                          <SelectItem key={col} value={col}>
+                            {col} {icon}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -706,11 +803,17 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-800 border-cyan-500/20">
-                  {columns.map((col) => (
-                    <SelectItem key={col} value={col}>
-                      {col}
+                  {validYColumns.length > 0 ? (
+                    validYColumns.map((col) => (
+                      <SelectItem key={col} value={col}>
+                        {col} 📊
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>
+                      Nenhuma coluna numérica disponível
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>
