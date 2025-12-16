@@ -114,14 +114,32 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
       
       // Detectar se é coluna NUMÉRICA (incluindo formato BR: 1.234,56)
       const numericCount = values.filter(v => {
+        // Já é número JavaScript
         if (typeof v === "number" && !isExcelDateSerial(v)) return true;
+        
         const str = String(v).trim();
-        // Aceita formato BR: 1.234,56 ou formato US: 1,234.56 ou simples: 123
-        const normalized = str.replace(/\./g, "").replace(",", ".");
-        return !isNaN(Number(normalized)) && normalized !== "";
+        if (str === "") return false;
+        
+        // Número simples (inteiro ou decimal)
+        if (/^-?\d+$/.test(str)) return true;
+        if (/^-?\d+\.\d+$/.test(str)) return true;
+        if (/^-?\d+,\d+$/.test(str)) return true;
+        
+        // Formato BR: 1.234,56
+        const normalizedBR = str.replace(/\./g, "").replace(",", ".");
+        if (!isNaN(Number(normalizedBR)) && normalizedBR !== "") return true;
+        
+        // Formato US: 1,234.56
+        const normalizedUS = str.replace(/,/g, "");
+        return !isNaN(Number(normalizedUS)) && normalizedUS !== "";
       }).length;
       
-      if (numericCount > values.length * 0.7) {
+      const type: ColumnType = numericCount > values.length * 0.5 ? "numeric" : "categorical";
+      
+      console.log(`[COLUMN_ANALYSIS] ${col}: type=${type}, uniqueCount=${uniqueCount}, dateCount=${dateCount}, numericCount=${numericCount}/${values.length}`);
+      
+      // Threshold reduzido para 50% (planilhas reais têm células vazias)
+      if (numericCount > values.length * 0.5) {
         return { name: col, type: "numeric" as ColumnType, uniqueCount };
       }
       
@@ -182,6 +200,14 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
     }
   }, [columns, dateColumns, numericColumnsReal, categoricalColumns, analyzeColumns, data.length]);
 
+  // Forçar reset do yColumn quando não está em validYColumns
+  useEffect(() => {
+    if (yColumn && validYColumns.length > 0 && !validYColumns.includes(yColumn)) {
+      console.log("[RESET_Y] yColumn não está em validYColumns, resetando para:", validYColumns[0]);
+      setYColumn(validYColumns[0]);
+    }
+  }, [yColumn, validYColumns]);
+
   // Keep old numericColumns for backward compatibility (statistics tab)
   const numericColumns = numericColumnsReal;
 
@@ -232,21 +258,27 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
   // Helper para parsear números em formato brasileiro (1.234,56)
   const parseNumber = (value: any): number => {
     if (value == null) return 0;
-    if (value instanceof Date) return 0; // Datas não são valores válidos para Y
+    if (value instanceof Date) return 0;
     if (typeof value === "number") {
-      // Rejeitar números que parecem ser datas seriais do Excel
       if (isExcelDateSerial(value)) return 0;
       return value;
     }
     
     const str = String(value).trim();
-    // Formato brasileiro: 1.234,56 → 1234.56
-    const normalized = str
-      .replace(/\./g, "")  // Remove pontos de milhar
-      .replace(",", ".");  // Vírgula vira ponto decimal
+    if (str === "") return 0;
     
-    const num = Number(normalized);
-    return isNaN(num) ? 0 : num;
+    // Número simples (inteiro)
+    if (/^-?\d+$/.test(str)) return Number(str);
+    
+    // Formato BR: 1.234,56 → 1234.56
+    const normalizedBR = str.replace(/\./g, "").replace(",", ".");
+    if (!isNaN(Number(normalizedBR))) return Number(normalizedBR);
+    
+    // Formato US: 1,234.56 → 1234.56
+    const normalizedUS = str.replace(/,/g, "");
+    if (!isNaN(Number(normalizedUS))) return Number(normalizedUS);
+    
+    return 0;
   };
 
   // Detectar se Y parece conter datas e avisar usuário
