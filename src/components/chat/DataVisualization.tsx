@@ -6,7 +6,9 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  TrendingUp
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -140,7 +142,89 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
     };
   }, [chartData, showTrendLine]);
 
-  // Handle column sort
+  // Quality analysis
+  const qualityMetrics = useMemo(() => {
+    const totalCells = data.length * columns.length;
+    let emptyCells = 0;
+    const columnStats: Record<string, {
+      empty: number;
+      type: "numérico" | "texto" | "data" | "booleano" | "misto";
+      duplicates: number;
+      outliers: number;
+    }> = {};
+
+    // Analyze each column
+    columns.forEach((col) => {
+      const values = data.map((row) => row[col]);
+      const nonNullValues = values.filter((v) => v != null && v !== "" && v !== undefined);
+      const emptyCount = values.length - nonNullValues.length;
+      emptyCells += emptyCount;
+
+      // Detect type
+      let type: "numérico" | "texto" | "data" | "booleano" | "misto" = "texto";
+      const numericValues = nonNullValues.filter((v) => !isNaN(Number(v)));
+      const datePattern = /^\d{4}-\d{2}-\d{2}|^\d{2}\/\d{2}\/\d{4}/;
+      const dateValues = nonNullValues.filter((v) => typeof v === "string" && datePattern.test(v));
+      const boolValues = nonNullValues.filter((v) => 
+        v === true || v === false || v === "true" || v === "false" || v === "sim" || v === "não"
+      );
+
+      if (numericValues.length === nonNullValues.length && nonNullValues.length > 0) {
+        type = "numérico";
+      } else if (dateValues.length === nonNullValues.length && nonNullValues.length > 0) {
+        type = "data";
+      } else if (boolValues.length === nonNullValues.length && nonNullValues.length > 0) {
+        type = "booleano";
+      } else if (numericValues.length > 0 && numericValues.length < nonNullValues.length) {
+        type = "misto";
+      }
+
+      // Count duplicates
+      const uniqueValues = new Set(values.map(String));
+      const duplicateCount = values.length - uniqueValues.size;
+
+      // Count outliers (for numeric columns)
+      let outlierCount = 0;
+      if (type === "numérico" && numericValues.length > 2) {
+        const nums = numericValues.map(Number);
+        const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+        const std = Math.sqrt(
+          nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / nums.length
+        );
+        if (std > 0) {
+          outlierCount = nums.filter((v) => Math.abs(v - mean) > 2 * std).length;
+        }
+      }
+
+      columnStats[col] = {
+        empty: emptyCount,
+        type,
+        duplicates: duplicateCount,
+        outliers: outlierCount,
+      };
+    });
+
+    // Find duplicate rows
+    const rowStrings = data.map((row) => JSON.stringify(row));
+    const uniqueRows = new Set(rowStrings);
+    const duplicateRows = data.length - uniqueRows.size;
+
+    // Calculate quality score
+    const emptyPenalty = (emptyCells / totalCells) * 30;
+    const duplicatePenalty = (duplicateRows / data.length) * 30;
+    const totalOutliers = Object.values(columnStats).reduce((sum, s) => sum + s.outliers, 0);
+    const outlierPenalty = Math.min((totalOutliers / data.length) * 20, 20);
+    const qualityScore = Math.max(0, Math.min(100, 100 - emptyPenalty - duplicatePenalty - outlierPenalty));
+
+    return {
+      totalCells,
+      emptyCells,
+      columnStats,
+      duplicateRows,
+      qualityScore,
+    };
+  }, [data, columns]);
+
   const handleSort = (column: string) => {
     if (sortColumn === column) {
       if (sortDirection === "asc") {
@@ -303,6 +387,12 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
             className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300"
           >
             Gráfico
+          </TabsTrigger>
+          <TabsTrigger
+            value="qualidade"
+            className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300"
+          >
+            Qualidade
           </TabsTrigger>
         </TabsList>
 
@@ -520,6 +610,117 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
               Regressão Linear: y = {trendLineData.slope.toFixed(4)}x + {trendLineData.intercept.toFixed(4)}
             </div>
           )}
+        </TabsContent>
+
+        {/* Tab: Qualidade */}
+        <TabsContent value="qualidade" className="m-0 p-4">
+          {/* Quality Score */}
+          <div className="mb-4 p-4 bg-slate-800/50 border border-cyan-500/20 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-cyan-400 font-medium flex items-center gap-2">
+                {qualityMetrics.qualityScore >= 80 ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                ) : qualityMetrics.qualityScore >= 50 ? (
+                  <AlertTriangle className="h-5 w-5 text-amber-400" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-red-400" />
+                )}
+                Score de Qualidade
+              </span>
+              <span className={`text-2xl font-bold ${
+                qualityMetrics.qualityScore >= 80 ? "text-emerald-400" :
+                qualityMetrics.qualityScore >= 50 ? "text-amber-400" : "text-red-400"
+              }`}>
+                {qualityMetrics.qualityScore.toFixed(0)}%
+              </span>
+            </div>
+            <div className="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-500 ${
+                  qualityMetrics.qualityScore >= 80 ? "bg-emerald-500" :
+                  qualityMetrics.qualityScore >= 50 ? "bg-amber-500" : "bg-red-500"
+                }`}
+                style={{ width: `${qualityMetrics.qualityScore}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-slate-200">{qualityMetrics.emptyCells}</div>
+              <div className="text-xs text-slate-400">Células Vazias</div>
+              <div className="text-xs text-cyan-400">
+                ({((qualityMetrics.emptyCells / qualityMetrics.totalCells) * 100).toFixed(1)}%)
+              </div>
+            </div>
+            <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-slate-200">{qualityMetrics.duplicateRows}</div>
+              <div className="text-xs text-slate-400">Linhas Duplicadas</div>
+              <div className="text-xs text-cyan-400">
+                ({((qualityMetrics.duplicateRows / data.length) * 100).toFixed(1)}%)
+              </div>
+            </div>
+            <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-slate-200">
+                {Object.values(qualityMetrics.columnStats).reduce((sum, s) => sum + s.outliers, 0)}
+              </div>
+              <div className="text-xs text-slate-400">Outliers Totais</div>
+              <div className="text-xs text-cyan-400">(valores {">"}2σ)</div>
+            </div>
+            <div className="bg-slate-800/50 border border-cyan-500/20 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-slate-200">{columns.length}</div>
+              <div className="text-xs text-slate-400">Colunas</div>
+              <div className="text-xs text-cyan-400">{data.length} registros</div>
+            </div>
+          </div>
+
+          {/* Column Details Table */}
+          <div className="max-h-[200px] overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-cyan-500/20">
+                  <TableHead className="text-cyan-400 text-xs">Coluna</TableHead>
+                  <TableHead className="text-cyan-400 text-xs text-center">Vazios</TableHead>
+                  <TableHead className="text-cyan-400 text-xs text-center">Tipo</TableHead>
+                  <TableHead className="text-cyan-400 text-xs text-center">Duplicados</TableHead>
+                  <TableHead className="text-cyan-400 text-xs text-center">Outliers</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {columns.map((col) => {
+                  const stats = qualityMetrics.columnStats[col];
+                  return (
+                    <TableRow key={col} className="border-cyan-500/10">
+                      <TableCell className="text-slate-300 text-xs font-medium">{col}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge 
+                          variant="secondary" 
+                          className={`text-xs ${stats.empty > 0 ? "bg-amber-500/20 text-amber-300" : "bg-emerald-500/20 text-emerald-300"}`}
+                        >
+                          {stats.empty} ({((stats.empty / data.length) * 100).toFixed(0)}%)
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary" className="text-xs bg-cyan-500/20 text-cyan-300">
+                          {stats.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center text-slate-400 text-xs">{stats.duplicates}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge 
+                          variant="secondary" 
+                          className={`text-xs ${stats.outliers > 0 ? "bg-red-500/20 text-red-300" : "bg-slate-500/20 text-slate-300"}`}
+                        >
+                          {stats.outliers}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { ChatModal } from "@/components/ChatModal";
 import { useTranslation } from "react-i18next";
 
-export const FloatingChatButton = () => {
+interface FloatingChatButtonProps {
+  agentSlug?: string;
+}
+
+export const FloatingChatButton = ({ agentSlug = "company" }: FloatingChatButtonProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -69,7 +73,7 @@ export const FloatingChatButton = () => {
         </Button>
       </div>
 
-      <ChatModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <ChatModal isOpen={isOpen} onClose={() => setIsOpen(false)} agentSlug={agentSlug} />
     </>
   );
 };
