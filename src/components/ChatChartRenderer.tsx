@@ -639,7 +639,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
 
   return (
     <TooltipProvider>
-      <div ref={chartRef} className={cn("my-3 rounded-lg border border-border/50 overflow-hidden bg-card max-w-[500px]", className)}>
+      <div ref={chartRef} className={cn("my-3 rounded-lg border border-border/50 overflow-hidden bg-card w-full", className)}>
         {/* Header with title and controls */}
         <div className="flex items-center justify-between gap-2 px-3 py-2 bg-muted/30 border-b border-border/50">
           <div className="flex items-center gap-2 min-w-0">
@@ -679,28 +679,16 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   <TrendingUp className="h-4 w-4 mr-2" /> Linha
                 </DropdownMenuItem>
                 
-                {/* Pizza - completamente desabilitado quando dados não somam 100% */}
-                {proportionValidation.isValid ? (
-                  <DropdownMenuItem onClick={() => setChartType('pie')}>
-                    <PieChartIcon className="h-4 w-4 mr-2" /> 
-                    Pizza
-                  </DropdownMenuItem>
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="relative flex cursor-not-allowed select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none opacity-50">
-                        <PieChartIcon className="h-4 w-4 mr-2 text-muted-foreground" /> 
-                        <span className="text-muted-foreground">Pizza</span>
-                        <AlertCircle className="h-3 w-3 ml-auto text-amber-500" />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="left" className="max-w-xs">
-                      <p className="text-xs font-medium text-amber-400">Gráfico de pizza desabilitado</p>
-                      <p className="text-xs mt-1">Soma atual: {proportionValidation.sum.toFixed(1)}%</p>
-                      <p className="text-xs text-muted-foreground">Requer exatamente 100% para este tipo de gráfico.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
+                {/* Pizza - usa handlePieSelection que abre dialog de normalização se necessário */}
+                <DropdownMenuItem onClick={handlePieSelection}>
+                  <PieChartIcon className="h-4 w-4 mr-2" /> 
+                  Pizza
+                  {!proportionValidation.isValid && (
+                    <span className="ml-auto text-xs text-amber-400">
+                      ({proportionValidation.sum.toFixed(0)}%)
+                    </span>
+                  )}
+                </DropdownMenuItem>
                 
                 {/* Área - sempre habilitado */}
                 <DropdownMenuItem onClick={() => setChartType('area')}>
