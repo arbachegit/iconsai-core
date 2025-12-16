@@ -730,8 +730,8 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           }}>
                   {msg.role === "user" && <CopyButton content={msg.content} />}
                   <div className={cn(
-                    "rounded-2xl px-4 py-3",
-                    msg.type === "file-data" ? "w-full" : "max-w-[90%]",
+                    "rounded-2xl px-4 py-3 overflow-hidden",
+                    msg.type === "file-data" ? "w-[80%] max-w-[80%]" : "max-w-[80%]",
                     msg.role === "user"
                       ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right" 
                       : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"
