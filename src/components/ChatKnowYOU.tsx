@@ -712,7 +712,13 @@ export default function ChatKnowYOU() {
             }
           }}>
                   {msg.role === "user" && <CopyButton content={msg.content} />}
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right" : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"}`}>
+                  <div className={cn(
+                    "rounded-2xl px-4 py-3",
+                    msg.type === "file-data" ? "w-full max-w-full" : "max-w-[80%]",
+                    msg.role === "user" 
+                      ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right" 
+                      : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"
+                  )}>
                     {/* Render DataVisualization for file-data messages */}
                     {msg.type === "file-data" && msg.fileData && (
                       <DataVisualization 

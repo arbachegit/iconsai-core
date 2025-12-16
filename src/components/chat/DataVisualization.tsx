@@ -262,7 +262,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
   };
 
   return (
-    <div className="bg-slate-900/50 border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="w-full min-w-0 bg-slate-900/50 border border-cyan-500/20 rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-cyan-500/20 bg-slate-800/50">
         <div className="flex items-center gap-2">
@@ -285,7 +285,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
 
       {/* Tabs */}
       <Tabs defaultValue="tabela" className="w-full">
-        <TabsList className="w-full justify-start bg-slate-800/30 border-b border-cyan-500/20 rounded-none p-1">
+        <TabsList className="w-full justify-start bg-slate-800/30 border-b border-cyan-500/20 rounded-none p-1 overflow-x-auto">
           <TabsTrigger
             value="tabela"
             className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300"
@@ -308,7 +308,8 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
 
         {/* Tab: Tabela */}
         <TabsContent value="tabela" className="m-0">
-          <ScrollArea className="h-[400px]">
+          <ScrollArea className="max-h-[350px]">
+            <div className="min-w-max">
             <Table>
               <TableHeader>
                 <TableRow className="border-cyan-500/20 hover:bg-transparent">
@@ -344,6 +345,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                 ))}
               </TableBody>
             </Table>
+            </div>
           </ScrollArea>
 
           {/* Pagination */}
