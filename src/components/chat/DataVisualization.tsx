@@ -36,6 +36,9 @@ import {
   BarChart,
   AreaChart,
   ScatterChart,
+  PieChart,
+  Pie,
+  Cell,
   Line,
   Bar,
   Area,
@@ -55,10 +58,15 @@ interface DataVisualizationProps {
   fileName: string;
 }
 
-type ChartType = "line" | "bar" | "area" | "scatter";
+type ChartType = "line" | "bar" | "area" | "scatter" | "pie";
 type SortDirection = "asc" | "desc" | null;
 
 const ROWS_PER_PAGE = 100;
+
+const PIE_COLORS = [
+  "#00CED1", "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4",
+  "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE"
+];
 
 export const DataVisualization = ({ data, columns, fileName }: DataVisualizationProps) => {
   // Table state
@@ -132,6 +140,23 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
         name: String(row[xColumn] ?? index),
       }))
       .filter((d) => !isNaN(d.y));
+  }, [data, xColumn, yColumn]);
+
+  // Pie chart data - aggregates by category
+  const pieChartData = useMemo(() => {
+    if (!xColumn || !yColumn) return [];
+
+    const aggregated: Record<string, number> = {};
+    data.forEach((row) => {
+      const key = String(row[xColumn] ?? "Outros");
+      const value = Number(row[yColumn]) || 0;
+      aggregated[key] = (aggregated[key] || 0) + value;
+    });
+
+    return Object.entries(aggregated)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10); // Limit to top 10 for readability
   }, [data, xColumn, yColumn]);
 
   // Trend line calculation
@@ -348,6 +373,32 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
           <Scatter dataKey="y" fill="#00CED1" />
         </ScatterChart>
       ),
+      pie: (
+        <PieChart {...commonProps}>
+          <Pie
+            data={pieChartData}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            label={({ name, percent }) => `${name.slice(0, 10)}${name.length > 10 ? '...' : ''} ${(percent * 100).toFixed(0)}%`}
+            outerRadius={120}
+            fill="#8884d8"
+            dataKey="value"
+          >
+            {pieChartData.map((_, index) => (
+              <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "#0f172a",
+              border: "1px solid rgba(0,206,209,0.3)",
+              borderRadius: "8px",
+            }}
+            formatter={(value: number) => value.toLocaleString('pt-BR')}
+          />
+        </PieChart>
+      ),
     };
 
     return chartComponents[chartType];
@@ -538,24 +589,44 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
         <TabsContent value="grafico" className="m-0 p-4 overflow-hidden">
           {/* Chart Controls */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            <div className="w-full">
-              <label className="text-xs text-slate-400 mb-1 block">Eixo X</label>
-              <Select value={xColumn} onValueChange={setXColumn}>
-                <SelectTrigger className="bg-slate-800/50 border-cyan-500/20 text-slate-300">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-cyan-500/20">
-                  {columns.map((col) => (
-                    <SelectItem key={col} value={col}>
-                      {col}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {chartType !== "pie" && (
+              <div className="w-full">
+                <label className="text-xs text-slate-400 mb-1 block">Eixo X</label>
+                <Select value={xColumn} onValueChange={setXColumn}>
+                  <SelectTrigger className="bg-slate-800/50 border-cyan-500/20 text-slate-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-cyan-500/20">
+                    {columns.map((col) => (
+                      <SelectItem key={col} value={col}>
+                        {col}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {chartType === "pie" && (
+              <div className="w-full">
+                <label className="text-xs text-slate-400 mb-1 block">Categoria</label>
+                <Select value={xColumn} onValueChange={setXColumn}>
+                  <SelectTrigger className="bg-slate-800/50 border-cyan-500/20 text-slate-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-cyan-500/20">
+                    {columns.map((col) => (
+                      <SelectItem key={col} value={col}>
+                        {col}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="w-full">
-              <label className="text-xs text-slate-400 mb-1 block">Eixo Y</label>
+              <label className="text-xs text-slate-400 mb-1 block">{chartType === "pie" ? "Valor" : "Eixo Y"}</label>
               <Select value={yColumn} onValueChange={setYColumn}>
                 <SelectTrigger className="bg-slate-800/50 border-cyan-500/20 text-slate-300">
                   <SelectValue />
@@ -581,24 +652,27 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                   <SelectItem value="bar">Barra</SelectItem>
                   <SelectItem value="area">Área</SelectItem>
                   <SelectItem value="scatter">Scatter</SelectItem>
+                  <SelectItem value="pie">Pizza</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="flex items-end col-span-2 md:col-span-1">
-              <Button
-                variant={showTrendLine ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowTrendLine(!showTrendLine)}
-                className={showTrendLine 
-                  ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" 
-                  : "border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
-                }
-              >
-                <TrendingUp className="h-4 w-4 mr-1" />
-                Tendência
-              </Button>
-            </div>
+            {chartType !== "pie" && (
+              <div className="flex items-end col-span-2 md:col-span-1">
+                <Button
+                  variant={showTrendLine ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowTrendLine(!showTrendLine)}
+                  className={showTrendLine 
+                    ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" 
+                    : "border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                  }
+                >
+                  <TrendingUp className="h-4 w-4 mr-1" />
+                  Tendência
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Chart */}
