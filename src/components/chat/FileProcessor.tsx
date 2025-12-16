@@ -42,7 +42,11 @@ const FileProcessor: React.FC<FileProcessorProps> = ({
     reader.onload = (e) => {
       try {
         const buffer = e.target?.result as ArrayBuffer;
-        const workbook = XLSX.read(new Uint8Array(buffer), { type: "array" });
+        const workbook = XLSX.read(new Uint8Array(buffer), { 
+          type: "array",
+          cellDates: true,
+          dateNF: "yyyy-mm-dd"
+        });
         const firstSheetName = workbook.SheetNames[0];
         const firstSheet = workbook.Sheets[firstSheetName];
         const data = XLSX.utils.sheet_to_json(firstSheet, { defval: "" }) as any[];

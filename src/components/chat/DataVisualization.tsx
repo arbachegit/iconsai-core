@@ -129,6 +129,35 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
 
   const totalPages = Math.ceil(data.length / ROWS_PER_PAGE);
 
+  // Helper para parsear números em formato brasileiro (1.234,56)
+  const parseNumber = (value: any): number => {
+    if (value == null) return 0;
+    if (typeof value === "number") return value;
+    
+    const str = String(value).trim();
+    // Formato brasileiro: 1.234,56 → 1234.56
+    const normalized = str
+      .replace(/\./g, "")  // Remove pontos de milhar
+      .replace(",", ".");  // Vírgula vira ponto decimal
+    
+    const num = Number(normalized);
+    return isNaN(num) ? 0 : num;
+  };
+
+  // Helper para formatar valores do eixo X (datas)
+  const formatXValue = (value: any): string => {
+    if (value instanceof Date) {
+      return value.toLocaleDateString("pt-BR");
+    }
+    // Número serial do Excel (datas recentes: 40000-60000)
+    if (typeof value === "number" && value > 40000 && value < 60000) {
+      const excelEpoch = new Date(1899, 11, 30);
+      const date = new Date(excelEpoch.getTime() + value * 86400000);
+      return date.toLocaleDateString("pt-BR");
+    }
+    return String(value);
+  };
+
   // Chart data
   const chartData = useMemo(() => {
     if (!xColumn || !yColumn) return [];
@@ -136,8 +165,8 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
     return data
       .map((row, index) => ({
         x: row[xColumn] ?? index,
-        y: Number(row[yColumn]) || 0,
-        name: String(row[xColumn] ?? index),
+        y: parseNumber(row[yColumn]),
+        name: formatXValue(row[xColumn] ?? index),
       }))
       .filter((d) => !isNaN(d.y));
   }, [data, xColumn, yColumn]);
@@ -148,8 +177,8 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
 
     const aggregated: Record<string, number> = {};
     data.forEach((row) => {
-      const key = String(row[xColumn] ?? "Outros");
-      const value = Number(row[yColumn]) || 0;
+      const key = formatXValue(row[xColumn] ?? "Outros");
+      const value = parseNumber(row[yColumn]);
       aggregated[key] = (aggregated[key] || 0) + value;
     });
 
