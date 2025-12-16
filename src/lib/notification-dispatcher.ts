@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 
 export type NotificationEventType = 
   | 'new_document'
@@ -66,13 +67,13 @@ async function getTemplate(eventType: NotificationEventType): Promise<Notificati
       .single();
 
     if (error) {
-      console.warn('[NotificationDispatcher] Template not found, using defaults for:', eventType);
+      logger.warn('[NotificationDispatcher] Template not found, using defaults for:', eventType);
       return null;
     }
 
     return data as NotificationTemplate;
   } catch (error) {
-    console.error('[NotificationDispatcher] Error fetching template:', error);
+    logger.error('[NotificationDispatcher] Error fetching template:', error);
     return null;
   }
 }
@@ -107,7 +108,7 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
         }
       });
     } catch (logError) {
-      console.error('[NotificationDispatcher] Force log failed:', logError);
+      logger.error('[NotificationDispatcher] Force log failed:', logError);
     }
   };
 
@@ -120,7 +121,7 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
       .single();
 
     if (prefError) {
-      console.error('[NotificationDispatcher] Error fetching preferences:', prefError);
+      logger.error('[NotificationDispatcher] Error fetching preferences:', prefError);
       result.errors.push(`Preference fetch error: ${prefError.message}`);
       // FORCE LOG: Log the blocked attempt due to RLS/preferences error
       await forceLog('blocked', 'system', 'N/A', `RLS/Preferences error: ${prefError.message}`);
@@ -128,7 +129,7 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
     }
 
     if (!prefData) {
-      console.log('[NotificationDispatcher] No preferences found for event:', payload.eventType);
+      logger.log('[NotificationDispatcher] No preferences found for event:', payload.eventType);
       await forceLog('blocked', 'system', 'N/A', `No preferences found for event: ${payload.eventType}`);
       return result;
     }
@@ -140,7 +141,7 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
       .single();
 
     if (settingsError) {
-      console.error('[NotificationDispatcher] Error fetching admin settings:', settingsError);
+      logger.error('[NotificationDispatcher] Error fetching admin settings:', settingsError);
       result.errors.push(`Settings fetch error: ${settingsError.message}`);
       await forceLog('blocked', 'system', 'N/A', `Admin settings error: ${settingsError.message}`);
       return result;
@@ -193,10 +194,10 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
           if (error) throw error;
           result.emailSent = true;
           emailStatus = 'success';
-          console.log('[NotificationDispatcher] Email sent successfully for:', payload.eventType);
+          logger.log('[NotificationDispatcher] Email sent successfully for:', payload.eventType);
         }
       } catch (err: any) {
-        console.error('[NotificationDispatcher] Email send error:', err);
+        logger.error('[NotificationDispatcher] Email send error:', err);
         emailError = err.message || 'Unknown email error';
         result.errors.push(`Email error: ${emailError}`);
       }
@@ -249,10 +250,10 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
           
           result.whatsappSent = true;
           whatsappStatus = 'success';
-          console.log('[NotificationDispatcher] WhatsApp sent successfully for:', payload.eventType);
+          logger.log('[NotificationDispatcher] WhatsApp sent successfully for:', payload.eventType);
         }
       } catch (err: any) {
-        console.error('[NotificationDispatcher] WhatsApp send error:', err);
+        logger.error('[NotificationDispatcher] WhatsApp send error:', err);
         whatsappError = err.message || 'Unknown WhatsApp error';
         result.errors.push(`WhatsApp error: ${whatsappError}`);
       }
@@ -271,7 +272,7 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
     }
 
   } catch (error: any) {
-    console.error('[NotificationDispatcher] Unexpected error:', error);
+    logger.error('[NotificationDispatcher] Unexpected error:', error);
     result.errors.push(`Unexpected error: ${error.message}`);
   }
 

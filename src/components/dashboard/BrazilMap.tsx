@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 interface BrazilMapProps {
   hoveredState: string | null;
@@ -73,7 +74,7 @@ async function fetchWithFallback(urls: string[], timeout = 5000): Promise<GeoJSO
         return data;
       }
     } catch (err) {
-      console.warn(`Failed to fetch from ${url}:`, err);
+      logger.warn(`Failed to fetch from ${url}:`, err);
     }
   }
   return null;

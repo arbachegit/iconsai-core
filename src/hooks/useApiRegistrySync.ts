@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 
 /**
  * Hook que escuta mudanças no API Registry via Supabase Realtime
@@ -16,7 +17,7 @@ export function useApiRegistrySync() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    console.log('[API_REGISTRY_SYNC] Initializing realtime subscription...');
+    logger.log('[API_REGISTRY_SYNC] Initializing realtime subscription...');
 
     // Criar canal de real-time para escutar mudanças
     const channel = supabase
@@ -29,7 +30,7 @@ export function useApiRegistrySync() {
           table: 'system_api_registry'
         },
         (payload) => {
-          console.log('[API_REGISTRY_SYNC] Change detected:', payload.eventType, payload);
+          logger.log('[API_REGISTRY_SYNC] Change detected:', payload.eventType, payload);
 
           // PROPAGAÇÃO AUTOMÁTICA: Invalida TODOS os caches dependentes
           // Isso força refetch em todos os painéis que consomem estes dados
@@ -59,16 +60,16 @@ export function useApiRegistrySync() {
           queryClient.invalidateQueries({ queryKey: ['api-registry'] });
           queryClient.invalidateQueries({ queryKey: ['system-api-registry'] });
           
-          console.log('[API_REGISTRY_SYNC] All dependent caches invalidated');
+          logger.log('[API_REGISTRY_SYNC] All dependent caches invalidated');
         }
       )
       .subscribe((status) => {
-        console.log('[API_REGISTRY_SYNC] Subscription status:', status);
+        logger.log('[API_REGISTRY_SYNC] Subscription status:', status);
       });
 
     // Cleanup on unmount
     return () => {
-      console.log('[API_REGISTRY_SYNC] Removing realtime subscription');
+      logger.log('[API_REGISTRY_SYNC] Removing realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
