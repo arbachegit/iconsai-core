@@ -413,12 +413,12 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                 <thead className="sticky top-0 z-10 bg-slate-800">
                   <tr className="border-b border-cyan-500/30">
                     {columns.map((col) => (
-                      <th
-                        key={col}
-                        onClick={() => handleSort(col)}
-                        className="text-cyan-400 cursor-pointer hover:text-cyan-300 text-left px-1.5 py-1 font-medium bg-slate-800 whitespace-nowrap"
-                      >
-                        <div className="flex items-center gap-0.5">
+                          <th
+                            key={col}
+                            onClick={() => handleSort(col)}
+                            className="text-cyan-400 cursor-pointer hover:text-cyan-300 text-center px-1.5 py-1 font-medium bg-slate-800 whitespace-nowrap"
+                          >
+                            <div className="flex items-center justify-center gap-0.5">
                           <span className="truncate max-w-[100px]" title={col}>{col}</span>
                           {sortColumn === col && (
                             sortDirection === "asc" ? (
@@ -438,7 +438,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                       {columns.map((col) => (
                         <td 
                           key={col} 
-                          className="text-slate-300 px-1.5 py-0.5 whitespace-nowrap truncate max-w-[120px]"
+                          className="text-slate-300 text-center px-1.5 py-0.5 whitespace-nowrap truncate max-w-[120px]"
                           title={String(row[col] ?? "-")}
                         >
                           {row[col] ?? "-"}
