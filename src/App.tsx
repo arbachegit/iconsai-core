@@ -19,6 +19,7 @@ const Documentation = lazy(() => import("./pages/Documentation"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Arquitetura = lazy(() => import("./pages/Arquitetura"));
 const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
+const AppPage = lazy(() => import("./pages/AppPage"));
 
 // Simple loading fallback
 const PageLoader = () => (
@@ -54,6 +55,7 @@ const App = () => (
                 <Route path="/dashboard" element={<DashboardAdmin />} />
                 <Route path="/docs" element={<Documentation />} />
                 <Route path="/arquitetura" element={<Arquitetura />} />
+                <Route path="/app" element={<AppPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

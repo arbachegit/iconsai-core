@@ -1,13 +1,14 @@
 import { GripHorizontal } from "lucide-react";
-import ChatStudy from "@/components/ChatStudy";
+import { AgentChat } from "@/components/chat/AgentChat";
 import { useRef, useEffect, useState, useCallback } from "react";
 
 interface ChatModalProps {
   isOpen: boolean;
   onClose: () => void;
+  agentSlug?: string;
 }
 
-export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
+export const ChatModal = ({ isOpen, onClose, agentSlug = "company" }: ChatModalProps) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -145,7 +146,7 @@ export const ChatModal = ({ isOpen, onClose }: ChatModalProps) => {
 
           {/* Chat Content */}
           <div className="px-3 pt-3 h-[785px] overflow-hidden rounded-b-2xl">
-            <ChatStudy onClose={handleClose} />
+            <AgentChat agentSlug={agentSlug} onClose={handleClose} />
           </div>
         </div>
       </div>
