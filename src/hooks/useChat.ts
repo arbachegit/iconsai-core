@@ -158,13 +158,18 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
   }, [sessionId, settings]);
 
   const sendMessage = useCallback(
-    async (input: string) => {
+    async (
+      input: string,
+      options?: { fileData?: { data: any[]; fileName: string; columns: string[] } }
+    ) => {
       if (!input.trim() || isLoading) return;
 
       const userMsg: Message = {
         role: "user",
         content: input,
         timestamp: new Date(),
+        type: options?.fileData ? "file-data" : "text",
+        fileData: options?.fileData,
       };
 
       const newMessages = [...messages, userMsg];

@@ -156,22 +156,16 @@ export default function ChatKnowYOU() {
   const handleFileLoaded = useCallback((data: any[], fileName: string, columns: string[]) => {
     setIsFileDialogOpen(false);
     
-    const fileMessage: Message = {
-      role: "user",
-      content: `Arquivo enviado: ${fileName}`,
-      timestamp: new Date(),
-      type: "file-data",
-      fileData: { data, fileName, columns }
-    };
-    
-    addMessage(fileMessage);
-    
     const numericCols = columns.filter(col => 
       data.some(row => !isNaN(Number(row[col])))
     );
     
-    sendMessage(`Analise o arquivo ${fileName} com ${data.length} registros e ${columns.length} colunas. Colunas numéricas: ${numericCols.join(", ")}`);
-  }, [addMessage, sendMessage]);
+    // Pass fileData directly with sendMessage - this ensures data reaches the Edge Function
+    sendMessage(
+      `Arquivo enviado: ${fileName} com ${data.length} registros e ${columns.length} colunas. Colunas numéricas: ${numericCols.join(", ")}. Por favor, analise os dados.`,
+      { fileData: { data, fileName, columns } }
+    );
+  }, [sendMessage]);
 
   const processFile = useCallback((file: File) => {
     const extension = file.name.split(".").pop()?.toLowerCase();
