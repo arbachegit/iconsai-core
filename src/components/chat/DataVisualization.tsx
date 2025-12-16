@@ -406,23 +406,23 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
         {/* Tab: Tabela */}
         <TabsContent value="tabela" className="m-0">
           <div className="border border-cyan-500/20 rounded overflow-hidden">
-            <div className="max-h-[280px] overflow-auto">
-              <table className="w-full border-collapse text-xs">
+            <div className="max-h-[200px] overflow-auto">
+              <table className="w-full border-collapse text-[11px]">
                 <thead className="sticky top-0 z-10 bg-slate-800">
                   <tr className="border-b border-cyan-500/30">
                     {columns.map((col) => (
                       <th
                         key={col}
                         onClick={() => handleSort(col)}
-                        className="text-cyan-400 cursor-pointer hover:text-cyan-300 text-left px-3 py-2 font-medium bg-slate-800"
+                        className="text-cyan-400 cursor-pointer hover:text-cyan-300 text-left px-1.5 py-1 font-medium bg-slate-800 whitespace-nowrap"
                       >
-                        <div className="flex items-center gap-1 truncate max-w-[180px]" title={col}>
-                          {col}
+                        <div className="flex items-center gap-0.5">
+                          <span className="truncate max-w-[100px]" title={col}>{col}</span>
                           {sortColumn === col && (
                             sortDirection === "asc" ? (
-                              <ChevronUp className="h-3 w-3 shrink-0" />
+                              <ChevronUp className="h-2.5 w-2.5 shrink-0" />
                             ) : (
-                              <ChevronDown className="h-3 w-3 shrink-0" />
+                              <ChevronDown className="h-2.5 w-2.5 shrink-0" />
                             )
                           )}
                         </div>
@@ -436,7 +436,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                       {columns.map((col) => (
                         <td 
                           key={col} 
-                          className="text-slate-300 px-3 py-1.5 truncate max-w-[180px]"
+                          className="text-slate-300 px-1.5 py-0.5 whitespace-nowrap truncate max-w-[120px]"
                           title={String(row[col] ?? "-")}
                         >
                           {row[col] ?? "-"}

@@ -222,7 +222,7 @@ export const AgentChat = memo(function AgentChat({
               )}
               <div
                 className={`rounded-lg p-3 overflow-hidden ${
-                  msg.type === "file-data" ? "w-full max-w-[calc(100%-3rem)]" : "max-w-[85%]"
+                  msg.type === "file-data" ? "w-[80%] max-w-[80%]" : "max-w-[80%]"
                 } ${
                   msg.role === "user"
                     ? "bg-primary text-primary-foreground"
