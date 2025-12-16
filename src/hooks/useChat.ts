@@ -66,6 +66,13 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
   } | null>(null);
   const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
   
+  // Estado para guardar o último fileData ativo da sessão (para enviar em todas as mensagens subsequentes)
+  const [activeFileData, setActiveFileData] = useState<{
+    data: any[];
+    fileName: string;
+    columns: string[];
+  } | null>(null);
+  
   // Ref para manter dados completos do arquivo em memória (não vai para localStorage)
   const fileDataMapRef = useRef<Map<number, { data: any[]; fileName: string; columns: string[] }>>(new Map());
   
@@ -175,11 +182,17 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
     ) => {
       if (!input.trim() || isLoading) return;
 
-      // Se tem fileData novo, guardar em memória completo
+      // Se tem fileData novo, guardar em memória completo E no activeFileData
       if (options?.fileData) {
         const msgIndex = messages.length;
         fileDataMapRef.current.set(msgIndex, {
           data: options.fileData.data,
+          fileName: options.fileData.fileName,
+          columns: options.fileData.columns,
+        });
+        // Salvar amostra no activeFileData para enviar em todas as mensagens subsequentes
+        setActiveFileData({
+          data: options.fileData.data.slice(0, 100), // Amostra de até 100 registros
           fileName: options.fileData.fileName,
           columns: options.fileData.columns,
         });
@@ -352,14 +365,30 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
           setIsLoading(false);
         } else {
           // Preparar mensagens com fileData completo (da memória ou localStorage)
+          // IMPORTANTE: Incluir activeFileData na ÚLTIMA mensagem do usuário se não tiver fileData próprio
           const messagesWithFileData = newMessages.map((m, idx) => {
             // Tentar pegar dados completos da memória primeiro
             const fullFileData = fileDataMapRef.current.get(idx);
-            return { 
-              role: m.role, 
-              content: m.content,
-              fileData: fullFileData || m.fileData // Usa dados completos se disponível
-            };
+            
+            // Se a mensagem já tem fileData (da memória ou localStorage), usar ela
+            if (fullFileData || m.fileData) {
+              return { 
+                role: m.role, 
+                content: m.content,
+                fileData: fullFileData || m.fileData
+              };
+            }
+            
+            // Se é a última mensagem do usuário e temos activeFileData, incluir
+            if (activeFileData && m.role === "user" && idx === newMessages.length - 1) {
+              return { 
+                role: m.role, 
+                content: m.content,
+                fileData: activeFileData
+              };
+            }
+            
+            return { role: m.role, content: m.content };
           });
           
           await streamChat({
@@ -463,6 +492,8 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
     setMessages([]);
     setCurrentlyPlayingIndex(null);
     setSuggestions(defaultSuggestions);
+    setActiveFileData(null); // Limpar dados do arquivo ativo
+    fileDataMapRef.current.clear(); // Limpar cache de arquivos
     localStorage.removeItem(storageKey);
   }, [storageKey, defaultSuggestions]);
 

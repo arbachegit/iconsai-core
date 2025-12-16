@@ -262,7 +262,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
   };
 
   return (
-    <div className="w-full min-w-0 bg-slate-900/50 border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="w-full min-w-0 overflow-x-auto bg-slate-900/50 border border-cyan-500/20 rounded-lg">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-cyan-500/20 bg-slate-800/50">
         <div className="flex items-center gap-2">
@@ -309,42 +309,44 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
         {/* Tab: Tabela */}
         <TabsContent value="tabela" className="m-0">
           <ScrollArea className="max-h-[350px]">
-            <div className="min-w-max">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-cyan-500/20 hover:bg-transparent">
-                  {columns.map((col) => (
-                    <TableHead
-                      key={col}
-                      onClick={() => handleSort(col)}
-                      className="text-cyan-400 cursor-pointer hover:text-cyan-300 whitespace-nowrap"
-                    >
-                      <div className="flex items-center gap-1">
-                        {col}
-                        {sortColumn === col && (
-                          sortDirection === "asc" ? (
-                            <ChevronUp className="h-3 w-3" />
-                          ) : (
-                            <ChevronDown className="h-3 w-3" />
-                          )
-                        )}
-                      </div>
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedData.map((row, idx) => (
-                  <TableRow key={idx} className="border-cyan-500/10 hover:bg-cyan-500/5">
-                    {columns.map((col) => (
-                      <TableCell key={col} className="text-slate-300 text-sm">
-                        {row[col] ?? "-"}
-                      </TableCell>
+            <div className="overflow-x-auto">
+              <div className="min-w-max">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-cyan-500/20 hover:bg-transparent">
+                      {columns.map((col) => (
+                        <TableHead
+                          key={col}
+                          onClick={() => handleSort(col)}
+                          className="text-cyan-400 cursor-pointer hover:text-cyan-300 whitespace-nowrap text-xs px-2"
+                        >
+                          <div className="flex items-center gap-1">
+                            {col}
+                            {sortColumn === col && (
+                              sortDirection === "asc" ? (
+                                <ChevronUp className="h-3 w-3" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3" />
+                              )
+                            )}
+                          </div>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedData.map((row, idx) => (
+                      <TableRow key={idx} className="border-cyan-500/10 hover:bg-cyan-500/5">
+                        {columns.map((col) => (
+                          <TableCell key={col} className="text-slate-300 text-xs px-2 truncate max-w-[150px]">
+                            {row[col] ?? "-"}
+                          </TableCell>
+                        ))}
+                      </TableRow>
                     ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </ScrollArea>
 

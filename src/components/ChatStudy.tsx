@@ -727,8 +727,8 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           }}>
                   {msg.role === "user" && <CopyButton content={msg.content} />}
                   <div className={cn(
-                    "rounded-2xl px-4 py-3",
-                    msg.type === "file-data" ? "w-full max-w-full" : "max-w-[80%]",
+                    "rounded-2xl px-4 py-3 break-words",
+                    msg.type === "file-data" ? "w-full max-w-full overflow-x-auto" : "max-w-[85%]",
                     msg.role === "user" 
                       ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right" 
                       : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"
@@ -743,7 +743,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
                     )}
                     {msg.imageUrl && <img src={msg.imageUrl} alt={t('chat.generatingImage')} className="max-w-full rounded-lg mb-2" />}
                     <div className="flex items-start gap-2">
-                      <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1" />
+                      <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1 break-words [&_*]:break-words" />
                     </div>
                     
                     {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} imageUrl={msg.imageUrl} isPlaying={currentlyPlayingIndex === idx} isGeneratingAudio={isGeneratingAudio} currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0} duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} onDownloadImage={msg.imageUrl ? () => handleDownloadImage(msg.imageUrl!, idx) : undefined} />}
