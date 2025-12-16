@@ -691,7 +691,7 @@ export default function ChatKnowYOU() {
               <p className="text-muted-foreground max-w-md">
                 {t('chat.greetingDesc')}
               </p>
-            </div> : <div className="space-y-4">
+            </div> : <div className="space-y-4 overflow-x-auto">
               {/* Disclaimer when document is attached */}
               {activeDisclaimer && <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
@@ -713,8 +713,8 @@ export default function ChatKnowYOU() {
           }}>
                   {msg.role === "user" && <CopyButton content={msg.content} />}
                   <div className={cn(
-                    "rounded-2xl px-4 py-3 break-words",
-                    msg.type === "file-data" ? "w-full max-w-full overflow-x-auto" : "max-w-[85%]",
+                    "rounded-2xl px-4 py-3 break-words overflow-x-auto",
+                    msg.type === "file-data" ? "w-full max-w-full" : "max-w-[85%]",
                     msg.role === "user" 
                       ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right" 
                       : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"
@@ -728,8 +728,8 @@ export default function ChatKnowYOU() {
                       />
                     )}
                     {msg.imageUrl && <img src={msg.imageUrl} alt={t('chat.generatingImage')} className="max-w-full rounded-lg mb-2" />}
-                    <div className="flex items-start gap-2">
-                      <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1 break-words [&_*]:break-words" />
+                    <div className="flex items-start gap-2 min-w-0">
+                      <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1 break-words [&_*]:break-words min-w-0" />
                     </div>
                     
                     {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} imageUrl={msg.imageUrl} isPlaying={currentlyPlayingIndex === idx} isGeneratingAudio={isGeneratingAudio} currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0} duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} onDownloadImage={msg.imageUrl ? () => handleDownloadImage(msg.imageUrl!, idx) : undefined} />}
