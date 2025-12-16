@@ -415,7 +415,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                       <th
                         key={col}
                         onClick={() => handleSort(col)}
-                        className="text-cyan-400 cursor-pointer hover:text-cyan-300 whitespace-nowrap text-xs px-4 py-3 font-semibold text-left bg-slate-800"
+                        className="text-cyan-400 cursor-pointer hover:text-cyan-300 text-left px-2 py-2 font-medium bg-slate-800 whitespace-nowrap"
                       >
                         <div className="flex items-center gap-1">
                           {col}
@@ -435,7 +435,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                   {paginatedData.map((row, idx) => (
                     <tr key={idx} className="border-b border-cyan-500/10 hover:bg-cyan-500/5">
                       {columns.map((col) => (
-                        <td key={col} className="text-slate-300 text-xs px-4 py-2 whitespace-nowrap">
+                        <td key={col} className="text-slate-300 px-2 py-1.5 whitespace-nowrap">
                           {row[col] ?? "-"}
                         </td>
                       ))}

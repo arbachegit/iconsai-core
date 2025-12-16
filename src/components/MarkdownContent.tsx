@@ -165,7 +165,7 @@ export const MarkdownContent = memo(({ content, className }: MarkdownContentProp
   const { chartData, cleanedContent } = useMemo(() => parseChartData(content), [content]);
 
   return (
-    <div className={cn("prose prose-sm dark:prose-invert max-w-none", className)}>
+    <div className={cn("max-w-none text-sm", className)}>
       {/* Render chart if present */}
       {chartData && <ChatChartRenderer chartData={chartData} />}
       
@@ -173,10 +173,10 @@ export const MarkdownContent = memo(({ content, className }: MarkdownContentProp
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+          p: ({ children }) => <p className="mb-2 last:mb-0 leading-normal">{children}</p>,
           ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
           ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
-          li: ({ children }) => <li className="mb-1">{children}</li>,
+          li: ({ children }) => <li className="leading-normal">{children}</li>,
           strong: ({ children }) => <strong className="font-bold">{children}</strong>,
           em: ({ children }) => <em className="italic">{children}</em>,
           code: ({ children }) => (
