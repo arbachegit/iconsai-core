@@ -251,7 +251,10 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
 
   const addReferenceLine = useCallback(() => {
     const value = newRefLine.type === 'average' ? dataAverage : parseFloat(newRefLine.value);
-    if (isNaN(value)) return;
+    if (isNaN(value)) {
+      console.warn('Valor inválido para linha de referência:', newRefLine.value);
+      return;
+    }
     
     setReferenceLines(prev => [...prev, {
       id: `ref-${Date.now()}`,
@@ -284,22 +287,34 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
     });
   }, [filteredDisplayData, showMovingAverage]);
 
-  // Linear Regression for Trend Line
+  // Linear Regression for Trend Line with R² calculation
   const trendLineData = useMemo(() => {
-    if (!showTrendLine || filteredDisplayData.length < 2) return [];
-    const n = filteredDisplayData.length;
-    const sumX = filteredDisplayData.reduce((s, _, i) => s + i, 0);
-    const sumY = filteredDisplayData.reduce((s, d) => s + (d.value || 0), 0);
-    const sumXY = filteredDisplayData.reduce((s, d, i) => s + i * (d.value || 0), 0);
-    const sumX2 = filteredDisplayData.reduce((s, _, i) => s + i * i, 0);
+    if (!showTrendLine || filteredDisplayData.length < 2) return null;
     
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const n = filteredDisplayData.length;
+    const xValues = filteredDisplayData.map((_, i) => i);
+    const yValues = filteredDisplayData.map(d => d.value || 0);
+    
+    const sumX = xValues.reduce((a, b) => a + b, 0);
+    const sumY = yValues.reduce((a, b) => a + b, 0);
+    const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0);
+    const sumXX = xValues.reduce((sum, x) => sum + x * x, 0);
+    
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
     
-    return filteredDisplayData.map((item, idx) => ({
+    // Calculate R²
+    const yMean = sumY / n;
+    const ssTotal = yValues.reduce((sum, y) => sum + Math.pow(y - yMean, 2), 0);
+    const ssResidual = yValues.reduce((sum, y, i) => sum + Math.pow(y - (slope * xValues[i] + intercept), 2), 0);
+    const r2 = ssTotal === 0 ? 0 : 1 - (ssResidual / ssTotal);
+    
+    const data = filteredDisplayData.map((item, idx) => ({
       ...item,
       trend: intercept + slope * idx
     }));
+    
+    return { slope, intercept, r2, data };
   }, [filteredDisplayData, showTrendLine]);
 
   // Recalculate Y bounds based on filtered data
@@ -462,7 +477,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
 
       case 'line':
         // Use movingAverageData or trendLineData if enabled, otherwise displayData
-        const lineChartData = showMovingAverage ? movingAverageData : (showTrendLine ? trendLineData : displayData);
+        const lineChartData = showMovingAverage ? movingAverageData : (showTrendLine && trendLineData ? trendLineData.data : displayData);
         return (
           <ResponsiveContainer width="100%" height={chartHeight}>
             <LineChart data={lineChartData} margin={{ top: 10, right: 10, left: 0, bottom: showBrush ? 5 : 20 }}>
@@ -505,7 +520,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 />
               )}
               {/* Trend Line */}
-              {showTrendLine && (
+              {showTrendLine && trendLineData && (
                 <Line
                   type="linear"
                   dataKey="trend"
@@ -914,6 +929,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   size="sm"
                   className="h-7 text-xs px-2"
                   onClick={addReferenceLine}
+                  disabled={newRefLine.type !== 'average' && (!newRefLine.value || isNaN(parseFloat(newRefLine.value)))}
                 >
                   <Plus className="h-3 w-3" />
                 </Button>
@@ -993,6 +1009,14 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   <p className="text-xs">Exibir linha de regressão linear para análise de tendência</p>
                 </TooltipContent>
               </Tooltip>
+              
+              {/* Trend Line Equation and R² */}
+              {showTrendLine && trendLineData && (
+                <div className="text-[10px] text-muted-foreground flex items-center gap-2">
+                  <span>y = {trendLineData.slope.toFixed(4)}x + {trendLineData.intercept.toFixed(4)}</span>
+                  <span className="text-emerald-400 font-medium">(R² = {trendLineData.r2.toFixed(4)})</span>
+                </div>
+              )}
             </div>
           </div>
         )}
