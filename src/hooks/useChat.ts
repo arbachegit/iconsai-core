@@ -323,7 +323,11 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
           setIsLoading(false);
         } else {
           await streamChat({
-            messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+            messages: newMessages.map((m) => ({ 
+              role: m.role, 
+              content: m.content,
+              fileData: m.fileData
+            })),
             onDelta: (chunk) => updateAssistantMessage(chunk),
             chatType,
             region: userRegion,

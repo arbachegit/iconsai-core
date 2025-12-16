@@ -316,6 +316,30 @@ O sistema exibirá automaticamente no tooltip: "67.69 (Rank: 1, Categoria: Excel
     const lastUserMessage = messages.filter((m: any) => m.role === "user").pop();
     const userQuery = lastUserMessage?.content || "";
 
+    // Check if any message contains file data
+    let fileDataContext = "";
+    for (const msg of messages) {
+      if (msg.fileData && msg.fileData.data && Array.isArray(msg.fileData.data)) {
+        const { data, fileName, columns } = msg.fileData;
+        const sampleSize = Math.min(20, data.length);
+        const sampleData = data.slice(0, sampleSize);
+        
+        fileDataContext = `\n\n📊 DADOS DO ARQUIVO CARREGADO: ${fileName}
+Colunas: ${columns.join(", ")}
+Total de registros: ${data.length}
+
+Amostra dos primeiros ${sampleSize} registros:
+${JSON.stringify(sampleData, null, 2)}
+
+⚠️ IMPORTANTE: O usuário carregou este arquivo para análise. Você TEM ACESSO aos dados acima.
+Use estes dados para responder às perguntas sobre o arquivo. Você pode analisar padrões, gerar estatísticas, 
+identificar tendências e criar visualizações com esses dados.\n`;
+        
+        console.log(`File data detected: ${fileName} with ${data.length} records`);
+        break; // Only process the first file
+      }
+    }
+
     // Get chat configuration from database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -415,7 +439,7 @@ ${getAdaptiveResponseProtocol()}
 - Para iniciantes/leigos: responda de forma CURTA e PONTUADA por padrão
 ${getMathematicalInterpretationProtocol()}
 ${ragContext}
-
+${fileDataContext}
 ⚠️ INSTRUÇÃO CRÍTICA - LEIA ATENTAMENTE:
 ${hasRagContext ? `
 ✅ VOCÊ TEM CONTEXTO RAG DISPONÍVEL - Use as informações dos documentos acima para responder à pergunta.
@@ -423,6 +447,11 @@ IGNORE qualquer padrão de rejeição anterior. Se o contexto RAG contém inform
 ` : `
 ❌ Sem contexto RAG - Siga as regras de escopo normais.
 `}
+${fileDataContext ? `
+📊 VOCÊ TEM DADOS DE ARQUIVO DISPONÍVEL - O usuário carregou um arquivo com dados.
+Use os dados da amostra acima para responder. Você pode fazer análises estatísticas, identificar padrões e gerar insights.
+IGNORE qualquer restrição de escopo quando o usuário está perguntando sobre os dados do arquivo que ele mesmo carregou.
+` : ``}
 
 ESCOPO PRINCIPAL:
 
