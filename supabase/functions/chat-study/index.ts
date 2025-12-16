@@ -305,22 +305,28 @@ O sistema exibirá automaticamente no tooltip: "67.69 (Rank: 1, Categoria: Excel
     let fileDataContext = "";
     for (const msg of messages) {
       if (msg.fileData && msg.fileData.data && Array.isArray(msg.fileData.data)) {
-        const { data, fileName, columns } = msg.fileData;
-        const sampleSize = Math.min(20, data.length);
+        const { data, fileName, columns, totalRecords } = msg.fileData;
+        const actualTotal = totalRecords || data.length;
+        const sampleSize = Math.min(50, data.length);
         const sampleData = data.slice(0, sampleSize);
+        const isPartialSample = actualTotal > data.length;
         
         fileDataContext = `\n\n📊 DADOS DO ARQUIVO CARREGADO: ${fileName}
 Colunas: ${columns.join(", ")}
-Total de registros: ${data.length}
+Total de registros no arquivo: ${actualTotal}
+${isPartialSample 
+  ? `⚠️ AMOSTRA PARCIAL: Você está vendo ${data.length} de ${actualTotal} registros.` 
+  : `Registros disponíveis: ${data.length}`}
 
 Amostra dos primeiros ${sampleSize} registros:
 ${JSON.stringify(sampleData, null, 2)}
 
 ⚠️ IMPORTANTE: O usuário carregou este arquivo para análise. Você TEM ACESSO aos dados acima.
 Use estes dados para responder às perguntas sobre o arquivo. Você pode analisar padrões, gerar estatísticas, 
-identificar tendências e criar visualizações com esses dados.\n`;
+identificar tendências e criar visualizações com esses dados.
+${isPartialSample ? `\nNOTA: Como está trabalhando com amostra parcial, indique ao usuário quando uma análise completa precisaria de todos os dados.` : ''}\n`;
         
-        console.log(`File data detected: ${fileName} with ${data.length} records`);
+        console.log(`File data detected: ${fileName} with ${actualTotal} total records (${data.length} in sample)`);
         break; // Only process the first file
       }
     }

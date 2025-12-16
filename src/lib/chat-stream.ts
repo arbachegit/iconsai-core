@@ -5,6 +5,7 @@ type Message = {
     data: any[];
     fileName: string;
     columns: string[];
+    totalRecords?: number;
   };
 };
 
