@@ -434,10 +434,10 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
         </TabsContent>
 
         {/* Tab: Gráfico */}
-        <TabsContent value="grafico" className="m-0 p-4">
+        <TabsContent value="grafico" className="m-0 p-4 overflow-hidden">
           {/* Chart Controls */}
-          <div className="flex flex-wrap gap-3 mb-4">
-            <div className="flex-1 min-w-[140px]">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="w-full">
               <label className="text-xs text-slate-400 mb-1 block">Eixo X</label>
               <Select value={xColumn} onValueChange={setXColumn}>
                 <SelectTrigger className="bg-slate-800/50 border-cyan-500/20 text-slate-300">
@@ -453,7 +453,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
               </Select>
             </div>
 
-            <div className="flex-1 min-w-[140px]">
+            <div className="w-full">
               <label className="text-xs text-slate-400 mb-1 block">Eixo Y</label>
               <Select value={yColumn} onValueChange={setYColumn}>
                 <SelectTrigger className="bg-slate-800/50 border-cyan-500/20 text-slate-300">
@@ -469,7 +469,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
               </Select>
             </div>
 
-            <div className="flex-1 min-w-[140px]">
+            <div className="w-full">
               <label className="text-xs text-slate-400 mb-1 block">Tipo</label>
               <Select value={chartType} onValueChange={(v) => setChartType(v as ChartType)}>
                 <SelectTrigger className="bg-slate-800/50 border-cyan-500/20 text-slate-300">
@@ -484,7 +484,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
               </Select>
             </div>
 
-            <div className="flex items-end">
+            <div className="flex items-end col-span-2 md:col-span-1">
               <Button
                 variant={showTrendLine ? "default" : "outline"}
                 size="sm"
