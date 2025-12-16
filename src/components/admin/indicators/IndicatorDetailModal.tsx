@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from "@/lib/logger";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -144,7 +145,7 @@ export default function IndicatorDetailModal({
         setGovernance(apiData as ApiGovernance);
       }
     } catch (error) {
-      console.error('Error fetching governance:', error);
+      logger.error('Error fetching governance:', error);
     }
   };
 
@@ -170,7 +171,7 @@ export default function IndicatorDetailModal({
       setGovernance(prev => prev ? { ...prev, [field]: value } : null);
       toast.success('Configuração atualizada');
     } catch (error) {
-      console.error('Error updating governance:', error);
+      logger.error('Error updating governance:', error);
       toast.error('Erro ao atualizar configuração');
     } finally {
       setSavingGovernance(false);
@@ -190,7 +191,7 @@ export default function IndicatorDetailModal({
       if (error) throw error;
       setValues((data || []).map(d => ({ ...d, value: Number(d.value) })));
     } catch (error) {
-      console.error('Error fetching values:', error);
+      logger.error('Error fetching values:', error);
       toast.error('Erro ao carregar dados');
     } finally {
       setLoading(false);
@@ -222,7 +223,7 @@ export default function IndicatorDetailModal({
       fetchValues();
       onDataChange();
     } catch (error) {
-      console.error('Error fetching data:', error);
+      logger.error('Error fetching data:', error);
       toast.error('Erro ao buscar dados da API');
     } finally {
       setFetching(false);
@@ -270,7 +271,7 @@ export default function IndicatorDetailModal({
       fetchValues();
       onDataChange();
     } catch (error) {
-      console.error('Error adding value:', error);
+      logger.error('Error adding value:', error);
       toast.error('Erro ao inserir');
     }
   };

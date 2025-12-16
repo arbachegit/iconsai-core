@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { logger } from "@/lib/logger";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -130,7 +131,7 @@ export const SecurityIntegrityTab = () => {
       
       setScanHistory(typedData);
     } catch (error) {
-      console.error('Error fetching scan history:', error);
+      logger.error('Error fetching scan history:', error);
     }
   };
 
@@ -155,7 +156,7 @@ export const SecurityIntegrityTab = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching settings:', error);
+      logger.error('Error fetching settings:', error);
     }
   };
 
@@ -197,7 +198,7 @@ export const SecurityIntegrityTab = () => {
       await fetchScanHistory();
       await fetchSettings();
     } catch (error) {
-      console.error('Error running scan:', error);
+      logger.error('Error running scan:', error);
       toast.error('Erro ao executar scan');
     } finally {
       setIsScanning(false);
@@ -216,7 +217,7 @@ export const SecurityIntegrityTab = () => {
       setSettings(prev => ({ ...prev, ...updates }));
       toast.success('Configurações atualizadas');
     } catch (error) {
-      console.error('Error updating settings:', error);
+      logger.error('Error updating settings:', error);
       toast.error('Erro ao atualizar configurações');
     }
   };
