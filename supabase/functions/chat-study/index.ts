@@ -530,8 +530,25 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
    - O sistema converterá automaticamente para tabela interativa com ordenação e filtros
 
 7. 📊 GERAÇÃO DE GRÁFICOS:
-   - Quando o usuário pedir gráfico, estatísticas visuais ou visualização de dados
-   - Gere um bloco JSON estruturado ANTES do texto explicativo
+   ⚠️ REGRA CRÍTICA: NUNCA gere gráficos automaticamente quando receber arquivos!
+   
+   - Gere gráficos APENAS quando o usuário EXPLICITAMENTE pedir:
+     * "faça um gráfico de..."
+     * "gere um gráfico..."
+     * "mostre um gráfico..."
+     * "crie uma visualização..."
+     * "plote..."
+   
+   - Quando receber um arquivo/dados, faça APENAS:
+     1. Confirmar recebimento do arquivo
+     2. Informar quantidade de registros e colunas
+     3. Listar as colunas disponíveis
+     4. Sugerir análises possíveis (SEM executar)
+     5. Perguntar o que o usuário gostaria de analisar
+   
+   - NÃO gere CHART_DATA até que o usuário peça explicitamente por gráfico
+   
+   - Quando solicitado explicitamente, gere um bloco JSON estruturado ANTES do texto explicativo
    - Formato OBRIGATÓRIO:
    
    CHART_DATA: {"type":"bar","title":"Título do Gráfico","data":[{"name":"Item1","value":10},{"name":"Item2","value":20}]}
