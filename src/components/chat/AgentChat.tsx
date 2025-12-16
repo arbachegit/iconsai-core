@@ -169,7 +169,7 @@ export const AgentChat = memo(function AgentChat({
   }
 
   return (
-    <div className={`flex flex-col h-full bg-background ${className}`}>
+    <div className={`flex flex-col h-full min-h-0 bg-background overflow-hidden ${className}`}>
       {/* Header */}
       {!embedded && (
         <div className="flex items-center justify-between p-4 border-b border-border bg-card">
@@ -195,7 +195,7 @@ export const AgentChat = memo(function AgentChat({
       )}
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 min-h-0 p-4">
         <div className="space-y-4">
           {/* Greeting */}
           {messages.length === 0 && agent.greeting_message && (
@@ -221,8 +221,8 @@ export const AgentChat = memo(function AgentChat({
                 </div>
               )}
               <div
-                className={`rounded-lg p-3 ${
-                  msg.type === "file-data" ? "w-full max-w-full" : "max-w-[85%]"
+                className={`rounded-lg p-3 overflow-hidden ${
+                  msg.type === "file-data" ? "w-full max-w-[calc(100%-3rem)]" : "max-w-[85%]"
                 } ${
                   msg.role === "user"
                     ? "bg-primary text-primary-foreground"
