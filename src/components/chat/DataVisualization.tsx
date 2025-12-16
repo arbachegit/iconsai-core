@@ -360,7 +360,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
           <FileSpreadsheet className="h-4 w-4 text-cyan-400" />
           <span className="text-sm font-medium text-slate-200">{fileName}</span>
           <Badge variant="secondary" className="bg-cyan-500/10 text-cyan-300 text-xs">
-            {data.length} registros • {columns.length} colunas
+            📊 {data.length} registros • {columns.length} colunas
           </Badge>
         </div>
         <Button
