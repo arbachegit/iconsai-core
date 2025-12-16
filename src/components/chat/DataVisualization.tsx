@@ -404,17 +404,18 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
         </TabsList>
 
         {/* Tab: Tabela */}
+        {/* Tab: Tabela */}
         <TabsContent value="tabela" className="m-0">
-          <div className="overflow-x-auto">
-            <div className="max-h-[250px] overflow-y-auto">
-              <Table>
-                <TableHeader className="sticky top-0 bg-slate-800 z-10">
-                  <TableRow className="border-cyan-500/20 hover:bg-transparent">
+          <div className="relative">
+            <div className="overflow-x-auto overflow-y-auto max-h-[300px]">
+              <table className="w-full min-w-max border-collapse">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-slate-800 border-b border-cyan-500/20">
                     {columns.map((col) => (
-                      <TableHead
+                      <th
                         key={col}
                         onClick={() => handleSort(col)}
-                        className="text-cyan-400 cursor-pointer hover:text-cyan-300 whitespace-nowrap text-xs px-3 py-2 font-semibold bg-slate-800"
+                        className="text-cyan-400 cursor-pointer hover:text-cyan-300 whitespace-nowrap text-xs px-4 py-3 font-semibold text-left bg-slate-800"
                       >
                         <div className="flex items-center gap-1">
                           {col}
@@ -426,22 +427,22 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                             )
                           )}
                         </div>
-                      </TableHead>
+                      </th>
                     ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                  </tr>
+                </thead>
+                <tbody>
                   {paginatedData.map((row, idx) => (
-                    <TableRow key={idx} className="border-cyan-500/10 hover:bg-cyan-500/5">
+                    <tr key={idx} className="border-b border-cyan-500/10 hover:bg-cyan-500/5">
                       {columns.map((col) => (
-                        <TableCell key={col} className="text-slate-300 text-xs px-3 truncate max-w-[150px]">
+                        <td key={col} className="text-slate-300 text-xs px-4 py-2 whitespace-nowrap">
                           {row[col] ?? "-"}
-                        </TableCell>
+                        </td>
                       ))}
-                    </TableRow>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </div>
           </div>
 
