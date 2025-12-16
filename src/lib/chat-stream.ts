@@ -1,4 +1,12 @@
-type Message = { role: "user" | "assistant"; content: string };
+type Message = { 
+  role: "user" | "assistant"; 
+  content: string;
+  fileData?: {
+    data: any[];
+    fileName: string;
+    columns: string[];
+  };
+};
 
 interface StreamChatOptions {
   messages: Message[];
@@ -27,7 +35,14 @@ export async function streamChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages, region }),
+      body: JSON.stringify({ 
+        messages: messages.map(m => ({
+          role: m.role,
+          content: m.content,
+          fileData: m.fileData
+        })),
+        region 
+      }),
     });
 
     if (!resp.ok) {
