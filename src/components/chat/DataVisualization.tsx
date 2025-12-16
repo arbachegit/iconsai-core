@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { 
   FileSpreadsheet, 
   Download, 
@@ -67,17 +67,24 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
 
   // Chart state
   const [xColumn, setXColumn] = useState<string>(columns[0] || "");
-  const [yColumn, setYColumn] = useState<string>(columns[1] || columns[0] || "");
+  const [yColumn, setYColumn] = useState<string>("");
   const [chartType, setChartType] = useState<ChartType>("line");
   const [showTrendLine, setShowTrendLine] = useState(false);
 
-  // Detect numeric columns
+  // Detect numeric columns (moved before useEffect that depends on it)
   const numericColumns = useMemo(() => {
     return columns.filter((col) => {
       const values = data.map((row) => row[col]).filter((v) => v != null);
       return values.length > 0 && values.every((v) => !isNaN(Number(v)));
     });
   }, [data, columns]);
+
+  // Initialize yColumn with first numeric column
+  useEffect(() => {
+    if (numericColumns.length > 0 && !yColumn) {
+      setYColumn(numericColumns[0]);
+    }
+  }, [numericColumns, yColumn]);
 
   // Sorted data
   const sortedData = useMemo(() => {
@@ -398,45 +405,43 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
 
         {/* Tab: Tabela */}
         <TabsContent value="tabela" className="m-0">
-          <div className="max-h-[250px] overflow-y-auto overflow-x-auto">
-            <div className="min-w-[400px]">
-              <div className="min-w-max">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-cyan-500/20 hover:bg-transparent">
+          <div className="overflow-x-auto">
+            <div className="max-h-[250px] overflow-y-auto">
+              <Table>
+                <TableHeader className="sticky top-0 bg-slate-800 z-10">
+                  <TableRow className="border-cyan-500/20 hover:bg-transparent">
+                    {columns.map((col) => (
+                      <TableHead
+                        key={col}
+                        onClick={() => handleSort(col)}
+                        className="text-cyan-400 cursor-pointer hover:text-cyan-300 whitespace-nowrap text-xs px-3 py-2 font-semibold bg-slate-800"
+                      >
+                        <div className="flex items-center gap-1">
+                          {col}
+                          {sortColumn === col && (
+                            sortDirection === "asc" ? (
+                              <ChevronUp className="h-3 w-3" />
+                            ) : (
+                              <ChevronDown className="h-3 w-3" />
+                            )
+                          )}
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedData.map((row, idx) => (
+                    <TableRow key={idx} className="border-cyan-500/10 hover:bg-cyan-500/5">
                       {columns.map((col) => (
-                        <TableHead
-                          key={col}
-                          onClick={() => handleSort(col)}
-                          className="text-cyan-400 cursor-pointer hover:text-cyan-300 whitespace-nowrap text-xs px-2"
-                        >
-                          <div className="flex items-center gap-1">
-                            {col}
-                            {sortColumn === col && (
-                              sortDirection === "asc" ? (
-                                <ChevronUp className="h-3 w-3" />
-                              ) : (
-                                <ChevronDown className="h-3 w-3" />
-                              )
-                            )}
-                          </div>
-                        </TableHead>
+                        <TableCell key={col} className="text-slate-300 text-xs px-3 truncate max-w-[150px]">
+                          {row[col] ?? "-"}
+                        </TableCell>
                       ))}
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedData.map((row, idx) => (
-                      <TableRow key={idx} className="border-cyan-500/10 hover:bg-cyan-500/5">
-                        {columns.map((col) => (
-                          <TableCell key={col} className="text-slate-300 text-xs px-2 truncate max-w-[150px]">
-                            {row[col] ?? "-"}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </div>
 
