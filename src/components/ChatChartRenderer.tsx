@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import {
   BarChart,
   Bar,
@@ -182,7 +183,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
     if (requestedType === 'pie') {
       const validation = validateProportionData(chartData.data);
       if (!validation.isValid) {
-        console.warn(`Gráfico de pizza solicitado mas soma é ${validation.sum.toFixed(1)}%, usando barras`);
+        logger.warn(`Gráfico de pizza solicitado mas soma é ${validation.sum.toFixed(1)}%, usando barras`);
         return 'bar';
       }
     }

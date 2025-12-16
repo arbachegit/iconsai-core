@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
+import { logger } from "@/lib/logger";
 
 export interface TagState {
   id: string;
@@ -88,9 +89,9 @@ export async function logTagManagementEvent(event: TagManagementEventInput): Pro
       }]);
     
     if (error) {
-      console.error("[TAG_MANAGEMENT_LOG] Error logging event:", error);
+    logger.error("[TAG_MANAGEMENT_LOG] Error logging event:", error);
     } else {
-      console.log("[TAG_MANAGEMENT_LOG] Event logged successfully:", event.action_type);
+      logger.log("[TAG_MANAGEMENT_LOG] Event logged successfully:", event.action_type);
     }
   } catch (err) {
     console.error("[TAG_MANAGEMENT_LOG] Exception:", err);

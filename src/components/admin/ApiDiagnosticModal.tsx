@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -98,7 +99,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
       .order('provider', { ascending: true });
 
     if (error) {
-      console.error('[API_DIAGNOSTIC] Error fetching APIs:', error);
+      logger.error('[API_DIAGNOSTIC] Error fetching APIs:', error);
       return;
     }
 
@@ -174,7 +175,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
       const api = apiList[i];
       setCurrentIndex(i + 1);
       
-      console.log(`[API_DIAGNOSTIC] Testing ${i + 1}/${apiList.length}: ${api.name}`);
+      logger.log(`[API_DIAGNOSTIC] Testing ${i + 1}/${apiList.length}: ${api.name}`);
       
       try {
         const startTime = Date.now();
@@ -215,13 +216,13 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
           if (coverage === null && extractedCount > 0) {
             diagnosis = 'COVERAGE_INDETERMINATE';
             diagnosisMessage = `${extractedCount} registros extraídos mas período não identificado`;
-            console.log(`[API_DIAGNOSTIC] COVERAGE_INDETERMINATE: ${api.name} has ${extractedCount} records but no period`);
+            logger.log(`[API_DIAGNOSTIC] COVERAGE_INDETERMINATE: ${api.name} has ${extractedCount} records but no period`);
           }
           // Check for LOW_COVERAGE first (< 50%)
           else if (coverage !== null && coverage < 50 && extractedCount > 0) {
             diagnosis = 'LOW_COVERAGE';
             diagnosisMessage = `Cobertura insuficiente: ${coverage}% (mínimo 50% requerido)`;
-            console.log(`[API_DIAGNOSTIC] LOW_COVERAGE: ${api.name} has only ${coverage}% coverage`);
+            logger.log(`[API_DIAGNOSTIC] LOW_COVERAGE: ${api.name} has only ${coverage}% coverage`);
           } else if (configStart && firstDate) {
             const configDate = new Date(configStart);
             const actualDate = new Date(firstDate);
@@ -237,7 +238,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
               // Register actual period as DATA_INICIO_REAL and suppress alert
               diagnosis = 'OK'; // Changed from PARTIAL_HISTORY to OK
               diagnosisMessage = `Período nativo: ${firstDate} (fonte não possui dados anteriores)`;
-              console.log(`[API_DIAGNOSTIC] V7.0: Accepting native period ${firstDate} for ${api.name}`);
+              logger.log(`[API_DIAGNOSTIC] V7.0: Accepting native period ${firstDate} for ${api.name}`);
             } else if (daysDiff > 365 && extractedCount === 0) {
               const yearsDiff = Math.floor(daysDiff / 365);
               diagnosis = 'API_NO_HISTORY';
@@ -272,7 +273,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
           };
         }
       } catch (err) {
-        console.error(`[API_DIAGNOSTIC] Error testing ${api.name}:`, err);
+        logger.error(`[API_DIAGNOSTIC] Error testing ${api.name}:`, err);
         updatedResults[i] = {
           ...updatedResults[i],
           testResult: 'NÃO',
@@ -293,7 +294,7 @@ export default function ApiDiagnosticModal({ open, onOpenChange }: ApiDiagnostic
     
     setIsRunning(false);
     setHasRun(true);
-    console.log('[API_DIAGNOSTIC] All tests completed');
+    logger.log('[API_DIAGNOSTIC] All tests completed');
   }, []);
 
   const handleRetest = () => {

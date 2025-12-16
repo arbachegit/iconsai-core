@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 export class AudioStreamPlayer {
   private audioContext: AudioContext | null = null;
   private audioQueue: ArrayBuffer[] = [];
@@ -135,7 +137,7 @@ export class AudioStreamPlayer {
       }
     } catch (e) {
       // Ignorar erros se o áudio já estava parado
-      console.debug('Audio already stopped:', e);
+      logger.debug('Audio already stopped:', e);
     }
     this.audioQueue = [];
     this.isPlaying = false;
