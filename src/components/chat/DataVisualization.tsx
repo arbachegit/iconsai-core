@@ -262,7 +262,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
   };
 
   return (
-    <div className="w-full max-w-[500px] bg-slate-900/50 border border-cyan-500/20 rounded-lg overflow-hidden">
+    <div className="w-full bg-slate-900/50 border border-cyan-500/20 rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-cyan-500/20 bg-slate-800/50">
         <div className="flex items-center gap-2">
