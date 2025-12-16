@@ -713,19 +713,21 @@ export default function ChatKnowYOU() {
           }}>
                   {msg.role === "user" && <CopyButton content={msg.content} />}
                   <div className={cn(
-                    "rounded-2xl px-4 py-3 break-words overflow-x-auto",
-                    msg.type === "file-data" ? "w-full max-w-full" : "max-w-[85%]",
+                    "rounded-2xl px-4 py-3",
+                    "max-w-[80%]",
                     msg.role === "user" 
                       ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground text-right" 
                       : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground text-left"
                   )}>
                     {/* Render DataVisualization for file-data messages */}
                     {msg.type === "file-data" && msg.fileData && (
-                      <DataVisualization 
-                        data={msg.fileData.data}
-                        columns={msg.fileData.columns}
-                        fileName={msg.fileData.fileName}
-                      />
+                      <div className="w-full max-w-[500px] overflow-hidden">
+                        <DataVisualization 
+                          data={msg.fileData.data}
+                          columns={msg.fileData.columns}
+                          fileName={msg.fileData.fileName}
+                        />
+                      </div>
                     )}
                     {msg.imageUrl && <img src={msg.imageUrl} alt={t('chat.generatingImage')} className="max-w-full rounded-lg mb-2" />}
                     <div className="flex items-start gap-2 min-w-0">

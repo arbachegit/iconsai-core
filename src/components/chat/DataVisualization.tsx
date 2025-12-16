@@ -262,7 +262,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
   };
 
   return (
-    <div className="w-full min-w-0 overflow-x-auto bg-slate-900/50 border border-cyan-500/20 rounded-lg">
+    <div className="w-full max-w-[500px] bg-slate-900/50 border border-cyan-500/20 rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-cyan-500/20 bg-slate-800/50">
         <div className="flex items-center gap-2">
@@ -308,8 +308,8 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
 
         {/* Tab: Tabela */}
         <TabsContent value="tabela" className="m-0">
-          <ScrollArea className="max-h-[350px]">
-            <div className="overflow-x-auto">
+          <div className="max-h-[250px] overflow-y-auto overflow-x-auto">
+            <div className="min-w-[400px]">
               <div className="min-w-max">
                 <Table>
                   <TableHeader>
@@ -348,7 +348,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                 </Table>
               </div>
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
