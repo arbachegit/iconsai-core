@@ -8,7 +8,8 @@ import {
   ChevronRight,
   TrendingUp,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Table2
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -359,8 +360,9 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
         <div className="flex items-center gap-2">
           <FileSpreadsheet className="h-4 w-4 text-cyan-400" />
           <span className="text-sm font-medium text-slate-200">{fileName}</span>
-          <Badge variant="secondary" className="bg-cyan-500/10 text-cyan-300 text-xs">
-            📊 {data.length} registros • {columns.length} colunas
+          <Badge variant="secondary" className="bg-cyan-500/10 text-cyan-300 text-xs flex items-center gap-1">
+            <Table2 className="h-3 w-3" />
+            {data.length} registros • {columns.length} colunas
           </Badge>
         </div>
         <Button
