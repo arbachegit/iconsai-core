@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/logger";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,7 +50,7 @@ export const RegionalConfigTab = () => {
       if (error) throw error;
       setRules(data || []);
     } catch (error) {
-      console.error("Error fetching regional rules:", error);
+      logger.error("Error fetching regional rules:", error);
       toast({
         title: "Erro ao carregar regras",
         description: "Não foi possível carregar as configurações regionais.",
@@ -94,7 +95,7 @@ export const RegionalConfigTab = () => {
       setEditingId(null);
       fetchRules();
     } catch (error) {
-      console.error("Error saving rule:", error);
+      logger.error("Error saving rule:", error);
       toast({
         title: "Erro ao salvar",
         description: "Não foi possível salvar as alterações.",
@@ -124,7 +125,7 @@ export const RegionalConfigTab = () => {
 
       fetchRules();
     } catch (error) {
-      console.error("Error toggling rule:", error);
+      logger.error("Error toggling rule:", error);
       toast({
         title: "Erro",
         description: "Não foi possível alterar o status.",

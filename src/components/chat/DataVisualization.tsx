@@ -136,7 +136,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
       
       const type: ColumnType = numericCount > values.length * 0.5 ? "numeric" : "categorical";
       
-      console.log(`[COLUMN_ANALYSIS] ${col}: type=${type}, uniqueCount=${uniqueCount}, dateCount=${dateCount}, numericCount=${numericCount}/${values.length}`);
+      // Debug removed - use logger if needed
       
       // Threshold reduzido para 50% (planilhas reais têm células vazias)
       if (numericCount > values.length * 0.5) {
@@ -203,7 +203,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
   // Forçar reset do yColumn quando não está em validYColumns
   useEffect(() => {
     if (yColumn && validYColumns.length > 0 && !validYColumns.includes(yColumn)) {
-      console.log("[RESET_Y] yColumn não está em validYColumns, resetando para:", validYColumns[0]);
+      // Debug removed - yColumn reset to first valid column
       setYColumn(validYColumns[0]);
     }
   }, [yColumn, validYColumns]);

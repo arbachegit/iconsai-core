@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { logger } from "@/lib/logger";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,7 +70,7 @@ export const JsonDataObservabilityTab = () => {
           table: 'system_api_registry'
         },
         (payload) => {
-          console.log('[REALTIME] 🔄 system_api_registry changed:', payload.eventType);
+          logger.log('[REALTIME] 🔄 system_api_registry changed:', payload.eventType);
           setLastTriggerTime(new Date());
           fetchApis(true); // Auto-refresh on changes
         }
@@ -114,7 +115,7 @@ export const JsonDataObservabilityTab = () => {
         toast.success('Dados JSON atualizados');
       }
     } catch (error) {
-      console.error('Error fetching APIs:', error);
+      logger.error('Error fetching APIs:', error);
       toast.error('Erro ao carregar dados JSON');
     } finally {
       setLoading(false);
@@ -395,7 +396,7 @@ export const JsonDataObservabilityTab = () => {
         toast.info('Todos os registros já existem no banco de dados');
       }
     } catch (error) {
-      console.error('Error forcing insert:', error);
+      logger.error('Error forcing insert:', error);
       toast.error('Erro ao executar INSERT mandatório');
     } finally {
       setInsertingId(null);
@@ -435,7 +436,7 @@ export const JsonDataObservabilityTab = () => {
           totalExisting += data.existingRecords || 0;
         }
       } catch (err) {
-        console.error(`Error inserting for ${api.name}:`, err);
+        logger.error(`Error inserting for ${api.name}:`, err);
       }
 
       setInsertAllProgress(prev => ({ ...prev, inserted: totalInserted }));
