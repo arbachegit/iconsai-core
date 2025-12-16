@@ -731,8 +731,8 @@ export default function ChatKnowYOU() {
                       />
                     )}
                     {msg.imageUrl && <img src={msg.imageUrl} alt={t('chat.generatingImage')} className="max-w-full rounded-lg mb-2" />}
-                    <div className="flex items-start gap-2 min-w-0">
-                      <MarkdownContent content={msg.content} className="text-sm leading-relaxed flex-1 break-words [&_*]:break-words min-w-0" />
+                    <div className="min-w-0 overflow-hidden">
+                      <MarkdownContent content={msg.content} className="text-sm leading-relaxed break-words whitespace-pre-wrap [overflow-wrap:anywhere]" />
                     </div>
                     
                     {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} imageUrl={msg.imageUrl} isPlaying={currentlyPlayingIndex === idx} isGeneratingAudio={isGeneratingAudio} currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0} duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} onDownloadImage={msg.imageUrl ? () => handleDownloadImage(msg.imageUrl!, idx) : undefined} />}
