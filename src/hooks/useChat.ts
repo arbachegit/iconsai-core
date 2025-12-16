@@ -20,6 +20,7 @@ export interface Message {
     data: any[];
     fileName: string;
     columns: string[];
+    totalRecords?: number; // Total original de registros (para amostras)
   };
 }
 
@@ -65,6 +66,9 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
   } | null>(null);
   const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
   
+  // Ref para manter dados completos do arquivo em memória (não vai para localStorage)
+  const fileDataMapRef = useRef<Map<number, { data: any[]; fileName: string; columns: string[] }>>(new Map());
+  
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
   const { toast } = useToast();
   const { settings } = useAdminSettings();
@@ -101,12 +105,19 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
     createSession({ session_id: sessionId, user_name: null }).catch(console.error);
   }, [sessionId, createSession, storageKey]);
 
-  // Save history to localStorage
+  // Save history to localStorage (com amostra limitada de fileData)
   const saveHistory = useCallback((msgs: Message[]) => {
     try {
-      const messagesForStorage = msgs.map(m => ({
+      const messagesForStorage = msgs.map((m, idx) => ({
         ...m,
         audioUrl: m.audioUrl && !m.audioUrl.startsWith('blob:') ? m.audioUrl : undefined,
+        // Salvar apenas amostra dos dados para não estourar localStorage
+        fileData: m.fileData ? {
+          fileName: m.fileData.fileName,
+          columns: m.fileData.columns,
+          data: m.fileData.data.slice(0, 50), // Apenas primeiros 50 registros
+          totalRecords: m.fileData.totalRecords || m.fileData.data.length,
+        } : undefined,
       }));
       localStorage.setItem(storageKey, JSON.stringify(messagesForStorage));
     } catch (error) {
@@ -164,12 +175,25 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
     ) => {
       if (!input.trim() || isLoading) return;
 
+      // Se tem fileData novo, guardar em memória completo
+      if (options?.fileData) {
+        const msgIndex = messages.length;
+        fileDataMapRef.current.set(msgIndex, {
+          data: options.fileData.data,
+          fileName: options.fileData.fileName,
+          columns: options.fileData.columns,
+        });
+      }
+
       const userMsg: Message = {
         role: "user",
         content: input,
         timestamp: new Date(),
         type: options?.fileData ? "file-data" : "text",
-        fileData: options?.fileData,
+        fileData: options?.fileData ? {
+          ...options.fileData,
+          totalRecords: options.fileData.data.length,
+        } : undefined,
       };
 
       const newMessages = [...messages, userMsg];
@@ -327,12 +351,19 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
 
           setIsLoading(false);
         } else {
-          await streamChat({
-            messages: newMessages.map((m) => ({ 
+          // Preparar mensagens com fileData completo (da memória ou localStorage)
+          const messagesWithFileData = newMessages.map((m, idx) => {
+            // Tentar pegar dados completos da memória primeiro
+            const fullFileData = fileDataMapRef.current.get(idx);
+            return { 
               role: m.role, 
               content: m.content,
-              fileData: m.fileData
-            })),
+              fileData: fullFileData || m.fileData // Usa dados completos se disponível
+            };
+          });
+          
+          await streamChat({
+            messages: messagesWithFileData,
             onDelta: (chunk) => updateAssistantMessage(chunk),
             chatType,
             region: userRegion,
