@@ -993,21 +993,21 @@ export function ChartDatabaseTab() {
             />
           )}
 
-          {/* Table View */}
           {currentView === 'table' && selectedIndicator && (
             <TableDataContent
               onBack={handleBackToDetail}
-              indicatorName={selectedIndicator.name}
+              indicatorName={selectedIndicator.name + (showMonetaryValues ? ' (R$)' : '')}
               indicatorCode={selectedIndicator.code}
               isRegional={false}
-              data={combinedValues.map(v => ({
-                reference_date: v.reference_date,
+              data={selectedData.map(v => ({
+                reference_date: v.rawDate,
                 value: v.value,
                 brazilian_ufs: null
               }))}
-              unit={selectedIndicator.unit || null}
+              unit={showMonetaryValues ? 'R$ (mil)' : (selectedIndicator.unit || null)}
               frequency={selectedIndicator.frequency || null}
               isLoading={loadingValues}
+              isMonetaryMode={showMonetaryValues}
             />
           )}
 
