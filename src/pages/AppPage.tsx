@@ -266,7 +266,7 @@ export default function AppPage() {
             ) : (
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-3 h-10 rounded-lg hover:bg-primary/10 text-primary"
+                className="w-full justify-start gap-3 h-10 rounded-lg hover:bg-primary/10 text-primary hover:text-primary"
                 onClick={() => navigate("/")}
               >
                 <Smartphone className="h-5 w-5" />
