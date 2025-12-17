@@ -534,9 +534,12 @@ Quando o usuário pedir linha de tendência ou média móvel, responda:
   try {
     const { messages, region, agentConfig } = await req.json();
     
+    // Extract dashboardContext for indicator data injection
+    const dashboardContext = agentConfig?.dashboardContext || "";
+    
     // Log agent config if provided
     if (agentConfig) {
-      console.log(`Agent config received: systemPrompt=${!!agentConfig.systemPrompt}, ragCollection=${agentConfig.ragCollection || 'health'}`);
+      console.log(`Agent config received: systemPrompt=${!!agentConfig.systemPrompt}, ragCollection=${agentConfig.ragCollection || 'health'}, dashboardContext=${dashboardContext ? `${dashboardContext.length} chars` : 'none'}`);
     }
     
     // Input validation to prevent abuse
@@ -773,6 +776,16 @@ ${getContextualCoherenceProtocol()}
 ${agentConfig?.systemPrompt ? `
 ## 🔧 CONFIGURAÇÕES PERSONALIZADAS DO AGENTE (PRIORIDADE ALTA):
 ${agentConfig.systemPrompt}
+` : ""}
+
+${dashboardContext ? `
+## 📊 CONTEXTO DO DASHBOARD (DADOS PRÉ-CARREGADOS):
+Você tem acesso aos seguintes dados de indicadores econômicos pré-carregados do dashboard.
+Use estes dados para responder perguntas, fazer comparações e gerar gráficos.
+
+${dashboardContext}
+
+⚠️ IMPORTANTE: Estes dados já estão disponíveis - use-os diretamente para análises, comparações e gráficos sem pedir mais informações ao usuário.
 ` : ""}
 
 ${maieuticDirectives ? `
