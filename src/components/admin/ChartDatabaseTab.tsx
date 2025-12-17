@@ -673,15 +673,26 @@ export function ChartDatabaseTab() {
         className="knowyou-indicator-card"
         onClick={() => setSelectedIndicator(indicator)}
       >
-        {/* Provider badge */}
-        {indicator.api?.provider && (
-          <Badge 
-            variant="outline" 
-            className={cn("w-fit mb-2 text-xs", getProviderColor(indicator.api.provider))}
-          >
-            {indicator.api.provider}
-          </Badge>
-        )}
+        {/* Provider badge + R$ disponível badge */}
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          {indicator.api?.provider && (
+            <Badge 
+              variant="outline" 
+              className={cn("text-xs", getProviderColor(indicator.api.provider))}
+            >
+              {indicator.api.provider}
+            </Badge>
+          )}
+          {isPmcRegionalIndicator(indicator.code) && (
+            <Badge 
+              variant="outline" 
+              className="text-xs bg-green-500/10 text-green-400 border-green-500/30"
+            >
+              <DollarSign className="h-3 w-3 mr-1" />
+              R$ disponível
+            </Badge>
+          )}
+        </div>
         {/* Horizontal title */}
         <h3 className="font-semibold text-sm mb-3 line-clamp-2 min-h-[40px]">
           {indicator.name}
