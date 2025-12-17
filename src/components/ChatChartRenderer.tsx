@@ -170,6 +170,46 @@ const parseNumericValue = (value: any): number => {
   return 0;
 };
 
+// Mapeamento reverso: nome → sigla para reconhecimento de estados
+const UF_NAME_TO_SIGLA: Record<string, string> = {
+  "acre": "AC", "alagoas": "AL", "amapá": "AP", "amapa": "AP", "amazonas": "AM",
+  "bahia": "BA", "ceará": "CE", "ceara": "CE", "distrito federal": "DF", 
+  "espírito santo": "ES", "espirito santo": "ES", "goiás": "GO", "goias": "GO", 
+  "maranhão": "MA", "maranhao": "MA", "mato grosso": "MT", "mato grosso do sul": "MS", 
+  "minas gerais": "MG", "pará": "PA", "para": "PA", "paraíba": "PB", "paraiba": "PB", 
+  "paraná": "PR", "parana": "PR", "pernambuco": "PE", "piauí": "PI", "piaui": "PI", 
+  "rio de janeiro": "RJ", "rio grande do norte": "RN", "rio grande do sul": "RS", 
+  "rondônia": "RO", "rondonia": "RO", "roraima": "RR", "santa catarina": "SC", 
+  "são paulo": "SP", "sao paulo": "SP", "sergipe": "SE", "tocantins": "TO"
+};
+
+const VALID_UF_SIGLAS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+
+// Função para normalizar sigla ou nome para sigla oficial
+const normalizeUF = (input: string): string | null => {
+  if (!input) return null;
+  const cleaned = input.toLowerCase().trim();
+  
+  // Já é uma sigla válida?
+  if (VALID_UF_SIGLAS.includes(cleaned.toUpperCase())) {
+    return cleaned.toUpperCase();
+  }
+  
+  // É um nome completo?
+  if (UF_NAME_TO_SIGLA[cleaned]) {
+    return UF_NAME_TO_SIGLA[cleaned];
+  }
+  
+  // Tenta encontrar correspondência parcial
+  for (const [name, sigla] of Object.entries(UF_NAME_TO_SIGLA)) {
+    if (cleaned.includes(name) || name.includes(cleaned)) {
+      return sigla;
+    }
+  }
+  
+  return null;
+};
+
 const ChartTypeIcon = ({ type }: { type: string }) => {
   switch (type) {
     case 'bar': return <BarChart3 className="h-4 w-4" />;
@@ -261,13 +301,23 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   }, [displayData, xRange]);
 
   // Calculate average from filtered data (must be after filteredDisplayData)
+  // Supports multi-series: uses first yKey if not 'value'
   const dataAverage = useMemo(() => {
     if (filteredDisplayData.length === 0) return 0;
-    const validValues = filteredDisplayData.map(d => parseNumericValue(d.value));
+    
+    // Detect which key to use for values
+    const firstKey = yKeys[0];
+    const useValueKey = firstKey === 'value' || !filteredDisplayData[0]?.[firstKey];
+    
+    const validValues = filteredDisplayData.map(d => {
+      const val = useValueKey ? d.value : d[firstKey];
+      return parseNumericValue(val);
+    });
+    
     const sum = validValues.reduce((acc, v) => acc + v, 0);
     const avg = sum / validValues.length;
     return isNaN(avg) || !isFinite(avg) ? 0 : Math.round(avg);
-  }, [filteredDisplayData]);
+  }, [filteredDisplayData, yKeys]);
 
   const addReferenceLine = useCallback(() => {
     const value = newRefLine.type === 'average' ? dataAverage : parseFloat(newRefLine.value);
@@ -296,23 +346,40 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   const [showTrendLine, setShowTrendLine] = useState(false);
 
   // Moving Average calculation (3-point window)
+  // Supports multi-series: uses first yKey if not 'value'
   const movingAverageData = useMemo(() => {
     if (!showMovingAverage || filteredDisplayData.length < 3) return [];
     const window = 3;
+    
+    // Detect which key to use for values
+    const firstKey = yKeys[0];
+    const useValueKey = firstKey === 'value' || !filteredDisplayData[0]?.[firstKey];
+    
     return filteredDisplayData.map((item, idx, arr) => {
       if (idx < window - 1) return { ...item, movingAvg: null };
       const slice = arr.slice(idx - window + 1, idx + 1);
-      const validValues = slice.map(d => parseNumericValue(d.value));
+      const validValues = slice.map(d => {
+        const val = useValueKey ? d.value : d[firstKey];
+        return parseNumericValue(val);
+      });
       const avg = validValues.reduce((sum, v) => sum + v, 0) / window;
       return { ...item, movingAvg: isNaN(avg) || !isFinite(avg) ? null : avg };
     });
-  }, [filteredDisplayData, showMovingAverage]);
+  }, [filteredDisplayData, showMovingAverage, yKeys]);
 
   // Linear Regression for Trend Line with R² calculation
+  // Supports multi-series: uses first yKey if not 'value'
   const trendLineData = useMemo(() => {
     if (!showTrendLine || filteredDisplayData.length < 2) return null;
     
-    const yValues = filteredDisplayData.map(d => parseNumericValue(d.value));
+    // Detect which key to use for values
+    const firstKey = yKeys[0];
+    const useValueKey = firstKey === 'value' || !filteredDisplayData[0]?.[firstKey];
+    
+    const yValues = filteredDisplayData.map(d => {
+      const val = useValueKey ? d.value : d[firstKey];
+      return parseNumericValue(val);
+    });
     
     // Validate we have valid numeric data
     const validYValues = yValues.filter(v => !isNaN(v) && isFinite(v) && v !== 0);
@@ -347,19 +414,35 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
     }));
     
     return { slope, intercept, r2: isNaN(r2) ? 0 : r2, data };
-  }, [filteredDisplayData, showTrendLine]);
+  }, [filteredDisplayData, showTrendLine, yKeys]);
 
   // Recalculate Y bounds based on filtered data
+  // Supports multi-series: collects values from all yKeys
   const filteredDataBounds = useMemo(() => {
-    const values = filteredDisplayData.map(d => parseNumericValue(d.value));
-    const validValues = values.filter(v => !isNaN(v) && isFinite(v));
+    // Collect all numeric values from all yKeys
+    const allValues: number[] = [];
+    filteredDisplayData.forEach(d => {
+      yKeys.forEach(key => {
+        const val = parseNumericValue(d[key]);
+        if (!isNaN(val) && isFinite(val)) {
+          allValues.push(val);
+        }
+      });
+      // Also check 'value' field as fallback
+      if (!yKeys.includes('value') && d.value !== undefined) {
+        const val = parseNumericValue(d.value);
+        if (!isNaN(val) && isFinite(val)) {
+          allValues.push(val);
+        }
+      }
+    });
     
-    if (validValues.length === 0) {
+    if (allValues.length === 0) {
       return { dataMin: 0, dataMax: 100, absoluteMin: 0, absoluteMax: 100 };
     }
     
-    const dataMin = Math.min(...validValues);
-    const dataMax = Math.max(...validValues);
+    const dataMin = Math.min(...allValues);
+    const dataMax = Math.max(...allValues);
     const padding = (dataMax - dataMin) * 0.1 || 5;
     
     return {
@@ -368,7 +451,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
       absoluteMin: 0,
       absoluteMax: Math.ceil((isNaN(dataMax) ? 100 : dataMax) + padding)
     };
-  }, [filteredDisplayData]);
+  }, [filteredDisplayData, yKeys]);
 
   // Reset xRange when data changes
   useEffect(() => {
@@ -484,7 +567,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
               <RechartsTooltip content={<CustomChartTooltip />} />
               <Legend />
               {yKeys.map((key, idx) => (
-                <Bar key={key} dataKey={key} fill={CHART_COLORS[idx % CHART_COLORS.length]} radius={[4, 4, 0, 0]} name="Valor" />
+                <Bar key={key} dataKey={key} fill={CHART_COLORS[idx % CHART_COLORS.length]} radius={[4, 4, 0, 0]} name={key} />
               ))}
               {/* Moving Average Line for bar chart */}
               {showMovingAverage && (
@@ -570,7 +653,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   stroke={CHART_COLORS[idx % CHART_COLORS.length]} 
                   strokeWidth={2}
                   dot={{ fill: CHART_COLORS[idx % CHART_COLORS.length], strokeWidth: 2 }}
-                  name="Valor"
+                  name={key}
                 />
               ))}
               {/* Moving Average Line */}
@@ -681,7 +764,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   stroke={CHART_COLORS[idx % CHART_COLORS.length]} 
                   fill={CHART_COLORS[idx % CHART_COLORS.length]}
                   fillOpacity={0.3}
-                  name="Valor"
+                  name={key}
                 />
               ))}
               {/* Moving Average Line for area chart */}
