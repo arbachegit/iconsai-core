@@ -1585,6 +1585,45 @@ export type Database = {
         }
         Relationships: []
       }
+      pac_pmc_mapping: {
+        Row: {
+          conversion_factor: number | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          notes: string | null
+          pac_indicator_code: string
+          pac_indicator_name: string
+          pmc_indicator_code: string
+          pmc_indicator_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          conversion_factor?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          pac_indicator_code: string
+          pac_indicator_name: string
+          pmc_indicator_code: string
+          pmc_indicator_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          conversion_factor?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          pac_indicator_code?: string
+          pac_indicator_name?: string
+          pmc_indicator_code?: string
+          pmc_indicator_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       password_recovery_codes: {
         Row: {
           code: string
@@ -1614,6 +1653,74 @@ export type Database = {
           used_at?: string | null
         }
         Relationships: []
+      }
+      pmc_valores_reais: {
+        Row: {
+          calculation_method: string | null
+          created_at: string | null
+          id: string
+          indice_pmc_original: number
+          ipca_deflator: number | null
+          pac_receita_anual: number | null
+          pac_receita_mensal_media: number | null
+          pac_year_used: number | null
+          pmc_indicator_code: string
+          pmc_indicator_id: string | null
+          reference_date: string
+          reference_month: number | null
+          reference_year: number | null
+          uf_code: number | null
+          updated_at: string | null
+          valor_deflacionado_reais: number | null
+          valor_estimado_reais: number | null
+        }
+        Insert: {
+          calculation_method?: string | null
+          created_at?: string | null
+          id?: string
+          indice_pmc_original: number
+          ipca_deflator?: number | null
+          pac_receita_anual?: number | null
+          pac_receita_mensal_media?: number | null
+          pac_year_used?: number | null
+          pmc_indicator_code: string
+          pmc_indicator_id?: string | null
+          reference_date: string
+          reference_month?: number | null
+          reference_year?: number | null
+          uf_code?: number | null
+          updated_at?: string | null
+          valor_deflacionado_reais?: number | null
+          valor_estimado_reais?: number | null
+        }
+        Update: {
+          calculation_method?: string | null
+          created_at?: string | null
+          id?: string
+          indice_pmc_original?: number
+          ipca_deflator?: number | null
+          pac_receita_anual?: number | null
+          pac_receita_mensal_media?: number | null
+          pac_year_used?: number | null
+          pmc_indicator_code?: string
+          pmc_indicator_id?: string | null
+          reference_date?: string
+          reference_month?: number | null
+          reference_year?: number | null
+          uf_code?: number | null
+          updated_at?: string | null
+          valor_deflacionado_reais?: number | null
+          valor_estimado_reais?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pmc_valores_reais_pmc_indicator_id_fkey"
+            columns: ["pmc_indicator_id"]
+            isOneToOne: false
+            referencedRelation: "economic_indicators"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       podcast_contents: {
         Row: {
@@ -2735,6 +2842,14 @@ export type Database = {
       }
     }
     Functions: {
+      convert_pmc_to_reais: {
+        Args: {
+          p_pmc_indicator_code: string
+          p_reference_date: string
+          p_uf_code: number
+        }
+        Returns: number
+      }
       get_schema_info: { Args: never; Returns: Json }
       has_role: {
         Args: {
@@ -2789,6 +2904,14 @@ export type Database = {
           p_success: boolean
         }
         Returns: string
+      }
+      process_all_pmc_conversions: {
+        Args: never
+        Returns: {
+          indicator_code: string
+          records_converted: number
+          records_processed: number
+        }[]
       }
       search_documents: {
         Args: {
