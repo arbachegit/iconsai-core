@@ -361,37 +361,59 @@ export function ChartDatabaseTab() {
     staleTime: 60000,
   });
 
-  // Fetch PMC monetary values for conversion toggle (supports both regional and national)
+  // Fetch PMC monetary values for conversion toggle (supports both regional and national) - with full pagination
   const { data: pmcMonetaryValues = [] } = useQuery({
-    queryKey: ["pmc-monetary-values-chart", selectedIndicator?.code, "v2"],
+    queryKey: ["pmc-monetary-values-chart", selectedIndicator?.code, "v3-full"],
     queryFn: async () => {
       if (!selectedIndicator || !isPmcIndicator(selectedIndicator.code)) return [];
       
       const isNational = isPmcNationalIndicator(selectedIndicator.code);
+      const allData: { reference_date: string; uf_code: number; valor_estimado_reais: number | null }[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
       
-      if (isNational) {
-        // National indicators: fetch aggregated data (uf_code = 0)
-        const { data, error } = await supabase
-          .from("pmc_valores_reais")
-          .select("reference_date, uf_code, valor_estimado_reais")
-          .eq("pmc_indicator_code", selectedIndicator.code)
-          .eq("uf_code", 0)
-          .order("reference_date")
-          .limit(10000);
-        if (error) throw error;
-        return data || [];
-      } else {
-        // Regional indicators: fetch all UFs
-        const { data, error } = await supabase
-          .from("pmc_valores_reais")
-          .select("reference_date, uf_code, valor_estimado_reais")
-          .eq("pmc_indicator_code", selectedIndicator.code)
-          .gt("uf_code", 0)
-          .order("reference_date")
-          .limit(10000);
-        if (error) throw error;
-        return data || [];
+      while (hasMore) {
+        if (isNational) {
+          // National indicators: fetch aggregated data (uf_code = 0)
+          const { data, error } = await supabase
+            .from("pmc_valores_reais")
+            .select("reference_date, uf_code, valor_estimado_reais")
+            .eq("pmc_indicator_code", selectedIndicator.code)
+            .eq("uf_code", 0)
+            .order("reference_date")
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            allData.push(...data);
+            from += pageSize;
+            hasMore = data.length === pageSize;
+          } else {
+            hasMore = false;
+          }
+        } else {
+          // Regional indicators: fetch all UFs
+          const { data, error } = await supabase
+            .from("pmc_valores_reais")
+            .select("reference_date, uf_code, valor_estimado_reais")
+            .eq("pmc_indicator_code", selectedIndicator.code)
+            .gt("uf_code", 0)
+            .order("reference_date")
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            allData.push(...data);
+            from += pageSize;
+            hasMore = data.length === pageSize;
+          } else {
+            hasMore = false;
+          }
+        }
       }
+      
+      return allData;
     },
     enabled: !!selectedIndicator && isPmcIndicator(selectedIndicator?.code || ''),
     staleTime: 0,
