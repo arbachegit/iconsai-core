@@ -6,6 +6,7 @@ export interface RegionalContext {
   ufName: string;
   researchName: string;
   researchId: string;
+  unit: string; // Unit for values (e.g., "R$ mil", "índice", "%")
   trend: 'up' | 'down' | 'stable';
   lastValue: number | null;
   lastDate: string | null;
@@ -172,22 +173,26 @@ Você TEM ACESSO DIRETO aos seguintes indicadores do banco de dados. Os dados s�
       contextHistory.slice(0, 5).forEach((item, idx) => {
         if (item.type === 'regional') {
           const ctx = item.context as RegionalContext;
+          const unit = ctx.unit || 'índice';
           prompt += `\n### ${idx + 1}. ${item.label}\n`;
           prompt += `- Tipo: Regional\n`;
           prompt += `- Estado: ${ctx.ufName} (${ctx.ufSigla})\n`;
           prompt += `- Pesquisa: ${ctx.researchName}\n`;
-          if (ctx.lastValue) prompt += `- Último valor: ${ctx.lastValue.toLocaleString('pt-BR')}\n`;
+          prompt += `- Unidade: ${unit}\n`;
+          if (ctx.lastValue) prompt += `- Último valor: ${ctx.lastValue.toLocaleString('pt-BR')} ${unit}\n`;
           if (ctx.data && ctx.data.length > 0) {
             prompt += `- Dados disponíveis: ${ctx.data.length} registros\n`;
           }
         } else {
           const ctx = item.context as ChartContext;
+          const unit = ctx.unit || 'índice';
           prompt += `\n### ${idx + 1}. ${item.label}\n`;
           prompt += `- Tipo: Indicador Nacional\n`;
           prompt += `- Indicador: ${ctx.indicatorName}\n`;
+          prompt += `- Unidade: ${unit}\n`;
           prompt += `- Período: ${ctx.periodStart} a ${ctx.periodEnd}\n`;
           if (ctx.statistics) {
-            prompt += `- Média: ${ctx.statistics.mean.toFixed(2)}\n`;
+            prompt += `- Média: ${ctx.statistics.mean.toFixed(2)} ${unit}\n`;
             prompt += `- Tendência: ${ctx.statistics.trend}\n`;
           }
         }
@@ -208,10 +213,12 @@ Você TEM ACESSO DIRETO aos seguintes indicadores do banco de dados. Os dados s�
 Você está auxiliando um analista que está visualizando dados regionais:
 **Estado:** ${regionalContext.ufName} (${regionalContext.ufSigla})
 **Pesquisa:** ${regionalContext.researchName}
+**Unidade:** ${regionalContext.unit || 'índice'}
 **Registros disponíveis:** ${regionalContext.recordCount}`;
 
       if (regionalContext.lastValue !== null) {
-        prompt += `\n**Último Valor:** ${regionalContext.lastValue.toLocaleString('pt-BR')}`;
+        const unit = regionalContext.unit || 'índice';
+        prompt += `\n**Último Valor:** ${regionalContext.lastValue.toLocaleString('pt-BR')} ${unit}`;
       }
       if (regionalContext.lastDate) {
         prompt += `\n**Data mais recente:** ${regionalContext.lastDate}`;
@@ -240,9 +247,10 @@ Você TEM acesso aos dados de TODOS os estados abaixo para comparações diretas
         Object.entries(allStatesData).forEach(([sigla, ctx]) => {
           if (sigla === regionalContext.ufSigla) return; // Skip current state
           const stateTrend = ctx.trend === 'up' ? '↑' : ctx.trend === 'down' ? '↓' : '→';
+          const unit = ctx.unit || 'índice';
           prompt += `
 ### ${ctx.ufName} (${sigla}) ${stateTrend}
-- Último valor: ${ctx.lastValue?.toLocaleString('pt-BR') || 'N/A'}
+- Último valor: ${ctx.lastValue?.toLocaleString('pt-BR') || 'N/A'} ${unit}
 - Data: ${ctx.lastDate || 'N/A'}
 - Registros: ${ctx.recordCount}`;
           if (ctx.data && ctx.data.length > 0) {
@@ -309,28 +317,30 @@ Você está auxiliando um analista que está visualizando:
     if (statistics) {
       const trendEmoji = statistics.trend === 'up' ? '📈' : statistics.trend === 'down' ? '📉' : '➡️';
       const trendLabel = statistics.trend === 'up' ? 'Alta' : statistics.trend === 'down' ? 'Baixa' : 'Estável';
+      const unit = chartContext.unit || 'índice';
       
       prompt += `
 
 ### Estatísticas:
-- **Média:** ${statistics.mean.toFixed(2)}
-- **Desvio Padrão:** ${statistics.stdDev.toFixed(2)}
+- **Média:** ${statistics.mean.toFixed(2)} ${unit}
+- **Desvio Padrão:** ${statistics.stdDev.toFixed(2)} ${unit}
 - **Coef. Variação:** ${statistics.cv.toFixed(1)}%
-- **Mínimo:** ${statistics.min.toFixed(2)}
-- **Máximo:** ${statistics.max.toFixed(2)}
-- **Tendência:** ${trendEmoji} ${trendLabel} (slope: ${statistics.slope > 0 ? '+' : ''}${statistics.slope.toFixed(4)}/período)
+- **Mínimo:** ${statistics.min.toFixed(2)} ${unit}
+- **Máximo:** ${statistics.max.toFixed(2)} ${unit}
+- **Tendência:** ${trendEmoji} ${trendLabel} (slope: ${statistics.slope > 0 ? '+' : ''}${statistics.slope.toFixed(4)} ${unit}/período)
 - **R²:** ${(statistics.r2 * 100).toFixed(1)}%`;
     }
 
     if (stsResult) {
+      const unit = chartContext.unit || 'índice';
       prompt += `
 
 ### Análise STS (Structural Time Series):
-- **Nível atual (μ):** ${stsResult.mu_smoothed.toFixed(2)}
-- **Inclinação (β):** ${stsResult.beta_smoothed > 0 ? '+' : ''}${stsResult.beta_smoothed.toFixed(4)}/período
+- **Nível atual (μ):** ${stsResult.mu_smoothed.toFixed(2)} ${unit}
+- **Inclinação (β):** ${stsResult.beta_smoothed > 0 ? '+' : ''}${stsResult.beta_smoothed.toFixed(4)} ${unit}/período
 - **Direção:** ${stsResult.direction}
 - **Intensidade:** ${stsResult.strength}
-- **Previsão próximo período:** ${stsResult.forecast.mean.toFixed(2)} (IC 95%: ${stsResult.forecast.p05.toFixed(2)} - ${stsResult.forecast.p95.toFixed(2)})`;
+- **Previsão próximo período:** ${stsResult.forecast.mean.toFixed(2)} ${unit} (IC 95%: ${stsResult.forecast.p05.toFixed(2)} - ${stsResult.forecast.p95.toFixed(2)} ${unit})`;
     }
 
     // Include raw data for chart generation
