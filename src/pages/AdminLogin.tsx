@@ -336,7 +336,7 @@ const AdminLogin = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full text-black hover:bg-transparent hover:text-black text-xs"
+                className="w-full text-white hover:bg-green-500 hover:text-black text-xs"
               >
                 <Zap className="w-3 h-3 mr-1" />
                 Retornar ao App
