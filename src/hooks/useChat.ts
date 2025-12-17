@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { streamChat, extractSuggestions, removeSuggestionsFromText } from "@/lib/chat-stream";
+import { streamChat, extractSuggestions, removeSuggestionsFromText, AgentConfig } from "@/lib/chat-stream";
 import { AudioStreamPlayer, generateAudioUrl } from "@/lib/audio-player";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "./useAdminSettings";
@@ -178,7 +178,10 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
   const sendMessage = useCallback(
     async (
       input: string,
-      options?: { fileData?: { data: any[]; fileName: string; columns: string[] } }
+      options?: { 
+        fileData?: { data: any[]; fileName: string; columns: string[] };
+        agentConfig?: AgentConfig;
+      }
     ) => {
       if (!input.trim() || isLoading) return;
 
@@ -396,6 +399,7 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
             onDelta: (chunk) => updateAssistantMessage(chunk),
             chatType,
             region: userRegion,
+            agentConfig: options?.agentConfig,
             onDone: async () => {
               const extractedSuggestions = extractSuggestions(fullResponse);
               if (extractedSuggestions.length > 0) {
