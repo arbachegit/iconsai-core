@@ -7,9 +7,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
-import { TrendingUp, TrendingDown, Minus, BarChart3, Calculator, Loader2, Info, AlertTriangle, Lightbulb, Activity, RefreshCw, Brain } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, BarChart3, Calculator, Loader2, Info, AlertTriangle, Lightbulb, Activity, RefreshCw, Brain, Search, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { runStructuralTimeSeries, STSResult } from "@/lib/structural-time-series";
 import {
@@ -23,6 +25,17 @@ import {
   mean,
   coefficientOfVariation,
 } from "@/lib/statistics-utils";
+import {
+  spearmanCorrelation,
+  crossCorrelation,
+  findBestCorrelations,
+  findOptimalLag,
+  interpretLag,
+  CorrelationCandidate,
+  BestCorrelation,
+} from "@/lib/time-series-correlation";
+
+type CorrelationMethod = "pearson" | "spearman" | "crosscorr";
 
 interface Indicator {
   id: string;
@@ -56,6 +69,9 @@ export function DataAnalysisTab() {
   const [impactVariation, setImpactVariation] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
+  const [correlationMethod, setCorrelationMethod] = useState<CorrelationMethod>("pearson");
+  const [maxLag, setMaxLag] = useState<number>(12);
+  const [bestCorrelationsTarget, setBestCorrelationsTarget] = useState<string | null>(null);
 
   // Fetch indicators
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
@@ -156,7 +172,7 @@ export function DataAnalysisTab() {
     return Object.values(dataMap).sort((a, b) => String(a.date).localeCompare(String(b.date)));
   }, [filteredValues]);
 
-  // Calculate correlations for selected pairs
+  // Calculate correlations for selected pairs using selected method
   const correlations = useMemo(() => {
     if (selectedIndicators.length < 2) return [];
 
@@ -171,7 +187,23 @@ export function DataAnalysisTab() {
         .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
         .map((v) => v.value);
 
-      const r = pearsonCorrelation(values1, values2);
+      let r: number;
+      let lag: number | undefined;
+      let lagInterpretation: string | undefined;
+
+      if (correlationMethod === "crosscorr") {
+        const optimal = findOptimalLag(values1, values2, maxLag);
+        r = optimal.correlation;
+        lag = optimal.lag;
+        const ind1 = indicators.find((i) => i.id === id1);
+        const ind2 = indicators.find((i) => i.id === id2);
+        lagInterpretation = interpretLag(lag, ind1?.name || id1, ind2?.name || id2);
+      } else if (correlationMethod === "spearman") {
+        r = spearmanCorrelation(values1, values2);
+      } else {
+        r = pearsonCorrelation(values1, values2);
+      }
+
       const ind1 = indicators.find((i) => i.id === id1);
       const ind2 = indicators.find((i) => i.id === id2);
 
@@ -181,10 +213,48 @@ export function DataAnalysisTab() {
         name1: ind1?.name || id1,
         name2: ind2?.name || id2,
         correlation: r,
+        lag,
+        lagInterpretation,
         ...getCorrelationStrength(r),
       };
     });
-  }, [selectedIndicators, filteredValues, indicators]);
+  }, [selectedIndicators, filteredValues, indicators, correlationMethod, maxLag]);
+
+  // Auto-discover best correlated variables for a target indicator
+  const bestCorrelations = useMemo(() => {
+    if (!bestCorrelationsTarget) return [];
+
+    const targetValues = filteredValues
+      .filter((v) => v.indicator_id === bestCorrelationsTarget)
+      .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
+      .map((v) => v.value);
+
+    const targetIndicator = indicators.find((i) => i.id === bestCorrelationsTarget);
+    
+    const target: CorrelationCandidate = {
+      id: bestCorrelationsTarget,
+      name: targetIndicator?.name || bestCorrelationsTarget,
+      values: targetValues,
+    };
+
+    // Build candidates from ALL indicators (not just selected ones)
+    const candidates: CorrelationCandidate[] = indicators
+      .filter((ind) => ind.id !== bestCorrelationsTarget)
+      .map((ind) => ({
+        id: ind.id,
+        name: ind.name,
+        values: allValues
+          .filter((v) => {
+            const year = new Date(v.reference_date).getFullYear();
+            return v.indicator_id === ind.id && year >= yearRange[0] && year <= yearRange[1];
+          })
+          .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
+          .map((v) => v.value),
+      }))
+      .filter((c) => c.values.length >= 5);
+
+    return findBestCorrelations(target, candidates, correlationMethod, 5, maxLag);
+  }, [bestCorrelationsTarget, filteredValues, allValues, indicators, correlationMethod, maxLag, yearRange]);
 
   // Calculate trend analysis for each selected indicator
   const trends = useMemo(() => {
@@ -472,11 +542,66 @@ export function DataAnalysisTab() {
             </CardContent>
           </Card>
 
+          {/* Correlation Method Selector */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Tipo de Correlação
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <RadioGroup
+                value={correlationMethod}
+                onValueChange={(v) => setCorrelationMethod(v as CorrelationMethod)}
+                className="flex flex-wrap gap-6"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="pearson" id="pearson" />
+                  <Label htmlFor="pearson" className="cursor-pointer">
+                    <span className="font-medium">Pearson</span>
+                    <span className="text-xs text-muted-foreground ml-1">(linear)</span>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="spearman" id="spearman" />
+                  <Label htmlFor="spearman" className="cursor-pointer">
+                    <span className="font-medium">Spearman</span>
+                    <span className="text-xs text-muted-foreground ml-1">(ranks)</span>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="crosscorr" id="crosscorr" />
+                  <Label htmlFor="crosscorr" className="cursor-pointer">
+                    <span className="font-medium">Cross-Correlation</span>
+                    <span className="text-xs text-muted-foreground ml-1">(com lag)</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {correlationMethod === "crosscorr" && (
+                <div className="flex items-center gap-4 pt-2 border-t">
+                  <Label className="text-sm font-medium whitespace-nowrap">
+                    Max Lag: {maxLag} períodos
+                  </Label>
+                  <Slider
+                    value={[maxLag]}
+                    onValueChange={(v) => setMaxLag(v[0])}
+                    min={3}
+                    max={24}
+                    step={1}
+                    className="flex-1 max-w-xs"
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Correlation Cards */}
           <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
-              Correlações de Pearson ({correlations.length} {correlations.length === 1 ? "par" : "pares"})
+              Correlações ({correlationMethod === "pearson" ? "Pearson" : correlationMethod === "spearman" ? "Spearman" : "Cross-Correlation"}) - {correlations.length} {correlations.length === 1 ? "par" : "pares"}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {correlations.map((c) => (
@@ -487,7 +612,7 @@ export function DataAnalysisTab() {
                         {c.name1} × {c.name2}
                       </div>
                       <div className={`text-3xl font-bold ${c.color}`}>
-                        r = {c.correlation.toFixed(3)}
+                        {correlationMethod === "spearman" ? "ρ" : "r"} = {c.correlation.toFixed(3)}
                       </div>
                       <Badge variant="outline" className="mt-2">
                         {c.strength}
@@ -495,12 +620,108 @@ export function DataAnalysisTab() {
                       <p className="text-xs text-muted-foreground mt-2">
                         {c.description}
                       </p>
+                      {correlationMethod === "crosscorr" && c.lag !== undefined && (
+                        <div className="mt-3 pt-3 border-t border-border/50">
+                          <div className="flex items-center justify-center gap-2 text-sm">
+                            <Clock className="h-4 w-4 text-cyan-500" />
+                            <span className="font-medium">Lag: {c.lag === 0 ? "0" : c.lag > 0 ? `+${c.lag}` : c.lag}</span>
+                          </div>
+                          <p className="text-xs text-cyan-600 dark:text-cyan-400 mt-1">
+                            {c.lagInterpretation}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
           </div>
+
+          {/* Best Correlations Discovery */}
+          <Card className="border-cyan-500/30 bg-cyan-500/5">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Search className="h-5 w-5 text-cyan-500" />
+                Variáveis Mais Correlacionadas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <Label className="text-sm font-medium whitespace-nowrap">Indicador Alvo:</Label>
+                <Select value={bestCorrelationsTarget || ""} onValueChange={setBestCorrelationsTarget}>
+                  <SelectTrigger className="max-w-md">
+                    <SelectValue placeholder="Selecione um indicador para descobrir correlações" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {indicators.map((ind) => (
+                      <SelectItem key={ind.id} value={ind.id}>
+                        {ind.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {bestCorrelationsTarget && bestCorrelations.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Top 5 indicadores mais correlacionados com{" "}
+                    <span className="font-medium text-foreground">
+                      {indicators.find((i) => i.id === bestCorrelationsTarget)?.name}
+                    </span>
+                    :
+                  </p>
+                  <div className="space-y-2">
+                    {bestCorrelations.map((bc, idx) => (
+                      <div
+                        key={bc.id}
+                        className="flex items-center justify-between p-3 bg-background rounded-lg border"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg font-bold text-muted-foreground">#{idx + 1}</span>
+                          <span className="font-medium">{bc.name}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <Badge
+                            variant={bc.correlation > 0 ? "default" : "destructive"}
+                            className="min-w-[80px] justify-center"
+                          >
+                            {correlationMethod === "spearman" ? "ρ" : "r"}={bc.correlation > 0 ? "+" : ""}{bc.correlation.toFixed(2)}
+                          </Badge>
+                          {bc.lag !== undefined && (
+                            <div className="flex items-center gap-1 text-sm text-cyan-600 dark:text-cyan-400">
+                              <Clock className="h-3 w-3" />
+                              <span>lag {bc.lag === 0 ? "0" : bc.lag > 0 ? `+${bc.lag}` : bc.lag}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {correlationMethod === "crosscorr" && bestCorrelations.some((bc) => bc.lagInterpretation) && (
+                    <div className="mt-3 p-3 bg-cyan-500/10 rounded-lg text-sm">
+                      <h4 className="font-medium flex items-center gap-2 mb-2">
+                        <Clock className="h-4 w-4" />
+                        Interpretação dos Lags:
+                      </h4>
+                      <ul className="space-y-1 text-muted-foreground">
+                        {bestCorrelations.filter((bc) => bc.lagInterpretation).map((bc, idx) => (
+                          <li key={idx}>• {bc.lagInterpretation}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {bestCorrelationsTarget && bestCorrelations.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma correlação significativa encontrada. Verifique se há dados suficientes no período selecionado.
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Comparative Chart */}
           <Card>
