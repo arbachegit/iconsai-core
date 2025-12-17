@@ -512,12 +512,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                     variant="ghost" 
                     size="icon" 
                     className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                    onClick={() => navigate("/app")}
+                    onClick={() => navigate("/docs")}
                   >
-                    <Smartphone className="w-4 h-4 group-hover:text-black" />
+                    <BookOpen className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">App</TooltipContent>
+                <TooltipContent side="right">{t('admin.documentation')}</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -526,12 +526,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                     variant="ghost" 
                     size="icon" 
                     className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                    onClick={() => navigate("/docs")}
+                    onClick={() => navigate("/app")}
                   >
-                    <BookOpen className="w-4 h-4 group-hover:text-black" />
+                    <Smartphone className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">{t('admin.documentation')}</TooltipContent>
+                <TooltipContent side="right">App</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -585,12 +585,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                     variant="ghost" 
                     size="icon" 
                     className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                    onClick={() => navigate("/app")}
+                    onClick={() => navigate("/docs")}
                   >
-                    <Smartphone className="w-4 h-4 group-hover:text-black" />
+                    <BookOpen className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">App</TooltipContent>
+                <TooltipContent side="top">{t('admin.documentation')}</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -599,12 +599,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                     variant="ghost" 
                     size="icon" 
                     className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                    onClick={() => navigate("/docs")}
+                    onClick={() => navigate("/app")}
                   >
-                    <BookOpen className="w-4 h-4 group-hover:text-black" />
+                    <Smartphone className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">{t('admin.documentation')}</TooltipContent>
+                <TooltipContent side="top">App</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -655,19 +655,19 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
               <Button 
                 variant="ghost" 
                 className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                onClick={() => navigate("/app")}
+                onClick={() => navigate("/docs")}
               >
-                <Smartphone className="w-4 h-4 shrink-0 group-hover:text-black" />
-                <span className="whitespace-nowrap">App</span>
+                <BookOpen className="w-4 h-4 shrink-0 group-hover:text-black" />
+                <span className="whitespace-nowrap">{t('admin.documentation')}</span>
               </Button>
 
               <Button 
                 variant="ghost" 
                 className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                onClick={() => navigate("/docs")}
+                onClick={() => navigate("/app")}
               >
-                <BookOpen className="w-4 h-4 shrink-0 group-hover:text-black" />
-                <span className="whitespace-nowrap">{t('admin.documentation')}</span>
+                <Smartphone className="w-4 h-4 shrink-0 group-hover:text-black" />
+                <span className="whitespace-nowrap">App</span>
               </Button>
 
               <Button 
