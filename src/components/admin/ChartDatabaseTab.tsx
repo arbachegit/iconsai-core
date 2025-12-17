@@ -499,7 +499,7 @@ export function ChartDatabaseTab() {
         value: d.value,
       }));
       
-      dashboardAnalytics.setChartContext({
+      const contextData = {
         indicatorId: selectedIndicator.id,
         indicatorName: selectedIndicator.name,
         indicatorCode: selectedIndicator.code,
@@ -531,6 +531,15 @@ export function ChartDatabaseTab() {
             p95: stsData.forecast.p95,
           },
         } : null,
+      };
+      
+      dashboardAnalytics.setChartContext(contextData);
+      
+      // Add to history for comparison support
+      dashboardAnalytics.addToHistory({
+        type: 'chart',
+        label: selectedIndicator.name,
+        context: contextData,
       });
     } else {
       dashboardAnalytics.setChartContext(null);
