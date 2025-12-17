@@ -397,10 +397,10 @@ export function DataAnalyticsUF() {
         </CardContent>
       </Card>
 
-      {/* Map and State Panel - 5 columns: 3 for map, 2 for panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Map - 3 columns */}
-        <Card className="lg:col-span-3 overflow-hidden">
+      {/* Map and State Panel - 10 columns: 4 for map, 6 for panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+        {/* Map - 4 columns (40%) */}
+        <Card className="lg:col-span-4 overflow-hidden">
           <CardContent className="p-4">
             <BrazilMap
               hoveredState={hoveredState}
@@ -413,8 +413,8 @@ export function DataAnalyticsUF() {
           </CardContent>
         </Card>
 
-        {/* State Data Panel - 2 columns (wider) */}
-        <div className="lg:col-span-2">
+        {/* State Data Panel - 6 columns (60%) */}
+        <div className="lg:col-span-6">
           {selectedState && !isMapDisabled ? (
             <StateDataPanel
               ufSigla={selectedState}

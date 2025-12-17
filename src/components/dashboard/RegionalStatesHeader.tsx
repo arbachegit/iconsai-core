@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 
@@ -22,6 +23,27 @@ const REGION_NAMES: Record<string, string> = {
 
 // Hover color - magenta
 const HOVER_COLOR = '#FF00FF';
+
+// Mac Dock scale effect - calculate scale based on distance from hovered badge
+const calculateBadgeScale = (
+  currentSigla: string,
+  hoveredSigla: string | null,
+  allSiglas: string[]
+): number => {
+  if (!hoveredSigla) return 1;
+  if (currentSigla === hoveredSigla) return 1.4;
+  
+  const currentIndex = allSiglas.indexOf(currentSigla);
+  const hoveredIndex = allSiglas.indexOf(hoveredSigla);
+  
+  if (currentIndex === -1 || hoveredIndex === -1) return 1;
+  
+  const distance = Math.abs(currentIndex - hoveredIndex);
+  
+  if (distance === 1) return 1.2;
+  if (distance === 2) return 1.1;
+  return 1;
+};
 
 interface UfData {
   uf_sigla: string;
@@ -51,6 +73,12 @@ export function RegionalStatesHeader({
       .sort((a, b) => a.uf_sigla.localeCompare(b.uf_sigla));
     return acc;
   }, {} as Record<string, UfData[]>);
+
+  // Flat list of all siglas for Mac Dock scale calculation
+  const flatSiglas = useMemo(() => 
+    REGION_ORDER.flatMap(r => ufsByRegion[r]?.map(uf => uf.uf_sigla) || []),
+    [ufsByRegion]
+  );
 
   const isAvailable = (sigla: string) => availableStates.includes(sigla);
   const isHovered = (sigla: string) => hoveredState === sigla;
@@ -103,10 +131,14 @@ export function RegionalStatesHeader({
                     <TooltipTrigger asChild>
                       <Badge
                         variant="outline"
-                        className={`text-[10px] px-1 py-0 h-5 transition-all duration-200 ${
-                          available ? 'cursor-pointer hover:scale-105' : 'cursor-default opacity-60'
+                        className={`text-[10px] px-1 py-0 h-5 transition-all duration-200 ease-out origin-center ${
+                          available ? 'cursor-pointer' : 'cursor-default opacity-60'
                         }`}
-                        style={getBadgeStyle(uf.uf_sigla, regionCode)}
+                        style={{
+                          ...getBadgeStyle(uf.uf_sigla, regionCode),
+                          transform: `scale(${calculateBadgeScale(uf.uf_sigla, hoveredState, flatSiglas)})`,
+                          zIndex: isHovered(uf.uf_sigla) ? 10 : 1,
+                        }}
                         onMouseEnter={() => available && onHover(uf.uf_sigla)}
                         onMouseLeave={() => onHover(null)}
                         onClick={() => available && onSelect(uf.uf_sigla)}

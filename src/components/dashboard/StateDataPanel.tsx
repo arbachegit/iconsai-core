@@ -391,10 +391,17 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
                           {item.indicatorName}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">
-                          {formatValue(item.value, item.unit)}
-                          {item.unit && (
-                            <span className="text-muted-foreground ml-1 text-xs">{item.unit}</span>
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            <span>{formatValue(item.value, item.unit)}</span>
+                            {item.unit && (
+                              <Badge 
+                                variant="outline" 
+                                className="text-[9px] px-1.5 py-0 h-4 bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                              >
+                                {item.unit}
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
