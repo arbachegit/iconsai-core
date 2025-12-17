@@ -30,7 +30,7 @@ type AppView = "home" | "chat" | "data" | "analytics" | "settings";
 
 export default function AppPage() {
   const navigate = useNavigate();
-  const { role, signOut } = useAuth();
+  const { role, signOut, isLoading } = useAuth();
   const [currentView, setCurrentView] = useState<AppView>("chat");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -242,7 +242,9 @@ export default function AppPage() {
             {sidebarCollapsed ? (
               <div className="flex flex-col gap-1">
                 {/* Admin - superadmin only */}
-                {role === "superadmin" && (
+                {isLoading ? (
+                  <div className="w-full h-10 rounded-lg bg-muted/20 animate-pulse" />
+                ) : role === "superadmin" ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -256,7 +258,7 @@ export default function AppPage() {
                     </TooltipTrigger>
                     <TooltipContent side="right">Admin</TooltipContent>
                   </Tooltip>
-                )}
+                ) : null}
 
                 {/* Dashboard */}
                 <Tooltip>
@@ -310,7 +312,9 @@ export default function AppPage() {
                 "max-h-14 opacity-100"
               )}>
                 {/* Admin - superadmin only */}
-                {role === "superadmin" && (
+                {isLoading ? (
+                  <div className="h-10 w-10 rounded-lg bg-muted/20 animate-pulse" />
+                ) : role === "superadmin" ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -324,7 +328,7 @@ export default function AppPage() {
                     </TooltipTrigger>
                     <TooltipContent side="top">Admin</TooltipContent>
                   </Tooltip>
-                )}
+                ) : null}
 
                 {/* Dashboard */}
                 <Tooltip>
@@ -378,7 +382,9 @@ export default function AppPage() {
                 "max-h-48 opacity-100"
               )}>
                 {/* Admin - superadmin only */}
-                {role === "superadmin" && (
+                {isLoading ? (
+                  <div className="w-full h-10 rounded-lg bg-muted/20 animate-pulse" />
+                ) : role === "superadmin" ? (
                   <Button
                     variant="ghost"
                     className="group w-full justify-start gap-3 h-10 rounded-lg text-purple-400 hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
@@ -387,7 +393,7 @@ export default function AppPage() {
                     <Shield className="h-5 w-5 group-hover:text-black" />
                     <span className="group-hover:text-black">Admin</span>
                   </Button>
-                )}
+                ) : null}
 
                 {/* Dashboard */}
                 <Button
