@@ -476,29 +476,31 @@ export function TableDatabaseTab() {
     return [...allValues, ...regionalValues];
   }, [allValues, regionalValues]);
 
-  // Get stats for each indicator
+  // Fetch indicator stats from view (combines indicator_values, indicator_regional_values, pac_valores_estimados)
+  const { data: indicatorStatsFromDB = [] } = useQuery({
+    queryKey: ["indicator-stats-summary-table-db"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("indicator_stats_summary")
+        .select("indicator_id, total_count, min_date, max_date, last_value");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Convert array to stats map format
   const indicatorStats = useMemo(() => {
     const stats: Record<string, { count: number; min: string; max: string; lastValue: number }> = {};
-    combinedValues.forEach((v) => {
-      if (!stats[v.indicator_id]) {
-        stats[v.indicator_id] = {
-          count: 0,
-          min: v.reference_date,
-          max: v.reference_date,
-          lastValue: v.value,
-        };
-      }
-      stats[v.indicator_id].count++;
-      if (v.reference_date < stats[v.indicator_id].min) {
-        stats[v.indicator_id].min = v.reference_date;
-      }
-      if (v.reference_date > stats[v.indicator_id].max) {
-        stats[v.indicator_id].max = v.reference_date;
-        stats[v.indicator_id].lastValue = v.value;
-      }
+    indicatorStatsFromDB.forEach((s: any) => {
+      stats[s.indicator_id] = {
+        count: s.total_count || 0,
+        min: s.min_date || '',
+        max: s.max_date || '',
+        lastValue: s.last_value || 0,
+      };
     });
     return stats;
-  }, [combinedValues]);
+  }, [indicatorStatsFromDB]);
 
   // Filter and group indicators
   const filteredIndicators = useMemo(() => {
