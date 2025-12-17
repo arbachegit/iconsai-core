@@ -1624,6 +1624,65 @@ export type Database = {
         }
         Relationships: []
       }
+      pac_valores_estimados: {
+        Row: {
+          base_year_used: number | null
+          calculation_method: string | null
+          created_at: string | null
+          growth_rate_applied: number | null
+          id: string
+          is_extrapolated: boolean | null
+          pac_indicator_code: string
+          pac_indicator_id: string | null
+          reference_date: string
+          reference_year: number
+          uf_code: number
+          updated_at: string | null
+          valor_estimado: number
+          valor_original: number | null
+        }
+        Insert: {
+          base_year_used?: number | null
+          calculation_method?: string | null
+          created_at?: string | null
+          growth_rate_applied?: number | null
+          id?: string
+          is_extrapolated?: boolean | null
+          pac_indicator_code: string
+          pac_indicator_id?: string | null
+          reference_date: string
+          reference_year: number
+          uf_code: number
+          updated_at?: string | null
+          valor_estimado: number
+          valor_original?: number | null
+        }
+        Update: {
+          base_year_used?: number | null
+          calculation_method?: string | null
+          created_at?: string | null
+          growth_rate_applied?: number | null
+          id?: string
+          is_extrapolated?: boolean | null
+          pac_indicator_code?: string
+          pac_indicator_id?: string | null
+          reference_date?: string
+          reference_year?: number
+          uf_code?: number
+          updated_at?: string | null
+          valor_estimado?: number
+          valor_original?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pac_valores_estimados_pac_indicator_id_fkey"
+            columns: ["pac_indicator_id"]
+            isOneToOne: false
+            referencedRelation: "economic_indicators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_recovery_codes: {
         Row: {
           code: string
@@ -2917,6 +2976,13 @@ export type Database = {
         }[]
       }
       process_all_pmc_conversions_batch: {
+        Args: never
+        Returns: {
+          indicator_code: string
+          records_inserted: number
+        }[]
+      }
+      process_pac_estimation_batch: {
         Args: never
         Returns: {
           indicator_code: string
