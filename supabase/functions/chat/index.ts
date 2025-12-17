@@ -6,6 +6,230 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ========== INDICADORES ECONÔMICOS - ACESSO DIRETO ==========
+// Mapeamento de palavras-chave para códigos de indicadores
+const INDICATOR_KEYWORDS: Record<string, string[]> = {
+  'SELIC': ['selic', 'taxa básica', 'juros básico', 'taxa de juros'],
+  'CDI': ['cdi', 'certificado depósito'],
+  'IPCA': ['ipca', 'inflação', 'índice de preços', 'inflacionário'],
+  'PIB': ['pib', 'produto interno bruto', 'gdp'],
+  'DOLAR': ['dólar', 'dolar', 'câmbio', 'moeda americana', 'usd', 'ptax'],
+  '4099': ['desemprego', 'desocupação', 'taxa de desemprego', 'pnad'],
+  'PAC_ATACADO_RB_UF': ['atacado', 'receita atacado'],
+  'PAC_VAREJO_RB_UF': ['varejo', 'receita varejo', 'comércio varejista'],
+  'PMC_COMB_UF': ['combustível', 'combustíveis', 'gasolina', 'diesel', 'posto'],
+  'PMC_FARM_UF': ['farmácia', 'farmácias', 'medicamento', 'remédio'],
+  'PMC_VEST_UF': ['vestuário', 'roupa', 'moda', 'têxtil'],
+  'PMC_MOV_UF': ['móveis', 'eletrodomésticos', 'moveis'],
+  'PMC_MAT_UF': ['material construção', 'construção civil'],
+  'PMC_VEICULOS_UF': ['veículos', 'automóvel', 'carros', 'motos'],
+  'MORT_INFANTIL_UF': ['mortalidade infantil', 'óbitos infantis'],
+  'FECUND_UF': ['fecundidade', 'taxa de natalidade', 'nascimentos'],
+  'ESPERANCA_VIDA_UF': ['esperança de vida', 'expectativa de vida', 'longevidade'],
+};
+
+// Lista de estados brasileiros para detecção
+const BRAZILIAN_STATES: Record<string, string> = {
+  'ac': 'AC', 'acre': 'AC',
+  'al': 'AL', 'alagoas': 'AL',
+  'ap': 'AP', 'amapá': 'AP', 'amapa': 'AP',
+  'am': 'AM', 'amazonas': 'AM',
+  'ba': 'BA', 'bahia': 'BA',
+  'ce': 'CE', 'ceará': 'CE', 'ceara': 'CE',
+  'df': 'DF', 'distrito federal': 'DF', 'brasília': 'DF', 'brasilia': 'DF',
+  'es': 'ES', 'espírito santo': 'ES', 'espirito santo': 'ES',
+  'go': 'GO', 'goiás': 'GO', 'goias': 'GO',
+  'ma': 'MA', 'maranhão': 'MA', 'maranhao': 'MA',
+  'mt': 'MT', 'mato grosso': 'MT',
+  'ms': 'MS', 'mato grosso do sul': 'MS',
+  'mg': 'MG', 'minas gerais': 'MG', 'minas': 'MG',
+  'pa': 'PA', 'pará': 'PA', 'para': 'PA',
+  'pb': 'PB', 'paraíba': 'PB', 'paraiba': 'PB',
+  'pr': 'PR', 'paraná': 'PR', 'parana': 'PR',
+  'pe': 'PE', 'pernambuco': 'PE',
+  'pi': 'PI', 'piauí': 'PI', 'piaui': 'PI',
+  'rj': 'RJ', 'rio de janeiro': 'RJ', 'rio': 'RJ',
+  'rn': 'RN', 'rio grande do norte': 'RN',
+  'rs': 'RS', 'rio grande do sul': 'RS',
+  'ro': 'RO', 'rondônia': 'RO', 'rondonia': 'RO',
+  'rr': 'RR', 'roraima': 'RR',
+  'sc': 'SC', 'santa catarina': 'SC',
+  'sp': 'SP', 'são paulo': 'SP', 'sao paulo': 'SP',
+  'se': 'SE', 'sergipe': 'SE',
+  'to': 'TO', 'tocantins': 'TO',
+};
+
+// Detectar se a query precisa de dados econômicos
+function requiresEconomicData(query: string): boolean {
+  const normalizedQuery = query.toLowerCase();
+  
+  // Keywords that indicate economic analysis intent
+  const analysisKeywords = [
+    'compare', 'comparar', 'comparação', 'versus', 'vs',
+    'indicador', 'indicadores', 'dado', 'dados',
+    'tendência', 'tendencia', 'evolução', 'evolucao',
+    'gráfico', 'grafico', 'analis', 'estatística', 'estatistica',
+    'série histórica', 'serie historica', 'histórico', 'historico',
+  ];
+  
+  // Check analysis keywords
+  if (analysisKeywords.some(k => normalizedQuery.includes(k))) {
+    return true;
+  }
+  
+  // Check indicator keywords
+  for (const keywords of Object.values(INDICATOR_KEYWORDS)) {
+    if (keywords.some(k => normalizedQuery.includes(k))) {
+      return true;
+    }
+  }
+  
+  // Check state mentions (might want regional data)
+  for (const state of Object.keys(BRAZILIAN_STATES)) {
+    if (normalizedQuery.includes(state) && normalizedQuery.length > state.length + 5) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Extrair códigos de indicadores mencionados na query
+function extractIndicatorCodes(query: string): string[] {
+  const normalizedQuery = query.toLowerCase();
+  const codes: string[] = [];
+  
+  for (const [code, keywords] of Object.entries(INDICATOR_KEYWORDS)) {
+    if (keywords.some(k => normalizedQuery.includes(k))) {
+      codes.push(code);
+    }
+  }
+  
+  return [...new Set(codes)];
+}
+
+// Extrair siglas de estados mencionados
+function extractStateSiglas(query: string): string[] {
+  const normalizedQuery = query.toLowerCase();
+  const siglas: string[] = [];
+  
+  for (const [key, sigla] of Object.entries(BRAZILIAN_STATES)) {
+    // Check for exact word match to avoid false positives
+    const regex = new RegExp(`\\b${key}\\b`, 'i');
+    if (regex.test(normalizedQuery)) {
+      siglas.push(sigla);
+    }
+  }
+  
+  return [...new Set(siglas)];
+}
+
+// Formatar dados de indicadores para injeção no contexto
+function formatIndicatorDataForContext(data: any): string {
+  if (!data || !data.success) return "";
+  
+  let context = "\n\n## 📊 DADOS DE INDICADORES ECONÔMICOS (BUSCADOS AUTOMATICAMENTE)\n\n";
+  context += "⚠️ IMPORTANTE: Você TEM os dados abaixo. Use-os diretamente para responder. NUNCA peça dados ao usuário.\n\n";
+  
+  if (data.indicator) {
+    // Single indicator data
+    const ind = data.indicator;
+    context += `### ${ind.name} (${ind.code})\n`;
+    context += `- Categoria: ${ind.category || 'N/A'}\n`;
+    context += `- Frequência: ${ind.frequency || 'N/A'}\n`;
+    context += `- Unidade: ${ind.unit || 'N/A'}\n`;
+    
+    if (data.statistics) {
+      const stats = data.statistics;
+      context += `\n**Estatísticas:**\n`;
+      context += `- Valor mais recente: ${stats.latest?.toLocaleString('pt-BR') || 'N/A'} (${stats.latestDate || 'N/A'})\n`;
+      context += `- Média: ${stats.mean?.toFixed(2) || 'N/A'}\n`;
+      context += `- Mínimo: ${stats.min?.toFixed(2) || 'N/A'}\n`;
+      context += `- Máximo: ${stats.max?.toFixed(2) || 'N/A'}\n`;
+      context += `- Total de registros: ${stats.count || 0}\n`;
+    }
+    
+    if (data.values && data.values.length > 0) {
+      const recentValues = data.values.slice(-24); // Last 24 records
+      context += `\n**Dados para gráfico (últimos ${recentValues.length} registros):**\n`;
+      context += "```json\n" + JSON.stringify(recentValues, null, 2) + "\n```\n";
+    }
+  }
+  
+  if (data.comparisons) {
+    // Multiple indicators comparison
+    context += "### COMPARAÇÃO DE INDICADORES\n\n";
+    
+    for (const comp of data.comparisons) {
+      if (comp.error) {
+        context += `- ❌ ${comp.code}: não encontrado\n`;
+        continue;
+      }
+      
+      const ind = comp.indicator;
+      context += `#### ${ind.name} (${ind.code})\n`;
+      
+      if (comp.statistics) {
+        const stats = comp.statistics;
+        context += `- Último: ${stats.latest?.toLocaleString('pt-BR') || 'N/A'} (${stats.latestDate || 'N/A'})\n`;
+        context += `- Média: ${stats.mean?.toFixed(2) || 'N/A'}\n`;
+        context += `- Registros: ${stats.count || 0}\n`;
+      }
+      
+      if (comp.values && comp.values.length > 0) {
+        const recentValues = comp.values.slice(-12);
+        context += `\nDados:\n\`\`\`json\n${JSON.stringify(recentValues)}\n\`\`\`\n\n`;
+      }
+    }
+  }
+  
+  if (data.requestedUF) {
+    context += `\n**Estado solicitado:** ${data.requestedUF.name} (${data.requestedUF.sigla})\n`;
+  }
+  
+  return context;
+}
+
+// Lista completa de indicadores disponíveis para o system prompt
+const AVAILABLE_INDICATORS_PROMPT = `
+## 📊 INDICADORES ECONÔMICOS - ACESSO TOTAL E AUTOMÁTICO
+
+Você TEM ACESSO DIRETO aos seguintes indicadores do banco de dados. Os dados são buscados AUTOMATICAMENTE quando você precisa.
+
+### MACRO (Nacional):
+- Taxa Selic (SELIC) - mensal - Taxa básica de juros
+- Taxa CDI (CDI) - diário - Certificado de Depósito Interbancário
+- IPCA (IPCA) - mensal - Índice de inflação oficial
+- PIB (PIB) - trimestral - Produto Interno Bruto
+- Dólar PTAX (DOLAR) - diário - Taxa de câmbio
+- Desemprego PNAD (4099) - trimestral - Taxa de desocupação
+
+### COMÉRCIO (Regionais por UF):
+- Receita Bruta Atacado (PAC_ATACADO_RB_UF) - anual
+- Receita Bruta Varejo (PAC_VAREJO_RB_UF) - anual
+- PMC Combustíveis (PMC_COMB_UF) - mensal
+- PMC Farmácia (PMC_FARM_UF) - mensal
+- PMC Vestuário (PMC_VEST_UF) - mensal
+- PMC Móveis/Eletro (PMC_MOV_UF) - mensal
+- PMC Mat. Construção (PMC_MAT_UF) - mensal
+- PMC Veículos (PMC_VEICULOS_UF) - mensal
+
+### DEMOGRÁFICOS (Regionais por UF):
+- Mortalidade Infantil (MORT_INFANTIL_UF) - anual
+- Taxa de Fecundidade (FECUND_UF) - anual
+- Esperança de Vida (ESPERANCA_VIDA_UF) - anual
+
+### 🔴 REGRA ABSOLUTA - NUNCA PEÇA DADOS AO USUÁRIO:
+1. Quando o usuário perguntar sobre qualquer indicador acima, os dados JÁ ESTARÃO no contexto
+2. Quando o usuário pedir para comparar indicadores, os dados JÁ ESTARÃO no contexto
+3. Quando o usuário mencionar estados (SP, RJ, MG, etc.), os dados regionais JÁ ESTARÃO no contexto
+4. NUNCA diga "preciso dos dados" ou "me forneça os dados" - VOCÊ TEM ACESSO DIRETO
+5. Use os dados do contexto para gerar gráficos, análises e comparações IMEDIATAMENTE
+
+### Estados disponíveis para dados regionais:
+AC, AL, AM, AP, BA, CE, DF, ES, GO, MA, MG, MS, MT, PA, PB, PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE, SP, TO
+`;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -401,6 +625,52 @@ ${isPartialSample ? `\nNOTA: Como está trabalhando com amostra parcial, indique
 
     console.log(`Using chat config: threshold=${matchThreshold}, count=${matchCount}`);
 
+    // ========== AUTO-FETCH ECONOMIC DATA ==========
+    let economicDataContext = "";
+    if (requiresEconomicData(userQuery)) {
+      console.log(`[ECONOMIC_DATA] Query requires economic data: "${userQuery.substring(0, 100)}..."`);
+      
+      const indicatorCodes = extractIndicatorCodes(userQuery);
+      const stateSiglas = extractStateSiglas(userQuery);
+      
+      console.log(`[ECONOMIC_DATA] Detected indicators: ${indicatorCodes.join(', ') || 'none'}`);
+      console.log(`[ECONOMIC_DATA] Detected states: ${stateSiglas.join(', ') || 'none'}`);
+      
+      try {
+        if (indicatorCodes.length > 0) {
+          const isRegionalQuery = stateSiglas.length > 0;
+          
+          if (isRegionalQuery && indicatorCodes.length === 1) {
+            const { data: regionalData } = await supabase.functions.invoke("query-indicators", {
+              body: { action: 'regional', indicatorCode: indicatorCodes[0], ufSigla: stateSiglas[0], limit: 60 }
+            });
+            if (regionalData?.success) {
+              economicDataContext = formatIndicatorDataForContext(regionalData);
+              console.log(`[ECONOMIC_DATA] Regional data fetched for ${indicatorCodes[0]} in ${stateSiglas[0]}`);
+            }
+          } else if (indicatorCodes.length === 1) {
+            const { data: indicatorData } = await supabase.functions.invoke("query-indicators", {
+              body: { action: 'data', indicatorCode: indicatorCodes[0], limit: 60 }
+            });
+            if (indicatorData?.success) {
+              economicDataContext = formatIndicatorDataForContext(indicatorData);
+              console.log(`[ECONOMIC_DATA] National data fetched for ${indicatorCodes[0]}`);
+            }
+          } else {
+            const { data: comparisonData } = await supabase.functions.invoke("query-indicators", {
+              body: { action: 'compare', indicatorCodes: indicatorCodes, limit: 36 }
+            });
+            if (comparisonData?.success) {
+              economicDataContext = formatIndicatorDataForContext(comparisonData);
+              console.log(`[ECONOMIC_DATA] Comparison data fetched for ${indicatorCodes.length} indicators`);
+            }
+          }
+        }
+      } catch (econError) {
+        console.error("[ECONOMIC_DATA] Error fetching economic data:", econError);
+      }
+    }
+
     // Search for relevant documents using RAG
     let ragContext = "";
     let hasRagContext = false;
@@ -520,6 +790,7 @@ ${maieuticBehavioral}
 ${culturalTone}
 ${locationPrompt}
 ${getAdaptiveResponseProtocol()}
+${AVAILABLE_INDICATORS_PROMPT}
 
 ⚠️ INSTRUÇÃO CRÍTICA - LEIA ATENTAMENTE:
 ${hasRagContext ? `
@@ -545,10 +816,16 @@ REGRAS DE RESPOSTA (ORDEM DE PRIORIDADE):
       médico oficial.
 ${ragContext}
 ${fileDataContext}
+${economicDataContext}
 ${fileDataContext ? `
 📊 VOCÊ TEM DADOS DE ARQUIVO DISPONÍVEL - O usuário carregou um arquivo com dados.
 Use os dados da amostra acima para responder. Você pode fazer análises estatísticas, identificar padrões e gerar insights.
 IGNORE qualquer restrição de escopo quando o usuário está perguntando sobre os dados do arquivo que ele mesmo carregou.
+` : ``}
+${economicDataContext ? `
+📊 VOCÊ TEM DADOS ECONÔMICOS DISPONÍVEIS - Dados foram buscados automaticamente do banco de dados.
+Use estes dados para responder. Você pode analisar tendências, gerar gráficos e fazer comparações.
+IMPORTANTE: Os dados já estão no contexto acima. NÃO peça dados ao usuário.
 ` : ``}
 
 2. **Escopo secundário (APENAS se NÃO houver contexto RAG)**:

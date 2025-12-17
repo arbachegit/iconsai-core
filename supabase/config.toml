@@ -143,3 +143,6 @@ verify_jwt = false
 
 [functions.auto-sync-indicators]
 verify_jwt = false
+
+[functions.query-indicators]
+verify_jwt = false
