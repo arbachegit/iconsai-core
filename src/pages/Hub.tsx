@@ -75,8 +75,8 @@ export default function Hub() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-6">
-        <div /> {/* Spacer */}
         <img src={knowyouLogo} alt="KnowYOU" className="h-8" />
+        <div /> {/* Spacer central */}
         <UserBadge />
       </header>
 
