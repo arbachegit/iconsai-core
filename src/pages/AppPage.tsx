@@ -228,10 +228,10 @@ export default function AppPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="w-full h-10 rounded-lg hover:bg-purple-500/10 text-purple-400"
+                      className="group w-full h-10 rounded-lg text-purple-400 hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
                       onClick={() => navigate("/admin")}
                     >
-                      <Shield className="h-5 w-5" />
+                      <Shield className="h-5 w-5 group-hover:text-black" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="right">Admin</TooltipContent>
@@ -239,11 +239,11 @@ export default function AppPage() {
               ) : (
                 <Button
                   variant="ghost"
-                  className="w-full justify-start gap-3 h-10 rounded-lg hover:bg-purple-500/10 text-purple-400 hover:text-purple-600"
+                  className="group w-full justify-start gap-3 h-10 rounded-lg text-purple-400 hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
                   onClick={() => navigate("/admin")}
                 >
-                  <Shield className="h-5 w-5" />
-                  <span>Admin</span>
+                  <Shield className="h-5 w-5 group-hover:text-black" />
+                  <span className="group-hover:text-black">Admin</span>
                 </Button>
               )
             )}
@@ -255,10 +255,10 @@ export default function AppPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="w-full h-10 rounded-lg hover:bg-primary/10 text-primary"
+                    className="group w-full h-10 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
                     onClick={() => navigate("/")}
                   >
-                    <Smartphone className="h-5 w-5" />
+                    <Smartphone className="h-5 w-5 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Voltar ao Início</TooltipContent>
@@ -266,11 +266,11 @@ export default function AppPage() {
             ) : (
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-3 h-10 rounded-lg hover:bg-primary/10 text-primary hover:text-primary"
+                className="group w-full justify-start gap-3 h-10 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
                 onClick={() => navigate("/")}
               >
-                <Smartphone className="h-5 w-5" />
-                <span>Voltar ao Início</span>
+                <Smartphone className="h-5 w-5 group-hover:text-black" />
+                <span className="group-hover:text-black">Voltar ao Início</span>
               </Button>
             )}
 
@@ -281,10 +281,10 @@ export default function AppPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="w-full h-10 rounded-lg hover:bg-destructive/10 text-destructive"
+                    className="group w-full h-10 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
                     onClick={signOut}
                   >
-                    <LogOut className="h-5 w-5" />
+                    <LogOut className="h-5 w-5 group-hover:text-white" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Sair</TooltipContent>
@@ -292,11 +292,11 @@ export default function AppPage() {
             ) : (
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-3 h-10 rounded-lg hover:bg-destructive/10 text-destructive hover:text-destructive"
+                className="group w-full justify-start gap-3 h-10 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
                 onClick={signOut}
               >
-                <LogOut className="h-5 w-5" />
-                <span>Sair</span>
+                <LogOut className="h-5 w-5 group-hover:text-white" />
+                <span className="group-hover:text-white">Sair</span>
               </Button>
             )}
           </div>
