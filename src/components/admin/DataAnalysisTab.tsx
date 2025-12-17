@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { BrazilMap } from "@/components/dashboard/BrazilMap";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -186,6 +187,8 @@ export function DataAnalysisTab() {
 
   // Regional Storytelling state
   const [selectedRegionalIndicator, setSelectedRegionalIndicator] = useState<string | null>(null);
+  const [mapHoveredState, setMapHoveredState] = useState<string | null>(null);
+  const [mapSelectedState, setMapSelectedState] = useState<string | null>(null);
 
   // Fetch indicators
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
@@ -1220,7 +1223,12 @@ export function DataAnalysisTab() {
                           border: "1px solid hsl(var(--border))",
                           borderRadius: "8px",
                         }}
-                        formatter={(value: number, name: string) => [value.toFixed(2), name]}
+                        formatter={(value: number, name: string) => {
+                          const indX = indicators.find((i) => i.id === scatterXIndicator);
+                          const indY = indicators.find((i) => i.id === scatterYIndicator);
+                          const unit = name === indX?.name ? indX?.unit : indY?.unit;
+                          return [formatValueWithUnit(value, unit), name];
+                        }}
                       />
                       <Scatter name="Dados" data={scatterData} fill="#3b82f6">
                         {scatterData.map((entry, index) => (
@@ -1369,6 +1377,10 @@ export function DataAnalysisTab() {
                         backgroundColor: "hsl(var(--card))",
                         border: "1px solid hsl(var(--border))",
                         borderRadius: "8px",
+                      }}
+                      formatter={(value: number, name: string) => {
+                        const ind = indicators.find((i) => i.name === name || i.id === name);
+                        return [formatValueWithUnit(value, ind?.unit), name];
                       }}
                     />
                     <Legend />
@@ -1540,6 +1552,10 @@ export function DataAnalysisTab() {
                                 backgroundColor: "hsl(var(--card))",
                                 border: "1px solid hsl(var(--border))",
                                 borderRadius: "8px",
+                              }}
+                              formatter={(value: number, name: string) => {
+                                const targetInd = selectedIndicators[0] ? indicators.find(i => i.id === selectedIndicators[0]) : null;
+                                return [formatValueWithUnit(value, targetInd?.unit), name];
                               }}
                             />
                             <Legend />
@@ -2015,9 +2031,11 @@ export function DataAnalysisTab() {
               </CardContent>
             </Card>
           )}
+        </>
+      )}
 
-          {/* Granger Causality Test */}
-          <Card className="border-purple-500/30 bg-purple-500/5">
+      {/* Granger Causality Test - Always Visible */}
+      <Card className="border-purple-500/30 bg-purple-500/5">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <ArrowRightLeft className="h-5 w-5 text-purple-500" />
@@ -2145,11 +2163,11 @@ export function DataAnalysisTab() {
                   Dados insuficientes para o teste (mínimo: {grangerMaxLag + 5} observações por indicador)
                 </div>
               ) : null}
-            </CardContent>
-          </Card>
+        </CardContent>
+      </Card>
 
-          {/* Regional Storytelling */}
-          <Card className="border-amber-500/30 bg-amber-500/5">
+      {/* Regional Storytelling - Always Visible */}
+      <Card className="border-amber-500/30 bg-amber-500/5">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-amber-500" />
@@ -2175,16 +2193,57 @@ export function DataAnalysisTab() {
 
               {regionalNarrative && (
                 <div className="space-y-4">
-                  {/* Highlights */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {regionalNarrative.highlights.map((highlight, idx) => (
-                      <div 
-                        key={idx}
-                        className="p-3 bg-background/60 rounded-lg border border-amber-500/20 text-sm"
-                      >
-                        {highlight}
+                  {/* Map and Highlights Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Brazil Map with Performance Colors */}
+                    <div className="p-4 bg-background/60 rounded-lg border border-amber-500/20">
+                      <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                        <MapPin className="h-4 w-4 text-amber-500" />
+                        Mapa de Performance por Estado
+                      </h4>
+                      <div className="h-[300px]">
+                        <BrazilMap
+                          hoveredState={mapHoveredState}
+                          selectedState={mapSelectedState}
+                          onHover={setMapHoveredState}
+                          onSelect={setMapSelectedState}
+                          availableStates={regionalNarrative.ranking.map(r => r.ufSigla)}
+                        />
                       </div>
-                    ))}
+                      {mapHoveredState && (
+                        <div className="mt-2 text-center">
+                          {(() => {
+                            const stateData = regionalNarrative.ranking.find(r => r.ufSigla === mapHoveredState);
+                            const indicator = regionalIndicators.find(i => i.id === selectedRegionalIndicator);
+                            if (stateData) {
+                              const rank = regionalNarrative.ranking.findIndex(r => r.ufSigla === mapHoveredState) + 1;
+                              return (
+                                <div className="text-sm">
+                                  <span className="font-medium">{stateData.ufName || mapHoveredState}</span>
+                                  <span className="mx-2">-</span>
+                                  <span className="font-bold">{formatValueWithUnit(stateData.value, indicator?.unit)}</span>
+                                  <Badge variant="secondary" className="ml-2">#{rank}</Badge>
+                                </div>
+                              );
+                            }
+                            return <span className="text-muted-foreground">{mapHoveredState} - Sem dados</span>;
+                          })()}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Highlights */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold">Destaques</h4>
+                      {regionalNarrative.highlights.map((highlight, idx) => (
+                        <div 
+                          key={idx}
+                          className="p-3 bg-background/60 rounded-lg border border-amber-500/20 text-sm"
+                        >
+                          {highlight}
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Region Comparison */}
@@ -2271,10 +2330,8 @@ export function DataAnalysisTab() {
                   Carregando dados regionais...
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </>
-      )}
+        </CardContent>
+      </Card>
 
       {selectedIndicators.length < 2 && (
         <Card className="border-dashed">
