@@ -83,6 +83,11 @@ const isPmcIndicator = (code: string): boolean => {
   return PMC_REGIONAL_CODES.includes(code) || PMC_NATIONAL_CODES.includes(code);
 };
 
+// Check if indicator is PAC (has estimated values in pac_valores_estimados)
+const isPacIndicator = (code: string): boolean => {
+  return code.startsWith('PAC_');
+};
+
 const getPmcCoverageInfo = (code: string): { hasPartialCoverage: boolean; disclaimer: string | null } => {
   const info = PMC_PARTIAL_COVERAGE[code];
   if (info) {
@@ -427,10 +432,28 @@ export function TableDatabaseTab() {
     refetchOnMount: 'always',
   });
 
+  // Fetch PAC estimated values (2024-2025) for PAC indicators
+  const { data: pacEstimatedValues = [] } = useQuery({
+    queryKey: ["pac-estimated-values-table", selectedIndicator?.id],
+    queryFn: async () => {
+      if (!selectedIndicator || !isPacIndicator(selectedIndicator.code)) return [];
+      
+      const { data, error } = await supabase
+        .from("pac_valores_estimados")
+        .select("reference_date, reference_year, valor_estimado, uf_code")
+        .eq("pac_indicator_code", selectedIndicator.code)
+        .order("reference_date", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedIndicator && isPacIndicator(selectedIndicator?.code || ''),
+  });
+
   // Get display data (index or monetary values)
   const displayData = useMemo(() => {
     if (!selectedIndicator) return [];
     
+    // PMC monetary toggle
     if (showMonetaryValues && isPmcIndicator(selectedIndicator.code) && pmcMonetaryValues.length > 0) {
       return pmcMonetaryValues.map((v: any) => ({
         reference_date: v.reference_date,
@@ -440,8 +463,27 @@ export function TableDatabaseTab() {
       }));
     }
     
+    // PAC indicators: combine regional values + estimated values (2024-2025)
+    if (isPacIndicator(selectedIndicator.code) && pacEstimatedValues.length > 0) {
+      const baseValues = selectedIndicatorValues.map(v => ({
+        reference_date: v.reference_date,
+        value: v.value,
+        brazilian_ufs: v.brazilian_ufs,
+      }));
+      
+      const estimatedValues = pacEstimatedValues.map((v: any) => ({
+        reference_date: v.reference_date,
+        value: v.valor_estimado,
+        brazilian_ufs: v.uf_code > 0 && ufMap[v.uf_code] ? ufMap[v.uf_code] : null,
+      }));
+      
+      // Combine and sort by date descending
+      return [...baseValues, ...estimatedValues]
+        .sort((a, b) => b.reference_date.localeCompare(a.reference_date));
+    }
+    
     return selectedIndicatorValues;
-  }, [selectedIndicator, selectedIndicatorValues, showMonetaryValues, pmcMonetaryValues, ufMap]);
+  }, [selectedIndicator, selectedIndicatorValues, showMonetaryValues, pmcMonetaryValues, ufMap, pacEstimatedValues]);
 
   const handleCardClick = (indicator: IndicatorWithApi) => {
     setCurrentView('detail');
