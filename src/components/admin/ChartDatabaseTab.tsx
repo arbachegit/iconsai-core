@@ -15,11 +15,19 @@ import { TrendInfoModal } from "@/components/shared/TrendInfoModal";
 import { STSOutputPanel } from "@/components/shared/STSOutputPanel";
 import { STSAnalysisContent } from "@/components/shared/STSAnalysisContent";
 import { TableDataContent } from "@/components/shared/TableDataContent";
-
-type DialogView = 'detail' | 'sts' | 'table';
 import { formatAxisDate, type Frequency } from "@/lib/date-formatters";
 import { useTimeSeriesAnalysis, generateSuggestions } from "@/hooks/useTimeSeriesAnalysis";
 import { runStructuralTimeSeries, STSResult } from "@/lib/structural-time-series";
+import {
+  linearRegression,
+  standardDeviation,
+  mean,
+  movingAverage,
+  detectTrend,
+  coefficientOfVariation,
+} from "@/lib/statistics-utils";
+
+type DialogView = 'detail' | 'sts' | 'table';
 import {
   LineChart,
   Line,
@@ -167,14 +175,6 @@ const getProviderColor = (provider: string) => {
     default: return 'bg-muted text-muted-foreground';
   }
 };
-import {
-  linearRegression,
-  standardDeviation,
-  mean,
-  movingAverage,
-  detectTrend,
-  coefficientOfVariation,
-} from "@/lib/statistics-utils";
 
 interface Indicator {
   id: string;
