@@ -1,9 +1,13 @@
+import { useState, useMemo } from 'react';
 import { 
   Loader2,
   Calendar,
   MapPin,
   Database,
-  ArrowLeft
+  ArrowLeft,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 // Using native HTML table elements for sticky header support
 import { Badge } from "@/components/ui/badge";
@@ -25,8 +29,11 @@ interface TableDataContentProps {
   unit: string | null;
   frequency: string | null;
   isLoading: boolean;
-  isMonetaryMode?: boolean; // Flag to indicate R$ mode with large values
+  isMonetaryMode?: boolean;
 }
+
+type SortColumn = 'date' | 'uf' | 'value' | null;
+type SortDirection = 'asc' | 'desc' | null;
 
 const FREQUENCIES: Record<string, string> = {
   daily: "Diária",
@@ -55,7 +62,6 @@ function formatLargeMonetaryValue(value: number): string {
 }
 
 function formatTableValue(value: number, unit: string | null, isMonetaryMode?: boolean): string {
-  // If in monetary mode, use large value formatting
   if (isMonetaryMode) {
     return formatLargeMonetaryValue(value);
   }
@@ -91,6 +97,55 @@ export function TableDataContent({
   isLoading,
   isMonetaryMode = false,
 }: TableDataContentProps) {
+  // Default: sorted by date descending (most recent first)
+  const [sortColumn, setSortColumn] = useState<SortColumn>('date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      // Cycle: desc → asc → null → desc
+      if (sortDirection === 'desc') {
+        setSortDirection('asc');
+      } else if (sortDirection === 'asc') {
+        setSortColumn(null);
+        setSortDirection(null);
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  const sortedData = useMemo(() => {
+    if (!sortColumn || !sortDirection) return data;
+    
+    return [...data].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortColumn) {
+        case 'date':
+          comparison = a.reference_date.localeCompare(b.reference_date);
+          break;
+        case 'uf':
+          const ufA = a.brazilian_ufs?.uf_sigla || '';
+          const ufB = b.brazilian_ufs?.uf_sigla || '';
+          comparison = ufA.localeCompare(ufB);
+          break;
+        case 'value':
+          comparison = (a.value || 0) - (b.value || 0);
+          break;
+      }
+      
+      return sortDirection === 'desc' ? -comparison : comparison;
+    });
+  }, [data, sortColumn, sortDirection]);
+
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    if (sortDirection === 'asc') return <ArrowUp className="h-3 w-3 ml-1" />;
+    return <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header with back button */}
@@ -142,16 +197,40 @@ export function TableDataContent({
             <table className="w-full caption-bottom text-sm">
               <thead className="sticky top-0 bg-[#0D0D12] z-10 [&_tr]:border-b">
                 <tr className="border-b border-cyan-500/20">
-                  <th className="h-12 px-4 text-left align-middle font-medium text-cyan-400">Data</th>
+                  <th 
+                    className="h-12 px-4 text-left align-middle font-medium text-cyan-400 cursor-pointer hover:text-cyan-300 select-none transition-colors"
+                    onClick={() => handleSort('date')}
+                  >
+                    <div className="flex items-center">
+                      Data
+                      <SortIcon column="date" />
+                    </div>
+                  </th>
                   {isRegional && (
-                    <th className="h-12 px-4 text-left align-middle font-medium text-cyan-400">UF</th>
+                    <th 
+                      className="h-12 px-4 text-left align-middle font-medium text-cyan-400 cursor-pointer hover:text-cyan-300 select-none transition-colors"
+                      onClick={() => handleSort('uf')}
+                    >
+                      <div className="flex items-center">
+                        UF
+                        <SortIcon column="uf" />
+                      </div>
+                    </th>
                   )}
-                  <th className="h-12 px-4 text-right align-middle font-medium text-cyan-400">Valor</th>
+                  <th 
+                    className="h-12 px-4 text-right align-middle font-medium text-cyan-400 cursor-pointer hover:text-cyan-300 select-none transition-colors"
+                    onClick={() => handleSort('value')}
+                  >
+                    <div className="flex items-center justify-end">
+                      Valor
+                      <SortIcon column="value" />
+                    </div>
+                  </th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-cyan-400">Indicador</th>
                 </tr>
               </thead>
               <tbody className="[&_tr:last-child]:border-0">
-                {data.length === 0 ? (
+                {sortedData.length === 0 ? (
                   <tr>
                     <td
                       colSpan={isRegional ? 4 : 3}
@@ -161,7 +240,7 @@ export function TableDataContent({
                     </td>
                   </tr>
                 ) : (
-                  data.map((item, idx) => (
+                  sortedData.map((item, idx) => (
                     <tr
                       key={idx}
                       className="border-b border-cyan-500/5 hover:bg-cyan-500/5 transition-colors"
