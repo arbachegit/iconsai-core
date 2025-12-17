@@ -12,7 +12,7 @@ import FileProcessor from "@/components/chat/FileProcessor";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { useTranslation } from "react-i18next";
 
-interface AgentConfig {
+interface AgentConfigData {
   id: string;
   name: string;
   slug: string;
@@ -31,6 +31,8 @@ interface AgentConfig {
   } | null;
   maieutic_level: string | null;
   regional_tone: string | null;
+  allowed_tags: string[] | null;
+  forbidden_tags: string[] | null;
 }
 
 interface AgentChatProps {
@@ -70,7 +72,7 @@ export const AgentChat = memo(function AgentChat({
   embedded = false 
 }: AgentChatProps) {
   const { t } = useTranslation();
-  const [agent, setAgent] = useState<AgentConfig | null>(null);
+  const [agent, setAgent] = useState<AgentConfigData | null>(null);
   const [isLoadingAgent, setIsLoadingAgent] = useState(true);
   const [input, setInput] = useState("");
   const [showFileUpload, setShowFileUpload] = useState(false);
@@ -94,7 +96,7 @@ export const AgentChat = memo(function AgentChat({
         return;
       }
 
-      setAgent(data as AgentConfig);
+      setAgent(data as AgentConfigData);
       setIsLoadingAgent(false);
     };
 
@@ -133,10 +135,19 @@ export const AgentChat = memo(function AgentChat({
 
   const handleSubmit = useCallback((e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || isLoading) return;
-    sendMessage(input);
+    if (!input.trim() || isLoading || !agent) return;
+    sendMessage(input, {
+      agentConfig: {
+        systemPrompt: agent.system_prompt,
+        maieuticLevel: agent.maieutic_level,
+        regionalTone: agent.regional_tone,
+        ragCollection: agent.rag_collection,
+        allowedTags: agent.allowed_tags,
+        forbiddenTags: agent.forbidden_tags,
+      }
+    });
     setInput("");
-  }, [input, isLoading, sendMessage]);
+  }, [input, isLoading, sendMessage, agent]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -146,9 +157,20 @@ export const AgentChat = memo(function AgentChat({
   }, [handleSubmit]);
 
   const handleFileProcessed = useCallback((data: any[], fileName: string, columns: string[]) => {
-    sendMessage(`Arquivo carregado: ${fileName}`, { fileData: { data, fileName, columns } });
+    if (!agent) return;
+    sendMessage(`Arquivo carregado: ${fileName}`, { 
+      fileData: { data, fileName, columns },
+      agentConfig: {
+        systemPrompt: agent.system_prompt,
+        maieuticLevel: agent.maieutic_level,
+        regionalTone: agent.regional_tone,
+        ragCollection: agent.rag_collection,
+        allowedTags: agent.allowed_tags,
+        forbiddenTags: agent.forbidden_tags,
+      }
+    });
     setShowFileUpload(false);
-  }, [sendMessage]);
+  }, [sendMessage, agent]);
 
   const capabilities = agent?.capabilities || {};
 

@@ -9,13 +9,23 @@ type Message = {
   };
 };
 
+export interface AgentConfig {
+  systemPrompt?: string | null;
+  maieuticLevel?: string | null;
+  regionalTone?: string | null;
+  ragCollection?: string;
+  allowedTags?: string[] | null;
+  forbiddenTags?: string[] | null;
+}
+
 interface StreamChatOptions {
   messages: Message[];
   onDelta: (deltaText: string) => void;
   onDone: () => void;
   onError?: (error: Error) => void;
   chatType?: "health" | "study";
-  region?: string; // Região cultural do usuário para adaptação de tom
+  region?: string;
+  agentConfig?: AgentConfig;
 }
 
 export async function streamChat({
@@ -25,6 +35,7 @@ export async function streamChat({
   onError,
   chatType = "health",
   region,
+  agentConfig,
 }: StreamChatOptions) {
   const endpoint = chatType === "study" ? "chat-study" : "chat";
   const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${endpoint}`;
@@ -42,7 +53,8 @@ export async function streamChat({
           content: m.content,
           fileData: m.fileData
         })),
-        region 
+        region,
+        agentConfig,
       }),
     });
 
