@@ -1419,7 +1419,15 @@ export function ChartDatabaseTab() {
                               border: "1px solid hsl(var(--border))",
                               borderRadius: "8px",
                             }}
-                            formatter={(value: number) => [formatStatValue(value, selectedIndicator?.unit), "Valor"]}
+                            formatter={(value: number) => [
+                              formatStatValue(
+                                value, 
+                                showMonetaryValues && isPmcIndicator(selectedIndicator?.code || '') 
+                                  ? 'R$' 
+                                  : selectedIndicator?.unit
+                              ), 
+                              "Valor"
+                            ]}
                             labelFormatter={(label) => `Data: ${label}`}
                           />
                           <Legend />
@@ -1463,7 +1471,15 @@ export function ChartDatabaseTab() {
                               border: "1px solid hsl(var(--border))",
                               borderRadius: "8px",
                             }}
-                            formatter={(value: number) => [formatStatValue(value, selectedIndicator?.unit), "Valor"]}
+                            formatter={(value: number) => [
+                              formatStatValue(
+                                value, 
+                                showMonetaryValues && isPmcIndicator(selectedIndicator?.code || '') 
+                                  ? 'R$' 
+                                  : selectedIndicator?.unit
+                              ), 
+                              "Valor"
+                            ]}
                             labelFormatter={(label) => `Data: ${label}`}
                           />
                           <Legend />
@@ -1481,7 +1497,15 @@ export function ChartDatabaseTab() {
                               border: "1px solid hsl(var(--border))",
                               borderRadius: "8px",
                             }}
-                            formatter={(value: number) => [formatStatValue(value, selectedIndicator?.unit), "Valor"]}
+                            formatter={(value: number) => [
+                              formatStatValue(
+                                value, 
+                                showMonetaryValues && isPmcIndicator(selectedIndicator?.code || '') 
+                                  ? 'R$' 
+                                  : selectedIndicator?.unit
+                              ), 
+                              "Valor"
+                            ]}
                             labelFormatter={(label) => `Data: ${label}`}
                           />
                           <Legend />

@@ -149,7 +149,7 @@ export function TableDataContent({
   return (
     <div className="flex flex-col h-full">
       {/* Header with back button */}
-      <div className="flex-shrink-0 px-6 py-4 border-b border-cyan-500/20 bg-[#0D0D12]">
+      <div className="flex-shrink-0 sticky top-0 z-20 px-6 py-4 border-b border-cyan-500/20 bg-[#0D0D12]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
