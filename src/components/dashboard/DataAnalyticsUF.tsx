@@ -8,12 +8,25 @@ import { MapPin, Loader2, Search } from "lucide-react";
 import { BrazilMap } from "./BrazilMap";
 import { StateDataPanel } from "./StateDataPanel";
 import { RegionalStatesHeader } from "./RegionalStatesHeader";
+import { useDashboardAnalyticsSafe } from "@/contexts/DashboardAnalyticsContext";
+
+const UF_NAMES: Record<string, string> = {
+  AC: "Acre", AL: "Alagoas", AP: "Amapá", AM: "Amazonas", BA: "Bahia",
+  CE: "Ceará", DF: "Distrito Federal", ES: "Espírito Santo", GO: "Goiás",
+  MA: "Maranhão", MT: "Mato Grosso", MS: "Mato Grosso do Sul", MG: "Minas Gerais",
+  PA: "Pará", PB: "Paraíba", PR: "Paraná", PE: "Pernambuco", PI: "Piauí",
+  RJ: "Rio de Janeiro", RN: "Rio Grande do Norte", RS: "Rio Grande do Sul",
+  RO: "Rondônia", RR: "Roraima", SC: "Santa Catarina", SP: "São Paulo",
+  SE: "Sergipe", TO: "Tocantins",
+};
 
 export function DataAnalyticsUF() {
   const [selectedResearch, setSelectedResearch] = useState<string>("none");
   const [hoveredState, setHoveredState] = useState<string | null>(null);
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  
+  const dashboardAnalytics = useDashboardAnalyticsSafe();
 
   // Fetch regional APIs
   const { data: regionalApis, isLoading } = useQuery({
@@ -139,6 +152,28 @@ export function DataAnalyticsUF() {
     .map(uf => uf.uf_sigla);
 
   const isMapDisabled = selectedResearch === "none";
+
+  // Update context when state is selected
+  useEffect(() => {
+    if (dashboardAnalytics && selectedState && selectedResearch !== "none") {
+      const researchName = regionalApis?.find(api => api.id === selectedResearch)?.name || "Pesquisa Regional";
+      
+      dashboardAnalytics.setSelectedUF(selectedState);
+      dashboardAnalytics.setRegionalContext({
+        ufSigla: selectedState,
+        ufName: UF_NAMES[selectedState] || selectedState,
+        researchName,
+        researchId: selectedResearch,
+        trend: 'stable', // Will be updated by StateDataPanel
+        lastValue: null,
+        lastDate: null,
+        recordCount: 0,
+      });
+    } else if (dashboardAnalytics) {
+      dashboardAnalytics.setSelectedUF(null);
+      dashboardAnalytics.setRegionalContext(null);
+    }
+  }, [selectedState, selectedResearch, regionalApis, dashboardAnalytics]);
 
   return (
     <div className="p-6 space-y-6">

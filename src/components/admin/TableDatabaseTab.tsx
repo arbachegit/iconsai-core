@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { DebouncedInput } from "@/components/ui/debounced-input";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { formatDateByFrequency, type Frequency } from "@/lib/date-formatters";
 import { useTimeSeriesAnalysis, generateSuggestions } from "@/hooks/useTimeSeriesAnalysis";
 import { runStructuralTimeSeries, type STSResult } from "@/lib/structural-time-series";
+import { useDashboardAnalyticsSafe } from "@/contexts/DashboardAnalyticsContext";
 
 // Provider color styling (same as ApiManagementTab)
 const getProviderColor = (provider: string) => {
@@ -216,6 +217,8 @@ export function TableDatabaseTab() {
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
   const [showTrendModal, setShowTrendModal] = useState(false);
   const [currentView, setCurrentView] = useState<DialogView>('detail');
+  
+  const dashboardAnalytics = useDashboardAnalyticsSafe();
 
   // Fetch indicators with API name
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
@@ -457,6 +460,48 @@ export function TableDatabaseTab() {
     if (!analysisData || analysisData.length < 3) return null;
     return runStructuralTimeSeries(analysisData, selectedIndicator?.frequency as Frequency || 'monthly');
   }, [analysisData, selectedIndicator?.frequency]);
+
+  // Update dashboard analytics context when indicator is selected
+  useEffect(() => {
+    if (dashboardAnalytics && selectedIndicator && analysisData && analysisData.length > 0) {
+      const stats = analysis?.statistics ? {
+        mean: analysis.statistics.mean,
+        stdDev: analysis.statistics.stdDev,
+        cv: analysis.statistics.coefficientOfVariation,
+        min: analysis.statistics.min,
+        max: analysis.statistics.max,
+        trend: analysis.statistics.trendDirection,
+        slope: analysis.statistics.slope,
+        r2: analysis.statistics.r2,
+      } : null;
+      
+      dashboardAnalytics.setChartContext({
+        indicatorId: selectedIndicator.id,
+        indicatorName: selectedIndicator.name,
+        indicatorCode: selectedIndicator.code,
+        chartType: 'line',
+        frequency: selectedIndicator.frequency,
+        unit: selectedIndicator.unit,
+        periodStart: analysisData[0].date.toISOString().split('T')[0],
+        periodEnd: analysisData[analysisData.length - 1].date.toISOString().split('T')[0],
+        totalRecords: analysisData.length,
+        statistics: stats,
+        stsResult: stsData ? {
+          mu_smoothed: stsData.mu_smoothed,
+          beta_smoothed: stsData.beta_smoothed,
+          direction: stsData.direction,
+          strength: stsData.strength,
+          forecast: {
+            mean: stsData.forecast.mean,
+            p05: stsData.forecast.p05,
+            p95: stsData.forecast.p95,
+          },
+        } : null,
+      });
+    } else if (dashboardAnalytics && !selectedIndicator) {
+      dashboardAnalytics.setChartContext(null);
+    }
+  }, [selectedIndicator, analysisData, analysis, stsData, dashboardAnalytics]);
 
   // Get current (last) value for STS modal - aggregate for regional indicators
   const currentValue = useMemo(() => {
