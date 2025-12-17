@@ -551,6 +551,20 @@ export function TableDatabaseTab() {
         .sort((a, b) => a.date.getTime() - b.date.getTime());
     }
     
+    // For PMC regional with monetary toggle ON, aggregate by date
+    if (showMonetaryValues && isPmcRegionalIndicator(selectedIndicator?.code || '')) {
+      const aggregated: Record<string, number> = {};
+      displayData.forEach(v => {
+        const date = v.reference_date;
+        if (!aggregated[date]) aggregated[date] = 0;
+        aggregated[date] += v.value;
+      });
+      
+      return Object.entries(aggregated)
+        .map(([date, value]) => ({ date: new Date(date), value }))
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+    }
+    
     if (!isRegional) {
       // National data - use existing logic
       return displayData
@@ -1069,7 +1083,11 @@ export function TableDatabaseTab() {
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground">Unidade</span>
-                  <p className="text-sm text-white">{selectedIndicator?.unit || '-'}</p>
+                  <p className="text-sm text-white">
+                    {showMonetaryValues && isPmcIndicator(selectedIndicator?.code || '') 
+                      ? 'R$' 
+                      : (selectedIndicator?.unit || '-')}
+                  </p>
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground">Categoria</span>
