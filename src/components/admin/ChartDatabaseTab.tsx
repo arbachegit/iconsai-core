@@ -542,13 +542,21 @@ export function ChartDatabaseTab() {
     
     // PAC indicators: combine base values + estimated values (2024-2025)
     if (isPacIndicator(selectedIndicator.code) && pacEstimatedValues.length > 0) {
-      const baseValues = combinedValues
+      // Aggregate BASE values by date (sum across UFs) - same as estimated
+      const baseAggregated: Record<string, number> = {};
+      combinedValues
         .filter((v) => v.indicator_id === selectedIndicator.id)
-        .map((v) => ({
-          date: v.reference_date.substring(0, 7).split('-').reverse().join('/'),
-          value: v.value,
-          rawDate: v.reference_date,
-        }));
+        .forEach((v) => {
+          const date = v.reference_date;
+          if (!baseAggregated[date]) baseAggregated[date] = 0;
+          baseAggregated[date] += v.value || 0;
+        });
+      
+      const baseValues = Object.entries(baseAggregated).map(([date, value]) => ({
+        date: date.substring(0, 7).split('-').reverse().join('/'),
+        value,
+        rawDate: date,
+      }));
       
       // Aggregate estimated values by date (sum across UFs)
       const aggregated: Record<string, number> = {};
