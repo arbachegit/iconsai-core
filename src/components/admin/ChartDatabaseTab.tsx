@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useDashboardAnalyticsSafe } from "@/contexts/DashboardAnalyticsContext";
 import { DebouncedInput } from "@/components/ui/debounced-input";
 import { useQuery } from "@tanstack/react-query";
@@ -489,57 +489,16 @@ export function ChartDatabaseTab() {
     };
   }, [statistics, selectedData]);
 
-  // Emit context to DashboardAnalyticsContext when indicator is selected
+  // Stable ref to avoid dashboardAnalytics in useEffect dependencies (prevents infinite loops)
+  const dashboardAnalyticsRef = useRef(dashboardAnalytics);
   useEffect(() => {
-    if (selectedIndicator && combinedValues.length > 0 && dashboardAnalytics?.setChartContext) {
-      const sortedValues = combinedValues
-        .filter(v => v.indicator_id === selectedIndicator.id)
-        .sort((a, b) => a.reference_date.localeCompare(b.reference_date));
-      
-      const dates = sortedValues.map(v => v.reference_date);
-      
-      dashboardAnalytics.setChartContext({
-        indicatorId: selectedIndicator.id,
-        indicatorName: selectedIndicator.name,
-        indicatorCode: selectedIndicator.code,
-        chartType: chartType,
-        frequency: selectedIndicator.frequency,
-        unit: selectedIndicator.unit,
-        periodStart: dates[0] || '',
-        periodEnd: dates[dates.length - 1] || '',
-        totalRecords: sortedValues.length,
-        data: sortedValues.slice(-100).map(v => ({ date: v.reference_date, value: v.value })), // Limit to last 100 for payload size
-        statistics: statistics ? {
-          mean: statistics.mean,
-          stdDev: statistics.stdDev,
-          min: statistics.min,
-          max: statistics.max,
-          trend: statistics.trend,
-          cv: statistics.cv,
-          slope: statistics.slope,
-          r2: statistics.r2,
-        } : null,
-        stsResult: stsData ? {
-          mu_smoothed: stsData.mu_smoothed,
-          beta_smoothed: stsData.beta_smoothed,
-          direction: stsData.direction,
-          strength: stsData.strength,
-          forecast: stsData.forecast,
-        } : null
-      });
-    }
-    
-    // Clear context when modal closes
-    return () => {
-      if (!selectedIndicator && dashboardAnalytics?.setChartContext) {
-        dashboardAnalytics.setChartContext(null);
-      }
-    };
-  }, [selectedIndicator, combinedValues, statistics, stsData, chartType, dashboardAnalytics]);
+    dashboardAnalyticsRef.current = dashboardAnalytics;
+  }, [dashboardAnalytics]);
 
-  // Emit context to DashboardAnalyticsContext when indicator is selected
+  // Emit context to DashboardAnalyticsContext when indicator is selected (SINGLE useEffect - no duplicates)
   useEffect(() => {
-    if (!dashboardAnalytics) return;
+    const analytics = dashboardAnalyticsRef.current;
+    if (!analytics) return;
 
     if (selectedIndicator && statistics && selectedData.length > 0) {
       // Limit data to last 50 records to avoid payload bloat
@@ -582,18 +541,18 @@ export function ChartDatabaseTab() {
         } : null,
       };
       
-      dashboardAnalytics.setChartContext(contextData);
+      analytics.setChartContext(contextData);
       
       // Add to history for comparison support
-      dashboardAnalytics.addToHistory({
+      analytics.addToHistory({
         type: 'chart',
         label: selectedIndicator.name,
         context: contextData,
       });
     } else {
-      dashboardAnalytics.setChartContext(null);
+      analytics.setChartContext(null);
     }
-  }, [selectedIndicator, statistics, selectedData, chartType, stsData, dashboardAnalytics]);
+  }, [selectedIndicator, statistics, selectedData, chartType, stsData]); // NO dashboardAnalytics dependency!
 
   // Handlers for view switching
   const handleOpenStsAnalysis = useCallback(() => setCurrentView('sts'), []);

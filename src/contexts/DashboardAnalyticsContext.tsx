@@ -119,8 +119,8 @@ export function DashboardAnalyticsProvider({ children }: DashboardAnalyticsProvi
   // History management functions
   const addToHistory = useCallback((item: Omit<ContextHistoryItem, 'id' | 'timestamp'>) => {
     setContextHistory(prev => {
-      // Check if this item is already in history (by label)
-      const exists = prev.some(h => h.label === item.label);
+      // Check if this item is already in history (by label AND type to prevent duplicates)
+      const exists = prev.some(h => h.label === item.label && h.type === item.type);
       if (exists) return prev;
       
       const newItem: ContextHistoryItem = {

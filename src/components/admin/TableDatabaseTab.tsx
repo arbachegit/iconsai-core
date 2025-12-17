@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { DebouncedInput } from "@/components/ui/debounced-input";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -461,9 +461,17 @@ export function TableDatabaseTab() {
     return runStructuralTimeSeries(analysisData, selectedIndicator?.frequency as Frequency || 'monthly');
   }, [analysisData, selectedIndicator?.frequency]);
 
+  // Stable ref to avoid dashboardAnalytics in useEffect dependencies (prevents infinite loops)
+  const dashboardAnalyticsRef = useRef(dashboardAnalytics);
+  useEffect(() => {
+    dashboardAnalyticsRef.current = dashboardAnalytics;
+  }, [dashboardAnalytics]);
+
   // Update dashboard analytics context when indicator is selected
   useEffect(() => {
-    if (dashboardAnalytics && selectedIndicator && analysisData && analysisData.length > 0) {
+    const analytics = dashboardAnalyticsRef.current;
+    
+    if (analytics && selectedIndicator && analysisData && analysisData.length > 0) {
       const stats = analysis?.statistics ? {
         mean: analysis.statistics.mean,
         stdDev: analysis.statistics.stdDev,
@@ -506,18 +514,18 @@ export function TableDatabaseTab() {
         } : null,
       };
       
-      dashboardAnalytics.setChartContext(contextData);
+      analytics.setChartContext(contextData);
       
       // Add to history for comparison support
-      dashboardAnalytics.addToHistory({
+      analytics.addToHistory({
         type: 'chart',
         label: selectedIndicator.name,
         context: contextData,
       });
-    } else if (dashboardAnalytics && !selectedIndicator) {
-      dashboardAnalytics.setChartContext(null);
+    } else if (analytics && !selectedIndicator) {
+      analytics.setChartContext(null);
     }
-  }, [selectedIndicator, analysisData, analysis, stsData, dashboardAnalytics]);
+  }, [selectedIndicator, analysisData, analysis, stsData]); // NO dashboardAnalytics dependency!
 
   // Get current (last) value for STS modal - aggregate for regional indicators
   const currentValue = useMemo(() => {
