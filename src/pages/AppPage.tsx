@@ -292,7 +292,7 @@ export default function AppPage() {
             ) : (
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-3 h-10 rounded-lg hover:bg-destructive/10 text-destructive"
+                className="w-full justify-start gap-3 h-10 rounded-lg hover:bg-destructive/10 text-destructive hover:text-destructive"
                 onClick={signOut}
               >
                 <LogOut className="h-5 w-5" />
