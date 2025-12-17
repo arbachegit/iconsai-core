@@ -184,38 +184,6 @@ export default function DataAnalysisTab() {
   const [customCorrelations, setCustomCorrelations] = useState<string[]>([]);
   const [showCorrelationPicker, setShowCorrelationPicker] = useState(false);
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Carregando dados econômicos...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Card className="p-6 text-center">
-          <AlertTriangle className="h-8 w-8 mx-auto text-destructive mb-4" />
-          <p className="text-destructive font-medium">Erro ao carregar dados</p>
-          <p className="text-muted-foreground text-sm mt-2">{(error as Error).message}</p>
-          <Button onClick={() => refetch()} className="mt-4" variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Tentar novamente
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  // ============================================
-  // PARTE 1: DIAGNÓSTICO HISTÓRICO
-  // ============================================
-
   // Dados prontos para uso (fallback vazio se loading)
   const data = annualData || [];
 
@@ -378,7 +346,36 @@ export default function DataAnalysisTab() {
       modelMetrics: { r2, slope, intercept },
       sensitivity: sens,
     };
-  }, [cutoffYear, futureSliders, customCorrelations, topCorrelations]);
+  }, [cutoffYear, futureSliders, customCorrelations, topCorrelations, data]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Carregando dados econômicos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Card className="p-6 text-center">
+          <AlertTriangle className="h-8 w-8 mx-auto text-destructive mb-4" />
+          <p className="text-destructive font-medium">Erro ao carregar dados</p>
+          <p className="text-muted-foreground text-sm mt-2">{(error as Error).message}</p>
+          <Button onClick={() => refetch()} className="mt-4" variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Tentar novamente
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
 
   // ============================================
   // FUNÇÕES AUXILIARES
