@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, memo } from "react";
-import { Bot, Send, Loader2, Sparkles, Paperclip, X, Volume2, Mic, Image as ImageIcon, StopCircle } from "lucide-react";
+import { Bot, Send, Loader2, Sparkles, Paperclip, X, Volume2, Mic, Square, Image as ImageIcon, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,6 +11,7 @@ import { DataVisualization } from "@/components/chat/DataVisualization";
 import FileProcessor from "@/components/chat/FileProcessor";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 
 interface AgentConfigData {
   id: string;
@@ -79,6 +80,15 @@ export const AgentChat = memo(function AgentChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'waiting' | 'processing'>('idle');
+  const [waitingCountdown, setWaitingCountdown] = useState(5);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const prefixTextRef = useRef<string>("");
+
   // Fetch agent config
   useEffect(() => {
     const fetchAgent = async () => {
@@ -116,6 +126,7 @@ export const AgentChat = memo(function AgentChat({
     playAudio,
     stopAudio,
     currentlyPlayingIndex,
+    transcribeAudio,
   } = useChat(
     {
       chatType,
@@ -173,6 +184,98 @@ export const AgentChat = memo(function AgentChat({
   }, [sendMessage, agent]);
 
   const capabilities = agent?.capabilities || {};
+
+  // Voice recording functions
+  const startRecording = async () => {
+    if (!capabilities.voice) return;
+    
+    try {
+      prefixTextRef.current = input;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      // Audio context for silence detection
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      const microphone = audioContext.createMediaStreamSource(stream);
+      microphone.connect(analyser);
+      analyser.fftSize = 2048;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      let silenceStart: number | null = null;
+      let animationFrameId: number;
+      let recordingActive = true;
+
+      const checkSilence = () => {
+        if (!recordingActive) return;
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        
+        if (average < 10) {
+          if (!silenceStart) {
+            silenceStart = Date.now();
+            setVoiceStatus('waiting');
+          } else if (Date.now() - silenceStart > 5000) {
+            recordingActive = false;
+            mediaRecorder.stop();
+            cancelAnimationFrame(animationFrameId);
+            return;
+          }
+          setWaitingCountdown(Math.max(0, 5 - Math.floor((Date.now() - silenceStart) / 1000)));
+        } else {
+          silenceStart = null;
+          setVoiceStatus('listening');
+          setWaitingCountdown(5);
+        }
+        animationFrameId = requestAnimationFrame(checkSilence);
+      };
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        recordingActive = false;
+        cancelAnimationFrame(animationFrameId);
+        audioContext.close();
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        audioChunksRef.current = [];
+        stream.getTracks().forEach(track => track.stop());
+
+        setIsTranscribing(true);
+        setVoiceStatus('processing');
+        
+        try {
+          const transcribedText = await transcribeAudio(audioBlob);
+          const prefix = prefixTextRef.current;
+          const separator = prefix && !prefix.endsWith(' ') ? ' ' : '';
+          setInput(prefix + separator + transcribedText.trim());
+          prefixTextRef.current = "";
+        } catch (error) {
+          console.error('Transcription error:', error);
+        } finally {
+          setIsTranscribing(false);
+          setVoiceStatus('idle');
+          setIsRecording(false);
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setVoiceStatus('listening');
+      checkSilence();
+    } catch (error) {
+      console.error("Mic error:", error);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
 
   if (isLoadingAgent) {
     return (
@@ -261,8 +364,8 @@ export const AgentChat = memo(function AgentChat({
                   <MarkdownContent content={msg.content} className="text-sm" />
                 )}
                 
-                {/* Audio controls */}
-                {msg.role === "assistant" && capabilities.voice && msg.audioUrl && (
+                {/* Audio controls - on-demand generation */}
+                {msg.role === "assistant" && capabilities.voice && (
                   <div className="mt-2 flex gap-2">
                     {currentlyPlayingIndex === idx ? (
                       <Button
@@ -279,9 +382,14 @@ export const AgentChat = memo(function AgentChat({
                         variant="ghost"
                         size="sm"
                         onClick={() => playAudio(idx)}
+                        disabled={isGeneratingAudio}
                         className="h-7 text-xs"
                       >
-                        <Volume2 className="h-3 w-3 mr-1" />
+                        {isGeneratingAudio ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <Volume2 className="h-3 w-3 mr-1" />
+                        )}
                         Ouvir
                       </Button>
                     )}
@@ -351,6 +459,30 @@ export const AgentChat = memo(function AgentChat({
               <Paperclip className="h-5 w-5" />
             </Button>
           )}
+          
+          {/* Voice recording button */}
+          {capabilities.voice && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isTranscribing}
+              className={cn(
+                "shrink-0 transition-colors",
+                isRecording && "text-red-500 bg-red-500/10 animate-pulse"
+              )}
+            >
+              {isTranscribing ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : isRecording ? (
+                <Square className="h-5 w-5" />
+              ) : (
+                <Mic className="h-5 w-5" />
+              )}
+            </Button>
+          )}
+          
           <Textarea
             ref={textareaRef}
             value={input}
@@ -363,7 +495,7 @@ export const AgentChat = memo(function AgentChat({
           <Button
             type="submit"
             size="icon"
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || isRecording}
             className="shrink-0"
           >
             {isLoading ? (
@@ -373,6 +505,17 @@ export const AgentChat = memo(function AgentChat({
             )}
           </Button>
         </div>
+        
+        {/* Voice status indicator */}
+        {isRecording && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            {voiceStatus === 'listening' && "Ouvindo..."}
+            {voiceStatus === 'waiting' && `Silêncio detectado (${waitingCountdown}s)`}
+            {voiceStatus === 'processing' && "Processando..."}
+          </div>
+        )}
+        
         {isGeneratingAudio && (
           <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" />
