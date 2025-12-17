@@ -54,6 +54,11 @@ import {
   Heart,
   GraduationCap,
   Zap,
+  MapPin,
+  ArrowRightLeft,
+  BookOpen,
+  Trophy,
+  Target,
 } from "lucide-react";
 import { format } from "date-fns";
 import { runStructuralTimeSeries, STSResult } from "@/lib/structural-time-series";
@@ -68,6 +73,15 @@ import {
   standardDeviation,
   mean,
   coefficientOfVariation,
+  formatValueWithUnit,
+  getUnitSymbol,
+  grangerCausalityTest,
+  generateRegionalNarrative,
+  getRegionByUfCode,
+  getUfNameByCode,
+  getUfSiglaByCode,
+  type GrangerResult,
+  type RegionalStoryData,
 } from "@/lib/statistics-utils";
 import {
   spearmanCorrelation,
@@ -165,6 +179,14 @@ export function DataAnalysisTab() {
   const [scatterYIndicator, setScatterYIndicator] = useState<string | null>(null);
   const [scatterSizeIndicator, setScatterSizeIndicator] = useState<string | null>(null);
 
+  // Granger Causality state
+  const [grangerIndicatorX, setGrangerIndicatorX] = useState<string | null>(null);
+  const [grangerIndicatorY, setGrangerIndicatorY] = useState<string | null>(null);
+  const [grangerMaxLag, setGrangerMaxLag] = useState<number>(4);
+
+  // Regional Storytelling state
+  const [selectedRegionalIndicator, setSelectedRegionalIndicator] = useState<string | null>(null);
+
   // Fetch indicators
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
     queryKey: ["indicators-analysis"],
@@ -213,6 +235,55 @@ export function DataAnalysisTab() {
     staleTime: 30000,
   });
 
+  // Fetch regional indicators
+  const { data: regionalIndicators = [] } = useQuery({
+    queryKey: ["regional-indicators-analysis"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("economic_indicators")
+        .select("id, name, code, unit, category, is_regional")
+        .eq("is_regional", true)
+        .order("name");
+      if (error) throw error;
+      return data as (Indicator & { is_regional: boolean })[];
+    },
+    staleTime: 60000,
+  });
+
+  // Fetch regional values for selected indicator
+  const { data: regionalValues = [] } = useQuery({
+    queryKey: ["regional-values-analysis", selectedRegionalIndicator],
+    queryFn: async () => {
+      if (!selectedRegionalIndicator) return [];
+      const allData: { indicator_id: string; uf_code: number; reference_date: string; value: number }[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("indicator_regional_values")
+          .select("indicator_id, uf_code, reference_date, value")
+          .eq("indicator_id", selectedRegionalIndicator)
+          .order("reference_date", { ascending: false })
+          .range(from, from + pageSize - 1);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData.push(...data);
+          from += pageSize;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      return allData;
+    },
+    enabled: !!selectedRegionalIndicator,
+    staleTime: 30000,
+  });
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -750,6 +821,78 @@ export function DataAnalysisTab() {
     }
     return bestCorrelations;
   }, [bestCorrelationsTarget, selectedIndicators, filteredValues, allValues, indicators, correlationMethod, maxLag, yearRange, bestCorrelations]);
+
+  // Granger Causality test result
+  const grangerResult = useMemo<GrangerResult | null>(() => {
+    if (!grangerIndicatorX || !grangerIndicatorY || grangerIndicatorX === grangerIndicatorY) {
+      return null;
+    }
+
+    const valuesX = allValues
+      .filter((v) => {
+        const year = new Date(v.reference_date).getFullYear();
+        return v.indicator_id === grangerIndicatorX && year >= yearRange[0] && year <= yearRange[1];
+      })
+      .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
+      .map((v) => v.value);
+
+    const valuesY = allValues
+      .filter((v) => {
+        const year = new Date(v.reference_date).getFullYear();
+        return v.indicator_id === grangerIndicatorY && year >= yearRange[0] && year <= yearRange[1];
+      })
+      .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
+      .map((v) => v.value);
+
+    if (valuesX.length < grangerMaxLag + 5 || valuesY.length < grangerMaxLag + 5) {
+      return null;
+    }
+
+    return grangerCausalityTest(valuesX, valuesY, grangerMaxLag);
+  }, [grangerIndicatorX, grangerIndicatorY, grangerMaxLag, allValues, yearRange]);
+
+  // Regional Storytelling narrative
+  const regionalNarrative = useMemo(() => {
+    if (!selectedRegionalIndicator || regionalValues.length === 0) {
+      return null;
+    }
+
+    const indicator = regionalIndicators.find((i) => i.id === selectedRegionalIndicator);
+    
+    // Get latest values per UF
+    const latestByUf = new Map<number, { value: number; date: string; prevValue?: number }>();
+    
+    regionalValues.forEach((v) => {
+      const existing = latestByUf.get(v.uf_code);
+      if (!existing || v.reference_date > existing.date) {
+        latestByUf.set(v.uf_code, { 
+          value: v.value, 
+          date: v.reference_date,
+          prevValue: existing?.value
+        });
+      } else if (!existing.prevValue && v.reference_date < existing.date) {
+        existing.prevValue = v.value;
+      }
+    });
+
+    const storyData: RegionalStoryData[] = Array.from(latestByUf.entries()).map(([ufCode, data]) => {
+      const percentChange = data.prevValue 
+        ? ((data.value - data.prevValue) / data.prevValue) * 100 
+        : 0;
+      
+      return {
+        ufCode,
+        ufSigla: getUfSiglaByCode(ufCode),
+        ufName: getUfNameByCode(ufCode),
+        region: getRegionByUfCode(ufCode),
+        value: data.value,
+        trend: percentChange > 2 ? "up" : percentChange < -2 ? "down" : "stable",
+        percentChange,
+      };
+    });
+
+    return generateRegionalNarrative(storyData, indicator?.name || "Indicador", indicator?.unit || null);
+  }, [selectedRegionalIndicator, regionalValues, regionalIndicators]);
 
   const toggleIndicator = (id: string) => {
     setSelectedIndicators((prev) =>
@@ -1872,6 +2015,264 @@ export function DataAnalysisTab() {
               </CardContent>
             </Card>
           )}
+
+          {/* Granger Causality Test */}
+          <Card className="border-purple-500/30 bg-purple-500/5">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ArrowRightLeft className="h-5 w-5 text-purple-500" />
+                Teste de Causalidade de Granger
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label className="text-sm mb-2 block">Indicador X (Causa Potencial):</Label>
+                  <Select value={grangerIndicatorX || ""} onValueChange={setGrangerIndicatorX}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione indicador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {indicators.map((ind) => (
+                        <SelectItem key={ind.id} value={ind.id}>{ind.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm mb-2 block">Indicador Y (Efeito Potencial):</Label>
+                  <Select value={grangerIndicatorY || ""} onValueChange={setGrangerIndicatorY}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione indicador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {indicators.map((ind) => (
+                        <SelectItem key={ind.id} value={ind.id}>{ind.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm mb-2 block">Max Lag: {grangerMaxLag} períodos</Label>
+                  <Slider
+                    value={[grangerMaxLag]}
+                    onValueChange={(v) => setGrangerMaxLag(v[0])}
+                    min={1}
+                    max={12}
+                    step={1}
+                    className="mt-3"
+                  />
+                </div>
+              </div>
+
+              {grangerResult && (
+                <div className="mt-4 space-y-4">
+                  {/* Result Badge */}
+                  <div className="flex items-center justify-center gap-4 p-4 bg-background/60 rounded-lg">
+                    <Badge 
+                      variant={grangerResult.causalityType !== "none" ? "default" : "secondary"}
+                      className={`text-lg px-4 py-2 ${
+                        grangerResult.causalityType === "bidirectional" ? "bg-purple-500" :
+                        grangerResult.causalityType === "x_causes_y" ? "bg-emerald-500" :
+                        grangerResult.causalityType === "y_causes_x" ? "bg-blue-500" : ""
+                      }`}
+                    >
+                      {grangerResult.causalityType === "bidirectional" && "⇄ Bidirecional"}
+                      {grangerResult.causalityType === "x_causes_y" && "→ X Granger-causa Y"}
+                      {grangerResult.causalityType === "y_causes_x" && "← Y Granger-causa X"}
+                      {grangerResult.causalityType === "none" && "⊘ Sem Causalidade"}
+                    </Badge>
+                    <Badge variant="outline">Lag ótimo: {grangerResult.optimalLag}</Badge>
+                  </div>
+
+                  {/* Statistics */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Card className="bg-muted/30">
+                      <CardContent className="p-3 text-center">
+                        <p className="text-xs text-muted-foreground">F-stat (X→Y)</p>
+                        <p className="text-lg font-bold">{grangerResult.fStatXY.toFixed(3)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-muted/30">
+                      <CardContent className="p-3 text-center">
+                        <p className="text-xs text-muted-foreground">p-value (X→Y)</p>
+                        <p className={`text-lg font-bold ${grangerResult.pValueXY < 0.05 ? "text-emerald-500" : ""}`}>
+                          {grangerResult.pValueXY.toFixed(4)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-muted/30">
+                      <CardContent className="p-3 text-center">
+                        <p className="text-xs text-muted-foreground">F-stat (Y→X)</p>
+                        <p className="text-lg font-bold">{grangerResult.fStatYX.toFixed(3)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-muted/30">
+                      <CardContent className="p-3 text-center">
+                        <p className="text-xs text-muted-foreground">p-value (Y→X)</p>
+                        <p className={`text-lg font-bold ${grangerResult.pValueYX < 0.05 ? "text-blue-500" : ""}`}>
+                          {grangerResult.pValueYX.toFixed(4)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Interpretation */}
+                  <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
+                    <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                      <BookOpen className="h-4 w-4 text-purple-500" />
+                      Interpretação
+                    </h4>
+                    <p className="text-sm text-muted-foreground">{grangerResult.interpretation}</p>
+                    <p className="text-xs text-muted-foreground mt-2 italic">
+                      Nota: Causalidade de Granger indica previsibilidade temporal, não causalidade física. 
+                      p-value &lt; 0.05 indica significância estatística.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!grangerIndicatorX || !grangerIndicatorY ? (
+                <div className="text-center text-sm text-muted-foreground py-4">
+                  Selecione dois indicadores para testar a causalidade de Granger
+                </div>
+              ) : grangerIndicatorX === grangerIndicatorY ? (
+                <div className="text-center text-sm text-muted-foreground py-4">
+                  Selecione indicadores diferentes para X e Y
+                </div>
+              ) : !grangerResult ? (
+                <div className="text-center text-sm text-muted-foreground py-4">
+                  Dados insuficientes para o teste (mínimo: {grangerMaxLag + 5} observações por indicador)
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          {/* Regional Storytelling */}
+          <Card className="border-amber-500/30 bg-amber-500/5">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-amber-500" />
+                Storytelling Regional
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <Label className="text-sm font-medium whitespace-nowrap">Indicador Regional:</Label>
+                <Select value={selectedRegionalIndicator || ""} onValueChange={setSelectedRegionalIndicator}>
+                  <SelectTrigger className="max-w-md">
+                    <SelectValue placeholder="Selecione um indicador regional" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regionalIndicators.map((ind) => (
+                      <SelectItem key={ind.id} value={ind.id}>
+                        {ind.name} {ind.unit ? `(${ind.unit})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {regionalNarrative && (
+                <div className="space-y-4">
+                  {/* Highlights */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {regionalNarrative.highlights.map((highlight, idx) => (
+                      <div 
+                        key={idx}
+                        className="p-3 bg-background/60 rounded-lg border border-amber-500/20 text-sm"
+                      >
+                        {highlight}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Region Comparison */}
+                  <div>
+                    <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                      <Target className="h-4 w-4 text-amber-500" />
+                      Comparação por Região
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                      {regionalNarrative.regionComparison.map((rc, idx) => {
+                        const indicator = regionalIndicators.find(i => i.id === selectedRegionalIndicator);
+                        return (
+                          <Card key={rc.region} className={`bg-muted/30 ${idx === 0 ? "border-amber-500/50" : ""}`}>
+                            <CardContent className="p-3 text-center">
+                              <p className="text-xs text-muted-foreground">{rc.region}</p>
+                              <p className="text-lg font-bold">{formatValueWithUnit(rc.avgValue, indicator?.unit)}</p>
+                              <p className="text-xs text-muted-foreground">{rc.count} UF(s)</p>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Top 10 Ranking */}
+                  <div>
+                    <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                      <Trophy className="h-4 w-4 text-amber-500" />
+                      Ranking de Estados (Top 10)
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                      {regionalNarrative.ranking.slice(0, 10).map((r, idx) => {
+                        const indicator = regionalIndicators.find(i => i.id === selectedRegionalIndicator);
+                        return (
+                          <div 
+                            key={r.ufCode}
+                            className={`flex items-center justify-between p-2 rounded-lg border ${
+                              idx === 0 ? "bg-amber-500/10 border-amber-500/50" :
+                              idx < 3 ? "bg-muted/50 border-muted" : "bg-muted/30 border-transparent"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold ${idx === 0 ? "text-amber-500" : "text-muted-foreground"}`}>
+                                #{idx + 1}
+                              </span>
+                              <span className="font-medium">{r.ufSigla}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-mono">{formatValueWithUnit(r.value, indicator?.unit)}</span>
+                              {r.trend === "up" && <TrendingUp className="h-3 w-3 text-green-500" />}
+                              {r.trend === "down" && <TrendingDown className="h-3 w-3 text-red-500" />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Narrative Story */}
+                  <div className="p-4 bg-amber-500/10 rounded-lg border border-amber-500/30">
+                    <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                      <BookOpen className="h-4 w-4 text-amber-500" />
+                      Narrativa Analítica
+                    </h4>
+                    <div className="text-sm text-muted-foreground prose prose-sm dark:prose-invert max-w-none">
+                      {regionalNarrative.story.split('\n').map((paragraph, idx) => (
+                        <p key={idx} className="mb-2">{paragraph}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!selectedRegionalIndicator && (
+                <div className="text-center text-sm text-muted-foreground py-8">
+                  <MapPin className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  Selecione um indicador regional para gerar a narrativa automática
+                </div>
+              )}
+
+              {selectedRegionalIndicator && !regionalNarrative && (
+                <div className="text-center text-sm text-muted-foreground py-4">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                  Carregando dados regionais...
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </>
       )}
 
