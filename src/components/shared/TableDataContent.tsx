@@ -5,14 +5,7 @@ import {
   Database,
   ArrowLeft
 } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+// Using native HTML table elements for sticky header support
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDateByFrequency } from "@/lib/date-formatters";
@@ -139,60 +132,60 @@ export function TableDataContent({
       </div>
 
       {/* Table Content - scrollable */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+      <div className="flex-1 min-h-0 px-6 py-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-40">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="border border-cyan-500/20 rounded-md">
-            <Table>
-              <TableHeader className="sticky top-0 bg-[#0D0D12] z-10">
-                <TableRow>
-                  <TableHead className="text-cyan-400">Data</TableHead>
+          <div className="border border-cyan-500/20 rounded-md overflow-auto max-h-[calc(100vh-280px)]">
+            <table className="w-full caption-bottom text-sm">
+              <thead className="sticky top-0 bg-[#0D0D12] z-10 [&_tr]:border-b">
+                <tr className="border-b border-cyan-500/20">
+                  <th className="h-12 px-4 text-left align-middle font-medium text-cyan-400">Data</th>
                   {isRegional && (
-                    <TableHead className="text-cyan-400">UF</TableHead>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-cyan-400">UF</th>
                   )}
-                  <TableHead className="text-right text-cyan-400">Valor</TableHead>
-                  <TableHead className="text-cyan-400">Indicador</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                  <th className="h-12 px-4 text-right align-middle font-medium text-cyan-400">Valor</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-cyan-400">Indicador</th>
+                </tr>
+              </thead>
+              <tbody className="[&_tr:last-child]:border-0">
                 {data.length === 0 ? (
-                  <TableRow>
-                    <TableCell
+                  <tr>
+                    <td
                       colSpan={isRegional ? 4 : 3}
-                      className="text-center text-muted-foreground py-8"
+                      className="p-4 text-center text-muted-foreground py-8"
                     >
                       Nenhum valor encontrado para este indicador.
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ) : (
                   data.map((item, idx) => (
-                    <TableRow
+                    <tr
                       key={idx}
                       className="border-b border-cyan-500/5 hover:bg-cyan-500/5 transition-colors"
                     >
-                      <TableCell className="font-mono text-sm text-white">
+                      <td className="p-4 align-middle font-mono text-sm text-white">
                         {formatDateByFrequency(item.reference_date, frequency)}
-                      </TableCell>
+                      </td>
                       {isRegional && (
-                        <TableCell className="font-semibold text-sm text-white">
+                        <td className="p-4 align-middle font-semibold text-sm text-white">
                           {item.brazilian_ufs?.uf_sigla || "-"}
-                        </TableCell>
+                        </td>
                       )}
-                      <TableCell className="text-right font-mono text-white">
+                      <td className="p-4 align-middle text-right font-mono text-white">
                         {formatTableValue(Number(item.value), unit, isMonetaryMode)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      </td>
+                      <td className="p-4 align-middle text-muted-foreground">
                         {indicatorName}
                         {!isRegional && " - Brasil"}
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ))
                 )}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
         )}
       </div>
