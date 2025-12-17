@@ -38,6 +38,14 @@ const defaultCapabilities = {
   math: false
 };
 
+// Mapeamento de slugs para localizações de uso
+const agentLocationMap: Record<string, { locations: string[]; icon: string }> = {
+  health: { locations: [], icon: "⚠️" },
+  study: { locations: ["/index (Seção KnowYOU)"], icon: "📚" },
+  company: { locations: ["/index (Float Button)"], icon: "🏢" },
+  analyst: { locations: ["/app", "/dashboard"], icon: "📊" }
+};
+
 const AgentManagementTab: React.FC = () => {
   const [agents, setAgents] = useState<ChatAgent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -277,6 +285,32 @@ const AgentManagementTab: React.FC = () => {
                       <MessageSquare className="h-3 w-3 mr-1" />
                       {agent.rag_collection}
                     </Badge>
+                    
+                    {/* Badges de Localização */}
+                    {(() => {
+                      const locationInfo = agentLocationMap[agent.slug];
+                      if (!locationInfo) return null;
+                      
+                      if (locationInfo.locations.length === 0) {
+                        return (
+                          <Badge variant="outline" className="bg-amber-500/20 text-amber-300 border-amber-500/30">
+                            <Globe className="h-3 w-3 mr-1" />
+                            ⚠️ Não utilizado
+                          </Badge>
+                        );
+                      }
+                      
+                      return locationInfo.locations.map(loc => (
+                        <Badge 
+                          key={loc}
+                          variant="outline" 
+                          className="bg-purple-500/20 text-purple-300 border-purple-500/30"
+                        >
+                          <Globe className="h-3 w-3 mr-1" />
+                          {loc}
+                        </Badge>
+                      ));
+                    })()}
                   </div>
 
                   {activeCapabilities.length > 0 && (
