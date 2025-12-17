@@ -466,6 +466,50 @@ export const AgentChat = memo(function AgentChat({
         </div>
       )}
 
+      {/* Context Indicator Banner */}
+      {dashboardAnalytics?.hasContext && (
+        <div className="px-4 py-2 border-b border-border bg-cyan-500/10">
+          <div className="flex items-center gap-2 text-sm">
+            <BarChart3 className="h-4 w-4 text-cyan-500" />
+            <span className="text-cyan-600 dark:text-cyan-400 font-medium">
+              {dashboardAnalytics.regionalContext ? (
+                <>
+                  Contexto: <span className="font-semibold">{dashboardAnalytics.regionalContext.ufName}</span>
+                  {dashboardAnalytics.regionalContext.researchName && (
+                    <> — {dashboardAnalytics.regionalContext.researchName}</>
+                  )}
+                  {dashboardAnalytics.regionalContext.trend && (
+                    <span className="ml-2 inline-flex items-center gap-1">
+                      {dashboardAnalytics.regionalContext.trend === 'up' ? (
+                        <ArrowUp className="h-3 w-3 text-green-500" />
+                      ) : dashboardAnalytics.regionalContext.trend === 'down' ? (
+                        <ArrowDown className="h-3 w-3 text-red-500" />
+                      ) : null}
+                    </span>
+                  )}
+                </>
+              ) : dashboardAnalytics.chartContext ? (
+                <>
+                  Analisando: <span className="font-semibold">{dashboardAnalytics.chartContext.indicatorName}</span>
+                  {dashboardAnalytics.chartContext.statistics?.trend && (
+                    <span className="ml-2 inline-flex items-center gap-1">
+                      {dashboardAnalytics.chartContext.statistics.trend === 'up' ? (
+                        <ArrowUp className="h-3 w-3 text-green-500" />
+                      ) : dashboardAnalytics.chartContext.statistics.trend === 'down' ? (
+                        <ArrowDown className="h-3 w-3 text-red-500" />
+                      ) : null}
+                      <span className="text-muted-foreground text-xs">
+                        ({dashboardAnalytics.chartContext.totalRecords} registros)
+                      </span>
+                    </span>
+                  )}
+                </>
+              ) : null}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 p-4">
         {messages.length === 0 ? (
