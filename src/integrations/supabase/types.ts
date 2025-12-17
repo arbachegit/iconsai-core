@@ -2978,8 +2978,10 @@ export type Database = {
       process_all_pmc_conversions_batch: {
         Args: never
         Returns: {
-          indicator_code: string
-          records_inserted: number
+          pmc_code: string
+          total_converted: number
+          total_processed: number
+          years_covered: string
         }[]
       }
       process_pac_estimation_batch: {
