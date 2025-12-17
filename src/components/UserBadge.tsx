@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { User, LogOut, Settings, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
@@ -9,9 +10,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { ProfileModal } from "@/components/ProfileModal";
+import { SettingsModal } from "@/components/SettingsModal";
 
 export function UserBadge() {
   const { user, role, signOut } = useAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   if (!user) return null;
 
@@ -66,13 +71,19 @@ export function UserBadge() {
           )}
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer">
+        <DropdownMenuItem 
+          className="cursor-pointer"
+          onClick={() => setProfileOpen(true)}
+        >
           <User className="mr-2 h-4 w-4" />
           Perfil
         </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer">
+        <DropdownMenuItem 
+          className="cursor-pointer"
+          onClick={() => setSettingsOpen(true)}
+        >
           <Settings className="mr-2 h-4 w-4" />
-          Configurações
+          Configuracoes
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem 
@@ -83,6 +94,9 @@ export function UserBadge() {
           Sair
         </DropdownMenuItem>
       </DropdownMenuContent>
+
+      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} />
+      <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </DropdownMenu>
   );
 }

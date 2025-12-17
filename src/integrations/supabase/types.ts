@@ -1657,6 +1657,7 @@ export type Database = {
           institution_study: string | null
           institution_work: string | null
           last_name: string | null
+          phone: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1667,6 +1668,7 @@ export type Database = {
           institution_study?: string | null
           institution_work?: string | null
           last_name?: string | null
+          phone?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1677,6 +1679,7 @@ export type Database = {
           institution_study?: string | null
           institution_work?: string | null
           last_name?: string | null
+          phone?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -2571,6 +2574,39 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           value?: string
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          created_at: string | null
+          email_notifications: boolean | null
+          id: string
+          language: string | null
+          theme: string | null
+          updated_at: string | null
+          user_id: string
+          whatsapp_notifications: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_notifications?: boolean | null
+          id?: string
+          language?: string | null
+          theme?: string | null
+          updated_at?: string | null
+          user_id: string
+          whatsapp_notifications?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          email_notifications?: boolean | null
+          id?: string
+          language?: string | null
+          theme?: string | null
+          updated_at?: string | null
+          user_id?: string
+          whatsapp_notifications?: boolean | null
         }
         Relationships: []
       }
