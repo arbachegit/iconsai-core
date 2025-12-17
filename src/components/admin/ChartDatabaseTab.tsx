@@ -553,7 +553,7 @@ export function ChartDatabaseTab() {
         });
       
       const baseValues = Object.entries(baseAggregated).map(([date, value]) => ({
-        date: date.substring(0, 7).split('-').reverse().join('/'),
+        date: date.substring(0, 4),
         value,
         rawDate: date,
       }));
@@ -567,7 +567,7 @@ export function ChartDatabaseTab() {
       });
       
       const estimatedValues = Object.entries(aggregated).map(([date, value]) => ({
-        date: date.substring(0, 7).split('-').reverse().join('/'),
+        date: date.substring(0, 4),
         value,
         rawDate: date,
       }));
