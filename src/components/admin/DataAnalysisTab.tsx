@@ -11,8 +11,37 @@ import {
   ComposedChart, Area, ReferenceLine 
 } from "recharts";
 import { Calculator, TrendingUp, AlertTriangle, Plus, X, RefreshCw, BarChart3 } from "lucide-react";
-import regression from "regression";
 import { spearmanCorrelation, findOptimalLag, getCorrelationStrengthPtBr } from "@/lib/time-series-correlation";
+
+// Simple linear regression implementation (replaces regression library)
+function linearRegression(data: [number, number][]): { equation: [number, number]; r2: number } {
+  const n = data.length;
+  if (n < 2) return { equation: [0, 0], r2: 0 };
+
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+  for (const [x, y] of data) {
+    sumX += x;
+    sumY += y;
+    sumXY += x * y;
+    sumX2 += x * x;
+    sumY2 += y * y;
+  }
+
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+  
+  // Calculate R²
+  const meanY = sumY / n;
+  let ssRes = 0, ssTot = 0;
+  for (const [x, y] of data) {
+    const predicted = slope * x + intercept;
+    ssRes += (y - predicted) ** 2;
+    ssTot += (y - meanY) ** 2;
+  }
+  const r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
+
+  return { equation: [intercept, slope], r2 };
+}
 
 // ============================================
 // DADOS MOCK PARA DEMONSTRAÇÃO
@@ -158,17 +187,9 @@ export default function DataAnalysisTab() {
 
     // Regressão linear: Vendas = β₀ + β₁ × Renda
     const dataPoints: [number, number][] = trainingData.map(d => [d.income, d.sales]);
-    const result = regression.linear(dataPoints);
+    const result = linearRegression(dataPoints);
     const [intercept, slope] = result.equation;
-
-    // Calcular R²
-    const predictedTrain = trainingData.map(d => slope * d.income + intercept);
-    const actualTrain = trainingData.map(d => d.sales);
-    const meanActual = actualTrain.reduce((a, b) => a + b, 0) / actualTrain.length;
-
-    const ssRes = actualTrain.reduce((sum, actual, i) => sum + Math.pow(actual - predictedTrain[i], 2), 0);
-    const ssTot = actualTrain.reduce((sum, actual) => sum + Math.pow(actual - meanActual, 2), 0);
-    const r2 = ssTot > 0 ? 1 - (ssRes / ssTot) : 0;
+    const r2 = result.r2;
 
     // Gerar dados do gráfico
     const chartPoints = MOCK_ANNUAL_DATA.map(d => {
