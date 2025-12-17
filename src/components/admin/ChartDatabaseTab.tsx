@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useDashboardAnalyticsSafe } from "@/contexts/DashboardAnalyticsContext";
 import { DebouncedInput } from "@/components/ui/debounced-input";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -257,6 +257,9 @@ export function ChartDatabaseTab() {
   const [currentView, setCurrentView] = useState<DialogView>('detail');
   const [showMonetaryValues, setShowMonetaryValues] = useState(false);
 
+  // Query client for cache invalidation
+  const queryClient = useQueryClient();
+
   // Dashboard analytics context (safe - returns null if not in provider)
   const dashboardAnalytics = useDashboardAnalyticsSafe();
 
@@ -390,7 +393,7 @@ export function ChartDatabaseTab() {
     refetchOnMount: 'always',
   });
 
-  const { data: indicatorStats = {}, isLoading: loadingStats } = useQuery({
+  const { data: indicatorStats = {}, isLoading: loadingStats, refetch: refetchStats } = useQuery({
     queryKey: ["indicator-stats-chart-db"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -413,19 +416,29 @@ export function ChartDatabaseTab() {
       return stats;
     },
     refetchOnWindowFocus: false,
-    staleTime: 120000, // 2 minutes cache
+    staleTime: 30000, // 30 seconds cache (reduced for faster updates)
   });
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await Promise.all([refetchIndicators(), refetchValues()]);
+      // Invalidate all related caches first
+      await queryClient.invalidateQueries({ queryKey: ["indicator-stats-chart-db"] });
+      await queryClient.invalidateQueries({ queryKey: ["pmc-monetary-values-chart"] });
+      await Promise.all([refetchIndicators(), refetchValues(), refetchStats()]);
       const totalCount = Object.values(indicatorStats).reduce((sum, stat) => sum + (stat?.count || 0), 0);
       setLastUpdate({ count: totalCount, date: new Date() });
     } finally {
       setIsRefreshing(false);
     }
   };
+
+  // Force refetch PMC monetary values when toggle changes
+  useEffect(() => {
+    if (selectedIndicator && isPmcIndicator(selectedIndicator.code)) {
+      queryClient.invalidateQueries({ queryKey: ["pmc-monetary-values-chart", selectedIndicator.code] });
+    }
+  }, [showMonetaryValues, selectedIndicator?.code, queryClient]);
 
   // Combined values from selected indicator (national + regional)
   const combinedValues = useMemo(() => {
