@@ -330,7 +330,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
     }
 
     if (input.trim() && !isLoading) {
-      if (isImageMode) {
+      if (isImageMode && agentCapabilities.drawing !== false) {
         generateImage(input);
         setInput("");
         setIsImageMode(false);
@@ -344,12 +344,14 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
   };
 
   const toggleImageMode = () => {
+    if (agentCapabilities.drawing === false) return;
     setIsImageMode(!isImageMode);
     setIsChartMode(false);
     setInput("");
   };
 
   const toggleChartMode = () => {
+    if (agentCapabilities.charts === false) return;
     setIsChartMode(!isChartMode);
     setIsImageMode(false);
     setInput("");
@@ -747,7 +749,7 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
                     {msg.imageUrl && <img src={msg.imageUrl} alt={t('chat.generatingImage')} className="max-w-full rounded-lg mb-2" />}
                           <MarkdownContent content={msg.content} />
                     
-                    {msg.role === "assistant" && <AudioControls audioUrl={msg.audioUrl} imageUrl={msg.imageUrl} isPlaying={currentlyPlayingIndex === idx} isGeneratingAudio={isGeneratingAudio} currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0} duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} onDownloadImage={msg.imageUrl ? () => handleDownloadImage(msg.imageUrl!, idx) : undefined} />}
+                    {msg.role === "assistant" && agentCapabilities.voice !== false && <AudioControls audioUrl={msg.audioUrl} imageUrl={msg.imageUrl} isPlaying={currentlyPlayingIndex === idx} isGeneratingAudio={isGeneratingAudio} currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0} duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0} timestamp={msg.timestamp} location={location || undefined} messageContent={msg.content} onPlay={() => handleAudioPlay(idx)} onStop={handleAudioStop} onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined} onDownloadImage={msg.imageUrl ? () => handleDownloadImage(msg.imageUrl!, idx) : undefined} />}
                   </div>
                 </div>)}
                 {(isLoading || isGeneratingAudio || isGeneratingImage) && <div className="flex justify-start">
@@ -817,17 +819,23 @@ export default function ChatStudy({ onClose }: ChatStudyProps = {}) {
           
             {/* Esquerda: Mic + Draw lado a lado */}
             <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
-              <Button type="button" size="icon" variant="ghost" onClick={isRecording ? stopRecording : startRecording} className={`h-9 w-9 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500 bg-red-500/10" : ""}`}>
-                {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-              </Button>
+              {agentCapabilities.voice !== false && (
+                <Button type="button" size="icon" variant="ghost" onClick={isRecording ? stopRecording : startRecording} className={`h-9 w-9 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow ${isRecording ? "text-red-500 bg-red-500/10" : ""}`}>
+                  {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </Button>
+              )}
               
-              <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} title="Desenhar" className="h-9 w-9 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
-                <ImagePlus className="w-4 h-4" />
-              </Button>
+              {agentCapabilities.drawing !== false && (
+                <Button type="button" size="icon" variant={isImageMode ? "default" : "ghost"} onClick={toggleImageMode} disabled={isGeneratingImage} title="Desenhar" className="h-9 w-9 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
+                  <ImagePlus className="w-4 h-4" />
+                </Button>
+              )}
               
-              <Button type="button" size="icon" variant={isChartMode ? "default" : "ghost"} onClick={toggleChartMode} title="Gráfico" className="h-9 w-9 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
-                <BarChart3 className="w-4 h-4" />
-              </Button>
+              {agentCapabilities.charts !== false && (
+                <Button type="button" size="icon" variant={isChartMode ? "default" : "ghost"} onClick={toggleChartMode} title="Gráfico" className="h-9 w-9 shadow-[0_3px_8px_rgba(0,0,0,0.25)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.3)] transition-shadow">
+                  <BarChart3 className="w-4 h-4" />
+                </Button>
+              )}
               
               {/* File upload button - only if capability enabled */}
               {agentCapabilities.file_upload && (
