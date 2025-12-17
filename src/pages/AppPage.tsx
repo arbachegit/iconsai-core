@@ -38,7 +38,7 @@ export default function AppPage() {
 
   const menuItems = [
     { id: "home" as AppView, label: "Início", icon: Home },
-    { id: "chat" as AppView, label: "Assistente IA", icon: MessageSquare },
+    { id: "chat" as AppView, label: "Assistente KnowYOU", icon: MessageSquare },
     { id: "data" as AppView, label: "Dados", icon: Database },
     { id: "analytics" as AppView, label: "Analytics", icon: BarChart3 },
     { id: "settings" as AppView, label: "Configurações", icon: Settings },
