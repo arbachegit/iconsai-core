@@ -11,6 +11,7 @@ import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
 import { FloatingAudioPlayer } from "./components/FloatingAudioPlayer";
 import { useApiRegistrySync } from "./hooks/useApiRegistrySync";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 // Lazy load non-critical pages
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -40,60 +41,62 @@ const ApiRegistrySyncProvider = ({ children }: { children: React.ReactNode }) =>
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AudioPlayerProvider>
-      <TooltipProvider>
-        <ApiRegistrySyncProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/admin/signup" element={<AdminSignup />} />
-                <Route path="/admin/reset-password" element={<AdminResetPassword />} />
-                
-                {/* Protected Routes */}
-                <Route path="/hub" element={
-                  <ProtectedRoute requiredRole="superadmin">
-                    <Hub />
-                  </ProtectedRoute>
-                } />
-                <Route path="/app" element={
-                  <ProtectedRoute>
-                    <AppPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/dashboard" element={
-                  <ProtectedRoute requiredRole="admin">
-                    <DashboardAdmin />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/dashboard" element={
-                  <ProtectedRoute requiredRole="admin">
-                    <Dashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin" element={
-                  <ProtectedRoute requiredRole="superadmin">
-                    <Admin />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Public Routes */}
-                <Route path="/docs" element={<Documentation />} />
-                <Route path="/arquitetura" element={<Arquitetura />} />
-                
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-          {/* Global Floating Audio Player */}
-          <FloatingAudioPlayer />
-        </ApiRegistrySyncProvider>
-      </TooltipProvider>
-    </AudioPlayerProvider>
+    <ThemeProvider>
+      <AudioPlayerProvider>
+        <TooltipProvider>
+          <ApiRegistrySyncProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/admin/login" element={<AdminLogin />} />
+                  <Route path="/admin/signup" element={<AdminSignup />} />
+                  <Route path="/admin/reset-password" element={<AdminResetPassword />} />
+                  
+                  {/* Protected Routes */}
+                  <Route path="/hub" element={
+                    <ProtectedRoute requiredRole="superadmin">
+                      <Hub />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/app" element={
+                    <ProtectedRoute>
+                      <AppPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute requiredRole="admin">
+                      <DashboardAdmin />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/dashboard" element={
+                    <ProtectedRoute requiredRole="admin">
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin" element={
+                    <ProtectedRoute requiredRole="superadmin">
+                      <Admin />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Public Routes */}
+                  <Route path="/docs" element={<Documentation />} />
+                  <Route path="/arquitetura" element={<Arquitetura />} />
+                  
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+            {/* Global Floating Audio Player */}
+            <FloatingAudioPlayer />
+          </ApiRegistrySyncProvider>
+        </TooltipProvider>
+      </AudioPlayerProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
