@@ -62,6 +62,17 @@ const PMC_NATIONAL_CODES = [
   'PMC', 'PMC_COMB', 'PMC_CONST', 'PMC_FARM', 'PMC_MOV', 'PMC_VEIC', 'PMC_VEST'
 ];
 
+// Mapping PMC national codes to their regional equivalents for R$ aggregation
+const PMC_NATIONAL_TO_REGIONAL_MAP: Record<string, string> = {
+  'PMC': 'PMC_VAREJO_UF',
+  'PMC_COMB': 'PMC_COMB_UF',
+  'PMC_CONST': 'PMC_CONST_UF',
+  'PMC_FARM': 'PMC_FARM_UF',
+  'PMC_MOV': 'PMC_MOV_UF',
+  'PMC_VEIC': 'PMC_VEICULOS_UF',
+  'PMC_VEST': 'PMC_VEST_UF',
+};
+
 // National indicators with partial UF coverage
 const PMC_PARTIAL_COVERAGE: Record<string, { ufs: number; disclaimer: string }> = {
   'PMC_COMB': { ufs: 12, disclaimer: '12 UFs disponíveis' },
@@ -86,6 +97,11 @@ const isPmcIndicator = (code: string): boolean => {
 // Check if indicator is PAC (has estimated values in pac_valores_estimados)
 const isPacIndicator = (code: string): boolean => {
   return code.startsWith('PAC_');
+};
+
+// Check if indicator has toggle available (PMC or PAC)
+const hasMonetaryToggle = (code: string): boolean => {
+  return isPmcIndicator(code) || isPacIndicator(code);
 };
 
 const getPmcCoverageInfo = (code: string): { hasPartialCoverage: boolean; disclaimer: string | null } => {
@@ -422,35 +438,27 @@ export function TableDatabaseTab() {
 
   // Fetch PMC monetary values for conversion toggle (supports both regional and national)
   const { data: pmcMonetaryValues = [] } = useQuery({
-    queryKey: ["pmc-monetary-values-table", selectedIndicator?.code, "v2"],
+    queryKey: ["pmc-monetary-values-table", selectedIndicator?.code, "v3-aggregated"],
     queryFn: async () => {
       if (!selectedIndicator || !isPmcIndicator(selectedIndicator.code)) return [];
       
       const isNational = isPmcNationalIndicator(selectedIndicator.code);
       
-      if (isNational) {
-        // National indicators: fetch aggregated data (uf_code = 0)
-        const { data, error } = await supabase
-          .from("pmc_valores_reais")
-          .select("reference_date, uf_code, valor_estimado_reais")
-          .eq("pmc_indicator_code", selectedIndicator.code)
-          .eq("uf_code", 0)
-          .order("reference_date", { ascending: false })
-          .limit(10000);
-        if (error) throw error;
-        return data || [];
-      } else {
-        // Regional indicators: fetch without join, merge UF names in frontend
-        const { data, error } = await supabase
-          .from("pmc_valores_reais")
-          .select("reference_date, uf_code, valor_estimado_reais")
-          .eq("pmc_indicator_code", selectedIndicator.code)
-          .gt("uf_code", 0)
-          .order("reference_date", { ascending: false })
-          .limit(10000);
-        if (error) throw error;
-        return data || [];
-      }
+      // For national indicators, use the regional equivalent code to aggregate
+      const queryCode = isNational 
+        ? PMC_NATIONAL_TO_REGIONAL_MAP[selectedIndicator.code] || selectedIndicator.code
+        : selectedIndicator.code;
+      
+      // Always fetch regional data (uf_code > 0) - aggregation happens in displayData
+      const { data, error } = await supabase
+        .from("pmc_valores_reais")
+        .select("reference_date, uf_code, valor_estimado_reais")
+        .eq("pmc_indicator_code", queryCode)
+        .gt("uf_code", 0)
+        .order("reference_date", { ascending: false })
+        .limit(10000);
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!selectedIndicator && isPmcIndicator(selectedIndicator?.code || ''),
     staleTime: 0,
@@ -480,31 +488,57 @@ export function TableDatabaseTab() {
     
     // PMC monetary toggle
     if (showMonetaryValues && isPmcIndicator(selectedIndicator.code) && pmcMonetaryValues.length > 0) {
+      const isNational = isPmcNationalIndicator(selectedIndicator.code);
+      
+      if (isNational) {
+        // National PMC: aggregate all UF values by date to get Brazil total
+        const aggregated: Record<string, number> = {};
+        pmcMonetaryValues.forEach((v: any) => {
+          const date = v.reference_date;
+          if (!aggregated[date]) aggregated[date] = 0;
+          aggregated[date] += v.valor_estimado_reais || 0;
+        });
+        
+        return Object.entries(aggregated)
+          .sort(([a], [b]) => b.localeCompare(a))
+          .map(([date, value]) => ({
+            reference_date: date,
+            value,
+            brazilian_ufs: null, // National aggregate has no UF
+          }));
+      }
+      
+      // Regional PMC: keep individual UF values
       return pmcMonetaryValues.map((v: any) => ({
         reference_date: v.reference_date,
         value: v.valor_estimado_reais,
-        // Merge UF info from lookup map (null for national uf_code=0)
         brazilian_ufs: v.uf_code > 0 && ufMap[v.uf_code] ? ufMap[v.uf_code] : null,
       }));
     }
     
-    // PAC indicators: combine regional values + estimated values (2024-2025)
-    if (isPacIndicator(selectedIndicator.code) && pacEstimatedValues.length > 0) {
+    // PAC indicators: show base values, optionally add estimated values (2024-2025) when toggle is ON
+    if (isPacIndicator(selectedIndicator.code)) {
       const baseValues = selectedIndicatorValues.map(v => ({
         reference_date: v.reference_date,
         value: v.value,
         brazilian_ufs: v.brazilian_ufs,
       }));
       
-      const estimatedValues = pacEstimatedValues.map((v: any) => ({
-        reference_date: v.reference_date,
-        value: v.valor_estimado,
-        brazilian_ufs: v.uf_code > 0 && ufMap[v.uf_code] ? ufMap[v.uf_code] : null,
-      }));
+      // If toggle ON and we have estimated values, add them
+      if (showMonetaryValues && pacEstimatedValues.length > 0) {
+        const estimatedValues = pacEstimatedValues.map((v: any) => ({
+          reference_date: v.reference_date,
+          value: v.valor_estimado,
+          brazilian_ufs: v.uf_code > 0 && ufMap[v.uf_code] ? ufMap[v.uf_code] : null,
+        }));
+        
+        // Combine and sort by date descending
+        return [...baseValues, ...estimatedValues]
+          .sort((a, b) => b.reference_date.localeCompare(a.reference_date));
+      }
       
-      // Combine and sort by date descending
-      return [...baseValues, ...estimatedValues]
-        .sort((a, b) => b.reference_date.localeCompare(a.reference_date));
+      // Toggle OFF: only base values
+      return baseValues.sort((a, b) => b.reference_date.localeCompare(a.reference_date));
     }
     
     return selectedIndicatorValues;
@@ -1103,18 +1137,22 @@ export function TableDatabaseTab() {
                 
                 {/* Botões: Toggle + Ver Tabela + Fechar */}
                 <div className="flex items-center gap-3">
-                  {/* Toggle Índice ↔ R$ for PMC indicators (regional and national) */}
-                  {selectedIndicator && isPmcIndicator(selectedIndicator.code) && (
+                  {/* Toggle Índice ↔ R$ for PMC and PAC indicators */}
+                  {selectedIndicator && hasMonetaryToggle(selectedIndicator.code) && (
                     <div className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/30 rounded-lg bg-muted/30">
                       <Activity className="h-4 w-4 text-muted-foreground" />
-                      <span className={cn("text-sm", !showMonetaryValues && "text-cyan-400 font-medium")}>Índice</span>
+                      <span className={cn("text-sm", !showMonetaryValues && "text-cyan-400 font-medium")}>
+                        {isPacIndicator(selectedIndicator.code) ? 'Histórico' : 'Índice'}
+                      </span>
                       <Switch 
                         checked={showMonetaryValues} 
                         onCheckedChange={setShowMonetaryValues}
                       />
-                      <span className={cn("text-sm", showMonetaryValues && "text-green-400 font-medium")}>R$</span>
+                      <span className={cn("text-sm", showMonetaryValues && "text-green-400 font-medium")}>
+                        {isPacIndicator(selectedIndicator.code) ? '+Estimado' : 'R$'}
+                      </span>
                       <DollarSign className="h-4 w-4 text-green-400" />
-                      {getPmcCoverageInfo(selectedIndicator.code).hasPartialCoverage && (
+                      {isPmcIndicator(selectedIndicator.code) && getPmcCoverageInfo(selectedIndicator.code).hasPartialCoverage && (
                         <span className="text-[10px] text-yellow-400" title={getPmcCoverageInfo(selectedIndicator.code).disclaimer || ''}>
                           ⚠️
                         </span>
