@@ -493,6 +493,12 @@ export function ChartDatabaseTab() {
     if (!dashboardAnalytics) return;
 
     if (selectedIndicator && statistics && selectedData.length > 0) {
+      // Limit data to last 50 records to avoid payload bloat
+      const limitedData = selectedData.slice(-50).map(d => ({
+        date: d.date,
+        value: d.value,
+      }));
+      
       dashboardAnalytics.setChartContext({
         indicatorId: selectedIndicator.id,
         indicatorName: selectedIndicator.name,
@@ -503,6 +509,7 @@ export function ChartDatabaseTab() {
         periodStart: selectedData[0].date,
         periodEnd: selectedData[selectedData.length - 1].date,
         totalRecords: selectedData.length,
+        data: limitedData,
         statistics: {
           mean: statistics.mean,
           stdDev: statistics.stdDev,

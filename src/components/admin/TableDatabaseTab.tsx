@@ -475,6 +475,12 @@ export function TableDatabaseTab() {
         r2: analysis.statistics.r2,
       } : null;
       
+      // Limit data to last 50 records to avoid payload bloat
+      const limitedData = analysisData.slice(-50).map(d => ({
+        date: d.date.toISOString().split('T')[0],
+        value: d.value,
+      }));
+      
       dashboardAnalytics.setChartContext({
         indicatorId: selectedIndicator.id,
         indicatorName: selectedIndicator.name,
@@ -485,6 +491,7 @@ export function TableDatabaseTab() {
         periodStart: analysisData[0].date.toISOString().split('T')[0],
         periodEnd: analysisData[analysisData.length - 1].date.toISOString().split('T')[0],
         totalRecords: analysisData.length,
+        data: limitedData,
         statistics: stats,
         stsResult: stsData ? {
           mu_smoothed: stsData.mu_smoothed,

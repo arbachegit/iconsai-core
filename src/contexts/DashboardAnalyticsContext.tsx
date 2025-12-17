@@ -9,6 +9,8 @@ export interface RegionalContext {
   lastValue: number | null;
   lastDate: string | null;
   recordCount: number;
+  // Raw data for chart generation (limited to avoid payload bloat)
+  data?: Array<{ date: string; value: number }>;
 }
 
 export interface ChartContext {
@@ -24,6 +26,9 @@ export interface ChartContext {
   periodStart: string;
   periodEnd: string;
   totalRecords: number;
+  
+  // Raw data for chart generation (limited to avoid payload bloat)
+  data: Array<{ date: string; value: number }>;
   
   // Basic statistics
   statistics: {
@@ -104,12 +109,26 @@ Você está auxiliando um analista que está visualizando dados regionais:
       if (regionalContext.lastDate) {
         prompt += `\n**Data mais recente:** ${regionalContext.lastDate}`;
       }
-      prompt += `\n**Tendência:** ${trendEmoji} ${trendLabel}
+      prompt += `\n**Tendência:** ${trendEmoji} ${trendLabel}`;
+
+      // Include raw data for chart generation
+      if (regionalContext.data && regionalContext.data.length > 0) {
+        prompt += `
+
+### DADOS DISPONÍVEIS PARA GRÁFICO:
+Você TEM acesso aos dados abaixo. Use-os diretamente para gerar gráficos quando solicitado.
+\`\`\`json
+${JSON.stringify(regionalContext.data, null, 2)}
+\`\`\``;
+      }
+
+      prompt += `
 
 ## INSTRUÇÕES
 Responda perguntas sobre este estado e indicador regional.
 Relacione com economia brasileira e contexto regional quando relevante.
 Considere diferenças socioeconômicas entre regiões do Brasil.
+IMPORTANTE: Você TEM os dados disponíveis acima. Quando o usuário pedir gráficos, USE esses dados diretamente.
 Seja preciso e objetivo nas respostas.`;
 
       return prompt;
@@ -117,7 +136,7 @@ Seja preciso e objetivo nas respostas.`;
 
     if (!chartContext) return "";
 
-    const { statistics, stsResult } = chartContext;
+    const { statistics, stsResult, data } = chartContext;
     
     let prompt = `## CONTEXTO DO DASHBOARD
 
@@ -155,6 +174,17 @@ Você está auxiliando um analista que está visualizando:
 - **Previsão próximo período:** ${stsResult.forecast.mean.toFixed(2)} (IC 95%: ${stsResult.forecast.p05.toFixed(2)} - ${stsResult.forecast.p95.toFixed(2)})`;
     }
 
+    // Include raw data for chart generation
+    if (data && data.length > 0) {
+      prompt += `
+
+### DADOS DISPONÍVEIS PARA GRÁFICO:
+Você TEM acesso aos dados abaixo. Use-os diretamente para gerar gráficos quando solicitado.
+\`\`\`json
+${JSON.stringify(data, null, 2)}
+\`\`\``;
+    }
+
     if (selectedUF) {
       prompt += `
 
@@ -168,6 +198,7 @@ Você está auxiliando um analista que está visualizando:
 Responda perguntas sobre este indicador com base nos dados acima.
 Relacione com economia brasileira, política monetária e contexto regional quando relevante.
 Use os dados estatísticos e de tendência para fundamentar suas análises.
+IMPORTANTE: Você TEM os dados disponíveis acima. Quando o usuário pedir gráficos, USE esses dados diretamente.
 Seja preciso e objetivo nas respostas.`;
 
     return prompt;

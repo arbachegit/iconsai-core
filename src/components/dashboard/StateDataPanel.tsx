@@ -99,6 +99,15 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
     if (dashboardAnalytics && regionalData && regionalData.length > 0) {
       const lastItem = regionalData[0]; // Sorted by date DESC
       
+      // Limit data to last 50 records to avoid payload bloat
+      const limitedData = regionalData
+        .slice(0, 50)
+        .map(d => ({
+          date: d.reference_date,
+          value: d.value,
+        }))
+        .reverse(); // Reverse to chronological order
+      
       dashboardAnalytics.setRegionalContext({
         ufSigla,
         ufName,
@@ -108,6 +117,7 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
         lastValue: lastItem.value,
         lastDate: lastItem.reference_date,
         recordCount: regionalData.length,
+        data: limitedData,
       });
     }
   }, [regionalData, ufSigla, ufName, researchId, trend, dashboardAnalytics]);
