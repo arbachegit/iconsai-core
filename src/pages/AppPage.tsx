@@ -68,7 +68,7 @@ export default function AppPage() {
           </div>
         );
       case "chat":
-        return <AgentChat agentSlug="analyst" embedded />;
+        return <AgentChat agentSlug="analyst_user" embedded />;
       case "data":
         return (
           <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
