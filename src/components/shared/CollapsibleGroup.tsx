@@ -9,6 +9,7 @@ interface CollapsibleGroupProps {
   count: number;
   children: React.ReactNode;
   defaultExpanded?: boolean;
+  headerExtra?: React.ReactNode;
 }
 
 export function CollapsibleGroup({
@@ -17,6 +18,7 @@ export function CollapsibleGroup({
   count,
   children,
   defaultExpanded = false,
+  headerExtra,
 }: CollapsibleGroupProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -44,6 +46,9 @@ export function CollapsibleGroup({
           >
             {count}
           </Badge>
+          
+          {/* Header extra content (e.g., toggle) */}
+          {headerExtra}
           
           {/* Chevron */}
           <div className={cn(

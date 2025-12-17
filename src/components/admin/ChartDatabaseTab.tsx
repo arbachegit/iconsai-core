@@ -196,7 +196,20 @@ const CATEGORY_GROUPS = {
   pmc: {
     title: 'PMC - Pesquisa Mensal do Comércio',
     icon: BarChart3,
-    codes: ['PMC', 'PMC_COMB', 'PMC_FARM', 'PMC_MOV', 'PMC_VEST', 'PMC_CONST', 'PMC_VEIC', 'PMC_COMBUSTIVEIS_UF', 'PMC_FARMACIA_UF', 'PMC_MOVEIS_UF', 'PMC_VESTUARIO_UF', 'PMC_CONSTRUCAO_UF', 'PMC_VEICULOS_UF', 'PMC_VAREJO_UF']
+    codes: ['PMC', 'PMC_COMB', 'PMC_FARM', 'PMC_MOV', 'PMC_VEST', 'PMC_CONST', 'PMC_VEIC']
+  },
+  pmcRegional: {
+    title: 'PMC - Pesquisa Mensal do Comércio (Regional)',
+    icon: BarChart3,
+    codes: [
+      'PMC_COMB_UF', 'PMC_COMBUSTIVEIS_UF', 
+      'PMC_FARM_UF', 'PMC_FARMACIA_UF',
+      'PMC_MOV_UF', 'PMC_MOVEIS_UF',
+      'PMC_VEST_UF', 'PMC_VESTUARIO_UF',
+      'PMC_CONST_UF', 'PMC_CONSTRUCAO_UF',
+      'PMC_VEIC_UF', 'PMC_VEICULOS_UF',
+      'PMC_VAREJO_UF'
+    ]
   },
   pac: {
     title: 'PAC - Pesquisa Anual do Comércio',
@@ -293,6 +306,17 @@ export function ChartDatabaseTab() {
   const [showTrendModal, setShowTrendModal] = useState(false);
   const [currentView, setCurrentView] = useState<DialogView>('detail');
   const [showMonetaryValues, setShowMonetaryValues] = useState(false);
+  
+  // Global toggle for PMC Regional group with localStorage persistence
+  const [pmcRegionalMonetaryMode, setPmcRegionalMonetaryMode] = useState(() => {
+    const saved = localStorage.getItem('pmcRegionalMonetaryMode');
+    return saved === 'true';
+  });
+  
+  // Persist PMC Regional monetary mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('pmcRegionalMonetaryMode', pmcRegionalMonetaryMode.toString());
+  }, [pmcRegionalMonetaryMode]);
 
   // Query client for cache invalidation
   const queryClient = useQueryClient();
@@ -1121,6 +1145,7 @@ export function ChartDatabaseTab() {
             icon: Database
           };
           const GroupIcon = group.icon;
+          const isPmcRegionalGroup = key === 'pmcRegional';
 
           return (
             <CollapsibleGroup
@@ -1129,8 +1154,44 @@ export function ChartDatabaseTab() {
               icon={<GroupIcon className="h-5 w-5" />}
               count={groupIndicators.length}
               defaultExpanded={false}
+              headerExtra={isPmcRegionalGroup ? (
+                <div 
+                  className="flex items-center gap-2 ml-4" 
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span className={cn(
+                    "text-xs font-medium transition-colors",
+                    !pmcRegionalMonetaryMode ? "text-primary" : "text-muted-foreground"
+                  )}>Índice</span>
+                  <Switch
+                    checked={pmcRegionalMonetaryMode}
+                    onCheckedChange={setPmcRegionalMonetaryMode}
+                    className="data-[state=checked]:bg-green-500"
+                  />
+                  <span className={cn(
+                    "text-xs font-medium transition-colors",
+                    pmcRegionalMonetaryMode ? "text-green-400" : "text-muted-foreground"
+                  )}>R$</span>
+                </div>
+              ) : undefined}
             >
-              {groupIndicators.map(renderIndicatorCard)}
+              {groupIndicators.map((indicator) => {
+                // For PMC Regional group, apply global monetary mode when opening detail
+                if (isPmcRegionalGroup) {
+                  return (
+                    <div
+                      key={indicator.id}
+                      onClick={() => {
+                        setShowMonetaryValues(pmcRegionalMonetaryMode);
+                        setSelectedIndicator(indicator);
+                      }}
+                    >
+                      {renderIndicatorCard(indicator)}
+                    </div>
+                  );
+                }
+                return renderIndicatorCard(indicator);
+              })}
             </CollapsibleGroup>
           );
         })}
