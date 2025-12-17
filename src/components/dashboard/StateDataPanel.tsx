@@ -108,7 +108,7 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
         }))
         .reverse(); // Reverse to chronological order
       
-      dashboardAnalytics.setRegionalContext({
+      const contextData = {
         ufSigla,
         ufName,
         researchName: lastItem.indicatorName,
@@ -118,6 +118,15 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
         lastDate: lastItem.reference_date,
         recordCount: regionalData.length,
         data: limitedData,
+      };
+      
+      dashboardAnalytics.setRegionalContext(contextData);
+      
+      // Add to history for comparison support
+      dashboardAnalytics.addToHistory({
+        type: 'regional',
+        label: `${ufSigla} — ${lastItem.indicatorName}`,
+        context: contextData,
       });
     }
   }, [regionalData, ufSigla, ufName, researchId, trend, dashboardAnalytics]);

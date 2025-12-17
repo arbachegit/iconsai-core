@@ -481,11 +481,11 @@ export function TableDatabaseTab() {
         value: d.value,
       }));
       
-      dashboardAnalytics.setChartContext({
+      const contextData = {
         indicatorId: selectedIndicator.id,
         indicatorName: selectedIndicator.name,
         indicatorCode: selectedIndicator.code,
-        chartType: 'line',
+        chartType: 'line' as const,
         frequency: selectedIndicator.frequency,
         unit: selectedIndicator.unit,
         periodStart: analysisData[0].date.toISOString().split('T')[0],
@@ -504,6 +504,15 @@ export function TableDatabaseTab() {
             p95: stsData.forecast.p95,
           },
         } : null,
+      };
+      
+      dashboardAnalytics.setChartContext(contextData);
+      
+      // Add to history for comparison support
+      dashboardAnalytics.addToHistory({
+        type: 'chart',
+        label: selectedIndicator.name,
+        context: contextData,
       });
     } else if (dashboardAnalytics && !selectedIndicator) {
       dashboardAnalytics.setChartContext(null);
