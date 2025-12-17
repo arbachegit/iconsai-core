@@ -2913,6 +2913,13 @@ export type Database = {
           records_processed: number
         }[]
       }
+      process_all_pmc_conversions_batch: {
+        Args: never
+        Returns: {
+          indicator_code: string
+          records_inserted: number
+        }[]
+      }
       search_documents: {
         Args: {
           match_count?: number
