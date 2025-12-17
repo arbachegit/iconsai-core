@@ -256,29 +256,68 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
   }, [yColumn, analyzeColumns, data.length]);
 
   // Helper para parsear números em formato brasileiro (1.234,56)
+  // Importante: dados podem vir com símbolos (R$, %, espaços) e separadores variados.
   const parseNumber = (value: any): number => {
     if (value == null) return 0;
     if (value instanceof Date) return 0;
+
     if (typeof value === "number") {
       if (isExcelDateSerial(value)) return 0;
-      return value;
+      return Number.isFinite(value) ? value : 0;
     }
-    
-    const str = String(value).trim();
+
+    let str = String(value).trim();
     if (str === "") return 0;
-    
-    // Número simples (inteiro)
-    if (/^-?\d+$/.test(str)) return Number(str);
-    
-    // Formato BR: 1.234,56 → 1234.56
-    const normalizedBR = str.replace(/\./g, "").replace(",", ".");
-    if (!isNaN(Number(normalizedBR))) return Number(normalizedBR);
-    
-    // Formato US: 1,234.56 → 1234.56
-    const normalizedUS = str.replace(/,/g, "");
-    if (!isNaN(Number(normalizedUS))) return Number(normalizedUS);
-    
-    return 0;
+
+    // Ex: "(1.234,56)" -> -1234,56
+    let negative = false;
+    if (str.startsWith("(") && str.endsWith(")")) {
+      negative = true;
+      str = str.slice(1, -1).trim();
+    }
+
+    // Remove qualquer coisa que não seja dígito, separador decimal/milhar ou sinal
+    // (remove: R$, %, letras, espaços, etc.)
+    str = str.replace(/\s+/g, "").replace(/[^\d,.-]/g, "");
+    if (str === "" || str === "-" || str === "." || str === ",") return 0;
+
+    const hasDot = str.includes(".");
+    const hasComma = str.includes(",");
+
+    let normalized = str;
+
+    // Se tem ambos, inferir separador decimal pelo último que aparece
+    if (hasDot && hasComma) {
+      const lastComma = str.lastIndexOf(",");
+      const lastDot = str.lastIndexOf(".");
+      if (lastComma > lastDot) {
+        // BR: 1.234,56
+        normalized = str.replace(/\./g, "").replace(",", ".");
+      } else {
+        // US: 1,234.56
+        normalized = str.replace(/,/g, "");
+      }
+    } else if (hasComma && !hasDot) {
+      // Apenas vírgula: pode ser decimal (12,34) ou milhar (1,234)
+      const parts = str.split(",");
+      if (parts.length === 2 && parts[1].length > 0 && parts[1].length <= 2) {
+        normalized = `${parts[0]}.${parts[1]}`;
+      } else {
+        normalized = str.replace(/,/g, "");
+      }
+    } else if (hasDot && !hasComma) {
+      // Apenas ponto: pode ser decimal (12.34) ou milhar (1.234.567)
+      const parts = str.split(".");
+      if (parts.length === 2 && parts[1].length > 0 && parts[1].length <= 2) {
+        normalized = str;
+      } else {
+        normalized = str.replace(/\./g, "");
+      }
+    }
+
+    const num = Number(normalized);
+    const finalNum = Number.isFinite(num) ? num : 0;
+    return negative ? -finalNum : finalNum;
   };
 
   // Detectar se Y parece conter datas e avisar usuário
@@ -318,7 +357,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
         y: parseNumber(row[yColumn]),
         name: formatXValue(row[xColumn] ?? index),
       }))
-      .filter((d) => !isNaN(d.y));
+      .filter((d) => !isNaN(d.y) && isFinite(d.y));
   }, [data, xColumn, yColumn]);
 
   // Pie chart data - aggregates by category
@@ -342,23 +381,26 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
   const trendLineData = useMemo(() => {
     if (!showTrendLine || chartData.length < 2) return null;
 
-    const xValues = chartData.map((_, i) => i);
-    const yValues = chartData.map((d) => d.y).filter(v => !isNaN(v) && isFinite(v));
-    
-    // Validate we have enough valid numeric data
-    if (yValues.length < 2) return null;
-    
-    // Check if all values are zero (no meaningful trend)
-    const hasNonZeroValues = yValues.some(v => v !== 0);
-    if (!hasNonZeroValues) return null;
-    
-    const regression = linearRegression(xValues.slice(0, yValues.length), yValues);
+    // Filtra pares (x,y) mantendo alinhamento entre X e Y
+    const pairs = chartData
+      .map((d, i) => ({ x: i, y: d.y }))
+      .filter((p) => !isNaN(p.y) && isFinite(p.y) && p.y !== 0);
+
+    if (pairs.length < 2) return null;
+
+    const xValues = pairs.map((p) => p.x);
+    const yValues = pairs.map((p) => p.y);
+
+    const regression = linearRegression(xValues, yValues);
+
+    // Validações para evitar NaN/∞ (divisão por zero, etc.)
+    if (!isFinite(regression.slope) || !isFinite(regression.intercept)) return null;
 
     return {
       slope: regression.slope,
       intercept: regression.intercept,
       startY: regression.intercept,
-      endY: regression.slope * (yValues.length - 1) + regression.intercept,
+      endY: regression.slope * (chartData.length - 1) + regression.intercept,
     };
   }, [chartData, showTrendLine]);
 
