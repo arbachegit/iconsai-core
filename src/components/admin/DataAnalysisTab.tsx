@@ -10,10 +10,54 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
-import { TrendingUp, TrendingDown, Minus, BarChart3, Calculator, Loader2, Info, AlertTriangle, Lightbulb, Activity, RefreshCw, Brain, Search, Clock } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ReferenceLine,
+  ScatterChart,
+  Scatter,
+  ZAxis,
+  Cell,
+  ComposedChart,
+  Area,
+} from "recharts";
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  BarChart3,
+  Calculator,
+  Loader2,
+  Info,
+  AlertTriangle,
+  Lightbulb,
+  Activity,
+  RefreshCw,
+  Brain,
+  Search,
+  Clock,
+  SlidersHorizontal,
+  Calendar,
+  Plus,
+  X,
+  Snowflake,
+  Gift,
+  ShoppingCart,
+  Heart,
+  GraduationCap,
+  Zap,
+} from "lucide-react";
 import { format } from "date-fns";
 import { runStructuralTimeSeries, STSResult } from "@/lib/structural-time-series";
+import regression from "regression";
 import {
   pearsonCorrelation,
   linearRegression,
@@ -51,6 +95,17 @@ interface IndicatorValue {
   value: number;
 }
 
+interface SliderConfig {
+  key: string;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+  baseline: number;
+  effect: number;
+}
+
 const CHART_COLORS = [
   "#3b82f6", // blue
   "#ef4444", // red
@@ -60,6 +115,25 @@ const CHART_COLORS = [
   "#ec4899", // pink
   "#06b6d4", // cyan
   "#f97316", // orange
+];
+
+const SLIDER_CONFIG: SliderConfig[] = [
+  { key: "dollar", label: "Dólar Futuro (R$)", min: 4, max: 7, step: 0.1, unit: "R$", baseline: 5.5, effect: 0.05 },
+  { key: "selic", label: "Selic Futura (%)", min: 5, max: 15, step: 0.25, unit: "%", baseline: 11, effect: 0.02 },
+  { key: "unemployment", label: "Desemprego (%)", min: 5, max: 15, step: 0.5, unit: "%", baseline: 8, effect: 0.03 },
+  { key: "ipca", label: "IPCA Futuro (%)", min: 2, max: 12, step: 0.25, unit: "%", baseline: 5, effect: 0.02 },
+  { key: "pib", label: "PIB Futuro (%)", min: -3, max: 5, step: 0.5, unit: "%", baseline: 0, effect: 0.04 },
+  { key: "income", label: "Renda (R$)", min: 2500, max: 4000, step: 50, unit: "R$", baseline: 3000, effect: 0.001 },
+  { key: "confidence", label: "Confiança", min: 60, max: 120, step: 1, unit: "", baseline: 90, effect: 0.01 },
+];
+
+const SEASONAL_MULTIPLIERS = [
+  { label: "Natal", effect: 0.45, month: 12, icon: Gift },
+  { label: "Black Friday", effect: 0.30, month: 11, icon: ShoppingCart },
+  { label: "Páscoa", effect: 0.15, month: 4, icon: Heart },
+  { label: "Dia das Mães", effect: 0.20, month: 5, icon: Heart },
+  { label: "Dia dos Pais", effect: 0.12, month: 8, icon: Heart },
+  { label: "Volta às Aulas", effect: 0.10, month: 2, icon: GraduationCap },
 ];
 
 export function DataAnalysisTab() {
@@ -73,6 +147,24 @@ export function DataAnalysisTab() {
   const [maxLag, setMaxLag] = useState<number>(12);
   const [bestCorrelationsTarget, setBestCorrelationsTarget] = useState<string | null>(null);
 
+  // New states for advanced features
+  const [showPredictiveSimulator, setShowPredictiveSimulator] = useState(false);
+  const [cutoffYear, setCutoffYear] = useState(2022);
+  const [futureSliders, setFutureSliders] = useState<Record<string, number>>({
+    dollar: 5.5,
+    selic: 11.5,
+    unemployment: 8.0,
+    ipca: 5.0,
+    pib: 2.0,
+    income: 3200,
+    confidence: 95,
+  });
+  const [customCorrelations, setCustomCorrelations] = useState<string[]>([]);
+  const [showCorrelationPicker, setShowCorrelationPicker] = useState(false);
+  const [scatterXIndicator, setScatterXIndicator] = useState<string | null>(null);
+  const [scatterYIndicator, setScatterYIndicator] = useState<string | null>(null);
+  const [scatterSizeIndicator, setScatterSizeIndicator] = useState<string | null>(null);
+
   // Fetch indicators
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
     queryKey: ["indicators-analysis"],
@@ -85,7 +177,7 @@ export function DataAnalysisTab() {
       return data as Indicator[];
     },
     refetchOnWindowFocus: true,
-    staleTime: 30000, // 30 seconds
+    staleTime: 30000,
   });
 
   // Fetch all indicator values (paginated to bypass 1000 row limit)
@@ -220,6 +312,39 @@ export function DataAnalysisTab() {
     });
   }, [selectedIndicators, filteredValues, indicators, correlationMethod, maxLag]);
 
+  // Correlation Matrix for heatmap
+  const correlationMatrix = useMemo(() => {
+    if (selectedIndicators.length < 2) return [];
+    
+    const matrix: { x: string; y: string; xName: string; yName: string; value: number }[] = [];
+    
+    for (const id1 of selectedIndicators) {
+      for (const id2 of selectedIndicators) {
+        const values1 = filteredValues
+          .filter((v) => v.indicator_id === id1)
+          .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
+          .map((v) => v.value);
+        const values2 = filteredValues
+          .filter((v) => v.indicator_id === id2)
+          .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
+          .map((v) => v.value);
+        
+        const ind1 = indicators.find((i) => i.id === id1);
+        const ind2 = indicators.find((i) => i.id === id2);
+        
+        let r = 0;
+        if (values1.length >= 2 && values2.length >= 2) {
+          r = correlationMethod === "spearman" 
+            ? spearmanCorrelation(values1, values2) 
+            : pearsonCorrelation(values1, values2);
+        }
+        
+        matrix.push({ x: id1, y: id2, xName: ind1?.name || id1, yName: ind2?.name || id2, value: r });
+      }
+    }
+    return matrix;
+  }, [selectedIndicators, filteredValues, indicators, correlationMethod]);
+
   // Auto-discover best correlated variables for a target indicator
   const bestCorrelations = useMemo(() => {
     if (!bestCorrelationsTarget) return [];
@@ -253,7 +378,7 @@ export function DataAnalysisTab() {
       }))
       .filter((c) => c.values.length >= 5);
 
-    return findBestCorrelations(target, candidates, correlationMethod, 5, maxLag);
+    return findBestCorrelations(target, candidates, correlationMethod, 15, maxLag);
   }, [bestCorrelationsTarget, filteredValues, allValues, indicators, correlationMethod, maxLag, yearRange]);
 
   // Calculate trend analysis for each selected indicator
@@ -266,20 +391,20 @@ export function DataAnalysisTab() {
       const x = values.map((_, i) => i);
       const y = values.map((v) => v.value);
 
-      const regression = linearRegression(x, y);
-      const trend = detectTrend(regression.slope);
+      const reg = linearRegression(x, y);
+      const trend = detectTrend(reg.slope);
       const indicator = indicators.find((i) => i.id === indId);
 
       // Predict next year value
       const nextYearX = x.length > 0 ? x[x.length - 1] + 12 : 12;
-      const predictedValue = predictValue(regression, nextYearX);
+      const predictedValue = predictValue(reg, nextYearX);
 
       return {
         id: indId,
         name: indicator?.name || indId,
         trend,
-        slope: regression.slope,
-        r2: regression.r2,
+        slope: reg.slope,
+        r2: reg.r2,
         predictedValue,
         currentValue: y[y.length - 1] || 0,
       };
@@ -394,11 +519,8 @@ export function DataAnalysisTab() {
     if (!impactIndicator || impactVariation === 0 || impactResults.length === 0) return null;
 
     const baseIndicator = indicators.find((i) => i.id === impactIndicator);
-    const variationType = impactVariation > 0 ? "aumento" : "redução";
     
     const interpretations: string[] = [];
-    const highImpacts = impactResults.filter((r) => Math.abs(r.impact) > 10);
-    const moderateImpacts = impactResults.filter((r) => Math.abs(r.impact) >= 5 && Math.abs(r.impact) <= 10);
 
     interpretations.push(
       `Com uma variação de ${impactVariation > 0 ? "+" : ""}${impactVariation}% no ${baseIndicator?.name || "indicador"}, estima-se:`
@@ -417,6 +539,9 @@ export function DataAnalysisTab() {
     ];
 
     const recommendations: string[] = [];
+    const highImpacts = impactResults.filter((r) => Math.abs(r.impact) > 10);
+    const moderateImpacts = impactResults.filter((r) => Math.abs(r.impact) >= 5 && Math.abs(r.impact) <= 10);
+    
     if (highImpacts.length > 0) {
       recommendations.push(`Indicadores com impacto >10% requerem atenção especial: ${highImpacts.map((r) => r.name).join(", ")}`);
     }
@@ -430,10 +555,216 @@ export function DataAnalysisTab() {
     return { interpretations, warnings, recommendations };
   }, [impactIndicator, impactVariation, impactResults, indicators, yearRange]);
 
+  // Scatter plot data
+  const scatterData = useMemo(() => {
+    if (!scatterXIndicator || !scatterYIndicator) return [];
+    
+    const xValues = filteredValues
+      .filter((v) => v.indicator_id === scatterXIndicator)
+      .sort((a, b) => a.reference_date.localeCompare(b.reference_date));
+    const yValues = filteredValues
+      .filter((v) => v.indicator_id === scatterYIndicator)
+      .sort((a, b) => a.reference_date.localeCompare(b.reference_date));
+    const sizeValues = scatterSizeIndicator 
+      ? filteredValues.filter((v) => v.indicator_id === scatterSizeIndicator).sort((a, b) => a.reference_date.localeCompare(b.reference_date))
+      : [];
+    
+    const dateMap: Record<string, { x: number; y: number; size: number; date: string }> = {};
+    
+    xValues.forEach((v) => {
+      const date = v.reference_date.substring(0, 7);
+      if (!dateMap[date]) dateMap[date] = { x: 0, y: 0, size: 50, date };
+      dateMap[date].x = v.value;
+    });
+    
+    yValues.forEach((v) => {
+      const date = v.reference_date.substring(0, 7);
+      if (dateMap[date]) dateMap[date].y = v.value;
+    });
+    
+    sizeValues.forEach((v) => {
+      const date = v.reference_date.substring(0, 7);
+      if (dateMap[date]) dateMap[date].size = Math.max(20, Math.min(v.value * 10, 200));
+    });
+    
+    return Object.values(dateMap).filter((d) => d.x > 0 && d.y > 0);
+  }, [scatterXIndicator, scatterYIndicator, scatterSizeIndicator, filteredValues]);
+
+  // Annual data for predictive simulator
+  const annualData = useMemo(() => {
+    if (selectedIndicators.length === 0) return [];
+    
+    const yearMap: Record<number, Record<string, number>> = {};
+    
+    filteredValues.forEach((v) => {
+      const year = new Date(v.reference_date).getFullYear();
+      if (!yearMap[year]) yearMap[year] = { year };
+      
+      const ind = indicators.find((i) => i.id === v.indicator_id);
+      const key = ind?.code || v.indicator_id;
+      
+      if (!yearMap[year][key]) yearMap[year][key] = 0;
+      yearMap[year][key] = (yearMap[year][key] + v.value) / 2; // Average if multiple values
+    });
+    
+    return Object.values(yearMap)
+      .sort((a, b) => (a.year as number) - (b.year as number))
+      .map((d) => ({
+        year: d.year as number,
+        ...d,
+        sales: d.PMC || d.PIB || Object.values(d).find((v) => typeof v === 'number' && v !== d.year) || 0,
+        income: d.RENDA || 3000,
+        ipca: d.IPCA || 5,
+      }));
+  }, [filteredValues, selectedIndicators, indicators]);
+
+  // Predictive model with backtesting
+  const predictiveModel = useMemo(() => {
+    if (annualData.length < 3) {
+      return { chartData: [], modelMetrics: { r2: 0, slope: 0, intercept: 0 }, sensitivity: {} };
+    }
+
+    const trainingData = annualData.filter((d) => d.year <= cutoffYear);
+    const testData = annualData.filter((d) => d.year > cutoffYear);
+
+    if (trainingData.length < 3) {
+      return { chartData: [], modelMetrics: { r2: 0, slope: 0, intercept: 0 }, sensitivity: {} };
+    }
+
+    // Regressão linear: Vendas = β₀ + β₁ × Renda
+    const dataPoints: [number, number][] = trainingData.map((d) => [d.income || 3000, d.sales || 0]);
+    const result = regression.linear(dataPoints);
+    const [intercept, slope] = result.equation;
+
+    // Calculate R²
+    const predictedTrain = trainingData.map((d) => slope * (d.income || 3000) + intercept);
+    const actualTrain = trainingData.map((d) => d.sales || 0);
+    const meanActual = actualTrain.reduce((a, b) => a + b, 0) / actualTrain.length;
+    
+    const ssRes = actualTrain.reduce((sum, actual, i) => sum + Math.pow(actual - predictedTrain[i], 2), 0);
+    const ssTot = actualTrain.reduce((sum, actual) => sum + Math.pow(actual - meanActual, 2), 0);
+    const r2 = ssTot > 0 ? Math.max(0, 1 - (ssRes / ssTot)) : 0;
+
+    // Generate chart data
+    const chartPoints = annualData.map((d) => {
+      const predicted = slope * (d.income || 3000) + intercept;
+      const isTraining = d.year <= cutoffYear;
+      
+      return {
+        year: d.year,
+        actual: d.sales,
+        predicted: isTraining ? null : predicted,
+        backtested: isTraining ? predicted : null,
+        lower: isTraining ? null : predicted * 0.9,
+        upper: isTraining ? null : predicted * 1.1,
+      };
+    });
+
+    // Add future projections (3 years)
+    const lastYear = annualData[annualData.length - 1]?.year || 2024;
+    
+    // Calculate correlation effect from custom correlations
+    let correlationEffect = 0;
+    customCorrelations.forEach((varName) => {
+      const corr = bestCorrelations.find((c) => c.name === varName);
+      if (corr) {
+        correlationEffect += corr.correlation * 0.05;
+      }
+    });
+    
+    for (let i = 1; i <= 3; i++) {
+      const futureYear = lastYear + i;
+      
+      // Apply slider effects
+      let totalEffect = 0;
+      SLIDER_CONFIG.forEach((s) => {
+        const sliderValue = futureSliders[s.key] || s.baseline;
+        const delta = s.baseline - sliderValue;
+        totalEffect += delta * s.effect;
+      });
+      
+      const adjustedIncome = (futureSliders.income || 3000) * (1 + totalEffect);
+      let predicted = slope * adjustedIncome + intercept;
+      
+      // Apply correlation effect
+      predicted = predicted * (1 + correlationEffect);
+      
+      chartPoints.push({
+        year: futureYear,
+        actual: null,
+        predicted: predicted,
+        backtested: null,
+        lower: predicted * 0.85,
+        upper: predicted * 1.15,
+      });
+    }
+
+    // Calculate sensitivity
+    const sens: Record<string, string> = {};
+    SLIDER_CONFIG.forEach((s) => {
+      const delta = s.baseline - (futureSliders[s.key] || s.baseline);
+      sens[s.key] = (delta * s.effect * 100).toFixed(1);
+    });
+
+    return {
+      chartData: chartPoints,
+      modelMetrics: { r2, slope, intercept },
+      sensitivity: sens,
+    };
+  }, [annualData, cutoffYear, futureSliders, customCorrelations, bestCorrelations]);
+
+  // Top correlations for dropdown
+  const topCorrelationsForPicker = useMemo(() => {
+    if (!bestCorrelationsTarget && selectedIndicators.length > 0) {
+      // Use first selected indicator as target
+      const targetId = selectedIndicators[0];
+      const targetValues = filteredValues
+        .filter((v) => v.indicator_id === targetId)
+        .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
+        .map((v) => v.value);
+
+      const targetIndicator = indicators.find((i) => i.id === targetId);
+      
+      const target: CorrelationCandidate = {
+        id: targetId,
+        name: targetIndicator?.name || targetId,
+        values: targetValues,
+      };
+
+      const candidates: CorrelationCandidate[] = indicators
+        .filter((ind) => ind.id !== targetId)
+        .map((ind) => ({
+          id: ind.id,
+          name: ind.name,
+          values: allValues
+            .filter((v) => {
+              const year = new Date(v.reference_date).getFullYear();
+              return v.indicator_id === ind.id && year >= yearRange[0] && year <= yearRange[1];
+            })
+            .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
+            .map((v) => v.value),
+        }))
+        .filter((c) => c.values.length >= 5);
+
+      return findBestCorrelations(target, candidates, correlationMethod, 15, maxLag);
+    }
+    return bestCorrelations;
+  }, [bestCorrelationsTarget, selectedIndicators, filteredValues, allValues, indicators, correlationMethod, maxLag, yearRange, bestCorrelations]);
+
   const toggleIndicator = (id: string) => {
     setSelectedIndicators((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
+  };
+
+  const getMatrixCellColor = (value: number) => {
+    if (value >= 0.7) return "bg-emerald-500";
+    if (value >= 0.4) return "bg-emerald-500/60";
+    if (value >= 0.1) return "bg-emerald-500/30";
+    if (value >= -0.1) return "bg-muted";
+    if (value >= -0.4) return "bg-red-500/30";
+    if (value >= -0.7) return "bg-red-500/60";
+    return "bg-red-500";
   };
 
   if (loadingIndicators || loadingValues) {
@@ -597,6 +928,175 @@ export function DataAnalysisTab() {
             </CardContent>
           </Card>
 
+          {/* Correlation Matrix Heatmap */}
+          <Card className="border-primary/20">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Matriz de Correlação
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Usando {correlationMethod === "spearman" ? "Spearman" : "Pearson"} (melhor para séries temporais)
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <div className="inline-grid gap-1" style={{ gridTemplateColumns: `80px repeat(${selectedIndicators.length}, 60px)` }}>
+                  {/* Header row */}
+                  <div className="h-8" />
+                  {selectedIndicators.map((indId) => {
+                    const ind = indicators.find((i) => i.id === indId);
+                    return (
+                      <div key={indId} className="text-xs font-medium text-center truncate px-1" title={ind?.name}>
+                        {ind?.name?.substring(0, 8) || indId.substring(0, 8)}
+                      </div>
+                    );
+                  })}
+                  
+                  {/* Data rows */}
+                  {selectedIndicators.map((rowId) => {
+                    const rowInd = indicators.find((i) => i.id === rowId);
+                    return (
+                      <>
+                        <div key={`label-${rowId}`} className="text-xs font-medium truncate flex items-center" title={rowInd?.name}>
+                          {rowInd?.name?.substring(0, 10) || rowId.substring(0, 10)}
+                        </div>
+                        {selectedIndicators.map((colId) => {
+                          const cell = correlationMatrix.find((c) => c.x === rowId && c.y === colId);
+                          const value = cell?.value || 0;
+                          return (
+                            <div
+                              key={`${rowId}-${colId}`}
+                              className={`h-12 flex items-center justify-center text-xs font-mono rounded ${getMatrixCellColor(value)} ${rowId === colId ? 'opacity-50' : ''}`}
+                              title={`${rowInd?.name} × ${indicators.find((i) => i.id === colId)?.name}: ${value.toFixed(3)}`}
+                            >
+                              {value.toFixed(2)}
+                            </div>
+                          );
+                        })}
+                      </>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              {/* Legend */}
+              <div className="flex items-center justify-center gap-4 mt-4 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-4 h-4 bg-red-500 rounded" />
+                  <span>Negativa</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-4 h-4 bg-muted rounded" />
+                  <span>Neutro</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-4 h-4 bg-emerald-500 rounded" />
+                  <span>Positiva</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Scatter Plot */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Scatter Plot - Relação entre Indicadores
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <Label className="text-sm mb-2 block">Eixo X:</Label>
+                  <Select value={scatterXIndicator || ""} onValueChange={setScatterXIndicator}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione indicador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedIndicators.map((id) => {
+                        const ind = indicators.find((i) => i.id === id);
+                        return <SelectItem key={id} value={id}>{ind?.name || id}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm mb-2 block">Eixo Y:</Label>
+                  <Select value={scatterYIndicator || ""} onValueChange={setScatterYIndicator}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione indicador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedIndicators.map((id) => {
+                        const ind = indicators.find((i) => i.id === id);
+                        return <SelectItem key={id} value={id}>{ind?.name || id}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm mb-2 block">Tamanho da Bolha:</Label>
+                  <Select value={scatterSizeIndicator || ""} onValueChange={setScatterSizeIndicator}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Opcional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nenhum</SelectItem>
+                      {selectedIndicators.map((id) => {
+                        const ind = indicators.find((i) => i.id === id);
+                        return <SelectItem key={id} value={id}>{ind?.name || id}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {scatterXIndicator && scatterYIndicator && scatterData.length > 0 && (
+                <div className="h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis
+                        type="number"
+                        dataKey="x"
+                        name={indicators.find((i) => i.id === scatterXIndicator)?.name || "X"}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis
+                        type="number"
+                        dataKey="y"
+                        name={indicators.find((i) => i.id === scatterYIndicator)?.name || "Y"}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <ZAxis type="number" dataKey="size" range={[50, 200]} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                        }}
+                        formatter={(value: number, name: string) => [value.toFixed(2), name]}
+                      />
+                      <Scatter name="Dados" data={scatterData} fill="#3b82f6">
+                        {scatterData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Scatter>
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              
+              {(!scatterXIndicator || !scatterYIndicator) && (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                  Selecione indicadores para os eixos X e Y
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Correlation Cards */}
           <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -666,59 +1166,41 @@ export function DataAnalysisTab() {
               {bestCorrelationsTarget && bestCorrelations.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    Top 5 indicadores mais correlacionados com{" "}
+                    Top 15 indicadores mais correlacionados com{" "}
                     <span className="font-medium text-foreground">
                       {indicators.find((i) => i.id === bestCorrelationsTarget)?.name}
                     </span>
                     :
                   </p>
-                  <div className="space-y-2">
-                    {bestCorrelations.map((bc, idx) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {bestCorrelations.slice(0, 15).map((bc, idx) => (
                       <div
                         key={bc.id}
-                        className="flex items-center justify-between p-3 bg-background rounded-lg border"
+                        className={`flex items-center justify-between p-3 rounded-lg border ${
+                          bc.correlation > 0 ? "bg-emerald-500/10 border-emerald-500/30" : "bg-red-500/10 border-red-500/30"
+                        }`}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <span className="text-lg font-bold text-muted-foreground">#{idx + 1}</span>
-                          <span className="font-medium">{bc.name}</span>
+                          <span className="font-medium text-sm truncate max-w-[120px]" title={bc.name}>{bc.name}</span>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
                           <Badge
                             variant={bc.correlation > 0 ? "default" : "destructive"}
-                            className="min-w-[80px] justify-center"
+                            className="min-w-[60px] justify-center text-xs"
                           >
-                            {correlationMethod === "spearman" ? "ρ" : "r"}={bc.correlation > 0 ? "+" : ""}{bc.correlation.toFixed(2)}
+                            {bc.correlation > 0 ? "+" : ""}{(bc.correlation * 100).toFixed(0)}%
                           </Badge>
-                          {bc.lag !== undefined && (
-                            <div className="flex items-center gap-1 text-sm text-cyan-600 dark:text-cyan-400">
-                              <Clock className="h-3 w-3" />
-                              <span>lag {bc.lag === 0 ? "0" : bc.lag > 0 ? `+${bc.lag}` : bc.lag}</span>
-                            </div>
+                          {bc.lag !== undefined && bc.lag !== 0 && (
+                            <span className="text-xs text-cyan-600 dark:text-cyan-400">
+                              lag {bc.lag}
+                            </span>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
-                  {correlationMethod === "crosscorr" && bestCorrelations.some((bc) => bc.lagInterpretation) && (
-                    <div className="mt-3 p-3 bg-cyan-500/10 rounded-lg text-sm">
-                      <h4 className="font-medium flex items-center gap-2 mb-2">
-                        <Clock className="h-4 w-4" />
-                        Interpretação dos Lags:
-                      </h4>
-                      <ul className="space-y-1 text-muted-foreground">
-                        {bestCorrelations.filter((bc) => bc.lagInterpretation).map((bc, idx) => (
-                          <li key={idx}>• {bc.lagInterpretation}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
                 </div>
-              )}
-
-              {bestCorrelationsTarget && bestCorrelations.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Nenhuma correlação significativa encontrada. Verifique se há dados suficientes no período selecionado.
-                </p>
               )}
             </CardContent>
           </Card>
@@ -766,6 +1248,313 @@ export function DataAnalysisTab() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Predictive Simulator Toggle */}
+          <Card className="border-primary/30 bg-primary/5">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <SlidersHorizontal className="h-5 w-5 text-primary" />
+                  Simulador Preditivo Avançado
+                </CardTitle>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="simulator-toggle" className="text-sm">
+                      {showPredictiveSimulator ? "Ativo" : "Inativo"}
+                    </Label>
+                    <Switch
+                      id="simulator-toggle"
+                      checked={showPredictiveSimulator}
+                      onCheckedChange={setShowPredictiveSimulator}
+                    />
+                  </div>
+                  {showPredictiveSimulator && (
+                    <Badge variant={predictiveModel.modelMetrics.r2 > 0.7 ? "default" : predictiveModel.modelMetrics.r2 > 0.5 ? "secondary" : "destructive"}>
+                      R² = {predictiveModel.modelMetrics.r2.toFixed(3)}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            
+            {showPredictiveSimulator && (
+              <CardContent className="space-y-6">
+                {/* Cutoff Year Selector */}
+                <div className="flex items-center gap-4 pb-4 border-b">
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                  <Label className="font-medium">Ano de Corte (Backtest):</Label>
+                  <Select value={String(cutoffYear)} onValueChange={(v) => setCutoffYear(Number(v))}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[2018, 2019, 2020, 2021, 2022, 2023].map((y) => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Sliders Panel */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Zap className="h-4 w-4" />
+                          Cenário What-If
+                        </CardTitle>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowCorrelationPicker(true)}
+                          disabled={customCorrelations.length >= 5}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Correlação
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {SLIDER_CONFIG.map((s) => (
+                        <div key={s.key} className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span>{s.label}</span>
+                            <span className="font-mono">
+                              {s.unit === "R$" ? `R$ ${(futureSliders[s.key] || s.baseline).toLocaleString()}` :
+                               s.unit === "%" ? `${futureSliders[s.key] || s.baseline}%` :
+                               futureSliders[s.key] || s.baseline}
+                            </span>
+                          </div>
+                          <Slider
+                            value={[futureSliders[s.key] || s.baseline]}
+                            onValueChange={(v) => setFutureSliders((prev) => ({ ...prev, [s.key]: v[0] }))}
+                            min={s.min}
+                            max={s.max}
+                            step={s.step}
+                            className="w-full"
+                          />
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>{s.min}{s.unit}</span>
+                            <span className={Number(predictiveModel.sensitivity[s.key]) > 0 ? "text-emerald-500" : Number(predictiveModel.sensitivity[s.key]) < 0 ? "text-red-500" : ""}>
+                              {Number(predictiveModel.sensitivity[s.key]) > 0 ? "+" : ""}{predictiveModel.sensitivity[s.key]}%
+                            </span>
+                            <span>{s.max}{s.unit}</span>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Custom Correlations */}
+                      {customCorrelations.length > 0 && (
+                        <div className="pt-4 border-t">
+                          <p className="text-sm font-medium mb-2">Variáveis Correlacionadas:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {customCorrelations.map((varName) => {
+                              const corr = topCorrelationsForPicker.find((c) => c.name === varName);
+                              return (
+                                <Badge key={varName} variant="outline" className="gap-1">
+                                  {varName}
+                                  <span className="text-xs ml-1">
+                                    {corr?.correlation ? `${corr.correlation > 0 ? "+" : ""}${(corr.correlation * 100).toFixed(0)}%` : ""}
+                                  </span>
+                                  <button
+                                    onClick={() => setCustomCorrelations(customCorrelations.filter((c) => c !== varName))}
+                                    className="ml-1 hover:text-destructive"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Backtesting Chart */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">Backtesting & Projeção</CardTitle>
+                        {predictiveModel.modelMetrics.r2 < 0.5 && (
+                          <Badge variant="destructive" className="gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Baixa precisão
+                          </Badge>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={predictiveModel.chartData}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis dataKey="year" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "hsl(var(--card))",
+                                border: "1px solid hsl(var(--border))",
+                                borderRadius: "8px",
+                              }}
+                            />
+                            <Legend />
+                            <ReferenceLine x={cutoffYear} stroke="hsl(var(--primary))" strokeDasharray="5 5" label="Corte" />
+                            {/* Confidence interval */}
+                            <Area
+                              type="monotone"
+                              dataKey="upper"
+                              stackId="1"
+                              stroke="none"
+                              fill="hsl(var(--primary))"
+                              fillOpacity={0.1}
+                              name="IC Superior"
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="lower"
+                              stackId="2"
+                              stroke="none"
+                              fill="hsl(var(--background))"
+                              name="IC Inferior"
+                            />
+                            {/* Actual values */}
+                            <Line
+                              type="monotone"
+                              dataKey="actual"
+                              stroke="#3b82f6"
+                              strokeWidth={2}
+                              dot={{ r: 4 }}
+                              name="Real"
+                            />
+                            {/* Backtest */}
+                            <Line
+                              type="monotone"
+                              dataKey="backtested"
+                              stroke="#22c55e"
+                              strokeWidth={2}
+                              strokeDasharray="5 5"
+                              dot={{ r: 3 }}
+                              name="Backtest"
+                            />
+                            {/* Projection */}
+                            <Line
+                              type="monotone"
+                              dataKey="predicted"
+                              stroke="#f59e0b"
+                              strokeWidth={2}
+                              dot={{ r: 4 }}
+                              name="Projeção"
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Sensitivity Cards */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-3">Análise de Sensibilidade</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                    {SLIDER_CONFIG.map((s) => (
+                      <Card key={s.key} className="bg-muted/30">
+                        <CardContent className="p-3 text-center">
+                          <p className="text-xs text-muted-foreground truncate">{s.label.split(" ")[0]}</p>
+                          <p className={`text-lg font-bold ${
+                            Number(predictiveModel.sensitivity[s.key]) > 0 ? "text-emerald-500" :
+                            Number(predictiveModel.sensitivity[s.key]) < 0 ? "text-red-500" :
+                            "text-muted-foreground"
+                          }`}>
+                            {Number(predictiveModel.sensitivity[s.key]) > 0 ? "+" : ""}{predictiveModel.sensitivity[s.key]}%
+                          </p>
+                          <p className="text-xs text-muted-foreground">Impacto</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Seasonal Multipliers */}
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <h4 className="text-sm font-semibold mb-3">Multiplicadores Sazonais</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {SEASONAL_MULTIPLIERS.map((m) => (
+                      <Badge key={m.label} variant="secondary" className="gap-1">
+                        <m.icon className="h-3 w-3" />
+                        {m.label}: +{(m.effect * 100).toFixed(0)}%
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          {/* Correlation Picker Dialog */}
+          <Dialog open={showCorrelationPicker} onOpenChange={setShowCorrelationPicker}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Adicionar Variável Correlacionada</DialogTitle>
+                <DialogDescription>
+                  Selecione variáveis com base no nível de correlação
+                </DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[400px] overflow-y-auto space-y-2">
+                {topCorrelationsForPicker
+                  .filter((c) => !customCorrelations.includes(c.name))
+                  .slice(0, 15)
+                  .map((corr) => (
+                    <div
+                      key={corr.id}
+                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() => {
+                        if (customCorrelations.length < 5) {
+                          setCustomCorrelations([...customCorrelations, corr.name]);
+                          setShowCorrelationPicker(false);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{corr.name}</span>
+                        {corr.lag !== undefined && corr.lag > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            lag {corr.lag}m
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-mono ${
+                          corr.correlation > 0.7 ? "text-emerald-500" :
+                          corr.correlation > 0.5 ? "text-emerald-400" :
+                          corr.correlation > 0.3 ? "text-yellow-400" :
+                          corr.correlation < -0.5 ? "text-red-500" :
+                          corr.correlation < -0.3 ? "text-red-400" :
+                          "text-muted-foreground"
+                        }`}>
+                          {corr.correlation > 0 ? "+" : ""}{(corr.correlation * 100).toFixed(0)}%
+                        </span>
+                        <Badge variant={
+                          Math.abs(corr.correlation) > 0.7 ? "default" :
+                          Math.abs(corr.correlation) > 0.5 ? "secondary" :
+                          "outline"
+                        }>
+                          {Math.abs(corr.correlation) > 0.7 ? "Alta" :
+                           Math.abs(corr.correlation) > 0.5 ? "Média" :
+                           Math.abs(corr.correlation) > 0.3 ? "Baixa" : "Fraca"}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+              <DialogFooter>
+                <div className="text-sm text-muted-foreground">
+                  Selecionadas: {customCorrelations.length}/5
+                </div>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Comparative Chart Analysis */}
           {comparativeAnalysis && (
@@ -883,7 +1672,7 @@ export function DataAnalysisTab() {
             </Card>
           )}
 
-          {/* Sugestões de Análise (moved from Análise do Gráfico Comparativo) */}
+          {/* Sugestões de Análise */}
           {comparativeAnalysis && comparativeAnalysis.suggestions.length > 0 && (
             <Card>
               <CardHeader>
