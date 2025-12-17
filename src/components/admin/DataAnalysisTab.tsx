@@ -10,10 +10,12 @@ import {
   ResponsiveContainer, ScatterChart, Scatter, ZAxis, Cell, 
   ComposedChart, Area, ReferenceLine 
 } from "recharts";
-import { Calculator, TrendingUp, AlertTriangle, Plus, X, RefreshCw, BarChart3 } from "lucide-react";
+import { Calculator, TrendingUp, AlertTriangle, Plus, X, RefreshCw, BarChart3, Loader2 } from "lucide-react";
 import { spearmanCorrelation, findOptimalLag, getCorrelationStrengthPtBr } from "@/lib/time-series-correlation";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
-// Simple linear regression implementation (replaces regression library)
+// Simple linear regression implementation
 function linearRegression(data: [number, number][]): { equation: [number, number]; r2: number } {
   const n = data.length;
   if (n < 2) return { equation: [0, 0], r2: 0 };
@@ -30,7 +32,6 @@ function linearRegression(data: [number, number][]): { equation: [number, number
   const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
   const intercept = (sumY - slope * sumX) / n;
   
-  // Calculate R²
   const meanY = sumY / n;
   let ssRes = 0, ssTot = 0;
   for (const [x, y] of data) {
@@ -43,31 +44,23 @@ function linearRegression(data: [number, number][]): { equation: [number, number
   return { equation: [intercept, slope], r2 };
 }
 
-// ============================================
-// DADOS MOCK PARA DEMONSTRAÇÃO
-// ============================================
-const MOCK_ANNUAL_DATA = [
-  { year: 2015, sales: 180000, income: 2800, dollar: 3.9, selic: 14.25, ipca: 10.67, pib: -3.5, unemployment: 8.5, confidence: 78 },
-  { year: 2016, sales: 165000, income: 2750, dollar: 3.5, selic: 13.75, ipca: 6.29, pib: -3.3, unemployment: 11.5, confidence: 72 },
-  { year: 2017, sales: 185000, income: 2900, dollar: 3.3, selic: 7.0, ipca: 2.95, pib: 1.3, unemployment: 12.7, confidence: 85 },
-  { year: 2018, sales: 195000, income: 3000, dollar: 3.9, selic: 6.5, ipca: 3.75, pib: 1.8, unemployment: 12.3, confidence: 88 },
-  { year: 2019, sales: 210000, income: 3100, dollar: 4.0, selic: 4.5, ipca: 4.31, pib: 1.2, unemployment: 11.9, confidence: 92 },
-  { year: 2020, sales: 175000, income: 2850, dollar: 5.2, selic: 2.0, ipca: 4.52, pib: -3.9, unemployment: 13.5, confidence: 65 },
-  { year: 2021, sales: 220000, income: 3050, dollar: 5.4, selic: 9.25, ipca: 10.06, pib: 5.0, unemployment: 13.2, confidence: 75 },
-  { year: 2022, sales: 245000, income: 3200, dollar: 5.2, selic: 13.75, ipca: 5.79, pib: 2.9, unemployment: 9.3, confidence: 82 },
-  { year: 2023, sales: 260000, income: 3350, dollar: 4.9, selic: 11.75, ipca: 4.62, pib: 2.9, unemployment: 7.8, confidence: 90 },
-  { year: 2024, sales: 275000, income: 3500, dollar: 5.5, selic: 10.5, ipca: 4.5, pib: 2.5, unemployment: 7.0, confidence: 95 },
-];
+// Mapeamento de códigos de indicadores para variáveis do modelo
+const INDICATOR_MAPPING: Record<string, string> = {
+  "PMC": "sales",
+  "IPCA": "ipca",
+  "SELIC": "selic",
+  "PIB": "pib",
+  "DOLAR": "dollar",
+  "4099": "unemployment",
+};
 
 const VARIABLES = [
-  { key: "sales", label: "Vendas", unit: "R$" },
-  { key: "income", label: "Renda", unit: "R$" },
+  { key: "sales", label: "Vendas (PMC)", unit: "índice" },
   { key: "dollar", label: "Dólar", unit: "R$" },
   { key: "selic", label: "Selic", unit: "%" },
   { key: "ipca", label: "IPCA", unit: "%" },
   { key: "pib", label: "PIB", unit: "%" },
   { key: "unemployment", label: "Desemprego", unit: "%" },
-  { key: "confidence", label: "Confiança", unit: "" },
 ];
 
 const SLIDER_CONFIG = [
@@ -76,8 +69,6 @@ const SLIDER_CONFIG = [
   { key: "unemployment", label: "Desemprego Futuro (%)", min: 5, max: 15, step: 0.5, unit: "%", baseline: 8, effect: 0.03 },
   { key: "ipca", label: "IPCA Futuro (%)", min: 2, max: 12, step: 0.25, unit: "%", baseline: 5, effect: 0.02 },
   { key: "pib", label: "PIB Futuro (%)", min: -3, max: 5, step: 0.5, unit: "%", baseline: 0, effect: 0.04 },
-  { key: "income", label: "Renda Futura (R$)", min: 2500, max: 4000, step: 50, unit: "R$", baseline: 3000, effect: 0.001 },
-  { key: "confidence", label: "Confiança do Consumidor", min: 60, max: 120, step: 1, unit: "", baseline: 90, effect: 0.01 },
 ];
 
 const SEASONAL_MULTIPLIERS = [
@@ -86,10 +77,98 @@ const SEASONAL_MULTIPLIERS = [
   { label: "🥚 Páscoa", value: "+15%" },
 ];
 
+// Tipo para dados anuais
+interface AnnualData {
+  year: number;
+  sales: number;
+  dollar: number;
+  selic: number;
+  ipca: number;
+  pib: number;
+  unemployment: number;
+  [key: string]: number;
+}
+
 // ============================================
 // COMPONENTE PRINCIPAL
 // ============================================
 export default function DataAnalysisTab() {
+  // Fetch de dados reais do banco
+  const { data: annualData, isLoading, error, refetch } = useQuery({
+    queryKey: ["data-analysis-annual"],
+    queryFn: async (): Promise<AnnualData[]> => {
+      const { data, error } = await supabase
+        .from("indicator_values")
+        .select(`
+          reference_date,
+          value,
+          economic_indicators!inner(code)
+        `)
+        .in("economic_indicators.code", Object.keys(INDICATOR_MAPPING))
+        .order("reference_date", { ascending: true });
+
+      if (error) throw error;
+
+      // Agrupar por ano e calcular médias
+      const yearMap = new Map<number, Record<string, number[]>>();
+      
+      for (const row of data || []) {
+        const year = new Date(row.reference_date).getFullYear();
+        const code = (row.economic_indicators as any)?.code;
+        const varKey = INDICATOR_MAPPING[code];
+        
+        if (!varKey) continue;
+        
+        if (!yearMap.has(year)) {
+          yearMap.set(year, {});
+        }
+        const yearData = yearMap.get(year)!;
+        if (!yearData[varKey]) {
+          yearData[varKey] = [];
+        }
+        yearData[varKey].push(Number(row.value));
+      }
+
+      // Converter para array com médias
+      const result: AnnualData[] = [];
+      const sortedYears = Array.from(yearMap.keys()).sort();
+      
+      for (const year of sortedYears) {
+        const yearValues = yearMap.get(year)!;
+        const entry: AnnualData = {
+          year,
+          sales: 0,
+          dollar: 0,
+          selic: 0,
+          ipca: 0,
+          pib: 0,
+          unemployment: 0,
+        };
+        
+        for (const [key, values] of Object.entries(yearValues)) {
+          const avg = values.reduce((a, b) => a + b, 0) / values.length;
+          // IPCA mensal → anualizado (soma aproximada)
+          if (key === "ipca") {
+            entry[key] = avg * 12;
+          } else {
+            entry[key] = avg;
+          }
+        }
+        
+        result.push(entry);
+      }
+
+      return result;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  // Calcular limites de ano de corte dinamicamente
+  const yearRange = useMemo(() => {
+    if (!annualData || annualData.length < 2) return { min: 2015, max: 2023 };
+    const years = annualData.map(d => d.year);
+    return { min: Math.min(...years) + 2, max: Math.max(...years) - 1 };
+  }, [annualData]);
+
   // Estados do Simulador
   const [cutoffYear, setCutoffYear] = useState(2022);
   const [showSimulator, setShowSimulator] = useState(false);
@@ -99,27 +178,63 @@ export default function DataAnalysisTab() {
     unemployment: 8.0,
     ipca: 5.0,
     pib: 2.0,
-    income: 3200,
-    confidence: 95,
   });
 
   // Estados do Dropdown de Correlações
   const [customCorrelations, setCustomCorrelations] = useState<string[]>([]);
   const [showCorrelationPicker, setShowCorrelationPicker] = useState(false);
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Carregando dados econômicos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Card className="p-6 text-center">
+          <AlertTriangle className="h-8 w-8 mx-auto text-destructive mb-4" />
+          <p className="text-destructive font-medium">Erro ao carregar dados</p>
+          <p className="text-muted-foreground text-sm mt-2">{(error as Error).message}</p>
+          <Button onClick={() => refetch()} className="mt-4" variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Tentar novamente
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   // ============================================
   // PARTE 1: DIAGNÓSTICO HISTÓRICO
   // ============================================
 
+  // Dados prontos para uso (fallback vazio se loading)
+  const data = annualData || [];
+
   // Calcular Matriz de Correlação usando Spearman
   const correlationMatrix = useMemo(() => {
+    if (data.length < 3) return [];
+    
     const variables = VARIABLES.map(v => v.key);
     const matrix: { x: string; y: string; value: number }[] = [];
 
     for (const v1 of variables) {
       for (const v2 of variables) {
-        const values1 = MOCK_ANNUAL_DATA.map(d => d[v1 as keyof typeof d] as number);
-        const values2 = MOCK_ANNUAL_DATA.map(d => d[v2 as keyof typeof d] as number);
+        const values1 = data.map(d => d[v1 as keyof typeof d] as number).filter(v => v != null);
+        const values2 = data.map(d => d[v2 as keyof typeof d] as number).filter(v => v != null);
+
+        if (values1.length < 3 || values2.length < 3) {
+          matrix.push({ x: v1, y: v2, value: 0 });
+          continue;
+        }
 
         try {
           const corr = spearmanCorrelation(values1, values2);
@@ -130,16 +245,20 @@ export default function DataAnalysisTab() {
       }
     }
     return matrix;
-  }, []);
+  }, [data]);
 
   // Top Correlações com Vendas
   const topCorrelations = useMemo(() => {
-    const salesValues = MOCK_ANNUAL_DATA.map(d => d.sales);
+    if (data.length < 3) return [];
+    
+    const salesValues = data.map(d => d.sales).filter(v => v != null && v > 0);
     const correlations: { variable: string; label: string; value: number; lag: number }[] = [];
 
     for (const v of VARIABLES) {
       if (v.key === "sales") continue;
-      const varValues = MOCK_ANNUAL_DATA.map(d => d[v.key as keyof typeof d] as number);
+      const varValues = data.map(d => d[v.key as keyof typeof d] as number).filter(v => v != null);
+
+      if (varValues.length < 3 || salesValues.length < 3) continue;
 
       try {
         const result = findOptimalLag(salesValues, varValues, 3);
@@ -161,39 +280,43 @@ export default function DataAnalysisTab() {
     }
 
     return correlations.sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
-  }, []);
+  }, [data]);
 
-  // Dados para Scatter Plot
+  // Dados para Scatter Plot (Selic vs Vendas com bolha IPCA)
   const scatterData = useMemo(() => {
-    return MOCK_ANNUAL_DATA.map(d => ({
-      income: d.income,
+    return data.filter(d => d.sales > 0 && d.selic > 0).map(d => ({
+      selic: d.selic,
       sales: d.sales,
-      ipca: d.ipca * 5,
+      ipca: Math.max(d.ipca, 1) * 3,
       year: d.year,
     }));
-  }, []);
+  }, [data]);
 
   // ============================================
   // PARTE 2: SIMULADOR PREDITIVO
   // ============================================
 
   const { chartData, modelMetrics, sensitivity } = useMemo(() => {
-    const trainingData = MOCK_ANNUAL_DATA.filter(d => d.year <= cutoffYear);
-    const testData = MOCK_ANNUAL_DATA.filter(d => d.year > cutoffYear);
+    if (data.length < 3) {
+      return { chartData: [], modelMetrics: { r2: 0, slope: 0, intercept: 0 }, sensitivity: {} };
+    }
+    
+    const trainingData = data.filter(d => d.year <= cutoffYear && d.sales > 0);
+    const testData = data.filter(d => d.year > cutoffYear);
 
     if (trainingData.length < 3) {
       return { chartData: [], modelMetrics: { r2: 0, slope: 0, intercept: 0 }, sensitivity: {} };
     }
 
-    // Regressão linear: Vendas = β₀ + β₁ × Renda
-    const dataPoints: [number, number][] = trainingData.map(d => [d.income, d.sales]);
+    // Regressão linear: Vendas = β₀ + β₁ × Ano (tendência temporal)
+    const dataPoints: [number, number][] = trainingData.map(d => [d.year, d.sales]);
     const result = linearRegression(dataPoints);
     const [intercept, slope] = result.equation;
     const r2 = result.r2;
 
     // Gerar dados do gráfico
-    const chartPoints = MOCK_ANNUAL_DATA.map(d => {
-      const predicted = slope * d.income + intercept;
+    const chartPoints = data.filter(d => d.sales > 0).map(d => {
+      const predicted = slope * d.year + intercept;
       const isTraining = d.year <= cutoffYear;
 
       return {
@@ -207,7 +330,7 @@ export default function DataAnalysisTab() {
     });
 
     // Projeções futuras (3 anos)
-    const lastYear = MOCK_ANNUAL_DATA[MOCK_ANNUAL_DATA.length - 1]?.year || 2024;
+    const lastYear = data[data.length - 1]?.year || 2024;
 
     for (let i = 1; i <= 3; i++) {
       const futureYear = lastYear + i;
@@ -229,8 +352,8 @@ export default function DataAnalysisTab() {
         }
       });
 
-      const adjustedIncome = futureSliders.income * (1 + totalEffect + correlationEffect);
-      const predicted = slope * adjustedIncome + intercept;
+      const basePredicted = slope * futureYear + intercept;
+      const predicted = basePredicted * (1 + totalEffect + correlationEffect);
 
       chartPoints.push({
         year: futureYear,
@@ -361,10 +484,10 @@ export default function DataAnalysisTab() {
           </CardContent>
         </Card>
 
-        {/* SCATTER PLOT - RENDA VS VENDAS */}
+        {/* SCATTER PLOT - SELIC VS VENDAS */}
         <Card className="border-border/50 bg-card/50 backdrop-blur">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Poder de Compra: Renda vs Vendas</CardTitle>
+            <CardTitle className="text-lg">Impacto: Selic vs Vendas</CardTitle>
             <CardDescription>Tamanho da bolha = Inflação (IPCA)</CardDescription>
           </CardHeader>
           <CardContent>
@@ -373,19 +496,19 @@ export default function DataAnalysisTab() {
                 <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                   <XAxis 
-                    dataKey="income" 
-                    name="Renda" 
+                    dataKey="selic" 
+                    name="Selic" 
                     type="number" 
                     domain={["auto", "auto"]}
                     tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                    label={{ value: "Renda (R$)", position: "bottom", fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    label={{ value: "Selic (%)", position: "bottom", fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   />
                   <YAxis 
                     dataKey="sales" 
                     name="Vendas" 
                     type="number"
                     tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                    tickFormatter={(v) => v.toFixed(0)}
                   />
                   <ZAxis dataKey="ipca" range={[50, 400]} name="IPCA" />
                   <Tooltip
@@ -397,8 +520,8 @@ export default function DataAnalysisTab() {
                       fontSize: "12px",
                     }}
                     formatter={(value: number, name: string) => {
-                      if (name === "Vendas") return [`R$ ${value.toLocaleString("pt-BR")}`, name];
-                      if (name === "Renda") return [`R$ ${value.toLocaleString("pt-BR")}`, name];
+                      if (name === "Vendas") return [value.toFixed(1), "PMC"];
+                      if (name === "Selic") return [`${value.toFixed(2)}%`, name];
                       return [value, name];
                     }}
                     labelFormatter={(_, payload) => {
@@ -476,7 +599,7 @@ export default function DataAnalysisTab() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {[2018, 2019, 2020, 2021, 2022, 2023].map(y => (
+                  {Array.from({ length: yearRange.max - yearRange.min + 1 }, (_, i) => yearRange.min + i).map(y => (
                     <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
                   ))}
                 </SelectContent>
