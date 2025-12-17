@@ -703,7 +703,7 @@ export function ChartDatabaseTab() {
     // Regional indicators (index mode): use selectedRegionalValues with UF info
     if (isRegional && selectedRegionalValues.length > 0) {
       return selectedRegionalValues
-        .sort((a: any, b: any) => b.reference_date.localeCompare(a.reference_date))
+        .sort((a: any, b: any) => a.reference_date.localeCompare(b.reference_date))
         .map((v: any) => ({
           reference_date: v.reference_date,
           value: v.value,
@@ -713,7 +713,7 @@ export function ChartDatabaseTab() {
     
     // National/default: use selectedData (no UF)
     return selectedData
-      .sort((a, b) => b.rawDate.localeCompare(a.rawDate))
+      .sort((a, b) => a.rawDate.localeCompare(b.rawDate))
       .map((v) => ({
         reference_date: v.rawDate,
         value: v.value,
