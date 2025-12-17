@@ -36,8 +36,7 @@ interface PMCValorReal {
 
 interface ConversionResult {
   indicator_code: string;
-  records_processed: number;
-  records_converted: number;
+  records_inserted: number;
 }
 
 export function PMCConversionTab() {
@@ -94,17 +93,16 @@ export function PMCConversionTab() {
     },
   });
 
-  // Mutation para executar conversão
+  // Mutation para executar conversão (função batch otimizada)
   const conversionMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.rpc("process_all_pmc_conversions");
+      const { data, error } = await supabase.rpc("process_all_pmc_conversions_batch");
       if (error) throw error;
       return data as ConversionResult[];
     },
     onSuccess: (results) => {
-      const totalProcessed = results.reduce((sum, r) => sum + r.records_processed, 0);
-      const totalConverted = results.reduce((sum, r) => sum + r.records_converted, 0);
-      toast.success(`Conversão concluída: ${totalConverted.toLocaleString()}/${totalProcessed.toLocaleString()} registros convertidos`);
+      const totalInserted = results.reduce((sum, r) => sum + r.records_inserted, 0);
+      toast.success(`Conversão concluída: ${totalInserted.toLocaleString()} registros processados`);
       queryClient.invalidateQueries({ queryKey: ["pmc-valores-reais"] });
     },
     onError: (error: Error) => {
