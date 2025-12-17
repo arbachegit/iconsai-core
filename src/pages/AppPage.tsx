@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Home, 
@@ -12,7 +12,10 @@ import {
   Search,
   Settings,
   Shield,
-  Smartphone
+  LayoutDashboard,
+  ChevronUp,
+  ChevronDown,
+  Home as HomeIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +34,7 @@ export default function AppPage() {
   const [currentView, setCurrentView] = useState<AppView>("chat");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isControlCenterCollapsed, setIsControlCenterCollapsed] = useState(false);
 
   const menuItems = [
     { id: "home" as AppView, label: "Início", icon: Home },
@@ -218,86 +222,203 @@ export default function AppPage() {
             })}
           </nav>
 
-          {/* Footer Dock */}
-          <div className="border-t border-border p-2 space-y-1">
-            {/* Admin link - only for superadmin */}
-            {role === "superadmin" && (
-              sidebarCollapsed ? (
+          {/* Footer Dock - Control Center */}
+          <div className="border-t border-border p-2 relative">
+            {/* Chevron Toggle - Only visible when sidebar is expanded */}
+            {!sidebarCollapsed && (
+              <button
+                onClick={() => setIsControlCenterCollapsed(!isControlCenterCollapsed)}
+                className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 w-6 h-6 rounded-full bg-sidebar border border-border flex items-center justify-center hover:bg-[#00D4FF] hover:border-[#00D4FF] hover:shadow-[0_0_10px_rgba(0,212,255,0.5)] transition-all duration-300 group"
+              >
+                {isControlCenterCollapsed ? (
+                  <ChevronUp className="h-3.5 w-3.5 text-muted-foreground group-hover:text-black transition-colors" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-black transition-colors" />
+                )}
+              </button>
+            )}
+
+            {/* Scenario A: Sidebar COLLAPSED - Vertical icons with tooltips */}
+            {sidebarCollapsed ? (
+              <div className="flex flex-col gap-1">
+                {/* Admin - superadmin only */}
+                {role === "superadmin" && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="group w-full h-10 rounded-lg text-purple-400 hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                        onClick={() => navigate("/admin")}
+                      >
+                        <Shield className="h-5 w-5 group-hover:text-black" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Admin</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* Dashboard */}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="group w-full h-10 rounded-lg text-purple-400 hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                      onClick={() => navigate("/admin")}
+                      className="group w-full h-10 rounded-lg text-muted-foreground hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                      onClick={() => navigate("/dashboard")}
                     >
-                      <Shield className="h-5 w-5 group-hover:text-black" />
+                      <LayoutDashboard className="h-5 w-5 group-hover:text-black" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="right">Admin</TooltipContent>
+                  <TooltipContent side="right">Dashboard</TooltipContent>
                 </Tooltip>
-              ) : (
+
+                {/* Voltar ao Início */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="group w-full h-10 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                      onClick={() => navigate("/")}
+                    >
+                      <HomeIcon className="h-5 w-5 group-hover:text-black" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Voltar ao Início</TooltipContent>
+                </Tooltip>
+
+                {/* Sair */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="group w-full h-10 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                      onClick={signOut}
+                    >
+                      <LogOut className="h-5 w-5 group-hover:text-white" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Sair</TooltipContent>
+                </Tooltip>
+              </div>
+            ) : isControlCenterCollapsed ? (
+              /* Scenario B-2: Sidebar EXPANDED + Control Center COLLAPSED - Horizontal icons */
+              <div className={cn(
+                "flex flex-row items-center justify-around py-1 transition-all duration-300 ease-in-out overflow-hidden",
+                "max-h-14 opacity-100"
+              )}>
+                {/* Admin - superadmin only */}
+                {role === "superadmin" && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="group h-10 w-10 rounded-lg text-purple-400 hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                        onClick={() => navigate("/admin")}
+                      >
+                        <Shield className="h-5 w-5 group-hover:text-black" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Admin</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* Dashboard */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="group h-10 w-10 rounded-lg text-muted-foreground hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                      onClick={() => navigate("/dashboard")}
+                    >
+                      <LayoutDashboard className="h-5 w-5 group-hover:text-black" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Dashboard</TooltipContent>
+                </Tooltip>
+
+                {/* Voltar ao Início */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="group h-10 w-10 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                      onClick={() => navigate("/")}
+                    >
+                      <HomeIcon className="h-5 w-5 group-hover:text-black" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Voltar ao Início</TooltipContent>
+                </Tooltip>
+
+                {/* Sair */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="group h-10 w-10 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                      onClick={signOut}
+                    >
+                      <LogOut className="h-5 w-5 group-hover:text-white" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Sair</TooltipContent>
+                </Tooltip>
+              </div>
+            ) : (
+              /* Scenario B-1: Sidebar EXPANDED + Control Center EXPANDED - Vertical with text */
+              <div className={cn(
+                "flex flex-col gap-0.5 transition-all duration-300 ease-in-out overflow-hidden",
+                "max-h-48 opacity-100"
+              )}>
+                {/* Admin - superadmin only */}
+                {role === "superadmin" && (
+                  <Button
+                    variant="ghost"
+                    className="group w-full justify-start gap-3 h-10 rounded-lg text-purple-400 hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    onClick={() => navigate("/admin")}
+                  >
+                    <Shield className="h-5 w-5 group-hover:text-black" />
+                    <span className="group-hover:text-black">Admin</span>
+                  </Button>
+                )}
+
+                {/* Dashboard */}
                 <Button
                   variant="ghost"
-                  className="group w-full justify-start gap-3 h-10 rounded-lg text-purple-400 hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                  onClick={() => navigate("/admin")}
+                  className="group w-full justify-start gap-3 h-10 rounded-lg text-muted-foreground hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                  onClick={() => navigate("/dashboard")}
                 >
-                  <Shield className="h-5 w-5 group-hover:text-black" />
-                  <span className="group-hover:text-black">Admin</span>
+                  <LayoutDashboard className="h-5 w-5 group-hover:text-black" />
+                  <span className="group-hover:text-black">Dashboard</span>
                 </Button>
-              )
-            )}
 
-            {/* Voltar ao Início */}
-            {sidebarCollapsed ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="group w-full h-10 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                    onClick={() => navigate("/")}
-                  >
-                    <Smartphone className="h-5 w-5 group-hover:text-black" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Voltar ao Início</TooltipContent>
-              </Tooltip>
-            ) : (
-              <Button
-                variant="ghost"
-                className="group w-full justify-start gap-3 h-10 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                onClick={() => navigate("/")}
-              >
-                <Smartphone className="h-5 w-5 group-hover:text-black" />
-                <span className="group-hover:text-black">Voltar ao Início</span>
-              </Button>
-            )}
+                {/* Voltar ao Início */}
+                <Button
+                  variant="ghost"
+                  className="group w-full justify-start gap-3 h-10 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                  onClick={() => navigate("/")}
+                >
+                  <HomeIcon className="h-5 w-5 group-hover:text-black" />
+                  <span className="group-hover:text-black">Voltar ao Início</span>
+                </Button>
 
-            {/* Sair */}
-            {sidebarCollapsed ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="group w-full h-10 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                    onClick={signOut}
-                  >
-                    <LogOut className="h-5 w-5 group-hover:text-white" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Sair</TooltipContent>
-              </Tooltip>
-            ) : (
-              <Button
-                variant="ghost"
-                className="group w-full justify-start gap-3 h-10 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                onClick={signOut}
-              >
-                <LogOut className="h-5 w-5 group-hover:text-white" />
-                <span className="group-hover:text-white">Sair</span>
-              </Button>
+                {/* Sair */}
+                <Button
+                  variant="ghost"
+                  className="group w-full justify-start gap-3 h-10 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                  onClick={signOut}
+                >
+                  <LogOut className="h-5 w-5 group-hover:text-white" />
+                  <span className="group-hover:text-white">Sair</span>
+                </Button>
+              </div>
             )}
           </div>
         </aside>
