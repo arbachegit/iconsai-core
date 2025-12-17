@@ -35,8 +35,10 @@ interface PMCValorReal {
 }
 
 interface ConversionResult {
-  indicator_code: string;
-  records_inserted: number;
+  pmc_code: string;
+  total_processed: number;
+  total_converted: number;
+  years_covered: string;
 }
 
 export function PMCConversionTab() {
@@ -101,8 +103,8 @@ export function PMCConversionTab() {
       return data as ConversionResult[];
     },
     onSuccess: (results) => {
-      const totalInserted = results.reduce((sum, r) => sum + r.records_inserted, 0);
-      toast.success(`Conversão concluída: ${totalInserted.toLocaleString()} registros processados`);
+      const totalConverted = results.reduce((sum, r) => sum + r.total_converted, 0);
+      toast.success(`Conversão concluída: ${totalConverted.toLocaleString()} registros processados`);
       queryClient.invalidateQueries({ queryKey: ["pmc-valores-reais"] });
     },
     onError: (error: Error) => {
