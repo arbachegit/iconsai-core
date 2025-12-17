@@ -362,6 +362,9 @@ Quando o usuário pedir linha de tendência ou média móvel, responda:
     }
     
     for (const msg of messages) {
+      // Skip validation for file-data messages (content may be empty or different format)
+      if (msg.type === 'file-data') continue;
+      
       if (!msg || typeof msg.content !== 'string') {
         return new Response(JSON.stringify({ error: 'Invalid message format' }), { 
           status: 400, 

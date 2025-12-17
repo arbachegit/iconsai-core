@@ -662,11 +662,12 @@ export const AgentChat = memo(function AgentChat({
       {showScrollButton && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-24 left-1/2 -translate-x-1/2 z-10 
+          className="absolute bottom-28 left-1/2 -translate-x-1/2 z-20 
                      h-8 w-8 rounded-full bg-primary text-primary-foreground 
                      shadow-lg hover:shadow-xl 
                      flex items-center justify-center
-                     transition-all duration-300 hover:scale-110"
+                     transition-all duration-300 hover:scale-110
+                     animate-bounce"
           aria-label="Rolar até o final"
         >
           <ArrowDown className="h-4 w-4" />
