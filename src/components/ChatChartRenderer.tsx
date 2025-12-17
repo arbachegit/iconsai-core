@@ -153,6 +153,23 @@ const normalizeToPercentage = <T extends { value: number }>(data: T[]): T[] => {
   }));
 };
 
+// Robust number parsing for values that may be strings
+const parseNumericValue = (value: any): number => {
+  if (typeof value === 'number') {
+    return isNaN(value) || !isFinite(value) ? 0 : value;
+  }
+  if (typeof value === 'string') {
+    // Handle Brazilian format (1.234,56) and standard format (1,234.56)
+    const cleaned = value
+      .replace(/[R$\s]/g, '') // Remove currency symbols
+      .replace(/\./g, '')     // Remove thousand separators (BR format)
+      .replace(',', '.');     // Convert decimal comma to dot
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) || !isFinite(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
 const ChartTypeIcon = ({ type }: { type: string }) => {
   switch (type) {
     case 'bar': return <BarChart3 className="h-4 w-4" />;
@@ -246,8 +263,10 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   // Calculate average from filtered data (must be after filteredDisplayData)
   const dataAverage = useMemo(() => {
     if (filteredDisplayData.length === 0) return 0;
-    const sum = filteredDisplayData.reduce((acc, d) => acc + (d.value || 0), 0);
-    return Math.round(sum / filteredDisplayData.length);
+    const validValues = filteredDisplayData.map(d => parseNumericValue(d.value));
+    const sum = validValues.reduce((acc, v) => acc + v, 0);
+    const avg = sum / validValues.length;
+    return isNaN(avg) || !isFinite(avg) ? 0 : Math.round(avg);
   }, [filteredDisplayData]);
 
   const addReferenceLine = useCallback(() => {
@@ -283,8 +302,9 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
     return filteredDisplayData.map((item, idx, arr) => {
       if (idx < window - 1) return { ...item, movingAvg: null };
       const slice = arr.slice(idx - window + 1, idx + 1);
-      const avg = slice.reduce((sum, d) => sum + (d.value || 0), 0) / window;
-      return { ...item, movingAvg: avg };
+      const validValues = slice.map(d => parseNumericValue(d.value));
+      const avg = validValues.reduce((sum, v) => sum + v, 0) / window;
+      return { ...item, movingAvg: isNaN(avg) || !isFinite(avg) ? null : avg };
     });
   }, [filteredDisplayData, showMovingAverage]);
 
@@ -292,17 +312,28 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
   const trendLineData = useMemo(() => {
     if (!showTrendLine || filteredDisplayData.length < 2) return null;
     
-    const n = filteredDisplayData.length;
-    const xValues = filteredDisplayData.map((_, i) => i);
-    const yValues = filteredDisplayData.map(d => d.value || 0);
+    const yValues = filteredDisplayData.map(d => parseNumericValue(d.value));
+    
+    // Validate we have valid numeric data
+    const validYValues = yValues.filter(v => !isNaN(v) && isFinite(v) && v !== 0);
+    if (validYValues.length < 2) return null;
+    
+    const n = yValues.length;
+    const xValues = yValues.map((_, i) => i);
     
     const sumX = xValues.reduce((a, b) => a + b, 0);
     const sumY = yValues.reduce((a, b) => a + b, 0);
     const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0);
     const sumXX = xValues.reduce((sum, x) => sum + x * x, 0);
     
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const denominator = n * sumXX - sumX * sumX;
+    if (denominator === 0) return null; // Avoid division by zero
+    
+    const slope = (n * sumXY - sumX * sumY) / denominator;
     const intercept = (sumY - slope * sumX) / n;
+    
+    // Validate results
+    if (isNaN(slope) || !isFinite(slope) || isNaN(intercept) || !isFinite(intercept)) return null;
     
     // Calculate R²
     const yMean = sumY / n;
@@ -315,20 +346,27 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
       trend: intercept + slope * idx
     }));
     
-    return { slope, intercept, r2, data };
+    return { slope, intercept, r2: isNaN(r2) ? 0 : r2, data };
   }, [filteredDisplayData, showTrendLine]);
 
   // Recalculate Y bounds based on filtered data
   const filteredDataBounds = useMemo(() => {
-    const values = filteredDisplayData.map(d => d.value);
-    const dataMin = Math.min(...values);
-    const dataMax = Math.max(...values);
+    const values = filteredDisplayData.map(d => parseNumericValue(d.value));
+    const validValues = values.filter(v => !isNaN(v) && isFinite(v));
+    
+    if (validValues.length === 0) {
+      return { dataMin: 0, dataMax: 100, absoluteMin: 0, absoluteMax: 100 };
+    }
+    
+    const dataMin = Math.min(...validValues);
+    const dataMax = Math.max(...validValues);
     const padding = (dataMax - dataMin) * 0.1 || 5;
+    
     return {
-      dataMin,
-      dataMax,
+      dataMin: isNaN(dataMin) ? 0 : dataMin,
+      dataMax: isNaN(dataMax) ? 100 : dataMax,
       absoluteMin: 0,
-      absoluteMax: Math.ceil(dataMax + padding)
+      absoluteMax: Math.ceil((isNaN(dataMax) ? 100 : dataMax) + padding)
     };
   }, [filteredDisplayData]);
 
@@ -1071,8 +1109,28 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
               {/* Trend Line Equation and R² */}
               {showTrendLine && trendLineData && (
                 <div className="text-[10px] text-muted-foreground flex items-center gap-2">
-                  <span>y = {trendLineData.slope.toFixed(4)}x + {trendLineData.intercept.toFixed(4)}</span>
-                  <span className="text-emerald-400 font-medium">(R² = {trendLineData.r2.toFixed(4)})</span>
+                  <span>
+                    y = {
+                      isNaN(trendLineData.slope) || !isFinite(trendLineData.slope)
+                        ? 'N/A'
+                        : Math.abs(trendLineData.slope) >= 1000 || (Math.abs(trendLineData.slope) > 0 && Math.abs(trendLineData.slope) < 0.0001)
+                          ? trendLineData.slope.toExponential(2)
+                          : trendLineData.slope.toFixed(4)
+                    }x + {
+                      isNaN(trendLineData.intercept) || !isFinite(trendLineData.intercept)
+                        ? 'N/A'
+                        : Math.abs(trendLineData.intercept) >= 1000 || (Math.abs(trendLineData.intercept) > 0 && Math.abs(trendLineData.intercept) < 0.0001)
+                          ? trendLineData.intercept.toExponential(2)
+                          : trendLineData.intercept.toFixed(4)
+                    }
+                  </span>
+                  <span className="text-emerald-400 font-medium">
+                    (R² = {
+                      isNaN(trendLineData.r2) || !isFinite(trendLineData.r2)
+                        ? 'N/A'
+                        : trendLineData.r2.toFixed(4)
+                    })
+                  </span>
                 </div>
               )}
             </div>
