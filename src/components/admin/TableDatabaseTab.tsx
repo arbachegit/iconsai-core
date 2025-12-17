@@ -368,6 +368,28 @@ export function TableDatabaseTab() {
     enabled: !!selectedIndicator?.id,
   });
 
+  // Fetch Brazilian UFs for mapping uf_code to names
+  const { data: brazilianUfs = [] } = useQuery({
+    queryKey: ["brazilian-ufs-map"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brazilian_ufs")
+        .select("uf_code, uf_name, uf_sigla");
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 60, // Cache for 1 hour
+  });
+
+  // Create UF lookup map
+  const ufMap = useMemo(() => {
+    const map: Record<number, { uf_name: string; uf_sigla: string }> = {};
+    brazilianUfs.forEach(uf => {
+      map[uf.uf_code] = { uf_name: uf.uf_name, uf_sigla: uf.uf_sigla };
+    });
+    return map;
+  }, [brazilianUfs]);
+
   // Fetch PMC monetary values for conversion toggle (supports both regional and national)
   const { data: pmcMonetaryValues = [] } = useQuery({
     queryKey: ["pmc-monetary-values-table", selectedIndicator?.code],
@@ -388,10 +410,10 @@ export function TableDatabaseTab() {
         if (error) throw error;
         return data || [];
       } else {
-        // Regional indicators: fetch with UF info
+        // Regional indicators: fetch without join, merge UF names in frontend
         const { data, error } = await supabase
           .from("pmc_valores_reais")
-          .select("reference_date, uf_code, valor_estimado_reais, brazilian_ufs!inner(uf_name, uf_sigla)")
+          .select("reference_date, uf_code, valor_estimado_reais")
           .eq("pmc_indicator_code", selectedIndicator.code)
           .gt("uf_code", 0)
           .order("reference_date", { ascending: false })
@@ -411,12 +433,13 @@ export function TableDatabaseTab() {
       return pmcMonetaryValues.map((v: any) => ({
         reference_date: v.reference_date,
         value: v.valor_estimado_reais,
-        brazilian_ufs: v.brazilian_ufs || null,
+        // Merge UF info from lookup map (null for national uf_code=0)
+        brazilian_ufs: v.uf_code > 0 && ufMap[v.uf_code] ? ufMap[v.uf_code] : null,
       }));
     }
     
     return selectedIndicatorValues;
-  }, [selectedIndicator, selectedIndicatorValues, showMonetaryValues, pmcMonetaryValues]);
+  }, [selectedIndicator, selectedIndicatorValues, showMonetaryValues, pmcMonetaryValues, ufMap]);
 
   const handleCardClick = (indicator: IndicatorWithApi) => {
     setCurrentView('detail');
@@ -937,11 +960,12 @@ export function TableDatabaseTab() {
               onBack={handleBackToDetail}
               indicatorName={selectedIndicator.name + (showMonetaryValues ? ' (R$)' : '')}
               indicatorCode={selectedIndicator.code}
-              isRegional={selectedIndicator.is_regional || false}
+              isRegional={showMonetaryValues ? isPmcRegionalIndicator(selectedIndicator.code) : (selectedIndicator.is_regional || false)}
               data={displayData}
               unit={showMonetaryValues ? 'R$ (mil)' : (selectedIndicator.unit || null)}
               frequency={selectedIndicator.frequency || null}
               isLoading={loadingSelectedValues}
+              isMonetaryMode={showMonetaryValues}
             />
           )}
 

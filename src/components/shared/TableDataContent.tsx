@@ -32,6 +32,7 @@ interface TableDataContentProps {
   unit: string | null;
   frequency: string | null;
   isLoading: boolean;
+  isMonetaryMode?: boolean; // Flag to indicate R$ mode with large values
 }
 
 const FREQUENCIES: Record<string, string> = {
@@ -41,7 +42,31 @@ const FREQUENCIES: Record<string, string> = {
   annual: "Anual",
 };
 
-function formatTableValue(value: number, unit: string | null): string {
+// Format large monetary values in millions/billions
+function formatLargeMonetaryValue(value: number): string {
+  if (value >= 1_000_000_000) {
+    return `R$ ${(value / 1_000_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bi`;
+  }
+  if (value >= 1_000_000) {
+    return `R$ ${(value / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Mi`;
+  }
+  if (value >= 1_000) {
+    return `R$ ${(value / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} mil`;
+  }
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatTableValue(value: number, unit: string | null, isMonetaryMode?: boolean): string {
+  // If in monetary mode, use large value formatting
+  if (isMonetaryMode) {
+    return formatLargeMonetaryValue(value);
+  }
+
   const u = (unit || "").toLowerCase();
 
   if (u.includes("%")) {
@@ -49,12 +74,7 @@ function formatTableValue(value: number, unit: string | null): string {
   }
 
   if (u.includes("r$") || u.includes("mil") || u.includes("reais") || u === "brl") {
-    return value.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+    return formatLargeMonetaryValue(value);
   }
 
   if (u.includes("us$") || u.includes("usd") || u.includes("dólar") || u.includes("dollar")) {
@@ -76,6 +96,7 @@ export function TableDataContent({
   unit,
   frequency,
   isLoading,
+  isMonetaryMode = false,
 }: TableDataContentProps) {
   return (
     <div className="flex flex-col h-full">
@@ -161,7 +182,7 @@ export function TableDataContent({
                         </TableCell>
                       )}
                       <TableCell className="text-right font-mono text-white">
-                        {formatTableValue(Number(item.value), unit)}
+                        {formatTableValue(Number(item.value), unit, isMonetaryMode)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {indicatorName}
