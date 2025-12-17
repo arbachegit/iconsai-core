@@ -177,7 +177,7 @@ export function BrazilMap({
     <div className={cn("relative", disabled && "opacity-50 pointer-events-none")} onMouseMove={handleMouseMove}>
       <svg
         viewBox="0 0 600 600"
-        className="w-full h-auto max-h-[600px]"
+        className="w-full h-auto max-h-[660px]"
         style={{ background: "transparent" }}
       >
         {paths.map((state) => {
