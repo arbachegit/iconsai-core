@@ -368,7 +368,8 @@ export function ChartDatabaseTab() {
           .select("reference_date, uf_code, valor_estimado_reais")
           .eq("pmc_indicator_code", selectedIndicator.code)
           .eq("uf_code", 0)
-          .order("reference_date");
+          .order("reference_date")
+          .limit(10000);
         if (error) throw error;
         return data || [];
       } else {
@@ -378,7 +379,8 @@ export function ChartDatabaseTab() {
           .select("reference_date, uf_code, valor_estimado_reais")
           .eq("pmc_indicator_code", selectedIndicator.code)
           .gt("uf_code", 0)
-          .order("reference_date");
+          .order("reference_date")
+          .limit(10000);
         if (error) throw error;
         return data || [];
       }

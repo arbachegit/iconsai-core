@@ -406,7 +406,7 @@ export function TableDatabaseTab() {
           .eq("pmc_indicator_code", selectedIndicator.code)
           .eq("uf_code", 0)
           .order("reference_date", { ascending: false })
-          .limit(500);
+          .limit(10000);
         if (error) throw error;
         return data || [];
       } else {
@@ -417,7 +417,7 @@ export function TableDatabaseTab() {
           .eq("pmc_indicator_code", selectedIndicator.code)
           .gt("uf_code", 0)
           .order("reference_date", { ascending: false })
-          .limit(500);
+          .limit(10000);
         if (error) throw error;
         return data || [];
       }
