@@ -898,7 +898,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="__placeholder__" disabled>
                       Nenhuma coluna numérica disponível
                     </SelectItem>
                   )}
