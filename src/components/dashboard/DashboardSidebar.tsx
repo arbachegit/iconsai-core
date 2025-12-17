@@ -255,21 +255,7 @@ export function DashboardSidebar({
           {isCollapsed ? (
             // SCENARIO A: Sidebar COLLAPSED - Vertical icons only
             <div className="flex flex-col items-center gap-1">
-              {/* App link */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                    onClick={() => navigate("/app")}
-                  >
-                    <Smartphone className="w-4 h-4 group-hover:text-black" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">App</TooltipContent>
-              </Tooltip>
-
+              {/* Admin link - superadmin only */}
               {isSuperAdmin && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -285,6 +271,21 @@ export function DashboardSidebar({
                   <TooltipContent side="right">Admin</TooltipContent>
                 </Tooltip>
               )}
+
+              {/* App link */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    onClick={() => navigate("/app")}
+                  >
+                    <Smartphone className="w-4 h-4 group-hover:text-black" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">App</TooltipContent>
+              </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -317,20 +318,6 @@ export function DashboardSidebar({
           ) : isControlCenterCollapsed ? (
             // SCENARIO B-2: Sidebar EXPANDED + Control Center COLLAPSED - Horizontal row
             <div className="flex flex-row items-center justify-around py-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                    onClick={() => navigate("/app")}
-                  >
-                    <Smartphone className="w-4 h-4 group-hover:text-black" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">App</TooltipContent>
-              </Tooltip>
-
               {isSuperAdmin && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -346,6 +333,20 @@ export function DashboardSidebar({
                   <TooltipContent side="top">Admin</TooltipContent>
                 </Tooltip>
               )}
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    onClick={() => navigate("/app")}
+                  >
+                    <Smartphone className="w-4 h-4 group-hover:text-black" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">App</TooltipContent>
+              </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -378,15 +379,6 @@ export function DashboardSidebar({
           ) : (
             // SCENARIO B-1: Sidebar EXPANDED + Control Center EXPANDED - Vertical with text
             <div className="flex flex-col gap-0.5">
-              <Button 
-                variant="ghost" 
-                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
-                onClick={() => navigate("/app")}
-              >
-                <Smartphone className="w-4 h-4 shrink-0 group-hover:text-black" />
-                <span className="whitespace-nowrap">App</span>
-              </Button>
-
               {isSuperAdmin && (
                 <Button 
                   variant="ghost" 
@@ -397,6 +389,15 @@ export function DashboardSidebar({
                   <span className="whitespace-nowrap">Admin</span>
                 </Button>
               )}
+
+              <Button 
+                variant="ghost" 
+                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                onClick={() => navigate("/app")}
+              >
+                <Smartphone className="w-4 h-4 shrink-0 group-hover:text-black" />
+                <span className="whitespace-nowrap">App</span>
+              </Button>
 
               <Button 
                 variant="ghost" 
