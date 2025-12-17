@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { 
   Bot, Send, Loader2, Sparkles, Paperclip, X, Volume2, Mic, Square, 
-  ImagePlus, StopCircle, BarChart3, ArrowUp 
+  ImagePlus, StopCircle, BarChart3, ArrowUp, ArrowDown 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useChat, ChatType } from "@/hooks/useChat";
@@ -15,6 +14,9 @@ import { DataVisualization } from "@/components/chat/DataVisualization";
 import FileProcessor from "@/components/chat/FileProcessor";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import ContextualSuggestions from "@/components/ContextualSuggestions";
+import { AudioControls } from "@/components/AudioControls";
+import { ChatFloatingAudioPlayer } from "@/components/ChatFloatingAudioPlayer";
+import { CopyButton } from "@/components/CopyButton";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
@@ -89,6 +91,11 @@ export const AgentChat = memo(function AgentChat({
   const [isChartMode, setIsChartMode] = useState(false);
   const [isFileDialogOpen, setIsFileDialogOpen] = useState(false);
 
+  // Audio and scroll states
+  const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const audioMessageRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -138,6 +145,7 @@ export const AgentChat = memo(function AgentChat({
     currentlyPlayingIndex,
     transcribeAudio,
     generateImage,
+    audioProgress,
   } = useChat(
     {
       chatType,
@@ -154,6 +162,24 @@ export const AgentChat = memo(function AgentChat({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Scroll button visibility
+  useEffect(() => {
+    const checkScroll = () => {
+      const scrollArea = messagesEndRef.current?.parentElement;
+      if (scrollArea) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollArea;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+        setShowScrollButton(!isNearBottom && messages.length > 3);
+      }
+    };
+    
+    const scrollArea = messagesEndRef.current?.parentElement;
+    if (scrollArea) {
+      scrollArea.addEventListener('scroll', checkScroll);
+      return () => scrollArea.removeEventListener('scroll', checkScroll);
+    }
+  }, [messages.length]);
 
   const capabilities = agent?.capabilities || {};
 
@@ -175,6 +201,30 @@ export const AgentChat = memo(function AgentChat({
   const handleSuggestionClick = useCallback((suggestion: string) => {
     setInput(suggestion);
     textareaRef.current?.focus();
+  }, []);
+
+  // Download handlers
+  const handleDownloadAudio = useCallback((audioUrl: string, messageIndex: number) => {
+    const link = document.createElement("a");
+    link.href = audioUrl;
+    link.download = `knowyou-audio-${messageIndex}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
+  const handleDownloadImage = useCallback((imageUrl: string, messageIndex: number) => {
+    const link = document.createElement("a");
+    link.href = imageUrl;
+    link.download = `knowyou-imagem-${messageIndex}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
+  // Scroll to bottom
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   const handleSubmit = useCallback((e?: React.FormEvent) => {
@@ -383,7 +433,7 @@ export const AgentChat = memo(function AgentChat({
   }
 
   return (
-    <div className={`flex flex-col h-full min-h-0 bg-background overflow-hidden ${className}`}>
+    <div className={`flex flex-col h-full min-h-0 bg-background overflow-hidden relative ${className}`}>
       {/* Header */}
       {!embedded && (
         <div className="flex items-center justify-between p-4 border-b border-border bg-card">
@@ -410,110 +460,136 @@ export const AgentChat = memo(function AgentChat({
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 p-4">
-        <div className="space-y-4">
-          {/* Greeting */}
-          {messages.length === 0 && agent.greeting_message && (
-            <div className="flex gap-3">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Bot className="h-4 w-4 text-primary" />
-              </div>
-              <div className="bg-muted rounded-lg p-3 max-w-[85%]">
-                <p className="text-sm text-foreground">{agent.greeting_message}</p>
-              </div>
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center py-8">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Bot className="h-8 w-8 text-primary" />
             </div>
-          )}
-
-          {/* Messages */}
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
-            >
-              {msg.role === "assistant" && (
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Bot className="h-4 w-4 text-primary" />
-                </div>
-              )}
+            <h4 className="text-lg font-semibold mb-2">
+              {agent.greeting_message || `Olá! Sou o ${agent.name}`}
+            </h4>
+            <p className="text-muted-foreground max-w-md text-sm">
+              {agent.description || "Como posso ajudar você hoje?"}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Messages */}
+            {messages.map((msg, idx) => (
               <div
-                className={`rounded-lg p-3 overflow-hidden ${
-                  msg.type === "file-data" ? "w-[80%] max-w-[80%]" : "max-w-[80%]"
-                } ${
-                  msg.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
-                }`}
+                key={idx}
+                className={cn(
+                  "flex items-end gap-1",
+                  msg.type === "file-data" ? "w-full" : (msg.role === "user" ? "justify-end" : "justify-start")
+                )}
+                ref={el => {
+                  if (msg.role === "assistant" && msg.audioUrl) {
+                    audioMessageRefs.current[idx] = el;
+                  }
+                }}
               >
-                {msg.type === "file-data" && msg.fileData ? (
-                  <DataVisualization
-                    data={msg.fileData.data}
-                    columns={msg.fileData.columns}
-                    fileName={msg.fileData.fileName}
-                  />
-                ) : (
-                  <MarkdownContent content={msg.content} className="text-sm" />
+                {/* Bot avatar */}
+                {msg.role === "assistant" && (
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Bot className="h-4 w-4 text-primary" />
+                  </div>
                 )}
                 
-                {/* Imagem gerada */}
-                {msg.imageUrl && (
-                  <div className="mt-2">
+                {/* CopyButton for user messages */}
+                {msg.role === "user" && msg.type !== "file-data" && (
+                  <CopyButton content={msg.content} />
+                )}
+                
+                <div
+                  className={cn(
+                    "rounded-2xl px-4 py-3 overflow-hidden",
+                    msg.type === "file-data" ? "w-full max-w-full" : "max-w-[85%]",
+                    msg.role === "user" && msg.type !== "file-data"
+                      ? "bg-[hsl(var(--chat-message-user-bg))] text-primary-foreground" 
+                      : "bg-[hsl(var(--chat-message-ai-bg))] text-foreground"
+                  )}
+                >
+                  {/* DataVisualization for file-data */}
+                  {msg.type === "file-data" && msg.fileData && (
+                    <DataVisualization
+                      data={msg.fileData.data}
+                      columns={msg.fileData.columns}
+                      fileName={msg.fileData.fileName}
+                    />
+                  )}
+                  
+                  {/* Image */}
+                  {msg.imageUrl && (
                     <img 
                       src={msg.imageUrl} 
                       alt="Imagem gerada" 
-                      className="max-w-full rounded-lg shadow-md"
+                      className="max-w-full rounded-lg mb-2" 
                     />
-                  </div>
-                )}
-                
-                {/* Audio controls */}
-                {msg.role === "assistant" && capabilities.voice && (
-                  <div className="mt-2 flex gap-2">
-                    {currentlyPlayingIndex === idx ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={stopAudio}
-                        className="h-7 text-xs"
-                      >
-                        <StopCircle className="h-3 w-3 mr-1" />
-                        Parar
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => playAudio(idx)}
-                        disabled={isGeneratingAudio}
-                        className="h-7 text-xs"
-                      >
-                        {isGeneratingAudio ? (
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        ) : (
-                          <Volume2 className="h-3 w-3 mr-1" />
-                        )}
-                        Ouvir
-                      </Button>
-                    )}
-                  </div>
-                )}
+                  )}
+                  
+                  {/* Text content */}
+                  {msg.type !== "file-data" && (
+                    <MarkdownContent content={msg.content} className="text-sm" />
+                  )}
+                  
+                  {/* Audio Controls for assistant */}
+                  {msg.role === "assistant" && capabilities.voice && (
+                    <AudioControls 
+                      audioUrl={msg.audioUrl}
+                      imageUrl={msg.imageUrl}
+                      isPlaying={currentlyPlayingIndex === idx}
+                      isGeneratingAudio={isGeneratingAudio}
+                      currentTime={currentlyPlayingIndex === idx ? audioProgress.currentTime : 0}
+                      duration={currentlyPlayingIndex === idx ? audioProgress.duration : 0}
+                      timestamp={msg.timestamp}
+                      messageContent={msg.content}
+                      onPlay={() => {
+                        playAudio(idx);
+                        setShowFloatingPlayer(true);
+                      }}
+                      onStop={() => {
+                        stopAudio();
+                        setShowFloatingPlayer(false);
+                      }}
+                      onDownload={msg.audioUrl ? () => handleDownloadAudio(msg.audioUrl!, idx) : undefined}
+                      onDownloadImage={msg.imageUrl ? () => handleDownloadImage(msg.imageUrl!, idx) : undefined}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {/* Loading indicator */}
-          {isLoading && (
-            <div className="flex gap-3">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Bot className="h-4 w-4 text-primary" />
+            {/* Loading indicator */}
+            {isLoading && (
+              <div className="flex gap-3">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Bot className="h-4 w-4 text-primary" />
+                </div>
+                <div className="bg-muted rounded-lg p-3">
+                  <TypingIndicator />
+                </div>
               </div>
-              <div className="bg-muted rounded-lg p-3">
-                <TypingIndicator />
-              </div>
-            </div>
-          )}
+            )}
 
-          <div ref={messagesEndRef} />
-        </div>
+            <div ref={messagesEndRef} />
+          </div>
+        )}
       </ScrollArea>
+
+      {/* Scroll to Bottom Button */}
+      {showScrollButton && (
+        <button
+          onClick={scrollToBottom}
+          className="absolute bottom-24 left-1/2 -translate-x-1/2 z-10 
+                     h-8 w-8 rounded-full bg-primary text-primary-foreground 
+                     shadow-lg hover:shadow-xl 
+                     flex items-center justify-center
+                     transition-all duration-300 hover:scale-110"
+          aria-label="Rolar até o final"
+        >
+          <ArrowDown className="h-4 w-4" />
+        </button>
+      )}
 
       {/* Contextual Suggestions - estilo ChatStudy */}
       <ContextualSuggestions
@@ -654,6 +730,21 @@ export const AgentChat = memo(function AgentChat({
           <FileProcessor onDataLoaded={handleFileProcessed} />
         </DialogContent>
       </Dialog>
+
+      {/* Floating Audio Player */}
+      <ChatFloatingAudioPlayer 
+        isVisible={showFloatingPlayer && currentlyPlayingIndex !== null} 
+        currentTime={audioProgress.currentTime} 
+        duration={audioProgress.duration} 
+        onStop={() => {
+          stopAudio();
+          setShowFloatingPlayer(false);
+        }} 
+        onClose={() => {
+          stopAudio();
+          setShowFloatingPlayer(false);
+        }} 
+      />
     </div>
   );
 });
