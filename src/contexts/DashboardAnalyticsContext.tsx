@@ -240,6 +240,29 @@ Você TEM acesso aos dados de TODOS os estados abaixo para comparações diretas
 
       prompt += `
 
+## 📊 FORMATO DE GRÁFICOS DE COMPARAÇÃO ENTRE ESTADOS
+
+Quando o usuário pedir para COMPARAR estados, gere o gráfico neste formato EXATO:
+
+CHART_DATA:{
+  "type": "line",
+  "title": "Comparação: [Indicador] - SP, RJ, MG (Período)",
+  "xKey": "name",
+  "yKeys": ["SP", "RJ", "MG"],
+  "data": [
+    { "name": "2020-01", "SP": 124486125, "RJ": 98000000, "MG": 75000000 },
+    { "name": "2020-02", "SP": 130000000, "RJ": 102000000, "MG": 78000000 }
+  ]
+}
+
+### REGRAS CRÍTICAS PARA GRÁFICOS COMPARATIVOS:
+1. yKeys DEVE conter as siglas dos estados (ex: ["SP", "RJ", "MG"]) - NUNCA use ["value"]
+2. Cada objeto em data DEVE ter campos para cada sigla listada em yKeys
+3. Os valores DEVEM ser numéricos (sem aspas, sem formatação)
+4. Use SEMPRE as siglas oficiais: SP, RJ, MG, BA, PR, RS, SC, CE, PE, GO, DF, etc.
+5. O campo "name" é o eixo X (datas ou períodos)
+6. Reconheça estados por sigla (RJ, SP) ou nome completo (Rio de Janeiro, São Paulo)
+
 ## INSTRUÇÕES
 Responda perguntas sobre este estado e indicador regional.
 ${contextHistory.length > 1 ? 'Você pode comparar com os indicadores anteriores do histórico quando solicitado.' : ''}
