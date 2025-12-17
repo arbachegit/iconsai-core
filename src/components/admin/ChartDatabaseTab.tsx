@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 import { StatBadge } from "@/components/shared/StatBadge";
 import { TrendInfoModal } from "@/components/shared/TrendInfoModal";
@@ -58,6 +59,17 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+
+// PMC Regional indicator codes that have monetary conversion available
+const PMC_REGIONAL_CODES = [
+  'PMC_COMB_UF', 'PMC_COMBUSTIVEIS_UF', 'PMC_CONST_UF', 'PMC_CONSTRUCAO_UF',
+  'PMC_FARM_UF', 'PMC_FARMACIA_UF', 'PMC_MOV_UF', 'PMC_MOVEIS_UF',
+  'PMC_VAREJO_UF', 'PMC_VEICULOS_UF', 'PMC_VEST_UF', 'PMC_VESTUARIO_UF'
+];
+
+const isPmcRegionalIndicator = (code: string): boolean => {
+  return PMC_REGIONAL_CODES.includes(code);
+};
 
 // Provider color styling (same as ApiManagementTab)
 const getProviderColor = (provider: string) => {
@@ -213,6 +225,7 @@ export function ChartDatabaseTab() {
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
   const [showTrendModal, setShowTrendModal] = useState(false);
   const [currentView, setCurrentView] = useState<DialogView>('detail');
+  const [showMonetaryValues, setShowMonetaryValues] = useState(false);
 
   // Dashboard analytics context (safe - returns null if not in provider)
   const dashboardAnalytics = useDashboardAnalyticsSafe();
@@ -310,7 +323,22 @@ export function ChartDatabaseTab() {
     staleTime: 60000,
   });
 
-  // Fetch summary stats from aggregated view (fast, single query)
+  // Fetch PMC monetary values for conversion toggle
+  const { data: pmcMonetaryValues = [] } = useQuery({
+    queryKey: ["pmc-monetary-values-chart", selectedIndicator?.code],
+    queryFn: async () => {
+      if (!selectedIndicator || !isPmcRegionalIndicator(selectedIndicator.code)) return [];
+      const { data, error } = await supabase
+        .from("pmc_valores_reais")
+        .select("reference_date, uf_code, valor_estimado_reais")
+        .eq("pmc_indicator_code", selectedIndicator.code)
+        .order("reference_date");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedIndicator && isPmcRegionalIndicator(selectedIndicator?.code || ''),
+  });
+
   const { data: indicatorStats = {}, isLoading: loadingStats } = useQuery({
     queryKey: ["indicator-stats-chart-db"],
     queryFn: async () => {
@@ -390,9 +418,30 @@ export function ChartDatabaseTab() {
     return groups;
   }, [filteredIndicators]);
 
-  // Get data for selected indicator
+  // Get data for selected indicator (with monetary value support)
   const selectedData = useMemo(() => {
     if (!selectedIndicator) return [];
+    
+    // Use monetary values if toggle is on and we have PMC data
+    if (showMonetaryValues && isPmcRegionalIndicator(selectedIndicator.code) && pmcMonetaryValues.length > 0) {
+      // Aggregate by date (sum across UFs)
+      const aggregated: Record<string, number> = {};
+      pmcMonetaryValues.forEach((v: any) => {
+        const date = v.reference_date;
+        if (!aggregated[date]) aggregated[date] = 0;
+        aggregated[date] += v.valor_estimado_reais || 0;
+      });
+      
+      return Object.entries(aggregated)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, value]) => ({
+          date: date.substring(0, 7).split('-').reverse().join('/'),
+          value,
+          rawDate: date,
+        }));
+    }
+    
+    // Default: use index values
     return combinedValues
       .filter((v) => v.indicator_id === selectedIndicator.id)
       .sort((a, b) => a.reference_date.localeCompare(b.reference_date))
@@ -401,7 +450,7 @@ export function ChartDatabaseTab() {
         value: v.value,
         rawDate: v.reference_date,
       }));
-  }, [selectedIndicator, combinedValues]);
+  }, [selectedIndicator, combinedValues, showMonetaryValues, pmcMonetaryValues]);
 
   // Calculate statistics for selected indicator
   const statistics = useMemo(() => {
@@ -915,6 +964,20 @@ export function ChartDatabaseTab() {
                 
                 {/* Action buttons */}
                 <div className="flex items-center gap-2">
+                  {/* Toggle Índice ↔ R$ for PMC indicators */}
+                  {selectedIndicator && isPmcRegionalIndicator(selectedIndicator.code) && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/30 rounded-lg bg-muted/30">
+                      <Activity className="h-4 w-4 text-muted-foreground" />
+                      <span className={cn("text-sm", !showMonetaryValues && "text-cyan-400 font-medium")}>Índice</span>
+                      <Switch 
+                        checked={showMonetaryValues} 
+                        onCheckedChange={setShowMonetaryValues}
+                      />
+                      <span className={cn("text-sm", showMonetaryValues && "text-green-400 font-medium")}>R$</span>
+                      <DollarSign className="h-4 w-4 text-green-400" />
+                    </div>
+                  )}
+                  
                   <button
                     onClick={handleViewTable}
                     className="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 hover:border-cyan-500/50 rounded-lg transition-all duration-200 text-foreground"

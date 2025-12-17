@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { CollapsibleGroup } from "@/components/shared/CollapsibleGroup";
 import { StatBadge } from "@/components/shared/StatBadge";
 import { TrendInfoModal } from "@/components/shared/TrendInfoModal";
@@ -48,6 +49,17 @@ import { formatDateByFrequency, type Frequency } from "@/lib/date-formatters";
 import { useTimeSeriesAnalysis, generateSuggestions } from "@/hooks/useTimeSeriesAnalysis";
 import { runStructuralTimeSeries, type STSResult } from "@/lib/structural-time-series";
 import { useDashboardAnalyticsSafe } from "@/contexts/DashboardAnalyticsContext";
+
+// PMC Regional indicator codes that have monetary conversion available
+const PMC_REGIONAL_CODES = [
+  'PMC_COMB_UF', 'PMC_COMBUSTIVEIS_UF', 'PMC_CONST_UF', 'PMC_CONSTRUCAO_UF',
+  'PMC_FARM_UF', 'PMC_FARMACIA_UF', 'PMC_MOV_UF', 'PMC_MOVEIS_UF',
+  'PMC_VAREJO_UF', 'PMC_VEICULOS_UF', 'PMC_VEST_UF', 'PMC_VESTUARIO_UF'
+];
+
+const isPmcRegionalIndicator = (code: string): boolean => {
+  return PMC_REGIONAL_CODES.includes(code);
+};
 
 // Provider color styling (same as ApiManagementTab)
 const getProviderColor = (provider: string) => {
@@ -217,6 +229,7 @@ export function TableDatabaseTab() {
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
   const [showTrendModal, setShowTrendModal] = useState(false);
   const [currentView, setCurrentView] = useState<DialogView>('detail');
+  const [showMonetaryValues, setShowMonetaryValues] = useState(false);
   
   const dashboardAnalytics = useDashboardAnalyticsSafe();
 
@@ -324,6 +337,38 @@ export function TableDatabaseTab() {
     },
     enabled: !!selectedIndicator?.id,
   });
+
+  // Fetch PMC monetary values for conversion toggle
+  const { data: pmcMonetaryValues = [] } = useQuery({
+    queryKey: ["pmc-monetary-values-table", selectedIndicator?.code],
+    queryFn: async () => {
+      if (!selectedIndicator || !isPmcRegionalIndicator(selectedIndicator.code)) return [];
+      const { data, error } = await supabase
+        .from("pmc_valores_reais")
+        .select("reference_date, uf_code, valor_estimado_reais, brazilian_ufs!inner(uf_name, uf_sigla)")
+        .eq("pmc_indicator_code", selectedIndicator.code)
+        .order("reference_date", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedIndicator && isPmcRegionalIndicator(selectedIndicator?.code || ''),
+  });
+
+  // Get display data (index or monetary values)
+  const displayData = useMemo(() => {
+    if (!selectedIndicator) return [];
+    
+    if (showMonetaryValues && isPmcRegionalIndicator(selectedIndicator.code) && pmcMonetaryValues.length > 0) {
+      return pmcMonetaryValues.map((v: any) => ({
+        reference_date: v.reference_date,
+        value: v.valor_estimado_reais,
+        brazilian_ufs: v.brazilian_ufs,
+      }));
+    }
+    
+    return selectedIndicatorValues;
+  }, [selectedIndicator, selectedIndicatorValues, showMonetaryValues, pmcMonetaryValues]);
 
   const handleCardClick = (indicator: IndicatorWithApi) => {
     setCurrentView('detail');
@@ -810,11 +855,11 @@ export function TableDatabaseTab() {
           {currentView === 'table' && selectedIndicator && (
             <TableDataContent
               onBack={handleBackToDetail}
-              indicatorName={selectedIndicator.name}
+              indicatorName={selectedIndicator.name + (showMonetaryValues ? ' (R$)' : '')}
               indicatorCode={selectedIndicator.code}
               isRegional={selectedIndicator.is_regional || false}
-              data={selectedIndicatorValues}
-              unit={selectedIndicator.unit || null}
+              data={displayData}
+              unit={showMonetaryValues ? 'R$ (mil)' : (selectedIndicator.unit || null)}
               frequency={selectedIndicator.frequency || null}
               isLoading={loadingSelectedValues}
             />
@@ -860,14 +905,29 @@ export function TableDatabaseTab() {
                       )}
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      {selectedIndicatorValues.length} registros 
-                      {selectedIndicatorValues.length === 500 && ' (limitado a 500)'}
+                      {displayData.length} registros 
+                      {displayData.length === 500 && ' (limitado a 500)'}
+                      {showMonetaryValues && ' • Valores em R$'}
                     </span>
                   </div>
                 </div>
                 
-                {/* Botões: Ver Tabela + Fechar */}
+                {/* Botões: Toggle + Ver Tabela + Fechar */}
                 <div className="flex items-center gap-3">
+                  {/* Toggle Índice ↔ R$ for PMC indicators */}
+                  {selectedIndicator && isPmcRegionalIndicator(selectedIndicator.code) && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/30 rounded-lg bg-muted/30">
+                      <Activity className="h-4 w-4 text-muted-foreground" />
+                      <span className={cn("text-sm", !showMonetaryValues && "text-cyan-400 font-medium")}>Índice</span>
+                      <Switch 
+                        checked={showMonetaryValues} 
+                        onCheckedChange={setShowMonetaryValues}
+                      />
+                      <span className={cn("text-sm", showMonetaryValues && "text-green-400 font-medium")}>R$</span>
+                      <DollarSign className="h-4 w-4 text-green-400" />
+                    </div>
+                  )}
+                  
                   <button
                     type="button"
                     onClick={handleOpenTableView}
