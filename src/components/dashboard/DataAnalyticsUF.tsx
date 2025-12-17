@@ -129,6 +129,7 @@ export function DataAnalyticsUF() {
       
       const indicatorIds = indicators.map(i => i.id);
       const researchName = indicators[0]?.name || "Pesquisa";
+      const researchUnit = indicators[0]?.unit || "índice";
       
       // Get ALL regional values for this research (all UFs)
       const { data: allValues, error } = await supabase
@@ -180,6 +181,7 @@ export function DataAnalyticsUF() {
           ufName: ufInfo.uf_name,
           researchName,
           researchId: selectedResearch,
+          unit: researchUnit,
           trend,
           lastValue: lastItem?.value || null,
           lastDate: lastItem?.reference_date || null,
@@ -397,10 +399,10 @@ export function DataAnalyticsUF() {
         </CardContent>
       </Card>
 
-      {/* Map and State Panel - 10 columns: 4 for map, 6 for panel */}
+      {/* Map and State Panel - 10 columns: 5 for map (50%), 5 for panel (50%) */}
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-        {/* Map - 4 columns (40%) */}
-        <Card className="lg:col-span-4 overflow-hidden">
+        {/* Map - 5 columns (50%) */}
+        <Card className="lg:col-span-5 overflow-hidden">
           <CardContent className="p-4">
             <BrazilMap
               hoveredState={hoveredState}
@@ -413,8 +415,8 @@ export function DataAnalyticsUF() {
           </CardContent>
         </Card>
 
-        {/* State Data Panel - 6 columns (60%) */}
-        <div className="lg:col-span-6">
+        {/* State Data Panel - 5 columns (50%) */}
+        <div className="lg:col-span-5">
           {selectedState && !isMapDisabled ? (
             <StateDataPanel
               ufSigla={selectedState}

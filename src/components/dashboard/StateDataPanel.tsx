@@ -201,6 +201,7 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
         ufName,
         researchName: lastItem.indicatorName,
         researchId: researchId || '',
+        unit: lastItem.unit || 'índice', // Include unit for chat context
         trend: trend as 'up' | 'down' | 'stable',
         lastValue: lastItem.value,
         lastDate: lastItem.reference_date,
@@ -219,15 +220,19 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
     }
   }, [regionalData, ufSigla, ufName, researchId, trend, dashboardAnalytics]);
 
-  // Format value based on unit
+  // Format value with unit - ALWAYS shows unit
   const formatValue = (value: number, unit: string) => {
-    if (unit.includes('R$')) {
-      return value.toLocaleString("pt-BR", { 
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2 
-      });
-    }
-    return value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+    const formattedNum = unit.includes('R$')
+      ? value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+    return formattedNum;
+  };
+
+  // Format value with unit inline (for tooltips and summaries)
+  const formatValueWithUnit = (value: number, unit: string) => {
+    const formattedNum = formatValue(value, unit);
+    const displayUnit = unit || 'índice';
+    return `${formattedNum} ${displayUnit}`;
   };
 
   // Export handler
@@ -347,7 +352,7 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
                           fontSize: '12px',
                         }}
                         formatter={(value: number) => [
-                          formatValue(value, regionalData?.[0]?.unit || ''),
+                          formatValueWithUnit(value, regionalData?.[0]?.unit || 'índice'),
                           'Valor'
                         ]}
                         labelFormatter={(label) => format(new Date(label), "MMM/yyyy")}
@@ -393,14 +398,12 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
                         <td className="px-3 py-2 text-right tabular-nums">
                           <div className="flex items-center justify-end gap-2">
                             <span>{formatValue(item.value, item.unit)}</span>
-                            {item.unit && (
-                              <Badge 
-                                variant="outline" 
-                                className="text-[9px] px-1.5 py-0 h-4 bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
-                              >
-                                {item.unit}
-                              </Badge>
-                            )}
+                            <Badge 
+                              variant="outline" 
+                              className="text-[9px] px-1.5 py-0 h-4 bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                            >
+                              {item.unit || 'índice'}
+                            </Badge>
                           </div>
                         </td>
                       </tr>
