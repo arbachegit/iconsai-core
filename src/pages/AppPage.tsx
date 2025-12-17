@@ -138,10 +138,6 @@ export default function AppPage() {
               </div>
             </Button>
 
-            {/* Logo (only when expanded) */}
-            {!sidebarCollapsed && (
-              <img src={knowyouLogo} alt="KnowYOU" className="h-7 flex-shrink-0" />
-            )}
 
             {/* Search */}
             {sidebarCollapsed ? (
@@ -433,9 +429,12 @@ export default function AppPage() {
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
           <header className="h-14 border-b border-border bg-card flex items-center justify-between px-6">
-            <h1 className="font-semibold text-foreground">
-              {menuItems.find((m) => m.id === currentView)?.label || "KnowYOU App"}
-            </h1>
+            <div className="flex items-center gap-4">
+              <h1 className="font-semibold text-foreground">
+                {menuItems.find((m) => m.id === currentView)?.label || "KnowYOU App"}
+              </h1>
+              <img src={knowyouLogo} alt="KnowYOU" className="h-7" />
+            </div>
             <UserBadge />
           </header>
 
