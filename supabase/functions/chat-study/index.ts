@@ -57,6 +57,41 @@ ${data.tone_rules}
     }
   }
 
+  // Função para buscar e aplicar configurações maiêuticas
+  async function getMaieuticInstructions(maieuticLevel: string | null | undefined): Promise<string> {
+    if (!maieuticLevel) return "";
+    
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("maieutic_training_categories")
+        .select("category_name, positive_directives, antiprompt, behavioral_instructions")
+        .eq("category_key", maieuticLevel)
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      if (error || !data) {
+        console.log(`No maieutic config found for level: ${maieuticLevel}`);
+        return "";
+      }
+      
+      return `
+## 🎓 CONFIGURAÇÃO MAIÊUTICA - ${data.category_name.toUpperCase()}
+
+### Diretivas Positivas:
+${data.positive_directives || 'Nenhuma'}
+
+### Anti-Prompt (O que NÃO fazer):
+${data.antiprompt || 'Nenhum'}
+
+### Instruções Comportamentais:
+${data.behavioral_instructions || 'Nenhuma'}
+`;
+    } catch (err) {
+      console.error("Error fetching maieutic config:", err);
+      return "";
+    }
+  }
+
   // Mensagem para perguntar localização de forma amigável
   function getLocationPrompt(region: string | undefined, isFirstMessage: boolean): string {
     if (region && region !== "default") return "";
@@ -407,7 +442,9 @@ ${isPartialSample ? `\nNOTA: Como está trabalhando com amostra parcial, indique
             query: userQuery,
             targetChat: ragTargetChat,
             matchThreshold,
-            matchCount
+            matchCount,
+            allowedTags: agentConfig?.allowedTags || [],
+            forbiddenTags: agentConfig?.forbiddenTags || []
           }
         });
 
@@ -451,11 +488,15 @@ Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceito
       }
     }
 
-    // Obter regras de tom cultural baseadas na região do usuário
-    const culturalTone = await getCulturalToneRules(region);
+    // Obter regras de tom cultural - priorizar regionalTone do agente
+    const effectiveRegion = agentConfig?.regionalTone || region;
+    const culturalTone = await getCulturalToneRules(effectiveRegion);
     const isFirstMessage = messages.filter((m: any) => m.role === "user").length <= 1;
-    const locationPrompt = getLocationPrompt(region, isFirstMessage);
-    console.log(`Using cultural tone for region: ${region || 'default'}`);
+    const locationPrompt = getLocationPrompt(effectiveRegion, isFirstMessage);
+    console.log(`Using regional tone: ${effectiveRegion || 'default'} (agent: ${agentConfig?.regionalTone || 'none'}, user: ${region || 'none'})`);
+    
+    // Buscar configurações maiêuticas se definido no agente
+    const maieuticInstructions = await getMaieuticInstructions(agentConfig?.maieuticLevel);
 
     // System prompt focado em KnowRisk, KnowYOU, ACC e navegação do website
     // IMPORTANTE: Protocolo de coerência PRIMEIRO, antes de qualquer outra regra
@@ -467,6 +508,8 @@ ${agentConfig?.systemPrompt ? `
 ## 🔧 CONFIGURAÇÕES PERSONALIZADAS DO AGENTE (PRIORIDADE ALTA):
 ${agentConfig.systemPrompt}
 ` : ""}
+
+${maieuticInstructions}
 
 ${culturalTone}
 ${locationPrompt}
