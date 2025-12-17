@@ -98,6 +98,37 @@ const isPacIndicator = (code: string): boolean => {
   return code.startsWith('PAC_');
 };
 
+// UF code to sigla/name mapping
+const UF_CODE_MAP: Record<number, { uf_sigla: string; uf_name: string }> = {
+  11: { uf_sigla: 'RO', uf_name: 'Rondônia' },
+  12: { uf_sigla: 'AC', uf_name: 'Acre' },
+  13: { uf_sigla: 'AM', uf_name: 'Amazonas' },
+  14: { uf_sigla: 'RR', uf_name: 'Roraima' },
+  15: { uf_sigla: 'PA', uf_name: 'Pará' },
+  16: { uf_sigla: 'AP', uf_name: 'Amapá' },
+  17: { uf_sigla: 'TO', uf_name: 'Tocantins' },
+  21: { uf_sigla: 'MA', uf_name: 'Maranhão' },
+  22: { uf_sigla: 'PI', uf_name: 'Piauí' },
+  23: { uf_sigla: 'CE', uf_name: 'Ceará' },
+  24: { uf_sigla: 'RN', uf_name: 'Rio Grande do Norte' },
+  25: { uf_sigla: 'PB', uf_name: 'Paraíba' },
+  26: { uf_sigla: 'PE', uf_name: 'Pernambuco' },
+  27: { uf_sigla: 'AL', uf_name: 'Alagoas' },
+  28: { uf_sigla: 'SE', uf_name: 'Sergipe' },
+  29: { uf_sigla: 'BA', uf_name: 'Bahia' },
+  31: { uf_sigla: 'MG', uf_name: 'Minas Gerais' },
+  32: { uf_sigla: 'ES', uf_name: 'Espírito Santo' },
+  33: { uf_sigla: 'RJ', uf_name: 'Rio de Janeiro' },
+  35: { uf_sigla: 'SP', uf_name: 'São Paulo' },
+  41: { uf_sigla: 'PR', uf_name: 'Paraná' },
+  42: { uf_sigla: 'SC', uf_name: 'Santa Catarina' },
+  43: { uf_sigla: 'RS', uf_name: 'Rio Grande do Sul' },
+  50: { uf_sigla: 'MS', uf_name: 'Mato Grosso do Sul' },
+  51: { uf_sigla: 'MT', uf_name: 'Mato Grosso' },
+  52: { uf_sigla: 'GO', uf_name: 'Goiás' },
+  53: { uf_sigla: 'DF', uf_name: 'Distrito Federal' },
+};
+
 const getPmcCoverageInfo = (code: string): { hasPartialCoverage: boolean; disclaimer: string | null } => {
   const info = PMC_PARTIAL_COVERAGE[code];
   if (info) {
@@ -137,6 +168,7 @@ interface Indicator {
   category: string | null;
   frequency: string | null;
   api_id: string | null;
+  is_regional?: boolean | null;
   api?: { id: string; name: string; provider: string | null } | null;
 }
 
@@ -274,7 +306,7 @@ export function ChartDatabaseTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("economic_indicators")
-        .select("id, name, code, unit, category, frequency, api_id, system_api_registry(id, name, provider)")
+        .select("id, name, code, unit, category, frequency, api_id, is_regional, system_api_registry(id, name, provider)")
         .not('api_id', 'is', null)
         .order("name");
       if (error) throw error;
@@ -324,13 +356,13 @@ export function ChartDatabaseTab() {
     staleTime: 60000,
   });
 
-  // Fetch regional values only for selected indicator (lazy loading)
+  // Fetch regional values only for selected indicator (lazy loading) - with UF info
   const { data: selectedRegionalValues = [] } = useQuery({
-    queryKey: ["regional-values-chart-db", selectedIndicator?.id],
+    queryKey: ["regional-values-chart-db", selectedIndicator?.id, "v2-uf"],
     queryFn: async () => {
       if (!selectedIndicator) return [];
       
-      const allData: IndicatorValue[] = [];
+      const allData: Array<{ indicator_id: string; reference_date: string; value: number; uf_code: number; brazilian_ufs: { uf_sigla: string; uf_name: string } | null }> = [];
       let from = 0;
       const pageSize = 1000;
       let hasMore = true;
@@ -338,7 +370,7 @@ export function ChartDatabaseTab() {
       while (hasMore) {
         const { data, error } = await supabase
           .from("indicator_regional_values")
-          .select("indicator_id, reference_date, value")
+          .select("indicator_id, reference_date, value, uf_code, brazilian_ufs!inner(uf_sigla, uf_name)")
           .eq("indicator_id", selectedIndicator.id)
           .order("reference_date")
           .range(from, from + pageSize - 1);
@@ -346,7 +378,7 @@ export function ChartDatabaseTab() {
         if (error) throw error;
         
         if (data && data.length > 0) {
-          allData.push(...(data as IndicatorValue[]));
+          allData.push(...(data as any));
           from += pageSize;
           hasMore = data.length === pageSize;
         } else {
@@ -610,7 +642,45 @@ export function ChartDatabaseTab() {
       }));
   }, [selectedIndicator, combinedValues, showMonetaryValues, pmcMonetaryValues, pacEstimatedValues]);
 
-  // Calculate statistics for selected indicator
+  // Table data - preserves individual UF records without aggregation for regional display
+  const tableData = useMemo(() => {
+    if (!selectedIndicator) return [];
+    
+    const isRegional = selectedIndicator.is_regional || isPmcRegionalIndicator(selectedIndicator.code);
+    
+    // PMC monetary regional: use raw pmcMonetaryValues with UF mapping
+    if (showMonetaryValues && isPmcRegionalIndicator(selectedIndicator.code) && pmcMonetaryValues.length > 0) {
+      return pmcMonetaryValues
+        .filter((v: any) => v.uf_code > 0)
+        .sort((a: any, b: any) => b.reference_date.localeCompare(a.reference_date))
+        .map((v: any) => ({
+          reference_date: v.reference_date,
+          value: v.valor_estimado_reais || 0,
+          brazilian_ufs: UF_CODE_MAP[v.uf_code] || null,
+        }));
+    }
+    
+    // Regional indicators (index mode): use selectedRegionalValues with UF info
+    if (isRegional && selectedRegionalValues.length > 0) {
+      return selectedRegionalValues
+        .sort((a: any, b: any) => b.reference_date.localeCompare(a.reference_date))
+        .map((v: any) => ({
+          reference_date: v.reference_date,
+          value: v.value,
+          brazilian_ufs: v.brazilian_ufs || UF_CODE_MAP[v.uf_code] || null,
+        }));
+    }
+    
+    // National/default: use selectedData (no UF)
+    return selectedData
+      .sort((a, b) => b.rawDate.localeCompare(a.rawDate))
+      .map((v) => ({
+        reference_date: v.rawDate,
+        value: v.value,
+        brazilian_ufs: null,
+      }));
+  }, [selectedIndicator, selectedData, selectedRegionalValues, showMonetaryValues, pmcMonetaryValues]);
+
   const statistics = useMemo(() => {
     if (selectedData.length === 0) return null;
 
@@ -1096,12 +1166,8 @@ export function ChartDatabaseTab() {
               onBack={handleBackToDetail}
               indicatorName={selectedIndicator.name + (showMonetaryValues ? ' (R$)' : '')}
               indicatorCode={selectedIndicator.code}
-              isRegional={false}
-              data={selectedData.map(v => ({
-                reference_date: v.rawDate,
-                value: v.value,
-                brazilian_ufs: null
-              }))}
+              isRegional={selectedIndicator.is_regional || isPmcRegionalIndicator(selectedIndicator.code)}
+              data={tableData}
               unit={showMonetaryValues ? 'R$ (mil)' : (selectedIndicator.unit || null)}
               frequency={selectedIndicator.frequency || null}
               isLoading={loadingValues}
