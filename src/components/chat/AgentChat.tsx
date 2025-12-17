@@ -19,6 +19,7 @@ import { ChatFloatingAudioPlayer } from "@/components/ChatFloatingAudioPlayer";
 import { CopyButton } from "@/components/CopyButton";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { useDashboardAnalyticsSafe } from "@/contexts/DashboardAnalyticsContext";
 
 interface AgentConfigData {
   id: string;
@@ -104,6 +105,9 @@ export const AgentChat = memo(function AgentChat({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const prefixTextRef = useRef<string>("");
+
+  // Dashboard analytics context (safe - returns null if not in provider)
+  const dashboardAnalytics = useDashboardAnalyticsSafe();
 
   // Fetch agent config
   useEffect(() => {
@@ -242,6 +246,9 @@ export const AgentChat = memo(function AgentChat({
       setInput("");
       setIsImageMode(false);
     } else {
+      // Build dashboard context if available
+      const dashboardContext = dashboardAnalytics?.buildContextualSystemPrompt() || undefined;
+      
       sendMessage(input, {
         agentConfig: {
           systemPrompt: agent.system_prompt,
@@ -250,11 +257,12 @@ export const AgentChat = memo(function AgentChat({
           ragCollection: agent.rag_collection,
           allowedTags: agent.allowed_tags,
           forbiddenTags: agent.forbidden_tags,
+          dashboardContext,
         }
       });
       setInput("");
     }
-  }, [input, isLoading, sendMessage, agent, isImageMode, capabilities.drawing, generateImage, isRecording]);
+  }, [input, isLoading, sendMessage, agent, isImageMode, capabilities.drawing, generateImage, isRecording, dashboardAnalytics]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {

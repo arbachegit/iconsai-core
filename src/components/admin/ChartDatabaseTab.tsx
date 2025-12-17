@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useDashboardAnalyticsSafe } from "@/contexts/DashboardAnalyticsContext";
 import { DebouncedInput } from "@/components/ui/debounced-input";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -211,6 +212,9 @@ export function ChartDatabaseTab() {
   const [lastUpdate, setLastUpdate] = useState<{ count: number; date: Date } | null>(null);
   const [showTrendModal, setShowTrendModal] = useState(false);
   const [currentView, setCurrentView] = useState<DialogView>('detail');
+
+  // Dashboard analytics context (safe - returns null if not in provider)
+  const dashboardAnalytics = useDashboardAnalyticsSafe();
 
   // Fetch indicators with API linkage
   const { data: indicators = [], isLoading: loadingIndicators, refetch: refetchIndicators } = useQuery({
@@ -483,6 +487,48 @@ export function ChartDatabaseTab() {
       movingAverage: latestMA,
     };
   }, [statistics, selectedData]);
+
+  // Emit context to DashboardAnalyticsContext when indicator is selected
+  useEffect(() => {
+    if (!dashboardAnalytics) return;
+
+    if (selectedIndicator && statistics && selectedData.length > 0) {
+      dashboardAnalytics.setChartContext({
+        indicatorId: selectedIndicator.id,
+        indicatorName: selectedIndicator.name,
+        indicatorCode: selectedIndicator.code,
+        chartType,
+        frequency: selectedIndicator.frequency,
+        unit: selectedIndicator.unit,
+        periodStart: selectedData[0].date,
+        periodEnd: selectedData[selectedData.length - 1].date,
+        totalRecords: selectedData.length,
+        statistics: {
+          mean: statistics.mean,
+          stdDev: statistics.stdDev,
+          cv: statistics.cv,
+          min: statistics.min,
+          max: statistics.max,
+          trend: statistics.trend,
+          slope: statistics.slope,
+          r2: statistics.r2,
+        },
+        stsResult: stsData ? {
+          mu_smoothed: stsData.mu_smoothed,
+          beta_smoothed: stsData.beta_smoothed,
+          direction: stsData.direction,
+          strength: stsData.strength,
+          forecast: {
+            mean: stsData.forecast.mean,
+            p05: stsData.forecast.p05,
+            p95: stsData.forecast.p95,
+          },
+        } : null,
+      });
+    } else {
+      dashboardAnalytics.setChartContext(null);
+    }
+  }, [selectedIndicator, statistics, selectedData, chartType, stsData, dashboardAnalytics]);
 
   // Handlers for view switching
   const handleOpenStsAnalysis = useCallback(() => setCurrentView('sts'), []);

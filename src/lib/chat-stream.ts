@@ -16,6 +16,7 @@ export interface AgentConfig {
   ragCollection?: string;
   allowedTags?: string[] | null;
   forbiddenTags?: string[] | null;
+  dashboardContext?: string;
 }
 
 interface StreamChatOptions {
