@@ -208,7 +208,7 @@ const AgentManagementTab: React.FC = () => {
           size="sm"
           onClick={fetchAgents}
           disabled={loading}
-          className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+          className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-400"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
           Atualizar
