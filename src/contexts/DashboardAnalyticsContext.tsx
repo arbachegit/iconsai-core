@@ -73,6 +73,9 @@ export interface DashboardAnalyticsContextType {
   selectedUF: string | null;
   regionalContext: RegionalContext | null;
   
+  // Pre-loaded data for all states (enables comparisons)
+  allStatesData: Record<string, RegionalContext> | null;
+  
   // History for comparisons
   contextHistory: ContextHistoryItem[];
   
@@ -81,6 +84,7 @@ export interface DashboardAnalyticsContextType {
   setChartContext: (ctx: ChartContext | null) => void;
   setSelectedUF: (uf: string | null) => void;
   setRegionalContext: (ctx: RegionalContext | null) => void;
+  setAllStatesData: (data: Record<string, RegionalContext> | null) => void;
   
   // History management
   addToHistory: (item: Omit<ContextHistoryItem, 'id' | 'timestamp'>) => void;
@@ -107,6 +111,7 @@ export function DashboardAnalyticsProvider({ children }: DashboardAnalyticsProvi
   const [chartContext, setChartContext] = useState<ChartContext | null>(null);
   const [selectedUF, setSelectedUF] = useState<string | null>(null);
   const [regionalContext, setRegionalContext] = useState<RegionalContext | null>(null);
+  const [allStatesData, setAllStatesData] = useState<Record<string, RegionalContext> | null>(null);
   const [contextHistory, setContextHistory] = useState<ContextHistoryItem[]>([]);
 
   const hasContext = !!chartContext || !!regionalContext;
@@ -206,11 +211,39 @@ ${JSON.stringify(regionalContext.data, null, 2)}
 \`\`\``;
       }
 
+      // Include pre-loaded data from all states for comparisons
+      if (allStatesData && Object.keys(allStatesData).length > 1) {
+        prompt += `
+
+## DADOS PRÉ-CARREGADOS DE TODOS OS ESTADOS
+
+Você TEM acesso aos dados de TODOS os estados abaixo para comparações diretas:
+`;
+        Object.entries(allStatesData).forEach(([sigla, ctx]) => {
+          if (sigla === regionalContext.ufSigla) return; // Skip current state
+          const stateTrend = ctx.trend === 'up' ? '↑' : ctx.trend === 'down' ? '↓' : '→';
+          prompt += `
+### ${ctx.ufName} (${sigla}) ${stateTrend}
+- Último valor: ${ctx.lastValue?.toLocaleString('pt-BR') || 'N/A'}
+- Data: ${ctx.lastDate || 'N/A'}
+- Registros: ${ctx.recordCount}`;
+          if (ctx.data && ctx.data.length > 0) {
+            prompt += `
+- Dados: \`${JSON.stringify(ctx.data.slice(-12))}\``;
+          }
+        });
+        
+        prompt += `
+
+**IMPORTANTE:** Você pode comparar diretamente com qualquer estado acima sem pedir mais dados.`;
+      }
+
       prompt += `
 
 ## INSTRUÇÕES
 Responda perguntas sobre este estado e indicador regional.
 ${contextHistory.length > 1 ? 'Você pode comparar com os indicadores anteriores do histórico quando solicitado.' : ''}
+${allStatesData && Object.keys(allStatesData).length > 1 ? 'Você TEM dados de todos os estados carregados. Faça comparações diretas quando solicitado.' : ''}
 Relacione com economia brasileira e contexto regional quando relevante.
 Considere diferenças socioeconômicas entre regiões do Brasil.
 IMPORTANTE: Você TEM os dados disponíveis acima. Quando o usuário pedir gráficos, USE esses dados diretamente.
@@ -288,7 +321,7 @@ IMPORTANTE: Você TEM os dados disponíveis acima. Quando o usuário pedir gráf
 Seja preciso e objetivo nas respostas.`;
 
     return prompt;
-  }, [chartContext, regionalContext, selectedUF, contextHistory]);
+  }, [chartContext, regionalContext, selectedUF, contextHistory, allStatesData]);
 
   // Build contextual suggestions based on active context - returns objects with icon names
   const buildContextualSuggestions = useCallback((): Array<{ icon: string; text: string }> => {
@@ -331,11 +364,13 @@ Seja preciso e objetivo nas respostas.`;
     chartContext,
     selectedUF,
     regionalContext,
+    allStatesData,
     contextHistory,
     setActiveTab,
     setChartContext,
     setSelectedUF,
     setRegionalContext,
+    setAllStatesData,
     addToHistory,
     removeFromHistory,
     clearHistory,

@@ -8,7 +8,7 @@ import { MapPin, Loader2, Search } from "lucide-react";
 import { BrazilMap } from "./BrazilMap";
 import { StateDataPanel } from "./StateDataPanel";
 import { RegionalStatesHeader } from "./RegionalStatesHeader";
-import { useDashboardAnalyticsSafe } from "@/contexts/DashboardAnalyticsContext";
+import { useDashboardAnalyticsSafe, RegionalContext } from "@/contexts/DashboardAnalyticsContext";
 
 const UF_NAMES: Record<string, string> = {
   AC: "Acre", AL: "Alagoas", AP: "Amapá", AM: "Amazonas", BA: "Bahia",
@@ -18,6 +18,13 @@ const UF_NAMES: Record<string, string> = {
   RJ: "Rio de Janeiro", RN: "Rio Grande do Norte", RS: "Rio Grande do Sul",
   RO: "Rondônia", RR: "Roraima", SC: "Santa Catarina", SP: "São Paulo",
   SE: "Sergipe", TO: "Tocantins",
+};
+
+const UF_SIGLA_TO_CODE: Record<string, number> = {
+  RO: 11, AC: 12, AM: 13, RR: 14, PA: 15, AP: 16, TO: 17,
+  MA: 21, PI: 22, CE: 23, RN: 24, PB: 25, PE: 26, AL: 27,
+  SE: 28, BA: 29, MG: 31, ES: 32, RJ: 33, SP: 35,
+  PR: 41, SC: 42, RS: 43, MS: 50, MT: 51, GO: 52, DF: 53,
 };
 
 export function DataAnalyticsUF() {
@@ -89,6 +96,103 @@ export function DataAnalyticsUF() {
     },
     enabled: !!regionalApis?.length && !!allUfs?.length,
   });
+
+  // PRE-LOAD all states data when research is selected
+  const { data: preloadedStatesData } = useQuery({
+    queryKey: ["preload-all-states", selectedResearch],
+    queryFn: async (): Promise<Record<string, RegionalContext>> => {
+      if (selectedResearch === "none") return {};
+      
+      // Get indicators for this research
+      const { data: indicators } = await supabase
+        .from("economic_indicators")
+        .select("id, name, unit")
+        .eq("api_id", selectedResearch);
+      
+      if (!indicators || indicators.length === 0) return {};
+      
+      const indicatorIds = indicators.map(i => i.id);
+      const researchName = indicators[0]?.name || "Pesquisa";
+      
+      // Get ALL regional values for this research (all UFs)
+      const { data: allValues, error } = await supabase
+        .from("indicator_regional_values")
+        .select("indicator_id, uf_code, reference_date, value")
+        .in("indicator_id", indicatorIds)
+        .order("reference_date", { ascending: false });
+      
+      if (error || !allValues) return {};
+      
+      // Group by UF code
+      const byUf: Record<number, typeof allValues> = {};
+      allValues.forEach(v => {
+        if (!byUf[v.uf_code]) byUf[v.uf_code] = [];
+        byUf[v.uf_code].push(v);
+      });
+      
+      // Build RegionalContext for each UF
+      const result: Record<string, RegionalContext> = {};
+      
+      Object.entries(byUf).forEach(([ufCodeStr, values]) => {
+        const ufCode = parseInt(ufCodeStr);
+        const ufInfo = allUfs?.find(u => u.uf_code === ufCode);
+        if (!ufInfo) return;
+        
+        const sigla = ufInfo.uf_sigla;
+        const sortedValues = values.sort((a, b) => 
+          new Date(b.reference_date).getTime() - new Date(a.reference_date).getTime()
+        );
+        
+        const lastItem = sortedValues[0];
+        const previousItem = sortedValues[1];
+        
+        // Calculate trend
+        let trend: 'up' | 'down' | 'stable' = 'stable';
+        if (lastItem && previousItem) {
+          if (lastItem.value > previousItem.value) trend = 'up';
+          else if (lastItem.value < previousItem.value) trend = 'down';
+        }
+        
+        // Limit data to last 24 records (2 years monthly) and reverse to chronological
+        const limitedData = sortedValues
+          .slice(0, 24)
+          .map(d => ({ date: d.reference_date, value: d.value }))
+          .reverse();
+        
+        result[sigla] = {
+          ufSigla: sigla,
+          ufName: ufInfo.uf_name,
+          researchName,
+          researchId: selectedResearch,
+          trend,
+          lastValue: lastItem?.value || null,
+          lastDate: lastItem?.reference_date || null,
+          recordCount: values.length,
+          data: limitedData,
+        };
+      });
+      
+      return result;
+    },
+    enabled: selectedResearch !== "none" && !!allUfs?.length,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  // Update context with pre-loaded data
+  useEffect(() => {
+    if (dashboardAnalytics && preloadedStatesData) {
+      dashboardAnalytics.setAllStatesData(
+        Object.keys(preloadedStatesData).length > 0 ? preloadedStatesData : null
+      );
+    }
+  }, [preloadedStatesData, dashboardAnalytics]);
+
+  // Clear pre-loaded data when research changes to none
+  useEffect(() => {
+    if (selectedResearch === "none" && dashboardAnalytics) {
+      dashboardAnalytics.setAllStatesData(null);
+    }
+  }, [selectedResearch, dashboardAnalytics]);
 
   // Filter APIs based on search term
   const filteredApis = useMemo(() => {
@@ -172,7 +276,7 @@ export function DataAnalyticsUF() {
       <div>
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <MapPin className="h-6 w-6 text-primary" />
-          Data Analytics UF
+          UF DataSet
         </h2>
         <p className="text-muted-foreground">
           Visualização geográfica de indicadores regionais por estado
