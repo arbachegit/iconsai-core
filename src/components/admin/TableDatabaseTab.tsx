@@ -392,7 +392,7 @@ export function TableDatabaseTab() {
 
   // Fetch PMC monetary values for conversion toggle (supports both regional and national)
   const { data: pmcMonetaryValues = [] } = useQuery({
-    queryKey: ["pmc-monetary-values-table", selectedIndicator?.code],
+    queryKey: ["pmc-monetary-values-table", selectedIndicator?.code, "v2"],
     queryFn: async () => {
       if (!selectedIndicator || !isPmcIndicator(selectedIndicator.code)) return [];
       
@@ -423,6 +423,8 @@ export function TableDatabaseTab() {
       }
     },
     enabled: !!selectedIndicator && isPmcIndicator(selectedIndicator?.code || ''),
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Get display data (index or monetary values)
