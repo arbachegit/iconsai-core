@@ -8,6 +8,7 @@ import { DashboardSidebar, type DashboardTabType } from "@/components/dashboard/
 import { FloatingChatButton } from "@/components/FloatingChatButton";
 import { UserBadge } from "@/components/UserBadge";
 import { DashboardAnalyticsProvider } from "@/contexts/DashboardAnalyticsContext";
+import { useAgentByLocation } from "@/hooks/useAgentByLocation";
 
 // Lazy load tab components
 const DashboardTab = lazy(() => import("@/components/admin/DashboardTab").then(m => ({ default: m.DashboardTab })));
@@ -30,6 +31,9 @@ const DashboardAdmin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // Fetch agent dynamically by location
+  const { agentSlug: dashboardFloatAgent } = useAgentByLocation("/dashboard (Float Button)");
 
   // Check authentication and role
   useEffect(() => {
@@ -156,8 +160,8 @@ const DashboardAdmin = () => {
           </main>
         </div>
 
-        {/* Floating Chat Button */}
-        <FloatingChatButton agentSlug="analyst" />
+        {/* Floating Chat Button - Dynamic agent from database */}
+        {dashboardFloatAgent && <FloatingChatButton agentSlug={dashboardFloatAgent} />}
       </div>
     </DashboardAnalyticsProvider>
   );

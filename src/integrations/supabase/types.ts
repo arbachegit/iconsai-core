@@ -406,6 +406,7 @@ export type Database = {
           greeting_message: string | null
           id: string
           is_active: boolean | null
+          location: string | null
           maieutic_level: string | null
           match_count: number | null
           match_threshold: number | null
@@ -430,6 +431,7 @@ export type Database = {
           greeting_message?: string | null
           id?: string
           is_active?: boolean | null
+          location?: string | null
           maieutic_level?: string | null
           match_count?: number | null
           match_threshold?: number | null
@@ -454,6 +456,7 @@ export type Database = {
           greeting_message?: string | null
           id?: string
           is_active?: boolean | null
+          location?: string | null
           maieutic_level?: string | null
           match_count?: number | null
           match_threshold?: number | null

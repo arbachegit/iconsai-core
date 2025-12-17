@@ -38,15 +38,15 @@ const defaultCapabilities = {
   math: false
 };
 
-// Mapeamento de slugs para localizações de uso
-const agentLocationMap: Record<string, { locations: string[]; icon: string }> = {
-  health: { locations: [], icon: "⚠️" },
-  study: { locations: ["/index (Seção KnowYOU)"], icon: "📚" },
-  company: { locations: ["/index (Float Button)"], icon: "🏢" },
-  analyst: { locations: [], icon: "📊" },
-  analyst_admin: { locations: ["/dashboard"], icon: "📊" },
-  analyst_user: { locations: ["/app"], icon: "📊" }
-};
+// Localizações disponíveis para atribuição de agentes
+const AVAILABLE_LOCATIONS = [
+  { value: "", label: "Não utilizado", icon: "⚠️" },
+  { value: "/index (Seção KnowYOU)", label: "/index (Seção KnowYOU)", icon: "📚" },
+  { value: "/index (Float Button)", label: "/index (Float Button)", icon: "🏢" },
+  { value: "/app", label: "/app", icon: "📊" },
+  { value: "/dashboard", label: "/dashboard", icon: "📈" },
+  { value: "/dashboard (Float Button)", label: "/dashboard (Float Button)", icon: "💬" },
+];
 
 const AgentManagementTab: React.FC = () => {
   const [agents, setAgents] = useState<ChatAgent[]>([]);
@@ -133,6 +133,7 @@ const AgentManagementTab: React.FC = () => {
           regional_tone: formData.regional_tone,
           pronunciation_set: formData.pronunciation_set,
           maieutic_level: formData.maieutic_level,
+          location: (formData as any).location || null,
           updated_at: new Date().toISOString()
         })
         .eq("id", editingAgent.id);
@@ -288,31 +289,18 @@ const AgentManagementTab: React.FC = () => {
                       {agent.rag_collection}
                     </Badge>
                     
-                    {/* Badges de Localização */}
-                    {(() => {
-                      const locationInfo = agentLocationMap[agent.slug];
-                      if (!locationInfo) return null;
-                      
-                      if (locationInfo.locations.length === 0) {
-                        return (
-                          <Badge variant="outline" className="bg-amber-500/20 text-amber-300 border-amber-500/30">
-                            <Globe className="h-3 w-3 mr-1" />
-                            ⚠️ Não utilizado
-                          </Badge>
-                        );
-                      }
-                      
-                      return locationInfo.locations.map(loc => (
-                        <Badge 
-                          key={loc}
-                          variant="outline" 
-                          className="bg-purple-500/20 text-purple-300 border-purple-500/30"
-                        >
-                          <Globe className="h-3 w-3 mr-1" />
-                          {loc}
-                        </Badge>
-                      ));
-                    })()}
+                    {/* Badge de Localização - dinâmico do banco de dados */}
+                    {(agent as any).location ? (
+                      <Badge variant="outline" className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+                        <Globe className="h-3 w-3 mr-1" />
+                        {(agent as any).location}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-amber-500/20 text-amber-300 border-amber-500/30">
+                        <Globe className="h-3 w-3 mr-1" />
+                        ⚠️ Não utilizado
+                      </Badge>
+                    )}
                   </div>
 
                   {activeCapabilities.length > 0 && (
@@ -428,6 +416,46 @@ const AgentManagementTab: React.FC = () => {
                   checked={formData.is_active ?? true}
                   onCheckedChange={checked => setFormData(prev => ({ ...prev, is_active: checked }))}
                 />
+              </div>
+
+              {/* Localização do Agente */}
+              <div className="space-y-2 p-3 bg-slate-800 rounded-lg">
+                <Label className="text-cyan-400 flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  Localização
+                </Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Define onde este agente será utilizado na aplicação (cada local aceita apenas um agente)
+                </p>
+                <Select
+                  value={(formData as any).location || ""}
+                  onValueChange={value => setFormData(prev => ({ ...prev, location: value || null }))}
+                >
+                  <SelectTrigger className="bg-slate-900 border-cyan-500/30">
+                    <SelectValue placeholder="Selecione a localização" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AVAILABLE_LOCATIONS.map(loc => {
+                      const isUsedByOther = agents.some(a => 
+                        (a as any).location === loc.value && a.id !== editingAgent?.id
+                      );
+                      return (
+                        <SelectItem 
+                          key={loc.value || "none"} 
+                          value={loc.value || "none"}
+                          disabled={loc.value !== "" && isUsedByOther}
+                        >
+                          <span className="flex items-center gap-2">
+                            {loc.icon} {loc.label}
+                            {loc.value !== "" && isUsedByOther && (
+                              <span className="text-xs text-muted-foreground ml-2">(em uso)</span>
+                            )}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
             </TabsContent>
 
