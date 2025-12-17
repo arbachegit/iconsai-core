@@ -412,7 +412,9 @@ ${isPartialSample ? `\nNOTA: Como está trabalhando com amostra parcial, indique
             query: userQuery,
             targetChat: ragTargetChat,
             matchThreshold,
-            matchCount
+            matchCount,
+            allowedTags: agentConfig?.allowedTags || [],
+            forbiddenTags: agentConfig?.forbiddenTags || []
           }
         });
 
@@ -452,11 +454,12 @@ Se o usuário perguntar "você tem o documento X?" ou "você conhece o documento
       }
     }
 
-    // Obter regras de tom cultural baseadas na região do usuário
-    const culturalTone = await getCulturalToneRules(region);
+    // Obter regras de tom cultural - priorizar regionalTone do agente
+    const effectiveRegion = agentConfig?.regionalTone || region;
+    const culturalTone = await getCulturalToneRules(effectiveRegion);
     const isFirstMessage = messages.filter((m: any) => m.role === "user").length <= 1;
-    const locationPrompt = getLocationPrompt(region, isFirstMessage);
-    console.log(`Using cultural tone for region: ${region || 'default'}`);
+    const locationPrompt = getLocationPrompt(effectiveRegion, isFirstMessage);
+    console.log(`Using regional tone: ${effectiveRegion || 'default'} (agent: ${agentConfig?.regionalTone || 'none'}, user: ${region || 'none'})`);
 
     // System prompt especializado em Hospital Moinhos de Vento e saúde
     // IMPORTANTE: Protocolo de coerência PRIMEIRO, antes de qualquer outra regra

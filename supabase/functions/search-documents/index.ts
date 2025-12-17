@@ -69,6 +69,58 @@ function extractFilename(query: string): string | null {
   return null;
 }
 
+// Apply tag filters to search results
+async function applyTagFilters(
+  supabase: any, 
+  results: any[], 
+  allowedTags: string[], 
+  forbiddenTags: string[]
+): Promise<any[]> {
+  if (!results || results.length === 0) return results;
+  if (allowedTags.length === 0 && forbiddenTags.length === 0) return results;
+  
+  // Fetch tags for documents in results
+  const docIds = [...new Set(results.map((r: any) => r.document_id))];
+  
+  const { data: docTagsData } = await supabase
+    .from("document_tags")
+    .select("document_id, tag_name")
+    .in("document_id", docIds);
+  
+  // Create map of tags by document
+  const tagsByDoc: Record<string, string[]> = {};
+  docTagsData?.forEach((dt: any) => {
+    if (!tagsByDoc[dt.document_id]) tagsByDoc[dt.document_id] = [];
+    tagsByDoc[dt.document_id].push(dt.tag_name.toLowerCase());
+  });
+  
+  // Filter results
+  const filteredResults = results.filter((r: any) => {
+    const docTags = tagsByDoc[r.document_id] || [];
+    
+    // If allowedTags defined, document must have at least one allowed tag
+    if (allowedTags.length > 0) {
+      const hasAllowedTag = allowedTags.some((t: string) => 
+        docTags.includes(t.toLowerCase())
+      );
+      if (!hasAllowedTag) return false;
+    }
+    
+    // If forbiddenTags defined, document cannot have any forbidden tag
+    if (forbiddenTags.length > 0) {
+      const hasForbiddenTag = forbiddenTags.some((t: string) => 
+        docTags.includes(t.toLowerCase())
+      );
+      if (hasForbiddenTag) return false;
+    }
+    
+    return true;
+  });
+  
+  console.log(`Tag filtering: ${results.length} -> ${filteredResults.length} results`);
+  return filteredResults;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -76,9 +128,23 @@ serve(async (req) => {
 
   try {
     const startTime = Date.now();
-    const { query, targetChat, matchThreshold = 0.15, matchCount = 5, sessionId, useHybridSearch = false } = await req.json();
+    const { 
+      query, 
+      targetChat, 
+      matchThreshold = 0.15, 
+      matchCount = 5, 
+      sessionId, 
+      useHybridSearch = false,
+      allowedTags = [],
+      forbiddenTags = []
+    } = await req.json();
     
     console.log(`Searching documents for query: "${query}" (target: ${targetChat})`);
+    
+    // Log tag filters if provided
+    if (allowedTags.length > 0 || forbiddenTags.length > 0) {
+      console.log(`Tag filters: allowed=[${allowedTags.join(',')}], forbidden=[${forbiddenTags.join(',')}]`);
+    }
     
     // Check if query contains a filename - if so, do filename search first
     const potentialFilename = extractFilename(query);
@@ -225,6 +291,11 @@ serve(async (req) => {
       
       // Apply diversification to ensure multiple documents are represented
       results = diversifyResults(scoredResults || [], 3, matchCount);
+      
+      // Apply tag filters if provided (for hybrid search)
+      if (results && results.length > 0 && (allowedTags.length > 0 || forbiddenTags.length > 0)) {
+        results = await applyTagFilters(supabase, results, allowedTags, forbiddenTags);
+      }
 
       console.log(`Hybrid search: ${results?.length || 0} results (combined vector + tags)`);
     } else {
@@ -247,6 +318,11 @@ serve(async (req) => {
       
       // Apply diversification to ensure multiple documents are represented
       results = diversifyResults(results || [], 3, matchCount);
+      
+      // Apply tag filters if provided (for vector search)
+      if (results && results.length > 0 && (allowedTags.length > 0 || forbiddenTags.length > 0)) {
+        results = await applyTagFilters(supabase, results, allowedTags, forbiddenTags);
+      }
       
       console.log(`Vector search: ${results?.length || 0} diversified chunks`);
       
