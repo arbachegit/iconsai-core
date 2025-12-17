@@ -186,15 +186,33 @@ export const AgentChat = memo(function AgentChat({
   const capabilities = agent?.capabilities || {};
 
   // Voice recording functions
+  const recordingStartTimeRef = useRef<number>(0);
+  const MIN_RECORDING_DURATION = 1000; // Minimum 1 second of recording
+
   const startRecording = async () => {
     if (!capabilities.voice) return;
     
     try {
       prefixTextRef.current = input;
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 16000
+        } 
+      });
+      
+      // Use a supported MIME type
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/mp4';
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
+      recordingStartTimeRef.current = Date.now();
 
       // Audio context for silence detection
       const audioContext = new AudioContext();
@@ -212,7 +230,10 @@ export const AgentChat = memo(function AgentChat({
         analyser.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
         
-        if (average < 10) {
+        // Only check silence after minimum recording duration
+        const recordingDuration = Date.now() - recordingStartTimeRef.current;
+        
+        if (average < 10 && recordingDuration >= MIN_RECORDING_DURATION) {
           if (!silenceStart) {
             silenceStart = Date.now();
             setVoiceStatus('waiting');
@@ -232,16 +253,37 @@ export const AgentChat = memo(function AgentChat({
       };
 
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
       mediaRecorder.onstop = async () => {
         recordingActive = false;
         cancelAnimationFrame(animationFrameId);
         audioContext.close();
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        audioChunksRef.current = [];
         stream.getTracks().forEach(track => track.stop());
+
+        // Ensure we have audio data
+        if (audioChunksRef.current.length === 0) {
+          console.error('No audio data collected');
+          setIsRecording(false);
+          setVoiceStatus('idle');
+          return;
+        }
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        audioChunksRef.current = [];
+
+        // Validate blob size (minimum ~1KB for valid audio)
+        if (audioBlob.size < 1000) {
+          console.error('Audio too short:', audioBlob.size, 'bytes');
+          setIsRecording(false);
+          setVoiceStatus('idle');
+          return;
+        }
+
+        console.log('Audio blob size:', audioBlob.size, 'bytes, type:', audioBlob.type);
 
         setIsTranscribing(true);
         setVoiceStatus('processing');
@@ -261,12 +303,15 @@ export const AgentChat = memo(function AgentChat({
         }
       };
 
-      mediaRecorder.start();
+      // Start recording with timeslice to collect data every 250ms
+      mediaRecorder.start(250);
       setIsRecording(true);
       setVoiceStatus('listening');
       checkSilence();
     } catch (error) {
       console.error("Mic error:", error);
+      setIsRecording(false);
+      setVoiceStatus('idle');
     }
   };
 
