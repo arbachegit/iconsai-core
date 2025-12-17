@@ -1181,12 +1181,12 @@ export function DataAnalysisTab() {
                 </div>
                 <div>
                   <Label className="text-sm mb-2 block">Tamanho da Bolha:</Label>
-                  <Select value={scatterSizeIndicator || ""} onValueChange={setScatterSizeIndicator}>
+                  <Select value={scatterSizeIndicator || "__none__"} onValueChange={(v) => setScatterSizeIndicator(v === "__none__" ? null : v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Opcional" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhum</SelectItem>
+                      <SelectItem value="__none__">Nenhum</SelectItem>
                       {selectedIndicators.map((id) => {
                         const ind = indicators.find((i) => i.id === id);
                         return <SelectItem key={id} value={id}>{ind?.name || id}</SelectItem>;
