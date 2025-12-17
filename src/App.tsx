@@ -59,6 +59,11 @@ const App = () => (
                     <Hub />
                   </ProtectedRoute>
                 } />
+                <Route path="/app" element={
+                  <ProtectedRoute>
+                    <AppPage />
+                  </ProtectedRoute>
+                } />
                 <Route path="/dashboard" element={
                   <ProtectedRoute requiredRole="admin">
                     <DashboardAdmin />
@@ -77,11 +82,6 @@ const App = () => (
                 
                 {/* Public Routes */}
                 <Route path="/docs" element={<Documentation />} />
-                <Route path="/app" element={
-                  <ProtectedRoute>
-                    <AppPage />
-                  </ProtectedRoute>
-                } />
                 <Route path="/arquitetura" element={<Arquitetura />} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
