@@ -1663,6 +1663,7 @@ export type Database = {
           ipca_deflator: number | null
           pac_receita_anual: number | null
           pac_receita_mensal_media: number | null
+          pac_year_extrapolated: boolean | null
           pac_year_used: number | null
           pmc_indicator_code: string
           pmc_indicator_id: string | null
@@ -1682,6 +1683,7 @@ export type Database = {
           ipca_deflator?: number | null
           pac_receita_anual?: number | null
           pac_receita_mensal_media?: number | null
+          pac_year_extrapolated?: boolean | null
           pac_year_used?: number | null
           pmc_indicator_code: string
           pmc_indicator_id?: string | null
@@ -1701,6 +1703,7 @@ export type Database = {
           ipca_deflator?: number | null
           pac_receita_anual?: number | null
           pac_receita_mensal_media?: number | null
+          pac_year_extrapolated?: boolean | null
           pac_year_used?: number | null
           pmc_indicator_code?: string
           pmc_indicator_id?: string | null
