@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { MapPin, Loader2, Search } from "lucide-react";
@@ -305,11 +306,21 @@ export function DataAnalyticsUF() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhum (desativar mapa)</SelectItem>
-                    {filteredApis.map((api) => (
-                      <SelectItem key={api.id} value={api.id}>
-                        {api.name}
-                      </SelectItem>
-                    ))}
+                    {filteredApis.map((api) => {
+                      const stateCount = apiUfMapping?.[api.id]?.length || 0;
+                      return (
+                        <SelectItem key={api.id} value={api.id}>
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span>{api.name}</span>
+                            {stateCount > 0 && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+                                {stateCount} UFs
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
 
