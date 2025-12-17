@@ -792,7 +792,11 @@ export function TableDatabaseTab() {
           setShowTrendModal(false);
         }
       }} modal={false}>
-        <DialogContent className="max-w-4xl h-[90vh] max-h-[900px] flex flex-col p-0 bg-[#0A0A0F] overflow-hidden [&>button]:hidden">
+        <DialogContent 
+          className="max-w-4xl h-[90vh] max-h-[900px] flex flex-col p-0 bg-[#0A0A0F] overflow-hidden [&>button]:hidden"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           
           {/* VIEW: TABLE */}
           {currentView === 'table' && selectedIndicator && (

@@ -343,14 +343,22 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
     if (!showTrendLine || chartData.length < 2) return null;
 
     const xValues = chartData.map((_, i) => i);
-    const yValues = chartData.map((d) => d.y);
-    const regression = linearRegression(xValues, yValues);
+    const yValues = chartData.map((d) => d.y).filter(v => !isNaN(v) && isFinite(v));
+    
+    // Validate we have enough valid numeric data
+    if (yValues.length < 2) return null;
+    
+    // Check if all values are zero (no meaningful trend)
+    const hasNonZeroValues = yValues.some(v => v !== 0);
+    if (!hasNonZeroValues) return null;
+    
+    const regression = linearRegression(xValues.slice(0, yValues.length), yValues);
 
     return {
       slope: regression.slope,
       intercept: regression.intercept,
       startY: regression.intercept,
-      endY: regression.slope * (chartData.length - 1) + regression.intercept,
+      endY: regression.slope * (yValues.length - 1) + regression.intercept,
     };
   }, [chartData, showTrendLine]);
 
