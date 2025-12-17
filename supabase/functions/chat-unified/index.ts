@@ -6,12 +6,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface AgentConfig {
+  systemPrompt?: string;
+  maieuticLevel?: string;
+  regionalTone?: string;
+  ragCollection?: string;
+  allowedTags?: string[];
+  forbiddenTags?: string[];
+}
+
 interface ChatRequest {
   messages: Array<{ role: string; content: string }>;
   chatType: 'health' | 'study' | 'general';
   documentId?: string;
   sessionId?: string;
   manualRedirect?: 'health' | 'study' | null;
+  agentConfig?: AgentConfig;
 }
 
 // Helper function to get category-specific guardrails
@@ -59,13 +69,20 @@ const buildDynamicPrompt = ({
   document,
   scopeDescription,
   ragContext,
+  agentSystemPrompt,
 }: {
   category: string;
   document?: any;
   scopeDescription: string;
   ragContext: string;
+  agentSystemPrompt?: string;
 }): string => {
   return `Você é um assistente de IA com a função de fornecer informações precisas, relevantes e seguras, sempre respeitando as diretrizes internas de segurança de conteúdo.
+
+${agentSystemPrompt ? `
+## 🔧 CONFIGURAÇÕES PERSONALIZADAS DO AGENTE (PRIORIDADE ALTA):
+${agentSystemPrompt}
+` : ""}
 
 **Contexto Principal:** ${category.toUpperCase()}
 
@@ -144,7 +161,12 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, chatType, documentId, sessionId, manualRedirect }: ChatRequest = await req.json();
+    const { messages, chatType, documentId, sessionId, manualRedirect, agentConfig }: ChatRequest = await req.json();
+    
+    // Log agent config if provided
+    if (agentConfig) {
+      console.log(`Agent config received: systemPrompt=${!!agentConfig.systemPrompt}, ragCollection=${agentConfig.ragCollection || chatType}`);
+    }
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -275,10 +297,11 @@ serve(async (req) => {
     // Perform RAG search if no document-specific context
     if (!ragContext && userQuery) {
       try {
+        const ragTargetChat = agentConfig?.ragCollection || finalChatType;
         const { data: searchResults } = await supabase.functions.invoke("search-documents", {
           body: { 
             query: userQuery,
-            targetChat: finalChatType,
+            targetChat: ragTargetChat,
             matchThreshold: 0.35,
             matchCount: 3
           }
@@ -311,6 +334,7 @@ serve(async (req) => {
       document: document || undefined,
       scopeDescription,
       ragContext,
+      agentSystemPrompt: agentConfig?.systemPrompt,
     });
 
     // Call Lovable AI Gateway
