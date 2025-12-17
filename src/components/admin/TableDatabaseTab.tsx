@@ -344,33 +344,58 @@ export function TableDatabaseTab() {
     },
   });
 
-  // Fetch values for the selected indicator modal
+  // Fetch ALL values for the selected indicator modal (with pagination to bypass 1000 limit)
   const { data: selectedIndicatorValues = [], isLoading: loadingSelectedValues } = useQuery({
-    queryKey: ["selected-indicator-values", selectedIndicator?.id],
+    queryKey: ["selected-indicator-values", selectedIndicator?.id, "v3-full"],
     queryFn: async () => {
       if (!selectedIndicator) return [];
       
-      if (selectedIndicator.is_regional) {
-        const { data, error } = await supabase
-          .from("indicator_regional_values")
-          .select("reference_date, value, brazilian_ufs!inner(uf_name, uf_sigla)")
-          .eq("indicator_id", selectedIndicator.id)
-          .order("reference_date", { ascending: false })
-          .limit(500);
-        if (error) throw error;
-        return (data || []) as IndicatorValueWithUF[];
-      } else {
-        const { data, error } = await supabase
-          .from("indicator_values")
-          .select("reference_date, value")
-          .eq("indicator_id", selectedIndicator.id)
-          .order("reference_date", { ascending: false })
-          .limit(500);
-        if (error) throw error;
-        return (data || []) as IndicatorValueWithUF[];
+      const allData: IndicatorValueWithUF[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      
+      while (hasMore) {
+        if (selectedIndicator.is_regional) {
+          const { data, error } = await supabase
+            .from("indicator_regional_values")
+            .select("reference_date, value, brazilian_ufs!inner(uf_name, uf_sigla)")
+            .eq("indicator_id", selectedIndicator.id)
+            .order("reference_date", { ascending: false })
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            allData.push(...(data as IndicatorValueWithUF[]));
+            from += pageSize;
+            hasMore = data.length === pageSize;
+          } else {
+            hasMore = false;
+          }
+        } else {
+          const { data, error } = await supabase
+            .from("indicator_values")
+            .select("reference_date, value")
+            .eq("indicator_id", selectedIndicator.id)
+            .order("reference_date", { ascending: false })
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            allData.push(...(data as IndicatorValueWithUF[]));
+            from += pageSize;
+            hasMore = data.length === pageSize;
+          } else {
+            hasMore = false;
+          }
+        }
       }
+      
+      return allData;
     },
     enabled: !!selectedIndicator?.id,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Fetch Brazilian UFs for mapping uf_code to names
