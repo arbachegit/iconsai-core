@@ -979,9 +979,14 @@ Agora, responda às mensagens mantendo sempre este padrão.`;
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
-    console.error("Erro no chat:", e);
+    const error = e instanceof Error ? e : new Error("Erro desconhecido");
+    console.error(`[CHAT_ERROR] ${error.message}`, {
+      stack: error.stack,
+      name: error.name,
+      timestamp: new Date().toISOString()
+    });
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
+      JSON.stringify({ error: error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -86,6 +86,7 @@ export const AgentChat = memo(function AgentChat({
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Image and Chart modes
   const [isImageMode, setIsImageMode] = useState(false);
@@ -167,21 +168,22 @@ export const AgentChat = memo(function AgentChat({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Scroll button visibility
+  // Scroll button visibility - use correct Radix ScrollArea viewport
   useEffect(() => {
     const checkScroll = () => {
-      const scrollArea = messagesEndRef.current?.parentElement;
-      if (scrollArea) {
-        const { scrollTop, scrollHeight, clientHeight } = scrollArea;
+      const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        const { scrollTop, scrollHeight, clientHeight } = viewport as HTMLElement;
         const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
         setShowScrollButton(!isNearBottom && messages.length > 3);
       }
     };
     
-    const scrollArea = messagesEndRef.current?.parentElement;
-    if (scrollArea) {
-      scrollArea.addEventListener('scroll', checkScroll);
-      return () => scrollArea.removeEventListener('scroll', checkScroll);
+    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (viewport) {
+      viewport.addEventListener('scroll', checkScroll);
+      checkScroll(); // Check initial state
+      return () => viewport.removeEventListener('scroll', checkScroll);
     }
   }, [messages.length]);
 
@@ -226,9 +228,12 @@ export const AgentChat = memo(function AgentChat({
     document.body.removeChild(link);
   }, []);
 
-  // Scroll to bottom
+  // Scroll to bottom - use correct Radix ScrollArea viewport
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (viewport) {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
+    }
   }, []);
 
   const handleSubmit = useCallback((e?: React.FormEvent) => {
@@ -541,7 +546,7 @@ export const AgentChat = memo(function AgentChat({
       )}
 
       {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0 p-4">
+      <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 p-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-8">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
