@@ -4,8 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X, Loader2, MapPin, TrendingUp, TrendingDown, Minus, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Loader2, MapPin, TrendingUp, TrendingDown, Minus, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Download, FileSpreadsheet } from "lucide-react";
 import { format } from "date-fns";
+import { LineChart, Line, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
+import { exportData } from "@/lib/export-utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useDashboardAnalyticsSafe } from "@/contexts/DashboardAnalyticsContext";
 
 // UF code to sigla mapping
@@ -153,6 +161,23 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
 
   const trend = getTrend(regionalData);
 
+  // Sparkline data - last 12 months in chronological order
+  const sparklineData = useMemo(() => {
+    if (!regionalData || regionalData.length === 0) return [];
+    
+    // Sort chronologically and take last 12
+    const chronological = [...regionalData]
+      .sort((a, b) => new Date(a.reference_date).getTime() - new Date(b.reference_date).getTime());
+    
+    return chronological.slice(-12).map(item => ({
+      date: item.reference_date,
+      value: item.value,
+    }));
+  }, [regionalData]);
+
+  // Sparkline color based on trend
+  const sparklineColor = trend === 'up' ? '#22c55e' : trend === 'down' ? '#ef4444' : '#6b7280';
+
   // Update dashboard analytics context with detailed data
   useEffect(() => {
     if (dashboardAnalytics && regionalData && regionalData.length > 0) {
@@ -205,6 +230,25 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
     return value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
   };
 
+  // Export handler
+  const handleExport = async (format: 'csv' | 'xlsx') => {
+    if (!sortedData || sortedData.length === 0) return;
+    
+    const exportColumns = [
+      { key: 'reference_date', label: 'Data' },
+      { key: 'indicatorName', label: 'Indicador' },
+      { key: 'value', label: 'Valor' },
+      { key: 'unit', label: 'Unidade' },
+    ];
+    
+    await exportData({
+      filename: `${ufSigla}_${sortedData[0]?.indicatorName || 'dados'}_regional`,
+      data: sortedData,
+      format,
+      columns: exportColumns,
+    });
+  };
+
   return (
     <Card className="border-2 border-[#00FFFF]/50 shadow-[0_0_20px_rgba(0,255,255,0.2)]">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
@@ -217,9 +261,28 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
             <Badge variant="outline" className="mt-1">{ufSigla}</Badge>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Download className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <Download className="h-4 w-4 mr-2" />
+                Exportar CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Exportar Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
       
       <CardContent>
@@ -251,6 +314,49 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
                 {regionalData.length} registros
               </Badge>
             </div>
+
+            {/* Sparkline - Last 12 months trend */}
+            {sparklineData.length > 1 && (
+              <div className="p-3 bg-gradient-to-r from-background to-muted/30 rounded-lg border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Tendência (últimos 12 meses)
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {sparklineData[0]?.date && format(new Date(sparklineData[0].date), "MM/yy")}
+                    {" → "}
+                    {sparklineData[sparklineData.length - 1]?.date && format(new Date(sparklineData[sparklineData.length - 1].date), "MM/yy")}
+                  </span>
+                </div>
+                <div className="h-[60px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={sparklineData}>
+                      <Line 
+                        type="monotone" 
+                        dataKey="value" 
+                        stroke={sparklineColor}
+                        strokeWidth={2}
+                        dot={false}
+                        isAnimationActive={false}
+                      />
+                      <RechartsTooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                        }}
+                        formatter={(value: number) => [
+                          formatValue(value, regionalData?.[0]?.unit || ''),
+                          'Valor'
+                        ]}
+                        labelFormatter={(label) => format(new Date(label), "MMM/yyyy")}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
 
             {/* Data table with native HTML for sticky header */}
             <div className="border rounded-lg overflow-hidden">
