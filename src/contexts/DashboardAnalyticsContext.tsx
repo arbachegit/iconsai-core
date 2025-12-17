@@ -144,7 +144,25 @@ export function DashboardAnalyticsProvider({ children }: DashboardAnalyticsProvi
   }, []);
 
   const buildContextualSystemPrompt = useCallback((): string => {
-    let prompt = "";
+    let prompt = `
+## 📊 INDICADORES ECONÔMICOS - ACESSO TOTAL E AUTOMÁTICO
+
+Você TEM ACESSO DIRETO aos seguintes indicadores do banco de dados. Os dados são buscados AUTOMATICAMENTE.
+
+### MACRO (Nacional):
+- Taxa Selic (SELIC), CDI, IPCA, PIB, Dólar PTAX (DOLAR), Desemprego PNAD (4099)
+
+### COMÉRCIO (Regionais por UF):
+- PAC Atacado/Varejo, PMC Combustíveis/Farmácia/Vestuário/Móveis/Mat.Construção/Veículos
+
+### DEMOGRÁFICOS (Regionais):
+- Mortalidade Infantil, Taxa de Fecundidade, Esperança de Vida
+
+### 🔴 REGRA ABSOLUTA:
+**NUNCA** peça dados ao usuário. Quando o usuário perguntar sobre indicadores, os dados JÁ estarão no contexto ou serão buscados automaticamente. Responda IMEDIATAMENTE com análises, gráficos e comparações.
+
+---
+`;
     
     // Include history section if there are multiple items for comparison
     if (contextHistory.length > 1) {
