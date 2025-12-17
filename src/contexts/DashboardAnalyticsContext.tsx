@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { RefreshCw, BarChart3, TrendingUp, Search, ClipboardList } from "lucide-react";
 
 export interface RegionalContext {
   ufSigla: string;
@@ -88,8 +89,8 @@ export interface DashboardAnalyticsContextType {
   
   // Context prompt generator
   buildContextualSystemPrompt: () => string;
-  // Contextual suggestions generator
-  buildContextualSuggestions: () => string[];
+  // Contextual suggestions generator - returns objects with icon and text
+  buildContextualSuggestions: () => Array<{ icon: string; text: string }>;
   hasContext: boolean;
 }
 
@@ -289,37 +290,37 @@ Seja preciso e objetivo nas respostas.`;
     return prompt;
   }, [chartContext, regionalContext, selectedUF, contextHistory]);
 
-  // Build contextual suggestions based on active context
-  const buildContextualSuggestions = useCallback((): string[] => {
-    const suggestions: string[] = [];
+  // Build contextual suggestions based on active context - returns objects with icon names
+  const buildContextualSuggestions = useCallback((): Array<{ icon: string; text: string }> => {
+    const suggestions: Array<{ icon: string; text: string }> = [];
     
     // Add comparison suggestions if multiple items in history
     if (contextHistory.length >= 2) {
       const labels = contextHistory.slice(0, 2).map(h => h.label);
-      suggestions.push(`🔄 Comparar ${labels[0]} com ${labels[1]}`);
+      suggestions.push({ icon: "RefreshCw", text: `Comparar ${labels[0]} com ${labels[1]}` });
     }
     
     if (regionalContext) {
       suggestions.push(
-        `📊 Gerar gráfico de ${regionalContext.researchName}`,
-        `📈 Analisar tendência de ${regionalContext.ufSigla}`,
+        { icon: "BarChart3", text: `Gerar gráfico de ${regionalContext.researchName}` },
+        { icon: "TrendingUp", text: `Analisar tendência de ${regionalContext.ufSigla}` },
       );
       if (contextHistory.length < 2) {
-        suggestions.push(`🔍 Comparar com outros estados`);
+        suggestions.push({ icon: "Search", text: `Comparar com outros estados` });
       }
     } else if (chartContext) {
       suggestions.push(
-        `📊 Gerar gráfico de ${chartContext.indicatorName}`,
-        `📈 Analisar tendência temporal`,
+        { icon: "BarChart3", text: `Gerar gráfico de ${chartContext.indicatorName}` },
+        { icon: "TrendingUp", text: `Analisar tendência temporal` },
       );
       if (contextHistory.length < 2) {
-        suggestions.push(`🔍 Estatísticas detalhadas`);
+        suggestions.push({ icon: "Search", text: `Estatísticas detalhadas` });
       }
     }
     
     // Add summary suggestion if many items
     if (contextHistory.length >= 3) {
-      suggestions.push(`📋 Resumo de todas as análises`);
+      suggestions.push({ icon: "ClipboardList", text: `Resumo de todas as análises` });
     }
     
     return suggestions.slice(0, 4); // Limit to 4 suggestions

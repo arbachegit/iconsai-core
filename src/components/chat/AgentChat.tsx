@@ -13,7 +13,7 @@ import { MarkdownContent } from "@/components/MarkdownContent";
 import { DataVisualization } from "@/components/chat/DataVisualization";
 import FileProcessor from "@/components/chat/FileProcessor";
 import { TypingIndicator } from "@/components/TypingIndicator";
-import ContextualSuggestions from "@/components/ContextualSuggestions";
+import ContextualSuggestions, { SuggestionItem } from "@/components/ContextualSuggestions";
 import { AudioControls } from "@/components/AudioControls";
 import { ChatFloatingAudioPlayer } from "@/components/ChatFloatingAudioPlayer";
 import { CopyButton } from "@/components/CopyButton";
@@ -675,9 +675,9 @@ export const AgentChat = memo(function AgentChat({
 
       {/* Contextual Suggestions - prioritize dashboard context suggestions */}
       <ContextualSuggestions
-        suggestions={dashboardAnalytics?.hasContext 
+        suggestions={(dashboardAnalytics?.hasContext 
           ? dashboardAnalytics.buildContextualSuggestions() 
-          : suggestions}
+          : suggestions) as SuggestionItem[]}
         isLoading={isLoading}
         onSuggestionClick={handleSuggestionClick}
       />

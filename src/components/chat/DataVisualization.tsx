@@ -907,7 +907,7 @@ export const DataVisualization = ({ data, columns, fileName }: DataVisualization
           {showTrendLine && trendLineData && (
             <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-300">
               <TrendingUp className="h-3 w-3 inline mr-1" />
-              Regressão Linear: y = {trendLineData.slope.toFixed(4)}x + {trendLineData.intercept.toFixed(4)}
+              Regressão Linear: y = {Math.abs(trendLineData.slope) >= 1000 ? trendLineData.slope.toExponential(2) : trendLineData.slope.toFixed(4)}x + {Math.abs(trendLineData.intercept) >= 1000 ? trendLineData.intercept.toExponential(2) : trendLineData.intercept.toFixed(4)}
             </div>
           )}
         </TabsContent>

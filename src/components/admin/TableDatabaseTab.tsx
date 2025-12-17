@@ -662,7 +662,7 @@ export function TableDatabaseTab() {
           <div className="flex items-center gap-3">
             <Database className="h-6 w-6 text-primary" />
             <div>
-              <h2 className="text-xl font-bold">Table Data Base</h2>
+              <h2 className="text-xl font-bold">Table DataSet</h2>
               <p className="text-sm text-muted-foreground">
                 Visualização de indicadores econômicos e seus valores
               </p>
@@ -791,7 +791,7 @@ export function TableDatabaseTab() {
           setCurrentView('detail');
           setShowTrendModal(false);
         }
-      }}>
+      }} modal={false}>
         <DialogContent className="max-w-4xl h-[90vh] max-h-[900px] flex flex-col p-0 bg-[#0A0A0F] overflow-hidden [&>button]:hidden">
           
           {/* VIEW: TABLE */}
@@ -922,7 +922,7 @@ export function TableDatabaseTab() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <StatBadge
                       label="Média Móvel"
-                      value={analysis.statistics.movingAverage 
+                      value={analysis.statistics.movingAverage !== null && analysis.statistics.movingAverage !== undefined
                         ? formatTableValue(analysis.statistics.movingAverage, selectedIndicator?.unit) 
                         : 'N/A'}
                       infoTitle="Média Móvel"

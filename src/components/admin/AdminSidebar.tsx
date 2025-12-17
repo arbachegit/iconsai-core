@@ -284,8 +284,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       items: [
         { id: "dashboard-external" as TabType, label: "Dashboard", icon: LayoutDashboard },
         { id: "data-analysis" as TabType, label: "Data Analysis", icon: TrendingUp },
-        { id: "chart-database" as TabType, label: "Chart Data Base", icon: Database },
-        { id: "table-database" as TabType, label: "Table Data Base", icon: Database },
+        { id: "chart-database" as TabType, label: "Chart DataSet", icon: Database },
+        { id: "table-database" as TabType, label: "Table DataSet", icon: Database },
       ]
     },
     {
