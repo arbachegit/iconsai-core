@@ -36,9 +36,9 @@ export function DataAnalyticsUF() {
   
   const dashboardAnalytics = useDashboardAnalyticsSafe();
 
-  // Fetch regional APIs
+  // Fetch regional APIs with frequency
   const { data: regionalApis, isLoading } = useQuery({
-    queryKey: ["regional-apis-dashboard"],
+    queryKey: ["regional-apis-dashboard-v3"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("system_api_registry")
@@ -47,7 +47,22 @@ export function DataAnalyticsUF() {
         .order("name");
       
       if (error) throw error;
-      return data || [];
+      
+      // Fetch frequency for each API from economic_indicators
+      const apisWithFrequency = await Promise.all((data || []).map(async (api) => {
+        const { data: indicators } = await supabase
+          .from("economic_indicators")
+          .select("frequency")
+          .eq("api_id", api.id)
+          .limit(1);
+        
+        return {
+          ...api,
+          frequency: indicators?.[0]?.frequency || 'monthly'
+        };
+      }));
+      
+      return apisWithFrequency;
     },
   });
 
@@ -217,15 +232,24 @@ export function DataAnalyticsUF() {
     });
   }, [searchTerm, regionalApis, apiUfMapping, allUfs]);
 
+  // Sort APIs by UF count (descending)
+  const sortedApis = useMemo(() => {
+    return [...filteredApis].sort((a, b) => {
+      const countA = apiUfMapping?.[a.id]?.length || 0;
+      const countB = apiUfMapping?.[b.id]?.length || 0;
+      return countB - countA; // Descending
+    });
+  }, [filteredApis, apiUfMapping]);
+
   // Auto-select first matching API while typing
   useEffect(() => {
-    if (filteredApis.length > 0 && searchTerm.trim()) {
-      const firstMatch = filteredApis[0];
+    if (sortedApis.length > 0 && searchTerm.trim()) {
+      const firstMatch = sortedApis[0];
       if (firstMatch && selectedResearch !== firstMatch.id) {
         setSelectedResearch(firstMatch.id);
       }
     }
-  }, [filteredApis, searchTerm]);
+  }, [sortedApis, searchTerm]);
 
   // Fetch available UF codes for selected research
   const { data: availableUfCodes } = useQuery({
@@ -271,6 +295,17 @@ export function DataAnalyticsUF() {
     }
   }, [selectedState, selectedResearch, dashboardAnalytics]);
 
+  // Helper to format frequency label
+  const formatFrequency = (freq: string) => {
+    const map: Record<string, string> = {
+      'monthly': 'Mensal',
+      'annual': 'Anual',
+      'quarterly': 'Trim.',
+      'daily': 'Diário',
+    };
+    return map[freq] || freq;
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -306,14 +341,18 @@ export function DataAnalyticsUF() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhum (desativar mapa)</SelectItem>
-                    {filteredApis.map((api) => {
+                    {sortedApis.map((api) => {
                       const stateCount = apiUfMapping?.[api.id]?.length || 0;
+                      const freqLabel = formatFrequency(api.frequency);
                       return (
                         <SelectItem key={api.id} value={api.id}>
-                          <div className="flex items-center justify-between w-full gap-2">
-                            <span>{api.name}</span>
+                          <div className="flex items-center gap-2 w-full">
+                            <span className="flex-1 truncate">{api.name}</span>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">
+                              {freqLabel}
+                            </Badge>
                             {stateCount > 0 && (
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shrink-0">
                                 {stateCount} UFs
                               </Badge>
                             )}
@@ -336,7 +375,7 @@ export function DataAnalyticsUF() {
                 </div>
 
                 {/* No results message */}
-                {filteredApis.length === 0 && searchTerm && (
+                {sortedApis.length === 0 && searchTerm && (
                   <p className="text-sm text-muted-foreground">
                     Nenhuma pesquisa encontrada para "{searchTerm}"
                   </p>
@@ -358,10 +397,10 @@ export function DataAnalyticsUF() {
         </CardContent>
       </Card>
 
-      {/* Map and State Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Map */}
-        <Card className="lg:col-span-2 overflow-hidden">
+      {/* Map and State Panel - 5 columns: 3 for map, 2 for panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Map - 3 columns */}
+        <Card className="lg:col-span-3 overflow-hidden">
           <CardContent className="p-4">
             <BrazilMap
               hoveredState={hoveredState}
@@ -374,8 +413,8 @@ export function DataAnalyticsUF() {
           </CardContent>
         </Card>
 
-        {/* State Data Panel */}
-        <div className="lg:col-span-1">
+        {/* State Data Panel - 2 columns (wider) */}
+        <div className="lg:col-span-2">
           {selectedState && !isMapDisabled ? (
             <StateDataPanel
               ufSigla={selectedState}
