@@ -43,7 +43,9 @@ const agentLocationMap: Record<string, { locations: string[]; icon: string }> = 
   health: { locations: [], icon: "⚠️" },
   study: { locations: ["/index (Seção KnowYOU)"], icon: "📚" },
   company: { locations: ["/index (Float Button)"], icon: "🏢" },
-  analyst: { locations: ["/app", "/dashboard"], icon: "📊" }
+  analyst: { locations: [], icon: "📊" },
+  analyst_admin: { locations: ["/dashboard"], icon: "📊" },
+  analyst_user: { locations: ["/app"], icon: "📊" }
 };
 
 const AgentManagementTab: React.FC = () => {
