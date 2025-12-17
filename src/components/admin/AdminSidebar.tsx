@@ -58,10 +58,11 @@ import {
   Bot,
   Smartphone,
   Home,
+  DollarSign,
 } from "lucide-react";
 
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "dashboard-external" | "table-database" | "api-audit-logs" | "agent-management";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "dashboard-external" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -269,6 +270,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       items: [
         { id: "economic-indicators" as TabType, label: "Painel de Indicadores", icon: BarChart3 },
         { id: "regional-indicators" as TabType, label: "Indicadores Regionais", icon: MapPin },
+        { id: "pmc-conversion" as TabType, label: "PMC → R$", icon: DollarSign },
         { id: "market-news" as TabType, label: "Balcão de Notícias", icon: Newspaper },
         { id: "json-test" as TabType, label: "Teste de JSON", icon: TestTube },
         { id: "api-management" as TabType, label: "Gestão de APIs", icon: Webhook },
