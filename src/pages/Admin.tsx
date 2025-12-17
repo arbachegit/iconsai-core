@@ -1,6 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Languages, Camera } from "lucide-react";
+import { Loader2, Languages } from "lucide-react";
+import { UserBadge } from "@/components/UserBadge";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
 import { NotificationsPanel } from "@/components/admin/NotificationsPanel";
@@ -22,14 +23,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 
 // Eager load only DashboardTab (first view)
 import { DashboardTab } from "@/components/admin/DashboardTab";
@@ -150,7 +143,7 @@ const Admin = () => {
     return saved === 'true';
   });
   const [isChangingLanguage, setIsChangingLanguage] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
@@ -407,20 +400,8 @@ const Admin = () => {
                 </TooltipContent>
               </Tooltip>
               
-              {/* User Avatar with Halo Effect and Tooltip */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div 
-                    onClick={() => setIsProfileOpen(true)}
-                    className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center cursor-pointer transition-all duration-300 ease-in-out hover:ring-4 hover:ring-primary/20 hover:shadow-[0_0_15px_rgba(var(--primary),0.3)]"
-                  >
-                    <span className="text-xs font-semibold text-primary">AD</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>Perfil do Usuário</p>
-                </TooltipContent>
-              </Tooltip>
+              {/* User Badge */}
+              <UserBadge />
             </div>
           </TooltipProvider>
         </header>
@@ -436,63 +417,6 @@ const Admin = () => {
           </div>
         </main>
 
-        {/* User Profile Modal */}
-        <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold">Perfil do Usuário</DialogTitle>
-              <DialogDescription>
-                Informações da conta administrativa
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="flex flex-col items-center gap-4 py-4">
-              {/* Editable Avatar with Hover Overlay */}
-              <div className="relative group cursor-pointer">
-                <div className="h-24 w-24 rounded-full bg-primary/20 flex items-center justify-center transition-all duration-300 group-hover:ring-4 group-hover:ring-primary/30">
-                  <span className="text-3xl font-bold text-primary">AD</span>
-                </div>
-                
-                {/* Camera Overlay - appears on hover */}
-                <div 
-                  className="absolute inset-0 rounded-full bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
-                >
-                  <Camera className="h-6 w-6 text-white" />
-                  <span className="text-xs text-white mt-1">Alterar Foto</span>
-                </div>
-              </div>
-              
-              {/* User Info */}
-              <div className="w-full space-y-3">
-                <div className="flex justify-between items-center py-2 border-b border-border/40">
-                  <span className="text-sm text-muted-foreground">Nome</span>
-                  <span className="text-sm font-medium">Admin User</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-border/40">
-                  <span className="text-sm text-muted-foreground">Email</span>
-                  <span className="text-sm font-medium">{userEmail || "admin@knowyou.app"}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-border/40">
-                  <span className="text-sm text-muted-foreground">Função</span>
-                  <span className="text-sm font-medium">Administrator</span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-sm text-muted-foreground">Plano</span>
-                  <span className="text-sm font-medium text-primary">Enterprise</span>
-                </div>
-              </div>
-            </div>
-            
-            <DialogFooter className="flex gap-2 sm:gap-2">
-              <Button variant="outline" onClick={() => setIsProfileOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={() => setIsProfileOpen(false)}>
-                Salvar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );
