@@ -65,23 +65,45 @@ const AdminLogin = () => {
 
       if (error) throw error;
 
-      // Check if user has admin OR superadmin role
-      const { data: roleData } = await supabase
+      // Check user role for redirect
+      const { data: superadminData } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", data.user.id)
-        .in("role", ["admin", "superadmin"]);
+        .eq("role", "superadmin")
+        .maybeSingle();
 
-      if (!roleData || roleData.length === 0) {
-        await supabase.auth.signOut();
-        throw new Error("Acesso negado. Você não tem permissões de administrador.");
+      if (superadminData) {
+        toast({
+          title: "Login realizado",
+          description: "Bem-vindo, Super Admin!",
+        });
+        navigate("/hub");
+        return;
       }
 
+      const { data: adminData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (adminData) {
+        toast({
+          title: "Login realizado",
+          description: "Bem-vindo ao Dashboard.",
+        });
+        navigate("/dashboard");
+        return;
+      }
+
+      // Default user - redirect to app
       toast({
         title: "Login realizado",
-        description: "Bem-vindo ao painel administrativo.",
+        description: "Bem-vindo ao KnowYOU App.",
       });
-      navigate("/admin");
+      navigate("/app");
     } catch (error: any) {
       toast({
         title: "Erro ao fazer login",

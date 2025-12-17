@@ -18,7 +18,9 @@ import {
   Search,
   ChevronUp,
   ChevronDown,
-  Settings
+  Settings,
+  Smartphone,
+  Home
 } from "lucide-react";
 
 export type DashboardTabType = "indicators" | "ai" | "data-analysis" | "analytics-uf" | "chart-database" | "table-database";
@@ -253,6 +255,21 @@ export function DashboardSidebar({
           {isCollapsed ? (
             // SCENARIO A: Sidebar COLLAPSED - Vertical icons only
             <div className="flex flex-col items-center gap-1">
+              {/* App link */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    onClick={() => navigate("/app")}
+                  >
+                    <Smartphone className="w-4 h-4 group-hover:text-black" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">App</TooltipContent>
+              </Tooltip>
+
               {isSuperAdmin && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -277,10 +294,10 @@ export function DashboardSidebar({
                     className="group h-10 w-10 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
                     onClick={() => navigate("/")}
                   >
-                    <Monitor className="w-4 h-4 group-hover:text-black" />
+                    <Home className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Voltar ao APP</TooltipContent>
+                <TooltipContent side="right">Voltar ao Início</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -300,6 +317,20 @@ export function DashboardSidebar({
           ) : isControlCenterCollapsed ? (
             // SCENARIO B-2: Sidebar EXPANDED + Control Center COLLAPSED - Horizontal row
             <div className="flex flex-row items-center justify-around py-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    onClick={() => navigate("/app")}
+                  >
+                    <Smartphone className="w-4 h-4 group-hover:text-black" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">App</TooltipContent>
+              </Tooltip>
+
               {isSuperAdmin && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -324,10 +355,10 @@ export function DashboardSidebar({
                     className="group h-9 w-9 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
                     onClick={() => navigate("/")}
                   >
-                    <Monitor className="w-4 h-4 group-hover:text-black" />
+                    <Home className="w-4 h-4 group-hover:text-black" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">Voltar ao APP</TooltipContent>
+                <TooltipContent side="top">Voltar ao Início</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -347,6 +378,15 @@ export function DashboardSidebar({
           ) : (
             // SCENARIO B-1: Sidebar EXPANDED + Control Center EXPANDED - Vertical with text
             <div className="flex flex-col gap-0.5">
+              <Button 
+                variant="ghost" 
+                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                onClick={() => navigate("/app")}
+              >
+                <Smartphone className="w-4 h-4 shrink-0 group-hover:text-black" />
+                <span className="whitespace-nowrap">App</span>
+              </Button>
+
               {isSuperAdmin && (
                 <Button 
                   variant="ghost" 
@@ -363,8 +403,8 @@ export function DashboardSidebar({
                 className="group w-full justify-start gap-3 h-9 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
                 onClick={() => navigate("/")}
               >
-                <Monitor className="w-4 h-4 shrink-0 group-hover:text-black" />
-                <span className="whitespace-nowrap">Voltar ao APP</span>
+                <Home className="w-4 h-4 shrink-0 group-hover:text-black" />
+                <span className="whitespace-nowrap">Voltar ao Início</span>
               </Button>
 
               <Button 

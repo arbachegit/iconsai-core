@@ -10,6 +10,7 @@ import AdminLogin from "./pages/AdminLogin";
 import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
 import { FloatingAudioPlayer } from "./components/FloatingAudioPlayer";
 import { useApiRegistrySync } from "./hooks/useApiRegistrySync";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 // Lazy load non-critical pages
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -20,6 +21,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Arquitetura = lazy(() => import("./pages/Arquitetura"));
 const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
 const AppPage = lazy(() => import("./pages/AppPage"));
+const Hub = lazy(() => import("./pages/Hub"));
 
 // Simple loading fallback
 const PageLoader = () => (
@@ -50,12 +52,38 @@ const App = () => (
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin/signup" element={<AdminSignup />} />
                 <Route path="/admin/reset-password" element={<AdminResetPassword />} />
-                <Route path="/admin/dashboard" element={<Dashboard />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/dashboard" element={<DashboardAdmin />} />
+                
+                {/* Protected Routes */}
+                <Route path="/hub" element={
+                  <ProtectedRoute requiredRole="superadmin">
+                    <Hub />
+                  </ProtectedRoute>
+                } />
+                <Route path="/app" element={
+                  <ProtectedRoute>
+                    <AppPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute requiredRole="admin">
+                    <DashboardAdmin />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/dashboard" element={
+                  <ProtectedRoute requiredRole="admin">
+                    <Dashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin" element={
+                  <ProtectedRoute requiredRole="superadmin">
+                    <Admin />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Public Routes */}
                 <Route path="/docs" element={<Documentation />} />
                 <Route path="/arquitetura" element={<Arquitetura />} />
-                <Route path="/app" element={<AppPage />} />
+                
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

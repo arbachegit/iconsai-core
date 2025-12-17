@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Home, 
@@ -6,28 +6,43 @@ import {
   Database, 
   BarChart3, 
   LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Bot
+  Bot,
+  Menu,
+  X,
+  Search,
+  Settings,
+  Shield,
+  Smartphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { AgentChat } from "@/components/chat/AgentChat";
+import { UserBadge } from "@/components/UserBadge";
+import { useAuth } from "@/hooks/useAuth";
 import knowyouLogo from "@/assets/knowyou-admin-logo.png";
 
-type AppView = "home" | "chat" | "data" | "analytics";
+type AppView = "home" | "chat" | "data" | "analytics" | "settings";
 
 export default function AppPage() {
   const navigate = useNavigate();
+  const { role, signOut } = useAuth();
   const [currentView, setCurrentView] = useState<AppView>("chat");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const menuItems = [
     { id: "home" as AppView, label: "Início", icon: Home },
     { id: "chat" as AppView, label: "Assistente IA", icon: MessageSquare },
     { id: "data" as AppView, label: "Dados", icon: Database },
     { id: "analytics" as AppView, label: "Analytics", icon: BarChart3 },
+    { id: "settings" as AppView, label: "Configurações", icon: Settings },
   ];
+
+  const filteredMenuItems = searchQuery.trim()
+    ? menuItems.filter(item => item.label.toLowerCase().includes(searchQuery.toLowerCase()))
+    : menuItems;
 
   const renderContent = () => {
     switch (currentView) {
@@ -70,89 +85,239 @@ export default function AppPage() {
             </p>
           </div>
         );
+      case "settings":
+        return (
+          <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
+            <Settings className="h-16 w-16 text-muted-foreground" />
+            <h2 className="text-xl font-semibold text-foreground">Configurações</h2>
+            <p className="text-muted-foreground text-center">
+              Configurações do usuário em breve.
+            </p>
+          </div>
+        );
     }
   };
 
   return (
-    <div className="h-screen flex bg-background">
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "h-full bg-card border-r border-border flex flex-col transition-all duration-300",
-          sidebarCollapsed ? "w-16" : "w-64"
-        )}
-      >
-        {/* Logo */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          {!sidebarCollapsed && (
-            <img src={knowyouLogo} alt="KnowYOU" className="h-8" />
+    <TooltipProvider delayDuration={0}>
+      <div className="h-screen flex bg-background">
+        {/* Sidebar */}
+        <aside
+          className={cn(
+            "h-full bg-sidebar border-r border-border flex flex-col transition-all duration-300",
+            sidebarCollapsed ? "w-[72px]" : "w-64"
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="shrink-0"
-          >
+        >
+          {/* Header: Hamburger + Logo + Search */}
+          <div className={cn(
+            "border-b border-border shrink-0 flex transition-all duration-300",
+            sidebarCollapsed 
+              ? "flex-col items-center gap-3 px-3 py-4" 
+              : "flex-row items-center gap-3 px-4 py-3"
+          )}>
+            {/* Hamburger */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="group shrink-0 h-10 w-10 rounded-full hover:bg-primary/10 transition-all duration-300"
+            >
+              <div className="relative w-5 h-5">
+                <Menu className={cn(
+                  "w-5 h-5 absolute inset-0 transition-all duration-300 group-hover:text-primary",
+                  sidebarCollapsed ? "opacity-0 rotate-90 scale-0" : "opacity-100 rotate-0 scale-100"
+                )} />
+                <X className={cn(
+                  "w-5 h-5 absolute inset-0 transition-all duration-300 group-hover:text-primary",
+                  sidebarCollapsed ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-0"
+                )} />
+              </div>
+            </Button>
+
+            {/* Logo (only when expanded) */}
+            {!sidebarCollapsed && (
+              <img src={knowyouLogo} alt="KnowYOU" className="h-7 flex-shrink-0" />
+            )}
+
+            {/* Search */}
             {sidebarCollapsed ? (
-              <ChevronRight className="h-4 w-4" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 rounded-full hover:bg-primary/10"
+                    onClick={() => {
+                      setSidebarCollapsed(false);
+                      setTimeout(() => {
+                        const input = document.querySelector('input[placeholder="Buscar..."]') as HTMLInputElement;
+                        input?.focus();
+                      }, 300);
+                    }}
+                  >
+                    <Search className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Buscar</TooltipContent>
+              </Tooltip>
             ) : (
-              <ChevronLeft className="h-4 w-4" />
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Buscar..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9 text-sm bg-muted/30 border-border rounded-full"
+                />
+              </div>
             )}
-          </Button>
-        </div>
+          </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-2 space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentView === item.id;
-            return (
+          {/* Navigation */}
+          <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+            {filteredMenuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentView === item.id;
+              
+              return sidebarCollapsed ? (
+                <Tooltip key={item.id}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      size="icon"
+                      className={cn(
+                        "w-full h-12 rounded-lg transition-all duration-300",
+                        isActive 
+                          ? "bg-primary text-primary-foreground" 
+                          : "hover:bg-primary/10"
+                      )}
+                      onClick={() => setCurrentView(item.id)}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">{item.label}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button
+                  key={item.id}
+                  variant={isActive ? "secondary" : "ghost"}
+                  className={cn(
+                    "w-full justify-start gap-3 h-11 rounded-lg transition-all duration-300",
+                    isActive 
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+                      : "hover:bg-primary/10"
+                  )}
+                  onClick={() => setCurrentView(item.id)}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </Button>
+              );
+            })}
+          </nav>
+
+          {/* Footer Dock */}
+          <div className="border-t border-border p-2 space-y-1">
+            {/* Admin link - only for superadmin */}
+            {role === "superadmin" && (
+              sidebarCollapsed ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-full h-10 rounded-lg hover:bg-purple-500/10 text-purple-400"
+                      onClick={() => navigate("/admin")}
+                    >
+                      <Shield className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Admin</TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-3 h-10 rounded-lg hover:bg-purple-500/10 text-purple-400"
+                  onClick={() => navigate("/admin")}
+                >
+                  <Shield className="h-5 w-5" />
+                  <span>Admin</span>
+                </Button>
+              )
+            )}
+
+            {/* Voltar ao Início */}
+            {sidebarCollapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-full h-10 rounded-lg hover:bg-primary/10 text-primary"
+                    onClick={() => navigate("/")}
+                  >
+                    <Smartphone className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Voltar ao Início</TooltipContent>
+              </Tooltip>
+            ) : (
               <Button
-                key={item.id}
-                variant={isActive ? "secondary" : "ghost"}
-                className={cn(
-                  "w-full justify-start",
-                  sidebarCollapsed && "justify-center px-2"
-                )}
-                onClick={() => setCurrentView(item.id)}
+                variant="ghost"
+                className="w-full justify-start gap-3 h-10 rounded-lg hover:bg-primary/10 text-primary"
+                onClick={() => navigate("/")}
               >
-                <Icon className={cn("h-5 w-5", !sidebarCollapsed && "mr-3")} />
-                {!sidebarCollapsed && item.label}
+                <Smartphone className="h-5 w-5" />
+                <span>Voltar ao Início</span>
               </Button>
-            );
-          })}
-        </nav>
-
-        {/* Footer */}
-        <div className="p-2 border-t border-border space-y-1">
-          <Button
-            variant="ghost"
-            className={cn(
-              "w-full justify-start text-muted-foreground",
-              sidebarCollapsed && "justify-center px-2"
             )}
-            onClick={() => navigate("/")}
-          >
-            <LogOut className={cn("h-5 w-5", !sidebarCollapsed && "mr-3")} />
-            {!sidebarCollapsed && "Voltar ao Site"}
-          </Button>
-        </div>
-      </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="h-14 border-b border-border bg-card flex items-center justify-between px-6">
-          <h1 className="font-semibold text-foreground">
-            {menuItems.find((m) => m.id === currentView)?.label || "KnowYOU App"}
-          </h1>
-        </header>
+            {/* Sair */}
+            {sidebarCollapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-full h-10 rounded-lg hover:bg-destructive/10 text-destructive"
+                    onClick={signOut}
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Sair</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 h-10 rounded-lg hover:bg-destructive/10 text-destructive"
+                onClick={signOut}
+              >
+                <LogOut className="h-5 w-5" />
+                <span>Sair</span>
+              </Button>
+            )}
+          </div>
+        </aside>
 
-        {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          {renderContent()}
-        </div>
-      </main>
-    </div>
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          <header className="h-14 border-b border-border bg-card flex items-center justify-between px-6">
+            <h1 className="font-semibold text-foreground">
+              {menuItems.find((m) => m.id === currentView)?.label || "KnowYOU App"}
+            </h1>
+            <UserBadge />
+          </header>
+
+          {/* Content */}
+          <div className="flex-1 overflow-hidden">
+            {renderContent()}
+          </div>
+        </main>
+      </div>
+    </TooltipProvider>
   );
 }

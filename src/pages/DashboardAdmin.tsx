@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
 import { DashboardSidebar, type DashboardTabType } from "@/components/dashboard/DashboardSidebar";
 import { FloatingChatButton } from "@/components/FloatingChatButton";
+import { UserBadge } from "@/components/UserBadge";
 
 // Lazy load tab components
 const DashboardTab = lazy(() => import("@/components/admin/DashboardTab").then(m => ({ default: m.DashboardTab })));
@@ -131,7 +132,7 @@ const DashboardAdmin = () => {
         className={`flex-1 flex flex-col transition-all duration-500 ease-in-out ${isSidebarCollapsed ? 'ml-[72px]' : 'ml-[256px]'}`}
       >
         {/* Header */}
-        <header className="h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-4 shrink-0">
+        <header className="h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between px-4 shrink-0">
           {/* Logo */}
           <div className="flex items-center gap-3">
             <img 
@@ -141,6 +142,8 @@ const DashboardAdmin = () => {
             />
             <span className="font-semibold text-sm">Dashboard</span>
           </div>
+          {/* UserBadge */}
+          <UserBadge />
         </header>
 
         {/* Content */}
