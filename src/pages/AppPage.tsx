@@ -239,7 +239,7 @@ export default function AppPage() {
               ) : (
                 <Button
                   variant="ghost"
-                  className="w-full justify-start gap-3 h-10 rounded-lg hover:bg-purple-500/10 text-purple-400"
+                  className="w-full justify-start gap-3 h-10 rounded-lg hover:bg-purple-500/10 text-purple-400 hover:text-purple-600"
                   onClick={() => navigate("/admin")}
                 >
                   <Shield className="h-5 w-5" />
