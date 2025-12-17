@@ -343,6 +343,7 @@ Quando o usuário pedir linha de tendência ou média móvel, responda:
     // Log agent config if provided
     if (agentConfig) {
       console.log(`Agent config received: systemPrompt=${!!agentConfig.systemPrompt}, ragCollection=${agentConfig.ragCollection || 'study'}`);
+      console.log(`Dashboard context received: ${!!agentConfig.dashboardContext} (length: ${agentConfig.dashboardContext?.length || 0})`);
     }
     
     // Input validation to prevent abuse

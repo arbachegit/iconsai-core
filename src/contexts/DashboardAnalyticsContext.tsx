@@ -71,6 +71,8 @@ export interface DashboardAnalyticsContextType {
   
   // Context prompt generator
   buildContextualSystemPrompt: () => string;
+  // Contextual suggestions generator
+  buildContextualSuggestions: () => string[];
   hasContext: boolean;
 }
 
@@ -204,6 +206,27 @@ Seja preciso e objetivo nas respostas.`;
     return prompt;
   }, [chartContext, regionalContext, selectedUF]);
 
+  // Build contextual suggestions based on active context
+  const buildContextualSuggestions = useCallback((): string[] => {
+    if (regionalContext) {
+      return [
+        `📊 Gerar gráfico de ${regionalContext.researchName}`,
+        `📈 Analisar tendência de ${regionalContext.ufSigla}`,
+        `🔍 Comparar com outros estados`,
+      ];
+    }
+    
+    if (chartContext) {
+      return [
+        `📊 Gerar gráfico de ${chartContext.indicatorName}`,
+        `📈 Analisar tendência temporal`,
+        `🔍 Estatísticas detalhadas`,
+      ];
+    }
+    
+    return [];
+  }, [regionalContext, chartContext]);
+
   const value: DashboardAnalyticsContextType = {
     activeTab,
     chartContext,
@@ -214,6 +237,7 @@ Seja preciso e objetivo nas respostas.`;
     setSelectedUF,
     setRegionalContext,
     buildContextualSystemPrompt,
+    buildContextualSuggestions,
     hasContext,
   };
 
