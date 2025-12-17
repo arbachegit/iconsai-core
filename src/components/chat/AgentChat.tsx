@@ -1,15 +1,20 @@
 import { useState, useEffect, useRef, useCallback, memo } from "react";
-import { Bot, Send, Loader2, Sparkles, Paperclip, X, Volume2, Mic, Square, Image as ImageIcon, StopCircle } from "lucide-react";
+import { 
+  Bot, Send, Loader2, Sparkles, Paperclip, X, Volume2, Mic, Square, 
+  ImagePlus, StopCircle, BarChart3, ArrowUp 
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useChat, ChatType } from "@/hooks/useChat";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { DataVisualization } from "@/components/chat/DataVisualization";
 import FileProcessor from "@/components/chat/FileProcessor";
 import { TypingIndicator } from "@/components/TypingIndicator";
+import ContextualSuggestions from "@/components/ContextualSuggestions";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
@@ -76,9 +81,13 @@ export const AgentChat = memo(function AgentChat({
   const [agent, setAgent] = useState<AgentConfigData | null>(null);
   const [isLoadingAgent, setIsLoadingAgent] = useState(true);
   const [input, setInput] = useState("");
-  const [showFileUpload, setShowFileUpload] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Image and Chart modes
+  const [isImageMode, setIsImageMode] = useState(false);
+  const [isChartMode, setIsChartMode] = useState(false);
+  const [isFileDialogOpen, setIsFileDialogOpen] = useState(false);
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -120,6 +129,7 @@ export const AgentChat = memo(function AgentChat({
     messages,
     isLoading,
     isGeneratingAudio,
+    isGeneratingImage,
     suggestions,
     sendMessage,
     clearHistory,
@@ -127,6 +137,7 @@ export const AgentChat = memo(function AgentChat({
     stopAudio,
     currentlyPlayingIndex,
     transcribeAudio,
+    generateImage,
   } = useChat(
     {
       chatType,
@@ -144,21 +155,56 @@ export const AgentChat = memo(function AgentChat({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const capabilities = agent?.capabilities || {};
+
+  // Toggle functions for image and chart modes
+  const toggleImageMode = useCallback(() => {
+    if (!capabilities.drawing) return;
+    setIsImageMode(prev => !prev);
+    setIsChartMode(false);
+    setInput("");
+  }, [capabilities.drawing]);
+
+  const toggleChartMode = useCallback(() => {
+    if (!capabilities.charts) return;
+    setIsChartMode(prev => !prev);
+    setIsImageMode(false);
+    setInput("");
+  }, [capabilities.charts]);
+
+  const handleSuggestionClick = useCallback((suggestion: string) => {
+    setInput(suggestion);
+    textareaRef.current?.focus();
+  }, []);
+
   const handleSubmit = useCallback((e?: React.FormEvent) => {
     e?.preventDefault();
+    
+    // Parar gravação ao enviar
+    if (isRecording) {
+      stopRecording();
+    }
+    
     if (!input.trim() || isLoading || !agent) return;
-    sendMessage(input, {
-      agentConfig: {
-        systemPrompt: agent.system_prompt,
-        maieuticLevel: agent.maieutic_level,
-        regionalTone: agent.regional_tone,
-        ragCollection: agent.rag_collection,
-        allowedTags: agent.allowed_tags,
-        forbiddenTags: agent.forbidden_tags,
-      }
-    });
-    setInput("");
-  }, [input, isLoading, sendMessage, agent]);
+    
+    if (isImageMode && capabilities.drawing) {
+      generateImage(input);
+      setInput("");
+      setIsImageMode(false);
+    } else {
+      sendMessage(input, {
+        agentConfig: {
+          systemPrompt: agent.system_prompt,
+          maieuticLevel: agent.maieutic_level,
+          regionalTone: agent.regional_tone,
+          ragCollection: agent.rag_collection,
+          allowedTags: agent.allowed_tags,
+          forbiddenTags: agent.forbidden_tags,
+        }
+      });
+      setInput("");
+    }
+  }, [input, isLoading, sendMessage, agent, isImageMode, capabilities.drawing, generateImage, isRecording]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -169,25 +215,31 @@ export const AgentChat = memo(function AgentChat({
 
   const handleFileProcessed = useCallback((data: any[], fileName: string, columns: string[]) => {
     if (!agent) return;
-    sendMessage(`Arquivo carregado: ${fileName}`, { 
-      fileData: { data, fileName, columns },
-      agentConfig: {
-        systemPrompt: agent.system_prompt,
-        maieuticLevel: agent.maieutic_level,
-        regionalTone: agent.regional_tone,
-        ragCollection: agent.rag_collection,
-        allowedTags: agent.allowed_tags,
-        forbiddenTags: agent.forbidden_tags,
+    
+    const numericCols = columns.filter(col => 
+      data.some(row => !isNaN(Number(row[col])))
+    );
+    
+    sendMessage(
+      `Arquivo enviado: ${fileName} com ${data.length} registros e ${columns.length} colunas. Colunas numéricas: ${numericCols.join(", ")}. Por favor, analise os dados.`,
+      { 
+        fileData: { data, fileName, columns },
+        agentConfig: {
+          systemPrompt: agent.system_prompt,
+          maieuticLevel: agent.maieutic_level,
+          regionalTone: agent.regional_tone,
+          ragCollection: agent.rag_collection,
+          allowedTags: agent.allowed_tags,
+          forbiddenTags: agent.forbidden_tags,
+        }
       }
-    });
-    setShowFileUpload(false);
+    );
+    setIsFileDialogOpen(false);
   }, [sendMessage, agent]);
-
-  const capabilities = agent?.capabilities || {};
 
   // Voice recording functions
   const recordingStartTimeRef = useRef<number>(0);
-  const MIN_RECORDING_DURATION = 1000; // Minimum 1 second of recording
+  const MIN_RECORDING_DURATION = 1000;
 
   const startRecording = async () => {
     if (!capabilities.voice) return;
@@ -202,7 +254,6 @@ export const AgentChat = memo(function AgentChat({
         } 
       });
       
-      // Use a supported MIME type
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
         ? 'audio/webm;codecs=opus'
         : MediaRecorder.isTypeSupported('audio/webm')
@@ -214,7 +265,6 @@ export const AgentChat = memo(function AgentChat({
       audioChunksRef.current = [];
       recordingStartTimeRef.current = Date.now();
 
-      // Audio context for silence detection
       const audioContext = new AudioContext();
       const analyser = audioContext.createAnalyser();
       const microphone = audioContext.createMediaStreamSource(stream);
@@ -230,7 +280,6 @@ export const AgentChat = memo(function AgentChat({
         analyser.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
         
-        // Only check silence after minimum recording duration
         const recordingDuration = Date.now() - recordingStartTimeRef.current;
         
         if (average < 10 && recordingDuration >= MIN_RECORDING_DURATION) {
@@ -264,7 +313,6 @@ export const AgentChat = memo(function AgentChat({
         audioContext.close();
         stream.getTracks().forEach(track => track.stop());
 
-        // Ensure we have audio data
         if (audioChunksRef.current.length === 0) {
           console.error('No audio data collected');
           setIsRecording(false);
@@ -275,15 +323,12 @@ export const AgentChat = memo(function AgentChat({
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         audioChunksRef.current = [];
 
-        // Validate blob size (minimum ~1KB for valid audio)
         if (audioBlob.size < 1000) {
           console.error('Audio too short:', audioBlob.size, 'bytes');
           setIsRecording(false);
           setVoiceStatus('idle');
           return;
         }
-
-        console.log('Audio blob size:', audioBlob.size, 'bytes, type:', audioBlob.type);
 
         setIsTranscribing(true);
         setVoiceStatus('processing');
@@ -303,7 +348,6 @@ export const AgentChat = memo(function AgentChat({
         }
       };
 
-      // Start recording with timeslice to collect data every 250ms
       mediaRecorder.start(250);
       setIsRecording(true);
       setVoiceStatus('listening');
@@ -315,12 +359,12 @@ export const AgentChat = memo(function AgentChat({
     }
   };
 
-  const stopRecording = () => {
+  const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
     }
-  };
+  }, [isRecording]);
 
   if (isLoadingAgent) {
     return (
@@ -409,7 +453,18 @@ export const AgentChat = memo(function AgentChat({
                   <MarkdownContent content={msg.content} className="text-sm" />
                 )}
                 
-                {/* Audio controls - on-demand generation */}
+                {/* Imagem gerada */}
+                {msg.imageUrl && (
+                  <div className="mt-2">
+                    <img 
+                      src={msg.imageUrl} 
+                      alt="Imagem gerada" 
+                      className="max-w-full rounded-lg shadow-md"
+                    />
+                  </div>
+                )}
+                
+                {/* Audio controls */}
                 {msg.role === "assistant" && capabilities.voice && (
                   <div className="mt-2 flex gap-2">
                     {currentlyPlayingIndex === idx ? (
@@ -460,114 +515,145 @@ export const AgentChat = memo(function AgentChat({
         </div>
       </ScrollArea>
 
-      {/* Suggestions */}
-      {suggestions.length > 0 && messages.length === 0 && (
-        <div className="px-4 pb-2 flex flex-wrap gap-2">
-          {suggestions.map((suggestion, idx) => (
-            <Badge
-              key={idx}
-              variant="secondary"
-              className="cursor-pointer hover:bg-primary/20 transition-colors"
-              onClick={() => {
-                setInput(suggestion);
-                textareaRef.current?.focus();
-              }}
-            >
-              <Sparkles className="h-3 w-3 mr-1" />
-              {suggestion}
-            </Badge>
-          ))}
-        </div>
-      )}
+      {/* Contextual Suggestions - estilo ChatStudy */}
+      <ContextualSuggestions
+        suggestions={suggestions}
+        isLoading={isLoading}
+        onSuggestionClick={handleSuggestionClick}
+      />
 
-      {/* File Upload Modal */}
-      {showFileUpload && capabilities.file_upload && (
-        <div className="p-4 border-t border-border bg-card">
-          <FileProcessor
-            onDataLoaded={handleFileProcessed}
-            disabled={isLoading}
-          />
-        </div>
-      )}
-
-      {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-border bg-card">
-        <div className="flex gap-2 items-end">
-          {capabilities.file_upload && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowFileUpload(!showFileUpload)}
-              className="shrink-0"
-            >
-              <Paperclip className="h-5 w-5" />
-            </Button>
-          )}
-          
-          {/* Voice recording button */}
-          {capabilities.voice && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={isRecording ? stopRecording : startRecording}
-              disabled={isTranscribing}
-              className={cn(
-                "shrink-0 transition-colors",
-                isRecording && "text-red-500 bg-red-500/10 animate-pulse"
-              )}
-            >
-              {isTranscribing ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : isRecording ? (
-                <Square className="h-5 w-5" />
-              ) : (
-                <Mic className="h-5 w-5" />
-              )}
-            </Button>
-          )}
-          
+      {/* Input Area - Design ChatStudy */}
+      <form onSubmit={handleSubmit} className="pb-2 px-4">
+        {/* Indicador de voz ativo */}
+        {isRecording && (
+          <div className="flex items-center gap-2 text-xs mb-2">
+            <div className={cn(
+              "w-2 h-2 rounded-full animate-pulse",
+              voiceStatus === 'waiting' ? 'bg-amber-500' : 
+              voiceStatus === 'processing' ? 'bg-blue-500' : 'bg-red-500'
+            )} />
+            <span className={voiceStatus === 'waiting' ? 'text-amber-500' : 'text-muted-foreground'}>
+              {voiceStatus === 'listening' && "Ouvindo..."}
+              {voiceStatus === 'waiting' && `Silêncio detectado (${waitingCountdown}s)`}
+              {voiceStatus === 'processing' && "Processando..."}
+            </span>
+          </div>
+        )}
+        
+        <div className="relative">
           <Textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t("chat.placeholder", "Digite sua mensagem...")}
-            className="min-h-[44px] max-h-[120px] resize-none"
-            rows={1}
+            placeholder={
+              isTranscribing ? "Transcrevendo..." : 
+              isImageMode ? "Descreva a imagem que deseja criar..." : 
+              isChartMode ? "Descreva os dados para gerar um gráfico..." : 
+              t("chat.placeholder", "Digite sua mensagem...")
+            }
+            className="min-h-[44px] resize-none w-full pb-12 pr-12 border-2 border-primary/40 shadow-[inset_0_2px_6px_rgba(0,0,0,0.2)]"
+            disabled={isLoading || isTranscribing}
           />
-          <Button
-            type="submit"
+          
+          {/* Botões à esquerda - dentro do textarea */}
+          <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
+            {/* Mic button */}
+            {capabilities.voice && (
+              <Button 
+                type="button" 
+                size="icon" 
+                variant="ghost"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isTranscribing}
+                className={cn(
+                  "h-8 w-8",
+                  isRecording && "text-red-500 bg-red-500/10"
+                )}
+              >
+                {isTranscribing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : isRecording ? (
+                  <Square className="w-4 h-4" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
+              </Button>
+            )}
+            
+            {/* Image button */}
+            {capabilities.drawing && (
+              <Button 
+                type="button" 
+                size="icon" 
+                variant={isImageMode ? "default" : "ghost"}
+                onClick={toggleImageMode}
+                disabled={isGeneratingImage}
+                title="Gerar Imagem"
+                className="h-8 w-8"
+              >
+                <ImagePlus className="w-4 h-4" />
+              </Button>
+            )}
+            
+            {/* Chart button */}
+            {capabilities.charts && (
+              <Button 
+                type="button" 
+                size="icon" 
+                variant={isChartMode ? "default" : "ghost"}
+                onClick={toggleChartMode}
+                title="Modo Gráfico"
+                className="h-8 w-8"
+              >
+                <BarChart3 className="w-4 h-4" />
+              </Button>
+            )}
+            
+            {/* File upload button */}
+            {capabilities.file_upload && (
+              <Button 
+                type="button" 
+                size="icon" 
+                variant="ghost"
+                onClick={() => setIsFileDialogOpen(true)}
+                title="Enviar Arquivo"
+                className="h-8 w-8"
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+          
+          {/* Botão de enviar - direita */}
+          <Button 
+            type="submit" 
             size="icon"
             disabled={!input.trim() || isLoading || isRecording}
-            className="shrink-0"
+            className="absolute bottom-2 right-2 rounded-full h-8 w-8"
           >
             {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Send className="h-5 w-5" />
+              <ArrowUp className="w-4 h-4" />
             )}
           </Button>
         </div>
         
-        {/* Voice status indicator */}
-        {isRecording && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            {voiceStatus === 'listening' && "Ouvindo..."}
-            {voiceStatus === 'waiting' && `Silêncio detectado (${waitingCountdown}s)`}
-            {voiceStatus === 'processing' && "Processando..."}
-          </div>
-        )}
-        
-        {isGeneratingAudio && (
-          <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Gerando áudio...
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground mt-1 text-center">
+          Enter para enviar • Shift+Enter para nova linha
+        </p>
       </form>
+
+      {/* File Upload Dialog */}
+      <Dialog open={isFileDialogOpen} onOpenChange={setIsFileDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enviar Arquivo</DialogTitle>
+          </DialogHeader>
+          <FileProcessor onDataLoaded={handleFileProcessed} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });
