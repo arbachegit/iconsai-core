@@ -13,8 +13,9 @@ import { StatBadge } from "@/components/shared/StatBadge";
 import { TrendInfoModal } from "@/components/shared/TrendInfoModal";
 import { STSOutputPanel } from "@/components/shared/STSOutputPanel";
 import { STSAnalysisContent } from "@/components/shared/STSAnalysisContent";
+import { TableDataContent } from "@/components/shared/TableDataContent";
 
-type DialogView = 'detail' | 'sts';
+type DialogView = 'detail' | 'sts' | 'table';
 import { formatAxisDate, type Frequency } from "@/lib/date-formatters";
 import { useTimeSeriesAnalysis, generateSuggestions } from "@/hooks/useTimeSeriesAnalysis";
 import { runStructuralTimeSeries, STSResult } from "@/lib/structural-time-series";
@@ -548,6 +549,7 @@ export function ChartDatabaseTab() {
 
   // Handlers for view switching
   const handleOpenStsAnalysis = useCallback(() => setCurrentView('sts'), []);
+  const handleViewTable = useCallback(() => setCurrentView('table'), []);
   const handleBackToDetail = useCallback(() => setCurrentView('detail'), []);
   const handleCloseModal = useCallback(() => {
     setSelectedIndicator(null);
@@ -858,6 +860,24 @@ export function ChartDatabaseTab() {
             />
           )}
 
+          {/* Table View */}
+          {currentView === 'table' && selectedIndicator && (
+            <TableDataContent
+              onBack={handleBackToDetail}
+              indicatorName={selectedIndicator.name}
+              indicatorCode={selectedIndicator.code}
+              isRegional={false}
+              data={combinedValues.map(v => ({
+                reference_date: v.reference_date,
+                value: v.value,
+                brazilian_ufs: null
+              }))}
+              unit={selectedIndicator.unit || null}
+              frequency={selectedIndicator.frequency || null}
+              isLoading={loadingValues}
+            />
+          )}
+
           {/* Detail View */}
           {currentView === 'detail' && (
             <>
@@ -886,13 +906,24 @@ export function ChartDatabaseTab() {
                   </div>
                 </div>
                 
-                {/* Circular X button with red hover */}
-                <button
-                  onClick={handleCloseModal}
-                  className="h-10 w-10 rounded-full border border-cyan-500/50 flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                {/* Action buttons */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleViewTable}
+                    className="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 hover:border-cyan-500/50 rounded-lg transition-all duration-200 text-foreground"
+                  >
+                    <Database className="h-4 w-4 text-cyan-500" />
+                    <span className="font-medium text-sm">Ver Tabela</span>
+                  </button>
+                  
+                  {/* Circular X button with red hover */}
+                  <button
+                    onClick={handleCloseModal}
+                    className="h-10 w-10 rounded-full border border-cyan-500/50 flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
           {selectedIndicator && statistics && (
