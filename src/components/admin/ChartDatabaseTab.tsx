@@ -93,6 +93,11 @@ const isPmcIndicator = (code: string): boolean => {
   return PMC_REGIONAL_CODES.includes(code) || PMC_NATIONAL_CODES.includes(code);
 };
 
+// Check if indicator is PAC (has estimated values in pac_valores_estimados)
+const isPacIndicator = (code: string): boolean => {
+  return code.startsWith('PAC_');
+};
+
 const getPmcCoverageInfo = (code: string): { hasPartialCoverage: boolean; disclaimer: string | null } => {
   const info = PMC_PARTIAL_COVERAGE[code];
   if (info) {
@@ -393,6 +398,23 @@ export function ChartDatabaseTab() {
     refetchOnMount: 'always',
   });
 
+  // Fetch PAC estimated values (2024-2025) for PAC indicators
+  const { data: pacEstimatedValues = [] } = useQuery({
+    queryKey: ["pac-estimated-values-chart", selectedIndicator?.id, selectedIndicator?.code],
+    queryFn: async () => {
+      if (!selectedIndicator || !isPacIndicator(selectedIndicator.code)) return [];
+      
+      const { data, error } = await supabase
+        .from("pac_valores_estimados")
+        .select("reference_date, valor_estimado, uf_code")
+        .eq("pac_indicator_code", selectedIndicator.code)
+        .order("reference_date");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedIndicator && isPacIndicator(selectedIndicator?.code || ''),
+  });
+
   const { data: indicatorStats = {}, isLoading: loadingStats, refetch: refetchStats } = useQuery({
     queryKey: ["indicator-stats-chart-db"],
     queryFn: async () => {
@@ -518,6 +540,35 @@ export function ChartDatabaseTab() {
         }));
     }
     
+    // PAC indicators: combine base values + estimated values (2024-2025)
+    if (isPacIndicator(selectedIndicator.code) && pacEstimatedValues.length > 0) {
+      const baseValues = combinedValues
+        .filter((v) => v.indicator_id === selectedIndicator.id)
+        .map((v) => ({
+          date: v.reference_date.substring(0, 7).split('-').reverse().join('/'),
+          value: v.value,
+          rawDate: v.reference_date,
+        }));
+      
+      // Aggregate estimated values by date (sum across UFs)
+      const aggregated: Record<string, number> = {};
+      pacEstimatedValues.forEach((v: any) => {
+        const date = v.reference_date;
+        if (!aggregated[date]) aggregated[date] = 0;
+        aggregated[date] += v.valor_estimado || 0;
+      });
+      
+      const estimatedValues = Object.entries(aggregated).map(([date, value]) => ({
+        date: date.substring(0, 7).split('-').reverse().join('/'),
+        value,
+        rawDate: date,
+      }));
+      
+      // Combine and sort by date
+      return [...baseValues, ...estimatedValues]
+        .sort((a, b) => a.rawDate.localeCompare(b.rawDate));
+    }
+    
     // Default: use index values
     return combinedValues
       .filter((v) => v.indicator_id === selectedIndicator.id)
@@ -527,7 +578,7 @@ export function ChartDatabaseTab() {
         value: v.value,
         rawDate: v.reference_date,
       }));
-  }, [selectedIndicator, combinedValues, showMonetaryValues, pmcMonetaryValues]);
+  }, [selectedIndicator, combinedValues, showMonetaryValues, pmcMonetaryValues, pacEstimatedValues]);
 
   // Calculate statistics for selected indicator
   const statistics = useMemo(() => {
