@@ -509,6 +509,10 @@ ${agentConfig?.systemPrompt ? `
 ${agentConfig.systemPrompt}
 ` : ""}
 
+${agentConfig?.dashboardContext ? `
+${agentConfig.dashboardContext}
+` : ""}
+
 ${maieuticInstructions}
 
 ${culturalTone}
