@@ -12,7 +12,7 @@ import { useAgentByLocation } from "@/hooks/useAgentByLocation";
 
 // Lazy load tab components
 const DashboardTab = lazy(() => import("@/components/admin/DashboardTab").then(m => ({ default: m.DashboardTab })));
-const DataAnalysisTab = lazy(() => import("@/components/admin/DataAnalysisTab").then(m => ({ default: m.DataAnalysisTab })));
+const DataAnalysisTab = lazy(() => import("@/components/admin/DataAnalysisTab"));
 const ChartDatabaseTab = lazy(() => import("@/components/admin/ChartDatabaseTab").then(m => ({ default: m.ChartDatabaseTab })));
 const TableDatabaseTab = lazy(() => import("@/components/admin/TableDatabaseTab").then(m => ({ default: m.TableDatabaseTab })));
 const AIChat = lazy(() => import("@/components/dashboard/AIChat").then(m => ({ default: m.AIChat })));
