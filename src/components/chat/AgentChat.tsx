@@ -643,9 +643,11 @@ export const AgentChat = memo(function AgentChat({
         </button>
       )}
 
-      {/* Contextual Suggestions - estilo ChatStudy */}
+      {/* Contextual Suggestions - prioritize dashboard context suggestions */}
       <ContextualSuggestions
-        suggestions={suggestions}
+        suggestions={dashboardAnalytics?.hasContext 
+          ? dashboardAnalytics.buildContextualSuggestions() 
+          : suggestions}
         isLoading={isLoading}
         onSuggestionClick={handleSuggestionClick}
       />

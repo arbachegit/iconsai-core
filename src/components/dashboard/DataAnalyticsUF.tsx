@@ -153,27 +153,18 @@ export function DataAnalyticsUF() {
 
   const isMapDisabled = selectedResearch === "none";
 
-  // Update context when state is selected
+  // Update selectedUF only - StateDataPanel is responsible for full context with data
   useEffect(() => {
-    if (dashboardAnalytics && selectedState && selectedResearch !== "none") {
-      const researchName = regionalApis?.find(api => api.id === selectedResearch)?.name || "Pesquisa Regional";
-      
-      dashboardAnalytics.setSelectedUF(selectedState);
-      dashboardAnalytics.setRegionalContext({
-        ufSigla: selectedState,
-        ufName: UF_NAMES[selectedState] || selectedState,
-        researchName,
-        researchId: selectedResearch,
-        trend: 'stable', // Will be updated by StateDataPanel
-        lastValue: null,
-        lastDate: null,
-        recordCount: 0,
-      });
-    } else if (dashboardAnalytics) {
-      dashboardAnalytics.setSelectedUF(null);
-      dashboardAnalytics.setRegionalContext(null);
+    if (dashboardAnalytics) {
+      if (selectedState && selectedResearch !== "none") {
+        dashboardAnalytics.setSelectedUF(selectedState);
+        // Don't set regionalContext here - StateDataPanel will do it with complete data
+      } else {
+        dashboardAnalytics.setSelectedUF(null);
+        dashboardAnalytics.setRegionalContext(null);
+      }
     }
-  }, [selectedState, selectedResearch, regionalApis, dashboardAnalytics]);
+  }, [selectedState, selectedResearch, dashboardAnalytics]);
 
   return (
     <div className="p-6 space-y-6">
