@@ -37,9 +37,9 @@ const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType 
   { id: "indicators", label: "Indicadores de Uso", icon: BarChart3 },
   { id: "ai", label: "IA", icon: Bot },
   { id: "data-analysis", label: "Data Analysis", icon: TrendingUp },
-  { id: "analytics-uf", label: "Data Analytics UF", icon: MapPin },
-  { id: "chart-database", label: "Chart Data Base", icon: Database },
-  { id: "table-database", label: "Table Data Base", icon: Database },
+  { id: "analytics-uf", label: "UF DataSet", icon: MapPin },
+  { id: "chart-database", label: "Chart DataSet", icon: Database },
+  { id: "table-database", label: "Table DataSet", icon: Database },
 ];
 
 export function DashboardSidebar({ 

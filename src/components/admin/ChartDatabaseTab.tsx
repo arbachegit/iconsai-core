@@ -678,7 +678,7 @@ export function ChartDatabaseTab() {
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Database className="h-6 w-6 text-primary" />
-            Chart Data Base
+            Chart DataSet
           </h2>
           <p className="text-muted-foreground">
             Visualização detalhada e análise estatística de indicadores
@@ -703,7 +703,7 @@ export function ChartDatabaseTab() {
           <div className="flex items-center gap-3">
             <Database className="h-6 w-6 text-primary" />
             <div>
-              <h2 className="text-xl font-bold">Chart Data Base</h2>
+              <h2 className="text-xl font-bold">Chart DataSet</h2>
               <p className="text-sm text-muted-foreground">
                 Visualização detalhada e análise estatística de indicadores
               </p>
@@ -834,7 +834,7 @@ export function ChartDatabaseTab() {
       </div>
 
       {/* Detail Modal */}
-      <Dialog open={!!selectedIndicator} onOpenChange={handleCloseModal}>
+      <Dialog open={!!selectedIndicator} onOpenChange={handleCloseModal} modal={false}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 [&>button]:hidden">
           {/* STS Analysis View */}
           {currentView === 'sts' && selectedIndicator && stsData && statistics && stsAnalysisProps && (
