@@ -300,8 +300,8 @@ export default function DataAnalysisTab() {
 
                 {/* Rows */}
                 {VARIABLES.map(rowVar => (
-                  <>
-                    <div key={`label-${rowVar.key}`} className="h-8 flex items-center text-[10px] font-medium text-muted-foreground truncate">
+                  <div key={`row-${rowVar.key}`} className="contents">
+                    <div className="h-8 flex items-center text-[10px] font-medium text-muted-foreground truncate">
                       {rowVar.label.slice(0, 8)}
                     </div>
                     {VARIABLES.map(colVar => {
@@ -317,7 +317,7 @@ export default function DataAnalysisTab() {
                         </div>
                       );
                     })}
-                  </>
+                  </div>
                 ))}
               </div>
             </div>
