@@ -430,10 +430,10 @@ export default function AppPage() {
           {/* Header */}
           <header className="h-14 border-b border-border bg-card flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
+              <img src={knowyouLogo} alt="KnowYOU" className="h-7" />
               <h1 className="font-semibold text-foreground">
                 {menuItems.find((m) => m.id === currentView)?.label || "KnowYOU App"}
               </h1>
-              <img src={knowyouLogo} alt="KnowYOU" className="h-7" />
             </div>
             <UserBadge />
           </header>
