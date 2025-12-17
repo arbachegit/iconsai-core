@@ -1178,15 +1178,83 @@ export function ChartDatabaseTab() {
               {groupIndicators.map((indicator) => {
                 // For PMC Regional group, apply global monetary mode when opening detail
                 if (isPmcRegionalGroup) {
+                  const stats = indicatorStats[indicator.id];
+                  if (!stats) return null;
+                  
+                  const unitInfo = formatUnit(indicator.unit);
+                  const minDate = format(new Date(stats.min), "MM/yy");
+                  const maxDate = format(new Date(stats.max), "MM/yy");
+                  const u = (indicator.unit || '').toLowerCase();
+                  const isIndex = u.includes('índice') || u.includes('base') || u.includes('index');
+
                   return (
                     <div
                       key={indicator.id}
+                      className="knowyou-indicator-card"
                       onClick={() => {
                         setShowMonetaryValues(pmcRegionalMonetaryMode);
                         setSelectedIndicator(indicator);
                       }}
                     >
-                      {renderIndicatorCard(indicator)}
+                      {/* Provider badge + R$ disponível/parcial badge */}
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        {indicator.api?.provider && (
+                          <Badge 
+                            variant="outline" 
+                            className={cn("text-xs", getProviderColor(indicator.api.provider))}
+                          >
+                            {indicator.api.provider}
+                          </Badge>
+                        )}
+                        {isPmcIndicator(indicator.code) && (
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "text-xs",
+                              getPmcCoverageInfo(indicator.code).hasPartialCoverage
+                                ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"
+                                : "bg-green-500/10 text-green-400 border-green-500/30"
+                            )}
+                            title={getPmcCoverageInfo(indicator.code).disclaimer || undefined}
+                          >
+                            <DollarSign className="h-3 w-3 mr-1" />
+                            {getPmcCoverageInfo(indicator.code).hasPartialCoverage ? "R$ parcial" : "R$ disponível"}
+                          </Badge>
+                        )}
+                      </div>
+                      <h3 className="font-semibold text-sm mb-3 line-clamp-2 min-h-[40px]">
+                        {indicator.name}
+                      </h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex flex-col items-center justify-center border border-primary/20 rounded-md py-1.5 bg-muted/30">
+                          <span className="text-[9px] text-muted-foreground uppercase">Unidade</span>
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-primary/50">
+                              {unitInfo.icon}
+                            </div>
+                            <span className="text-xs font-medium">{unitInfo.label}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-center justify-center border border-primary/20 rounded-md py-1.5 bg-muted/30">
+                          <span className="text-[9px] text-muted-foreground uppercase">Período</span>
+                          <span className="text-xs font-medium">{minDate} - {maxDate}</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center border border-primary/20 rounded-md py-1.5 bg-secondary/30">
+                          <span className="text-[9px] text-muted-foreground uppercase">Registros</span>
+                          <div className="flex items-center gap-1">
+                            <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-primary/50">
+                              <Database className="h-3 w-3 text-muted-foreground" />
+                            </div>
+                            <span className="text-xs font-medium">{stats.count.toLocaleString()}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-center justify-center border border-primary/30 rounded-md py-1.5 bg-primary/10">
+                          <span className="text-[9px] text-muted-foreground uppercase">Último Valor</span>
+                          <span className="text-xs font-bold text-primary">
+                            {formatValue(stats.lastValue, indicator.unit, !isIndex)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   );
                 }
