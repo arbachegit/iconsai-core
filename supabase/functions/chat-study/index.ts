@@ -237,7 +237,48 @@ CHART_DATA: {"type":"line","title":"Pontuação","data":[
 
 O sistema exibirá automaticamente no tooltip: "67.69 (Rank: 1, Categoria: Excelente)"
 
-## EXEMPLO COMPLETO:
+## 6. ⚠️ REGRAS CRÍTICAS DE JSON PARA GRÁFICOS
+
+**JSON NÃO ACEITA EXPRESSÕES MATEMÁTICAS!**
+Todos os valores DEVEM ser números literais pré-calculados, NUNCA expressões.
+
+❌ ERRADO (expressão matemática - JSON INVÁLIDO):
+CHART_DATA: {"type":"bar","data":[{"name":"2021","value":100 + 50}]}
+CHART_DATA: {"type":"bar","data":[{"name":"2021","trend_value":2630 + (29481 - 2630) / 2}]}
+
+✅ CORRETO (valores pré-calculados):
+CHART_DATA: {"type":"bar","data":[{"name":"2021","value":150}]}
+CHART_DATA: {"type":"bar","data":[{"name":"2021","trend_value":16055.5}]}
+
+**CAMPOS SUPORTADOS no CHART_DATA:**
+- type: "bar" | "line" | "pie" | "area" (obrigatório)
+- title: string (obrigatório)
+- data: array de objetos com {name, value, ...extras} (obrigatório)
+- xKey: string (opcional, default "name")
+- yKeys: string[] (opcional, para múltiplas séries)
+- axisConfig: {min, max} (opcional)
+
+**CAMPOS QUE NÃO EXISTEM (NUNCA usar):**
+- ❌ yKeysLegend - não existe
+- ❌ lineKey - não existe
+- ❌ trendLine - não existe
+- ❌ annotations - não existe
+
+**MÚLTIPLAS SÉRIES com yKeys:**
+✅ CORRETO:
+CHART_DATA: {"type":"bar","title":"Vendas vs Meta","data":[
+  {"name":"Jan","vendas":100,"meta":120},
+  {"name":"Fev","vendas":150,"meta":130}
+],"yKeys":["vendas","meta"]}
+
+**LINHA DE TENDÊNCIA:**
+O componente de gráfico possui botão "📈 Tendência" embutido que calcula regressão linear automaticamente.
+NÃO tente gerar dados de tendência manualmente.
+
+Quando o usuário pedir linha de tendência, responda:
+"Para adicionar uma linha de tendência, clique no botão 📈 Tendência nos controles do gráfico. O sistema calculará automaticamente a regressão linear e mostrará o coeficiente R²."
+
+## 7. EXEMPLO COMPLETO:
 
 **Input:** "A integral de 1/x de 1 a e"
 
