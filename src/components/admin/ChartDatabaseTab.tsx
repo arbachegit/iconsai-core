@@ -1029,8 +1029,12 @@ export function ChartDatabaseTab() {
                           {selectedIndicator.api.provider}
                         </Badge>
                       )}
-                      {selectedIndicator?.unit && (
-                        <Badge variant="secondary">{selectedIndicator.unit}</Badge>
+                      {(selectedIndicator?.unit || showMonetaryValues) && (
+                        <Badge variant="secondary">
+                          {showMonetaryValues && isPmcIndicator(selectedIndicator?.code || '') 
+                            ? 'R$' 
+                            : selectedIndicator?.unit}
+                        </Badge>
                       )}
                     </div>
                     <span className="text-sm text-muted-foreground">
