@@ -308,7 +308,12 @@ Quando o usuário pedir linha de tendência ou média móvel, responda:
   }
 
   try {
-    const { messages, region } = await req.json();
+    const { messages, region, agentConfig } = await req.json();
+    
+    // Log agent config if provided
+    if (agentConfig) {
+      console.log(`Agent config received: systemPrompt=${!!agentConfig.systemPrompt}, ragCollection=${agentConfig.ragCollection || 'health'}`);
+    }
     
     // Input validation to prevent abuse
     if (!Array.isArray(messages)) {
@@ -401,10 +406,11 @@ ${isPartialSample ? `\nNOTA: Como está trabalhando com amostra parcial, indique
     let hasRagContext = false;
     if (userQuery) {
       try {
+        const ragTargetChat = agentConfig?.ragCollection || "health";
         const { data: searchResults } = await supabase.functions.invoke("search-documents", {
           body: { 
             query: userQuery,
-            targetChat: "health",
+            targetChat: ragTargetChat,
             matchThreshold,
             matchCount
           }
@@ -487,6 +493,11 @@ Se o usuário perguntar "você tem o documento X?" ou "você conhece o documento
     const systemPrompt = `Você é o KnowYOU, um assistente de IA especializado em saúde e no Hospital Moinhos de Vento, desenvolvido pela KnowRISK para ajudar profissionais e gestores da área de saúde.
 
 ${getContextualCoherenceProtocol()}
+
+${agentConfig?.systemPrompt ? `
+## 🔧 CONFIGURAÇÕES PERSONALIZADAS DO AGENTE (PRIORIDADE ALTA):
+${agentConfig.systemPrompt}
+` : ""}
 
 ${maieuticDirectives ? `
 ## 🧠 DIRETRIZES MAIÊUTICAS (CONFIGURADAS PELO ADMIN):

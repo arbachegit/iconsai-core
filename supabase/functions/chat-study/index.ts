@@ -303,7 +303,12 @@ Quando o usuário pedir linha de tendência ou média móvel, responda:
   }
 
   try {
-    const { messages, region } = await req.json();
+    const { messages, region, agentConfig } = await req.json();
+    
+    // Log agent config if provided
+    if (agentConfig) {
+      console.log(`Agent config received: systemPrompt=${!!agentConfig.systemPrompt}, ragCollection=${agentConfig.ragCollection || 'study'}`);
+    }
     
     // Input validation to prevent abuse
     if (!Array.isArray(messages)) {
@@ -396,10 +401,11 @@ ${isPartialSample ? `\nNOTA: Como está trabalhando com amostra parcial, indique
     let hasRagContext = false;
     if (userQuery) {
       try {
+        const ragTargetChat = agentConfig?.ragCollection || "study";
         const { data: searchResults } = await supabase.functions.invoke("search-documents", {
           body: { 
             query: userQuery,
-            targetChat: "study",
+            targetChat: ragTargetChat,
             matchThreshold,
             matchCount
           }
@@ -456,6 +462,11 @@ Os documentos contêm conteúdo válido sobre história da IA, pessoas, conceito
     const systemPrompt = `Você é um assistente de IA especializado em ajudar a estudar e entender a KnowRISK, o KnowYOU e a Arquitetura Cognitiva e Comportamental (ACC).
 
 ${getContextualCoherenceProtocol()}
+
+${agentConfig?.systemPrompt ? `
+## 🔧 CONFIGURAÇÕES PERSONALIZADAS DO AGENTE (PRIORIDADE ALTA):
+${agentConfig.systemPrompt}
+` : ""}
 
 ${culturalTone}
 ${locationPrompt}
