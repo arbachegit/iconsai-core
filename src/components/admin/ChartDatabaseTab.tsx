@@ -835,7 +835,11 @@ export function ChartDatabaseTab() {
 
       {/* Detail Modal */}
       <Dialog open={!!selectedIndicator} onOpenChange={handleCloseModal} modal={false}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 [&>button]:hidden">
+        <DialogContent 
+          className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 [&>button]:hidden"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           {/* STS Analysis View */}
           {currentView === 'sts' && selectedIndicator && stsData && statistics && stsAnalysisProps && (
             <STSAnalysisContent

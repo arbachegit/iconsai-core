@@ -153,9 +153,9 @@ export function DataAnalyticsUF() {
           else if (lastItem.value < previousItem.value) trend = 'down';
         }
         
-        // Limit data to last 24 records (2 years monthly) and reverse to chronological
+        // Limit data to last 12 records (1 year monthly) to prevent memory issues
         const limitedData = sortedValues
-          .slice(0, 24)
+          .slice(0, 12)
           .map(d => ({ date: d.reference_date, value: d.value }))
           .reverse();
         
