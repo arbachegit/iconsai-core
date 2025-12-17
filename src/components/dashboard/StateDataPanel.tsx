@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { X, Loader2, MapPin, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { format } from "date-fns";
+import { useDashboardAnalyticsSafe } from "@/contexts/DashboardAnalyticsContext";
 
 // UF code to sigla mapping
 const UF_CODE_MAP: Record<number, string> = {
@@ -38,6 +40,7 @@ interface StateDataPanelProps {
 export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelProps) {
   const ufCode = UF_SIGLA_TO_CODE[ufSigla];
   const ufName = UF_NAMES[ufSigla] || ufSigla;
+  const dashboardAnalytics = useDashboardAnalyticsSafe();
 
   // Fetch regional data for the selected state and research
   const { data: regionalData, isLoading } = useQuery({
@@ -90,6 +93,24 @@ export function StateDataPanel({ ufSigla, researchId, onClose }: StateDataPanelP
   };
 
   const trend = getTrend(regionalData);
+
+  // Update dashboard analytics context with detailed data
+  useEffect(() => {
+    if (dashboardAnalytics && regionalData && regionalData.length > 0) {
+      const lastItem = regionalData[0]; // Sorted by date DESC
+      
+      dashboardAnalytics.setRegionalContext({
+        ufSigla,
+        ufName,
+        researchName: lastItem.indicatorName,
+        researchId: researchId || '',
+        trend: trend as 'up' | 'down' | 'stable',
+        lastValue: lastItem.value,
+        lastDate: lastItem.reference_date,
+        recordCount: regionalData.length,
+      });
+    }
+  }, [regionalData, ufSigla, ufName, researchId, trend, dashboardAnalytics]);
 
   return (
     <Card className="border-2 border-[#00FFFF]/50 shadow-[0_0_20px_rgba(0,255,255,0.2)]">
