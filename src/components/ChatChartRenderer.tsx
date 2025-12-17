@@ -9,6 +9,7 @@ import {
   Pie,
   AreaChart,
   Area,
+  ComposedChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -425,9 +426,11 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
     
     switch (chartType) {
       case 'bar':
+        // Use trendLineData if trend line is enabled, merging with display data
+        const barChartData = showTrendLine && trendLineData ? trendLineData.data : (showMovingAverage ? movingAverageData : displayData);
         return (
           <ResponsiveContainer width="100%" height={chartHeight}>
-            <BarChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: showBrush ? 5 : 20 }}>
+            <ComposedChart data={barChartData} margin={{ top: 10, right: 10, left: 0, bottom: showBrush ? 5 : 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey={xKey} 
@@ -441,9 +444,35 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
               <RechartsTooltip content={<CustomChartTooltip />} />
+              <Legend />
               {yKeys.map((key, idx) => (
-                <Bar key={key} dataKey={key} fill={CHART_COLORS[idx % CHART_COLORS.length]} radius={[4, 4, 0, 0]} />
+                <Bar key={key} dataKey={key} fill={CHART_COLORS[idx % CHART_COLORS.length]} radius={[4, 4, 0, 0]} name="Valor" />
               ))}
+              {/* Moving Average Line for bar chart */}
+              {showMovingAverage && (
+                <Line
+                  type="monotone"
+                  dataKey="movingAvg"
+                  stroke="hsl(45, 90%, 55%)"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                  name="Média Móvel"
+                  connectNulls={false}
+                />
+              )}
+              {/* Trend Line for bar chart */}
+              {showTrendLine && trendLineData && (
+                <Line
+                  type="linear"
+                  dataKey="trend"
+                  stroke="hsl(280, 60%, 55%)"
+                  strokeWidth={2}
+                  strokeDasharray="10 5"
+                  dot={false}
+                  name="Tendência"
+                />
+              )}
               {referenceLines.map((refLine) => (
                 <ReferenceLine
                   key={refLine.id}
@@ -471,7 +500,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   tickFormatter={(value) => String(value).substring(0, 8)}
                 />
               )}
-            </BarChart>
+            </ComposedChart>
           </ResponsiveContainer>
         );
 
@@ -587,9 +616,11 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
         );
 
       case 'area':
+        // Use trendLineData if trend line is enabled
+        const areaChartData = showTrendLine && trendLineData ? trendLineData.data : (showMovingAverage ? movingAverageData : displayData);
         return (
           <ResponsiveContainer width="100%" height={chartHeight}>
-            <AreaChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: showBrush ? 5 : 20 }}>
+            <ComposedChart data={areaChartData} margin={{ top: 10, right: 10, left: 0, bottom: showBrush ? 5 : 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey={xKey} 
@@ -603,6 +634,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                 axisLine={{ stroke: 'hsl(var(--border))' }}
               />
               <RechartsTooltip content={<CustomChartTooltip />} />
+              <Legend />
               {yKeys.map((key, idx) => (
                 <Area 
                   key={key} 
@@ -611,8 +643,34 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   stroke={CHART_COLORS[idx % CHART_COLORS.length]} 
                   fill={CHART_COLORS[idx % CHART_COLORS.length]}
                   fillOpacity={0.3}
+                  name="Valor"
                 />
               ))}
+              {/* Moving Average Line for area chart */}
+              {showMovingAverage && (
+                <Line
+                  type="monotone"
+                  dataKey="movingAvg"
+                  stroke="hsl(45, 90%, 55%)"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                  name="Média Móvel"
+                  connectNulls={false}
+                />
+              )}
+              {/* Trend Line for area chart */}
+              {showTrendLine && trendLineData && (
+                <Line
+                  type="linear"
+                  dataKey="trend"
+                  stroke="hsl(280, 60%, 55%)"
+                  strokeWidth={2}
+                  strokeDasharray="10 5"
+                  dot={false}
+                  name="Tendência"
+                />
+              )}
               {referenceLines.map((refLine) => (
                 <ReferenceLine
                   key={refLine.id}
@@ -640,7 +698,7 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
                   tickFormatter={(value) => String(value).substring(0, 8)}
                 />
               )}
-            </AreaChart>
+            </ComposedChart>
           </ResponsiveContainer>
         );
 
@@ -964,8 +1022,8 @@ export const ChatChartRenderer = ({ chartData, className }: ChatChartRendererPro
           </div>
         )}
 
-        {/* Moving Average & Trend Line Controls - Only for line charts */}
-        {chartType === 'line' && (
+        {/* Moving Average & Trend Line Controls - For line, bar, and area charts */}
+        {(chartType === 'line' || chartType === 'bar' || chartType === 'area') && (
           <div className="px-3 py-2 border-b border-border/30 bg-muted/5">
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground">Análise:</span>

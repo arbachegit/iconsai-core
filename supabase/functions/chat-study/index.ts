@@ -271,12 +271,15 @@ CHART_DATA: {"type":"bar","title":"Vendas vs Meta","data":[
   {"name":"Fev","vendas":150,"meta":130}
 ],"yKeys":["vendas","meta"]}
 
-**LINHA DE TENDÊNCIA:**
-O componente de gráfico possui botão "📈 Tendência" embutido que calcula regressão linear automaticamente.
-NÃO tente gerar dados de tendência manualmente.
+**LINHA DE TENDÊNCIA E MÉDIA MÓVEL:**
+O componente de gráfico possui botões embutidos para análise (disponíveis para gráficos de linha, barras e área):
+- 📈 Tendência: calcula regressão linear automaticamente com coeficiente R²
+- 📊 Média Móvel: suaviza variações com média móvel de 3 pontos
 
-Quando o usuário pedir linha de tendência, responda:
-"Para adicionar uma linha de tendência, clique no botão 📈 Tendência nos controles do gráfico. O sistema calculará automaticamente a regressão linear e mostrará o coeficiente R²."
+NÃO tente gerar dados de tendência ou média móvel manualmente.
+
+Quando o usuário pedir linha de tendência ou média móvel, responda:
+"Para adicionar análise de tendência ou média móvel, clique nos botões 'Tendência' ou 'Média Móvel' nos controles do gráfico (disponível para gráficos de linha, barras e área). O sistema calculará automaticamente."
 
 ## 7. EXEMPLO COMPLETO:
 
