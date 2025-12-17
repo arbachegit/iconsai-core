@@ -67,8 +67,38 @@ const PMC_REGIONAL_CODES = [
   'PMC_VAREJO_UF', 'PMC_VEICULOS_UF', 'PMC_VEST_UF', 'PMC_VESTUARIO_UF'
 ];
 
+// PMC National indicator codes (aggregated from regional data)
+const PMC_NATIONAL_CODES = [
+  'PMC', 'PMC_COMB', 'PMC_CONST', 'PMC_FARM', 'PMC_MOV', 'PMC_VEIC', 'PMC_VEST'
+];
+
+// National indicators with partial UF coverage
+const PMC_PARTIAL_COVERAGE: Record<string, { ufs: number; disclaimer: string }> = {
+  'PMC_COMB': { ufs: 12, disclaimer: '12 UFs disponíveis' },
+  'PMC_VEST': { ufs: 12, disclaimer: '12 UFs disponíveis' },
+  'PMC_FARM': { ufs: 12, disclaimer: '12 UFs disponíveis' },
+  'PMC_MOV': { ufs: 12, disclaimer: '12 UFs disponíveis' },
+};
+
 const isPmcRegionalIndicator = (code: string): boolean => {
   return PMC_REGIONAL_CODES.includes(code);
+};
+
+const isPmcNationalIndicator = (code: string): boolean => {
+  return PMC_NATIONAL_CODES.includes(code);
+};
+
+// Check if indicator has R$ conversion available (regional or national)
+const isPmcIndicator = (code: string): boolean => {
+  return PMC_REGIONAL_CODES.includes(code) || PMC_NATIONAL_CODES.includes(code);
+};
+
+const getPmcCoverageInfo = (code: string): { hasPartialCoverage: boolean; disclaimer: string | null } => {
+  const info = PMC_PARTIAL_COVERAGE[code];
+  if (info) {
+    return { hasPartialCoverage: true, disclaimer: info.disclaimer };
+  }
+  return { hasPartialCoverage: false, disclaimer: null };
 };
 
 // Provider color styling (same as ApiManagementTab)
@@ -323,20 +353,37 @@ export function ChartDatabaseTab() {
     staleTime: 60000,
   });
 
-  // Fetch PMC monetary values for conversion toggle
+  // Fetch PMC monetary values for conversion toggle (supports both regional and national)
   const { data: pmcMonetaryValues = [] } = useQuery({
     queryKey: ["pmc-monetary-values-chart", selectedIndicator?.code],
     queryFn: async () => {
-      if (!selectedIndicator || !isPmcRegionalIndicator(selectedIndicator.code)) return [];
-      const { data, error } = await supabase
-        .from("pmc_valores_reais")
-        .select("reference_date, uf_code, valor_estimado_reais")
-        .eq("pmc_indicator_code", selectedIndicator.code)
-        .order("reference_date");
-      if (error) throw error;
-      return data || [];
+      if (!selectedIndicator || !isPmcIndicator(selectedIndicator.code)) return [];
+      
+      const isNational = isPmcNationalIndicator(selectedIndicator.code);
+      
+      if (isNational) {
+        // National indicators: fetch aggregated data (uf_code = 0)
+        const { data, error } = await supabase
+          .from("pmc_valores_reais")
+          .select("reference_date, uf_code, valor_estimado_reais")
+          .eq("pmc_indicator_code", selectedIndicator.code)
+          .eq("uf_code", 0)
+          .order("reference_date");
+        if (error) throw error;
+        return data || [];
+      } else {
+        // Regional indicators: fetch all UFs
+        const { data, error } = await supabase
+          .from("pmc_valores_reais")
+          .select("reference_date, uf_code, valor_estimado_reais")
+          .eq("pmc_indicator_code", selectedIndicator.code)
+          .gt("uf_code", 0)
+          .order("reference_date");
+        if (error) throw error;
+        return data || [];
+      }
     },
-    enabled: !!selectedIndicator && isPmcRegionalIndicator(selectedIndicator?.code || ''),
+    enabled: !!selectedIndicator && isPmcIndicator(selectedIndicator?.code || ''),
   });
 
   const { data: indicatorStats = {}, isLoading: loadingStats } = useQuery({
@@ -422,9 +469,22 @@ export function ChartDatabaseTab() {
   const selectedData = useMemo(() => {
     if (!selectedIndicator) return [];
     
-    // Use monetary values if toggle is on and we have PMC data
-    if (showMonetaryValues && isPmcRegionalIndicator(selectedIndicator.code) && pmcMonetaryValues.length > 0) {
-      // Aggregate by date (sum across UFs)
+    // Use monetary values if toggle is on and we have PMC data (regional or national)
+    if (showMonetaryValues && isPmcIndicator(selectedIndicator.code) && pmcMonetaryValues.length > 0) {
+      const isNational = isPmcNationalIndicator(selectedIndicator.code);
+      
+      if (isNational) {
+        // National data is already aggregated (one value per date)
+        return pmcMonetaryValues
+          .sort((a: any, b: any) => a.reference_date.localeCompare(b.reference_date))
+          .map((v: any) => ({
+            date: v.reference_date.substring(0, 7).split('-').reverse().join('/'),
+            value: v.valor_estimado_reais || 0,
+            rawDate: v.reference_date,
+          }));
+      }
+      
+      // Regional: Aggregate by date (sum across UFs)
       const aggregated: Record<string, number> = {};
       pmcMonetaryValues.forEach((v: any) => {
         const date = v.reference_date;
@@ -673,7 +733,7 @@ export function ChartDatabaseTab() {
         className="knowyou-indicator-card"
         onClick={() => setSelectedIndicator(indicator)}
       >
-        {/* Provider badge + R$ disponível badge */}
+        {/* Provider badge + R$ disponível/parcial badge */}
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           {indicator.api?.provider && (
             <Badge 
@@ -683,13 +743,19 @@ export function ChartDatabaseTab() {
               {indicator.api.provider}
             </Badge>
           )}
-          {isPmcRegionalIndicator(indicator.code) && (
+          {isPmcIndicator(indicator.code) && (
             <Badge 
               variant="outline" 
-              className="text-xs bg-green-500/10 text-green-400 border-green-500/30"
+              className={cn(
+                "text-xs",
+                getPmcCoverageInfo(indicator.code).hasPartialCoverage
+                  ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"
+                  : "bg-green-500/10 text-green-400 border-green-500/30"
+              )}
+              title={getPmcCoverageInfo(indicator.code).disclaimer || undefined}
             >
               <DollarSign className="h-3 w-3 mr-1" />
-              R$ disponível
+              {getPmcCoverageInfo(indicator.code).hasPartialCoverage ? "R$ parcial" : "R$ disponível"}
             </Badge>
           )}
         </div>
@@ -975,8 +1041,8 @@ export function ChartDatabaseTab() {
                 
                 {/* Action buttons */}
                 <div className="flex items-center gap-2">
-                  {/* Toggle Índice ↔ R$ for PMC indicators */}
-                  {selectedIndicator && isPmcRegionalIndicator(selectedIndicator.code) && (
+                  {/* Toggle Índice ↔ R$ for PMC indicators (regional and national) */}
+                  {selectedIndicator && isPmcIndicator(selectedIndicator.code) && (
                     <div className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/30 rounded-lg bg-muted/30">
                       <Activity className="h-4 w-4 text-muted-foreground" />
                       <span className={cn("text-sm", !showMonetaryValues && "text-cyan-400 font-medium")}>Índice</span>
@@ -986,6 +1052,11 @@ export function ChartDatabaseTab() {
                       />
                       <span className={cn("text-sm", showMonetaryValues && "text-green-400 font-medium")}>R$</span>
                       <DollarSign className="h-4 w-4 text-green-400" />
+                      {getPmcCoverageInfo(selectedIndicator.code).hasPartialCoverage && (
+                        <span className="text-[10px] text-yellow-400" title={getPmcCoverageInfo(selectedIndicator.code).disclaimer || ''}>
+                          ⚠️
+                        </span>
+                      )}
                     </div>
                   )}
                   

@@ -2920,6 +2920,13 @@ export type Database = {
           records_inserted: number
         }[]
       }
+      process_pmc_national_aggregation: {
+        Args: never
+        Returns: {
+          indicator_code: string
+          records_inserted: number
+        }[]
+      }
       search_documents: {
         Args: {
           match_count?: number
