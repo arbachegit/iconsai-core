@@ -1,6 +1,7 @@
 import { GripHorizontal } from "lucide-react";
 import { AgentChat } from "@/components/chat/AgentChat";
 import { useRef, useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 
 interface ChatModalProps {
   isOpen: boolean;
@@ -109,16 +110,16 @@ export const ChatModal = ({ isOpen, onClose, agentSlug = "company" }: ChatModalP
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] animate-in fade-in duration-300"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] animate-in fade-in duration-300"
         onClick={handleClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none">
         <div
           ref={modalRef}
           className="w-full max-w-[1085px] bg-card/95 backdrop-blur-md rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.1)] border-t-2 border-l-2 border-t-white/20 border-l-white/20 border-r border-b border-r-black/30 border-b-black/30 pointer-events-auto animate-in zoom-in-95 duration-300"
@@ -150,6 +151,7 @@ export const ChatModal = ({ isOpen, onClose, agentSlug = "company" }: ChatModalP
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 };

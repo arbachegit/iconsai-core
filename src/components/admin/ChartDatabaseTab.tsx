@@ -491,6 +491,54 @@ export function ChartDatabaseTab() {
 
   // Emit context to DashboardAnalyticsContext when indicator is selected
   useEffect(() => {
+    if (selectedIndicator && combinedValues.length > 0 && dashboardAnalytics?.setChartContext) {
+      const sortedValues = combinedValues
+        .filter(v => v.indicator_id === selectedIndicator.id)
+        .sort((a, b) => a.reference_date.localeCompare(b.reference_date));
+      
+      const dates = sortedValues.map(v => v.reference_date);
+      
+      dashboardAnalytics.setChartContext({
+        indicatorId: selectedIndicator.id,
+        indicatorName: selectedIndicator.name,
+        indicatorCode: selectedIndicator.code,
+        chartType: chartType,
+        frequency: selectedIndicator.frequency,
+        unit: selectedIndicator.unit,
+        periodStart: dates[0] || '',
+        periodEnd: dates[dates.length - 1] || '',
+        totalRecords: sortedValues.length,
+        data: sortedValues.slice(-100).map(v => ({ date: v.reference_date, value: v.value })), // Limit to last 100 for payload size
+        statistics: statistics ? {
+          mean: statistics.mean,
+          stdDev: statistics.stdDev,
+          min: statistics.min,
+          max: statistics.max,
+          trend: statistics.trend,
+          cv: statistics.cv,
+          slope: statistics.slope,
+          r2: statistics.r2,
+        } : null,
+        stsResult: stsData ? {
+          mu_smoothed: stsData.mu_smoothed,
+          beta_smoothed: stsData.beta_smoothed,
+          direction: stsData.direction,
+          strength: stsData.strength,
+          forecast: stsData.forecast,
+        } : null
+      });
+    }
+    
+    // Clear context when modal closes
+    return () => {
+      if (!selectedIndicator && dashboardAnalytics?.setChartContext) {
+        dashboardAnalytics.setChartContext(null);
+      }
+    };
+  }, [selectedIndicator, combinedValues, statistics, stsData, chartType, dashboardAnalytics]);
+
+  // Emit context to DashboardAnalyticsContext when indicator is selected
+  useEffect(() => {
     if (!dashboardAnalytics) return;
 
     if (selectedIndicator && statistics && selectedData.length > 0) {
