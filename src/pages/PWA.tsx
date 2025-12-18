@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Mic, Square, Loader2, Play, Pause, HelpCircle, Share, X } from "lucide-react";
+import { Mic, Square, Loader2, Play, Pause, HelpCircle, Share, X, Download, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -14,11 +14,13 @@ export default function PWA() {
   const [duration, setDuration] = useState(0);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
   const [deviceId, setDeviceId] = useState<string>('');
+  const [countdown, setCountdown] = useState<number | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Carregar ou criar deviceId persistente
   useEffect(() => {
@@ -38,6 +40,9 @@ export default function PWA() {
       }
       if (audioUrl) {
         URL.revokeObjectURL(audioUrl);
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
       }
     };
   }, [audioUrl]);
@@ -69,6 +74,36 @@ export default function PWA() {
     }
   };
 
+  // Função para iniciar contador de 5 segundos
+  const startCountdown = () => {
+    setCountdown(5);
+    
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev === null || prev <= 1) {
+          // Tempo esgotou - parar gravação e processar
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+          }
+          stopRecordingInternal();
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Função interna para parar gravação (sem limpar countdown - já limpo no interval)
+  const stopRecordingInternal = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.requestData();
+      mediaRecorderRef.current.stop();
+      streamRef.current?.getTracks().forEach(track => track.stop());
+      vibrate([50, 50, 50]);
+      setState("processing");
+    }
+  };
+
   // Iniciar gravação
   const startRecording = async () => {
     try {
@@ -97,6 +132,11 @@ export default function PWA() {
       };
       
       mediaRecorder.onstop = () => {
+        // Limpar countdown
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+        }
+        setCountdown(null);
         processAudio();
       };
       
@@ -104,16 +144,24 @@ export default function PWA() {
       setState("recording");
       vibrate(50);
       
+      // INICIAR CONTADOR DE 5 SEGUNDOS
+      startCountdown();
+      
     } catch (error) {
       console.error("Erro ao acessar microfone:", error);
       toast.error("Não consegui acessar o microfone. Por favor, permita o acesso.");
     }
   };
 
-  // Parar gravação
+  // Parar gravação manualmente
   const stopRecording = () => {
+    // Limpar countdown
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      setCountdown(null);
+    }
+    
     if (mediaRecorderRef.current && state === "recording") {
-      // Flush any buffered audio data before stopping
       if (mediaRecorderRef.current.state === "recording") {
         mediaRecorderRef.current.requestData();
       }
@@ -258,6 +306,55 @@ export default function PWA() {
     }
   };
 
+  // Download do áudio
+  const downloadAudio = () => {
+    if (!audioUrl) return;
+    
+    const link = document.createElement('a');
+    link.href = audioUrl;
+    link.download = `economista-${Date.now()}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Áudio baixado!");
+  };
+
+  // Compartilhar áudio
+  const shareAudio = async () => {
+    if (!audioUrl) return;
+    
+    try {
+      // Converter blob URL para blob
+      const response = await fetch(audioUrl);
+      const blob = await response.blob();
+      const file = new File([blob], 'economista-resposta.mp3', { type: 'audio/mpeg' });
+      
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: 'Economista - Resposta',
+          text: 'Ouça essa explicação sobre economia!',
+          files: [file]
+        });
+      } else if (navigator.share) {
+        // Fallback sem arquivo
+        await navigator.share({
+          title: 'Economista - Assistente de Voz',
+          text: 'Conheça o Economista, assistente de voz sobre economia!',
+          url: window.location.href
+        });
+      } else {
+        // Copiar link
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success("Link copiado!");
+      }
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        toast.error("Erro ao compartilhar");
+      }
+    }
+  };
+
   // Handlers do áudio
   const handleAudioPlay = () => setIsPlaying(true);
   const handleAudioPause = () => setIsPlaying(false);
@@ -321,30 +418,43 @@ export default function PWA() {
         <p className="text-gray-400 text-sm">{getStateText()}</p>
       </div>
 
-      {/* Botão principal */}
-      <button
-        onClick={handleMainButton}
-        disabled={state === "processing"}
-        className={`
-          w-32 h-32 rounded-full flex items-center justify-center
-          transition-all duration-300 transform
-          ${state === "recording" 
-            ? "bg-red-500 scale-110 animate-pulse shadow-lg shadow-red-500/50" 
-            : state === "processing"
-              ? "bg-gray-600 cursor-not-allowed"
-              : "bg-blue-500 hover:bg-blue-600 hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30"
-          }
-        `}
-        aria-label={state === "recording" ? "Parar gravação" : "Iniciar gravação"}
-      >
-        {state === "processing" ? (
-          <Loader2 className="w-12 h-12 text-white animate-spin" />
-        ) : state === "recording" ? (
-          <Square className="w-12 h-12 text-white" />
-        ) : (
-          <Mic className="w-12 h-12 text-white" />
+      {/* Botão principal com contador */}
+      <div className="relative">
+        <button
+          onClick={handleMainButton}
+          disabled={state === "processing"}
+          className={`
+            w-32 h-32 rounded-full flex items-center justify-center
+            transition-all duration-300 transform
+            ${state === "recording" 
+              ? "bg-red-500 scale-110 animate-pulse shadow-lg shadow-red-500/50" 
+              : state === "processing"
+                ? "bg-gray-600 cursor-not-allowed"
+                : "bg-blue-500 hover:bg-blue-600 hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30"
+            }
+          `}
+          aria-label={state === "recording" ? "Parar gravação" : "Iniciar gravação"}
+        >
+          {state === "processing" ? (
+            <Loader2 className="w-12 h-12 text-white animate-spin" />
+          ) : state === "recording" ? (
+            <Square className="w-12 h-12 text-white" />
+          ) : (
+            <Mic className="w-12 h-12 text-white" />
+          )}
+        </button>
+        
+        {/* CONTADOR DE 5 SEGUNDOS */}
+        {countdown !== null && (
+          <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center">
+            <div className="text-4xl font-bold text-white">{countdown}</div>
+            <div className="text-xs text-gray-400">segundos</div>
+          </div>
         )}
-      </button>
+      </div>
+
+      {/* Espaçamento extra quando contador está visível */}
+      <div className={countdown !== null ? "h-16" : "h-0"} />
 
       {/* Player de áudio */}
       {audioUrl && state === "ready" && (
@@ -395,6 +505,25 @@ export default function PWA() {
                 {rate}x
               </button>
             ))}
+          </div>
+          
+          {/* BOTÕES DE DOWNLOAD E COMPARTILHAR */}
+          <div className="flex justify-center gap-3 mt-4 pt-4 border-t border-gray-800">
+            <button
+              onClick={downloadAudio}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <Download className="w-4 h-4 text-gray-300" />
+              <span className="text-sm text-gray-300">Baixar</span>
+            </button>
+            
+            <button
+              onClick={shareAudio}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <Share2 className="w-4 h-4 text-gray-300" />
+              <span className="text-sm text-gray-300">Compartilhar</span>
+            </button>
           </div>
         </div>
       )}
