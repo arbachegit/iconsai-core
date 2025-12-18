@@ -98,7 +98,8 @@ export default function DataAnalysisTab() {
         .from("indicator_values")
         .select("reference_date, value, indicator_id")
         .in("indicator_id", indicatorIds)
-        .order("reference_date", { ascending: true });
+        .order("reference_date", { ascending: true })
+        .limit(10000);
 
       if (error) throw error;
       
