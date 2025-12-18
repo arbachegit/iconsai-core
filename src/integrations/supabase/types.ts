@@ -1859,6 +1859,68 @@ export type Database = {
         }
         Relationships: []
       }
+      pwa_messages: {
+        Row: {
+          audio_url: string | null
+          content: string
+          created_at: string | null
+          id: string
+          role: string
+          session_id: string | null
+        }
+        Insert: {
+          audio_url?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          role: string
+          session_id?: string | null
+        }
+        Update: {
+          audio_url?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          role?: string
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pwa_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "pwa_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pwa_sessions: {
+        Row: {
+          created_at: string | null
+          device_id: string
+          id: string
+          last_interaction: string | null
+          total_messages: number | null
+          user_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_id: string
+          id?: string
+          last_interaction?: string | null
+          total_messages?: number | null
+          user_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_id?: string
+          id?: string
+          last_interaction?: string | null
+          total_messages?: number | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       rag_analytics: {
         Row: {
           created_at: string | null
