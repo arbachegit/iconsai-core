@@ -55,7 +55,7 @@ interface TaxonomyAdoptionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tagsToAdopt: DocumentTag[];
-  domain: 'general' | 'health' | 'study';
+  domain: 'general' | 'health' | 'study' | 'economia';
   onComplete?: () => void;
 }
 

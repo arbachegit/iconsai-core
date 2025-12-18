@@ -17,10 +17,10 @@ interface AgentConfig {
 
 interface ChatRequest {
   messages: Array<{ role: string; content: string }>;
-  chatType: 'health' | 'study' | 'general';
+  chatType: 'health' | 'study' | 'general' | 'economia';
   documentId?: string;
   sessionId?: string;
-  manualRedirect?: 'health' | 'study' | null;
+  manualRedirect?: 'health' | 'study' | 'economia' | null;
   agentConfig?: AgentConfig;
 }
 
@@ -44,7 +44,13 @@ const getCategoryGuardrails = (category: string): string => {
 - 🔒 Escopo limitado - conteúdo usado apenas para resposta imediata.
 - Não expanda permanentemente o contexto do chat.
 - Sugira ao usuário redirecionar para Health ou Study se apropriado.
-- Mantenha respostas objetivas e genéricas.`
+- Mantenha respostas objetivas e genéricas.`,
+
+    economia: `
+- 📊 Foco em análise econômica, indicadores financeiros e mercado.
+- Escopo: Indicadores macroeconômicos, PMC, IPCA, Selic, PIB, dados regionais.
+- Ajude o usuário a compreender tendências econômicas e análises de dados.
+- RECUSE perguntas não relacionadas a economia, finanças ou indicadores.`
   };
   
   return guardrails[category as keyof typeof guardrails] || guardrails.general;
