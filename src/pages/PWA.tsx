@@ -1,9 +1,15 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, Square, Loader2, Play, Pause, HelpCircle, Share, X, Download, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 type AppState = "idle" | "recording" | "processing" | "ready";
+type VADMode = "listening" | "countdown";
+
+// Configuração VAD
+const SILENCE_THRESHOLD = 15;      // Volume abaixo disso = silêncio
+const COUNTDOWN_SECONDS = 5;       // Segundos de countdown
+const VAD_CHECK_INTERVAL = 100;    // Verificar voz a cada 100ms
 
 export default function PWA() {
   const [state, setState] = useState<AppState>("idle");
@@ -14,13 +20,23 @@ export default function PWA() {
   const [duration, setDuration] = useState(0);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
   const [deviceId, setDeviceId] = useState<string>('');
+  
+  // Estados VAD
+  const [vadMode, setVadMode] = useState<VADMode>("listening");
   const [countdown, setCountdown] = useState<number | null>(null);
   
+  // Refs existentes
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  
+  // Refs VAD
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const vadIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const silenceStartTimeRef = useRef<number | null>(null);
 
   // Carregar ou criar deviceId persistente
   useEffect(() => {
@@ -41,8 +57,14 @@ export default function PWA() {
       if (audioUrl) {
         URL.revokeObjectURL(audioUrl);
       }
+      if (vadIntervalRef.current) {
+        clearInterval(vadIntervalRef.current);
+      }
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
       }
     };
   }, [audioUrl]);
@@ -53,7 +75,6 @@ export default function PWA() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
     const isPWA = (window.navigator as any).standalone === true;
     
-    // Mostrar prompt apenas se for iOS e NÃO estiver instalado
     if (isIOS && !isStandalone && !isPWA) {
       const dismissed = localStorage.getItem('ios-prompt-dismissed');
       if (!dismissed) {
@@ -74,35 +95,108 @@ export default function PWA() {
     }
   };
 
-  // Função para iniciar contador de 5 segundos
-  const startCountdown = () => {
-    setCountdown(5);
+  // Verificar atividade de voz usando Web Audio API
+  const checkVoiceActivity = useCallback(() => {
+    if (!analyserRef.current) return false;
     
-    countdownIntervalRef.current = setInterval(() => {
-      setCountdown(prev => {
-        if (prev === null || prev <= 1) {
-          // Tempo esgotou - parar gravação e processar
-          if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-          }
-          stopRecordingInternal();
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
+    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+    analyserRef.current.getByteFrequencyData(dataArray);
+    const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+    
+    return average > SILENCE_THRESHOLD;
+  }, []);
 
-  // Função interna para parar gravação (sem limpar countdown - já limpo no interval)
-  const stopRecordingInternal = () => {
+  // Função para parar gravação e processar
+  const stopRecordingAndProcess = useCallback(() => {
+    // Limpar VAD
+    if (vadIntervalRef.current) {
+      clearInterval(vadIntervalRef.current);
+      vadIntervalRef.current = null;
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.requestData();
       mediaRecorderRef.current.stop();
       streamRef.current?.getTracks().forEach(track => track.stop());
+      
+      // Fechar AudioContext
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+        analyserRef.current = null;
+      }
+      
       vibrate([50, 50, 50]);
       setState("processing");
     }
-  };
+    
+    setCountdown(null);
+    setVadMode("listening");
+    silenceStartTimeRef.current = null;
+  }, []);
+
+  // Iniciar countdown de silêncio
+  const startSilenceCountdown = useCallback(() => {
+    setVadMode("countdown");
+    setCountdown(COUNTDOWN_SECONDS);
+    
+    let currentCount = COUNTDOWN_SECONDS;
+    
+    countdownIntervalRef.current = setInterval(() => {
+      currentCount -= 1;
+      setCountdown(currentCount);
+      
+      if (currentCount <= 0) {
+        // Tempo esgotou - parar gravação
+        stopRecordingAndProcess();
+      }
+    }, 1000);
+  }, [stopRecordingAndProcess]);
+
+  // Cancelar countdown e voltar a ouvir
+  const cancelCountdown = useCallback(() => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setCountdown(null);
+    setVadMode("listening");
+    silenceStartTimeRef.current = null;
+  }, []);
+
+  // Iniciar monitoramento VAD
+  const startVADMonitoring = useCallback(() => {
+    vadIntervalRef.current = setInterval(() => {
+      const isSpeaking = checkVoiceActivity();
+      
+      if (isSpeaking) {
+        // Pessoa está falando
+        if (vadMode === "countdown" || countdown !== null) {
+          // Cancelar countdown se estava rodando
+          cancelCountdown();
+        }
+        silenceStartTimeRef.current = null;
+      } else {
+        // Silêncio detectado
+        if (silenceStartTimeRef.current === null) {
+          // Primeiro frame de silêncio
+          silenceStartTimeRef.current = Date.now();
+        } else {
+          // Verificar se já passou tempo suficiente para iniciar countdown
+          const silenceDuration = Date.now() - silenceStartTimeRef.current;
+          
+          // Após 300ms de silêncio, iniciar countdown (se não estiver rodando)
+          if (silenceDuration >= 300 && vadMode === "listening" && countdown === null) {
+            startSilenceCountdown();
+          }
+        }
+      }
+    }, VAD_CHECK_INTERVAL);
+  }, [checkVoiceActivity, vadMode, countdown, cancelCountdown, startSilenceCountdown]);
 
   // Iniciar gravação
   const startRecording = async () => {
@@ -114,6 +208,14 @@ export default function PWA() {
         } 
       });
       streamRef.current = stream;
+      
+      // Configurar Web Audio API para VAD
+      audioContextRef.current = new AudioContext();
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 256;
+      
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      source.connect(analyserRef.current);
       
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
         ? 'audio/webm;codecs=opus' 
@@ -132,20 +234,18 @@ export default function PWA() {
       };
       
       mediaRecorder.onstop = () => {
-        // Limpar countdown
-        if (countdownIntervalRef.current) {
-          clearInterval(countdownIntervalRef.current);
-        }
-        setCountdown(null);
         processAudio();
       };
       
       mediaRecorder.start(100);
       setState("recording");
+      setVadMode("listening");
+      setCountdown(null);
+      silenceStartTimeRef.current = null;
       vibrate(50);
       
-      // INICIAR CONTADOR DE 5 SEGUNDOS
-      startCountdown();
+      // Iniciar monitoramento VAD
+      startVADMonitoring();
       
     } catch (error) {
       console.error("Erro ao acessar microfone:", error);
@@ -155,27 +255,12 @@ export default function PWA() {
 
   // Parar gravação manualmente
   const stopRecording = () => {
-    // Limpar countdown
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-      setCountdown(null);
-    }
-    
-    if (mediaRecorderRef.current && state === "recording") {
-      if (mediaRecorderRef.current.state === "recording") {
-        mediaRecorderRef.current.requestData();
-      }
-      mediaRecorderRef.current.stop();
-      streamRef.current?.getTracks().forEach(track => track.stop());
-      vibrate([50, 50, 50]);
-      setState("processing");
-    }
+    stopRecordingAndProcess();
   };
 
   // Processar áudio: STT → Agent → TTS
   const processAudio = async () => {
     try {
-      // Check if we have audio data
       if (audioChunksRef.current.length === 0) {
         throw new Error("Nenhum áudio capturado. Tente gravar por mais tempo.");
       }
@@ -222,7 +307,7 @@ export default function PWA() {
             body: {
               message: sttData.text,
               agentSlug: 'economia',
-              deviceId: deviceId, // Passa deviceId para memória de conversas
+              deviceId: deviceId,
             }
           });
           
@@ -325,7 +410,6 @@ export default function PWA() {
     if (!audioUrl) return;
     
     try {
-      // Converter blob URL para blob
       const response = await fetch(audioUrl);
       const blob = await response.blob();
       const file = new File([blob], 'economista-resposta.mp3', { type: 'audio/mpeg' });
@@ -337,14 +421,12 @@ export default function PWA() {
           files: [file]
         });
       } else if (navigator.share) {
-        // Fallback sem arquivo
         await navigator.share({
           title: 'Economista - Assistente de Voz',
           text: 'Conheça o Economista, assistente de voz sobre economia!',
           url: window.location.href
         });
       } else {
-        // Copiar link
         await navigator.clipboard.writeText(window.location.href);
         toast.success("Link copiado!");
       }
@@ -380,7 +462,8 @@ export default function PWA() {
   const getStateText = () => {
     switch (state) {
       case "idle": return "Toque para falar";
-      case "recording": return "Gravando... toque para parar";
+      case "recording": 
+        return vadMode === "listening" ? "Ouvindo..." : "";
       case "processing": return "Entendendo sua pergunta...";
       case "ready": return "Resposta pronta";
     }
@@ -393,6 +476,21 @@ export default function PWA() {
     } else if (state === "recording") {
       stopRecording();
     }
+  };
+
+  // Determinar cor do botão
+  const getButtonStyle = () => {
+    if (state === "recording") {
+      if (vadMode === "listening") {
+        return "bg-green-500 scale-110 shadow-lg shadow-green-500/50";
+      } else {
+        return "bg-orange-500 scale-110 shadow-lg shadow-orange-500/50";
+      }
+    }
+    if (state === "processing") {
+      return "bg-gray-600 cursor-not-allowed";
+    }
+    return "bg-blue-500 hover:bg-blue-600 hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30";
   };
 
   return (
@@ -418,7 +516,7 @@ export default function PWA() {
         <p className="text-gray-400 text-sm">{getStateText()}</p>
       </div>
 
-      {/* Botão principal com contador */}
+      {/* Botão principal com indicador VAD */}
       <div className="relative">
         <button
           onClick={handleMainButton}
@@ -426,12 +524,7 @@ export default function PWA() {
           className={`
             w-32 h-32 rounded-full flex items-center justify-center
             transition-all duration-300 transform
-            ${state === "recording" 
-              ? "bg-red-500 scale-110 animate-pulse shadow-lg shadow-red-500/50" 
-              : state === "processing"
-                ? "bg-gray-600 cursor-not-allowed"
-                : "bg-blue-500 hover:bg-blue-600 hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30"
-            }
+            ${getButtonStyle()}
           `}
           aria-label={state === "recording" ? "Parar gravação" : "Iniciar gravação"}
         >
@@ -444,17 +537,26 @@ export default function PWA() {
           )}
         </button>
         
-        {/* CONTADOR DE 5 SEGUNDOS */}
-        {countdown !== null && (
-          <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center">
-            <div className="text-4xl font-bold text-white">{countdown}</div>
-            <div className="text-xs text-gray-400">segundos</div>
+        {/* Indicador VAD abaixo do botão */}
+        {state === "recording" && (
+          <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 flex flex-col items-center">
+            {vadMode === "listening" ? (
+              <>
+                <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse mb-1" />
+                <span className="text-green-400 text-sm font-medium">Ouvindo...</span>
+              </>
+            ) : (
+              <>
+                <span className="text-orange-400 text-5xl font-bold">{countdown}</span>
+                <span className="text-orange-400 text-xs mt-1">segundos</span>
+              </>
+            )}
           </div>
         )}
       </div>
 
-      {/* Espaçamento extra quando contador está visível */}
-      <div className={countdown !== null ? "h-16" : "h-0"} />
+      {/* Espaçamento extra quando gravando */}
+      <div className={state === "recording" ? "h-20" : "h-0"} />
 
       {/* Player de áudio */}
       {audioUrl && state === "ready" && (
@@ -507,7 +609,7 @@ export default function PWA() {
             ))}
           </div>
           
-          {/* BOTÕES DE DOWNLOAD E COMPARTILHAR */}
+          {/* Botões de download e compartilhar */}
           <div className="flex justify-center gap-3 mt-4 pt-4 border-t border-gray-800">
             <button
               onClick={downloadAudio}
@@ -528,7 +630,7 @@ export default function PWA() {
         </div>
       )}
 
-      {/* Banner iOS - Adicionar à Tela de Início */}
+      {/* Banner iOS */}
       {showIOSPrompt && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900 border-t border-gray-700 animate-slide-up z-50">
           <div className="flex items-center gap-4 max-w-md mx-auto">
