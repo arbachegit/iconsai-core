@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
-import { Calculator } from "lucide-react";
+import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Calculator, Info } from "lucide-react";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { spearmanCorrelation, getCorrelationStrengthPtBr } from "@/lib/time-series-correlation";
 
 interface AnnualData {
   year: number;
@@ -61,7 +63,7 @@ function linearRegression(data: [number, number][]): { equation: [number, number
 
 export function ImpactScatter({ data, sectorCode }: ImpactScatterProps) {
   const chartData = useMemo(() => {
-    if (!data?.length) return { points: [], regression: { equation: [0, 0], r2: 0 }, elasticity: 0 };
+    if (!data?.length) return { points: [], regression: { equation: [0, 0], r2: 0 }, elasticity: 0, spearmanRho: 0, correlationInfo: getCorrelationStrengthPtBr(0) };
     
     const sectorKey = SECTOR_KEY_MAP[sectorCode] || "sales";
     const filtered = data.filter(d => d.income > 0 && d[sectorKey] > 0 && d.year >= 2015);
@@ -81,7 +83,13 @@ export function ImpactScatter({ data, sectorCode }: ImpactScatterProps) {
     const avgY = points.reduce((a, b) => a + b.y, 0) / points.length;
     const elasticity = regression.equation[1] * (avgX / avgY);
 
-    return { points, regression, elasticity };
+    // Calcular Spearman (mais robusto para séries temporais)
+    const xValues = points.map(p => p.x);
+    const yValues = points.map(p => p.y);
+    const spearmanRho = spearmanCorrelation(xValues, yValues);
+    const correlationInfo = getCorrelationStrengthPtBr(spearmanRho);
+
+    return { points, regression, elasticity, spearmanRho, correlationInfo };
   }, [data, sectorCode]);
 
   if (!chartData.points.length) {
@@ -117,12 +125,32 @@ export function ImpactScatter({ data, sectorCode }: ImpactScatterProps) {
               <Calculator className="h-5 w-5 text-purple-500" />
               Impacto: Renda vs Vendas
             </CardTitle>
-            <CardDescription>Correlação e elasticidade</CardDescription>
+            <CardDescription>Correlação Spearman e elasticidade</CardDescription>
           </div>
           <div className="flex gap-2">
-            <Badge variant="secondary" className="text-xs">
-              R² = {(chartData.regression.r2 * 100).toFixed(1)}%
-            </Badge>
+            {/* Badge Spearman com Tooltip explicativo */}
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <Badge 
+                    variant="secondary" 
+                    className={`text-xs cursor-help ${chartData.correlationInfo.color}`}
+                  >
+                    <Info className="h-3 w-3 mr-1" />
+                    ρ = {chartData.spearmanRho.toFixed(2)}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs p-3">
+                  <p className="font-semibold text-sm">Correlação de Spearman (ρ)</p>
+                  <p className="text-sm mt-1">{chartData.correlationInfo.description}</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Mede relação monotônica baseada em rankings. 
+                    Mais robusta a outliers e não-linearidades que Pearson.
+                    Ideal para séries temporais econômicas.
+                  </p>
+                </TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
             <Badge 
               variant="outline" 
               className={`text-xs ${chartData.elasticity > 0 ? 'text-green-600 border-green-600' : 'text-red-600 border-red-600'}`}

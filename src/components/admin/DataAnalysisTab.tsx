@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SectorAnalysisGrid } from "./data-analysis/SectorAnalysisGrid";
 import { Simulator2026 } from "./data-analysis/Simulator2026";
+import { CorrelationsTab } from "./data-analysis/CorrelationsTab";
 
 // Mapeamento de códigos de indicadores para variáveis do modelo
 const INDICATOR_MAPPING: Record<string, string> = {
@@ -55,7 +56,7 @@ interface AnnualData {
   [key: string]: number;
 }
 
-// Configuração das 8 TABs
+// Configuração das 9 TABs
 const SECTOR_TABS = [
   { id: "varejo", label: "Varejo Total", code: "PMC" },
   { id: "vestuario", label: "Vestuário", code: "PMC_VEST" },
@@ -64,6 +65,7 @@ const SECTOR_TABS = [
   { id: "combustivel", label: "Combustível", code: "PMC_COMB" },
   { id: "veiculos", label: "Veículos", code: "PMC_VEIC" },
   { id: "construcao", label: "Construção", code: "PMC_CONST", disabled: true },
+  { id: "correlacoes", label: "Correlações", isCorrelation: true },
   { id: "simulador", label: "Simulador 2026", isSimulator: true },
 ];
 
@@ -303,7 +305,7 @@ export default function DataAnalysisTab() {
         </TabsList>
 
         {/* TABs 1-7: Setores (Grid 2x2) */}
-        {SECTOR_TABS.filter(t => !t.isSimulator && !t.disabled).map(tab => (
+        {SECTOR_TABS.filter(t => !t.isSimulator && !t.disabled && !t.isCorrelation).map(tab => (
           <TabsContent key={tab.id} value={tab.id} className="mt-6">
             <SectorAnalysisGrid 
               sectorCode={tab.code} 
@@ -324,7 +326,12 @@ export default function DataAnalysisTab() {
           </div>
         </TabsContent>
 
-        {/* TAB 8: Simulador 2026 */}
+        {/* TAB Correlações */}
+        <TabsContent value="correlacoes" className="mt-6">
+          <CorrelationsTab annualData={annualData || []} />
+        </TabsContent>
+
+        {/* TAB Simulador 2026 */}
         <TabsContent value="simulador" className="mt-6">
           <Simulator2026 annualData={annualData || []} />
         </TabsContent>
