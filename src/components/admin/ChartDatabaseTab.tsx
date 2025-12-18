@@ -331,10 +331,21 @@ export function ChartDatabaseTab() {
     return saved === 'true';
   });
   
+  // Global toggle for PMC National group with localStorage persistence
+  const [pmcNationalMonetaryMode, setPmcNationalMonetaryMode] = useState(() => {
+    const saved = localStorage.getItem('pmcNationalMonetaryMode');
+    return saved === 'true';
+  });
+  
   // Persist PMC Regional monetary mode to localStorage
   useEffect(() => {
     localStorage.setItem('pmcRegionalMonetaryMode', pmcRegionalMonetaryMode.toString());
   }, [pmcRegionalMonetaryMode]);
+  
+  // Persist PMC National monetary mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('pmcNationalMonetaryMode', pmcNationalMonetaryMode.toString());
+  }, [pmcNationalMonetaryMode]);
 
   // Query client for cache invalidation
   const queryClient = useQueryClient();
@@ -1162,6 +1173,12 @@ export function ChartDatabaseTab() {
           };
           const GroupIcon = group.icon;
           const isPmcRegionalGroup = key === 'pmcRegional';
+          const isPmcNationalGroup = key === 'pmc';
+
+          // Determine which toggle to show based on group
+          const showToggle = isPmcRegionalGroup || isPmcNationalGroup;
+          const toggleMode = isPmcRegionalGroup ? pmcRegionalMonetaryMode : pmcNationalMonetaryMode;
+          const setToggleMode = isPmcRegionalGroup ? setPmcRegionalMonetaryMode : setPmcNationalMonetaryMode;
 
           return (
             <CollapsibleGroup
@@ -1170,30 +1187,30 @@ export function ChartDatabaseTab() {
               icon={<GroupIcon className="h-5 w-5" />}
               count={groupIndicators.length}
               defaultExpanded={false}
-              headerExtra={isPmcRegionalGroup ? (
+              headerExtra={showToggle ? (
                 <div 
                   className="flex items-center gap-2 ml-4" 
                   onClick={(e) => e.stopPropagation()}
                 >
                   <span className={cn(
                     "text-xs font-medium transition-colors",
-                    !pmcRegionalMonetaryMode ? "text-primary" : "text-muted-foreground"
+                    !toggleMode ? "text-primary" : "text-muted-foreground"
                   )}>Índice</span>
                   <Switch
-                    checked={pmcRegionalMonetaryMode}
-                    onCheckedChange={setPmcRegionalMonetaryMode}
+                    checked={toggleMode}
+                    onCheckedChange={setToggleMode}
                     className="data-[state=checked]:bg-green-500"
                   />
                   <span className={cn(
                     "text-xs font-medium transition-colors",
-                    pmcRegionalMonetaryMode ? "text-green-400" : "text-muted-foreground"
+                    toggleMode ? "text-green-400" : "text-muted-foreground"
                   )}>R$</span>
                 </div>
               ) : undefined}
             >
               {groupIndicators.map((indicator) => {
-                // For PMC Regional group, apply global monetary mode when opening detail
-                if (isPmcRegionalGroup) {
+                // For PMC Regional or PMC National group, apply global monetary mode when opening detail
+                if (isPmcRegionalGroup || isPmcNationalGroup) {
                   const stats = indicatorStats[indicator.id];
                   if (!stats) return null;
                   
@@ -1202,13 +1219,14 @@ export function ChartDatabaseTab() {
                   const maxDate = format(new Date(stats.max), "MM/yy");
                   const u = (indicator.unit || '').toLowerCase();
                   const isIndex = u.includes('índice') || u.includes('base') || u.includes('index');
+                  const currentToggleMode = isPmcRegionalGroup ? pmcRegionalMonetaryMode : pmcNationalMonetaryMode;
 
                   return (
                     <div
                       key={indicator.id}
                       className="knowyou-indicator-card"
                       onClick={() => {
-                        setShowMonetaryValues(pmcRegionalMonetaryMode);
+                        setShowMonetaryValues(currentToggleMode);
                         setSelectedIndicator(indicator);
                       }}
                     >
