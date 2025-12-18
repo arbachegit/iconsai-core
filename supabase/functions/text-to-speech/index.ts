@@ -294,6 +294,55 @@ function normalizeTextForTTS(text: string, phoneticMap: Record<string, string>):
   return normalizedText;
 }
 
+// ============================================
+// HUMANIZAÇÃO DO TEXTO PARA FALA NATURAL
+// ============================================
+
+function humanizeTextForSpeech(text: string): string {
+  let result = text;
+  
+  // 1. Adicionar micro-pausas após vírgulas (respiração natural)
+  result = result.replace(/,\s*/g, ', ... ');
+  
+  // 2. Pausas mais longas após pontos
+  result = result.replace(/\.\s+/g, '. ... ');
+  
+  // 3. Adicionar hesitações naturais no início de algumas frases
+  const hesitations = ['Bom, ', 'Então, ', 'Olha, ', 'Veja, ', 'Ah, '];
+  const sentences = result.split('. ... ');
+  
+  if (sentences.length > 2) {
+    // Adicionar hesitação em uma frase do meio (não a primeira nem última)
+    const midIndex = Math.floor(sentences.length / 2);
+    const randomHesitation = hesitations[Math.floor(Math.random() * hesitations.length)];
+    
+    // Só adiciona se a frase não começar já com hesitação
+    if (sentences[midIndex] && !hesitations.some(h => sentences[midIndex].startsWith(h.trim()))) {
+      sentences[midIndex] = randomHesitation + sentences[midIndex].charAt(0).toLowerCase() + sentences[midIndex].slice(1);
+    }
+  }
+  
+  result = sentences.join('. ... ');
+  
+  // 4. Para textos longos (>200 chars), adicionar uma "respiração profunda"
+  if (text.length > 200) {
+    const midPoint = Math.floor(result.length / 2);
+    const insertPoint = result.indexOf('. ... ', midPoint);
+    if (insertPoint > 0) {
+      // Inserir pausa mais longa que simula respiração profunda
+      result = result.slice(0, insertPoint + 1) + ' ... ... ' + result.slice(insertPoint + 7);
+    }
+  }
+  
+  // 5. Adicionar interjeições empáticas ocasionais
+  result = result.replace(/Infelizmente/g, 'Infelizmente, ... puxa vida,');
+  result = result.replace(/Boa notícia/g, 'Boa notícia! ... Que bom,');
+  result = result.replace(/preocupante/gi, '... preocupante, né');
+  
+  return result;
+}
+
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -364,9 +413,12 @@ serve(async (req) => {
     
     // 6. Aplicar mapa fonético
     normalizedText = normalizeTextForTTS(normalizedText, phoneticMap);
+    
+    // 7. HUMANIZAR COM PAUSAS E RESPIRAÇÃO
+    normalizedText = humanizeTextForSpeech(normalizedText);
 
     console.log("Texto original:", sanitizedText.substring(0, 100));
-    console.log("Após normalização números:", normalizedText.substring(0, 100));
+    console.log("Após humanização:", normalizedText.substring(0, 150));
     console.log("Total de termos no mapa fonético:", Object.keys(phoneticMap).length);
 
     const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
@@ -389,9 +441,9 @@ serve(async (req) => {
           text: normalizedText,
           model_id: "eleven_turbo_v2_5",
           voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.0,
+            stability: 0.30,           // REDUZIDO: Mais variação = mais natural
+            similarity_boost: 0.65,    // REDUZIDO: Menos robótico
+            style: 0.45,               // AUMENTADO: Mais expressividade emocional
             use_speaker_boost: true,
           },
         }),
