@@ -13,11 +13,22 @@ export default function PWA() {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+  const [deviceId, setDeviceId] = useState<string>('');
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Carregar ou criar deviceId persistente
+  useEffect(() => {
+    let id = localStorage.getItem('pwa-device-id');
+    if (!id) {
+      id = `device-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      localStorage.setItem('pwa-device-id', id);
+    }
+    setDeviceId(id);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -157,13 +168,13 @@ export default function PWA() {
           
           console.log("[PWA] Transcrição:", sttData.text);
           
-          // 2. Agent - Enviar para o agente de economia
+          // 2. Agent - Enviar para o agente de economia com deviceId para memória
           console.log("[PWA] Enviando para agente...");
           const { data: agentData, error: agentError } = await supabase.functions.invoke('chat-pwa', {
             body: {
               message: sttData.text,
               agentSlug: 'economia',
-              sessionId: `pwa-${Date.now()}`,
+              deviceId: deviceId, // Passa deviceId para memória de conversas
             }
           });
           

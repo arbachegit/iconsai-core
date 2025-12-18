@@ -6,6 +6,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Interface para mensagens
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 // Mapeamento de palavras-chave para códigos de indicadores
 const INDICATOR_KEYWORDS: Record<string, string[]> = {
   'DOLAR': ['dólar', 'dolar', 'câmbio', 'moeda americana', 'usd', 'ptax', 'cotação do dólar'],
@@ -42,7 +48,6 @@ async function fetchLatestIndicators(
   
   for (const code of codes) {
     try {
-      // Buscar indicador pelo código
       const { data: indicator } = await supabase
         .from('economic_indicators')
         .select('id, name, unit')
@@ -54,7 +59,6 @@ async function fetchLatestIndicators(
         continue;
       }
       
-      // Buscar valor mais recente
       const { data: latestValue } = await supabase
         .from('indicator_values')
         .select('value, reference_date')
@@ -131,20 +135,136 @@ function formatIndicatorsContext(
   return lines.join('\n');
 }
 
+// Buscar ou criar sessão e histórico recente
+async function getRecentHistory(
+  supabase: any, 
+  deviceId: string, 
+  limit: number = 10
+): Promise<{ sessionId: string; userName: string | null; messages: Message[] }> {
+  
+  // Buscar sessão existente pelo device_id
+  let { data: session } = await supabase
+    .from('pwa_sessions')
+    .select('id, user_name')
+    .eq('device_id', deviceId)
+    .order('last_interaction', { ascending: false })
+    .limit(1)
+    .single();
+  
+  // Se não existir, criar nova sessão
+  if (!session) {
+    const { data: newSession, error: insertError } = await supabase
+      .from('pwa_sessions')
+      .insert({ device_id: deviceId })
+      .select()
+      .single();
+    
+    if (insertError) {
+      console.error('[chat-pwa] Erro ao criar sessão:', insertError);
+      // Retornar sessão vazia se falhar
+      return { sessionId: `temp-${Date.now()}`, userName: null, messages: [] };
+    }
+    session = newSession;
+  }
+  
+  // Buscar mensagens recentes da sessão
+  const { data: messages } = await supabase
+    .from('pwa_messages')
+    .select('role, content')
+    .eq('session_id', session.id)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  
+  return {
+    sessionId: session.id,
+    userName: session.user_name,
+    messages: (messages || []).reverse() as Message[]
+  };
+}
+
+// Salvar mensagem no histórico
+async function saveMessage(
+  supabase: any,
+  sessionId: string,
+  role: 'user' | 'assistant',
+  content: string,
+  audioUrl?: string
+) {
+  // Não salvar se for sessão temporária
+  if (sessionId.startsWith('temp-')) return;
+  
+  await supabase.from('pwa_messages').insert({
+    session_id: sessionId,
+    role,
+    content,
+    audio_url: audioUrl
+  });
+  
+  // Atualizar última interação da sessão
+  await supabase
+    .from('pwa_sessions')
+    .update({ 
+      last_interaction: new Date().toISOString(),
+      total_messages: supabase.rpc ? undefined : undefined // Incrementar via trigger seria ideal
+    })
+    .eq('id', sessionId);
+}
+
+// Detectar e salvar nome do usuário
+async function detectAndSaveName(
+  supabase: any,
+  sessionId: string,
+  message: string,
+  currentName: string | null
+): Promise<string | null> {
+  // Se já tem nome, retornar
+  if (currentName) return currentName;
+  
+  // Não processar se for sessão temporária
+  if (sessionId.startsWith('temp-')) return null;
+  
+  // Padrões para detectar nome
+  const patterns = [
+    /(?:me chamo|meu nome é|pode me chamar de|sou o|sou a)\s+([A-Za-zÀ-ÿ]+)/i,
+    /^([A-Za-zÀ-ÿ]{2,15})$/i // Se responder só com um nome (2-15 letras)
+  ];
+  
+  for (const pattern of patterns) {
+    const match = message.trim().match(pattern);
+    if (match) {
+      const name = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+      
+      // Salvar nome na sessão
+      await supabase
+        .from('pwa_sessions')
+        .update({ user_name: name })
+        .eq('id', sessionId);
+      
+      console.log(`[chat-pwa] Nome detectado e salvo: ${name}`);
+      return name;
+    }
+  }
+  
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { message, agentSlug = "economia", sessionId } = await req.json();
+    const { message, agentSlug = "economia", deviceId } = await req.json();
 
     if (!message) {
       throw new Error("Mensagem é obrigatória");
     }
 
-    console.log(`[chat-pwa] Mensagem recebida: "${message.substring(0, 50)}..."`);
-    console.log(`[chat-pwa] Agente: ${agentSlug}, Session: ${sessionId}`);
+    // Gerar deviceId se não fornecido
+    const finalDeviceId = deviceId || `anonymous-${Date.now()}`;
+
+    console.log(`[chat-pwa] Mensagem: "${message.substring(0, 50)}..."`);
+    console.log(`[chat-pwa] Agente: ${agentSlug}, Device: ${finalDeviceId}`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -156,7 +276,22 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 1. Buscar configurações do agente
+    // 1. Buscar histórico e contexto de memória
+    const { sessionId, userName, messages: history } = await getRecentHistory(
+      supabase, 
+      finalDeviceId
+    );
+    
+    console.log(`[chat-pwa] Sessão: ${sessionId}, Usuário: ${userName || 'desconhecido'}, Histórico: ${history.length} msgs`);
+    
+    // 2. Detectar se usuário disse o nome
+    const detectedName = await detectAndSaveName(supabase, sessionId, message, userName);
+    const currentUserName = detectedName || userName;
+    
+    // 3. Salvar mensagem do usuário
+    await saveMessage(supabase, sessionId, 'user', message);
+
+    // 4. Buscar configurações do agente
     const { data: agent, error: agentError } = await supabase
       .from("chat_agents")
       .select("*")
@@ -171,7 +306,7 @@ serve(async (req) => {
 
     console.log(`[chat-pwa] Agente carregado: ${agent.name}`);
 
-    // 2. Detectar indicadores mencionados e buscar valores atuais
+    // 5. Detectar indicadores mencionados e buscar valores atuais
     const detectedIndicators = detectIndicators(message);
     console.log("[chat-pwa] Indicadores detectados:", detectedIndicators);
 
@@ -182,12 +317,11 @@ serve(async (req) => {
       console.log("[chat-pwa] Dados encontrados:", Object.keys(indicatorData));
     }
 
-    // 3. Buscar contexto RAG (se configurado)
+    // 6. Buscar contexto RAG (se configurado)
     let ragContext = "";
     
     if (agent.rag_collection) {
       try {
-        // Gerar embedding da pergunta usando Lovable AI
         const embeddingResponse = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
           method: "POST",
           headers: {
@@ -205,7 +339,6 @@ serve(async (req) => {
           const queryEmbedding = embeddingData.data?.[0]?.embedding;
 
           if (queryEmbedding) {
-            // Buscar documentos similares
             const { data: docs } = await supabase.rpc("search_documents", {
               query_embedding: queryEmbedding,
               target_chat_filter: agent.rag_collection,
@@ -224,7 +357,16 @@ serve(async (req) => {
       }
     }
 
-    // 4. Construir prompt do sistema com indicadores e RAG
+    // 7. Construir contexto de memória
+    const memoryContext = history.length > 0 
+      ? `\n\n## HISTÓRICO DA CONVERSA (últimas ${history.length} mensagens):\n${history.map(m => `${m.role === 'user' ? 'Usuário' : 'Você'}: ${m.content}`).join('\n')}`
+      : '';
+    
+    const userContext = currentUserName
+      ? `\n\n## SOBRE O USUÁRIO:\n- Nome: ${currentUserName}\n- Use o nome dele ocasionalmente para criar conexão pessoal`
+      : `\n\n## SOBRE O USUÁRIO:\n- Ainda não sabemos o nome\n- Se apropriado e natural, pergunte: "A propósito, como posso te chamar?"`;
+
+    // 8. Construir prompt do sistema com indicadores, RAG e memória
     const systemPrompt = `${agent.system_prompt || "Você é um assistente prestativo."}
 
 ${indicatorsContext}
@@ -234,16 +376,27 @@ ${ragContext ? `
 ${ragContext}
 ` : ""}
 
-## REGRAS ADICIONAIS PARA VOZ:
-- Respostas CURTAS (máximo 3-4 frases)
-- Linguagem SIMPLES (para pessoas sem instrução formal)
-- Se não souber, diga "não tenho essa informação"
-- SEMPRE cite a fonte e data quando mencionar dados economicos
-- Evite números muito grandes ou porcentagens complexas
+${userContext}
+
+${memoryContext}
+
+## INSTRUÇÕES FINAIS:
+- Se o usuário já perguntou algo similar antes, mencione: "Como conversamos antes..."
+- Varie suas respostas, não repita frases iguais
+- Seja natural e amigável
+- Respostas CURTAS (máximo 4-5 frases para áudio)
+- SEMPRE cite a fonte e data quando mencionar dados econômicos
 `;
 
-    // 5. Chamar Lovable AI Gateway (google/gemini-2.5-flash)
+    // 9. Chamar Lovable AI Gateway
     console.log("[chat-pwa] Chamando Lovable AI Gateway...");
+    
+    // Preparar mensagens com histórico
+    const chatMessages = [
+      { role: "system", content: systemPrompt },
+      ...history.slice(-6).map(m => ({ role: m.role, content: m.content })),
+      { role: "user", content: message },
+    ];
     
     const chatResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -253,12 +406,9 @@ ${ragContext}
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: message },
-        ],
-        max_tokens: 300,
-        temperature: 0.7,
+        messages: chatMessages,
+        max_tokens: 400,
+        temperature: 0.8, // Um pouco mais criativo para variar respostas
       }),
     });
 
@@ -296,8 +446,11 @@ ${ragContext}
 
     console.log(`[chat-pwa] Resposta gerada: "${response.substring(0, 100)}..."`);
 
+    // 10. Salvar resposta do assistente
+    await saveMessage(supabase, sessionId, 'assistant', response);
+
     return new Response(
-      JSON.stringify({ response }),
+      JSON.stringify({ response, sessionId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
