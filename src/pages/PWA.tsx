@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Mic, Square, Loader2, Play, Pause, HelpCircle } from "lucide-react";
+import { Mic, Square, Loader2, Play, Pause, HelpCircle, Share, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -12,6 +12,7 @@ export default function PWA() {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [showIOSPrompt, setShowIOSPrompt] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -29,6 +30,26 @@ export default function PWA() {
       }
     };
   }, [audioUrl]);
+
+  // Detectar iOS e mostrar prompt de instalação
+  useEffect(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    const isPWA = (window.navigator as any).standalone === true;
+    
+    // Mostrar prompt apenas se for iOS e NÃO estiver instalado
+    if (isIOS && !isStandalone && !isPWA) {
+      const dismissed = localStorage.getItem('ios-prompt-dismissed');
+      if (!dismissed) {
+        setTimeout(() => setShowIOSPrompt(true), 2000);
+      }
+    }
+  }, []);
+
+  const dismissIOSPrompt = () => {
+    setShowIOSPrompt(false);
+    localStorage.setItem('ios-prompt-dismissed', 'true');
+  };
 
   // Vibrar se disponível
   const vibrate = (pattern: number | number[]) => {
@@ -363,6 +384,30 @@ export default function PWA() {
                 {rate}x
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Banner iOS - Adicionar à Tela de Início */}
+      {showIOSPrompt && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900 border-t border-gray-700 animate-slide-up z-50">
+          <div className="flex items-center gap-4 max-w-md mx-auto">
+            <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-2xl">📊</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-white font-medium text-sm">Instale o Economista</p>
+              <p className="text-gray-400 text-xs mt-0.5">
+                Toque em <Share className="inline w-4 h-4 mx-1" /> e depois em "Adicionar à Tela de Início"
+              </p>
+            </div>
+            <button
+              onClick={dismissIOSPrompt}
+              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+              aria-label="Fechar"
+            >
+              <X className="w-5 h-5 text-gray-400" />
+            </button>
           </div>
         </div>
       )}

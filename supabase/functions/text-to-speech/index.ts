@@ -80,18 +80,35 @@ function currencyToWords(value: string): string {
 }
 
 function percentageToWords(value: string): string {
-  const cleaned = value.replace(/%/g, '').trim();
+  const cleaned = value.replace(/%/g, '').replace(/\s/g, '').trim();
   
+  // Decimal com vírgula: 12,25%
   if (cleaned.includes(',')) {
     const parts = cleaned.split(',');
     const inteiro = parseInt(parts[0]) || 0;
-    const decimal = parts[1] || '0';
+    const decimal = parseInt(parts[1]) || 0;
     
-    return numberToWords(inteiro) + ' vírgula ' + 
-           decimal.split('').map(d => UNITS[parseInt(d)] || d).join(' ') + 
-           ' por cento';
+    if (decimal === 0) {
+      return numberToWords(inteiro) + ' por cento';
+    }
+    
+    return numberToWords(inteiro) + ' vírgula ' + numberToWords(decimal) + ' por cento';
   }
   
+  // Decimal com ponto: 12.25%
+  if (cleaned.includes('.')) {
+    const parts = cleaned.split('.');
+    const inteiro = parseInt(parts[0]) || 0;
+    const decimal = parseInt(parts[1]) || 0;
+    
+    if (decimal === 0) {
+      return numberToWords(inteiro) + ' por cento';
+    }
+    
+    return numberToWords(inteiro) + ' vírgula ' + numberToWords(decimal) + ' por cento';
+  }
+  
+  // Número inteiro: 12%
   const num = parseInt(cleaned) || 0;
   return numberToWords(num) + ' por cento';
 }
