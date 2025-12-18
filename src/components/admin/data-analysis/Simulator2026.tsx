@@ -6,6 +6,7 @@ import { Bot, TrendingUp } from "lucide-react";
 import { MacroSliders } from "./simulator/MacroSliders";
 import { ScenarioButtons } from "./simulator/ScenarioButtons";
 import { SeasonalBars } from "./simulator/SeasonalBars";
+import { MonthlyProjection2026 } from "./simulator/MonthlyProjection2026";
 
 interface AnnualData {
   year: number;
@@ -270,6 +271,11 @@ export function Simulator2026({ annualData }: Simulator2026Props) {
         </CardContent>
       </Card>
 
+      {/* Gráfico de Projeção MENSAL 2026 */}
+      <MonthlyProjection2026 
+        baseProjection={projection.projected} 
+        scenario={activeScenario} 
+      />
       {/* Controles: Sliders + Cenários */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>

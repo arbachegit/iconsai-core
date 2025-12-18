@@ -119,7 +119,7 @@ export default function DataAnalysisTab() {
           .select("reference_date, value, indicator_id")
           .in("indicator_id", macroIds)
           .order("reference_date", { ascending: true })
-          .limit(5000),  // DOLAR tem ~4000 registros diários
+          .range(0, 4999),  // .range() respeita o limite (DOLAR tem ~4000 registros)
         
         supabase
           .from("indicator_values")

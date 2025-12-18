@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Calendar } from "lucide-react";
@@ -9,15 +10,23 @@ interface SeasonalBarsProps {
   baseProjection: number;
 }
 
-const SEASONAL_EVENTS = [
-  { label: "Carnaval", month: "Fev", multiplier: 0.12 },
-  { label: "Dia das Mães", month: "Mai", multiplier: 0.18 },
-  { label: "Dia dos Namorados", month: "Jun", multiplier: 0.08 },
-  { label: "Dia dos Pais", month: "Ago", multiplier: 0.10 },
-  { label: "Dia das Crianças", month: "Out", multiplier: 0.15 },
-  { label: "Black Friday", month: "Nov", multiplier: 0.30 },
-  { label: "Natal", month: "Dez", multiplier: 0.45 },
-];
+// Multiplicadores BASE por evento
+const BASE_MULTIPLIERS = {
+  carnaval: 0.12,
+  maes: 0.18,
+  namorados: 0.08,
+  pais: 0.10,
+  criancas: 0.15,
+  blackfriday: 0.30,
+  natal: 0.45,
+};
+
+// AJUSTE por cenário (o multiplicador muda!)
+const SCENARIO_MULTIPLIER_ADJUSTMENT = {
+  optimistic: 1.25,    // Cenário otimista: eventos impactam 25% mais
+  neutral: 1.00,       // Cenário neutro: impacto base
+  pessimistic: 0.75,   // Cenário pessimista: eventos impactam 25% menos
+};
 
 const SCENARIO_COLORS = {
   optimistic: "#10B981",
@@ -25,14 +34,43 @@ const SCENARIO_COLORS = {
   pessimistic: "#EF4444",
 };
 
+const SCENARIO_LABELS = {
+  optimistic: "📈 Cenário otimista: +25% impacto sazonal",
+  neutral: "➡️ Cenário neutro: impacto histórico médio",
+  pessimistic: "📉 Cenário pessimista: -25% impacto sazonal",
+};
+
+const SEASONAL_EVENTS = [
+  { key: "carnaval", label: "Carnaval", month: "Fev" },
+  { key: "maes", label: "Dia das Mães", month: "Mai" },
+  { key: "namorados", label: "Namorados", month: "Jun" },
+  { key: "pais", label: "Dia dos Pais", month: "Ago" },
+  { key: "criancas", label: "Crianças", month: "Out" },
+  { key: "blackfriday", label: "Black Friday", month: "Nov" },
+  { key: "natal", label: "Natal", month: "Dez" },
+];
+
 export function SeasonalBars({ scenario, baseProjection }: SeasonalBarsProps) {
   const barColor = SCENARIO_COLORS[scenario];
+  const adjustment = SCENARIO_MULTIPLIER_ADJUSTMENT[scenario];
   
-  const chartData = SEASONAL_EVENTS.map(event => ({
-    ...event,
-    impact: event.multiplier * 100,
-    value: Math.round(baseProjection * (1 + event.multiplier) * 10) / 10,
-  }));
+  const chartData = useMemo(() => {
+    return SEASONAL_EVENTS.map(event => {
+      const baseMultiplier = BASE_MULTIPLIERS[event.key as keyof typeof BASE_MULTIPLIERS];
+      // O multiplicador AJUSTADO pelo cenário
+      const adjustedMultiplier = baseMultiplier * adjustment;
+      const impact = adjustedMultiplier * 100;
+      const pmcValue = Math.round(baseProjection * (1 + adjustedMultiplier) * 10) / 10;
+      
+      return {
+        ...event,
+        impact,              // Agora muda com cenário!
+        pmcValue,            // Agora muda com cenário!
+        baseImpact: baseMultiplier * 100,
+        diff: Math.round((adjustedMultiplier - baseMultiplier) * 1000) / 10,
+      };
+    });
+  }, [scenario, baseProjection, adjustment]);
 
   return (
     <Card>
@@ -58,8 +96,9 @@ export function SeasonalBars({ scenario, baseProjection }: SeasonalBarsProps) {
               />
               <YAxis 
                 tick={{ fontSize: 10 }}
-                tickFormatter={(v) => `+${v}%`}
-                width={45}
+                tickFormatter={(v) => `+${v.toFixed(0)}%`}
+                width={50}
+                domain={[0, 'auto']}
               />
               <Tooltip
                 content={({ payload }) => {
@@ -69,24 +108,40 @@ export function SeasonalBars({ scenario, baseProjection }: SeasonalBarsProps) {
                     <div className="bg-card border border-border p-2 rounded-lg shadow-lg">
                       <p className="font-semibold text-sm">{data.label}</p>
                       <p className="text-xs text-muted-foreground">{data.month}/2026</p>
-                      <p className="text-sm mt-1">
-                        Impacto: <span className="font-medium text-primary">+{data.impact.toFixed(0)}%</span>
-                      </p>
-                      <p className="text-sm">
-                        PMC: <span className="font-medium">{data.value.toFixed(1)}</span>
-                      </p>
+                      <div className="mt-1 space-y-0.5">
+                        <p className="text-sm">
+                          Impacto: <span className="font-medium text-primary">+{data.impact.toFixed(1)}%</span>
+                          {data.diff !== 0 && (
+                            <span className={`ml-1 text-xs ${data.diff > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              ({data.diff > 0 ? '+' : ''}{data.diff.toFixed(1)}% vs base)
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-sm">
+                          PMC estimado: <span className="font-medium">{data.pmcValue.toFixed(1)}</span>
+                        </p>
+                      </div>
                     </div>
                   );
                 }}
               />
               <Bar dataKey="impact" radius={[4, 4, 0, 0]}>
                 {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={barColor} fillOpacity={0.7 + (entry.multiplier * 0.5)} />
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={barColor} 
+                    fillOpacity={0.6 + (entry.impact / 100)} 
+                  />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
+        
+        {/* Legenda explicativa */}
+        <p className="text-xs text-muted-foreground text-center mt-3">
+          {SCENARIO_LABELS[scenario]}
+        </p>
       </CardContent>
     </Card>
   );
