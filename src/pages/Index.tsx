@@ -1,4 +1,5 @@
 // Landing page with lazy-loaded components
+// Force rebuild: v2
 import React, { Suspense, lazy } from "react";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
