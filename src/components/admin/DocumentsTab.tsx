@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap, Eye, Settings2, AlertTriangle, RotateCcw, Table2 as TableIcon, Brain, Tags } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap, Eye, Settings2, AlertTriangle, RotateCcw, Table2 as TableIcon, Brain, Tags, TrendingUp } from "lucide-react";
 import { DocumentTagEnrichmentModal, SelectedTag } from "./DocumentTagEnrichmentModal";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
@@ -1576,6 +1576,8 @@ export const DocumentsTab = () => {
         return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
       case 'GENERAL':
         return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
+      case 'ECONOMIA':
+        return 'bg-teal-500/10 text-teal-500 border-teal-500/20';
       default:
         return '';
     }
@@ -2049,6 +2051,12 @@ export const DocumentsTab = () => {
                             GENERAL
                           </span>
                         )}
+                        {fileStatus.targetChat === 'economia' && (
+                          <span className="flex items-center gap-1.5">
+                            <TrendingUp className="h-3.5 w-3.5" />
+                            ECONOMIA
+                          </span>
+                        )}
                       </Badge> : <span className="text-xs text-muted-foreground">—</span>}
                   </TableCell>
                 </TableRow>)}
@@ -2099,6 +2107,7 @@ export const DocumentsTab = () => {
                     <SelectItem value="study">Study</SelectItem>
                     <SelectItem value="both">Both</SelectItem>
                     <SelectItem value="general">General</SelectItem>
+                    <SelectItem value="economia">Economia</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2426,8 +2435,8 @@ export const DocumentsTab = () => {
                           {doc.is_inserted && <Badge className="bg-green-500">Inserido em {doc.inserted_in_chat}</Badge>}
                         </div>
                         
-                        {/* Botões de ação - apenas se não estiver inserido */}
-                        {!doc.is_inserted && <div className="grid grid-cols-3 gap-2">
+                        {/* Botoes de acao - apenas se nao estiver inserido */}
+                        {!doc.is_inserted && <div className="grid grid-cols-4 gap-2">
                             <Button size="sm" variant="outline" onClick={() => manualInsertMutation.mutate({
                         docId: doc.id,
                         targetChat: 'health'
@@ -2448,6 +2457,13 @@ export const DocumentsTab = () => {
                       })} className="flex items-center gap-2" disabled={manualInsertMutation.isPending}>
                               <Boxes className="h-4 w-4 text-emerald-500" />
                               Both
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => manualInsertMutation.mutate({
+                        docId: doc.id,
+                        targetChat: 'economia'
+                      })} className="flex items-center gap-2" disabled={manualInsertMutation.isPending}>
+                              <TrendingUp className="h-4 w-4 text-teal-500" />
+                              Economia
                             </Button>
                           </div>}
                         
@@ -2486,7 +2502,8 @@ export const DocumentsTab = () => {
                         <SelectTrigger className={cn(
                           "h-8 w-[100px] text-xs",
                           doc.inserted_in_chat === "health" && "border-red-500/50 text-red-400",
-                          doc.inserted_in_chat === "study" && "border-purple-500/50 text-purple-400"
+                          doc.inserted_in_chat === "study" && "border-purple-500/50 text-purple-400",
+                          doc.inserted_in_chat === "economia" && "border-teal-500/50 text-teal-400"
                         )}>
                           <SelectValue />
                         </SelectTrigger>
@@ -2507,6 +2524,12 @@ export const DocumentsTab = () => {
                             <div className="flex items-center gap-2">
                               <Boxes className="h-3 w-3 text-emerald-500" />
                               <span>both</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="economia">
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="h-3 w-3 text-teal-500" />
+                              <span>economia</span>
                             </div>
                           </SelectItem>
                         </SelectContent>
