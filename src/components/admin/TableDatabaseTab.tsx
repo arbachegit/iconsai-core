@@ -282,6 +282,17 @@ export function TableDatabaseTab() {
   const [currentView, setCurrentView] = useState<DialogView>('detail');
   const [showMonetaryValues, setShowMonetaryValues] = useState(false);
   
+  // Global toggle for PMC group with localStorage persistence
+  const [pmcMonetaryMode, setPmcMonetaryMode] = useState(() => {
+    const saved = localStorage.getItem('pmcTableMonetaryMode');
+    return saved === 'true';
+  });
+  
+  // Persist PMC monetary mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('pmcTableMonetaryMode', pmcMonetaryMode.toString());
+  }, [pmcMonetaryMode]);
+  
   const dashboardAnalytics = useDashboardAnalyticsSafe();
 
   // Fetch indicators with API name
@@ -841,7 +852,7 @@ export function TableDatabaseTab() {
   }
 
   // Render indicator card with knowyou-indicator-card class
-  const renderIndicatorCard = (indicator: IndicatorWithApi) => {
+  const renderIndicatorCard = (indicator: IndicatorWithApi, overrideMonetaryMode?: boolean) => {
     const stats = indicatorStats[indicator.id];
     const unitInfo = formatUnit(indicator.unit);
     const hasData = stats && stats.count > 0;
@@ -854,7 +865,12 @@ export function TableDatabaseTab() {
       <div
         key={indicator.id}
         className="knowyou-indicator-card"
-        onClick={() => handleCardClick(indicator)}
+        onClick={() => {
+          if (overrideMonetaryMode !== undefined) {
+            setShowMonetaryValues(overrideMonetaryMode);
+          }
+          handleCardClick(indicator);
+        }}
       >
         {/* Provider badge + R$ disponível/parcial badge */}
         <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -1044,6 +1060,7 @@ export function TableDatabaseTab() {
             icon: Database
           };
           const GroupIcon = group.icon;
+          const isPmcGroup = key === 'pmc';
 
           return (
             <CollapsibleGroup
@@ -1052,8 +1069,34 @@ export function TableDatabaseTab() {
               icon={<GroupIcon className="h-5 w-5" />}
               count={groupIndicators.length}
               defaultExpanded={false}
+              headerExtra={isPmcGroup ? (
+                <div 
+                  className="flex items-center gap-2 ml-4" 
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span className={cn(
+                    "text-xs font-medium transition-colors",
+                    !pmcMonetaryMode ? "text-primary" : "text-muted-foreground"
+                  )}>Índice</span>
+                  <Switch
+                    checked={pmcMonetaryMode}
+                    onCheckedChange={setPmcMonetaryMode}
+                    className="data-[state=checked]:bg-green-500"
+                  />
+                  <span className={cn(
+                    "text-xs font-medium transition-colors",
+                    pmcMonetaryMode ? "text-green-400" : "text-muted-foreground"
+                  )}>R$</span>
+                </div>
+              ) : undefined}
             >
-              {groupIndicators.map(renderIndicatorCard)}
+              {groupIndicators.map((indicator) => {
+                // For PMC group, apply global monetary mode when opening detail
+                if (isPmcGroup) {
+                  return renderIndicatorCard(indicator, pmcMonetaryMode);
+                }
+                return renderIndicatorCard(indicator);
+              })}
             </CollapsibleGroup>
           );
         })}
