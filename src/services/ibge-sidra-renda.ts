@@ -4,9 +4,10 @@
  * Fonte: PNAD Contínua - Rendimento de todas as fontes
  * Período disponível: 2012-2023 (anual)
  * 
- * NOTE: Sincronização com banco de dados é feita via Edge Function (fetch-economic-data)
- * Este serviço contém apenas funções de fetch para preview e análise local
+ * Inclui funções de fetch para preview/análise e sincronização com Supabase
  */
+
+import { supabase } from '@/integrations/supabase/client';
 
 // ============================================================================
 // TIPOS
@@ -56,6 +57,14 @@ export interface RendaPerCapitaStats {
 // ============================================================================
 // CONFIGURAÇÃO
 // ============================================================================
+
+// UUIDs dos indicadores no banco de dados
+const INDICATOR_IDS = {
+  RENDA_MEDIA: '33162f8c-3f2a-4306-a7ba-65b38f58cb99',
+  RENDA_MEDIA_UF: '5311dc65-8786-4427-b450-3bb8f7504b41',
+  GINI: 'e2f852c0-9b95-4d2e-8f81-7c7b93d2bfbd',
+  GINI_UF: 'a52011cf-4046-4f07-aa06-79fc0fc88627',
+};
 
 const SIDRA_CONFIG = {
   baseUrl: 'https://apisidra.ibge.gov.br/values',
@@ -406,7 +415,170 @@ export function mapearClassesSociais(stats: RendaPerCapitaStats): {
 }
 
 // ============================================================================
+// SINCRONIZAÇÃO COM SUPABASE
+// ============================================================================
+
+/**
+ * Busca dados completos de renda per capita para Brasil e UFs
+ */
+export async function fetchRendaPerCapitaCompleta(
+  startYear: number = 2015,
+  endYear: number = 2023
+): Promise<{
+  brasil: { rendimentoMedio: RendaPerCapitaRecord[]; gini: RendaPerCapitaRecord[] };
+  ufs: { rendimentoMedio: RendaPerCapitaRecord[]; gini: RendaPerCapitaRecord[] };
+}> {
+  const anos = Array.from(
+    { length: endYear - startYear + 1 },
+    (_, i) => startYear + i
+  ).join(',');
+  
+  console.log(`[SIDRA-RENDA] Buscando dados completos de ${startYear} a ${endYear}...`);
+  
+  const [rendimentoBrasil, giniBrasil, rendimentoUF, giniUF] = await Promise.all([
+    fetchRendimentoMedioClasses(anos, 'brasil'),
+    fetchGini(anos, 'brasil'),
+    fetchRendimentoMedioClasses(anos, 'uf'),
+    fetchGini(anos, 'uf'),
+  ]);
+  
+  console.log(`[SIDRA-RENDA] Brasil: ${rendimentoBrasil.length} rendimentos, ${giniBrasil.length} gini`);
+  console.log(`[SIDRA-RENDA] UFs: ${rendimentoUF.length} rendimentos, ${giniUF.length} gini`);
+  
+  return {
+    brasil: { rendimentoMedio: rendimentoBrasil, gini: giniBrasil },
+    ufs: { rendimentoMedio: rendimentoUF, gini: giniUF },
+  };
+}
+
+/**
+ * Sincroniza dados de renda per capita com o Supabase
+ * - Rendimento médio Brasil → indicator_values (RENDA_MEDIA)
+ * - Gini Brasil → indicator_values (GINI)
+ * - Rendimento médio UF → indicator_regional_values (RENDA_MEDIA_UF)
+ * - Gini UF → indicator_regional_values (GINI_UF)
+ */
+export async function syncRendaPerCapitaToSupabase(
+  startYear: number = 2015,
+  endYear: number = 2023
+): Promise<{ inserted: number; errors: string[] }> {
+  const errors: string[] = [];
+  let inserted = 0;
+  
+  try {
+    // Buscar todos os dados
+    const data = await fetchRendaPerCapitaCompleta(startYear, endYear);
+    
+    // Filtrar apenas classe "Total" (49040) para rendimento médio
+    const rendimentoBrasilTotal = data.brasil.rendimentoMedio.filter(r => r.incomeClassCode === '49040');
+    const rendimentoUFTotal = data.ufs.rendimentoMedio.filter(r => r.incomeClassCode === '49040');
+    
+    console.log(`[SIDRA-RENDA] Rendimento médio Brasil (Total): ${rendimentoBrasilTotal.length} registros`);
+    console.log(`[SIDRA-RENDA] Rendimento médio UF (Total): ${rendimentoUFTotal.length} registros`);
+    console.log(`[SIDRA-RENDA] Gini Brasil: ${data.brasil.gini.length} registros`);
+    console.log(`[SIDRA-RENDA] Gini UF: ${data.ufs.gini.length} registros`);
+    
+    // 1. Preparar dados nacionais para indicator_values
+    const nationalValues: { indicator_id: string; reference_date: string; value: number }[] = [];
+    
+    // Rendimento médio Brasil
+    rendimentoBrasilTotal.forEach(r => {
+      nationalValues.push({
+        indicator_id: INDICATOR_IDS.RENDA_MEDIA,
+        reference_date: `${r.year}-01-01`,
+        value: r.value,
+      });
+    });
+    
+    // Gini Brasil
+    data.brasil.gini.forEach(r => {
+      nationalValues.push({
+        indicator_id: INDICATOR_IDS.GINI,
+        reference_date: `${r.year}-01-01`,
+        value: r.value,
+      });
+    });
+    
+    console.log(`[SIDRA-RENDA] Total nacional para upsert: ${nationalValues.length} registros`);
+    
+    // 2. Preparar dados regionais para indicator_regional_values
+    const regionalValues: { indicator_id: string; uf_code: number; reference_date: string; value: number }[] = [];
+    
+    // Rendimento médio UF
+    rendimentoUFTotal.forEach(r => {
+      const ufCode = parseInt(r.regionCode);
+      if (ufCode >= 11 && ufCode <= 53) {
+        regionalValues.push({
+          indicator_id: INDICATOR_IDS.RENDA_MEDIA_UF,
+          uf_code: ufCode,
+          reference_date: `${r.year}-01-01`,
+          value: r.value,
+        });
+      }
+    });
+    
+    // Gini UF
+    data.ufs.gini.forEach(r => {
+      const ufCode = parseInt(r.regionCode);
+      if (ufCode >= 11 && ufCode <= 53) {
+        regionalValues.push({
+          indicator_id: INDICATOR_IDS.GINI_UF,
+          uf_code: ufCode,
+          reference_date: `${r.year}-01-01`,
+          value: r.value,
+        });
+      }
+    });
+    
+    console.log(`[SIDRA-RENDA] Total regional para upsert: ${regionalValues.length} registros`);
+    
+    // 3. Upsert dados nacionais em lotes de 500
+    const BATCH_SIZE = 500;
+    
+    for (let i = 0; i < nationalValues.length; i += BATCH_SIZE) {
+      const batch = nationalValues.slice(i, i + BATCH_SIZE);
+      const { error } = await supabase
+        .from('indicator_values')
+        .upsert(batch, { onConflict: 'indicator_id,reference_date' });
+      
+      if (error) {
+        console.error(`[SIDRA-RENDA] Erro upsert nacional batch ${i}:`, error);
+        errors.push(`Nacional batch ${i}: ${error.message}`);
+      } else {
+        inserted += batch.length;
+        console.log(`[SIDRA-RENDA] Upsert nacional batch ${i}: ${batch.length} registros`);
+      }
+    }
+    
+    // 4. Upsert dados regionais em lotes de 500
+    for (let i = 0; i < regionalValues.length; i += BATCH_SIZE) {
+      const batch = regionalValues.slice(i, i + BATCH_SIZE);
+      const { error } = await supabase
+        .from('indicator_regional_values')
+        .upsert(batch, { onConflict: 'indicator_id,uf_code,reference_date' });
+      
+      if (error) {
+        console.error(`[SIDRA-RENDA] Erro upsert regional batch ${i}:`, error);
+        errors.push(`Regional batch ${i}: ${error.message}`);
+      } else {
+        inserted += batch.length;
+        console.log(`[SIDRA-RENDA] Upsert regional batch ${i}: ${batch.length} registros`);
+      }
+    }
+    
+    console.log(`[SIDRA-RENDA] Sincronização completa: ${inserted} registros inseridos, ${errors.length} erros`);
+    
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[SIDRA-RENDA] Erro na sincronização:', errorMsg);
+    errors.push(errorMsg);
+  }
+  
+  return { inserted, errors };
+}
+
+// ============================================================================
 // EXPORTS
 // ============================================================================
 
-export { SIDRA_CONFIG };
+export { SIDRA_CONFIG, INDICATOR_IDS };
