@@ -37,13 +37,15 @@ async function fetchSIDRARendaData(): Promise<RendaDataResult> {
   const result: RendaDataResult = { national: [], regional: [] };
   
   // Fetch Rendimento Médio (Table 7531) - Brasil and UFs
-  // Class 49040 = Total (all income classes combined)
-  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_CLASSES}/n1/all/v/allxp/p/all/c58/49040/f/n`;
-  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_CLASSES}/n3/all/v/allxp/p/all/c58/49040/f/n`;
+  // Variable 10267 = Rendimento médio mensal real
+  // Remove c58 classification - not compatible with this table
+  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_CLASSES}/n1/all/v/10267/p/all`;
+  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_CLASSES}/n3/all/v/10267/p/all`;
   
   // Fetch GINI (Table 7435) - Brasil and UFs
-  const giniUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.GINI}/n1/all/v/allxp/p/all/f/n`;
-  const giniUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.GINI}/n3/all/v/allxp/p/all/f/n`;
+  // Variable 10681 = Índice de Gini
+  const giniUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.GINI}/n1/all/v/10681/p/all`;
+  const giniUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.GINI}/n3/all/v/10681/p/all`;
   
   console.log('[SIDRA-RENDA] Fetching Rendimento Brasil...');
   try {
