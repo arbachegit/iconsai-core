@@ -44,9 +44,9 @@ async function fetchSIDRARendaData(): Promise<RendaDataResult> {
   
   // Fetch Rendimento Médio Per Capita (Table 7448) - Brasil and UFs
   // v/10824 = Rendimento médio mensal real domiciliar per capita
-  // SEM classificação c1019 - dados agregados diretamente disponíveis
-  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_MEDIO}/n1/all/v/10824/p/all`;
-  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_MEDIO}/n3/all/v/10824/p/all`;
+  // c1019/49040 = Classificação "Total" - OBRIGATÓRIO para obter dados válidos
+  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_MEDIO}/n1/all/v/10824/p/all/c1019/49040`;
+  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_MEDIO}/n3/all/v/10824/p/all/c1019/49040`;
 
   // Fetch GINI (Table 7435) - Brasil and UFs
   // v/10681 = Índice de Gini
