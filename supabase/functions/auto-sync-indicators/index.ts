@@ -48,12 +48,22 @@ async function fetchSIDRARendaData(): Promise<RendaDataResult> {
   console.log('[SIDRA-RENDA] Fetching Rendimento Brasil...');
   try {
     const respRendBR = await fetch(rendimentoUrlBrasil);
+    console.log(`[SIDRA-RENDA] Rendimento Brasil response status: ${respRendBR.status}`);
     if (respRendBR.ok) {
       const data: SIDRARecord[] = await respRendBR.json();
+      console.log(`[SIDRA-RENDA] Rendimento Brasil raw data length: ${data.length}`);
+      if (data.length > 0) {
+        console.log(`[SIDRA-RENDA] Sample row keys: ${Object.keys(data[0]).join(', ')}`);
+        console.log(`[SIDRA-RENDA] Sample row: ${JSON.stringify(data[0])}`);
+        if (data.length > 1) {
+          console.log(`[SIDRA-RENDA] Data row sample: ${JSON.stringify(data[1])}`);
+        }
+      }
       // Skip header row (index 0)
       for (let i = 1; i < data.length; i++) {
         const row = data[i];
-        const year = row['D3C'] || row['D4C']; // Period code
+        // SIDRA columns vary - try multiple possibilities
+        const year = row['D2C'] || row['D3C'] || row['D4C'];
         const value = parseFloat(row['V']);
         if (year && !isNaN(value) && value > 0) {
           result.national.push({
@@ -64,6 +74,9 @@ async function fetchSIDRARendaData(): Promise<RendaDataResult> {
         }
       }
       console.log(`[SIDRA-RENDA] Rendimento Brasil: ${result.national.length} records`);
+    } else {
+      const errorText = await respRendBR.text();
+      console.error(`[SIDRA-RENDA] Rendimento Brasil error: ${errorText}`);
     }
   } catch (err) {
     console.error('[SIDRA-RENDA] Error fetching Rendimento Brasil:', err);
