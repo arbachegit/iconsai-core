@@ -807,6 +807,21 @@ async function fetchIPEADATA(
         }
         
         console.log(`[FETCH-ECONOMIC] [IPEADATA] Total records after pagination: ${allData.length}`);
+        
+        // ========== POST-FETCH DATE FILTER (IPEADATA OData filter often ignored) ==========
+        // IPEADATA API frequently ignores $filter parameter and returns entire series from 1985
+        // Apply client-side filter to ensure only data >= fetchStartDate is returned
+        if (fetchStartDate) {
+          const beforeFilter = allData.length;
+          allData = allData.filter(item => {
+            if (!item.VALDATA) return false;
+            // VALDATA format: "2024-01-01T00:00:00-03:00"
+            const itemDate = item.VALDATA.substring(0, 10);
+            return itemDate >= fetchStartDate;
+          });
+          console.log(`[FETCH-ECONOMIC] [IPEADATA] Post-fetch date filter: ${beforeFilter} → ${allData.length} records (removed ${beforeFilter - allData.length} records before ${fetchStartDate})`);
+        }
+        
         return allData;
       } else {
         console.warn(`[FETCH-ECONOMIC] ⚠️ [IPEADATA] Unexpected response format - no 'value' array`);
