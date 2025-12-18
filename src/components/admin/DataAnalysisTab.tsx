@@ -52,6 +52,8 @@ const INDICATOR_MAPPING: Record<string, string> = {
   "PIB": "pib",
   "DOLAR": "dollar",
   "4099": "unemployment",
+  "RENDA_MEDIA": "income",
+  "GINI": "gini",
 };
 
 const VARIABLES = [
@@ -61,6 +63,8 @@ const VARIABLES = [
   { key: "ipca", label: "IPCA", unit: "%" },
   { key: "pib", label: "PIB", unit: "%" },
   { key: "unemployment", label: "Desemprego", unit: "%" },
+  { key: "income", label: "Renda Per Capita", unit: "R$" },
+  { key: "gini", label: "Índice Gini", unit: "índice" },
 ];
 
 const SLIDER_CONFIG = [
@@ -69,6 +73,7 @@ const SLIDER_CONFIG = [
   { key: "unemployment", label: "Desemprego Futuro (%)", min: 5, max: 15, step: 0.5, unit: "%", baseline: 8, effect: 0.03 },
   { key: "ipca", label: "IPCA Futuro (%)", min: 2, max: 12, step: 0.25, unit: "%", baseline: 5, effect: 0.02 },
   { key: "pib", label: "PIB Futuro (%)", min: -3, max: 5, step: 0.5, unit: "%", baseline: 0, effect: 0.04 },
+  { key: "income", label: "Renda Per Capita (R$)", min: 1000, max: 3000, step: 50, unit: "R$", baseline: 1848, effect: 0.05 },
 ];
 
 const SEASONAL_MULTIPLIERS = [
@@ -86,6 +91,8 @@ interface AnnualData {
   ipca: number;
   pib: number;
   unemployment: number;
+  income: number;
+  gini: number;
   [key: string]: number;
 }
 
@@ -143,6 +150,8 @@ export default function DataAnalysisTab() {
           ipca: 0,
           pib: 0,
           unemployment: 0,
+          income: 0,
+          gini: 0,
         };
         
         for (const [key, values] of Object.entries(yearValues)) {
@@ -178,6 +187,7 @@ export default function DataAnalysisTab() {
     unemployment: 8.0,
     ipca: 5.0,
     pib: 2.0,
+    income: 1848,
   });
 
   // Estados do Dropdown de Correlações
