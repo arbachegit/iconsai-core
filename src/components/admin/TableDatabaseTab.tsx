@@ -835,9 +835,11 @@ export function TableDatabaseTab() {
     filteredIndicators.forEach(indicator => {
       const stats = indicatorStats[indicator.id];
       if (stats && stats.count > 0) {
-        const startDate = new Date(stats.min);
-        const endDate = new Date(stats.max);
-        const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
+        const startYear = parseInt(stats.min.substring(0, 4));
+        const startMonth = parseInt(stats.min.substring(5, 7));
+        const endYear = parseInt(stats.max.substring(0, 4));
+        const endMonth = parseInt(stats.max.substring(5, 7));
+        const monthsDiff = (endYear - startYear) * 12 + (endMonth - startMonth);
         const avgPerMonth = stats.count / Math.max(monthsDiff, 1);
         
         if (avgPerMonth > 20) counts.daily++;

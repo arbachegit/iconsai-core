@@ -35,9 +35,8 @@ export default function MonthlyMatrixView({ indicatorId, values, unit, onValueCh
     const years = new Set<number>();
 
     values.forEach(v => {
-      const date = new Date(v.reference_date);
-      const year = date.getFullYear();
-      const month = date.getMonth(); // 0-11
+      const year = parseInt(v.reference_date.substring(0, 4));
+      const month = parseInt(v.reference_date.substring(5, 7)) - 1; // 0-11
       years.add(year);
 
       if (!data[year]) data[year] = {};

@@ -109,7 +109,7 @@ export default function DataAnalysisTab() {
       const yearMap = new Map<number, Record<string, number[]>>();
       
       for (const row of data || []) {
-        const year = new Date(row.reference_date).getFullYear();
+        const year = parseInt(row.reference_date.substring(0, 4));
         const code = codeById.get(row.indicator_id);
         
         if (!code) {
