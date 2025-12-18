@@ -211,6 +211,11 @@ const CATEGORY_GROUPS = {
     icon: TrendingUp,
     codes: ['IPCA', 'IPCA_BCB', 'SELIC', 'SELIC_IPEADATA', 'SELIC_OVER', 'CDI', 'DOLAR', 'DOLAR_PTAX_COMPRA', 'PIB', 'NY.GDP.PCAP.PP.CD', '4099', 'POP_RESIDENTE']
   },
+  renda: {
+    title: 'Renda e Distribuição',
+    icon: Activity,
+    codes: ['RENDA_MEDIA', 'RENDA_MEDIA_UF', 'GINI', 'GINI_UF']
+  },
   pmc: {
     title: 'PMC - Pesquisa Mensal do Comércio',
     icon: BarChart3,
