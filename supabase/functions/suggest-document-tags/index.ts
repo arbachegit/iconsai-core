@@ -57,8 +57,45 @@ ${mergeRules.map(r => `- "${r.source_tag}" → USE "${r.canonical_tag}"`).join('
 NUNCA gere as tags do lado esquerdo. SEMPRE use as tags do lado direito.`
       : '';
     
+    // Build contextual guidance based on chatType
+    let contextualGuidance = '';
+    
+    if (chatType === 'economia') {
+      contextualGuidance = `
+🎯 CONTEXTO: Este documento é de ECONOMIA/FINANÇAS.
+
+TAGS PRIORITÁRIAS para documentos de economia:
+- Tags Pai RECOMENDADAS: "Economia", "Indicadores Econômicos", "Política Monetária", "Mercado de Trabalho", "Finanças", "Comércio"
+- Tags Filho RECOMENDADAS: "IPCA", "Selic", "PIB", "Inflação", "Câmbio", "Dólar", "Renda", "Desemprego", "Juros", "PMC", "Varejo", "Investimentos", "CDI", "PTAX"
+
+⚠️ EVITE tags genéricas como "Metodologia", "Linguística", "Categoria", "Relatório", "JEL Classification", "Administração Pública", "Séries Temporais", "Estatística".
+PRIORIZE tags específicas de economia que ajudem na busca por indicadores e conceitos econômicos brasileiros.
+`;
+    } else if (chatType === 'health') {
+      contextualGuidance = `
+🎯 CONTEXTO: Este documento é de SAÚDE.
+
+TAGS PRIORITÁRIAS para documentos de saúde:
+- Tags Pai RECOMENDADAS: "Saúde", "Medicina", "Tratamentos", "Prevenção", "Bem-estar", "Hospital"
+- Tags Filho: termos médicos específicos extraídos do documento
+
+⚠️ EVITE tags genéricas. PRIORIZE termos médicos e de saúde.
+`;
+    } else if (chatType === 'study') {
+      contextualGuidance = `
+🎯 CONTEXTO: Este documento é de ESTUDO/EDUCAÇÃO.
+
+TAGS PRIORITÁRIAS para documentos de estudo:
+- Tags Pai RECOMENDADAS: "Educação", "Tecnologia", "Inteligência Artificial", "Inovação", "Pesquisa"
+- Tags Filho: conceitos técnicos específicos do documento
+
+⚠️ EVITE tags genéricas. PRIORIZE termos técnicos e educacionais.
+`;
+    }
+    
     // Use Lovable AI to generate hierarchical tags with context of existing tags
     const systemPrompt = `Você é um especialista em categorização de documentos. Analise o texto e gere tags hierárquicas.
+${contextualGuidance}
 
 TAGS EXISTENTES NO SISTEMA:
 ${existingTagNames.length > 0 ? existingTagNames.map(name => `- "${name}"`).join('\n') : '(Nenhuma tag existente)'}
