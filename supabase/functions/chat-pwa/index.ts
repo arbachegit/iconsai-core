@@ -135,70 +135,8 @@ function formatIndicatorsContext(
   return lines.join('\n');
 }
 
-// Gera contexto emocional baseado nos indicadores para orientar o tom do LLM
-function getEmotionalContext(
-  indicators: Record<string, { value: number; date: string; unit: string; name: string }>
-): string {
-  const contexts: string[] = [];
-  
-  for (const [code, data] of Object.entries(indicators)) {
-    switch (code) {
-      case 'IPCA':
-        if (data.value > 6) {
-          contexts.push('A inflação está ALTA - demonstre preocupação e empatia, reconheça que está difícil');
-        } else if (data.value < 4) {
-          contexts.push('A inflação está controlada - seja positivo e animado, celebre a boa notícia');
-        } else {
-          contexts.push('A inflação está em nível moderado - seja equilibrado');
-        }
-        break;
-      
-      case 'SELIC':
-        if (data.value > 12) {
-          contexts.push('Juros ALTOS - reconheça que empréstimos estão caros, demonstre compreensão');
-        } else if (data.value < 8) {
-          contexts.push('Juros baixos - seja otimista sobre crédito e investimentos');
-        }
-        break;
-      
-      case 'DOLAR':
-        if (data.value > 5.5) {
-          contexts.push('Dólar CARO - mostre empatia com quem quer viajar, importar ou tem dívidas em dólar');
-        } else if (data.value < 5) {
-          contexts.push('Dólar em bom patamar - seja positivo sobre importações e viagens');
-        }
-        break;
-      
-      case '4099': // Desemprego
-        if (data.value > 8) {
-          contexts.push('Desemprego ALTO - seja MUITO empático e solidário, reconheça que afeta famílias inteiras');
-        } else if (data.value < 7) {
-          contexts.push('Desemprego em queda - celebre a boa notícia, seja animado');
-        }
-        break;
-      
-      case 'GINI':
-        if (data.value > 0.5) {
-          contexts.push('Desigualdade ALTA - demonstre preocupação social');
-        }
-        break;
-      
-      case 'PMC':
-        if (data.value > 105) {
-          contexts.push('Comércio aquecido - seja otimista sobre a economia');
-        } else if (data.value < 95) {
-          contexts.push('Comércio em baixa - demonstre compreensão sobre momento difícil');
-        }
-        break;
-    }
-  }
-  
-  if (contexts.length > 0) {
-    return `\n\n## CONTEXTO EMOCIONAL (ajuste seu tom!):\n${contexts.join('\n')}`;
-  }
-  
-  return '';
-}
+// Contexto emocional REMOVIDO - causava cacoetes excessivos
+// Agora o tom é controlado apenas pelo system_prompt do agente
 
 // Buscar ou criar sessão e histórico recente
 async function getRecentHistory(
@@ -376,13 +314,10 @@ serve(async (req) => {
     console.log("[chat-pwa] Indicadores detectados:", detectedIndicators);
 
     let indicatorsContext = '';
-    let emotionalContext = '';
     if (detectedIndicators.length > 0) {
       const indicatorData = await fetchLatestIndicators(supabase, detectedIndicators);
       indicatorsContext = formatIndicatorsContext(indicatorData);
-      emotionalContext = getEmotionalContext(indicatorData);
       console.log("[chat-pwa] Dados encontrados:", Object.keys(indicatorData));
-      console.log("[chat-pwa] Contexto emocional:", emotionalContext ? 'ativo' : 'neutro');
     }
 
     // 6. Buscar contexto RAG (se configurado)
