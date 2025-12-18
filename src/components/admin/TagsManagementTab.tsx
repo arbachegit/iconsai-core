@@ -790,6 +790,7 @@ export const TagsManagementTab = () => {
                     data={[
                       { name: 'Saúde', value: parentTags.filter(t => t.target_chat === 'health').length, fill: 'hsl(142, 71%, 45%)' },
                       { name: 'Estudo', value: parentTags.filter(t => t.target_chat === 'study').length, fill: 'hsl(262, 83%, 58%)' },
+                      { name: 'Economia', value: parentTags.filter(t => t.target_chat === 'economia').length, fill: 'hsl(45, 93%, 47%)' },
                       { name: 'Não definido', value: parentTags.filter(t => !t.target_chat).length, fill: 'hsl(220, 10%, 50%)' },
                     ].filter(d => d.value > 0)}
                     dataKey="value"

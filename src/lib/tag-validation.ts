@@ -19,7 +19,7 @@ export interface TagValidationResult {
   isValid: boolean;
   violations: TagViolation[];
   score: number; // 0-100
-  domain: 'general' | 'health' | 'study';
+  domain: 'general' | 'health' | 'study' | 'economia';
 }
 
 // Portuguese and English stopwords that should never be parent tags
@@ -167,7 +167,7 @@ export function isValidHealthTerminology(text: string, scopeTopics: string[]): b
  */
 export async function validateParentTag(
   tagName: string, 
-  domain: 'general' | 'health' | 'study' = 'general'
+  domain: 'general' | 'health' | 'study' | 'economia' = 'general'
 ): Promise<TagValidationResult> {
   const violations: TagViolation[] = [];
   

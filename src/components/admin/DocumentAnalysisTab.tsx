@@ -320,7 +320,7 @@ export const DocumentAnalysisTab = () => {
   };
 
   // Determine domain from selected tags
-  const getSelectedTagsDomain = (): 'general' | 'health' | 'study' => {
+  const getSelectedTagsDomain = (): 'general' | 'health' | 'study' | 'economia' => {
     const selectedTags = getSelectedTagsForModal();
     if (selectedTags.length === 0) return 'general';
     
@@ -330,9 +330,11 @@ export const DocumentAnalysisTab = () => {
     
     const hasHealth = docs.some(d => d.target_chat === 'health');
     const hasStudy = docs.some(d => d.target_chat === 'study');
+    const hasEconomia = docs.some(d => d.target_chat === 'economia');
     
-    if (hasHealth && !hasStudy) return 'health';
-    if (hasStudy && !hasHealth) return 'study';
+    if (hasHealth && !hasStudy && !hasEconomia) return 'health';
+    if (hasStudy && !hasHealth && !hasEconomia) return 'study';
+    if (hasEconomia && !hasHealth && !hasStudy) return 'economia';
     return 'general';
   };
 
