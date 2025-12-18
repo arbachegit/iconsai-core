@@ -135,6 +135,7 @@ export default function ApiManagementTab() {
   const [testAllProgress, setTestAllProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
   const [syncingAllApis, setSyncingAllApis] = useState(false);
   const [syncAllProgress, setSyncAllProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
+  const [syncingRenda, setSyncingRenda] = useState(false);
   const [sortColumn, setSortColumn] = useState<SortColumn>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -684,6 +685,27 @@ export default function ApiManagementTab() {
     setCurrentSyncingName('');
     toast.success(`Sincronização concluída: ${successCount}/${indicators.length} indicadores OK`);
     fetchApis();
+  };
+
+  const handleSyncRenda = async () => {
+    setSyncingRenda(true);
+    try {
+      const response = await supabase.functions.invoke('auto-sync-indicators');
+      if (response.error) throw response.error;
+      
+      const rendaResult = response.data?.results?.find((r: any) => r.api === 'SIDRA Renda Per Capita');
+      if (rendaResult) {
+        toast.success(`Renda Per Capita sincronizada: ${rendaResult.insertedCount || 0} registros`);
+      } else {
+        toast.success('Sincronização SIDRA iniciada com sucesso');
+      }
+      fetchApis();
+    } catch (error: any) {
+      logger.error('[SYNC-RENDA] Erro:', error);
+      toast.error(`Erro ao sincronizar Renda: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setSyncingRenda(false);
+    }
   };
 
   const handleViewLog = (api: ApiRegistry) => {
@@ -1305,6 +1327,25 @@ export default function ApiManagementTab() {
                   <>
                     <Database className="h-3.5 w-3.5" />
                     Sincronizar Todos
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncRenda}
+                disabled={syncingRenda}
+                className="gap-1.5 border-emerald-500/40 text-emerald-400 hover:bg-emerald-600 hover:text-white hover:border-emerald-600"
+              >
+                {syncingRenda ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    Sincronizando...
+                  </>
+                ) : (
+                  <>
+                    <Database className="h-3.5 w-3.5" />
+                    Sincronizar Renda (SIDRA)
                   </>
                 )}
               </Button>
