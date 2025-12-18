@@ -1603,7 +1603,8 @@ export const DocumentsTab = () => {
         is_inserted: true,
         inserted_in_chat: targetChat,
         inserted_at: new Date().toISOString(),
-        redirected_from: 'general'
+        redirected_from: 'general',
+        target_chat: targetChat
       }).eq("id", docId);
       if (error) throw error;
 
@@ -3271,12 +3272,12 @@ export const DocumentsTab = () => {
           <div className="space-y-4 py-4">
             <p className="text-sm">Escolha em qual chat este documento será inserido:</p>
             
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" className="h-20 flex-col gap-2 border-purple-500/30 hover:border-purple-500 hover:bg-purple-500/10" onClick={() => manualInsertMutation.mutate({
+            <div className="grid grid-cols-3 gap-3">
+              <Button variant="outline" className="h-20 flex-col gap-2 border-red-500/30 hover:border-red-500 hover:bg-red-500/10" onClick={() => manualInsertMutation.mutate({
               docId: insertionModalDoc?.id,
               targetChat: 'health'
             })} disabled={manualInsertMutation.isPending}>
-                <span className="text-2xl">🏥</span>
+                <Heart className="h-6 w-6 text-red-500" />
                 <span className="font-medium">Health</span>
                 <span className="text-xs text-muted-foreground">Saúde</span>
               </Button>
@@ -3285,9 +3286,18 @@ export const DocumentsTab = () => {
               docId: insertionModalDoc?.id,
               targetChat: 'study'
             })} disabled={manualInsertMutation.isPending}>
-                <span className="text-2xl">📚</span>
+                <BookOpen className="h-6 w-6 text-blue-500" />
                 <span className="font-medium">Study</span>
                 <span className="text-xs text-muted-foreground">Estudo</span>
+              </Button>
+              
+              <Button variant="outline" className="h-20 flex-col gap-2 border-teal-500/30 hover:border-teal-500 hover:bg-teal-500/10" onClick={() => manualInsertMutation.mutate({
+              docId: insertionModalDoc?.id,
+              targetChat: 'economia'
+            })} disabled={manualInsertMutation.isPending}>
+                <TrendingUp className="h-6 w-6 text-teal-500" />
+                <span className="font-medium">Economia</span>
+                <span className="text-xs text-muted-foreground">Finanças</span>
               </Button>
             </div>
             
