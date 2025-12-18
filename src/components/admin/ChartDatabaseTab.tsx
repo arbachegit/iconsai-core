@@ -214,7 +214,7 @@ const CATEGORY_GROUPS = {
   renda: {
     title: 'Renda e Distribuição',
     icon: Activity,
-    codes: ['RENDA_MEDIA', 'RENDA_MEDIA_UF', 'GINI', 'GINI_UF']
+    codes: ['RENDA_MEDIA', 'RENDA_MEDIA_UF', 'GINI', 'GINI_UF', 'RENDA_CLASSE_A', 'RENDA_CLASSE_B', 'RENDA_CLASSE_C', 'RENDA_CLASSE_D', 'RENDA_CLASSE_E']
   },
   pmc: {
     title: 'PMC - Pesquisa Mensal do Comércio',
