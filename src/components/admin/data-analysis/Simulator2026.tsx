@@ -123,28 +123,40 @@ export function Simulator2026({ annualData }: Simulator2026Props) {
     return { base, projected, change };
   }, [sliders, annualData]);
 
-  // Dados para o gráfico de projeção
-  const chartData = useMemo(() => {
+  // Dados HISTÓRICOS - FIXOS (não dependem dos sliders!)
+  const historicalData = useMemo(() => {
     if (!annualData?.length) return [];
-    
-    const historical = annualData
-      .filter(d => d.sales > 0 && d.year >= 2020)
+    return annualData
+      .filter(d => d.sales > 0 && d.year >= 2020 && d.year <= 2025)
       .map(d => ({
         year: d.year,
         historical: Math.round(d.sales * 10) / 10,
-        projected: null as number | null,
       }));
+  }, [annualData]); // SÓ depende de annualData, NÃO dos sliders
+
+  // Dados do gráfico - Combina histórico FIXO + projeção DINÂMICA
+  const chartData = useMemo(() => {
+    if (!historicalData.length) return [];
     
-    // Adicionar projeção 2026
+    // Calcular intervalo de confiança (±10% para IC 95%)
+    const ci = projection.projected * 0.10;
+    
     return [
-      ...historical,
+      ...historicalData.map(h => ({
+        ...h,
+        projected: null as number | null,
+        ciLow: null as number | null,
+        ciHigh: null as number | null,
+      })),
       {
         year: 2026,
         historical: null,
         projected: projection.projected,
+        ciLow: Math.round((projection.projected - ci) * 10) / 10,
+        ciHigh: Math.round((projection.projected + ci) * 10) / 10,
       },
     ];
-  }, [annualData, projection.projected]);
+  }, [historicalData, projection.projected]);
 
   return (
     <div className="space-y-6">
@@ -215,6 +227,24 @@ export function Simulator2026({ annualData }: Simulator2026Props) {
                   }}
                 />
                 <ReferenceLine x={2026} stroke="hsl(var(--primary))" strokeDasharray="3 3" />
+                {/* Área de Incerteza 95% para projeção */}
+                <Area
+                  type="monotone"
+                  dataKey="ciHigh"
+                  stroke="none"
+                  fill="hsl(var(--primary))"
+                  fillOpacity={0.15}
+                  connectNulls={false}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="ciLow"
+                  stroke="none"
+                  fill="hsl(var(--background))"
+                  fillOpacity={1}
+                  connectNulls={false}
+                />
+                {/* Histórico - FIXO */}
                 <Area
                   type="monotone"
                   dataKey="historical"
@@ -224,6 +254,7 @@ export function Simulator2026({ annualData }: Simulator2026Props) {
                   strokeWidth={2}
                   connectNulls={false}
                 />
+                {/* Projeção - DINÂMICA */}
                 <Line
                   type="monotone"
                   dataKey="projected"
