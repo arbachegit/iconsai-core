@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,12 +8,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
   ResponsiveContainer, ScatterChart, Scatter, ZAxis, Cell, 
-  ComposedChart, Area, ReferenceLine 
+  ComposedChart, Area, ReferenceLine, AreaChart, BarChart, Bar
 } from "recharts";
-import { Calculator, TrendingUp, AlertTriangle, Plus, X, RefreshCw, BarChart3, Loader2 } from "lucide-react";
+import { Calculator, TrendingUp, AlertTriangle, Plus, X, RefreshCw, BarChart3, Loader2, Bot, Smile, Frown, Meh } from "lucide-react";
 import { spearmanCorrelation, findOptimalLag, getCorrelationStrengthPtBr } from "@/lib/time-series-correlation";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Simple linear regression implementation
 function linearRegression(data: [number, number][]): { equation: [number, number]; r2: number } {
@@ -54,6 +55,19 @@ const INDICATOR_MAPPING: Record<string, string> = {
   "4099": "unemployment",
   "RENDA_MEDIA": "income",
   "GINI": "gini",
+  // Classes sociais
+  "RENDA_CLASSE_A": "incomeClassA",
+  "RENDA_CLASSE_B": "incomeClassB",
+  "RENDA_CLASSE_C": "incomeClassC",
+  "RENDA_CLASSE_D": "incomeClassD",
+  "RENDA_CLASSE_E": "incomeClassE",
+  // PMC por setor
+  "PMC_VEST": "pmcVest",
+  "PMC_MOV": "pmcMov",
+  "PMC_FARM": "pmcFarm",
+  "PMC_COMB": "pmcComb",
+  "PMC_VEIC": "pmcVeic",
+  "PMC_CONST": "pmcConst",
 };
 
 const VARIABLES = [
@@ -82,6 +96,44 @@ const SEASONAL_MULTIPLIERS = [
   { label: "🥚 Páscoa", value: "+15%" },
 ];
 
+// Cores para classes sociais
+const CLASS_COLORS = {
+  A: "#3B82F6", // azul
+  B: "#10B981", // verde
+  C: "#F59E0B", // amarelo
+  D: "#F97316", // laranja
+  E: "#EF4444", // vermelho
+};
+
+// PMC por setor
+const PMC_SECTORS = [
+  { key: "sales", code: "PMC", label: "PMC Geral" },
+  { key: "pmcVest", code: "PMC_VEST", label: "Vestuário" },
+  { key: "pmcMov", code: "PMC_MOV", label: "Móveis" },
+  { key: "pmcFarm", code: "PMC_FARM", label: "Farmácia" },
+  { key: "pmcComb", code: "PMC_COMB", label: "Combustíveis" },
+  { key: "pmcVeic", code: "PMC_VEIC", label: "Veículos" },
+  { key: "pmcConst", code: "PMC_CONST", label: "Mat. Construção" },
+];
+
+// Cenários do Simulador 2026
+const SCENARIOS_2026 = {
+  neutral: { renda: 1950, dolar: 5.80, selic: 12.5, ipca: 4.5, desemprego: 7.5 },
+  optimistic: { renda: 2200, dolar: 5.20, selic: 10.0, ipca: 3.5, desemprego: 6.0 },
+  pessimistic: { renda: 1750, dolar: 6.50, selic: 15.0, ipca: 6.5, desemprego: 9.5 },
+};
+
+// Eventos sazonais 2026
+const SEASONAL_2026 = [
+  { label: "🎭 Carnaval", month: "Fev", multiplier: 0.12 },
+  { label: "👩 Mães", month: "Mai", multiplier: 0.18 },
+  { label: "💕 Namorados", month: "Jun", multiplier: 0.08 },
+  { label: "👨 Pais", month: "Ago", multiplier: 0.10 },
+  { label: "🧒 Crianças", month: "Out", multiplier: 0.15 },
+  { label: "🛒 Black Friday", month: "Nov", multiplier: 0.30 },
+  { label: "🎄 Natal", month: "Dez", multiplier: 0.45 },
+];
+
 // Tipo para dados anuais
 interface AnnualData {
   year: number;
@@ -93,6 +145,17 @@ interface AnnualData {
   unemployment: number;
   income: number;
   gini: number;
+  incomeClassA: number;
+  incomeClassB: number;
+  incomeClassC: number;
+  incomeClassD: number;
+  incomeClassE: number;
+  pmcVest: number;
+  pmcMov: number;
+  pmcFarm: number;
+  pmcComb: number;
+  pmcVeic: number;
+  pmcConst: number;
   [key: string]: number;
 }
 
@@ -152,6 +215,17 @@ export default function DataAnalysisTab() {
           unemployment: 0,
           income: 0,
           gini: 0,
+          incomeClassA: 0,
+          incomeClassB: 0,
+          incomeClassC: 0,
+          incomeClassD: 0,
+          incomeClassE: 0,
+          pmcVest: 0,
+          pmcMov: 0,
+          pmcFarm: 0,
+          pmcComb: 0,
+          pmcVeic: 0,
+          pmcConst: 0,
         };
         
         for (const [key, values] of Object.entries(yearValues)) {
@@ -193,6 +267,59 @@ export default function DataAnalysisTab() {
   // Estados do Dropdown de Correlações
   const [customCorrelations, setCustomCorrelations] = useState<string[]>([]);
   const [showCorrelationPicker, setShowCorrelationPicker] = useState(false);
+
+  // Estados dos novos gráficos
+  const [selectedPmcSector, setSelectedPmcSector] = useState("sales");
+  const [showAnalyticalCharts, setShowAnalyticalCharts] = useState(true);
+
+  // Estados do Simulador 2026
+  const [show2026Simulator, setShow2026Simulator] = useState(false);
+  const [isAnimating2026, setIsAnimating2026] = useState(false);
+  const [activeScenario, setActiveScenario] = useState<"neutral" | "optimistic" | "pessimistic">("neutral");
+  const [sliders2026, setSliders2026] = useState(SCENARIOS_2026.neutral);
+  const animationRef = useRef<number | null>(null);
+
+  // Função para animar sliders do cenário 2026
+  const applyScenario2026 = (scenario: "neutral" | "optimistic" | "pessimistic") => {
+    if (isAnimating2026) return;
+    
+    setIsAnimating2026(true);
+    setActiveScenario(scenario);
+    const target = SCENARIOS_2026[scenario];
+    const start = { ...sliders2026 };
+    const duration = 1500;
+    const startTime = Date.now();
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+
+      setSliders2026({
+        renda: start.renda + (target.renda - start.renda) * eased,
+        dolar: start.dolar + (target.dolar - start.dolar) * eased,
+        selic: start.selic + (target.selic - start.selic) * eased,
+        ipca: start.ipca + (target.ipca - start.ipca) * eased,
+        desemprego: start.desemprego + (target.desemprego - start.desemprego) * eased,
+      });
+
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      } else {
+        setIsAnimating2026(false);
+      }
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
 
   // Dados prontos para uso (fallback vazio se loading)
   const data = annualData || [];
@@ -271,7 +398,154 @@ export default function DataAnalysisTab() {
   }, [data]);
 
   // ============================================
-  // PARTE 2: SIMULADOR PREDITIVO
+  // DADOS PARA GRÁFICOS ANALÍTICOS (4 novos)
+  // ============================================
+
+  // Gráfico 1: Renda Per Capita (dados + trend line)
+  const rendaChartData = useMemo(() => {
+    const rendaData = data.filter(d => d.income > 0).map(d => ({
+      year: d.year,
+      income: d.income,
+    }));
+    
+    if (rendaData.length < 2) return { data: rendaData, trendLine: [] };
+    
+    const dataPoints: [number, number][] = rendaData.map(d => [d.year, d.income]);
+    const regression = linearRegression(dataPoints);
+    const [intercept, slope] = regression.equation;
+    
+    const trendLine = rendaData.map(d => ({
+      year: d.year,
+      trend: slope * d.year + intercept,
+    }));
+    
+    return { 
+      data: rendaData.map((d, i) => ({ ...d, trend: trendLine[i]?.trend || 0 })),
+      r2: regression.r2,
+      slope 
+    };
+  }, [data]);
+
+  // Gráfico 2: Vendas do Setor (PMC por setor, anualizado)
+  const pmcSectorChartData = useMemo(() => {
+    const sectorData = data.filter(d => d.year >= 2010).map(d => ({
+      year: d.year,
+      sales: d.sales,
+      pmcVest: d.pmcVest,
+      pmcMov: d.pmcMov,
+      pmcFarm: d.pmcFarm,
+      pmcComb: d.pmcComb,
+      pmcVeic: d.pmcVeic,
+      pmcConst: d.pmcConst,
+    }));
+    return sectorData;
+  }, [data]);
+
+  // Gráfico 3: Impacto Renda vs Vendas (ScatterChart com regressão)
+  const rendaVsVendasData = useMemo(() => {
+    const validData = data.filter(d => d.income > 0 && d.sales > 0);
+    if (validData.length < 3) return { data: [], r2: 0, elasticity: 0 };
+    
+    const scatterPoints = validData.map(d => ({
+      income: d.income,
+      sales: d.sales,
+      year: d.year,
+    }));
+    
+    const dataPoints: [number, number][] = validData.map(d => [d.income, d.sales]);
+    const regression = linearRegression(dataPoints);
+    const [intercept, slope] = regression.equation;
+    
+    // Elasticidade: (∂Y/∂X) * (X̄/Ȳ)
+    const avgIncome = validData.reduce((sum, d) => sum + d.income, 0) / validData.length;
+    const avgSales = validData.reduce((sum, d) => sum + d.sales, 0) / validData.length;
+    const elasticity = slope * (avgIncome / avgSales);
+    
+    // Linha de regressão
+    const minIncome = Math.min(...validData.map(d => d.income));
+    const maxIncome = Math.max(...validData.map(d => d.income));
+    const regressionLine = [
+      { income: minIncome, trendSales: slope * minIncome + intercept },
+      { income: maxIncome, trendSales: slope * maxIncome + intercept },
+    ];
+    
+    return { data: scatterPoints, regressionLine, r2: regression.r2, elasticity };
+  }, [data]);
+
+  // Gráfico 4: Participação Classes Sociais (Stacked 100%)
+  const classesChartData = useMemo(() => {
+    const classData = data.filter(d => 
+      d.incomeClassA > 0 || d.incomeClassB > 0 || d.incomeClassC > 0 || 
+      d.incomeClassD > 0 || d.incomeClassE > 0
+    ).map(d => {
+      const total = d.incomeClassA + d.incomeClassB + d.incomeClassC + d.incomeClassD + d.incomeClassE;
+      if (total === 0) return null;
+      return {
+        year: d.year,
+        A: (d.incomeClassA / total) * 100,
+        B: (d.incomeClassB / total) * 100,
+        C: (d.incomeClassC / total) * 100,
+        D: (d.incomeClassD / total) * 100,
+        E: (d.incomeClassE / total) * 100,
+        rawA: d.incomeClassA,
+        rawB: d.incomeClassB,
+        rawC: d.incomeClassC,
+        rawD: d.incomeClassD,
+        rawE: d.incomeClassE,
+      };
+    }).filter(Boolean);
+    return classData;
+  }, [data]);
+
+  // ============================================
+  // DADOS PARA SIMULADOR 2026
+  // ============================================
+
+  const simulator2026Data = useMemo(() => {
+    // Dados históricos de vendas (PMC)
+    const historicalSales = data.filter(d => d.sales > 0).map(d => ({
+      year: d.year,
+      sales: d.sales,
+      type: "historical" as const,
+    }));
+
+    if (historicalSales.length < 3) return { chartData: [], projection: 0 };
+
+    // Regressão para projeção base
+    const dataPoints: [number, number][] = historicalSales.map(d => [d.year, d.sales]);
+    const regression = linearRegression(dataPoints);
+    const [intercept, slope] = regression.equation;
+
+    // Calcular projeção 2026 com ajustes dos sliders
+    const baseProjection = slope * 2026 + intercept;
+    
+    // Efeitos dos sliders (simplificado)
+    const rendaEffect = ((sliders2026.renda - 1950) / 1950) * 0.3;
+    const dolarEffect = ((5.80 - sliders2026.dolar) / 5.80) * 0.1;
+    const selicEffect = ((12.5 - sliders2026.selic) / 12.5) * 0.15;
+    const ipcaEffect = ((4.5 - sliders2026.ipca) / 4.5) * 0.1;
+    const desempregoEffect = ((7.5 - sliders2026.desemprego) / 7.5) * 0.2;
+
+    const totalEffect = 1 + rendaEffect + dolarEffect + selicEffect + ipcaEffect + desempregoEffect;
+    const projection2026 = baseProjection * totalEffect;
+
+    // Dados do gráfico
+    const chartData = [
+      ...historicalSales,
+      { year: 2026, sales: projection2026, type: "projection" as const },
+    ];
+
+    // Barras sazonais
+    const seasonalBars = SEASONAL_2026.map(s => ({
+      ...s,
+      value: projection2026 * s.multiplier,
+    }));
+
+    return { chartData, projection: projection2026, seasonalBars };
+  }, [data, sliders2026]);
+
+  // ============================================
+  // PARTE 2: SIMULADOR PREDITIVO (existente)
   // ============================================
 
   const { chartData, modelMetrics, sensitivity } = useMemo(() => {
@@ -583,7 +857,525 @@ export default function DataAnalysisTab() {
       </Card>
 
       {/* ============================================ */}
-      {/* PARTE 2: SIMULADOR PREDITIVO */}
+      {/* GRÁFICOS ANALÍTICOS (4 novos) */}
+      {/* ============================================ */}
+
+      <div className="flex items-center gap-4">
+        <Button
+          variant={showAnalyticalCharts ? "default" : "outline"}
+          onClick={() => setShowAnalyticalCharts(!showAnalyticalCharts)}
+          className="gap-2"
+        >
+          <BarChart3 className="h-4 w-4" />
+          {showAnalyticalCharts ? "Ocultar" : "Mostrar"} Gráficos Analíticos
+        </Button>
+        <Button
+          variant={show2026Simulator ? "default" : "outline"}
+          onClick={() => setShow2026Simulator(!show2026Simulator)}
+          className="gap-2"
+        >
+          <Calculator className="h-4 w-4" />
+          Simulador 2026
+        </Button>
+      </div>
+
+      {showAnalyticalCharts && (
+        <Tabs defaultValue="renda" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
+            <TabsTrigger value="renda">Renda Per Capita</TabsTrigger>
+            <TabsTrigger value="vendas">Vendas por Setor</TabsTrigger>
+            <TabsTrigger value="impacto">Renda vs Vendas</TabsTrigger>
+            <TabsTrigger value="classes">Classes Sociais</TabsTrigger>
+          </TabsList>
+
+          {/* TAB 1: RENDA PER CAPITA */}
+          <TabsContent value="renda">
+            <Card className="border-border/50 bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Renda Per Capita (2012-2025)</CardTitle>
+                <CardDescription className="flex items-center gap-2">
+                  Evolução com linha de tendência
+                  {rendaChartData.r2 && (
+                    <Badge variant="outline">R² = {rendaChartData.r2.toFixed(3)}</Badge>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={rendaChartData.data} margin={{ top: 10, right: 30, bottom: 20, left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="year" 
+                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                        tickFormatter={(v) => `R$ ${v.toLocaleString("pt-BR")}`}
+                        width={80}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                        }}
+                        formatter={(value: number, name: string) => [
+                          `R$ ${value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}`,
+                          name === "income" ? "Renda" : "Tendência"
+                        ]}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="income"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: "hsl(var(--primary))" }}
+                        name="Renda Per Capita"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="trend"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        dot={false}
+                        name="Tendência"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* TAB 2: VENDAS DO SETOR */}
+          <TabsContent value="vendas">
+            <Card className="border-border/50 bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Vendas por Setor (PMC)</CardTitle>
+                    <CardDescription>Dados anualizados com linha de tendência</CardDescription>
+                  </div>
+                  <Select value={selectedPmcSector} onValueChange={setSelectedPmcSector}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Selecione setor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PMC_SECTORS.map(s => (
+                        <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={pmcSectorChartData} margin={{ top: 10, right: 30, bottom: 20, left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="year" 
+                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                        tickFormatter={(v) => v.toFixed(0)}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey={selectedPmcSector}
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: "hsl(var(--primary))" }}
+                        name={PMC_SECTORS.find(s => s.key === selectedPmcSector)?.label || "PMC"}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* TAB 3: IMPACTO RENDA VS VENDAS */}
+          <TabsContent value="impacto">
+            <Card className="border-border/50 bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Impacto: Renda vs Vendas</CardTitle>
+                    <CardDescription>Correlação com linha de regressão</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Badge variant="outline">R² = {rendaVsVendasData.r2.toFixed(3)}</Badge>
+                    <Badge variant={rendaVsVendasData.elasticity > 0 ? "default" : "destructive"}>
+                      Elasticidade: {rendaVsVendasData.elasticity.toFixed(2)}
+                    </Badge>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart margin={{ top: 10, right: 30, bottom: 20, left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="income"
+                        type="number"
+                        domain={["auto", "auto"]}
+                        tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                        tickFormatter={(v) => `R$ ${v}`}
+                        label={{ value: "Renda Per Capita (R$)", position: "bottom", fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                        tickFormatter={(v) => v.toFixed(0)}
+                        label={{ value: "PMC", angle: -90, position: "insideLeft", fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                        }}
+                        formatter={(value: number, name: string) => [
+                          name === "sales" ? value.toFixed(1) : `R$ ${value.toLocaleString("pt-BR")}`,
+                          name === "sales" ? "PMC" : "Renda"
+                        ]}
+                        labelFormatter={(_, payload) => {
+                          const item = payload?.[0]?.payload;
+                          return item ? `Ano: ${item.year}` : "";
+                        }}
+                      />
+                      <Scatter 
+                        data={rendaVsVendasData.data} 
+                        fill="hsl(var(--primary))"
+                        name="Anos"
+                      >
+                        {rendaVsVendasData.data.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill="hsl(var(--primary))" />
+                        ))}
+                      </Scatter>
+                      <Line
+                        data={rendaVsVendasData.regressionLine}
+                        type="linear"
+                        dataKey="trendSales"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        dot={false}
+                        name="Regressão"
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* TAB 4: PARTICIPAÇÃO CLASSES SOCIAIS */}
+          <TabsContent value="classes">
+            <Card className="border-border/50 bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Participação das Classes Sociais</CardTitle>
+                <CardDescription>Distribuição percentual da renda (2012-2025)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={classesChartData} stackOffset="expand" margin={{ top: 10, right: 30, bottom: 20, left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="year" 
+                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                        tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                        }}
+                        formatter={(value: number, name: string, props: any) => {
+                          const raw = props.payload?.[`raw${name}`];
+                          return [
+                            `${(value * 100).toFixed(1)}% (R$ ${raw?.toLocaleString("pt-BR") || "N/A"})`,
+                            `Classe ${name}`
+                          ];
+                        }}
+                      />
+                      <Legend />
+                      <Area type="monotone" dataKey="E" stackId="1" stroke={CLASS_COLORS.E} fill={CLASS_COLORS.E} name="E (20% mais pobres)" />
+                      <Area type="monotone" dataKey="D" stackId="1" stroke={CLASS_COLORS.D} fill={CLASS_COLORS.D} name="D (20%)" />
+                      <Area type="monotone" dataKey="C" stackId="1" stroke={CLASS_COLORS.C} fill={CLASS_COLORS.C} name="C (40% classe média)" />
+                      <Area type="monotone" dataKey="B" stackId="1" stroke={CLASS_COLORS.B} fill={CLASS_COLORS.B} name="B (15%)" />
+                      <Area type="monotone" dataKey="A" stackId="1" stroke={CLASS_COLORS.A} fill={CLASS_COLORS.A} name="A (Top 5%)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
+
+      {/* ============================================ */}
+      {/* SIMULADOR 2026 */}
+      {/* ============================================ */}
+
+      {show2026Simulator && (
+        <Card className="border-border/50 bg-card/50 backdrop-blur">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Calculator className="h-5 w-5 text-primary" />
+              Simulador de Cenários 2026
+              {isAnimating2026 && <Bot className="h-5 w-5 animate-spin text-primary" />}
+            </CardTitle>
+            <CardDescription>Projete vendas 2026 com base em variáveis macroeconômicas</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* GRÁFICO DE PROJEÇÃO */}
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={simulator2026Data.chartData} margin={{ top: 10, right: 30, bottom: 20, left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis 
+                    dataKey="year" 
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickFormatter={(v) => v.toFixed(0)}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                    }}
+                    formatter={(value: number) => [value.toFixed(1), "PMC"]}
+                  />
+                  <Legend />
+                  <Area
+                    type="monotone"
+                    dataKey="sales"
+                    fill="hsl(var(--primary))"
+                    fillOpacity={0.2}
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    name="PMC"
+                    dot={(props: any) => {
+                      const { cx, cy, payload } = props;
+                      if (payload.type === "projection") {
+                        return <circle cx={cx} cy={cy} r={6} fill="#10b981" stroke="#10b981" />;
+                      }
+                      return <circle cx={cx} cy={cy} r={4} fill="hsl(var(--primary))" />;
+                    }}
+                  />
+                  <ReferenceLine
+                    x={2025}
+                    stroke="hsl(var(--destructive))"
+                    strokeDasharray="3 3"
+                    label={{ value: "2026 →", position: "top", fontSize: 10, fill: "hsl(var(--destructive))" }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* SLIDERS + CENÁRIOS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* SLIDERS */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-foreground">Parâmetros Macroeconômicos</h4>
+                
+                {/* Renda */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Renda Per Capita</span>
+                    <span className="font-medium">R$ {sliders2026.renda.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</span>
+                  </div>
+                  <Slider
+                    value={[sliders2026.renda]}
+                    onValueChange={([v]) => setSliders2026(prev => ({ ...prev, renda: v }))}
+                    min={1500}
+                    max={2500}
+                    step={50}
+                    disabled={isAnimating2026}
+                  />
+                </div>
+
+                {/* Dólar */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Dólar</span>
+                    <span className="font-medium">R$ {sliders2026.dolar.toFixed(2)}</span>
+                  </div>
+                  <Slider
+                    value={[sliders2026.dolar]}
+                    onValueChange={([v]) => setSliders2026(prev => ({ ...prev, dolar: v }))}
+                    min={4.5}
+                    max={7.5}
+                    step={0.1}
+                    disabled={isAnimating2026}
+                  />
+                </div>
+
+                {/* Selic */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Selic</span>
+                    <span className="font-medium">{sliders2026.selic.toFixed(1)}%</span>
+                  </div>
+                  <Slider
+                    value={[sliders2026.selic]}
+                    onValueChange={([v]) => setSliders2026(prev => ({ ...prev, selic: v }))}
+                    min={8}
+                    max={18}
+                    step={0.5}
+                    disabled={isAnimating2026}
+                  />
+                </div>
+
+                {/* IPCA */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">IPCA</span>
+                    <span className="font-medium">{sliders2026.ipca.toFixed(1)}%</span>
+                  </div>
+                  <Slider
+                    value={[sliders2026.ipca]}
+                    onValueChange={([v]) => setSliders2026(prev => ({ ...prev, ipca: v }))}
+                    min={2}
+                    max={10}
+                    step={0.5}
+                    disabled={isAnimating2026}
+                  />
+                </div>
+
+                {/* Desemprego */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Desemprego</span>
+                    <span className="font-medium">{sliders2026.desemprego.toFixed(1)}%</span>
+                  </div>
+                  <Slider
+                    value={[sliders2026.desemprego]}
+                    onValueChange={([v]) => setSliders2026(prev => ({ ...prev, desemprego: v }))}
+                    min={4}
+                    max={12}
+                    step={0.5}
+                    disabled={isAnimating2026}
+                  />
+                </div>
+              </div>
+
+              {/* BOTÕES DE CENÁRIO */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-foreground">Cenários Pré-definidos</h4>
+                <div className="grid grid-cols-3 gap-3">
+                  <Button
+                    variant={activeScenario === "optimistic" ? "default" : "outline"}
+                    className="flex flex-col items-center gap-1 h-auto py-4"
+                    onClick={() => applyScenario2026("optimistic")}
+                    disabled={isAnimating2026}
+                  >
+                    <Smile className="h-6 w-6 text-emerald-400" />
+                    <span>Otimista</span>
+                    <span className="text-[10px] text-muted-foreground">😊</span>
+                  </Button>
+                  <Button
+                    variant={activeScenario === "neutral" ? "default" : "outline"}
+                    className="flex flex-col items-center gap-1 h-auto py-4"
+                    onClick={() => applyScenario2026("neutral")}
+                    disabled={isAnimating2026}
+                  >
+                    <Meh className="h-6 w-6 text-amber-400" />
+                    <span>Neutro</span>
+                    <span className="text-[10px] text-muted-foreground">😐</span>
+                  </Button>
+                  <Button
+                    variant={activeScenario === "pessimistic" ? "default" : "outline"}
+                    className="flex flex-col items-center gap-1 h-auto py-4"
+                    onClick={() => applyScenario2026("pessimistic")}
+                    disabled={isAnimating2026}
+                  >
+                    <Frown className="h-6 w-6 text-red-400" />
+                    <span>Pessimista</span>
+                    <span className="text-[10px] text-muted-foreground">😟</span>
+                  </Button>
+                </div>
+
+                {/* Projeção resultado */}
+                <div className="p-4 rounded-lg bg-primary/10 border border-primary/30 text-center">
+                  <p className="text-sm text-muted-foreground">Projeção PMC 2026</p>
+                  <p className="text-3xl font-bold text-primary">{simulator2026Data.projection.toFixed(1)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* BARRAS SAZONAIS */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-foreground">Eventos Sazonais 2026</h4>
+              <div className="h-[180px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={simulator2026Data.seasonalBars} margin={{ top: 10, right: 30, bottom: 20, left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                    <XAxis 
+                      dataKey="label" 
+                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                      tickFormatter={(v) => v.toFixed(0)}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                      }}
+                      formatter={(value: number, name: string, props: any) => [
+                        `${value.toFixed(1)} (+${(props.payload.multiplier * 100).toFixed(0)}%)`,
+                        props.payload.label
+                      ]}
+                    />
+                    <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
+                      {simulator2026Data.seasonalBars?.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.multiplier >= 0.30 ? "#10b981" : entry.multiplier >= 0.15 ? "#f59e0b" : "hsl(var(--primary))"}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ============================================ */}
+      {/* PARTE 2: SIMULADOR PREDITIVO (existente) */}
       {/* ============================================ */}
 
       {/* TOGGLE + ANO DE CORTE + R² */}
