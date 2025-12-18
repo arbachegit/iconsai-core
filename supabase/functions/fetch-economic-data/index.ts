@@ -1586,7 +1586,11 @@ serve(async (req) => {
           }
           
           data = { value: ipeadataData };
-          rawResponse = { value: ipeadataData.slice(0, 50) }; // Limit for observability
+          // Sort by date descending and get most recent 50 records for observability
+          const sortedForDisplay = [...ipeadataData].sort((a, b) => 
+            b.VALDATA.localeCompare(a.VALDATA)
+          );
+          rawResponse = { value: sortedForDisplay.slice(0, 50) };
           syncMetadata = generateIPEADATASyncMetadata({ value: ipeadataData });
           httpStatus = ipeadataData.length > 0 ? 200 : null;
           console.log(`[FETCH-ECONOMIC] 📊 IPEADATA fetch complete for ${indicator.name}: ${ipeadataData.length} data points`);
