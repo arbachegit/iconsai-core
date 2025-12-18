@@ -201,7 +201,12 @@ const CATEGORY_GROUPS = {
   pmc: {
     title: 'PMC - Pesquisa Mensal do Comércio',
     icon: BarChart3,
-    codes: ['PMC', 'PMC_COMB', 'PMC_FARM', 'PMC_MOV', 'PMC_VEST', 'PMC_CONST', 'PMC_VEIC', 'PMC_COMBUSTIVEIS_UF', 'PMC_FARMACIA_UF', 'PMC_MOVEIS_UF', 'PMC_VESTUARIO_UF', 'PMC_CONSTRUCAO_UF', 'PMC_VEICULOS_UF', 'PMC_VAREJO_UF']
+    codes: ['PMC', 'PMC_COMB', 'PMC_FARM', 'PMC_MOV', 'PMC_VEST', 'PMC_CONST', 'PMC_VEIC']
+  },
+  pmcRegional: {
+    title: 'PMC - Pesquisa Mensal do Comércio (Regional)',
+    icon: MapPin,
+    codes: ['PMC_COMBUSTIVEIS_UF', 'PMC_FARMACIA_UF', 'PMC_MOVEIS_UF', 'PMC_VESTUARIO_UF', 'PMC_CONSTRUCAO_UF', 'PMC_VEICULOS_UF', 'PMC_VAREJO_UF', 'PMC_COMB_UF', 'PMC_FARM_UF', 'PMC_MOV_UF', 'PMC_VEST_UF', 'PMC_CONST_UF', 'PMC_VEIC_UF']
   },
   pac: {
     title: 'PAC - Pesquisa Anual do Comércio',
@@ -282,16 +287,27 @@ export function TableDatabaseTab() {
   const [currentView, setCurrentView] = useState<DialogView>('detail');
   const [showMonetaryValues, setShowMonetaryValues] = useState(false);
   
-  // Global toggle for PMC group with localStorage persistence
-  const [pmcMonetaryMode, setPmcMonetaryMode] = useState(() => {
-    const saved = localStorage.getItem('pmcTableMonetaryMode');
+  // Global toggle for PMC Nacional group with localStorage persistence
+  const [pmcNationalMonetaryMode, setPmcNationalMonetaryMode] = useState(() => {
+    const saved = localStorage.getItem('pmcTableNationalMonetaryMode');
     return saved === 'true';
   });
   
-  // Persist PMC monetary mode to localStorage
+  // Global toggle for PMC Regional group with localStorage persistence
+  const [pmcRegionalMonetaryMode, setPmcRegionalMonetaryMode] = useState(() => {
+    const saved = localStorage.getItem('pmcTableRegionalMonetaryMode');
+    return saved === 'true';
+  });
+  
+  // Persist PMC Nacional monetary mode to localStorage
   useEffect(() => {
-    localStorage.setItem('pmcTableMonetaryMode', pmcMonetaryMode.toString());
-  }, [pmcMonetaryMode]);
+    localStorage.setItem('pmcTableNationalMonetaryMode', pmcNationalMonetaryMode.toString());
+  }, [pmcNationalMonetaryMode]);
+  
+  // Persist PMC Regional monetary mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('pmcTableRegionalMonetaryMode', pmcRegionalMonetaryMode.toString());
+  }, [pmcRegionalMonetaryMode]);
   
   const dashboardAnalytics = useDashboardAnalyticsSafe();
 
@@ -1060,7 +1076,11 @@ export function TableDatabaseTab() {
             icon: Database
           };
           const GroupIcon = group.icon;
-          const isPmcGroup = key === 'pmc';
+          const isPmcNationalGroup = key === 'pmc';
+          const isPmcRegionalGroup = key === 'pmcRegional';
+          const showToggle = isPmcNationalGroup || isPmcRegionalGroup;
+          const toggleMode = isPmcRegionalGroup ? pmcRegionalMonetaryMode : pmcNationalMonetaryMode;
+          const setToggleMode = isPmcRegionalGroup ? setPmcRegionalMonetaryMode : setPmcNationalMonetaryMode;
 
           return (
             <CollapsibleGroup
@@ -1069,31 +1089,32 @@ export function TableDatabaseTab() {
               icon={<GroupIcon className="h-5 w-5" />}
               count={groupIndicators.length}
               defaultExpanded={false}
-              headerExtra={isPmcGroup ? (
+              headerExtra={showToggle ? (
                 <div 
                   className="flex items-center gap-2 ml-4" 
                   onClick={(e) => e.stopPropagation()}
                 >
                   <span className={cn(
                     "text-xs font-medium transition-colors",
-                    !pmcMonetaryMode ? "text-primary" : "text-muted-foreground"
+                    !toggleMode ? "text-primary" : "text-muted-foreground"
                   )}>Índice</span>
                   <Switch
-                    checked={pmcMonetaryMode}
-                    onCheckedChange={setPmcMonetaryMode}
+                    checked={toggleMode}
+                    onCheckedChange={setToggleMode}
                     className="data-[state=checked]:bg-green-500"
                   />
                   <span className={cn(
                     "text-xs font-medium transition-colors",
-                    pmcMonetaryMode ? "text-green-400" : "text-muted-foreground"
+                    toggleMode ? "text-green-400" : "text-muted-foreground"
                   )}>R$</span>
                 </div>
               ) : undefined}
             >
               {groupIndicators.map((indicator) => {
-                // For PMC group, apply global monetary mode when opening detail
-                if (isPmcGroup) {
-                  return renderIndicatorCard(indicator, pmcMonetaryMode);
+                // For PMC groups, apply corresponding monetary mode when opening detail
+                if (isPmcNationalGroup || isPmcRegionalGroup) {
+                  const currentToggleMode = isPmcRegionalGroup ? pmcRegionalMonetaryMode : pmcNationalMonetaryMode;
+                  return renderIndicatorCard(indicator, currentToggleMode);
                 }
                 return renderIndicatorCard(indicator);
               })}
