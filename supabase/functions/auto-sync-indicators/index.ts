@@ -36,16 +36,18 @@ interface RendaDataResult {
 async function fetchSIDRARendaData(): Promise<RendaDataResult> {
   const result: RendaDataResult = { national: [], regional: [] };
   
+  // Maps for deduplication (key = indicator_id|reference_date or indicator_id|reference_date|uf_code)
+  const nationalMap = new Map<string, { indicator_id: string; reference_date: string; value: number }>();
+  const regionalMap = new Map<string, { indicator_id: string; reference_date: string; value: number; uf_code: number }>();
+  
   // Fetch Rendimento Médio (Table 7531) - Brasil and UFs
-  // Variable 10267 = Rendimento médio mensal real
-  // Remove c58 classification - not compatible with this table
-  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_CLASSES}/n1/all/v/10267/p/all`;
-  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_CLASSES}/n3/all/v/10267/p/all`;
+  // Use v/all to get all variables available
+  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_CLASSES}/n1/all/v/all/p/all`;
+  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_CLASSES}/n3/all/v/all/p/all`;
   
   // Fetch GINI (Table 7435) - Brasil and UFs
-  // Variable 10681 = Índice de Gini
-  const giniUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.GINI}/n1/all/v/10681/p/all`;
-  const giniUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.GINI}/n3/all/v/10681/p/all`;
+  const giniUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.GINI}/n1/all/v/all/p/all`;
+  const giniUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.GINI}/n3/all/v/all/p/all`;
   
   console.log('[SIDRA-RENDA] Fetching Rendimento Brasil...');
   try {
@@ -54,28 +56,38 @@ async function fetchSIDRARendaData(): Promise<RendaDataResult> {
     if (respRendBR.ok) {
       const data: SIDRARecord[] = await respRendBR.json();
       console.log(`[SIDRA-RENDA] Rendimento Brasil raw data length: ${data.length}`);
-      if (data.length > 0) {
-        console.log(`[SIDRA-RENDA] Sample row keys: ${Object.keys(data[0]).join(', ')}`);
-        console.log(`[SIDRA-RENDA] Sample row: ${JSON.stringify(data[0])}`);
-        if (data.length > 1) {
-          console.log(`[SIDRA-RENDA] Data row sample: ${JSON.stringify(data[1])}`);
-        }
+      if (data.length > 1) {
+        console.log(`[SIDRA-RENDA] Header row: ${JSON.stringify(data[0])}`);
+        console.log(`[SIDRA-RENDA] First data row: ${JSON.stringify(data[1])}`);
       }
       // Skip header row (index 0)
       for (let i = 1; i < data.length; i++) {
         const row = data[i];
-        // SIDRA columns vary - try multiple possibilities
-        const year = row['D2C'] || row['D3C'] || row['D4C'];
+        // Find year column - look for 4-digit year pattern
+        let year = '';
+        for (const key of Object.keys(row)) {
+          if (key.startsWith('D') && key.endsWith('C')) {
+            const val = row[key];
+            if (/^\d{4}$/.test(val)) {
+              year = val;
+              break;
+            }
+          }
+        }
         const value = parseFloat(row['V']);
         if (year && !isNaN(value) && value > 0) {
-          result.national.push({
-            indicator_id: INDICATOR_IDS.RENDA_MEDIA,
-            reference_date: `${year}-01-01`,
-            value
-          });
+          const key = `${INDICATOR_IDS.RENDA_MEDIA}|${year}-01-01`;
+          // Keep highest value if duplicate
+          if (!nationalMap.has(key) || value > nationalMap.get(key)!.value) {
+            nationalMap.set(key, {
+              indicator_id: INDICATOR_IDS.RENDA_MEDIA,
+              reference_date: `${year}-01-01`,
+              value
+            });
+          }
         }
       }
-      console.log(`[SIDRA-RENDA] Rendimento Brasil: ${result.national.length} records`);
+      console.log(`[SIDRA-RENDA] Rendimento Brasil: ${nationalMap.size} unique records`);
     } else {
       const errorText = await respRendBR.text();
       console.error(`[SIDRA-RENDA] Rendimento Brasil error: ${errorText}`);
@@ -87,25 +99,46 @@ async function fetchSIDRARendaData(): Promise<RendaDataResult> {
   console.log('[SIDRA-RENDA] Fetching Rendimento UFs...');
   try {
     const respRendUF = await fetch(rendimentoUrlUF);
+    console.log(`[SIDRA-RENDA] Rendimento UFs response status: ${respRendUF.status}`);
     if (respRendUF.ok) {
       const data: SIDRARecord[] = await respRendUF.json();
-      let ufCount = 0;
+      console.log(`[SIDRA-RENDA] Rendimento UFs raw data length: ${data.length}`);
+      if (data.length > 1) {
+        console.log(`[SIDRA-RENDA] UF Header row: ${JSON.stringify(data[0])}`);
+        console.log(`[SIDRA-RENDA] UF First data row: ${JSON.stringify(data[1])}`);
+      }
       for (let i = 1; i < data.length; i++) {
         const row = data[i];
-        const ufCode = parseInt(row['D1C'] || row['D2C'], 10); // UF code
-        const year = row['D3C'] || row['D4C']; // Period code
+        // D1C is typically UF code for n3 (state level)
+        const ufCode = parseInt(row['D1C'], 10);
+        // Find year column
+        let year = '';
+        for (const key of Object.keys(row)) {
+          if (key.startsWith('D') && key.endsWith('C') && key !== 'D1C') {
+            const val = row[key];
+            if (/^\d{4}$/.test(val)) {
+              year = val;
+              break;
+            }
+          }
+        }
         const value = parseFloat(row['V']);
         if (ufCode >= 11 && ufCode <= 53 && year && !isNaN(value) && value > 0) {
-          result.regional.push({
-            indicator_id: INDICATOR_IDS.RENDA_MEDIA_UF,
-            reference_date: `${year}-01-01`,
-            value,
-            uf_code: ufCode
-          });
-          ufCount++;
+          const key = `${INDICATOR_IDS.RENDA_MEDIA_UF}|${year}-01-01|${ufCode}`;
+          if (!regionalMap.has(key) || value > regionalMap.get(key)!.value) {
+            regionalMap.set(key, {
+              indicator_id: INDICATOR_IDS.RENDA_MEDIA_UF,
+              reference_date: `${year}-01-01`,
+              value,
+              uf_code: ufCode
+            });
+          }
         }
       }
-      console.log(`[SIDRA-RENDA] Rendimento UFs: ${ufCount} records`);
+      console.log(`[SIDRA-RENDA] Rendimento UFs: ${[...regionalMap.values()].filter(r => r.indicator_id === INDICATOR_IDS.RENDA_MEDIA_UF).length} unique records`);
+    } else {
+      const errorText = await respRendUF.text();
+      console.error(`[SIDRA-RENDA] Rendimento UFs error: ${errorText}`);
     }
   } catch (err) {
     console.error('[SIDRA-RENDA] Error fetching Rendimento UFs:', err);
@@ -114,23 +147,43 @@ async function fetchSIDRARendaData(): Promise<RendaDataResult> {
   console.log('[SIDRA-RENDA] Fetching GINI Brasil...');
   try {
     const respGiniBR = await fetch(giniUrlBrasil);
+    console.log(`[SIDRA-RENDA] GINI Brasil response status: ${respGiniBR.status}`);
     if (respGiniBR.ok) {
       const data: SIDRARecord[] = await respGiniBR.json();
-      let giniCount = 0;
+      console.log(`[SIDRA-RENDA] GINI Brasil raw data length: ${data.length}`);
+      if (data.length > 1) {
+        console.log(`[SIDRA-RENDA] GINI Header row: ${JSON.stringify(data[0])}`);
+        console.log(`[SIDRA-RENDA] GINI First data row: ${JSON.stringify(data[1])}`);
+      }
       for (let i = 1; i < data.length; i++) {
         const row = data[i];
-        const year = row['D2C'] || row['D3C']; // Period code
+        // Find year column
+        let year = '';
+        for (const key of Object.keys(row)) {
+          if (key.startsWith('D') && key.endsWith('C')) {
+            const val = row[key];
+            if (/^\d{4}$/.test(val)) {
+              year = val;
+              break;
+            }
+          }
+        }
         const value = parseFloat(row['V']);
         if (year && !isNaN(value) && value > 0) {
-          result.national.push({
-            indicator_id: INDICATOR_IDS.GINI,
-            reference_date: `${year}-01-01`,
-            value
-          });
-          giniCount++;
+          const key = `${INDICATOR_IDS.GINI}|${year}-01-01`;
+          if (!nationalMap.has(key) || value > nationalMap.get(key)!.value) {
+            nationalMap.set(key, {
+              indicator_id: INDICATOR_IDS.GINI,
+              reference_date: `${year}-01-01`,
+              value
+            });
+          }
         }
       }
-      console.log(`[SIDRA-RENDA] GINI Brasil: ${giniCount} records`);
+      console.log(`[SIDRA-RENDA] GINI Brasil: ${[...nationalMap.values()].filter(r => r.indicator_id === INDICATOR_IDS.GINI).length} unique records`);
+    } else {
+      const errorText = await respGiniBR.text();
+      console.error(`[SIDRA-RENDA] GINI Brasil error: ${errorText}`);
     }
   } catch (err) {
     console.error('[SIDRA-RENDA] Error fetching GINI Brasil:', err);
@@ -139,29 +192,56 @@ async function fetchSIDRARendaData(): Promise<RendaDataResult> {
   console.log('[SIDRA-RENDA] Fetching GINI UFs...');
   try {
     const respGiniUF = await fetch(giniUrlUF);
+    console.log(`[SIDRA-RENDA] GINI UFs response status: ${respGiniUF.status}`);
     if (respGiniUF.ok) {
       const data: SIDRARecord[] = await respGiniUF.json();
-      let giniUFCount = 0;
+      console.log(`[SIDRA-RENDA] GINI UFs raw data length: ${data.length}`);
+      if (data.length > 1) {
+        console.log(`[SIDRA-RENDA] GINI UF Header row: ${JSON.stringify(data[0])}`);
+        console.log(`[SIDRA-RENDA] GINI UF First data row: ${JSON.stringify(data[1])}`);
+      }
       for (let i = 1; i < data.length; i++) {
         const row = data[i];
-        const ufCode = parseInt(row['D1C'] || row['D2C'], 10); // UF code
-        const year = row['D2C'] || row['D3C']; // Period code (may shift based on territorial level)
+        // D1C is UF code for n3 level
+        const ufCode = parseInt(row['D1C'], 10);
+        // Find year column (not D1C which is UF)
+        let year = '';
+        for (const key of Object.keys(row)) {
+          if (key.startsWith('D') && key.endsWith('C') && key !== 'D1C') {
+            const val = row[key];
+            if (/^\d{4}$/.test(val)) {
+              year = val;
+              break;
+            }
+          }
+        }
         const value = parseFloat(row['V']);
         if (ufCode >= 11 && ufCode <= 53 && year && !isNaN(value) && value > 0) {
-          result.regional.push({
-            indicator_id: INDICATOR_IDS.GINI_UF,
-            reference_date: `${year}-01-01`,
-            value,
-            uf_code: ufCode
-          });
-          giniUFCount++;
+          const key = `${INDICATOR_IDS.GINI_UF}|${year}-01-01|${ufCode}`;
+          if (!regionalMap.has(key) || value > regionalMap.get(key)!.value) {
+            regionalMap.set(key, {
+              indicator_id: INDICATOR_IDS.GINI_UF,
+              reference_date: `${year}-01-01`,
+              value,
+              uf_code: ufCode
+            });
+          }
         }
       }
-      console.log(`[SIDRA-RENDA] GINI UFs: ${giniUFCount} records`);
+      console.log(`[SIDRA-RENDA] GINI UFs: ${[...regionalMap.values()].filter(r => r.indicator_id === INDICATOR_IDS.GINI_UF).length} unique records`);
+    } else {
+      const errorText = await respGiniUF.text();
+      console.error(`[SIDRA-RENDA] GINI UFs error: ${errorText}`);
     }
   } catch (err) {
     console.error('[SIDRA-RENDA] Error fetching GINI UFs:', err);
   }
+  
+  // Convert Maps to arrays
+  result.national = [...nationalMap.values()];
+  result.regional = [...regionalMap.values()];
+  
+  console.log(`[SIDRA-RENDA] Total unique records - National: ${result.national.length}, Regional: ${result.regional.length}`);
   
   return result;
 }
