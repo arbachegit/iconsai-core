@@ -374,8 +374,6 @@ serve(async (req) => {
 
 ${indicatorsContext}
 
-${emotionalContext}
-
 ${ragContext ? `
 ## CONTEXTO DOS DOCUMENTOS (use para responder):
 ${ragContext}
@@ -386,11 +384,9 @@ ${userContext}
 ${memoryContext}
 
 ## INSTRUÇÕES FINAIS:
-- Se o usuário já perguntou algo similar antes, mencione: "Como conversamos antes..."
-- Varie suas respostas, não repita frases iguais
-- Seja natural e amigável
-- Respostas CURTAS (máximo 4-5 frases para áudio)
+- Respostas CURTAS (máximo 3 frases)
 - SEMPRE cite a fonte e data quando mencionar dados econômicos
+- Seja direto, sem enrolação
 `;
 
     // 9. Chamar Lovable AI Gateway
