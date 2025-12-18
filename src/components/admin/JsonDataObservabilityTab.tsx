@@ -269,35 +269,40 @@ export const JsonDataObservabilityTab = () => {
         }
       }
     } else if (api.provider === 'IPEADATA') {
-      // IPEADATA OData format: { value: [{VALDATA, VALVALOR, SERCODIGO, ...}] }
-      const ipeaData = rawJson as { value?: Array<{ VALDATA?: string; VALVALOR?: number | null; SERCODIGO?: string }> };
-      if (ipeaData?.value && Array.isArray(ipeaData.value)) {
-        for (const item of ipeaData.value) {
-          if (!item.VALDATA || item.VALVALOR === null || item.VALVALOR === undefined) continue;
-          
-          // IPEADATA date is ISO format: "2024-01-01T00:00:00-03:00"
-          const refDate = item.VALDATA.substring(0, 10);
-          
-          parsed.push({
-            date: refDate,
-            value: item.VALVALOR,
-            indicator: indicatorName
-          });
+      // IPEADATA OData format can be:
+      // 1. { value: [{VALDATA, VALVALOR, ...}] }
+      // 2. [{ "@odata.context": "...", "value": [...] }] - array wrapper with OData context
+      // 3. [{ value: [...] }] - array wrapper
+      let valueArray: Array<{ VALDATA?: string; VALVALOR?: number | null; SERCODIGO?: string }> = [];
+      
+      // Handle array wrapper format
+      if (Array.isArray(rawJson) && rawJson.length > 0) {
+        const firstItem = rawJson[0] as Record<string, unknown>;
+        if (firstItem && 'value' in firstItem && Array.isArray(firstItem.value)) {
+          valueArray = firstItem.value;
+        } else if (rawJson.every((item: unknown) => typeof item === 'object' && item !== null && 'VALDATA' in (item as Record<string, unknown>))) {
+          // Direct array of IPEADATA items
+          valueArray = rawJson as typeof valueArray;
+        }
+      } else {
+        // Direct object format: { value: [...] }
+        const ipeaData = rawJson as { value?: typeof valueArray };
+        if (ipeaData?.value && Array.isArray(ipeaData.value)) {
+          valueArray = ipeaData.value;
         }
       }
-    } else if (api.provider === 'WorldBank') {
-      // WorldBank format: [metadata, dataArray]
-      const worldBankData = rawJson as [unknown, Array<{ date?: string; value?: number | string | null; country?: { value: string }; indicator?: { value: string } }>];
-      if (Array.isArray(worldBankData) && worldBankData.length >= 2 && Array.isArray(worldBankData[1])) {
-        for (const item of worldBankData[1]) {
-          if (item.value !== null && item.value !== undefined && item.date) {
-            parsed.push({
-              date: `${item.date}-01-01`,
-              value: typeof item.value === 'string' ? parseFloat(item.value) : item.value,
-              indicator: item.indicator?.value || indicatorName
-            });
-          }
-        }
+      
+      for (const item of valueArray) {
+        if (!item.VALDATA || item.VALVALOR === null || item.VALVALOR === undefined) continue;
+        
+        // IPEADATA date is ISO format: "2024-01-01T00:00:00-03:00"
+        const refDate = item.VALDATA.substring(0, 10);
+        
+        parsed.push({
+          date: refDate,
+          value: item.VALVALOR,
+          indicator: indicatorName
+        });
       }
     }
 
