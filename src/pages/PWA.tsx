@@ -81,6 +81,10 @@ export default function PWA() {
   // Parar gravação
   const stopRecording = () => {
     if (mediaRecorderRef.current && state === "recording") {
+      // Flush any buffered audio data before stopping
+      if (mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.requestData();
+      }
       mediaRecorderRef.current.stop();
       streamRef.current?.getTracks().forEach(track => track.stop());
       vibrate([50, 50, 50]);
@@ -91,88 +95,114 @@ export default function PWA() {
   // Processar áudio: STT → Agent → TTS
   const processAudio = async () => {
     try {
+      // Check if we have audio data
+      if (audioChunksRef.current.length === 0) {
+        throw new Error("Nenhum áudio capturado. Tente gravar por mais tempo.");
+      }
+
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      
+      if (audioBlob.size === 0) {
+        throw new Error("Áudio vazio. Tente gravar novamente.");
+      }
+
+      console.log("[PWA] Audio blob size:", audioBlob.size, "bytes");
       
       const reader = new FileReader();
       reader.readAsDataURL(audioBlob);
       
       reader.onloadend = async () => {
-        const base64Audio = reader.result as string;
-        
-        // 1. STT - Transcrever áudio
-        console.log("[PWA] Enviando para STT...");
-        const { data: sttData, error: sttError } = await supabase.functions.invoke('voice-to-text', {
-          body: { audio: base64Audio }
-        });
-        
-        if (sttError || !sttData?.text) {
-          throw new Error(sttError?.message || "Erro na transcrição");
-        }
-        
-        console.log("[PWA] Transcrição:", sttData.text);
-        
-        // 2. Agent - Enviar para o agente de economia
-        console.log("[PWA] Enviando para agente...");
-        const { data: agentData, error: agentError } = await supabase.functions.invoke('chat-pwa', {
-          body: {
-            message: sttData.text,
-            agentSlug: 'economia',
-            sessionId: `pwa-${Date.now()}`,
+        try {
+          const base64Audio = reader.result as string;
+          const base64Data = base64Audio.split(',')[1] || '';
+          
+          if (!base64Data || base64Data.length < 100) {
+            toast.error("Áudio muito curto. Fale por mais tempo.");
+            setState("idle");
+            return;
           }
-        });
+          
+          console.log("[PWA] Base64 length:", base64Data.length);
         
-        if (agentError) {
-          throw new Error(agentError.message || "Erro no agente");
-        }
-        
-        const responseText = agentData?.response || "Desculpe, não consegui processar sua pergunta.";
-        console.log("[PWA] Resposta do agente:", responseText);
-        
-        // 3. TTS - Gerar áudio da resposta
-        console.log("[PWA] Gerando áudio...");
-        const ttsResponse = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            },
-            body: JSON.stringify({ 
-              text: responseText,
-              chatType: 'economia'
-            }),
+          // 1. STT - Transcrever áudio
+          console.log("[PWA] Enviando para STT...");
+          const { data: sttData, error: sttError } = await supabase.functions.invoke('voice-to-text', {
+            body: { audio: base64Audio }
+          });
+          
+          if (sttError || !sttData?.text) {
+            throw new Error(sttError?.message || "Erro na transcrição");
           }
-        );
-        
-        if (!ttsResponse.ok) {
-          throw new Error("Erro ao gerar áudio");
-        }
-        
-        const ttsBlob = await ttsResponse.blob();
-        const url = URL.createObjectURL(ttsBlob);
-        
-        if (audioUrl) {
-          URL.revokeObjectURL(audioUrl);
-        }
-        
-        setAudioUrl(url);
-        setState("ready");
-        
-        setTimeout(() => {
-          if (audioRef.current) {
-            audioRef.current.play().catch(() => {
-              toast.info("Toque em play para ouvir a resposta");
-            });
+          
+          console.log("[PWA] Transcrição:", sttData.text);
+          
+          // 2. Agent - Enviar para o agente de economia
+          console.log("[PWA] Enviando para agente...");
+          const { data: agentData, error: agentError } = await supabase.functions.invoke('chat-pwa', {
+            body: {
+              message: sttData.text,
+              agentSlug: 'economia',
+              sessionId: `pwa-${Date.now()}`,
+            }
+          });
+          
+          if (agentError) {
+            throw new Error(agentError.message || "Erro no agente");
           }
-        }, 100);
-        
+          
+          const responseText = agentData?.response || "Desculpe, não consegui processar sua pergunta.";
+          console.log("[PWA] Resposta do agente:", responseText);
+          
+          // 3. TTS - Gerar áudio da resposta
+          console.log("[PWA] Gerando áudio...");
+          const ttsResponse = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              },
+              body: JSON.stringify({ 
+                text: responseText,
+                chatType: 'economia'
+              }),
+            }
+          );
+          
+          if (!ttsResponse.ok) {
+            throw new Error("Erro ao gerar áudio");
+          }
+          
+          const ttsBlob = await ttsResponse.blob();
+          const url = URL.createObjectURL(ttsBlob);
+          
+          if (audioUrl) {
+            URL.revokeObjectURL(audioUrl);
+          }
+          
+          setAudioUrl(url);
+          setState("ready");
+          
+          setTimeout(() => {
+            if (audioRef.current) {
+              audioRef.current.play().catch(() => {
+                toast.info("Toque em play para ouvir a resposta");
+              });
+            }
+          }, 100);
+          
+        } catch (error) {
+          console.error("[PWA] Erro no processamento:", error);
+          toast.error(error instanceof Error ? error.message : "Erro ao processar áudio");
+          setState("idle");
+        }
       };
       
     } catch (error) {
       console.error("[PWA] Erro:", error);
-      toast.error("Desculpe, ocorreu um erro. Tente novamente.");
+      toast.error(error instanceof Error ? error.message : "Desculpe, ocorreu um erro.");
       setState("idle");
     }
   };

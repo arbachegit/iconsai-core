@@ -29,12 +29,17 @@ serve(async (req) => {
     
     if (audio.includes(',')) {
       const parts = audio.split(',');
-      base64Data = parts[1];
+      base64Data = parts[1] || '';
       // Extract mime type from data URL
       const mimeMatch = parts[0].match(/data:([^;]+)/);
       if (mimeMatch) {
         mimeType = mimeMatch[1];
       }
+    }
+    
+    // Validate base64 data is not empty
+    if (!base64Data || base64Data.length < 100) {
+      throw new Error('Audio data is empty or too short. Please record for longer.');
     }
     
     console.log('Audio mime type:', mimeType);
@@ -48,6 +53,10 @@ serve(async (req) => {
     }
     
     console.log('Decoded audio bytes:', bytes.length);
+    
+    if (bytes.length < 1000) {
+      throw new Error('Audio file too small. Please record for longer.');
+    }
     
     // Determine file extension based on mime type
     let extension = 'webm';
