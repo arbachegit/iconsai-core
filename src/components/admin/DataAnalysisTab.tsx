@@ -64,37 +64,63 @@ const SECTOR_TABS = [
   { id: "combustivel", label: "Combustível", code: "PMC_COMB" },
   { id: "veiculos", label: "Veículos", code: "PMC_VEIC" },
   { id: "construcao", label: "Construção", code: "PMC_CONST", disabled: true },
-  { id: "simulador", label: "🤖 Simulador 2026", isSimulator: true },
+  { id: "simulador", label: "Simulador 2026", isSimulator: true },
 ];
 
 export default function DataAnalysisTab() {
   const [activeTab, setActiveTab] = useState("varejo");
 
-  // Fetch de dados reais do banco
+  // Fetch de dados reais do banco (query em 2 etapas)
   const { data: annualData, isLoading, error, refetch } = useQuery({
     queryKey: ["data-analysis-annual"],
     queryFn: async (): Promise<AnnualData[]> => {
+      // ETAPA 1: Buscar IDs dos indicadores pelos códigos
+      const { data: indicators, error: indError } = await supabase
+        .from("economic_indicators")
+        .select("id, code")
+        .in("code", Object.keys(INDICATOR_MAPPING));
+
+      if (indError) throw indError;
+      
+      if (!indicators?.length) {
+        console.warn('[DATA-ANALYSIS] Nenhum indicador encontrado para os códigos:', Object.keys(INDICATOR_MAPPING));
+        return [];
+      }
+      
+      console.log('[DATA-ANALYSIS] Indicadores encontrados:', indicators.length, indicators.map(i => i.code));
+
+      // Criar mapa id -> code
+      const codeById = new Map(indicators.map(i => [i.id, i.code]));
+      const indicatorIds = indicators.map(i => i.id);
+
+      // ETAPA 2: Buscar valores usando IDs
       const { data, error } = await supabase
         .from("indicator_values")
-        .select(`
-          reference_date,
-          value,
-          economic_indicators!inner(code)
-        `)
-        .in("economic_indicators.code", Object.keys(INDICATOR_MAPPING))
+        .select("reference_date, value, indicator_id")
+        .in("indicator_id", indicatorIds)
         .order("reference_date", { ascending: true });
 
       if (error) throw error;
+      
+      console.log('[DATA-ANALYSIS] Valores retornados:', data?.length);
 
       // Agrupar por ano e calcular médias
       const yearMap = new Map<number, Record<string, number[]>>();
       
       for (const row of data || []) {
         const year = new Date(row.reference_date).getFullYear();
-        const code = (row.economic_indicators as any)?.code;
-        const varKey = INDICATOR_MAPPING[code];
+        const code = codeById.get(row.indicator_id);
         
-        if (!varKey) continue;
+        if (!code) {
+          console.warn('[DATA-ANALYSIS] indicator_id sem código mapeado:', row.indicator_id);
+          continue;
+        }
+        
+        const varKey = INDICATOR_MAPPING[code];
+        if (!varKey) {
+          console.warn('[DATA-ANALYSIS] Código não mapeado:', code);
+          continue;
+        }
         
         if (!yearMap.has(year)) {
           yearMap.set(year, {});
@@ -105,6 +131,8 @@ export default function DataAnalysisTab() {
         }
         yearData[varKey].push(Number(row.value));
       }
+
+      console.log('[DATA-ANALYSIS] Anos processados:', yearMap.size);
 
       // Converter para array com médias
       const result: AnnualData[] = [];
@@ -147,6 +175,8 @@ export default function DataAnalysisTab() {
         
         result.push(entry);
       }
+
+      console.log('[DATA-ANALYSIS] Dados finais:', result.length, 'anos', result.map(r => ({ year: r.year, income: r.income, sales: r.sales })));
 
       return result;
     },

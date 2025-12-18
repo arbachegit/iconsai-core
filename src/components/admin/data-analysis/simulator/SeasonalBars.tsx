@@ -10,13 +10,13 @@ interface SeasonalBarsProps {
 }
 
 const SEASONAL_EVENTS = [
-  { label: "🎭 Carnaval", month: "Fev", multiplier: 0.12 },
-  { label: "👩 Mães", month: "Mai", multiplier: 0.18 },
-  { label: "💕 Namorados", month: "Jun", multiplier: 0.08 },
-  { label: "👨 Pais", month: "Ago", multiplier: 0.10 },
-  { label: "🧒 Crianças", month: "Out", multiplier: 0.15 },
-  { label: "🛒 Black Friday", month: "Nov", multiplier: 0.30 },
-  { label: "🎄 Natal", month: "Dez", multiplier: 0.45 },
+  { label: "Carnaval", month: "Fev", multiplier: 0.12 },
+  { label: "Dia das Mães", month: "Mai", multiplier: 0.18 },
+  { label: "Dia dos Namorados", month: "Jun", multiplier: 0.08 },
+  { label: "Dia dos Pais", month: "Ago", multiplier: 0.10 },
+  { label: "Dia das Crianças", month: "Out", multiplier: 0.15 },
+  { label: "Black Friday", month: "Nov", multiplier: 0.30 },
+  { label: "Natal", month: "Dez", multiplier: 0.45 },
 ];
 
 const SCENARIO_COLORS = {
