@@ -411,6 +411,7 @@ export type Database = {
           match_count: number | null
           match_threshold: number | null
           name: string
+          pronunciation_rules: Json | null
           pronunciation_set: string | null
           rag_collection: string
           regional_tone: string | null
@@ -436,6 +437,7 @@ export type Database = {
           match_count?: number | null
           match_threshold?: number | null
           name: string
+          pronunciation_rules?: Json | null
           pronunciation_set?: string | null
           rag_collection: string
           regional_tone?: string | null
@@ -461,6 +463,7 @@ export type Database = {
           match_count?: number | null
           match_threshold?: number | null
           name?: string
+          pronunciation_rules?: Json | null
           pronunciation_set?: string | null
           rag_collection?: string
           regional_tone?: string | null
