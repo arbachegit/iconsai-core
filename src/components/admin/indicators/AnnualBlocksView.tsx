@@ -31,7 +31,7 @@ export default function AnnualBlocksView({ indicatorId, values, unit, onValueCha
     const data: Record<number, IndicatorValue> = {};
     
     values.forEach(v => {
-      const year = new Date(v.reference_date).getFullYear();
+      const year = parseInt(v.reference_date.substring(0, 4));
       data[year] = v;
     });
 
