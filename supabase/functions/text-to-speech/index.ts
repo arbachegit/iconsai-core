@@ -146,117 +146,219 @@ function normalizeNumbers(text: string): string {
 // MAPAS FONÉTICOS
 // ============================================
 
+// Mapa de pronúncias para siglas e termos brasileiros
 const DEFAULT_PHONETIC_MAP: Record<string, string> = {
-  // Siglas de IA - soletradas
-  "RAG": "érre-á-jê",
-  "LLM": "éle-éle-ême",
-  "SLM": "ésse-éle-ême",
-  "GPT": "jê-pê-tê",
-  "AI": "á-i",
-  "IA": "í-á",
-  "NLP": "éne-éle-pê",
-  "ML": "éme-éle",
-  "DL": "dê-éle",
-  "API": "á-pê-í",
-  "SDK": "ésse-dê-cá",
-  "LLMs": "éle-éle-êmes",
-  "SLMs": "ésse-éle-êmes",
-  "APIs": "á-pê-ís",
   
-  // Termos técnicos - pronúncia em português
-  "chunks": "tchânks",
-  "chunk": "tchânk",
-  "embedding": "embéding",
-  "embeddings": "embédings",
-  "token": "tôken",
-  "tokens": "tôkens",
-  "prompt": "prômpt",
-  "prompts": "prômpits",
-  "fine-tuning": "fáin túning",
-  "fine tuning": "fáin túning",
-  "dataset": "déita sét",
-  "datasets": "déita séts",
-  "pipeline": "páip láin",
-  "pipelines": "páip láins",
-  "framework": "fréim uórk",
-  "frameworks": "fréim uórks",
-  "benchmark": "bêntch márk",
-  "benchmarks": "bêntch márks",
-  "chatbot": "tchét bót",
-  "chatbots": "tchét bóts",
-  "multimodal": "múlti módal",
-  "transformer": "trans fórmer",
-  "transformers": "trans fórmers",
-  "vector": "vétor",
-  "vectors": "vétores",
-  "retrieval": "retriéval",
-  "augmented": "ógmentéd",
-  "generation": "djenereíchon",
-  
-  // Empresas e produtos
-  "OpenAI": "Ópen á-i",
-  "ChatGPT": "Tchét jê-pê-tê",
-  "Gemini": "Jêmini",
-  "Claude": "Clód",
-  "Llama": "Lhâma",
-  "BERT": "Bért",
-  "GPT-4": "jê-pê-tê quatro",
-  "GPT-5": "jê-pê-tê cinco",
-  
-  // Termos KnowRISK específicos
-  "KnowRISK": "Nôu Rísk",
-  "KnowYOU": "Nôu Iú",
-  "ACC": "á-cê-cê",
-};
-
-// Mapa fonético específico para economia
-const ECONOMIA_PHONETIC_MAP: Record<string, string> = {
-  // Siglas de instituições
-  "BCB": "Banco Central do Brasil",
-  "COPOM": "Côpom",
-  "IBGE": "í-bê-gê-é",
-  "IPEA": "í-pê-é-á",
-  "FMI": "éfe-ême-í",
-  "FED": "féd",
-  "BCE": "bê-cê-é",
-  "CMN": "cê-ême-êne",
-  "CVM": "cê-vê-ême",
-  "BNDES": "bê-êne-dê-é-ésse",
-  
-  // Indicadores
-  "IPCA": "í-pê-cê-á",
-  "IGP-M": "í-gê-pê ême",
-  "INPC": "í-êne-pê-cê",
-  "PIB": "pib",
+  // ============================================
+  // SIGLAS DE ECONOMIA - SOLETRADAS
+  // ============================================
+  "PIB": "pê-i-bê",
+  "IPCA": "i-pê-cê-a",
+  "IGP": "i-gê-pê",
+  "IGP-M": "i-gê-pê ême",
+  "IGP-DI": "i-gê-pê dê-i",
+  "INPC": "i-ene-pê-cê",
+  "IPC": "i-pê-cê",
+  "CDI": "cê-dê-i",
   "PMC": "pê-ême-cê",
-  "PNAD": "penád",
-  "CDI": "cê-dê-í",
-  "Selic": "Sélic",
-  "SELIC": "Sélic",
+  "PMS": "pê-ême-esse",
+  "PEA": "pê-é-a",
+  "POF": "pê-ó-éfe",
+  
+  // ============================================
+  // INSTITUIÇÕES BRASILEIRAS
+  // ============================================
+  "BCB": "bê-cê-bê",
+  "BACEN": "bacên",
+  "COPOM": "copôm",
+  "CMN": "cê-ême-ene",
+  "CVM": "cê-vê-ême",
+  "BNDES": "bê-ene-dê-é-esse",
+  "CEF": "cê-é-éfe",
+  "BB": "bê-bê",
+  "IBGE": "i-bê-gê-é",
+  "IPEA": "i-pê-é-a",
+  "FGV": "éfe-gê-vê",
+  "FIPE": "fípe",
+  "DIEESE": "di-ésse",
+  "CAGED": "cagéd",
+  "RAIS": "ráis",
+  "INSS": "i-ene-esse-esse",
+  "FGTS": "éfe-gê-tê-esse",
+  "CLT": "cê-éle-tê",
+  "MEI": "mêi",
+  "CNPJ": "cê-ene-pê-jóta",
+  "CPF": "cê-pê-éfe",
+  "RG": "érre-gê",
+  
+  // ============================================
+  // INDICADORES E TAXAS
+  // ============================================
+  "Selic": "sélique",
+  "SELIC": "sélique",
   "PTAX": "pê-táx",
+  "TR": "tê-érre",
+  "TLP": "tê-éle-pê",
+  "TJLP": "tê-jóta-éle-pê",
+  "DI": "dê-i",
+  "IOF": "i-ó-éfe",
+  "IR": "i-érre",
+  "IRPF": "i-érre-pê-éfe",
+  "IRPJ": "i-érre-pê-jóta",
+  "ISS": "i-esse-esse",
+  "ICMS": "i-cê-ême-esse",
+  "IPI": "i-pê-i",
+  "PIS": "pís",
+  "COFINS": "cofíns",
+  "CSLL": "cê-esse-éle-éle",
+  
+  // ============================================
+  // TERMOS DO MERCADO FINANCEIRO
+  // ============================================
+  "IPO": "i-pê-ó",
+  "ETF": "i-tê-éfe",
+  "CDB": "cê-dê-bê",
+  "LCI": "éle-cê-i",
+  "LCA": "éle-cê-a",
+  "CRI": "cê-érre-i",
+  "CRA": "cê-érre-a",
+  "FII": "éfe-i-i",
+  "COE": "cê-ó-é",
+  "NTN": "ene-tê-ene",
+  "LFT": "éle-éfe-tê",
+  "LTN": "éle-tê-ene",
+  "PGBL": "pê-gê-bê-éle",
+  "VGBL": "vê-gê-bê-éle",
+  
+  // ============================================
+  // ORGANIZAÇÕES INTERNACIONAIS
+  // ============================================
+  "FMI": "éfe-ême-i",
+  "ONU": "ó-ene-u",
+  "OMC": "ó-ême-cê",
+  "OCDE": "ó-cê-dê-é",
+  "OIT": "ó-i-tê",
+  "BID": "bê-i-dê",
+  "BIRD": "bírd",
+  "BCE": "bê-cê-é",
+  "FED": "féd",
+  "G7": "gê sete",
+  "G20": "gê vinte",
+  "BRICS": "brícs",
+  "EUA": "é-u-a",
+  "USA": "u-esse-a",
+  "UE": "u-é",
+  
+  // ============================================
+  // MOEDAS
+  // ============================================
+  "USD": "dólar americano",
+  "BRL": "real brasileiro",
+  "EUR": "êuro",
+  "GBP": "libra esterlina",
+  "JPY": "iêne japonês",
+  "CNY": "iuãn chinês",
+  "ARS": "peso argentino",
+  
+  // ============================================
+  // SIGLAS DE PESQUISAS E ÍNDICES
+  // ============================================
+  "PNAD": "penád",
+  "PNADc": "penád contínua",
+  "IBOVESPA": "ibovéspa",
+  "IFIX": "i-fíx",
+  "IDIV": "i-dív",
+  "SMLL": "small",
+  "IMAB": "i-máb",
+  "IMA-B": "i-ma bê",
   "GINI": "jíni",
   "Gini": "jíni",
   
-  // Termos econômicos
-  "déficit": "déficit",
-  "superávit": "superávit",
+  // ============================================
+  // TECNOLOGIA E IA
+  // ============================================
+  "IA": "i-a",
+  "AI": "êi-ái",
+  "RAG": "rág",
+  "LLM": "éle-éle-ême",
+  "GPT": "gê-pê-tê",
+  "API": "a-pê-i",
+  "ML": "ême-éle",
+  "NLP": "ene-éle-pê",
+  "CPU": "cê-pê-u",
+  "GPU": "gê-pê-u",
+  "SSD": "esse-esse-dê",
+  "RAM": "rám",
+  "ROM": "rôm",
+  "USB": "u-esse-bê",
+  "PDF": "pê-dê-éfe",
+  "HTML": "agá-tê-ême-éle",
+  "CSS": "cê-esse-esse",
+  "SQL": "esse-quê-éle",
+  "URL": "u-érre-éle",
+  "HTTP": "agá-tê-tê-pê",
+  "HTTPS": "agá-tê-tê-pê-esse",
+  "WWW": "dáblio dáblio dáblio",
+  
+  // ============================================
+  // EMPRESAS E PRODUTOS
+  // ============================================
+  "OpenAI": "ópen êi-ái",
+  "ChatGPT": "tchét gê-pê-tê",
+  "Claude": "clód",
+  "Gemini": "gêmini",
+  "Google": "gúgol",
+  "Microsoft": "máicrosoft",
+  "Apple": "épol",
+  "Amazon": "amázon",
+  "Meta": "méta",
+  "Netflix": "nétiflix",
+  "Uber": "úber",
+  "Nubank": "nubânk",
+  "XP": "xis-pê",
+  "BTG": "bê-tê-gê",
+  "Itaú": "itaú",
+  "Bradesco": "bradésco",
+  "Santander": "santânder",
+  
+  // ============================================
+  // TERMOS ESPECÍFICOS KNOWYOU
+  // ============================================
+  "KnowYOU": "nôu iú",
+  "KnowRISK": "nôu rísk",
+  "ACC": "a-cê-cê",
+  
+  // ============================================
+  // TERMOS EM INGLÊS (ECONOMIA)
+  // ============================================
   "spread": "sprêd",
+  "hedge": "hédge",
+  "swap": "suóp",
+  "default": "defôlt",
+  "rating": "rêiting",
+  "benchmark": "bêntchmark",
   "commodities": "comôditis",
   "commodity": "comôditi",
-  "hedge": "rédj",
-  "default": "defólt",
-  "rating": "rêiting",
-  "swap": "suóp",
-  "offshore": "ófi-chór",
+  "offshore": "óf-chór",
   "onshore": "ón-chór",
-  
-  // Moedas
-  "USD": "dólar americano",
-  "EUR": "êuro",
-  "BRL": "real",
-  "GBP": "libra esterlina",
-  "JPY": "iêne",
-  "CNY": "iuán",
+  "bull": "bul",
+  "bear": "bér",
+  "rally": "réli",
+  "pullback": "pulbék",
+  "breakout": "breikáut",
+  "target": "tárguit",
+  "stop": "stóp",
+  "long": "lóng",
+  "short": "chórt",
+  "day trade": "dêi trêid",
+  "swing trade": "suíng trêid",
+  "home broker": "rôum brôuker",
+  "valuation": "valiuêichon",
+  "market cap": "márket kép",
+  "blue chip": "blú tchíp",
+  "small cap": "smól kép",
+  "mid cap": "míd kép",
+  "large cap": "lárdge kép",
 };
 
 // Função para normalizar texto com pronúncias fonéticas
@@ -300,14 +402,8 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // 1. Carregar mapa fonético base
+    // 1. Carregar mapa fonético base (já inclui economia e todas as categorias)
     let phoneticMap = { ...DEFAULT_PHONETIC_MAP };
-    
-    // 2. Se for economia, adicionar mapa específico
-    if (chatType === 'economia' || agentSlug === 'economia') {
-      phoneticMap = { ...phoneticMap, ...ECONOMIA_PHONETIC_MAP };
-      console.log("Adicionado mapa fonético de economia");
-    }
     
     // 3. Carregar pronúncias do chat_config (se existir)
     if (chatType) {
