@@ -7,11 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const INDICATOR_IDS = {
-  RENDA_MEDIA: '33162f8c-3f2a-4306-a7ba-65b38f58cb99',
-  RENDA_MEDIA_UF: '5311dc65-8786-4427-b450-3bb8f7504b41',
-};
-
 function linearRegression(data: Array<{ x: number; y: number }>): { slope: number; intercept: number } {
   const n = data.length;
   let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
@@ -74,15 +69,31 @@ const RENDA_UF_HISTORICO: Record<number, Record<number, number>> = {
   53: { 2012: 1850, 2013: 1900, 2014: 1970, 2015: 1910, 2016: 1880, 2017: 1930, 2018: 2000, 2019: 2140, 2020: 2190, 2021: 2360, 2022: 2510, 2023: 2650 },
 };
 
-function generateCompleteData(): { brasil: Record<number, number>; ufs: Record<number, Record<number, number>> } {
+const RENDA_CLASSES_HISTORICO: Record<string, Record<number, number>> = {
+  A: { 2012: 15800, 2013: 16200, 2014: 16800, 2015: 16100, 2016: 15700, 2017: 16300, 2018: 17100, 2019: 18500, 2020: 19200, 2021: 20800, 2022: 22500, 2023: 24000 },
+  B: { 2012: 5200, 2013: 5400, 2014: 5600, 2015: 5400, 2016: 5300, 2017: 5500, 2018: 5800, 2019: 6200, 2020: 6400, 2021: 6900, 2022: 7500, 2023: 8000 },
+  C: { 2012: 1800, 2013: 1900, 2014: 2000, 2015: 1900, 2016: 1850, 2017: 1950, 2018: 2050, 2019: 2200, 2020: 2280, 2021: 2450, 2022: 2650, 2023: 2820 },
+  D: { 2012: 680, 2013: 720, 2014: 760, 2015: 730, 2016: 710, 2017: 750, 2018: 790, 2019: 850, 2020: 880, 2021: 950, 2022: 1030, 2023: 1100 },
+  E: { 2012: 280, 2013: 300, 2014: 320, 2015: 310, 2016: 290, 2017: 310, 2018: 330, 2019: 360, 2020: 380, 2021: 420, 2022: 460, 2023: 500 },
+};
+
+function generateCompleteData() {
   const brasilProjections = projectValues(RENDA_BRASIL_HISTORICO, [2024, 2025]);
   const brasilCompleto = { ...RENDA_BRASIL_HISTORICO, ...brasilProjections };
+  
   const ufsCompleto: Record<number, Record<number, number>> = {};
   for (const [ufCode, historicalData] of Object.entries(RENDA_UF_HISTORICO)) {
     const ufProjections = projectValues(historicalData, [2024, 2025]);
     ufsCompleto[Number(ufCode)] = { ...historicalData, ...ufProjections };
   }
-  return { brasil: brasilCompleto, ufs: ufsCompleto };
+  
+  const classesCompleto: Record<string, Record<number, number>> = {};
+  for (const [className, historicalData] of Object.entries(RENDA_CLASSES_HISTORICO)) {
+    const classProjections = projectValues(historicalData, [2024, 2025]);
+    classesCompleto[className] = { ...historicalData, ...classProjections };
+  }
+  
+  return { brasil: brasilCompleto, ufs: ufsCompleto, classes: classesCompleto };
 }
 
 serve(async (req) => {
@@ -95,83 +106,121 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    console.log('[RENDA-HARDCODED] Iniciando inserção com projeção até 2025...');
+    console.log('[RENDA-HARDCODED] Iniciando sincronização...');
     
-    const { brasil, ufs } = generateCompleteData();
+    // PASSO 1: BUSCAR IDs DOS INDICADORES NO BANCO
+    const { data: indicators, error: indicatorsError } = await supabase
+      .from('economic_indicators')
+      .select('id, code, name')
+      .in('code', ['RENDA_MEDIA', 'RENDA_MEDIA_UF', 'RENDA_CLASSE_A', 'RENDA_CLASSE_B', 'RENDA_CLASSE_C', 'RENDA_CLASSE_D', 'RENDA_CLASSE_E']);
     
-    console.log('[RENDA-HARDCODED] Projeções Brasil: 2024=' + brasil[2024] + ', 2025=' + brasil[2025]);
+    if (indicatorsError) throw indicatorsError;
     
+    console.log('[FOUND] Indicadores:', indicators?.length || 0);
+    
+    const indicatorMap: Record<string, string> = {};
+    for (const ind of indicators || []) {
+      indicatorMap[ind.code] = ind.id;
+    }
+    
+    // Criar RENDA_MEDIA se não existir
+    if (!indicatorMap['RENDA_MEDIA']) {
+      const { data: newInd, error } = await supabase
+        .from('economic_indicators')
+        .insert({ code: 'RENDA_MEDIA', name: 'Rendimento Médio Per Capita', unit: 'R$', frequency: 'anual', category: 'renda' })
+        .select().single();
+      if (!error && newInd) indicatorMap['RENDA_MEDIA'] = newInd.id;
+    }
+    
+    // Criar RENDA_MEDIA_UF se não existir
+    if (!indicatorMap['RENDA_MEDIA_UF']) {
+      const { data: newInd, error } = await supabase
+        .from('economic_indicators')
+        .insert({ code: 'RENDA_MEDIA_UF', name: 'Rendimento Médio Per Capita (Regional)', unit: 'R$', frequency: 'anual', category: 'renda', is_regional: true })
+        .select().single();
+      if (!error && newInd) indicatorMap['RENDA_MEDIA_UF'] = newInd.id;
+    }
+    
+    // Criar indicadores de classe
+    const classNames: Record<string, string> = {
+      'RENDA_CLASSE_A': 'Renda Média Classe A (Top 5%)',
+      'RENDA_CLASSE_B': 'Renda Média Classe B (15%)',
+      'RENDA_CLASSE_C': 'Renda Média Classe C (40%)',
+      'RENDA_CLASSE_D': 'Renda Média Classe D (20%)',
+      'RENDA_CLASSE_E': 'Renda Média Classe E (20%)',
+    };
+    
+    for (const [code, name] of Object.entries(classNames)) {
+      if (!indicatorMap[code]) {
+        const { data: newInd, error } = await supabase
+          .from('economic_indicators')
+          .insert({ code, name, unit: 'R$', frequency: 'anual', category: 'renda' })
+          .select().single();
+        if (!error && newInd) indicatorMap[code] = newInd.id;
+      }
+    }
+    
+    console.log('[MAP]', indicatorMap);
+    
+    // PASSO 2: GERAR DADOS
+    const { brasil, ufs, classes } = generateCompleteData();
+    
+    // PASSO 3: PREPARAR REGISTROS
     const nationalRecords: Array<{ indicator_id: string; reference_date: string; value: number }> = [];
     const regionalRecords: Array<{ indicator_id: string; reference_date: string; value: number; uf_code: number }> = [];
     
-    for (const [year, value] of Object.entries(brasil)) {
-      nationalRecords.push({
-        indicator_id: INDICATOR_IDS.RENDA_MEDIA,
-        reference_date: `${year}-01-01`,
-        value: Number(value)
-      });
-    }
-    
-    for (const [ufCode, yearData] of Object.entries(ufs)) {
-      for (const [year, value] of Object.entries(yearData)) {
-        regionalRecords.push({
-          indicator_id: INDICATOR_IDS.RENDA_MEDIA_UF,
-          reference_date: `${year}-01-01`,
-          value: Number(value),
-          uf_code: Number(ufCode)
-        });
+    // Brasil
+    if (indicatorMap['RENDA_MEDIA']) {
+      for (const [year, value] of Object.entries(brasil)) {
+        nationalRecords.push({ indicator_id: indicatorMap['RENDA_MEDIA'], reference_date: `${year}-01-01`, value: Number(value) });
       }
     }
     
-    console.log('[RENDA-HARDCODED] Nacional: ' + nationalRecords.length + ', Regional: ' + regionalRecords.length);
+    // UFs
+    if (indicatorMap['RENDA_MEDIA_UF']) {
+      for (const [ufCode, yearData] of Object.entries(ufs)) {
+        for (const [year, value] of Object.entries(yearData)) {
+          regionalRecords.push({ indicator_id: indicatorMap['RENDA_MEDIA_UF'], reference_date: `${year}-01-01`, value: Number(value), uf_code: Number(ufCode) });
+        }
+      }
+    }
     
-    let totalInserted = 0;
-    let nationalInserted = 0;
-    let regionalInserted = 0;
+    // Classes
+    const classMapping: Record<string, string> = { 'A': 'RENDA_CLASSE_A', 'B': 'RENDA_CLASSE_B', 'C': 'RENDA_CLASSE_C', 'D': 'RENDA_CLASSE_D', 'E': 'RENDA_CLASSE_E' };
+    for (const [className, yearData] of Object.entries(classes)) {
+      const indicatorId = indicatorMap[classMapping[className]];
+      if (indicatorId) {
+        for (const [year, value] of Object.entries(yearData)) {
+          nationalRecords.push({ indicator_id: indicatorId, reference_date: `${year}-01-01`, value: Number(value) });
+        }
+      }
+    }
+    
+    // PASSO 4: INSERIR
+    let nationalInserted = 0, regionalInserted = 0;
     
     if (nationalRecords.length > 0) {
-      const { error: nationalError } = await supabase
-        .from('indicator_values')
-        .upsert(nationalRecords, { onConflict: 'indicator_id,reference_date' });
-      
-      if (nationalError) {
-        console.error('[RENDA-HARDCODED] Erro nacional:', nationalError);
-      } else {
-        nationalInserted = nationalRecords.length;
-        totalInserted += nationalInserted;
-      }
+      const { error } = await supabase.from('indicator_values').upsert(nationalRecords, { onConflict: 'indicator_id,reference_date' });
+      if (!error) nationalInserted = nationalRecords.length;
+      else console.error('[ERRO-NATIONAL]', error);
     }
     
     if (regionalRecords.length > 0) {
-      const { error: regionalError } = await supabase
-        .from('indicator_regional_values')
-        .upsert(regionalRecords, { onConflict: 'indicator_id,reference_date,uf_code' });
-      
-      if (regionalError) {
-        console.error('[RENDA-HARDCODED] Erro regional:', regionalError);
-      } else {
-        regionalInserted = regionalRecords.length;
-        totalInserted += regionalInserted;
-      }
+      const { error } = await supabase.from('indicator_regional_values').upsert(regionalRecords, { onConflict: 'indicator_id,reference_date,uf_code' });
+      if (!error) regionalInserted = regionalRecords.length;
+      else console.error('[ERRO-REGIONAL]', error);
     }
     
-    console.log('[RENDA-HARDCODED] TOTAL inserido: ' + totalInserted);
+    console.log(`[OK] ${nationalInserted + regionalInserted} registros inseridos`);
     
     return new Response(JSON.stringify({
       success: true,
-      message: 'Dados de renda inseridos com projeções até 2025',
-      data: { nacional: nationalInserted, regional: regionalInserted, total: totalInserted, periodo: '2012-2025' },
+      data: { nacional: nationalInserted, regional: regionalInserted, total: nationalInserted + regionalInserted, periodo: '2012-2025' },
       projections: { brasil: { 2024: brasil[2024], 2025: brasil[2025] } }
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('[RENDA-HARDCODED] Erro:', error);
-    return new Response(JSON.stringify({ success: false, error: errorMessage }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('[ERRO]', error);
+    return new Response(JSON.stringify({ success: false, error: String(error) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
