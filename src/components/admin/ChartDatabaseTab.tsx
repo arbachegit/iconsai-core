@@ -365,7 +365,7 @@ export function ChartDatabaseTab() {
       const { data, error } = await supabase
         .from("economic_indicators")
         .select("id, name, code, unit, category, frequency, api_id, is_regional, system_api_registry(id, name, provider)")
-        .not('api_id', 'is', null)
+        .or('api_id.not.is.null,code.in.(RENDA_CLASSE_A,RENDA_CLASSE_B,RENDA_CLASSE_C,RENDA_CLASSE_D,RENDA_CLASSE_E)')
         .order("name");
       if (error) throw error;
       return (data || []).map((item: any) => ({
