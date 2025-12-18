@@ -57,6 +57,7 @@ export default function EconomicIndicatorsTab() {
   const [loading, setLoading] = useState(true);
   const [fetchingAll, setFetchingAll] = useState(false);
   const [forceRefreshing, setForceRefreshing] = useState(false);
+  const [syncingRenda, setSyncingRenda] = useState(false);
   const [etlModalOpen, setEtlModalOpen] = useState(false);
   
   // Force refresh confirmation modal
@@ -220,6 +221,25 @@ export default function EconomicIndicatorsTab() {
     }
     
     handleFetchAll(true);
+  };
+
+  const handleSyncRendaHardcoded = async () => {
+    setSyncingRenda(true);
+    try {
+      const response = await supabase.functions.invoke('sync-renda-hardcoded');
+      if (response.error) throw response.error;
+      
+      const { nacional, regional, total, periodo } = response.data?.data || {};
+      toast.success(
+        `✅ Renda Per Capita sincronizada: ${nacional} nacional + ${regional} regional = ${total} registros (${periodo})`
+      );
+      await fetchData('renda-sync');
+    } catch (error) {
+      logger.error('[RENDA-SYNC] Error:', error);
+      toast.error('Erro ao sincronizar dados de Renda');
+    } finally {
+      setSyncingRenda(false);
+    }
   };
 
   const handleCardClick = (indicator: Indicator) => {
@@ -465,7 +485,7 @@ export default function EconomicIndicatorsTab() {
         <div className="flex items-center gap-2">
           <Button
             onClick={() => handleFetchAll(false)}
-            disabled={fetchingAll || forceRefreshing}
+            disabled={fetchingAll || forceRefreshing || syncingRenda}
             className="gap-2"
           >
             <RefreshCw className={`h-4 w-4 ${fetchingAll ? 'animate-spin' : ''}`} />
@@ -473,9 +493,19 @@ export default function EconomicIndicatorsTab() {
           </Button>
           
           <Button
+            onClick={handleSyncRendaHardcoded}
+            disabled={syncingRenda || fetchingAll || forceRefreshing}
+            variant="outline"
+            className="gap-2 border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+          >
+            <TrendingUp className={`h-4 w-4 ${syncingRenda ? 'animate-spin' : ''}`} />
+            {syncingRenda ? 'Sincronizando...' : 'Sincronizar Renda (2012-2025)'}
+          </Button>
+          
+          <Button
             variant="destructive"
             onClick={handleForceRefreshClick}
-            disabled={fetchingAll || forceRefreshing}
+            disabled={fetchingAll || forceRefreshing || syncingRenda}
             className="gap-2"
           >
             <Trash2 className={`h-4 w-4 ${forceRefreshing ? 'animate-spin' : ''}`} />
