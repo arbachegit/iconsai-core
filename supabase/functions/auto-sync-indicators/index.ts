@@ -11,7 +11,7 @@ const corsHeaders = {
 const SIDRA_CONFIG = {
   BASE_URL: 'https://apisidra.ibge.gov.br/values',
   TABLES: {
-    RENDIMENTO_CLASSES: '7531',
+    RENDIMENTO_PERCAPITA: '6784',
     GINI: '7435',
   }
 };
@@ -40,12 +40,12 @@ async function fetchSIDRARendaData(): Promise<RendaDataResult> {
   const nationalMap = new Map<string, { indicator_id: string; reference_date: string; value: number }>();
   const regionalMap = new Map<string, { indicator_id: string; reference_date: string; value: number; uf_code: number }>();
   
-  // Fetch Rendimento Médio (Table 7533) - Brasil and UFs
-  // Tabela 7533 = Rendimento médio mensal real domiciliar per capita (agregado)
-  // v/8412 = Rendimento médio mensal real das pessoas de 14 anos ou mais de idade
-  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/7533/n1/all/v/8412/p/all`;
-  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/7533/n3/all/v/8412/p/all`;
-  
+  // Fetch Rendimento Per Capita (Table 6784) - Brasil and UFs
+  // Tabela 6784 = Rendimento nominal mensal domiciliar per capita da população residente (divulgação oficial)
+  // v/613 = Rendimento nominal mensal domiciliar per capita
+  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_PERCAPITA}/n1/all/v/613/p/all`;
+  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_PERCAPITA}/n3/all/v/613/p/all`;
+
   // Fetch GINI (Table 7435) - Brasil and UFs
   // v/10681 = Índice de Gini
   const giniUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/7435/n1/all/v/10681/p/all`;
