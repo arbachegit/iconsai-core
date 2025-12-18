@@ -40,11 +40,11 @@ async function fetchSIDRARendaData(): Promise<RendaDataResult> {
   const nationalMap = new Map<string, { indicator_id: string; reference_date: string; value: number }>();
   const regionalMap = new Map<string, { indicator_id: string; reference_date: string; value: number; uf_code: number }>();
   
-  // Fetch Rendimento Médio (Table 7531) - Brasil and UFs
-  // v/10824 = Rendimento médio mensal real domiciliar per capita
-  // c1019/49040 = Total (classe de pessoas - totalizador)
-  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/7531/n1/all/v/10824/p/all/c1019/49040`;
-  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/7531/n3/all/v/10824/p/all/c1019/49040`;
+  // Fetch Rendimento Médio (Table 7533) - Brasil and UFs
+  // Tabela 7533 = Rendimento médio mensal real domiciliar per capita (agregado)
+  // v/10824 = Valor do rendimento
+  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/7533/n1/all/v/10824/p/all`;
+  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/7533/n3/all/v/10824/p/all`;
   
   // Fetch GINI (Table 7435) - Brasil and UFs
   // v/10681 = Índice de Gini
