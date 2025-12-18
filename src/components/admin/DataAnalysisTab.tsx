@@ -72,7 +72,7 @@ export default function DataAnalysisTab() {
 
   // Fetch de dados reais do banco (query em 2 etapas)
   const { data: annualData, isLoading, error, refetch } = useQuery({
-    queryKey: ["data-analysis-annual"],
+    queryKey: ["data-analysis-annual", "v2"],
     queryFn: async (): Promise<AnnualData[]> => {
       // ETAPA 1: Buscar IDs dos indicadores pelos códigos
       const { data: indicators, error: indError } = await supabase
@@ -133,6 +133,14 @@ export default function DataAnalysisTab() {
         yearData[varKey].push(Number(row.value));
       }
 
+      // Debug: contar registros por indicador
+      const countByCode: Record<string, number> = {};
+      for (const row of data || []) {
+        const code = codeById.get(row.indicator_id) || 'unknown';
+        countByCode[code] = (countByCode[code] || 0) + 1;
+      }
+      console.log('[DATA-ANALYSIS] Registros por código:', countByCode);
+      console.log('[DATA-ANALYSIS] Anos no yearMap:', Array.from(yearMap.keys()).sort());
       console.log('[DATA-ANALYSIS] Anos processados:', yearMap.size);
 
       // Converter para array com médias
@@ -181,7 +189,8 @@ export default function DataAnalysisTab() {
 
       return result;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Loading state
