@@ -93,17 +93,57 @@ export default function DataAnalysisTab() {
       const codeById = new Map(indicators.map(i => [i.id, i.code]));
       const indicatorIds = indicators.map(i => i.id);
 
-      // ETAPA 2: Buscar valores usando IDs
-      const { data, error } = await supabase
-        .from("indicator_values")
-        .select("reference_date, value, indicator_id")
-        .in("indicator_id", indicatorIds)
-        .order("reference_date", { ascending: true })
-        .limit(10000);
+      // ETAPA 2: Queries paralelas por categoria (evita limite de 1000)
+      // Separar indicadores por categoria
+      const annualCodes = ['RENDA_MEDIA', 'RENDA_CLASSE_A', 'RENDA_CLASSE_B', 'RENDA_CLASSE_C', 
+        'RENDA_CLASSE_D', 'RENDA_CLASSE_E', 'GINI', 'PIB', '4099'];
+      const macroCodes = ['IPCA', 'SELIC', 'DOLAR'];
+      const pmcCodes = ['PMC', 'PMC_VEST', 'PMC_MOV', 'PMC_FARM', 'PMC_COMB', 'PMC_VEIC', 'PMC_CONST'];
 
-      if (error) throw error;
-      
-      console.log('[DATA-ANALYSIS] Valores retornados:', data?.length);
+      const annualIds = indicators.filter(i => annualCodes.includes(i.code)).map(i => i.id);
+      const macroIds = indicators.filter(i => macroCodes.includes(i.code)).map(i => i.id);
+      const pmcIds = indicators.filter(i => pmcCodes.includes(i.code)).map(i => i.id);
+
+      // Executar queries em paralelo
+      const [annualResult, macroResult, pmcResult] = await Promise.all([
+        supabase
+          .from("indicator_values")
+          .select("reference_date, value, indicator_id")
+          .in("indicator_id", annualIds)
+          .order("reference_date", { ascending: true }),
+        
+        supabase
+          .from("indicator_values")
+          .select("reference_date, value, indicator_id")
+          .in("indicator_id", macroIds)
+          .order("reference_date", { ascending: true })
+          .limit(5000),  // DOLAR tem ~4000 registros diários
+        
+        supabase
+          .from("indicator_values")
+          .select("reference_date, value, indicator_id")
+          .in("indicator_id", pmcIds)
+          .order("reference_date", { ascending: true })
+      ]);
+
+      // Verificar erros
+      if (annualResult.error) throw annualResult.error;
+      if (macroResult.error) throw macroResult.error;
+      if (pmcResult.error) throw pmcResult.error;
+
+      // Combinar resultados
+      const data = [
+        ...(annualResult.data || []),
+        ...(macroResult.data || []),
+        ...(pmcResult.data || [])
+      ];
+
+      console.log('[DATA-ANALYSIS] Valores retornados:', {
+        annual: annualResult.data?.length,
+        macro: macroResult.data?.length,
+        pmc: pmcResult.data?.length,
+        total: data.length
+      });
 
       // Agrupar por ano e calcular médias
       const yearMap = new Map<number, Record<string, number[]>>();
