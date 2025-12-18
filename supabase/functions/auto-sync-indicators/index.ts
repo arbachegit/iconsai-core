@@ -41,13 +41,15 @@ async function fetchSIDRARendaData(): Promise<RendaDataResult> {
   const regionalMap = new Map<string, { indicator_id: string; reference_date: string; value: number; uf_code: number }>();
   
   // Fetch Rendimento Médio (Table 7531) - Brasil and UFs
-  // Use v/all to get all variables available
-  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_CLASSES}/n1/all/v/all/p/all`;
-  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.RENDIMENTO_CLASSES}/n3/all/v/all/p/all`;
+  // v/10824 = Rendimento médio mensal real domiciliar per capita
+  // c1019/49040 = Total (classe de pessoas - totalizador)
+  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/7531/n1/all/v/10824/p/all/c1019/49040`;
+  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/7531/n3/all/v/10824/p/all/c1019/49040`;
   
   // Fetch GINI (Table 7435) - Brasil and UFs
-  const giniUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.GINI}/n1/all/v/all/p/all`;
-  const giniUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/${SIDRA_CONFIG.TABLES.GINI}/n3/all/v/all/p/all`;
+  // v/10681 = Índice de Gini
+  const giniUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/7435/n1/all/v/10681/p/all`;
+  const giniUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/7435/n3/all/v/10681/p/all`;
   
   console.log('[SIDRA-RENDA] Fetching Rendimento Brasil...');
   try {
