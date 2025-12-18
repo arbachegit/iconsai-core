@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { 
   Bot, Settings, Save, RefreshCw, Volume2, Upload, BarChart3, 
   Brush, Calculator, Globe, MessageSquare, Tag, X, Edit, 
-  CheckCircle2, XCircle, Loader2
+  CheckCircle2, XCircle, Loader2, Plus, Trash2
 } from "lucide-react";
 
 import type { Database } from "@/integrations/supabase/types";
@@ -57,6 +57,7 @@ const AgentManagementTab: React.FC = () => {
   const [regionalRules, setRegionalRules] = useState<RegionalRule[]>([]);
   const [saving, setSaving] = useState(false);
   const [tagInput, setTagInput] = useState({ allowed: "", forbidden: "" });
+  const [pronunciationInput, setPronunciationInput] = useState({ term: "", pronunciation: "" });
 
   const fetchAgents = useCallback(async () => {
     setLoading(true);
@@ -102,9 +103,11 @@ const AgentManagementTab: React.FC = () => {
       ...agent,
       capabilities: agent.capabilities || defaultCapabilities,
       allowed_tags: agent.allowed_tags || [],
-      forbidden_tags: agent.forbidden_tags || []
+      forbidden_tags: agent.forbidden_tags || [],
+      pronunciation_rules: (agent as any).pronunciation_rules || {}
     });
     setTagInput({ allowed: "", forbidden: "" });
+    setPronunciationInput({ term: "", pronunciation: "" });
     setIsDialogOpen(true);
   };
 
@@ -134,6 +137,7 @@ const AgentManagementTab: React.FC = () => {
           pronunciation_set: formData.pronunciation_set,
           maieutic_level: formData.maieutic_level,
           location: (formData as any).location || null,
+          pronunciation_rules: (formData as any).pronunciation_rules || {},
           updated_at: new Date().toISOString()
         })
         .eq("id", editingAgent.id);
@@ -179,6 +183,27 @@ const AgentManagementTab: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       capabilities: { ...caps, [key]: !caps[key] }
+    }));
+  };
+
+  const handleAddPronunciation = () => {
+    const { term, pronunciation } = pronunciationInput;
+    if (!term.trim() || !pronunciation.trim()) return;
+    
+    const currentRules = ((formData as any).pronunciation_rules || {}) as Record<string, string>;
+    setFormData(prev => ({
+      ...prev,
+      pronunciation_rules: { ...currentRules, [term.trim()]: pronunciation.trim() }
+    }));
+    setPronunciationInput({ term: "", pronunciation: "" });
+  };
+
+  const handleRemovePronunciation = (term: string) => {
+    const currentRules = ((formData as any).pronunciation_rules || {}) as Record<string, string>;
+    const { [term]: _, ...rest } = currentRules;
+    setFormData(prev => ({
+      ...prev,
+      pronunciation_rules: rest
     }));
   };
 
@@ -705,6 +730,70 @@ const AgentManagementTab: React.FC = () => {
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   Controla o quanto o agente faz perguntas de acompanhamento
+                </p>
+              </div>
+
+              <Separator className="bg-cyan-500/20" />
+
+              {/* Biblioteca de Pronúncias */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="h-5 w-5 text-cyan-400" />
+                  <Label className="text-cyan-400">Biblioteca de Pronúncias (TTS)</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Configure como o TTS deve pronunciar termos específicos deste agente
+                </p>
+                
+                {/* Lista de regras existentes */}
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {Object.entries(((formData as any).pronunciation_rules || {}) as Record<string, string>).map(([term, pronunciation]) => (
+                    <div key={term} className="flex items-center gap-2 p-2 bg-slate-800 rounded">
+                      <code className="text-sm text-cyan-300 font-mono">{term}</code>
+                      <span className="text-muted-foreground">→</span>
+                      <span className="text-sm flex-1">{pronunciation}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleRemovePronunciation(term)}
+                        className="h-6 w-6 p-0 hover:bg-red-500/20"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-400" />
+                      </Button>
+                    </div>
+                  ))}
+                  {Object.keys((formData as any).pronunciation_rules || {}).length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">Nenhuma pronúncia customizada</p>
+                  )}
+                </div>
+                
+                {/* Adicionar nova regra */}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Termo (ex: IPCA)"
+                    value={pronunciationInput.term}
+                    onChange={(e) => setPronunciationInput(prev => ({ ...prev, term: e.target.value }))}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddPronunciation())}
+                    className="flex-1 bg-slate-800 border-cyan-500/30 focus:border-cyan-500"
+                  />
+                  <Input
+                    placeholder="Pronúncia (ex: í-pê-cê-á)"
+                    value={pronunciationInput.pronunciation}
+                    onChange={(e) => setPronunciationInput(prev => ({ ...prev, pronunciation: e.target.value }))}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddPronunciation())}
+                    className="flex-1 bg-slate-800 border-cyan-500/30 focus:border-cyan-500"
+                  />
+                  <Button 
+                    variant="outline" 
+                    onClick={handleAddPronunciation}
+                    className="border-cyan-500/30 text-cyan-400"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <p className="text-xs text-muted-foreground">
+                  Dica: Use hífens para separar sílabas (ex: "í-pê-cê-á") ou escreva por extenso
                 </p>
               </div>
             </TabsContent>

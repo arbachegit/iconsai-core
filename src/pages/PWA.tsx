@@ -166,7 +166,8 @@ export default function PWA() {
               },
               body: JSON.stringify({ 
                 text: responseText,
-                chatType: 'economia'
+                chatType: 'economia',
+                agentSlug: 'economia'
               }),
             }
           );
