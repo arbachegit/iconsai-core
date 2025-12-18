@@ -6,6 +6,131 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Mapeamento de palavras-chave para códigos de indicadores
+const INDICATOR_KEYWORDS: Record<string, string[]> = {
+  'DOLAR': ['dólar', 'dolar', 'câmbio', 'moeda americana', 'usd', 'ptax', 'cotação do dólar'],
+  'SELIC': ['selic', 'taxa básica', 'juros básico', 'taxa de juros', 'juros do banco central'],
+  'IPCA': ['ipca', 'inflação', 'índice de preços', 'inflação oficial'],
+  'PIB': ['pib', 'produto interno bruto', 'crescimento econômico'],
+  'RENDA_MEDIA': ['renda', 'renda média', 'salário médio', 'renda per capita'],
+  '4099': ['desemprego', 'taxa de desemprego', 'desocupação'],
+  'GINI': ['gini', 'desigualdade', 'distribuição de renda'],
+  'PMC': ['vendas', 'comércio', 'varejo', 'pmc'],
+  'CDI': ['cdi', 'certificado de depósito'],
+};
+
+// Detecta quais indicadores foram mencionados na mensagem
+function detectIndicators(message: string): string[] {
+  const messageLower = message.toLowerCase();
+  const detected: string[] = [];
+  
+  for (const [code, keywords] of Object.entries(INDICATOR_KEYWORDS)) {
+    if (keywords.some(kw => messageLower.includes(kw))) {
+      detected.push(code);
+    }
+  }
+  
+  return detected;
+}
+
+// Busca os valores mais recentes dos indicadores no banco
+async function fetchLatestIndicators(
+  supabase: any, 
+  codes: string[]
+): Promise<Record<string, { value: number; date: string; unit: string; name: string }>> {
+  const results: Record<string, { value: number; date: string; unit: string; name: string }> = {};
+  
+  for (const code of codes) {
+    try {
+      // Buscar indicador pelo código
+      const { data: indicator } = await supabase
+        .from('economic_indicators')
+        .select('id, name, unit')
+        .eq('code', code)
+        .single();
+      
+      if (!indicator) {
+        console.log(`[chat-pwa] Indicador não encontrado: ${code}`);
+        continue;
+      }
+      
+      // Buscar valor mais recente
+      const { data: latestValue } = await supabase
+        .from('indicator_values')
+        .select('value, reference_date')
+        .eq('indicator_id', indicator.id)
+        .order('reference_date', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (latestValue) {
+        results[code] = {
+          value: latestValue.value,
+          date: latestValue.reference_date,
+          unit: indicator.unit || '',
+          name: indicator.name
+        };
+      }
+    } catch (err) {
+      console.error(`[chat-pwa] Erro ao buscar indicador ${code}:`, err);
+    }
+  }
+  
+  return results;
+}
+
+// Formata os indicadores para injetar no contexto do LLM
+function formatIndicatorsContext(
+  indicators: Record<string, { value: number; date: string; unit: string; name: string }>
+): string {
+  if (Object.keys(indicators).length === 0) return '';
+  
+  const lines = ['## DADOS ECONOMICOS ATUAIS (USE ESTES VALORES!):'];
+  
+  for (const [code, data] of Object.entries(indicators)) {
+    let formatted = '';
+    const date = new Date(data.date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    
+    switch (code) {
+      case 'DOLAR':
+        formatted = `Dolar: R$ ${data.value.toFixed(2)} (Banco Central, ${date})`;
+        break;
+      case 'SELIC':
+        formatted = `Taxa Selic: ${data.value.toFixed(2)}% ao ano (Banco Central, ${date})`;
+        break;
+      case 'IPCA':
+        formatted = `IPCA (inflacao): ${data.value.toFixed(2)}% (IBGE, ${date})`;
+        break;
+      case 'PIB':
+        formatted = `PIB: ${data.value.toFixed(1)}% (IBGE, ${date})`;
+        break;
+      case 'RENDA_MEDIA':
+        formatted = `Renda media: R$ ${data.value.toFixed(2)} (IBGE PNAD, ${date})`;
+        break;
+      case '4099':
+        formatted = `Desemprego: ${data.value.toFixed(1)}% (IBGE, ${date})`;
+        break;
+      case 'GINI':
+        formatted = `Indice Gini: ${data.value.toFixed(3)} (IBGE, ${date})`;
+        break;
+      case 'PMC':
+        formatted = `Vendas varejo (PMC): ${data.value.toFixed(1)} pontos (IBGE, ${date})`;
+        break;
+      case 'CDI':
+        formatted = `CDI: ${data.value.toFixed(2)}% ao ano (${date})`;
+        break;
+      default:
+        formatted = `${data.name}: ${data.value} ${data.unit} (${date})`;
+    }
+    
+    lines.push(`- ${formatted}`);
+  }
+  
+  lines.push('\nOBRIGATORIO: Mencione a fonte e a data ao citar estes valores!');
+  
+  return lines.join('\n');
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -46,7 +171,18 @@ serve(async (req) => {
 
     console.log(`[chat-pwa] Agente carregado: ${agent.name}`);
 
-    // 2. Buscar contexto RAG (se configurado)
+    // 2. Detectar indicadores mencionados e buscar valores atuais
+    const detectedIndicators = detectIndicators(message);
+    console.log("[chat-pwa] Indicadores detectados:", detectedIndicators);
+
+    let indicatorsContext = '';
+    if (detectedIndicators.length > 0) {
+      const indicatorData = await fetchLatestIndicators(supabase, detectedIndicators);
+      indicatorsContext = formatIndicatorsContext(indicatorData);
+      console.log("[chat-pwa] Dados encontrados:", Object.keys(indicatorData));
+    }
+
+    // 3. Buscar contexto RAG (se configurado)
     let ragContext = "";
     
     if (agent.rag_collection) {
@@ -88,8 +224,10 @@ serve(async (req) => {
       }
     }
 
-    // 3. Construir prompt do sistema
+    // 4. Construir prompt do sistema com indicadores e RAG
     const systemPrompt = `${agent.system_prompt || "Você é um assistente prestativo."}
+
+${indicatorsContext}
 
 ${ragContext ? `
 ## CONTEXTO DOS DOCUMENTOS (use para responder):
@@ -100,11 +238,11 @@ ${ragContext}
 - Respostas CURTAS (máximo 3-4 frases)
 - Linguagem SIMPLES (para pessoas sem instrução formal)
 - Se não souber, diga "não tenho essa informação"
-- Cite fontes quando mencionar dados (Banco Central, IBGE, etc.)
+- SEMPRE cite a fonte e data quando mencionar dados economicos
 - Evite números muito grandes ou porcentagens complexas
 `;
 
-    // 4. Chamar Lovable AI Gateway (google/gemini-2.5-flash)
+    // 5. Chamar Lovable AI Gateway (google/gemini-2.5-flash)
     console.log("[chat-pwa] Chamando Lovable AI Gateway...");
     
     const chatResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
