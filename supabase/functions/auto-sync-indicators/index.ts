@@ -42,9 +42,9 @@ async function fetchSIDRARendaData(): Promise<RendaDataResult> {
   
   // Fetch Rendimento Médio (Table 7533) - Brasil and UFs
   // Tabela 7533 = Rendimento médio mensal real domiciliar per capita (agregado)
-  // v/10824 = Valor do rendimento
-  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/7533/n1/all/v/10824/p/all`;
-  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/7533/n3/all/v/10824/p/all`;
+  // v/8412 = Rendimento médio mensal real das pessoas de 14 anos ou mais de idade
+  const rendimentoUrlBrasil = `${SIDRA_CONFIG.BASE_URL}/t/7533/n1/all/v/8412/p/all`;
+  const rendimentoUrlUF = `${SIDRA_CONFIG.BASE_URL}/t/7533/n3/all/v/8412/p/all`;
   
   // Fetch GINI (Table 7435) - Brasil and UFs
   // v/10681 = Índice de Gini
