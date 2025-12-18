@@ -1,0 +1,17 @@
+{
+  "name": "Economista - Assistente de Voz",
+  "short_name": "Economista",
+  "description": "Assistente de voz para economia e finanças",
+  "start_url": "/pwa",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

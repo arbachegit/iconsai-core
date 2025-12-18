@@ -23,6 +23,7 @@ const Arquitetura = lazy(() => import("./pages/Arquitetura"));
 const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
 const AppPage = lazy(() => import("./pages/AppPage"));
 const Hub = lazy(() => import("./pages/Hub"));
+const PWA = lazy(() => import("./pages/PWA"));
 
 // Simple loading fallback
 const PageLoader = () => (
@@ -85,6 +86,7 @@ const App = () => (
                   {/* Public Routes */}
                   <Route path="/docs" element={<Documentation />} />
                   <Route path="/arquitetura" element={<Arquitetura />} />
+                  <Route path="/pwa" element={<PWA />} />
                   
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />

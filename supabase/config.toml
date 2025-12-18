@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.chat-unified]
 verify_jwt = false
 
+[functions.chat-pwa]
+verify_jwt = false
+
 [functions.generate-image]
 verify_jwt = false
 
@@ -145,4 +148,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.query-indicators]
+verify_jwt = false
+
+[functions.sync-renda-hardcoded]
+verify_jwt = false
+
+[functions.fetch-spotify-metadata]
 verify_jwt = false
