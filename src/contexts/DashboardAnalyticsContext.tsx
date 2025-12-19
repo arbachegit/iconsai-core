@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import { RefreshCw, BarChart3, TrendingUp, Search, ClipboardList } from "lucide-react";
+import { logger } from "@/lib/logger";
+import { getMemoryStats, checkAndCleanup } from "@/lib/memory-monitor";
 
 // MEMORY OPTIMIZATION CONSTANTS
 const MAX_RECORDS_PER_STATE = 12; // Only 1 year of monthly data
@@ -126,11 +128,19 @@ export function DashboardAnalyticsProvider({ children }: DashboardAnalyticsProvi
     }
   }, [activeTab]);
 
-  // MEMORY OPTIMIZATION: Limit allStatesData records per state
+  // MEMORY OPTIMIZATION: Limit allStatesData records per state with memory check
   const setAllStatesDataOptimized = useCallback((data: Record<string, RegionalContext> | null) => {
     if (!data) {
       setAllStatesData(null);
+      logger.perf('Cleared allStatesData');
       return;
+    }
+    
+    // Check memory before setting large data
+    const memStats = getMemoryStats();
+    if (memStats?.isCritical) {
+      logger.memoryWarning(memStats.usedJSHeapSize, memStats.jsHeapSizeLimit);
+      checkAndCleanup();
     }
     
     // Limit records per state to MAX_RECORDS_PER_STATE
@@ -141,6 +151,12 @@ export function DashboardAnalyticsProvider({ children }: DashboardAnalyticsProvi
         data: ctx.data?.slice(-MAX_RECORDS_PER_STATE), // Keep only last N records
       };
     });
+    
+    logger.perf('setAllStatesData', { 
+      stateCount: Object.keys(optimizedData).length,
+      memoryWarning: memStats?.isWarning 
+    });
+    
     setAllStatesData(optimizedData);
   }, []);
 
