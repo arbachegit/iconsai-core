@@ -9,7 +9,11 @@ import { MapPin, Loader2, Search } from "lucide-react";
 import { BrazilMap } from "./BrazilMap";
 import { StateDataPanel } from "./StateDataPanel";
 import { RegionalStatesHeader } from "./RegionalStatesHeader";
+import { MemoryDebugPanel } from "./MemoryDebugPanel";
 import { useDashboardAnalyticsSafe, RegionalContext } from "@/contexts/DashboardAnalyticsContext";
+import { getFromCache, saveToCache, clearExpiredCache } from "@/lib/regional-cache";
+import { logger } from "@/lib/logger";
+import { logMemoryUsage } from "@/lib/memory-monitor";
 
 const UF_NAMES: Record<string, string> = {
   AC: "Acre", AL: "Alagoas", AP: "Amapá", AM: "Amazonas", BA: "Bahia",
@@ -113,11 +117,29 @@ export function DataAnalyticsUF() {
     enabled: !!regionalApis?.length && !!allUfs?.length,
   });
 
-  // PRE-LOAD all states data when research is selected
+  // Clear expired cache on mount
+  useEffect(() => {
+    clearExpiredCache();
+    logMemoryUsage('DataAnalyticsUF mounted');
+  }, []);
+
+  // PRE-LOAD all states data when research is selected (with cache)
   const { data: preloadedStatesData } = useQuery({
     queryKey: ["preload-all-states", selectedResearch],
     queryFn: async (): Promise<Record<string, RegionalContext>> => {
       if (selectedResearch === "none") return {};
+      
+      // Check cache first
+      const cached = getFromCache(selectedResearch);
+      if (cached) {
+        logger.perf('Using cached regional data', { 
+          researchId: selectedResearch, 
+          stateCount: Object.keys(cached.data).length 
+        });
+        return cached.data;
+      }
+      
+      logger.perf('Fetching regional data from database', { researchId: selectedResearch });
       
       // Get indicators for this research
       const { data: indicators } = await supabase
@@ -188,6 +210,13 @@ export function DataAnalyticsUF() {
           recordCount: values.length,
           data: limitedData,
         };
+      });
+      
+      // Save to cache
+      saveToCache(selectedResearch, result, researchName);
+      logger.perf('Regional data cached', { 
+        researchId: selectedResearch, 
+        stateCount: Object.keys(result).length 
       });
       
       return result;
@@ -433,6 +462,9 @@ export function DataAnalyticsUF() {
           )}
         </div>
       </div>
+
+      {/* Debug Panel (DEV mode only) */}
+      <MemoryDebugPanel />
     </div>
   );
 }
