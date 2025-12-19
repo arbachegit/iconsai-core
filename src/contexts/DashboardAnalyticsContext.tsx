@@ -1,5 +1,10 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import { RefreshCw, BarChart3, TrendingUp, Search, ClipboardList } from "lucide-react";
+
+// MEMORY OPTIMIZATION CONSTANTS
+const MAX_RECORDS_PER_STATE = 12; // Only 1 year of monthly data
+const MAX_HISTORY_ITEMS = 5; // Reduced from 10
+const MAX_DATA_IN_PROMPT = 12; // Limit data in prompts
 
 export interface RegionalContext {
   ufSigla: string;
@@ -105,8 +110,6 @@ interface DashboardAnalyticsProviderProps {
   children: ReactNode;
 }
 
-const MAX_HISTORY_ITEMS = 10;
-
 export function DashboardAnalyticsProvider({ children }: DashboardAnalyticsProviderProps) {
   const [activeTab, setActiveTab] = useState<string>("indicators");
   const [chartContext, setChartContext] = useState<ChartContext | null>(null);
@@ -115,22 +118,60 @@ export function DashboardAnalyticsProvider({ children }: DashboardAnalyticsProvi
   const [allStatesData, setAllStatesData] = useState<Record<string, RegionalContext> | null>(null);
   const [contextHistory, setContextHistory] = useState<ContextHistoryItem[]>([]);
 
+  // MEMORY OPTIMIZATION: Cleanup when leaving analytics-uf tab
+  useEffect(() => {
+    if (activeTab !== 'analytics-uf') {
+      // Clear heavy data when not in the regional analytics tab
+      setAllStatesData(null);
+    }
+  }, [activeTab]);
+
+  // MEMORY OPTIMIZATION: Limit allStatesData records per state
+  const setAllStatesDataOptimized = useCallback((data: Record<string, RegionalContext> | null) => {
+    if (!data) {
+      setAllStatesData(null);
+      return;
+    }
+    
+    // Limit records per state to MAX_RECORDS_PER_STATE
+    const optimizedData: Record<string, RegionalContext> = {};
+    Object.entries(data).forEach(([sigla, ctx]) => {
+      optimizedData[sigla] = {
+        ...ctx,
+        data: ctx.data?.slice(-MAX_RECORDS_PER_STATE), // Keep only last N records
+      };
+    });
+    setAllStatesData(optimizedData);
+  }, []);
+
   const hasContext = !!chartContext || !!regionalContext;
 
-  // History management functions
+  // History management functions with MEMORY OPTIMIZATION
   const addToHistory = useCallback((item: Omit<ContextHistoryItem, 'id' | 'timestamp'>) => {
     setContextHistory(prev => {
       // Check if this item is already in history (by label AND type to prevent duplicates)
       const exists = prev.some(h => h.label === item.label && h.type === item.type);
       if (exists) return prev;
       
+      // MEMORY OPTIMIZATION: Store only metadata, not full data arrays
+      const optimizedContext = item.type === 'regional' 
+        ? {
+            ...(item.context as RegionalContext),
+            data: (item.context as RegionalContext).data?.slice(-MAX_RECORDS_PER_STATE), // Limit data
+          }
+        : {
+            ...(item.context as ChartContext),
+            data: (item.context as ChartContext).data?.slice(-MAX_DATA_IN_PROMPT), // Limit data
+          };
+      
       const newItem: ContextHistoryItem = {
         ...item,
+        context: optimizedContext,
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         timestamp: new Date(),
       };
       
-      // Add to beginning, limit to MAX_HISTORY_ITEMS
+      // Add to beginning, limit to MAX_HISTORY_ITEMS (reduced to 5)
       const updated = [newItem, ...prev].slice(0, MAX_HISTORY_ITEMS);
       return updated;
     });
@@ -225,38 +266,33 @@ Você está auxiliando um analista que está visualizando dados regionais:
       }
       prompt += `\n**Tendência:** ${trendEmoji} ${trendLabel}`;
 
-      // Include raw data for chart generation
+      // MEMORY OPTIMIZATION: Include only limited raw data for chart generation
       if (regionalContext.data && regionalContext.data.length > 0) {
+        const limitedData = regionalContext.data.slice(-MAX_DATA_IN_PROMPT);
         prompt += `
 
 ### DADOS DISPONÍVEIS PARA GRÁFICO:
-Você TEM acesso aos dados abaixo. Use-os diretamente para gerar gráficos quando solicitado.
+Você TEM acesso aos dados abaixo (últimos ${limitedData.length} registros). Use-os diretamente para gerar gráficos quando solicitado.
 \`\`\`json
-${JSON.stringify(regionalContext.data, null, 2)}
+${JSON.stringify(limitedData)}
 \`\`\``;
       }
 
-      // Include pre-loaded data from all states for comparisons
+      // MEMORY OPTIMIZATION: Include only summary data from other states (no full data arrays)
       if (allStatesData && Object.keys(allStatesData).length > 1) {
+        const stateCount = Object.keys(allStatesData).length - 1;
         prompt += `
 
-## DADOS PRÉ-CARREGADOS DE TODOS OS ESTADOS
+## DADOS PRÉ-CARREGADOS DE ${stateCount} ESTADOS
 
-Você TEM acesso aos dados de TODOS os estados abaixo para comparações diretas:
+Você TEM acesso aos dados de todos os estados para comparações diretas:
 `;
         Object.entries(allStatesData).forEach(([sigla, ctx]) => {
           if (sigla === regionalContext.ufSigla) return; // Skip current state
           const stateTrend = ctx.trend === 'up' ? '↑' : ctx.trend === 'down' ? '↓' : '→';
           const unit = ctx.unit || 'índice';
           prompt += `
-### ${ctx.ufName} (${sigla}) ${stateTrend}
-- Último valor: ${ctx.lastValue?.toLocaleString('pt-BR') || 'N/A'} ${unit}
-- Data: ${ctx.lastDate || 'N/A'}
-- Registros: ${ctx.recordCount}`;
-          if (ctx.data && ctx.data.length > 0) {
-            prompt += `
-- Dados: \`${JSON.stringify(ctx.data.slice(-12))}\``;
-          }
+**${ctx.ufName} (${sigla})** ${stateTrend} - Último: ${ctx.lastValue?.toLocaleString('pt-BR') || 'N/A'} ${unit} (${ctx.lastDate || 'N/A'})`;
         });
         
         prompt += `
@@ -343,14 +379,15 @@ Você está auxiliando um analista que está visualizando:
 - **Previsão próximo período:** ${stsResult.forecast.mean.toFixed(2)} ${unit} (IC 95%: ${stsResult.forecast.p05.toFixed(2)} - ${stsResult.forecast.p95.toFixed(2)} ${unit})`;
     }
 
-    // Include raw data for chart generation
+    // MEMORY OPTIMIZATION: Include only limited raw data for chart generation
     if (data && data.length > 0) {
+      const limitedData = data.slice(-MAX_DATA_IN_PROMPT);
       prompt += `
 
 ### DADOS DISPONÍVEIS PARA GRÁFICO:
-Você TEM acesso aos dados abaixo. Use-os diretamente para gerar gráficos quando solicitado.
+Você TEM acesso aos dados abaixo (últimos ${limitedData.length} registros). Use-os diretamente para gerar gráficos quando solicitado.
 \`\`\`json
-${JSON.stringify(data, null, 2)}
+${JSON.stringify(limitedData)}
 \`\`\``;
     }
 
@@ -421,7 +458,7 @@ Seja preciso e objetivo nas respostas.`;
     setChartContext,
     setSelectedUF,
     setRegionalContext,
-    setAllStatesData,
+    setAllStatesData: setAllStatesDataOptimized, // Use optimized setter
     addToHistory,
     removeFromHistory,
     clearHistory,

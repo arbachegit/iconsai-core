@@ -74,7 +74,10 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
   } | null>(null);
   
   // Ref para manter dados completos do arquivo em memória (não vai para localStorage)
-  const fileDataMapRef = useRef<Map<number, { data: any[]; fileName: string; columns: string[] }>>(new Map());
+  const fileDataMapRef = useRef<Map<number, { data: any[]; fileName: string; columns: string[]; timestamp: number }>>(new Map());
+  
+  // MEMORY OPTIMIZATION: Cleanup timer for fileDataMapRef
+  const fileDataCleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const audioPlayerRef = useRef<AudioStreamPlayer>(new AudioStreamPlayer());
   const { toast } = useToast();
@@ -85,11 +88,47 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
     duration: number;
   }>({ currentTime: 0, duration: 0 });
 
+  // MEMORY OPTIMIZATION: Cleanup fileDataMapRef after 5 minutes of inactivity
+  const scheduleFileDataCleanup = useCallback(() => {
+    if (fileDataCleanupTimerRef.current) {
+      clearTimeout(fileDataCleanupTimerRef.current);
+    }
+    
+    const CLEANUP_DELAY = 5 * 60 * 1000; // 5 minutes
+    
+    fileDataCleanupTimerRef.current = setTimeout(() => {
+      const now = Date.now();
+      
+      // Remove entries older than 5 minutes
+      fileDataMapRef.current.forEach((value, key) => {
+        if (now - value.timestamp > CLEANUP_DELAY) {
+          fileDataMapRef.current.delete(key);
+        }
+      });
+      
+      // If map is too large (>10 entries), keep only the 5 most recent
+      if (fileDataMapRef.current.size > 10) {
+        const entries = Array.from(fileDataMapRef.current.entries())
+          .sort((a, b) => b[1].timestamp - a[1].timestamp)
+          .slice(0, 5);
+        fileDataMapRef.current = new Map(entries);
+      }
+    }, CLEANUP_DELAY);
+  }, []);
+
   // Configure audio progress callback
   useEffect(() => {
     audioPlayerRef.current.setOnProgress((currentTime, duration) => {
       setAudioProgress({ currentTime, duration });
     });
+    
+    // MEMORY OPTIMIZATION: Cleanup on unmount
+    return () => {
+      if (fileDataCleanupTimerRef.current) {
+        clearTimeout(fileDataCleanupTimerRef.current);
+      }
+      fileDataMapRef.current.clear();
+    };
   }, []);
 
   // Load history from localStorage
@@ -185,17 +224,27 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
     ) => {
       if (!input.trim() || isLoading) return;
 
+      // MEMORY OPTIMIZATION: Limit file data size (max 5MB in memory)
+      const MAX_FILE_SIZE_RECORDS = 5000;
+      
       // Se tem fileData novo, guardar em memória completo E no activeFileData
       if (options?.fileData) {
         const msgIndex = messages.length;
+        const limitedData = options.fileData.data.slice(0, MAX_FILE_SIZE_RECORDS);
+        
         fileDataMapRef.current.set(msgIndex, {
-          data: options.fileData.data,
+          data: limitedData,
           fileName: options.fileData.fileName,
           columns: options.fileData.columns,
+          timestamp: Date.now(), // Add timestamp for cleanup
         });
+        
+        // Schedule cleanup after storing new data
+        scheduleFileDataCleanup();
+        
         // Salvar amostra no activeFileData para enviar em todas as mensagens subsequentes
         setActiveFileData({
-          data: options.fileData.data.slice(0, 100), // Amostra de até 100 registros
+          data: limitedData.slice(0, 100), // Amostra de até 100 registros
           fileName: options.fileData.fileName,
           columns: options.fileData.columns,
         });
