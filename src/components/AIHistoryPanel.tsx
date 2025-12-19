@@ -249,9 +249,48 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
     };
   }, []);
 
+  // Helper para construir URL do Vimeo com parâmetros de privacidade e otimização
+  const buildVimeoUrl = (baseUrl: string | undefined): string | null => {
+    if (!baseUrl) return null;
+    
+    try {
+      const url = new URL(baseUrl);
+      const params = new URLSearchParams(url.search);
+      
+      params.set('dnt', '1');           // Do Not Track (privacidade)
+      params.set('quality', 'auto');    // Qualidade automática
+      params.set('responsive', '1');    // Responsivo
+      params.set('playsinline', '1');   // Evita fullscreen no iOS
+      
+      url.search = params.toString();
+      return url.toString();
+    } catch {
+      return baseUrl; // Retorna URL original se parsing falhar
+    }
+  };
+
+  // Helper para scroll suave com fallback para navegadores antigos
+  const safeScrollIntoView = (element: HTMLElement | null, options: ScrollIntoViewOptions) => {
+    if (!element) return;
+    
+    try {
+      element.scrollIntoView(options);
+    } catch {
+      // Fallback para navegadores antigos (Safari < 15.4)
+      element.scrollIntoView(options.block === 'center');
+    }
+  };
+
   // Intersection Observer para detectar badges na tela (apenas desktop)
   useEffect(() => {
     if (isMobile) return; // Não usar no mobile
+    
+    // Verificar suporte ao IntersectionObserver (IE11, Safari antigo)
+    if (!('IntersectionObserver' in window)) {
+      // Fallback: mostrar todos os badges imediatamente
+      setVisibleBadges(new Set(timelineData.map(e => e.id)));
+      return;
+    }
     
     const observer = new IntersectionObserver(
       (entries) => {
@@ -313,7 +352,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
         
         player.on('ended', () => {
           // Auto-scroll para a timeline quando vídeo terminar
-          timelineRef.current?.scrollIntoView({
+          safeScrollIntoView(timelineRef.current, {
             behavior: 'smooth',
             block: 'start'
           });
@@ -328,7 +367,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
     
     // Scroll para o evento (desktop)
     if (!isMobile && eventRefs.current[eventId]) {
-      eventRefs.current[eventId]?.scrollIntoView({
+      safeScrollIntoView(eventRefs.current[eventId], {
         behavior: 'smooth',
         block: 'center'
       });
@@ -364,7 +403,7 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
       
       // Desktop: scroll suave para a seção
       if (!isMobile && eventRefs.current[currentEvent.id]) {
-        eventRefs.current[currentEvent.id]?.scrollIntoView({
+        safeScrollIntoView(eventRefs.current[currentEvent.id], {
           behavior: 'smooth',
           block: 'center'
         });
@@ -440,12 +479,12 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                 <div className="mb-2 rounded-lg overflow-hidden border border-primary/20 aspect-video">
                   <iframe
                     id="vimeo-player"
-                    src={vimeoUrl}
-                    className="w-full h-full"
-                    frameBorder="0"
+                    src={buildVimeoUrl(vimeoUrl) || ''}
+                    className="w-full h-full border-0"
                     allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
                     allowFullScreen
                     title="A história da IA"
+                    loading="lazy"
                   />
                 </div>
                 
@@ -579,12 +618,12 @@ export const AIHistoryPanel = ({ onClose }: AIHistoryPanelProps) => {
                 <div className="w-full max-w-4xl rounded-lg overflow-hidden border border-primary/20 aspect-video">
                   <iframe
                     id="vimeo-player"
-                    src={vimeoUrl}
-                    className="w-full h-full"
-                    frameBorder="0"
+                    src={buildVimeoUrl(vimeoUrl) || ''}
+                    className="w-full h-full border-0"
                     allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
                     allowFullScreen
                     title="A história da IA"
+                    loading="lazy"
                   />
                 </div>
                 
