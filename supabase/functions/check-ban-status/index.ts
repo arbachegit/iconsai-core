@@ -5,6 +5,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Domínios na whitelist (desenvolvimento/preview)
+const WHITELISTED_DOMAINS = [
+  'localhost',
+  'lovable.app',
+  'lovableproject.com',
+  'gptengineer.run',
+  'webcontainer.io',
+];
+
+function isWhitelistedOrigin(origin: string): boolean {
+  return WHITELISTED_DOMAINS.some(domain => origin.includes(domain));
+}
+
 interface CheckBanPayload {
   deviceFingerprint: string;
   userEmail?: string;
@@ -17,6 +30,22 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verificar se a requisição vem de um domínio whitelisted
+    const origin = req.headers.get('origin') || req.headers.get('referer') || '';
+    if (isWhitelistedOrigin(origin)) {
+      console.log('[WHITELIST] Request from whitelisted domain:', origin);
+      return new Response(
+        JSON.stringify({ 
+          isBanned: false, 
+          whitelisted: true,
+          message: 'Development/preview environment - whitelist active'
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
