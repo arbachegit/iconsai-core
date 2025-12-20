@@ -150,7 +150,7 @@ const AdminResetPassword = () => {
       });
 
     } catch (err: any) {
-      console.error("Error validating code:", err);
+      // [SECURITY] Error details not logged to prevent sensitive data exposure
       toast({
         title: "Erro",
         description: err.message || "Erro ao validar código",
@@ -215,8 +215,8 @@ const AdminResetPassword = () => {
       navigate('/admin/login');
 
     } catch (err: any) {
-      console.error("Error resetting password:", err);
-      await logPasswordRecoveryEvent(email, 'Falha ao redefinir senha', false, { error: err.message });
+      // [SECURITY] Error details not logged to prevent sensitive data exposure
+      await logPasswordRecoveryEvent(email, 'Falha ao redefinir senha', false, { error: 'Password reset failed' });
       toast({
         title: "Erro",
         description: err.message || "Erro ao redefinir senha",
@@ -262,7 +262,7 @@ const AdminResetPassword = () => {
       resetTimer();
 
     } catch (err: any) {
-      console.error("Error resending code:", err);
+      // [SECURITY] Error details not logged to prevent sensitive data exposure
       toast({
         title: "Erro",
         description: err.message || "Erro ao reenviar código",
