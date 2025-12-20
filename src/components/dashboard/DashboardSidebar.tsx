@@ -242,12 +242,12 @@ export function DashboardSidebar({
           {!isCollapsed && (
             <button
               onClick={() => setIsControlCenterCollapsed(!isControlCenterCollapsed)}
-              className="group absolute -top-3 left-1/2 -translate-x-1/2 z-10 bg-[#0B1120] border border-white/10 rounded-full p-0.5 hover:bg-[#00D4FF] hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-110 transition-all duration-300 ease-in-out"
+              className="group absolute -top-3 left-1/2 -translate-x-1/2 z-10 bg-background border border-border rounded-full p-0.5 hover:bg-muted transition-all duration-200"
             >
               {isControlCenterCollapsed ? (
-                <ChevronUp className="w-3.5 h-3.5 text-muted-foreground group-hover:text-black" />
+                <ChevronUp className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" />
               ) : (
-                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-hover:text-black" />
+                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" />
               )}
             </button>
           )}
@@ -262,10 +262,10 @@ export function DashboardSidebar({
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                      className="group h-10 w-10 rounded-lg hover:bg-muted transition-all duration-200"
                       onClick={() => navigate("/admin")}
                     >
-                      <Settings className="w-4 h-4 group-hover:text-black" />
+                      <Settings className="w-4 h-4 group-hover:text-foreground" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="right">Admin</TooltipContent>
@@ -278,10 +278,10 @@ export function DashboardSidebar({
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-10 w-10 rounded-lg hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/app")}
                   >
-                    <Smartphone className="w-4 h-4 group-hover:text-black" />
+                    <Smartphone className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">App</TooltipContent>
@@ -292,10 +292,10 @@ export function DashboardSidebar({
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-10 w-10 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-10 w-10 rounded-lg text-primary hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/")}
                   >
-                    <Home className="w-4 h-4 group-hover:text-black" />
+                    <Home className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Voltar ao Início</TooltipContent>
@@ -306,10 +306,10 @@ export function DashboardSidebar({
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-10 w-10 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-10 w-10 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200"
                     onClick={onLogout}
                   >
-                    <LogOut className="w-4 h-4 group-hover:text-white" />
+                    <LogOut className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Sair</TooltipContent>
@@ -324,10 +324,10 @@ export function DashboardSidebar({
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                      className="group h-9 w-9 rounded-lg hover:bg-muted transition-all duration-200"
                       onClick={() => navigate("/admin")}
                     >
-                      <Settings className="w-4 h-4 group-hover:text-black" />
+                      <Settings className="w-4 h-4 group-hover:text-foreground" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top">Admin</TooltipContent>
@@ -339,10 +339,10 @@ export function DashboardSidebar({
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-9 w-9 rounded-lg hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/app")}
                   >
-                    <Smartphone className="w-4 h-4 group-hover:text-black" />
+                    <Smartphone className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">App</TooltipContent>
@@ -353,10 +353,10 @@ export function DashboardSidebar({
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-9 w-9 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-9 w-9 rounded-lg text-primary hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/")}
                   >
-                    <Home className="w-4 h-4 group-hover:text-black" />
+                    <Home className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Voltar ao Início</TooltipContent>
@@ -367,10 +367,10 @@ export function DashboardSidebar({
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-9 w-9 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-9 w-9 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200"
                     onClick={onLogout}
                   >
-                    <LogOut className="w-4 h-4 group-hover:text-white" />
+                    <LogOut className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Sair</TooltipContent>
@@ -382,38 +382,38 @@ export function DashboardSidebar({
               {isSuperAdmin && (
                 <Button 
                   variant="ghost" 
-                  className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                  className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted transition-all duration-200"
                   onClick={() => navigate("/admin")}
                 >
-                  <Settings className="w-4 h-4 shrink-0 group-hover:text-black" />
+                  <Settings className="w-4 h-4 shrink-0 group-hover:text-foreground" />
                   <span className="whitespace-nowrap">Admin</span>
                 </Button>
               )}
 
               <Button 
                 variant="ghost" 
-                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted transition-all duration-200"
                 onClick={() => navigate("/app")}
               >
-                <Smartphone className="w-4 h-4 shrink-0 group-hover:text-black" />
+                <Smartphone className="w-4 h-4 shrink-0 group-hover:text-foreground" />
                 <span className="whitespace-nowrap">App</span>
               </Button>
 
               <Button 
                 variant="ghost" 
-                className="group w-full justify-start gap-3 h-9 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                className="group w-full justify-start gap-3 h-9 rounded-lg text-primary hover:bg-muted transition-all duration-200"
                 onClick={() => navigate("/")}
               >
-                <Home className="w-4 h-4 shrink-0 group-hover:text-black" />
+                <Home className="w-4 h-4 shrink-0 group-hover:text-foreground" />
                 <span className="whitespace-nowrap">Voltar ao Início</span>
               </Button>
 
               <Button 
                 variant="ghost" 
-                className="group w-full justify-start gap-3 h-9 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                className="group w-full justify-start gap-3 h-9 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200"
                 onClick={onLogout}
               >
-                <LogOut className="w-4 h-4 shrink-0 group-hover:text-white" />
+                <LogOut className="w-4 h-4 shrink-0" />
                 <span className="whitespace-nowrap">Sair</span>
               </Button>
             </div>
