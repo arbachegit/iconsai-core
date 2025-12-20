@@ -1,0 +1,216 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+interface VerifyCodeRequest {
+  token: string;
+  code: string;
+  password: string;
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { token, code, password }: VerifyCodeRequest = await req.json();
+
+    // Fetch invitation
+    const { data: invitation, error: fetchError } = await supabase
+      .from("user_invitations")
+      .select("*")
+      .eq("token", token)
+      .single();
+
+    if (fetchError || !invitation) {
+      return new Response(
+        JSON.stringify({ error: "Convite não encontrado" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if already completed
+    if (invitation.status === "completed") {
+      return new Response(
+        JSON.stringify({ error: "Este convite já foi utilizado" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if code expired
+    if (new Date(invitation.verification_code_expires_at) < new Date()) {
+      return new Response(
+        JSON.stringify({ error: "Código expirado. Solicite um novo código." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check attempts limit (max 5)
+    if (invitation.verification_attempts >= 5) {
+      return new Response(
+        JSON.stringify({ error: "Número máximo de tentativas excedido. Solicite um novo código." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Increment attempts
+    await supabase
+      .from("user_invitations")
+      .update({ 
+        verification_attempts: invitation.verification_attempts + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq("token", token);
+
+    // Verify code
+    if (invitation.verification_code !== code) {
+      const remainingAttempts = 4 - invitation.verification_attempts;
+      return new Response(
+        JSON.stringify({ 
+          error: `Código incorreto. ${remainingAttempts > 0 ? `${remainingAttempts} tentativas restantes.` : 'Solicite um novo código.'}` 
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Code is correct! Create user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: invitation.email,
+      password: password,
+      email_confirm: true, // Auto-confirm since they verified via code
+      user_metadata: {
+        first_name: invitation.name.split(" ")[0],
+        last_name: invitation.name.split(" ").slice(1).join(" ") || "",
+        phone: invitation.phone
+      }
+    });
+
+    if (authError) {
+      console.error("Error creating auth user:", authError);
+      return new Response(
+        JSON.stringify({ error: `Erro ao criar usuário: ${authError.message}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const userId = authData.user.id;
+
+    // Assign role in user_roles table
+    const { error: roleError } = await supabase
+      .from("user_roles")
+      .insert({
+        user_id: userId,
+        role: invitation.role
+      });
+
+    if (roleError) {
+      console.error("Error assigning role:", roleError);
+      // Don't fail the whole process, but log it
+    }
+
+    // Create profile
+    const nameParts = invitation.name.split(" ");
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .insert({
+        id: userId,
+        first_name: nameParts[0],
+        last_name: nameParts.slice(1).join(" ") || null,
+        phone: invitation.phone
+      });
+
+    if (profileError) {
+      console.error("Error creating profile:", profileError);
+    }
+
+    // Add to user_registrations for tracking
+    const { error: regError } = await supabase
+      .from("user_registrations")
+      .insert({
+        first_name: nameParts[0],
+        last_name: nameParts.slice(1).join(" ") || "",
+        email: invitation.email,
+        phone: invitation.phone,
+        role: invitation.role,
+        status: "approved",
+        approved_at: new Date().toISOString()
+      });
+
+    if (regError) {
+      console.error("Error creating registration record:", regError);
+    }
+
+    // Update invitation status to completed
+    const { error: updateError } = await supabase
+      .from("user_invitations")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("token", token);
+
+    if (updateError) {
+      console.error("Error updating invitation status:", updateError);
+    }
+
+    // Notify Super Admin
+    try {
+      const { data: settings } = await supabase
+        .from("admin_settings")
+        .select("whatsapp_target_phone, whatsapp_global_enabled")
+        .single();
+
+      if (settings?.whatsapp_global_enabled && settings?.whatsapp_target_phone) {
+        const roleLabel = invitation.role === 'superadmin' ? 'Super Admin' : invitation.role === 'admin' ? 'Admin' : 'Usuário';
+        const methodLabel = invitation.verification_method === 'email' ? 'Email' : 'WhatsApp';
+        const adminMessage = `✅ *Cadastro Concluído*\n\n👤 ${invitation.name}\n📧 ${invitation.email}\n🔑 Role: ${roleLabel}\n✔️ Verificado via: ${methodLabel}\n\n🎉 Usuário pode fazer login.`;
+
+        await supabase.functions.invoke("send-whatsapp", {
+          body: {
+            phoneNumber: settings.whatsapp_target_phone,
+            message: adminMessage
+          }
+        });
+      }
+    } catch (notifyError) {
+      console.error("Error notifying admin:", notifyError);
+    }
+
+    // Log the event
+    await supabase.from("notification_logs").insert({
+      event_type: "user_invitation_completed",
+      channel: "system",
+      recipient: invitation.email,
+      subject: "Cadastro concluído",
+      message_body: `${invitation.name} completou o cadastro com role ${invitation.role}`,
+      status: "success",
+      metadata: { token, role: invitation.role, verificationMethod: invitation.verification_method }
+    });
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "Cadastro concluído com sucesso! Você pode fazer login agora.",
+        email: invitation.email
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+  } catch (error: any) {
+    console.error("Error in verify-invitation-code:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});

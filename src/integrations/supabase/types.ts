@@ -2814,6 +2814,96 @@ export type Database = {
         }
         Relationships: []
       }
+      user_invitations: {
+        Row: {
+          address_cep: string | null
+          address_city: string | null
+          address_complement: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
+          completed_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          last_resend_at: string | null
+          name: string
+          phone: string | null
+          resend_count: number | null
+          role: Database["public"]["Enums"]["app_role"]
+          send_via_email: boolean | null
+          send_via_whatsapp: boolean | null
+          status: string
+          token: string
+          updated_at: string | null
+          verification_attempts: number | null
+          verification_code: string | null
+          verification_code_expires_at: string | null
+          verification_method: string | null
+        }
+        Insert: {
+          address_cep?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          invited_by?: string | null
+          last_resend_at?: string | null
+          name: string
+          phone?: string | null
+          resend_count?: number | null
+          role?: Database["public"]["Enums"]["app_role"]
+          send_via_email?: boolean | null
+          send_via_whatsapp?: boolean | null
+          status?: string
+          token: string
+          updated_at?: string | null
+          verification_attempts?: number | null
+          verification_code?: string | null
+          verification_code_expires_at?: string | null
+          verification_method?: string | null
+        }
+        Update: {
+          address_cep?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          last_resend_at?: string | null
+          name?: string
+          phone?: string | null
+          resend_count?: number | null
+          role?: Database["public"]["Enums"]["app_role"]
+          send_via_email?: boolean | null
+          send_via_whatsapp?: boolean | null
+          status?: string
+          token?: string
+          updated_at?: string | null
+          verification_attempts?: number | null
+          verification_code?: string | null
+          verification_code_expires_at?: string | null
+          verification_method?: string | null
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           created_at: string | null
