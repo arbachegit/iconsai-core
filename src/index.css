@@ -68,6 +68,8 @@ All colors MUST be HSL.
     /* Cyan design system for knowyou cards */
     --cyan-hover-fill: 191 100% 50% / 0.08;
     --cyan-active-fill: 191 100% 50% / 0.15;
+    --cyan-expanded-fill: 191 100% 35%;
+    --cyan-expanded-text: 0 0% 100%;
     --shadow-cyan-sm: 0 2px 8px hsl(191 100% 50% / 0.1);
     --shadow-cyan-md: 0 4px 16px hsl(191 100% 50% / 0.15);
     --shadow-cyan-lg: 0 8px 32px hsl(191 100% 50% / 0.2);
