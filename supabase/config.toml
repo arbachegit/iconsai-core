@@ -155,3 +155,15 @@ verify_jwt = false
 
 [functions.fetch-spotify-metadata]
 verify_jwt = false
+
+[functions.create-invitation]
+verify_jwt = false
+
+[functions.send-invitation-verification]
+verify_jwt = false
+
+[functions.verify-invitation-code]
+verify_jwt = false
+
+[functions.resend-invitation-code]
+verify_jwt = false
