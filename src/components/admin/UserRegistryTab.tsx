@@ -165,6 +165,7 @@ export const UserRegistryTab = () => {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [banModal, setBanModal] = useState<{ open: boolean; user: UserRegistration | null; reason: string }>({ open: false, user: null, reason: "" });
   const [resetPasswordModal, setResetPasswordModal] = useState<{ open: boolean; user: UserRegistration | null }>({ open: false, user: null });
+  const [resendWelcomeModal, setResendWelcomeModal] = useState<{ open: boolean; user: UserRegistration | null }>({ open: false, user: null });
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   
   // CSV Import states
@@ -486,6 +487,23 @@ export const UserRegistryTab = () => {
     },
     onError: (error: Error) => {
       toast.error(`Erro ao resetar senha: ${error.message}`);
+    }
+  });
+
+  // Resend welcome email mutation
+  const resendWelcomeMutation = useMutation({
+    mutationFn: async (user: UserRegistration) => {
+      const { error } = await supabase.functions.invoke("resend-welcome-email", {
+        body: { registrationId: user.id }
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Email de boas-vindas reenviado!");
+      setResendWelcomeModal({ open: false, user: null });
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao reenviar email: ${error.message}`);
     }
   });
 
@@ -1117,6 +1135,27 @@ export const UserRegistryTab = () => {
                                     >
                                       <Edit2 className="w-4 h-4" />
                                     </Button>
+                                    {/* Resend welcome email button - only for approved, non-banned users */}
+                                    {!reg.is_banned && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
+                                              onClick={() => setResendWelcomeModal({ open: true, user: reg })}
+                                              disabled={resendWelcomeMutation.isPending}
+                                            >
+                                              <Send className="w-4 h-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Reenviar email de boas-vindas</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -1738,6 +1777,36 @@ export const UserRegistryTab = () => {
             >
               {resetPasswordMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Enviar Reset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resend Welcome Email Modal */}
+      <Dialog open={resendWelcomeModal.open} onOpenChange={(open) => !open && setResendWelcomeModal({ open: false, user: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-blue-500">
+              <Send className="w-5 h-5" />
+              Reenviar Email de Boas-Vindas
+            </DialogTitle>
+            <DialogDescription>
+              Deseja reenviar o email de boas-vindas para <span className="font-semibold">{resendWelcomeModal.user?.first_name} {resendWelcomeModal.user?.last_name}</span> ({resendWelcomeModal.user?.email})?
+              <br /><br />
+              O usuário receberá um novo link para definir sua senha.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResendWelcomeModal({ open: false, user: null })}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => resendWelcomeModal.user && resendWelcomeMutation.mutate(resendWelcomeModal.user)}
+              disabled={resendWelcomeMutation.isPending}
+              className="bg-blue-500 hover:bg-blue-600"
+            >
+              {resendWelcomeMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Reenviar Email
             </Button>
           </DialogFooter>
         </DialogContent>
