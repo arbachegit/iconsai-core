@@ -919,7 +919,7 @@ export const UserRegistryTab = () => {
           <TabsTrigger value="active" className="gap-2">
             <Users className="w-4 h-4" />
             Usuários Ativos
-            <Badge variant="secondary" className="ml-1">{activeCount}</Badge>
+            <Badge className="ml-1 bg-fuchsia-300 text-fuchsia-900">{activeCount}</Badge>
           </TabsTrigger>
           <TabsTrigger value="pending" className="gap-2">
             <Clock className="w-4 h-4" />
@@ -1052,6 +1052,7 @@ export const UserRegistryTab = () => {
                           <TableHead>DNS</TableHead>
                           <TableHead>Role</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Banimento</TableHead>
                           <TableHead 
                             className="cursor-pointer hover:text-foreground transition-colors"
                             onClick={() => handleSort('date')}
@@ -1083,7 +1084,44 @@ export const UserRegistryTab = () => {
                               )}
                             </TableCell>
                             <TableCell>{renderRoleBadge(reg.role)}</TableCell>
-                            <TableCell>{renderStatusBadge(reg.status)}</TableCell>
+                            <TableCell>
+                              <Switch
+                                checked={reg.status === "approved"}
+                                className={reg.status === "approved"
+                                  ? "data-[state=checked]:bg-emerald-500" 
+                                  : "data-[state=unchecked]:bg-red-500"
+                                }
+                                disabled
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <Switch
+                                        checked={reg.is_banned || false}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            setBanModal({ open: true, user: reg, reason: "" });
+                                          } else {
+                                            unbanUserMutation.mutate(reg.id);
+                                          }
+                                        }}
+                                        disabled={banUserMutation.isPending || unbanUserMutation.isPending}
+                                        className={reg.is_banned 
+                                          ? "data-[state=checked]:bg-red-500" 
+                                          : "data-[state=unchecked]:bg-emerald-500"
+                                        }
+                                      />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{reg.is_banned ? (reg.ban_reason || "Usuário banido") : "Usuário ativo"}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {formatDateTime(reg.requested_at)}
                             </TableCell>
@@ -1129,34 +1167,6 @@ export const UserRegistryTab = () => {
                                   </>
                                 ) : (
                                   <>
-                                    {/* Ban Toggle - Red when banned, Green when not */}
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div className="flex items-center gap-2 mr-2">
-                                            <span className="text-xs text-muted-foreground">Banimento:</span>
-                                            <Switch
-                                              checked={reg.is_banned || false}
-                                              onCheckedChange={(checked) => {
-                                                if (checked) {
-                                                  setBanModal({ open: true, user: reg, reason: "" });
-                                                } else {
-                                                  unbanUserMutation.mutate(reg.id);
-                                                }
-                                              }}
-                                              disabled={banUserMutation.isPending || unbanUserMutation.isPending}
-                                              className={reg.is_banned 
-                                                ? "data-[state=checked]:bg-red-500" 
-                                                : "data-[state=unchecked]:bg-emerald-500"
-                                              }
-                                            />
-                                          </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>{reg.is_banned ? (reg.ban_reason || "Usuário banido") : "Usuário ativo"}</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>

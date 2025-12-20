@@ -455,14 +455,14 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                         hasActiveChild
                           ? 'bg-[hsl(300,100%,50%)] text-white shadow-[0_0_15px_rgba(255,0,255,0.5)]'
                           : openSections.includes(category.id) 
-                            ? 'bg-[hsl(191,100%,35%)] text-white shadow-[0_0_15px_rgba(0,212,255,0.4)]' 
+                            ? 'bg-fuchsia-300 text-fuchsia-900 shadow-[0_0_15px_rgba(255,0,255,0.3)]' 
                             : 'text-muted-foreground hover:text-black hover:bg-[#00D4FF] hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105'
                       }`}>
                         <div className="flex items-center gap-2">
-                          <category.icon className={`w-3.5 h-3.5 ${hasActiveChild || openSections.includes(category.id) ? 'text-white' : 'group-hover:text-black'}`} />
+                          <category.icon className={`w-3.5 h-3.5 ${hasActiveChild ? 'text-white' : openSections.includes(category.id) ? 'text-fuchsia-900' : 'group-hover:text-black'}`} />
                           {category.label}
                         </div>
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openSections.includes(category.id) ? 'rotate-180 text-white' : 'group-hover:text-black'}`} />
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openSections.includes(category.id) ? (hasActiveChild ? 'rotate-180 text-white' : 'rotate-180 text-fuchsia-900') : 'group-hover:text-black'}`} />
                       </CollapsibleTrigger>
                     );
                   })()}
