@@ -2,15 +2,35 @@
  * SECURITY SHIELD - KnowYOU v2
  * Sistema de Tolerância Zero para tentativas de inspeção de código
  * 
- * ⚠️ IMPORTANTE: Este módulo é DESATIVADO em ambiente de desenvolvimento (localhost)
+ * ⚠️ IMPORTANTE: Este módulo é DESATIVADO em ambiente de desenvolvimento
  */
 
 import { supabase } from "@/integrations/supabase/client";
 
+// ============================================
+// WHITELIST DE DOMÍNIOS (Desenvolvimento/Preview)
+// ============================================
+const WHITELISTED_DOMAINS = [
+  'localhost',
+  '127.0.0.1',
+  'lovable.app',
+  'lovableproject.com',
+  'gptengineer.run',
+  'webcontainer.io',
+];
+
+/**
+ * Verifica se o domínio atual está na whitelist
+ */
+function isWhitelistedDomain(): boolean {
+  if (typeof window === 'undefined') return true;
+  const hostname = window.location.hostname;
+  return WHITELISTED_DOMAINS.some(domain => hostname.includes(domain));
+}
+
 // Configuration
-const IS_PRODUCTION = typeof window !== 'undefined' && 
-  !window.location.hostname.includes('localhost') &&
-  !window.location.hostname.includes('127.0.0.1');
+const IS_DEVELOPMENT = isWhitelistedDomain();
+const IS_PRODUCTION = !IS_DEVELOPMENT;
 
 const MONITORING_INTERVAL = 500; // ms
 const CONSOLE_CLEAR_INTERVAL = 1000; // ms
@@ -295,8 +315,12 @@ function detectReactDevTools(): boolean {
 
 /**
  * Check if running inside an iframe
+ * IMPORTANTE: Desativado em ambiente de desenvolvimento/preview
  */
 function detectIframe(): boolean {
+  // Whitelist: não bloquear em ambiente de desenvolvimento
+  if (!IS_PRODUCTION) return false;
+  
   try {
     return window.self !== window.top;
   } catch {
