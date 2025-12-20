@@ -62,6 +62,7 @@ const ManageTaxonomyTab = lazy(() => import("@/components/admin/ManageTaxonomyTa
 const SecurityIntegrityTab = lazy(() => import("@/components/admin/SecurityIntegrityTab").then(m => ({ default: m.SecurityIntegrityTab })));
 const SecurityDashboard = lazy(() => import("@/components/admin/SecurityDashboard").then(m => ({ default: m.SecurityDashboard })));
 const SecurityWhitelist = lazy(() => import("@/components/admin/SecurityWhitelist").then(m => ({ default: m.SecurityWhitelist })));
+const SecurityShieldConfigTab = lazy(() => import("@/components/admin/SecurityShieldConfigTab").then(m => ({ default: m.SecurityShieldConfigTab })));
 const NotificationSettingsTab = lazy(() => import("@/components/admin/NotificationSettingsTab"));
 const NotificationLogsTab = lazy(() => import("@/components/admin/NotificationLogsTab"));
 const UserRegistryTab = lazy(() => import("@/components/admin/UserRegistryTab"));
@@ -85,7 +86,7 @@ const TabLoadingFallback = () => (
   </div>
 );
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "security-dashboard" | "security-whitelist" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -124,6 +125,7 @@ const TAB_LABELS: Record<TabType, string> = {
   "security-integrity": "Segurança & Integridade",
   "security-dashboard": "Dashboard Segurança",
   "security-whitelist": "Whitelist de IPs",
+  "security-shield-config": "Config. Security Shield",
   "notification-settings": "Notificação",
   "notification-logs": "Logs de Notificações",
   "user-registry": "Cadastro de Usuários",
@@ -299,6 +301,7 @@ const Admin = () => {
         case "security-integrity": return <SecurityIntegrityTab />;
         case "security-dashboard": return <SecurityDashboard />;
         case "security-whitelist": return <SecurityWhitelist />;
+        case "security-shield-config": return <SecurityShieldConfigTab />;
         case "notification-settings": return <NotificationSettingsTab />;
         case "notification-logs": return <NotificationLogsTab />;
         case "user-registry": return <UserRegistryTab />;
