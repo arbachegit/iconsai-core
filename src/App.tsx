@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,8 @@ import { FloatingAudioPlayer } from "./components/FloatingAudioPlayer";
 import { useApiRegistrySync } from "./hooks/useApiRegistrySync";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { BannedScreen } from "./components/BannedScreen";
+import { initSecurityShield, checkBanStatus, getDeviceFingerprint } from "./lib/security-shield";
 
 // Lazy load non-critical pages
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -41,63 +43,135 @@ const ApiRegistrySyncProvider = ({ children }: { children: React.ReactNode }) =>
   return <>{children}</>;
 };
 
+// Security wrapper component
+interface BanInfo {
+  reason: string;
+  deviceId: string;
+  bannedAt?: string;
+}
+
+const SecurityWrapper = ({ children }: { children: React.ReactNode }) => {
+  const [banInfo, setBanInfo] = useState<BanInfo | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    // Initialize security shield
+    const cleanup = initSecurityShield();
+
+    // Check ban status on load
+    const checkBan = async () => {
+      try {
+        const status = await checkBanStatus();
+        if (status.isBanned) {
+          setBanInfo({
+            reason: status.reason || status.violationType || "Violação de segurança",
+            deviceId: status.deviceId || getDeviceFingerprint().substring(0, 16),
+            bannedAt: status.bannedAt,
+          });
+        }
+      } catch (error) {
+        console.error("Error checking ban status:", error);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkBan();
+
+    // Listen for security ban events from the shield
+    const handleBanned = (event: CustomEvent<{ reason: string; deviceId: string }>) => {
+      setBanInfo({
+        reason: event.detail.reason,
+        deviceId: event.detail.deviceId,
+      });
+    };
+
+    window.addEventListener("security-banned", handleBanned as EventListener);
+
+    return () => {
+      cleanup();
+      window.removeEventListener("security-banned", handleBanned as EventListener);
+    };
+  }, []);
+
+  // Show loading while checking ban status
+  if (isChecking) {
+    return <PageLoader />;
+  }
+
+  // Show ban screen if banned
+  if (banInfo) {
+    return (
+      <BannedScreen
+        reason={banInfo.reason}
+        deviceId={banInfo.deviceId}
+        bannedAt={banInfo.bannedAt}
+      />
+    );
+  }
+
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AudioPlayerProvider>
         <TooltipProvider>
-          <ApiRegistrySyncProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/admin/login" element={<AdminLogin />} />
-                  <Route path="/admin/signup" element={<AdminSignup />} />
-                  <Route path="/admin/reset-password" element={<AdminResetPassword />} />
-                  
-                  {/* Protected Routes */}
-                  <Route path="/hub" element={
-                    <ProtectedRoute requiredRole="superadmin">
-                      <Hub />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/app" element={
-                    <ProtectedRoute>
-                      <AppPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard" element={
-                    <ProtectedRoute requiredRole="admin">
-                      <DashboardAdmin />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/dashboard" element={
-                    <ProtectedRoute requiredRole="admin">
-                      <Dashboard />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin" element={
-                    <ProtectedRoute requiredRole="superadmin">
-                      <Admin />
-                    </ProtectedRoute>
-                  } />
-                  
-                  {/* Public Routes */}
-                  <Route path="/docs" element={<Documentation />} />
-                  <Route path="/arquitetura" element={<Arquitetura />} />
-                  <Route path="/pwa" element={<PWA />} />
-                  <Route path="/invite/:token" element={<InvitePage />} />
-                  
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-            </BrowserRouter>
-            {/* Global Floating Audio Player */}
-            <FloatingAudioPlayer />
-          </ApiRegistrySyncProvider>
+          <SecurityWrapper>
+            <ApiRegistrySyncProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/admin/login" element={<AdminLogin />} />
+                    <Route path="/admin/signup" element={<AdminSignup />} />
+                    <Route path="/admin/reset-password" element={<AdminResetPassword />} />
+                    
+                    {/* Protected Routes */}
+                    <Route path="/hub" element={
+                      <ProtectedRoute requiredRole="superadmin">
+                        <Hub />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/app" element={
+                      <ProtectedRoute>
+                        <AppPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/dashboard" element={
+                      <ProtectedRoute requiredRole="admin">
+                        <DashboardAdmin />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/admin/dashboard" element={
+                      <ProtectedRoute requiredRole="admin">
+                        <Dashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/admin" element={
+                      <ProtectedRoute requiredRole="superadmin">
+                        <Admin />
+                      </ProtectedRoute>
+                    } />
+                    
+                    {/* Public Routes */}
+                    <Route path="/docs" element={<Documentation />} />
+                    <Route path="/arquitetura" element={<Arquitetura />} />
+                    <Route path="/pwa" element={<PWA />} />
+                    <Route path="/invite/:token" element={<InvitePage />} />
+                    
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </BrowserRouter>
+              {/* Global Floating Audio Player */}
+              <FloatingAudioPlayer />
+            </ApiRegistrySyncProvider>
+          </SecurityWrapper>
         </TooltipProvider>
       </AudioPlayerProvider>
     </ThemeProvider>

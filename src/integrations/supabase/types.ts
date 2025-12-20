@@ -361,6 +361,54 @@ export type Database = {
         }
         Relationships: []
       }
+      banned_devices: {
+        Row: {
+          ban_reason: string
+          banned_at: string | null
+          created_at: string | null
+          device_fingerprint: string
+          id: string
+          ip_address: unknown
+          is_permanent: boolean | null
+          unbanned_at: string | null
+          unbanned_by: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+          violation_type: string
+        }
+        Insert: {
+          ban_reason: string
+          banned_at?: string | null
+          created_at?: string | null
+          device_fingerprint: string
+          id?: string
+          ip_address?: unknown
+          is_permanent?: boolean | null
+          unbanned_at?: string | null
+          unbanned_by?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          violation_type: string
+        }
+        Update: {
+          ban_reason?: string
+          banned_at?: string | null
+          created_at?: string | null
+          device_fingerprint?: string
+          id?: string
+          ip_address?: unknown
+          is_permanent?: boolean | null
+          unbanned_at?: string | null
+          unbanned_by?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          violation_type?: string
+        }
+        Relationships: []
+      }
       brazilian_ufs: {
         Row: {
           capital: string | null
@@ -2221,6 +2269,45 @@ export type Database = {
         }
         Relationships: []
       }
+      security_violations: {
+        Row: {
+          action_taken: string
+          created_at: string | null
+          device_fingerprint: string
+          id: string
+          ip_address: unknown
+          severity: string | null
+          user_email: string | null
+          user_id: string | null
+          violation_details: Json | null
+          violation_type: string
+        }
+        Insert: {
+          action_taken?: string
+          created_at?: string | null
+          device_fingerprint: string
+          id?: string
+          ip_address?: unknown
+          severity?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          violation_details?: Json | null
+          violation_type: string
+        }
+        Update: {
+          action_taken?: string
+          created_at?: string | null
+          device_fingerprint?: string
+          id?: string
+          ip_address?: unknown
+          severity?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          violation_details?: Json | null
+          violation_type?: string
+        }
+        Relationships: []
+      }
       suggestion_audit: {
         Row: {
           admin_feedback: string | null
@@ -2941,6 +3028,10 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          ban_reason: string | null
+          ban_type: string | null
+          banned_at: string | null
+          banned_by: string | null
           created_at: string | null
           dns_origin: string | null
           email: string
@@ -2948,6 +3039,7 @@ export type Database = {
           id: string
           institution_study: string | null
           institution_work: string | null
+          is_banned: boolean | null
           last_name: string
           mass_import_at: string | null
           phone: string | null
@@ -2955,11 +3047,17 @@ export type Database = {
           requested_at: string | null
           role: Database["public"]["Enums"]["app_role"]
           status: string
+          unbanned_at: string | null
+          unbanned_by: string | null
           updated_at: string | null
         }
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          ban_reason?: string | null
+          ban_type?: string | null
+          banned_at?: string | null
+          banned_by?: string | null
           created_at?: string | null
           dns_origin?: string | null
           email: string
@@ -2967,6 +3065,7 @@ export type Database = {
           id?: string
           institution_study?: string | null
           institution_work?: string | null
+          is_banned?: boolean | null
           last_name: string
           mass_import_at?: string | null
           phone?: string | null
@@ -2974,11 +3073,17 @@ export type Database = {
           requested_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           status?: string
+          unbanned_at?: string | null
+          unbanned_by?: string | null
           updated_at?: string | null
         }
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          ban_reason?: string | null
+          ban_type?: string | null
+          banned_at?: string | null
+          banned_by?: string | null
           created_at?: string | null
           dns_origin?: string | null
           email?: string
@@ -2986,6 +3091,7 @@ export type Database = {
           id?: string
           institution_study?: string | null
           institution_work?: string | null
+          is_banned?: boolean | null
           last_name?: string
           mass_import_at?: string | null
           phone?: string | null
@@ -2993,6 +3099,8 @@ export type Database = {
           requested_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           status?: string
+          unbanned_at?: string | null
+          unbanned_by?: string | null
           updated_at?: string | null
         }
         Relationships: []
