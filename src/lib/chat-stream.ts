@@ -38,8 +38,8 @@ export async function streamChat({
   region,
   agentConfig,
 }: StreamChatOptions) {
-  const endpoint = chatType === "study" ? "chat-study" : "chat";
-  const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${endpoint}`;
+  // Use the new unified chat-router endpoint
+  const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-router`;
 
   try {
     const resp = await fetch(CHAT_URL, {
@@ -54,6 +54,7 @@ export async function streamChat({
           content: m.content,
           fileData: m.fileData
         })),
+        chatType,
         region,
         agentConfig,
       }),

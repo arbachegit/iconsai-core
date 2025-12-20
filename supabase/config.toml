@@ -15,6 +15,9 @@ verify_jwt = false
 [functions.chat-pwa]
 verify_jwt = false
 
+[functions.chat-router]
+verify_jwt = false
+
 # ============================================
 # IMAGE GENERATION - Public access
 # ============================================
