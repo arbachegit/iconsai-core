@@ -1027,10 +1027,10 @@ export const UserRegistryTab = () => {
                       <TableHeader>
                         <TableRow>
                           <TableHead 
-                            className="cursor-pointer hover:text-foreground transition-colors"
+                            className="cursor-pointer hover:text-foreground transition-colors text-center"
                             onClick={() => handleSort('name')}
                           >
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center justify-center gap-1">
                               Nome
                               {sortConfig?.key === 'name' ? (
                                 sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
@@ -1038,44 +1038,44 @@ export const UserRegistryTab = () => {
                             </div>
                           </TableHead>
                           <TableHead 
-                            className="cursor-pointer hover:text-foreground transition-colors"
+                            className="cursor-pointer hover:text-foreground transition-colors text-center"
                             onClick={() => handleSort('email')}
                           >
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center justify-center gap-1">
                               Email
                               {sortConfig?.key === 'email' ? (
                                 sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                               ) : <ArrowUpDown className="w-3 h-3 opacity-50" />}
                             </div>
                           </TableHead>
-                          <TableHead>Telefone</TableHead>
-                          <TableHead>DNS</TableHead>
-                          <TableHead>Role</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Banimento</TableHead>
+                          <TableHead className="text-center">Telefone</TableHead>
+                          <TableHead className="text-center">DNS</TableHead>
+                          <TableHead className="text-center">Role</TableHead>
+                          <TableHead className="text-center">Status</TableHead>
+                          <TableHead className="text-center">Banimento</TableHead>
                           <TableHead 
-                            className="cursor-pointer hover:text-foreground transition-colors"
+                            className="cursor-pointer hover:text-foreground transition-colors text-center"
                             onClick={() => handleSort('date')}
                           >
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center justify-center gap-1">
                               Data
                               {sortConfig?.key === 'date' ? (
                                 sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                               ) : <ArrowUpDown className="w-3 h-3 opacity-50" />}
                             </div>
                           </TableHead>
-                          <TableHead className="text-right">Ações</TableHead>
+                          <TableHead className="text-center">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {paginatedRegistrations.map((reg) => (
                           <TableRow key={reg.id}>
-                            <TableCell className="font-medium">
+                            <TableCell className="font-medium text-center">
                               {reg.first_name} {reg.last_name}
                             </TableCell>
-                            <TableCell>{reg.email}</TableCell>
-                            <TableCell>{reg.phone || "-"}</TableCell>
-                            <TableCell>
+                            <TableCell className="text-center">{reg.email}</TableCell>
+                            <TableCell className="text-center">{reg.phone || "-"}</TableCell>
+                            <TableCell className="text-center">
                               {reg.dns_origin && (
                                 <Badge variant="outline" className="gap-1">
                                   <Globe className="w-3 h-3" />
@@ -1083,50 +1083,54 @@ export const UserRegistryTab = () => {
                                 </Badge>
                               )}
                             </TableCell>
-                            <TableCell>{renderRoleBadge(reg.role)}</TableCell>
-                            <TableCell>
-                              <Switch
-                                checked={reg.status === "approved"}
-                                className={reg.status === "approved"
-                                  ? "data-[state=checked]:bg-emerald-500" 
-                                  : "data-[state=unchecked]:bg-red-500"
-                                }
-                                disabled
-                              />
+                            <TableCell className="text-center">{renderRoleBadge(reg.role)}</TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex justify-center">
+                                <Switch
+                                  checked={reg.status === "approved"}
+                                  className={reg.status === "approved"
+                                    ? "data-[state=checked]:bg-emerald-500" 
+                                    : "data-[state=unchecked]:bg-red-500"
+                                  }
+                                  disabled
+                                />
+                              </div>
                             </TableCell>
-                            <TableCell>
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div>
-                                      <Switch
-                                        checked={reg.is_banned || false}
-                                        onCheckedChange={(checked) => {
-                                          if (checked) {
-                                            setBanModal({ open: true, user: reg, reason: "" });
-                                          } else {
-                                            unbanUserMutation.mutate(reg.id);
+                            <TableCell className="text-center">
+                              <div className="flex justify-center">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div>
+                                        <Switch
+                                          checked={reg.is_banned || false}
+                                          onCheckedChange={(checked) => {
+                                            if (checked) {
+                                              setBanModal({ open: true, user: reg, reason: "" });
+                                            } else {
+                                              unbanUserMutation.mutate(reg.id);
+                                            }
+                                          }}
+                                          disabled={banUserMutation.isPending || unbanUserMutation.isPending}
+                                          className={reg.is_banned 
+                                            ? "data-[state=checked]:bg-red-500" 
+                                            : "data-[state=unchecked]:bg-emerald-500"
                                           }
-                                        }}
-                                        disabled={banUserMutation.isPending || unbanUserMutation.isPending}
-                                        className={reg.is_banned 
-                                          ? "data-[state=checked]:bg-red-500" 
-                                          : "data-[state=unchecked]:bg-emerald-500"
-                                        }
-                                      />
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>{reg.is_banned ? (reg.ban_reason || "Usuário banido") : "Usuário ativo"}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                                        />
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{reg.is_banned ? (reg.ban_reason || "Usuário banido") : "Usuário ativo"}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
+                            <TableCell className="text-center text-sm text-muted-foreground">
                               {formatDateTime(reg.requested_at)}
                             </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-1">
                                 {activeTab === "pending" ? (
                                   <>
                                     <TooltipProvider>
