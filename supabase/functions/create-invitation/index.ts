@@ -13,6 +13,7 @@ interface CreateInvitationRequest {
   role: "user" | "admin" | "superadmin";
   sendViaEmail: boolean;
   sendViaWhatsapp: boolean;
+  pwaAccess?: string[];
 }
 
 serve(async (req) => {
@@ -25,7 +26,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { name, email, phone, role, sendViaEmail, sendViaWhatsapp }: CreateInvitationRequest = await req.json();
+    const { name, email, phone, role, sendViaEmail, sendViaWhatsapp, pwaAccess }: CreateInvitationRequest = await req.json();
 
     // Validate required fields
     if (!name || !email) {
@@ -94,7 +95,8 @@ serve(async (req) => {
         send_via_email: sendViaEmail,
         send_via_whatsapp: sendViaWhatsapp,
         expires_at: expiresAt.toISOString(),
-        status: "pending"
+        status: "pending",
+        pwa_access: pwaAccess || []
       })
       .select()
       .single();
@@ -107,9 +109,17 @@ serve(async (req) => {
       );
     }
 
-    // Build invitation URL
+    // Build invitation URL - redirect to PWA registration
     const siteUrl = Deno.env.get("PUBLIC_SITE_URL") || "https://knowyou.app";
-    const inviteUrl = `${siteUrl}/invite/${token}`;
+    const inviteUrl = `${siteUrl}/pwa-register?token=${token}`;
+
+    // Build PWA icons for email
+    const pwaIcons: Record<string, string> = {
+      economia: "💹",
+      health: "🏥",
+      ideias: "💡"
+    };
+    const pwaAccessDisplay = (pwaAccess || []).map(slug => pwaIcons[slug] || "🤖").join(" ");
 
     // Send email if enabled
     if (sendViaEmail) {
@@ -136,11 +146,12 @@ serve(async (req) => {
               </div>
               <div class="content">
                 <p>Olá <strong>${name}</strong>,</p>
-                <p>Você recebeu um convite para fazer parte da <strong>Plataforma KnowYOU Health</strong>.</p>
+                <p>Você recebeu um convite para fazer parte da <strong>Plataforma KnowYOU</strong>.</p>
                 
                 <div class="info">
                   <p><strong>📧 Email:</strong> ${email}</p>
                   <p><strong>👤 Tipo de acesso:</strong> ${role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Administrador' : 'Usuário'}</p>
+                  ${pwaAccess && pwaAccess.length > 0 ? `<p><strong>📱 PWAs de Voz:</strong> ${pwaAccessDisplay}</p>` : ''}
                 </div>
                 
                 <p style="text-align: center;">
@@ -152,7 +163,7 @@ serve(async (req) => {
                 </p>
               </div>
               <div class="footer">
-                <p>Plataforma KnowYOU Health &copy; ${new Date().getFullYear()}</p>
+                <p>Plataforma KnowYOU &copy; ${new Date().getFullYear()}</p>
                 <p>Este é um email automático, não responda.</p>
               </div>
             </div>
@@ -177,7 +188,7 @@ serve(async (req) => {
     // Send WhatsApp if enabled
     if (sendViaWhatsapp && phone) {
       try {
-        const whatsappMessage = `🎉 *Convite KnowYOU Health*\n\nOlá ${name}!\n\nVocê foi convidado para a Plataforma KnowYOU Health.\n\n📱 Complete seu cadastro:\n${inviteUrl}\n\n⏰ Este convite expira em 7 dias.`;
+        const whatsappMessage = `🎉 *Convite KnowYOU*\n\nOlá ${name}!\n\nVocê foi convidado para a Plataforma KnowYOU.${pwaAccess && pwaAccess.length > 0 ? `\n\n📱 PWAs: ${pwaAccessDisplay}` : ''}\n\n🔗 Complete seu cadastro:\n${inviteUrl}\n\n⏰ Este convite expira em 7 dias.`;
 
         await supabase.functions.invoke("send-whatsapp", {
           body: {
