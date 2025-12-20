@@ -284,14 +284,9 @@ const documentationContent = {
         content: 'POST endpoint verify_jwt false. Recebe array documents_data com full_text pre-extraído frontend pdfjs-dist. Validação mínimo 100 caracteres sanitização Unicode previne surrogate errors. Chunking 750 palavras overlap 50 palavras. Embeddings OpenAI text-embedding-3-small. Auto-categorização LLM google/gemini-2.5-flash classifica HEALTH STUDY GENERAL. Metadata unificada single LLM call gera parent/child tags 150-300 palavras summary implementation_status ready needs_review incomplete. Background processing waitUntil resposta 202 Accepted. Salva documents document_chunks document_tags tables.'
       },
       {
-        id: 'chat-function',
-        title: 'Edge Function chat',
-        content: 'POST streaming SSE verify_jwt false. Chat saúde Hospital Moinhos Vento. Recebe messages array query string session_id. Invoca search-documents com query embeddings retrieval. Context RAG prepended system prompt. Lovable AI Gateway google/gemini-2.5-pro streaming response. TextEncoder SSE format data: json. Sentiment analysis real-time. Salva conversation_history chat_type health. Rate limiting previne abuse. Scope restrito healthcare topics reject non-health queries.'
-      },
-      {
-        id: 'chat-study-function',
-        title: 'Edge Function chat-study',
-        content: 'POST streaming SSE verify_jwt false. Assistente estudo KnowRISK ACC KnowYOU navegação site. Recebe messages query session_id. RAG retrieval search-documents target_chat study. System prompt empresa-específico framework ACC landing page sections. Lovable AI google/gemini-2.5-flash streaming. Salva conversation_history chat_type study. Scope limitado company content AI KnowRISK. Suggestions dinâmicas document tags rotation 10 segundos.'
+        id: 'chat-router-function',
+        title: 'Edge Function chat-router',
+        content: 'POST streaming SSE verify_jwt false. Roteador unificado de chat com suporte a múltiplos tipos: health, study, economia, general, ideias. Modo SSE streaming para web e modo JSON para PWA (pwaMode=true). Integra RAG via search-documents, gerenciamento de sessão, indicadores econômicos, contexto emocional e tom cultural regional. Suporta análise de documentos anexados. Salva em conversation_history e pwa_sessions. Lovable AI Gateway google/gemini-2.5-flash.'
       },
       {
         id: 'search-documents-function',
@@ -838,7 +833,7 @@ const Documentation = () => {
         tables: ["documents", "document_chunks", "document_tags"],
       },
       backend: {
-        edgeFunctions: ["process-bulk-document", "chat", "chat-study", "search-documents"],
+        edgeFunctions: ["process-bulk-document", "chat-router", "search-documents"],
       },
       frontend: {
         components: ["DocumentsTab", "ChatKnowYOU", "AIHistoryPanel"],
@@ -1319,14 +1314,13 @@ const Documentation = () => {
                   </div>
                 </div>
 
-                {/* chat / chat-study */}
+                {/* chat-router (unified) */}
                 <div className="border rounded-lg p-5 bg-muted/30">
-                  <h4 className="text-xl font-bold mb-4 text-primary">chat / chat-study</h4>
+                  <h4 className="text-xl font-bold mb-4 text-primary">chat-router (Unificado)</h4>
                   <div className="grid md:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <p className="text-sm font-semibold text-muted-foreground">Caminhos</p>
-                      <code className="text-xs bg-background p-2 rounded block mt-1">supabase/functions/chat/index.ts</code>
-                      <code className="text-xs bg-background p-2 rounded block mt-1">supabase/functions/chat-study/index.ts</code>
+                      <p className="text-sm font-semibold text-muted-foreground">Caminho</p>
+                      <code className="text-xs bg-background p-2 rounded block mt-1">supabase/functions/chat-router/index.ts</code>
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-muted-foreground">Método / JWT</p>
@@ -1336,30 +1330,32 @@ const Documentation = () => {
                   
                   <div className="space-y-3">
                     <div>
-                      <p className="text-sm font-semibold mb-2">Input JSON:</p>
-                      <pre className="bg-background p-3 rounded text-xs overflow-x-auto">
-{`{
-  "messages": [
-    { "role": "user", "content": "pergunta do usuário" }
-  ],
-  "session_id": "chat_2025-01-01_123456"
-}`}
-                      </pre>
+                      <p className="text-sm font-semibold mb-2">Modos de Operação:</p>
+                      <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                        <li><strong>Web (SSE Streaming):</strong> pwaMode = false</li>
+                        <li><strong>PWA (JSON):</strong> pwaMode = true</li>
+                      </ul>
                     </div>
                     
                     <div>
-                      <p className="text-sm font-semibold mb-2">Output:</p>
-                      <p className="text-xs text-muted-foreground">SSE Streaming (text/event-stream)</p>
+                      <p className="text-sm font-semibold mb-2">ChatTypes Suportados:</p>
+                      <div className="flex flex-wrap gap-1">
+                        <code className="text-xs bg-primary/10 px-2 py-1 rounded">health</code>
+                        <code className="text-xs bg-primary/10 px-2 py-1 rounded">study</code>
+                        <code className="text-xs bg-primary/10 px-2 py-1 rounded">economia</code>
+                        <code className="text-xs bg-primary/10 px-2 py-1 rounded">ideias</code>
+                        <code className="text-xs bg-primary/10 px-2 py-1 rounded">general</code>
+                      </div>
                     </div>
                     
                     <div>
-                      <p className="text-sm font-semibold mb-2">Fluxo Interno:</p>
+                      <p className="text-sm font-semibold mb-2">Recursos Integrados:</p>
                       <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
-                        <li>Busca RAG via search-documents (contexto relevante)</li>
-                        <li>Monta prompt com contexto + mensagens</li>
-                        <li>Streaming via Lovable AI Gateway (google/gemini-2.5-flash)</li>
-                        <li>Análise de sentimento ao final</li>
-                        <li>Salva conversa em conversation_history</li>
+                        <li>RAG via search-documents</li>
+                        <li>Gerenciamento de sessão PWA</li>
+                        <li>Indicadores econômicos (SELIC, IPCA, etc.)</li>
+                        <li>Contexto emocional adaptativo</li>
+                        <li>Tom cultural regional</li>
                       </ol>
                     </div>
                   </div>
