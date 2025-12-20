@@ -20,16 +20,7 @@ export default defineConfig(({ mode }) => ({
     environment: 'node',
   },
   build: {
-    sourcemap: mode === "development",
-    minify: mode === "production" ? "terser" : false,
-    terserOptions: mode === "production" ? {
-      compress: {
-        drop_console: true,
-        drop_debugger: true,
-      },
-      mangle: {
-        toplevel: true,
-      },
-    } : undefined,
+    sourcemap: false,
+    minify: "esbuild",
   },
 }));
