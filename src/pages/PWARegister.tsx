@@ -116,7 +116,7 @@ export default function PWARegister() {
         p_device_id: deviceId,
         p_name: name.trim(),
         p_email: email.trim().toLowerCase(),
-        p_phone: phone || null,
+        p_phone: phone.trim() || null,
         p_user_agent: navigator.userAgent,
       });
 

@@ -54,7 +54,7 @@ import {
   KeyRound,
   MessageSquare
 } from "lucide-react";
-import { InviteUserModal } from "./InviteUserModal";
+import { InviteUserModalV2 as InviteUserModal } from "./InviteUserModalV2";
 import { toast } from "sonner";
 import { useDropzone } from "react-dropzone";
 import Papa from "papaparse";

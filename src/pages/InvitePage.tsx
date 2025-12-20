@@ -144,6 +144,12 @@ export default function InvitePage() {
           return;
         }
 
+        // Redirect to PWA register if has PWA access
+        if (data.pwa_access && Array.isArray(data.pwa_access) && data.pwa_access.length > 0) {
+          navigate(`/pwa-register?token=${token}`);
+          return;
+        }
+
         setInvitation(data as Invitation);
         setStep("form");
         
