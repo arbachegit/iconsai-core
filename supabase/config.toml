@@ -167,3 +167,9 @@ verify_jwt = false
 
 [functions.resend-invitation-code]
 verify_jwt = false
+
+[functions.report-security-violation]
+verify_jwt = false
+
+[functions.check-ban-status]
+verify_jwt = false

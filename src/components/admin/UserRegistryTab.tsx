@@ -42,7 +42,10 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Send
+  Send,
+  Ban,
+  ShieldCheck,
+  ShieldAlert
 } from "lucide-react";
 import { InviteUserModal } from "./InviteUserModal";
 import { toast } from "sonner";
@@ -68,6 +71,12 @@ interface UserRegistration {
   mass_import_at: string | null;
   approved_by: string | null;
   rejection_reason: string | null;
+  // Security fields
+  is_banned?: boolean;
+  banned_at?: string | null;
+  ban_reason?: string | null;
+  ban_type?: string | null;
+  unbanned_at?: string | null;
 }
 
 interface CSVRow {
@@ -148,6 +157,7 @@ export const UserRegistryTab = () => {
   const [rejectModal, setRejectModal] = useState<{ open: boolean; user: UserRegistration | null; reason: string }>({ open: false, user: null, reason: "" });
   const [roleChangeModal, setRoleChangeModal] = useState<{ open: boolean; user: UserRegistration | null; newRole: AppRole }>({ open: false, user: null, newRole: "user" });
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [banModal, setBanModal] = useState<{ open: boolean; user: UserRegistration | null; reason: string }>({ open: false, user: null, reason: "" });
   
   // CSV Import states
   const [csvData, setCsvData] = useState<CSVRow[]>([]);
@@ -401,6 +411,51 @@ export const UserRegistryTab = () => {
     },
     onError: (error: Error) => {
       toast.error(`Erro ao alterar role: ${error.message}`);
+    }
+  });
+
+  // Ban user mutation
+  const banUserMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const { error } = await supabase
+        .from("user_registrations")
+        .update({
+          is_banned: true,
+          banned_at: new Date().toISOString(),
+          ban_reason: reason,
+          ban_type: "manual",
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Usuário banido com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["user-registrations"] });
+      setBanModal({ open: false, user: null, reason: "" });
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao banir usuário: ${error.message}`);
+    }
+  });
+
+  // Unban user mutation
+  const unbanUserMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("user_registrations")
+        .update({
+          is_banned: false,
+          unbanned_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Usuário desbanido com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["user-registrations"] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao desbanir usuário: ${error.message}`);
     }
   });
 
@@ -982,6 +1037,27 @@ export const UserRegistryTab = () => {
                                   </>
                                 ) : (
                                   <>
+                                    {/* Security Badge */}
+                                    {reg.is_banned ? (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger>
+                                            <Badge variant="destructive" className="gap-1 mr-2">
+                                              <Ban className="w-3 h-3" />
+                                              Banido
+                                            </Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>{reg.ban_reason || "Violação de segurança"}</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    ) : (
+                                      <Badge variant="outline" className="gap-1 mr-2 text-emerald-500 border-emerald-500/30">
+                                        <ShieldCheck className="w-3 h-3" />
+                                        OK
+                                      </Badge>
+                                    )}
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -996,6 +1072,29 @@ export const UserRegistryTab = () => {
                                     >
                                       <Users className="w-4 h-4" />
                                     </Button>
+                                    {/* Ban/Unban button */}
+                                    {reg.is_banned ? (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
+                                        onClick={() => unbanUserMutation.mutate(reg.id)}
+                                        disabled={unbanUserMutation.isPending}
+                                        title="Desbanir usuário"
+                                      >
+                                        <ShieldCheck className="w-4 h-4" />
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
+                                        onClick={() => setBanModal({ open: true, user: reg, reason: "" })}
+                                        title="Banir usuário"
+                                      >
+                                        <Ban className="w-4 h-4" />
+                                      </Button>
+                                    )}
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -1521,6 +1620,48 @@ export const UserRegistryTab = () => {
         onOpenChange={setInviteModalOpen}
         onSuccess={() => refetch()}
       />
+
+      {/* Ban User Modal */}
+      <Dialog open={banModal.open} onOpenChange={(open) => !open && setBanModal({ open: false, user: null, reason: "" })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-500">
+              <Ban className="w-5 h-5" />
+              Banir Usuário
+            </DialogTitle>
+            <DialogDescription>
+              Banir <span className="font-semibold">{banModal.user?.email}</span>. Esta ação pode ser revertida por um Super Admin.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Motivo do Banimento *</Label>
+              <Textarea
+                value={banModal.reason}
+                onChange={(e) => setBanModal(prev => ({ ...prev, reason: e.target.value }))}
+                placeholder="Descreva o motivo do banimento..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBanModal({ open: false, user: null, reason: "" })}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => banModal.user && banUserMutation.mutate({
+                id: banModal.user.id,
+                reason: banModal.reason || "Banimento manual pelo administrador"
+              })}
+              disabled={banUserMutation.isPending}
+            >
+              {banUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Banir Usuário
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
