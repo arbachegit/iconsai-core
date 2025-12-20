@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     // 2. Extract Edge Functions metadata
     console.log('⚡ Extracting edge functions...');
     const edgeFunctions = [
-      'chat', 'chat-study', 'generate-image', 'generate-section-image',
+      'chat-router', 'generate-image', 'generate-section-image',
       'text-to-speech', 'send-email', 'youtube-videos', 'analyze-sentiment',
       'sentiment-alert', 'generate-history-image', 'voice-to-text',
       'process-document-with-text', 'suggest-document-tags',
@@ -314,8 +314,7 @@ Deno.serve(async (req) => {
 
 function getEdgeFunctionDescription(name: string): string {
   const descriptions: Record<string, string> = {
-    'chat': 'Health assistant chat with RAG integration',
-    'chat-study': 'Study assistant for company knowledge',
+    'chat-router': 'Unified chat router with SSE streaming and PWA JSON mode',
     'generate-image': 'Image generation via Lovable AI',
     'generate-section-image': 'Section-specific image generation',
     'text-to-speech': 'ElevenLabs voice synthesis',

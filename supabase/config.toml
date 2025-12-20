@@ -1,20 +1,8 @@
 project_id = "gmflpmcepempcygdrayv"
 
 # ============================================
-# CHAT FUNCTIONS - Public access (user-facing)
+# CHAT FUNCTIONS - Unified Router (Public)
 # ============================================
-[functions.chat]
-verify_jwt = false
-
-[functions.chat-study]
-verify_jwt = false
-
-[functions.chat-unified]
-verify_jwt = false
-
-[functions.chat-pwa]
-verify_jwt = false
-
 [functions.chat-router]
 verify_jwt = false
 

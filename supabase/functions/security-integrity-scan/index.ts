@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     // 3. Check edge function JWT verification
     console.log('[SECURITY-SCAN] Checking edge function configurations...');
     const publicFunctions = [
-      'chat', 'chat-study', 'chat-unified', 'generate-image', 'generate-section-image',
+      'chat-router', 'generate-image', 'generate-section-image',
       'send-email', 'youtube-videos', 'analyze-sentiment', 'sentiment-alert',
       'generate-history-image', 'voice-to-text', 'process-document-with-text',
       'suggest-document-tags', 'generate-document-summary', 'search-documents',

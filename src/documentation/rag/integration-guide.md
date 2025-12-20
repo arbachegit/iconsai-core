@@ -317,8 +317,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ### Arquitetura de Integração
 
 ```typescript
-// Edge Function: chat-unified
-async function handleChatRequest(query: string, chatType: 'study' | 'health') {
+// Edge Function: chat-router
+async function handleChatRequest(query: string, chatType: 'study' | 'health' | 'economia' | 'ideias') {
   // 1. Buscar contexto RAG
   const ragContext = await searchDocuments(query, chatType);
   

@@ -298,7 +298,7 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
       try {
         if (attachedDocumentId) {
           const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-unified`,
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-router`,
             {
               method: "POST",
               headers: {

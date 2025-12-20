@@ -23,9 +23,7 @@ const SYNC_PHASES: SyncPhase[] = [
 const EDGE_FUNCTIONS = [
   { name: 'analyze-deterministic', description: 'Análise determinística de queries', auth_required: false, category: 'AI' },
   { name: 'analyze-sentiment', description: 'Análise de sentimento de conversas', auth_required: false, category: 'AI' },
-  { name: 'chat-study', description: 'Assistente de estudos com RAG', auth_required: false, category: 'Chat' },
-  { name: 'chat-unified', description: 'Chat unificado', auth_required: false, category: 'Chat' },
-  { name: 'chat', description: 'Assistente de saúde com RAG', auth_required: false, category: 'Chat' },
+  { name: 'chat-router', description: 'Roteador unificado de chat (SSE + PWA mode)', auth_required: false, category: 'Chat' },
   { name: 'check-ml-accuracy', description: 'Verificação de acurácia ML', auth_required: false, category: 'ML' },
   { name: 'cleanup-stuck-documents', description: 'Limpeza de documentos travados', auth_required: false, category: 'RAG' },
   { name: 'extract-pdf-document-ai', description: 'Extração OCR com Google Document AI', auth_required: false, category: 'RAG' },

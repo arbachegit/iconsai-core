@@ -104,7 +104,7 @@ const sectionContent: Record<string, {
     phases: [
       { name: "process-document", description: "Processa PDFs" },
       { name: "search-documents", description: "Executa buscas" },
-      { name: "chat-unified", description: "Integra RAG+Chat" },
+      { name: "chat-router", description: "Integra RAG+Chat" },
       { name: "suggest-tags", description: "Auto-categorização" },
     ],
     items: ["Request", "Auth", "Process", "DB", "Response"],
