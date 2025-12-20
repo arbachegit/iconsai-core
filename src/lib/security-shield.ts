@@ -1,6 +1,11 @@
 /**
- * SECURITY SHIELD - KnowYOU v2
+ * SECURITY SHIELD - KnowYOU v3
  * Sistema de Tolerância Zero para tentativas de inspeção de código
+ * 
+ * v3 Features:
+ * - Canvas/WebGL Fingerprinting
+ * - Dados detalhados do dispositivo
+ * - Integração com geolocalização e email
  * 
  * ⚠️ IMPORTANTE: Este módulo é DESATIVADO em ambiente de desenvolvimento
  */
@@ -53,28 +58,211 @@ interface BanStatus {
   deviceId?: string;
 }
 
+interface DeviceData {
+  browserName: string;
+  browserVersion: string;
+  osName: string;
+  osVersion: string;
+  screenResolution: string;
+  canvasFingerprint: string;
+  webglFingerprint: string;
+  hardwareConcurrency: number;
+  deviceMemory: number;
+  timezone: string;
+  language: string;
+  platform: string;
+}
+
 let isBanned = false;
 let deviceFingerprint: string | null = null;
+let deviceData: DeviceData | null = null;
 let monitoringInterval: ReturnType<typeof setInterval> | null = null;
 let consoleInterval: ReturnType<typeof setInterval> | null = null;
 
+// ============================================
+// CANVAS FINGERPRINTING
+// ============================================
+function generateCanvasFingerprint(): string {
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return 'no-canvas';
+    
+    canvas.width = 200;
+    canvas.height = 50;
+    
+    // Draw text with various styles
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(10, 0, 100, 30);
+    
+    ctx.fillStyle = '#069';
+    ctx.fillText('KnowYOU Security v3', 10, 20);
+    
+    ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+    ctx.fillText('Canvas FP Test', 15, 35);
+    
+    // Get data URL and hash it
+    const dataUrl = canvas.toDataURL();
+    let hash = 0;
+    for (let i = 0; i < dataUrl.length; i++) {
+      const char = dataUrl.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    
+    return Math.abs(hash).toString(36);
+  } catch {
+    return 'error';
+  }
+}
+
+// ============================================
+// WEBGL FINGERPRINTING
+// ============================================
+function generateWebGLFingerprint(): string {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') as WebGLRenderingContext | null;
+    if (!gl) return 'no-webgl';
+    
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    if (!debugInfo) return 'no-debug-info';
+    
+    const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || 'unknown';
+    const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || 'unknown';
+    
+    const combined = `${vendor}|${renderer}`;
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      const char = combined.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    
+    return Math.abs(hash).toString(36);
+  } catch {
+    return 'error';
+  }
+}
+
+// ============================================
+// BROWSER/OS DETECTION
+// ============================================
+function detectBrowser(): { name: string; version: string } {
+  const ua = navigator.userAgent;
+  
+  let name = 'Unknown';
+  let version = '0';
+  
+  if (ua.includes('Firefox/')) {
+    name = 'Firefox';
+    version = ua.split('Firefox/')[1]?.split(' ')[0] || '0';
+  } else if (ua.includes('Edg/')) {
+    name = 'Edge';
+    version = ua.split('Edg/')[1]?.split(' ')[0] || '0';
+  } else if (ua.includes('Chrome/')) {
+    name = 'Chrome';
+    version = ua.split('Chrome/')[1]?.split(' ')[0] || '0';
+  } else if (ua.includes('Safari/') && !ua.includes('Chrome')) {
+    name = 'Safari';
+    version = ua.split('Version/')[1]?.split(' ')[0] || '0';
+  } else if (ua.includes('Opera') || ua.includes('OPR/')) {
+    name = 'Opera';
+    version = ua.split('OPR/')[1]?.split(' ')[0] || '0';
+  }
+  
+  return { name, version };
+}
+
+function detectOS(): { name: string; version: string } {
+  const ua = navigator.userAgent;
+  
+  let name = 'Unknown';
+  let version = '0';
+  
+  if (ua.includes('Windows NT')) {
+    name = 'Windows';
+    const match = ua.match(/Windows NT (\d+\.?\d*)/);
+    if (match) {
+      const ntVersion = match[1];
+      const versions: Record<string, string> = {
+        '10.0': '10/11',
+        '6.3': '8.1',
+        '6.2': '8',
+        '6.1': '7',
+      };
+      version = versions[ntVersion] || ntVersion;
+    }
+  } else if (ua.includes('Mac OS X')) {
+    name = 'macOS';
+    const match = ua.match(/Mac OS X (\d+[._]\d+[._]?\d*)/);
+    version = match ? match[1].replace(/_/g, '.') : '0';
+  } else if (ua.includes('Linux')) {
+    name = 'Linux';
+    if (ua.includes('Android')) {
+      name = 'Android';
+      const match = ua.match(/Android (\d+\.?\d*)/);
+      version = match ? match[1] : '0';
+    }
+  } else if (ua.includes('iPhone') || ua.includes('iPad')) {
+    name = 'iOS';
+    const match = ua.match(/OS (\d+[._]\d+[._]?\d*)/);
+    version = match ? match[1].replace(/_/g, '.') : '0';
+  }
+  
+  return { name, version };
+}
+
+// ============================================
+// COLLECT DEVICE DATA
+// ============================================
+function collectDeviceData(): DeviceData {
+  if (deviceData) return deviceData;
+  
+  const browser = detectBrowser();
+  const os = detectOS();
+  
+  deviceData = {
+    browserName: browser.name,
+    browserVersion: browser.version,
+    osName: os.name,
+    osVersion: os.version,
+    screenResolution: `${screen.width}x${screen.height}`,
+    canvasFingerprint: generateCanvasFingerprint(),
+    webglFingerprint: generateWebGLFingerprint(),
+    hardwareConcurrency: navigator.hardwareConcurrency || 0,
+    // @ts-ignore
+    deviceMemory: navigator.deviceMemory || 0,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    language: navigator.language,
+    platform: navigator.platform,
+  };
+  
+  return deviceData;
+}
+
 /**
- * Generate a unique device fingerprint
+ * Generate a unique device fingerprint (v3)
  */
 function generateFingerprint(): string {
   if (deviceFingerprint) return deviceFingerprint;
-
+  
+  const data = collectDeviceData();
+  
   const components = [
     navigator.userAgent,
     navigator.language,
     navigator.platform,
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-    screen.width + 'x' + screen.height,
+    data.timezone,
+    data.screenResolution,
     screen.colorDepth,
     new Date().getTimezoneOffset(),
-    navigator.hardwareConcurrency || 'unknown',
-    // @ts-ignore
-    navigator.deviceMemory || 'unknown',
+    data.hardwareConcurrency,
+    data.deviceMemory,
+    data.canvasFingerprint,
+    data.webglFingerprint,
   ];
 
   const fingerprint = components.join('|');
@@ -119,7 +307,7 @@ function getFingerprint(): string {
 }
 
 /**
- * Report a security violation to the backend
+ * Report a security violation to the backend (v3)
  */
 async function reportViolation(
   type: ViolationType, 
@@ -130,6 +318,7 @@ async function reportViolation(
   isBanned = true;
   
   const fingerprint = getFingerprint();
+  const data = collectDeviceData();
   
   // Get current user info if available
   let userEmail: string | undefined;
@@ -145,7 +334,7 @@ async function reportViolation(
     // Ignore auth errors
   }
   
-  console.warn(`🛡️ Security Shield: Violation detected - ${type}`);
+  console.warn(`🛡️ Security Shield v3: Violation detected - ${type}`);
   
   try {
     await supabase.functions.invoke('report-security-violation', {
@@ -157,6 +346,22 @@ async function reportViolation(
         userId,
         severity: 'critical',
         violationDetails: details,
+        pageUrl: window.location.href,
+        // v3: Rich device data
+        deviceData: {
+          browserName: data.browserName,
+          browserVersion: data.browserVersion,
+          osName: data.osName,
+          osVersion: data.osVersion,
+          screenResolution: data.screenResolution,
+          canvasFingerprint: data.canvasFingerprint,
+          webglFingerprint: data.webglFingerprint,
+          hardwareConcurrency: data.hardwareConcurrency,
+          deviceMemory: data.deviceMemory,
+          timezone: data.timezone,
+          language: data.language,
+          platform: data.platform,
+        },
       },
     });
   } catch (error) {
@@ -211,6 +416,9 @@ function showBanScreen(reason: string, deviceId: string): void {
       Este dispositivo foi permanentemente banido.<br>
       Apenas um Super Administrador pode reverter esta ação.
     </p>
+    <p style="font-size: 12px; color: #444; margin-top: 24px;">
+      Sistema de Segurança KnowYOU v3
+    </p>
   `;
   
   document.body.appendChild(overlay);
@@ -229,9 +437,6 @@ function detectDevTools(): boolean {
     window.outerHeight - window.innerHeight > heightThreshold;
     
   if (devtoolsOpen) return true;
-  
-  // Method 2: Performance timing (debugger statement detection)
-  // Note: This is done separately via debugger trap
   
   return false;
 }
@@ -333,11 +538,11 @@ function detectIframe(): boolean {
  */
 function startMonitoring(): void {
   if (!IS_PRODUCTION) {
-    console.log('🛡️ Security Shield: DISABLED (development mode)');
+    console.log('🛡️ Security Shield v3: DISABLED (development mode)');
     return;
   }
   
-  console.log('🛡️ Security Shield: ACTIVE (production mode)');
+  console.log('🛡️ Security Shield v3: ACTIVE (production mode)');
   
   // Monitor for DevTools
   monitoringInterval = setInterval(() => {
@@ -360,6 +565,7 @@ function startMonitoring(): void {
     if (IS_PRODUCTION && !isBanned) {
       console.clear();
       console.log('%c⛔ ACESSO RESTRITO', 'color: red; font-size: 24px; font-weight: bold;');
+      console.log('%cSistema de Segurança KnowYOU v3', 'color: orange;');
       console.log('%cQualquer tentativa de inspeção resultará em banimento permanente.', 'color: orange;');
     }
   }, CONSOLE_CLEAR_INTERVAL);
@@ -439,4 +645,11 @@ export function getDeviceFingerprint(): string {
  */
 export function isCurrentlyBanned(): boolean {
   return isBanned;
+}
+
+/**
+ * Get collected device data (v3)
+ */
+export function getCollectedDeviceData(): DeviceData | null {
+  return deviceData;
 }

@@ -2200,6 +2200,132 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit_log: {
+        Row: {
+          action_taken: string | null
+          ban_applied: boolean | null
+          browser_name: string | null
+          browser_version: string | null
+          canvas_fingerprint: string | null
+          created_at: string | null
+          device_fingerprint: string | null
+          device_memory: number | null
+          email_sent: boolean | null
+          email_sent_to: string | null
+          geo_city: string | null
+          geo_country: string | null
+          geo_isp: string | null
+          geo_lat: number | null
+          geo_lon: number | null
+          geo_org: string | null
+          geo_region: string | null
+          geo_timezone: string | null
+          hardware_concurrency: number | null
+          id: string
+          incident_type: string
+          ip_address: unknown
+          language: string | null
+          occurred_at: string | null
+          os_name: string | null
+          os_version: string | null
+          page_url: string | null
+          platform: string | null
+          screen_resolution: string | null
+          severity: string
+          timezone: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+          violation_details: Json | null
+          was_whitelisted: boolean | null
+          webgl_fingerprint: string | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_to: string | null
+        }
+        Insert: {
+          action_taken?: string | null
+          ban_applied?: boolean | null
+          browser_name?: string | null
+          browser_version?: string | null
+          canvas_fingerprint?: string | null
+          created_at?: string | null
+          device_fingerprint?: string | null
+          device_memory?: number | null
+          email_sent?: boolean | null
+          email_sent_to?: string | null
+          geo_city?: string | null
+          geo_country?: string | null
+          geo_isp?: string | null
+          geo_lat?: number | null
+          geo_lon?: number | null
+          geo_org?: string | null
+          geo_region?: string | null
+          geo_timezone?: string | null
+          hardware_concurrency?: number | null
+          id?: string
+          incident_type: string
+          ip_address?: unknown
+          language?: string | null
+          occurred_at?: string | null
+          os_name?: string | null
+          os_version?: string | null
+          page_url?: string | null
+          platform?: string | null
+          screen_resolution?: string | null
+          severity?: string
+          timezone?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          violation_details?: Json | null
+          was_whitelisted?: boolean | null
+          webgl_fingerprint?: string | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_to?: string | null
+        }
+        Update: {
+          action_taken?: string | null
+          ban_applied?: boolean | null
+          browser_name?: string | null
+          browser_version?: string | null
+          canvas_fingerprint?: string | null
+          created_at?: string | null
+          device_fingerprint?: string | null
+          device_memory?: number | null
+          email_sent?: boolean | null
+          email_sent_to?: string | null
+          geo_city?: string | null
+          geo_country?: string | null
+          geo_isp?: string | null
+          geo_lat?: number | null
+          geo_lon?: number | null
+          geo_org?: string | null
+          geo_region?: string | null
+          geo_timezone?: string | null
+          hardware_concurrency?: number | null
+          id?: string
+          incident_type?: string
+          ip_address?: unknown
+          language?: string | null
+          occurred_at?: string | null
+          os_name?: string | null
+          os_version?: string | null
+          page_url?: string | null
+          platform?: string | null
+          screen_resolution?: string | null
+          severity?: string
+          timezone?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          violation_details?: Json | null
+          was_whitelisted?: boolean | null
+          webgl_fingerprint?: string | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_to?: string | null
+        }
+        Relationships: []
+      }
       security_scan_results: {
         Row: {
           alert_sent: boolean | null
@@ -2305,6 +2431,45 @@ export type Database = {
           user_id?: string | null
           violation_details?: Json | null
           violation_type?: string
+        }
+        Relationships: []
+      }
+      security_whitelist: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          expires_at: string | null
+          id: string
+          ip_address: unknown
+          is_active: boolean | null
+          updated_at: string | null
+          user_email: string | null
+          user_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          ip_address: unknown
+          is_active?: boolean | null
+          updated_at?: string | null
+          user_email?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          ip_address?: unknown
+          is_active?: boolean | null
+          updated_at?: string | null
+          user_email?: string | null
+          user_name?: string | null
         }
         Relationships: []
       }
