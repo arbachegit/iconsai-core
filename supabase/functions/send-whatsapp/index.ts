@@ -28,11 +28,11 @@ serve(async (req) => {
 
     // Sanitize phone number before validation
     const phoneNumber = sanitizePhoneNumber(rawPhoneNumber);
-    console.log(`[WhatsApp] Raw phone: ${rawPhoneNumber}, Sanitized: ${phoneNumber}`);
+    // [SECURITY] Phone number redacted from logs
 
     // Validate phone number format (E.164: should start with + and country code)
     if (!phoneNumber.match(/^\+[1-9]\d{1,14}$/)) {
-      console.error('[WhatsApp] Invalid phone number format after sanitization:', phoneNumber);
+      console.error('[WhatsApp] Invalid phone number format');
       throw new Error('Invalid phone number format. Must include country code (e.g., +1234567890 or +5511999999999)');
     }
 
@@ -47,7 +47,6 @@ serve(async (req) => {
     }
 
     console.log(`[WhatsApp] Sending message for event: ${eventType || 'manual_test'}`);
-    console.log(`[WhatsApp] Target phone: ${phoneNumber}`);
 
     // Use Twilio REST API directly instead of npm package
     const twilioApiUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;

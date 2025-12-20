@@ -47,7 +47,8 @@ serve(async (req) => {
       .single();
 
     if (tokenError || !tokenRecord) {
-      console.log("Invalid token for password reset:", email);
+      // [SECURITY] Email redacted from logs
+      console.log("Invalid token for password reset attempt");
       
       await supabase.from("user_activity_logs").insert({
         user_email: email,
@@ -82,7 +83,8 @@ serve(async (req) => {
     });
 
     if (updateError) {
-      console.error("Error updating password:", updateError);
+      // [SECURITY] Error details redacted from logs
+      console.error("Error updating password");
       throw new Error("Erro ao atualizar senha");
     }
 

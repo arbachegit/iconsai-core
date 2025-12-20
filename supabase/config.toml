@@ -1,5 +1,8 @@
 project_id = "gmflpmcepempcygdrayv"
 
+# ============================================
+# CHAT FUNCTIONS - Public access (user-facing)
+# ============================================
 [functions.chat]
 verify_jwt = false
 
@@ -12,33 +15,66 @@ verify_jwt = false
 [functions.chat-pwa]
 verify_jwt = false
 
+# ============================================
+# IMAGE GENERATION - Public access
+# ============================================
 [functions.generate-image]
 verify_jwt = false
 
 [functions.generate-section-image]
 verify_jwt = false
 
+[functions.generate-history-image]
+verify_jwt = false
+
+[functions.generate-image-study]
+verify_jwt = false
+
+# ============================================
+# TTS/STT - Requires auth
+# ============================================
 [functions.text-to-speech]
 verify_jwt = true
 
+[functions.voice-to-text]
+verify_jwt = false
+
+# ============================================
+# EMAIL & NOTIFICATIONS - Public (for forms)
+# ============================================
 [functions.send-email]
 verify_jwt = false
 
+[functions.contact-form-handler]
+verify_jwt = false
+
+# ============================================
+# YOUTUBE & SPOTIFY - Public
+# ============================================
 [functions.youtube-videos]
 verify_jwt = false
 
+[functions.fetch-spotify-metadata]
+verify_jwt = false
+
+# ============================================
+# SENTIMENT ANALYSIS - Public
+# ============================================
 [functions.analyze-sentiment]
 verify_jwt = false
 
 [functions.sentiment-alert]
 verify_jwt = false
 
-[functions.generate-history-image]
+[functions.analyze-deterministic]
 verify_jwt = false
 
-[functions.voice-to-text]
+[functions.classify-message]
 verify_jwt = false
 
+# ============================================
+# DOCUMENT PROCESSING - Public (used by chat)
+# ============================================
 [functions.process-document-with-text]
 verify_jwt = false
 
@@ -54,33 +90,12 @@ verify_jwt = false
 [functions.process-bulk-document]
 verify_jwt = false
 
-[functions.cleanup-stuck-documents]
-verify_jwt = false
-
-[functions.version-control]
-verify_jwt = false
-
-[functions.batch-version-update]
-verify_jwt = false
-
-[functions.generate-documentation]
-verify_jwt = true
-
-[functions.migrate-timeline-images]
-verify_jwt = false
-
-[functions.migrate-all-images]
-verify_jwt = false
-
 [functions.extract-pdf-document-ai]
 verify_jwt = false
 
-[functions.generate-image-study]
-verify_jwt = false
-
-[functions.analyze-deterministic]
-verify_jwt = false
-
+# ============================================
+# PASSWORD RECOVERY - Public (unauthenticated users)
+# ============================================
 [functions.send-recovery-code]
 verify_jwt = false
 
@@ -90,74 +105,11 @@ verify_jwt = false
 [functions.reset-password-with-token]
 verify_jwt = false
 
-[functions.sync-documentation]
-verify_jwt = false
-
-[functions.classify-message]
-verify_jwt = false
-
-[functions.security-integrity-scan]
-verify_jwt = false
-
-[functions.send-whatsapp]
-verify_jwt = false
-
-[functions.compress-storage-images]
-verify_jwt = false
-
-[functions.check-ml-accuracy]
-verify_jwt = false
-
-[functions.update-chat-config]
-verify_jwt = false
-
-[functions.check-resend-domain]
-verify_jwt = false
-
-[functions.trigger-daily-scan]
-verify_jwt = false
-
-[functions.approve-user-registration]
-verify_jwt = false
-
-[functions.reject-user-registration]
-verify_jwt = false
-
-[functions.check-existing-emails]
-verify_jwt = false
-
-[functions.contact-form-handler]
-verify_jwt = false
-
-[functions.fetch-economic-data]
-verify_jwt = false
-
-[functions.scrape-retail-news]
-verify_jwt = false
-
-[functions.test-api-connection]
-verify_jwt = false
-
-[functions.compare-and-insert-missing]
-verify_jwt = false
-
-[functions.test-api-staging]
-verify_jwt = false
-
-[functions.auto-sync-indicators]
-verify_jwt = false
-
-[functions.query-indicators]
-verify_jwt = false
-
-[functions.sync-renda-hardcoded]
-verify_jwt = false
-
-[functions.fetch-spotify-metadata]
-verify_jwt = false
-
+# ============================================
+# INVITATION SYSTEM - Public (for invitees)
+# ============================================
 [functions.create-invitation]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-invitation-verification]
 verify_jwt = false
@@ -168,14 +120,98 @@ verify_jwt = false
 [functions.resend-invitation-code]
 verify_jwt = false
 
+# ============================================
+# SECURITY - Public (for reporting violations)
+# ============================================
 [functions.report-security-violation]
 verify_jwt = false
 
 [functions.check-ban-status]
 verify_jwt = false
 
+# ============================================
+# ADMIN FUNCTIONS - REQUIRES AUTHENTICATION
+# ============================================
+[functions.approve-user-registration]
+verify_jwt = true
+
+[functions.reject-user-registration]
+verify_jwt = true
+
 [functions.reset-password-admin]
-verify_jwt = false
+verify_jwt = true
 
 [functions.resend-welcome-email]
+verify_jwt = true
+
+[functions.security-integrity-scan]
+verify_jwt = true
+
+[functions.cleanup-stuck-documents]
+verify_jwt = true
+
+[functions.version-control]
+verify_jwt = true
+
+[functions.batch-version-update]
+verify_jwt = true
+
+[functions.generate-documentation]
+verify_jwt = true
+
+[functions.sync-documentation]
+verify_jwt = true
+
+[functions.migrate-timeline-images]
+verify_jwt = true
+
+[functions.migrate-all-images]
+verify_jwt = true
+
+[functions.compress-storage-images]
+verify_jwt = true
+
+[functions.check-ml-accuracy]
+verify_jwt = true
+
+[functions.update-chat-config]
+verify_jwt = true
+
+[functions.check-resend-domain]
+verify_jwt = true
+
+[functions.trigger-daily-scan]
+verify_jwt = true
+
+[functions.send-whatsapp]
+verify_jwt = true
+
+# ============================================
+# DATA/SYNC FUNCTIONS - Internal/Admin
+# ============================================
+[functions.check-existing-emails]
+verify_jwt = true
+
+[functions.fetch-economic-data]
 verify_jwt = false
+
+[functions.scrape-retail-news]
+verify_jwt = true
+
+[functions.test-api-connection]
+verify_jwt = true
+
+[functions.compare-and-insert-missing]
+verify_jwt = true
+
+[functions.test-api-staging]
+verify_jwt = true
+
+[functions.auto-sync-indicators]
+verify_jwt = true
+
+[functions.query-indicators]
+verify_jwt = false
+
+[functions.sync-renda-hardcoded]
+verify_jwt = true
