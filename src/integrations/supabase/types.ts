@@ -152,6 +152,94 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_phrases: {
+        Row: {
+          agent_id: string | null
+          category: string | null
+          created_at: string | null
+          id: string
+          is_global: boolean | null
+          phrase: string
+          phrase_type: string
+          replacement: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          is_global?: boolean | null
+          phrase: string
+          phrase_type: string
+          replacement?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          is_global?: boolean | null
+          phrase?: string
+          phrase_type?: string
+          replacement?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_phrases_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "chat_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_pronunciations: {
+        Row: {
+          agent_id: string | null
+          approximate: string
+          category: string | null
+          created_at: string | null
+          id: string
+          ipa: string | null
+          is_global: boolean | null
+          term: string
+          updated_at: string | null
+          variations: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          approximate: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          ipa?: string | null
+          is_global?: boolean | null
+          term: string
+          updated_at?: string | null
+          variations?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          approximate?: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          ipa?: string | null
+          is_global?: boolean | null
+          term?: string
+          updated_at?: string | null
+          variations?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_pronunciations_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "chat_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_audit_logs: {
         Row: {
           action_description: string
@@ -444,14 +532,17 @@ export type Database = {
       }
       chat_agents: {
         Row: {
+          agent_color: string | null
           allowed_tags: string[] | null
           avatar_url: string | null
           capabilities: Json | null
           created_at: string | null
           description: string | null
+          deterministic_mode: boolean | null
           display_order: number | null
           forbidden_tags: string[] | null
           greeting_message: string | null
+          humanization_level: number | null
           id: string
           is_active: boolean | null
           location: string | null
@@ -459,6 +550,7 @@ export type Database = {
           match_count: number | null
           match_threshold: number | null
           name: string
+          pause_level: number | null
           pronunciation_rules: Json | null
           pronunciation_set: string | null
           rag_collection: string
@@ -470,14 +562,17 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          agent_color?: string | null
           allowed_tags?: string[] | null
           avatar_url?: string | null
           capabilities?: Json | null
           created_at?: string | null
           description?: string | null
+          deterministic_mode?: boolean | null
           display_order?: number | null
           forbidden_tags?: string[] | null
           greeting_message?: string | null
+          humanization_level?: number | null
           id?: string
           is_active?: boolean | null
           location?: string | null
@@ -485,6 +580,7 @@ export type Database = {
           match_count?: number | null
           match_threshold?: number | null
           name: string
+          pause_level?: number | null
           pronunciation_rules?: Json | null
           pronunciation_set?: string | null
           rag_collection: string
@@ -496,14 +592,17 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          agent_color?: string | null
           allowed_tags?: string[] | null
           avatar_url?: string | null
           capabilities?: Json | null
           created_at?: string | null
           description?: string | null
+          deterministic_mode?: boolean | null
           display_order?: number | null
           forbidden_tags?: string[] | null
           greeting_message?: string | null
+          humanization_level?: number | null
           id?: string
           is_active?: boolean | null
           location?: string | null
@@ -511,6 +610,7 @@ export type Database = {
           match_count?: number | null
           match_threshold?: number | null
           name?: string
+          pause_level?: number | null
           pronunciation_rules?: Json | null
           pronunciation_set?: string | null
           rag_collection?: string
