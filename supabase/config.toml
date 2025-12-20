@@ -173,3 +173,6 @@ verify_jwt = false
 
 [functions.check-ban-status]
 verify_jwt = false
+
+[functions.reset-password-admin]
+verify_jwt = false
