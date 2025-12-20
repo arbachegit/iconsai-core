@@ -2106,28 +2106,89 @@ export type Database = {
         Row: {
           created_at: string | null
           device_id: string
+          expires_at: string | null
           id: string
+          is_active: boolean | null
           last_interaction: string | null
+          pwa_access: string[] | null
+          token: string | null
           total_messages: number | null
+          user_id: string | null
           user_name: string | null
         }
         Insert: {
           created_at?: string | null
           device_id: string
+          expires_at?: string | null
           id?: string
+          is_active?: boolean | null
           last_interaction?: string | null
+          pwa_access?: string[] | null
+          token?: string | null
           total_messages?: number | null
+          user_id?: string | null
           user_name?: string | null
         }
         Update: {
           created_at?: string | null
           device_id?: string
+          expires_at?: string | null
           id?: string
+          is_active?: boolean | null
           last_interaction?: string | null
+          pwa_access?: string[] | null
+          token?: string | null
           total_messages?: number | null
+          user_id?: string | null
           user_name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pwa_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pwa_user_devices: {
+        Row: {
+          created_at: string | null
+          device_id: string
+          device_name: string | null
+          id: string
+          last_used_at: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_id: string
+          device_name?: string | null
+          id?: string
+          last_used_at?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_id?: string
+          device_name?: string | null
+          id?: string
+          last_used_at?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pwa_user_devices_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rag_analytics: {
         Row: {
@@ -3248,6 +3309,7 @@ export type Database = {
           link_opened_at: string | null
           name: string
           phone: string | null
+          pwa_access: string[] | null
           resend_count: number | null
           role: Database["public"]["Enums"]["app_role"]
           send_via_email: boolean | null
@@ -3284,6 +3346,7 @@ export type Database = {
           link_opened_at?: string | null
           name: string
           phone?: string | null
+          pwa_access?: string[] | null
           resend_count?: number | null
           role?: Database["public"]["Enums"]["app_role"]
           send_via_email?: boolean | null
@@ -3320,6 +3383,7 @@ export type Database = {
           link_opened_at?: string | null
           name?: string
           phone?: string | null
+          pwa_access?: string[] | null
           resend_count?: number | null
           role?: Database["public"]["Enums"]["app_role"]
           send_via_email?: boolean | null
@@ -3389,6 +3453,9 @@ export type Database = {
           last_name: string
           mass_import_at: string | null
           phone: string | null
+          pwa_access: string[] | null
+          pwa_registered_at: string | null
+          registration_source: string | null
           rejection_reason: string | null
           requested_at: string | null
           role: Database["public"]["Enums"]["app_role"]
@@ -3415,6 +3482,9 @@ export type Database = {
           last_name: string
           mass_import_at?: string | null
           phone?: string | null
+          pwa_access?: string[] | null
+          pwa_registered_at?: string | null
+          registration_source?: string | null
           rejection_reason?: string | null
           requested_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
@@ -3441,6 +3511,9 @@ export type Database = {
           last_name?: string
           mass_import_at?: string | null
           phone?: string | null
+          pwa_access?: string[] | null
+          pwa_registered_at?: string | null
+          registration_source?: string | null
           rejection_reason?: string | null
           requested_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
@@ -3516,6 +3589,10 @@ export type Database = {
       }
     }
     Functions: {
+      check_pwa_access: {
+        Args: { p_agent_slug?: string; p_device_id: string }
+        Returns: Json
+      }
       convert_pmc_to_reais: {
         Args: {
           p_pmc_indicator_code: string
@@ -3610,6 +3687,17 @@ export type Database = {
           records_inserted: number
         }[]
       }
+      register_pwa_user: {
+        Args: {
+          p_device_id: string
+          p_email: string
+          p_invitation_token: string
+          p_name: string
+          p_phone?: string
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
       search_documents: {
         Args: {
           match_count?: number
@@ -3657,6 +3745,7 @@ export type Database = {
           similarity: number
         }[]
       }
+      verify_pwa_invitation: { Args: { p_token: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "user" | "superadmin"

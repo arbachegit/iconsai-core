@@ -26,6 +26,8 @@ const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
 const AppPage = lazy(() => import("./pages/AppPage"));
 const Hub = lazy(() => import("./pages/Hub"));
 const PWA = lazy(() => import("./pages/PWA"));
+const PWAMultiAgent = lazy(() => import("./pages/PWAMultiAgent"));
+const PWARegister = lazy(() => import("./pages/PWARegister"));
 const InvitePage = lazy(() => import("./pages/InvitePage"));
 
 // Simple loading fallback
@@ -160,7 +162,9 @@ const App = () => (
                     {/* Public Routes */}
                     <Route path="/docs" element={<Documentation />} />
                     <Route path="/arquitetura" element={<Arquitetura />} />
-                    <Route path="/pwa" element={<PWA />} />
+                    <Route path="/pwa" element={<PWAMultiAgent />} />
+                    <Route path="/pwa-legacy" element={<PWA />} />
+                    <Route path="/pwa-register" element={<PWARegister />} />
                     <Route path="/invite/:token" element={<InvitePage />} />
                     
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
