@@ -176,3 +176,6 @@ verify_jwt = false
 
 [functions.reset-password-admin]
 verify_jwt = false
+
+[functions.resend-welcome-email]
+verify_jwt = false
