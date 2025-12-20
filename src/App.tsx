@@ -57,8 +57,13 @@ const SecurityWrapper = ({ children }: { children: React.ReactNode }) => {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Initialize security shield
-    const cleanup = initSecurityShield();
+    let cleanupFn: (() => void) | null = null;
+
+    // Initialize security shield (now async)
+    const initShield = async () => {
+      cleanupFn = await initSecurityShield();
+    };
+    initShield();
 
     // Check ban status on load
     const checkBan = async () => {
@@ -91,7 +96,7 @@ const SecurityWrapper = ({ children }: { children: React.ReactNode }) => {
     window.addEventListener("security-banned", handleBanned as EventListener);
 
     return () => {
-      cleanup();
+      if (cleanupFn) cleanupFn();
       window.removeEventListener("security-banned", handleBanned as EventListener);
     };
   }, []);

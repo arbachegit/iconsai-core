@@ -1,11 +1,12 @@
 /**
- * SECURITY SHIELD - KnowYOU v3
+ * SECURITY SHIELD - KnowYOU v4
  * Sistema de Tolerância Zero para tentativas de inspeção de código
  * 
- * v3 Features:
- * - Canvas/WebGL Fingerprinting
- * - Dados detalhados do dispositivo
- * - Integração com geolocalização e email
+ * v4 Features:
+ * - Configurações carregadas do banco de dados
+ * - Sistema de tentativas progressivas com pop-ups de aviso
+ * - Todas as detecções obedecem às configurações
+ * - Tela de banimento com duração configurável
  * 
  * ⚠️ IMPORTANTE: Este módulo é DESATIVADO em ambiente de desenvolvimento
  */
@@ -13,32 +14,26 @@
 import { supabase } from "@/integrations/supabase/client";
 
 // ============================================
-// WHITELIST DE DOMÍNIOS (Desenvolvimento/Preview)
+// TIPOS E INTERFACES
 // ============================================
-const WHITELISTED_DOMAINS = [
-  'localhost',
-  '127.0.0.1',
-  'lovable.app',
-  'lovableproject.com',
-  'gptengineer.run',
-  'webcontainer.io',
-];
-
-/**
- * Verifica se o domínio atual está na whitelist
- */
-function isWhitelistedDomain(): boolean {
-  if (typeof window === 'undefined') return true;
-  const hostname = window.location.hostname;
-  return WHITELISTED_DOMAINS.some(domain => hostname.includes(domain));
+interface SecurityShieldConfig {
+  id: string;
+  shield_enabled: boolean;
+  devtools_detection_enabled: boolean;
+  keyboard_shortcuts_block_enabled: boolean;
+  right_click_block_enabled: boolean;
+  text_selection_block_enabled: boolean;
+  console_clear_enabled: boolean;
+  console_clear_interval_ms: number;
+  monitoring_interval_ms: number;
+  max_violation_attempts: number;
+  show_violation_popup: boolean;
+  auto_ban_on_violation: boolean;
+  ban_duration_hours: number;
+  react_devtools_detection_enabled: boolean;
+  iframe_detection_enabled: boolean;
+  whitelisted_domains: string[];
 }
-
-// Configuration
-const IS_DEVELOPMENT = isWhitelistedDomain();
-const IS_PRODUCTION = !IS_DEVELOPMENT;
-
-const MONITORING_INTERVAL = 500; // ms
-const CONSOLE_CLEAR_INTERVAL = 1000; // ms
 
 type ViolationType = 
   | 'devtools_open'
@@ -48,7 +43,8 @@ type ViolationType =
   | 'react_devtools'
   | 'iframe_attempt'
   | 'text_selection'
-  | 'console_access';
+  | 'console_access'
+  | 'screenshot_attempt';
 
 interface BanStatus {
   isBanned: boolean;
@@ -73,11 +69,70 @@ interface DeviceData {
   platform: string;
 }
 
+// ============================================
+// ESTADO GLOBAL
+// ============================================
 let isBanned = false;
 let deviceFingerprint: string | null = null;
 let deviceData: DeviceData | null = null;
 let monitoringInterval: ReturnType<typeof setInterval> | null = null;
 let consoleInterval: ReturnType<typeof setInterval> | null = null;
+let shieldConfig: SecurityShieldConfig | null = null;
+let violationCount = 0;
+let configLoaded = false;
+
+// ============================================
+// WHITELIST DE DOMÍNIOS PADRÃO
+// ============================================
+const DEFAULT_WHITELISTED_DOMAINS = [
+  'localhost',
+  '127.0.0.1',
+  'lovable.app',
+  'lovableproject.com',
+  'gptengineer.run',
+  'webcontainer.io',
+];
+
+/**
+ * Verifica se o domínio atual está na whitelist
+ */
+function isWhitelistedDomain(): boolean {
+  if (typeof window === 'undefined') return true;
+  const hostname = window.location.hostname;
+  const domains = shieldConfig?.whitelisted_domains || DEFAULT_WHITELISTED_DOMAINS;
+  return domains.some(domain => hostname.includes(domain));
+}
+
+// Configuration flags
+function isProduction(): boolean {
+  return !isWhitelistedDomain();
+}
+
+// ============================================
+// CARREGAR CONFIGURAÇÕES DO BANCO
+// ============================================
+async function fetchSecurityConfig(): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('security_shield_config')
+      .select('*')
+      .limit(1)
+      .single();
+    
+    if (error) {
+      console.warn('🛡️ Security Shield v4: Erro ao carregar config, usando padrões', error);
+      return;
+    }
+    
+    if (data) {
+      shieldConfig = data as SecurityShieldConfig;
+      configLoaded = true;
+      console.log('🛡️ Security Shield v4: Configurações carregadas do banco');
+    }
+  } catch (error) {
+    console.warn('🛡️ Security Shield v4: Falha ao carregar config', error);
+  }
+}
 
 // ============================================
 // CANVAS FINGERPRINTING
@@ -91,19 +146,17 @@ function generateCanvasFingerprint(): string {
     canvas.width = 200;
     canvas.height = 50;
     
-    // Draw text with various styles
     ctx.textBaseline = 'top';
     ctx.font = '14px Arial';
     ctx.fillStyle = '#f60';
     ctx.fillRect(10, 0, 100, 30);
     
     ctx.fillStyle = '#069';
-    ctx.fillText('KnowYOU Security v3', 10, 20);
+    ctx.fillText('KnowYOU Security v4', 10, 20);
     
     ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
     ctx.fillText('Canvas FP Test', 15, 35);
     
-    // Get data URL and hash it
     const dataUrl = canvas.toDataURL();
     let hash = 0;
     for (let i = 0; i < dataUrl.length; i++) {
@@ -244,7 +297,7 @@ function collectDeviceData(): DeviceData {
 }
 
 /**
- * Generate a unique device fingerprint (v3)
+ * Generate a unique device fingerprint (v4)
  */
 function generateFingerprint(): string {
   if (deviceFingerprint) return deviceFingerprint;
@@ -267,7 +320,6 @@ function generateFingerprint(): string {
 
   const fingerprint = components.join('|');
   
-  // Simple hash function
   let hash = 0;
   for (let i = 0; i < fingerprint.length; i++) {
     const char = fingerprint.charCodeAt(i);
@@ -277,7 +329,6 @@ function generateFingerprint(): string {
   
   deviceFingerprint = Math.abs(hash).toString(36) + Date.now().toString(36);
   
-  // Cache fingerprint
   try {
     localStorage.setItem('_dfp', deviceFingerprint);
   } catch {
@@ -306,79 +357,113 @@ function getFingerprint(): string {
   return generateFingerprint();
 }
 
-/**
- * Report a security violation to the backend (v3)
- */
-async function reportViolation(
-  type: ViolationType, 
-  details: Record<string, unknown> = {}
-): Promise<void> {
-  if (isBanned) return; // Already banned, don't send again
-  
-  isBanned = true;
-  
-  const fingerprint = getFingerprint();
-  const data = collectDeviceData();
-  
-  // Get current user info if available
-  let userEmail: string | undefined;
-  let userId: string | undefined;
-  
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      userEmail = user.email;
-      userId = user.id;
-    }
-  } catch {
-    // Ignore auth errors
+// ============================================
+// POP-UP DE AVISO (WARNING POPUP)
+// ============================================
+function showWarningPopup(remainingAttempts: number, banHours: number): void {
+  // Remover popup anterior se existir
+  const existingPopup = document.getElementById('security-warning-popup');
+  if (existingPopup) {
+    existingPopup.remove();
   }
   
-  console.warn(`🛡️ Security Shield v3: Violation detected - ${type}`);
+  const overlay = document.createElement('div');
+  overlay.id = 'security-warning-popup';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 999998;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: white;
+    text-align: center;
+    padding: 20px;
+    animation: fadeIn 0.3s ease-out;
+  `;
   
-  try {
-    await supabase.functions.invoke('report-security-violation', {
-      body: {
-        violationType: type,
-        deviceFingerprint: fingerprint,
-        userAgent: navigator.userAgent,
-        userEmail,
-        userId,
-        severity: 'critical',
-        violationDetails: details,
-        pageUrl: window.location.href,
-        // v3: Rich device data
-        deviceData: {
-          browserName: data.browserName,
-          browserVersion: data.browserVersion,
-          osName: data.osName,
-          osVersion: data.osVersion,
-          screenResolution: data.screenResolution,
-          canvasFingerprint: data.canvasFingerprint,
-          webglFingerprint: data.webglFingerprint,
-          hardwareConcurrency: data.hardwareConcurrency,
-          deviceMemory: data.deviceMemory,
-          timezone: data.timezone,
-          language: data.language,
-          platform: data.platform,
-        },
-      },
-    });
-  } catch (error) {
-    console.error('Failed to report violation:', error);
+  const pluralText = remainingAttempts === 1 ? 'vez' : 'vezes';
+  
+  overlay.innerHTML = `
+    <style>
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+      }
+      #security-warning-popup .warning-icon {
+        animation: pulse 1s ease-in-out infinite;
+      }
+    </style>
+    <div class="warning-icon" style="font-size: 80px; margin-bottom: 20px;">⚠️</div>
+    <h1 style="font-size: 28px; margin-bottom: 16px; color: #ffcc00;">AVISO DE SEGURANÇA</h1>
+    <p style="font-size: 18px; color: #fff; margin-bottom: 24px; max-width: 500px; line-height: 1.6;">
+      Tentativa de violação de segurança detectada!
+    </p>
+    <div style="background: rgba(255, 204, 0, 0.15); border: 2px solid #ffcc00; padding: 20px 32px; border-radius: 12px; margin-bottom: 24px;">
+      <p style="font-size: 20px; color: #ffcc00; font-weight: bold; margin: 0;">
+        Se você tentar violar as regras de segurança mais ${remainingAttempts} ${pluralText}, será banido por ${banHours} horas.
+      </p>
+    </div>
+    <button 
+      id="warning-understand-btn"
+      style="
+        background: linear-gradient(135deg, #ffcc00 0%, #ff9900 100%);
+        color: black;
+        border: none;
+        padding: 14px 40px;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(255, 204, 0, 0.4);
+      "
+      onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(255, 204, 0, 0.6)';"
+      onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(255, 204, 0, 0.4)';"
+    >
+      Entendi
+    </button>
+    <p style="font-size: 12px; color: #888; margin-top: 24px;">
+      Sistema de Segurança KnowYOU v4
+    </p>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  // Auto-dismiss ou clique
+  const dismissPopup = () => {
+    overlay.style.animation = 'fadeIn 0.3s ease-out reverse';
+    setTimeout(() => overlay.remove(), 250);
+  };
+  
+  const btn = document.getElementById('warning-understand-btn');
+  if (btn) {
+    btn.addEventListener('click', dismissPopup);
   }
   
-  // Show ban screen
-  showBanScreen(type, fingerprint);
+  // Auto-dismiss após 10 segundos
+  setTimeout(dismissPopup, 10000);
 }
 
-/**
- * Display the ban screen
- */
-function showBanScreen(reason: string, deviceId: string): void {
+// ============================================
+// TELA DE BANIMENTO ATUALIZADA
+// ============================================
+function showBanScreen(reason: string, deviceId: string, hours?: number): void {
+  const banHours = hours || shieldConfig?.ban_duration_hours || 72;
+  
   // Dispatch event for React to handle
   window.dispatchEvent(new CustomEvent('security-banned', {
-    detail: { reason, deviceId }
+    detail: { reason, deviceId, hours: banHours }
   }));
   
   // Also create a blocking overlay as fallback
@@ -404,20 +489,21 @@ function showBanScreen(reason: string, deviceId: string): void {
   
   overlay.innerHTML = `
     <div style="font-size: 80px; margin-bottom: 20px;">🚫</div>
-    <h1 style="font-size: 32px; margin-bottom: 16px; color: #ff4444;">ACESSO BLOQUEADO</h1>
-    <p style="font-size: 18px; color: #ff8888; margin-bottom: 24px;">
-      Tentativa de inspeção de código detectada.
+    <h1 style="font-size: 36px; margin-bottom: 16px; color: #ff4444;">VOCÊ ESTÁ BANIDO</h1>
+    <p style="font-size: 24px; color: #ff8888; margin-bottom: 24px; font-weight: bold;">
+      Você está banido por ${banHours} horas.
     </p>
     <div style="background: rgba(255,255,255,0.1); padding: 16px 24px; border-radius: 8px; margin-bottom: 24px;">
       <p style="font-size: 14px; color: #888; margin-bottom: 8px;">Motivo: ${reason}</p>
       <p style="font-size: 12px; color: #666;">ID do Dispositivo: ${deviceId.substring(0, 16)}</p>
+      <p style="font-size: 12px; color: #666; margin-top: 8px;">Data: ${new Date().toLocaleString('pt-BR')}</p>
     </div>
     <p style="font-size: 14px; color: #666; max-width: 400px;">
-      Este dispositivo foi permanentemente banido.<br>
+      Este dispositivo foi banido temporariamente.<br>
       Apenas um Super Administrador pode reverter esta ação.
     </p>
     <p style="font-size: 12px; color: #444; margin-top: 24px;">
-      Sistema de Segurança KnowYOU v3
+      Sistema de Segurança KnowYOU v4
     </p>
   `;
   
@@ -425,27 +511,128 @@ function showBanScreen(reason: string, deviceId: string): void {
   document.body.style.overflow = 'hidden';
 }
 
+// ============================================
+// HANDLER DE VIOLAÇÃO COM TENTATIVAS PROGRESSIVAS
+// ============================================
+function handleViolation(type: ViolationType, details: Record<string, unknown> = {}): void {
+  // Verificar se o shield está habilitado
+  if (!shieldConfig?.shield_enabled) {
+    console.log(`🛡️ Security Shield v4: Shield desabilitado, ignorando violação ${type}`);
+    return;
+  }
+  
+  if (isBanned) return; // Já banido
+  
+  violationCount++;
+  
+  const maxAttempts = shieldConfig.max_violation_attempts || 3;
+  const remainingAttempts = maxAttempts - violationCount;
+  const banHours = shieldConfig.ban_duration_hours || 72;
+  
+  console.warn(`🛡️ Security Shield v4: Violação detectada - ${type} (${violationCount}/${maxAttempts})`);
+  
+  if (violationCount >= maxAttempts) {
+    // Banir definitivamente
+    if (shieldConfig.auto_ban_on_violation) {
+      reportViolation(type, details);
+    }
+  } else if (shieldConfig.show_violation_popup) {
+    // Mostrar pop-up de aviso
+    showWarningPopup(remainingAttempts, banHours);
+  }
+}
+
+/**
+ * Report a security violation to the backend (v4)
+ */
+async function reportViolation(
+  type: ViolationType, 
+  details: Record<string, unknown> = {}
+): Promise<void> {
+  if (isBanned) return; // Already banned, don't send again
+  
+  isBanned = true;
+  
+  const fingerprint = getFingerprint();
+  const data = collectDeviceData();
+  const banHours = shieldConfig?.ban_duration_hours || 72;
+  
+  // Get current user info if available
+  let userEmail: string | undefined;
+  let userId: string | undefined;
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      userEmail = user.email;
+      userId = user.id;
+    }
+  } catch {
+    // Ignore auth errors
+  }
+  
+  console.warn(`🛡️ Security Shield v4: Banimento aplicado - ${type}`);
+  
+  try {
+    await supabase.functions.invoke('report-security-violation', {
+      body: {
+        violationType: type,
+        deviceFingerprint: fingerprint,
+        userAgent: navigator.userAgent,
+        userEmail,
+        userId,
+        severity: 'critical',
+        violationDetails: details,
+        pageUrl: window.location.href,
+        banDurationHours: banHours,
+        deviceData: {
+          browserName: data.browserName,
+          browserVersion: data.browserVersion,
+          osName: data.osName,
+          osVersion: data.osVersion,
+          screenResolution: data.screenResolution,
+          canvasFingerprint: data.canvasFingerprint,
+          webglFingerprint: data.webglFingerprint,
+          hardwareConcurrency: data.hardwareConcurrency,
+          deviceMemory: data.deviceMemory,
+          timezone: data.timezone,
+          language: data.language,
+          platform: data.platform,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Failed to report violation:', error);
+  }
+  
+  // Show ban screen with correct duration
+  showBanScreen(type, fingerprint, banHours);
+}
+
 /**
  * Check if DevTools are open using multiple methods
  */
 function detectDevTools(): boolean {
-  // Method 1: Window size detection
+  // Verificar se a detecção está habilitada
+  if (!shieldConfig?.devtools_detection_enabled) return false;
+  
   const widthThreshold = 160;
   const heightThreshold = 160;
   const devtoolsOpen = 
     window.outerWidth - window.innerWidth > widthThreshold ||
     window.outerHeight - window.innerHeight > heightThreshold;
     
-  if (devtoolsOpen) return true;
-  
-  return false;
+  return devtoolsOpen;
 }
 
 /**
- * Keyboard shortcut handler
+ * Keyboard shortcut handler - OBEDECE CONFIGURAÇÃO
  */
 function handleKeyDown(event: KeyboardEvent): void {
-  if (!IS_PRODUCTION) return;
+  if (!isProduction()) return;
+  
+  // Verificar se atalhos de teclado estão bloqueados
+  if (!shieldConfig?.keyboard_shortcuts_block_enabled) return;
   
   const key = event.key.toLowerCase();
   const ctrl = event.ctrlKey || event.metaKey;
@@ -455,7 +642,7 @@ function handleKeyDown(event: KeyboardEvent): void {
   if (event.key === 'F12') {
     event.preventDefault();
     event.stopPropagation();
-    reportViolation('keyboard_shortcut', { key: 'F12' });
+    handleViolation('keyboard_shortcut', { key: 'F12' });
     return;
   }
   
@@ -463,7 +650,7 @@ function handleKeyDown(event: KeyboardEvent): void {
   if (ctrl && shift && key === 'i') {
     event.preventDefault();
     event.stopPropagation();
-    reportViolation('keyboard_shortcut', { key: 'Ctrl+Shift+I' });
+    handleViolation('keyboard_shortcut', { key: 'Ctrl+Shift+I' });
     return;
   }
   
@@ -471,7 +658,7 @@ function handleKeyDown(event: KeyboardEvent): void {
   if (ctrl && shift && key === 'j') {
     event.preventDefault();
     event.stopPropagation();
-    reportViolation('keyboard_shortcut', { key: 'Ctrl+Shift+J' });
+    handleViolation('keyboard_shortcut', { key: 'Ctrl+Shift+J' });
     return;
   }
   
@@ -479,7 +666,7 @@ function handleKeyDown(event: KeyboardEvent): void {
   if (ctrl && shift && key === 'c') {
     event.preventDefault();
     event.stopPropagation();
-    reportViolation('keyboard_shortcut', { key: 'Ctrl+Shift+C' });
+    handleViolation('keyboard_shortcut', { key: 'Ctrl+Shift+C' });
     return;
   }
   
@@ -487,26 +674,55 @@ function handleKeyDown(event: KeyboardEvent): void {
   if (ctrl && key === 'u') {
     event.preventDefault();
     event.stopPropagation();
-    reportViolation('keyboard_shortcut', { key: 'Ctrl+U' });
+    handleViolation('keyboard_shortcut', { key: 'Ctrl+U' });
+    return;
+  }
+  
+  // Block PrintScreen (screenshot)
+  if (event.key === 'PrintScreen') {
+    event.preventDefault();
+    event.stopPropagation();
+    showBlackScreen();
+    handleViolation('screenshot_attempt', { key: 'PrintScreen' });
     return;
   }
 }
 
 /**
- * Context menu handler (right-click)
+ * Context menu handler (right-click) - OBEDECE CONFIGURAÇÃO
  */
 function handleContextMenu(event: MouseEvent): void {
-  if (!IS_PRODUCTION) return;
+  if (!isProduction()) return;
+  
+  // ✅ VERIFICAR CONFIG ANTES DE AGIR
+  if (!shieldConfig?.right_click_block_enabled) {
+    return; // Não fazer nada se desabilitado
+  }
   
   event.preventDefault();
   event.stopPropagation();
-  reportViolation('right_click', { x: event.clientX, y: event.clientY });
+  handleViolation('right_click', { x: event.clientX, y: event.clientY });
 }
 
 /**
- * Check for React DevTools
+ * Text selection handler - OBEDECE CONFIGURAÇÃO
+ */
+function handleSelectStart(event: Event): void {
+  if (!isProduction()) return;
+  
+  if (!shieldConfig?.text_selection_block_enabled) {
+    return; // Permitir seleção se desabilitado
+  }
+  
+  event.preventDefault();
+}
+
+/**
+ * Check for React DevTools - OBEDECE CONFIGURAÇÃO
  */
 function detectReactDevTools(): boolean {
+  if (!shieldConfig?.react_devtools_detection_enabled) return false;
+  
   // @ts-ignore
   if (window.__REACT_DEVTOOLS_GLOBAL_HOOK__) {
     // @ts-ignore
@@ -519,12 +735,11 @@ function detectReactDevTools(): boolean {
 }
 
 /**
- * Check if running inside an iframe
- * IMPORTANTE: Desativado em ambiente de desenvolvimento/preview
+ * Check if running inside an iframe - OBEDECE CONFIGURAÇÃO
  */
 function detectIframe(): boolean {
-  // Whitelist: não bloquear em ambiente de desenvolvimento
-  if (!IS_PRODUCTION) return false;
+  if (!isProduction()) return false;
+  if (!shieldConfig?.iframe_detection_enabled) return false;
   
   try {
     return window.self !== window.top;
@@ -534,15 +749,47 @@ function detectIframe(): boolean {
 }
 
 /**
- * Continuous monitoring function
+ * Mostrar tela preta temporária (proteção de screenshot)
+ */
+function showBlackScreen(): void {
+  const blackScreen = document.createElement('div');
+  blackScreen.id = 'security-black-screen';
+  blackScreen.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: black;
+    z-index: 999997;
+  `;
+  
+  document.body.appendChild(blackScreen);
+  
+  // Remover após 500ms
+  setTimeout(() => {
+    blackScreen.remove();
+  }, 500);
+}
+
+/**
+ * Continuous monitoring function - OBEDECE CONFIGURAÇÕES
  */
 function startMonitoring(): void {
-  if (!IS_PRODUCTION) {
-    console.log('🛡️ Security Shield v3: DISABLED (development mode)');
+  if (!isProduction()) {
+    console.log('🛡️ Security Shield v4: DISABLED (development mode)');
     return;
   }
   
-  console.log('🛡️ Security Shield v3: ACTIVE (production mode)');
+  if (!shieldConfig?.shield_enabled) {
+    console.log('🛡️ Security Shield v4: DISABLED (shield_enabled = false)');
+    return;
+  }
+  
+  console.log('🛡️ Security Shield v4: ACTIVE (production mode)');
+  
+  const monitoringMs = shieldConfig.monitoring_interval_ms || 500;
+  const consoleClearMs = shieldConfig.console_clear_interval_ms || 1000;
   
   // Monitor for DevTools
   monitoringInterval = setInterval(() => {
@@ -552,23 +799,25 @@ function startMonitoring(): void {
     }
     
     if (detectDevTools()) {
-      reportViolation('devtools_open', { method: 'size_detection' });
+      handleViolation('devtools_open', { method: 'size_detection' });
     }
     
     if (detectReactDevTools()) {
-      reportViolation('react_devtools', { method: 'hook_detection' });
+      handleViolation('react_devtools', { method: 'hook_detection' });
     }
-  }, MONITORING_INTERVAL);
+  }, monitoringMs);
   
-  // Clear console periodically
-  consoleInterval = setInterval(() => {
-    if (IS_PRODUCTION && !isBanned) {
-      console.clear();
-      console.log('%c⛔ ACESSO RESTRITO', 'color: red; font-size: 24px; font-weight: bold;');
-      console.log('%cSistema de Segurança KnowYOU v3', 'color: orange;');
-      console.log('%cQualquer tentativa de inspeção resultará em banimento permanente.', 'color: orange;');
-    }
-  }, CONSOLE_CLEAR_INTERVAL);
+  // Clear console periodically - OBEDECE CONFIGURAÇÃO
+  if (shieldConfig.console_clear_enabled) {
+    consoleInterval = setInterval(() => {
+      if (isProduction() && !isBanned) {
+        console.clear();
+        console.log('%c⛔ ACESSO RESTRITO', 'color: red; font-size: 24px; font-weight: bold;');
+        console.log('%cSistema de Segurança KnowYOU v4', 'color: orange;');
+        console.log('%cQualquer tentativa de inspeção resultará em banimento.', 'color: orange;');
+      }
+    }, consoleClearMs);
+  }
 }
 
 /**
@@ -600,13 +849,16 @@ export async function checkBanStatus(): Promise<BanStatus> {
 }
 
 /**
- * Initialize the security shield
+ * Initialize the security shield - CARREGA CONFIG PRIMEIRO
  */
-export function initSecurityShield(): () => void {
+export async function initSecurityShield(): Promise<() => void> {
+  // ✅ CARREGAR CONFIGURAÇÕES DO BANCO PRIMEIRO
+  await fetchSecurityConfig();
+  
   // Check for iframe
   if (detectIframe()) {
-    if (IS_PRODUCTION) {
-      reportViolation('iframe_attempt', { detected: 'on_load' });
+    if (isProduction() && shieldConfig?.iframe_detection_enabled) {
+      handleViolation('iframe_attempt', { detected: 'on_load' });
     }
     return () => {};
   }
@@ -615,9 +867,9 @@ export function initSecurityShield(): () => void {
   document.addEventListener('keydown', handleKeyDown, true);
   document.addEventListener('contextmenu', handleContextMenu, true);
   
-  // Disable text selection in production
-  if (IS_PRODUCTION) {
-    document.addEventListener('selectstart', (e) => e.preventDefault(), true);
+  // Disable text selection based on config
+  if (isProduction() && shieldConfig?.text_selection_block_enabled) {
+    document.addEventListener('selectstart', handleSelectStart, true);
     document.addEventListener('dragstart', (e) => e.preventDefault(), true);
   }
   
@@ -628,6 +880,7 @@ export function initSecurityShield(): () => void {
   return () => {
     document.removeEventListener('keydown', handleKeyDown, true);
     document.removeEventListener('contextmenu', handleContextMenu, true);
+    document.removeEventListener('selectstart', handleSelectStart, true);
     if (monitoringInterval) clearInterval(monitoringInterval);
     if (consoleInterval) clearInterval(consoleInterval);
   };
@@ -648,8 +901,22 @@ export function isCurrentlyBanned(): boolean {
 }
 
 /**
- * Get collected device data (v3)
+ * Get collected device data (v4)
  */
 export function getCollectedDeviceData(): DeviceData | null {
   return deviceData;
+}
+
+/**
+ * Get current config (for debugging)
+ */
+export function getCurrentConfig(): SecurityShieldConfig | null {
+  return shieldConfig;
+}
+
+/**
+ * Get current violation count
+ */
+export function getViolationCount(): number {
+  return violationCount;
 }
