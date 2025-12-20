@@ -51,7 +51,8 @@ import {
   Ban,
   ShieldCheck,
   ShieldAlert,
-  KeyRound
+  KeyRound,
+  MessageSquare
 } from "lucide-react";
 import { InviteUserModal } from "./InviteUserModal";
 import { toast } from "sonner";
@@ -165,7 +166,7 @@ export const UserRegistryTab = () => {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [banModal, setBanModal] = useState<{ open: boolean; user: UserRegistration | null; reason: string }>({ open: false, user: null, reason: "" });
   const [resetPasswordModal, setResetPasswordModal] = useState<{ open: boolean; user: UserRegistration | null }>({ open: false, user: null });
-  const [resendWelcomeModal, setResendWelcomeModal] = useState<{ open: boolean; user: UserRegistration | null }>({ open: false, user: null });
+  const [resendWelcomeModal, setResendWelcomeModal] = useState<{ open: boolean; user: UserRegistration | null; channel: 'email' | 'whatsapp' | 'both' }>({ open: false, user: null, channel: 'email' });
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   
   // CSV Import states
@@ -490,20 +491,22 @@ export const UserRegistryTab = () => {
     }
   });
 
-  // Resend welcome email mutation
+  // Resend welcome mutation with channel support
   const resendWelcomeMutation = useMutation({
-    mutationFn: async (user: UserRegistration) => {
-      const { error } = await supabase.functions.invoke("resend-welcome-email", {
-        body: { registrationId: user.id }
+    mutationFn: async ({ user, channel }: { user: UserRegistration; channel: 'email' | 'whatsapp' | 'both' }) => {
+      const { error, data } = await supabase.functions.invoke("resend-welcome-email", {
+        body: { registrationId: user.id, channel }
       });
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
-      toast.success("Email de boas-vindas reenviado!");
-      setResendWelcomeModal({ open: false, user: null });
+    onSuccess: (data) => {
+      const channels = data?.channels?.join(' e ') || 'email';
+      toast.success(`Boas-vindas reenviado via ${channels}!`);
+      setResendWelcomeModal({ open: false, user: null, channel: 'email' });
     },
     onError: (error: Error) => {
-      toast.error(`Erro ao reenviar email: ${error.message}`);
+      toast.error(`Erro ao reenviar: ${error.message}`);
     }
   });
 
@@ -1087,23 +1090,41 @@ export const UserRegistryTab = () => {
                               <div className="flex items-center justify-end gap-1">
                                 {activeTab === "pending" ? (
                                   <>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
-                                      onClick={() => approveMutation.mutate(reg)}
-                                      disabled={approveMutation.isPending}
-                                    >
-                                      <Check className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                      onClick={() => setRejectModal({ open: true, user: reg, reason: "" })}
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </Button>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
+                                            onClick={() => approveMutation.mutate(reg)}
+                                            disabled={approveMutation.isPending}
+                                          >
+                                            <Check className="w-4 h-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Aprovar cadastro</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                            onClick={() => setRejectModal({ open: true, user: reg, reason: "" })}
+                                          >
+                                            <X className="w-4 h-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Rejeitar cadastro</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   </>
                                 ) : (
                                   <>
@@ -1128,13 +1149,22 @@ export const UserRegistryTab = () => {
                                         OK
                                       </Badge>
                                     )}
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => setEditModal({ open: true, user: reg })}
-                                    >
-                                      <Edit2 className="w-4 h-4" />
-                                    </Button>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setEditModal({ open: true, user: reg })}
+                                          >
+                                            <Edit2 className="w-4 h-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Editar usuário</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                     {/* Resend welcome email button - only for approved, non-banned users */}
                                     {!reg.is_banned && (
                                       <TooltipProvider>
@@ -1144,7 +1174,7 @@ export const UserRegistryTab = () => {
                                               variant="ghost"
                                               size="icon"
                                               className="text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
-                                              onClick={() => setResendWelcomeModal({ open: true, user: reg })}
+                                              onClick={() => setResendWelcomeModal({ open: true, user: reg, channel: reg.phone ? 'both' : 'email' })}
                                               disabled={resendWelcomeMutation.isPending}
                                             >
                                               <Send className="w-4 h-4" />
@@ -1156,44 +1186,78 @@ export const UserRegistryTab = () => {
                                         </Tooltip>
                                       </TooltipProvider>
                                     )}
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => setRoleChangeModal({ open: true, user: reg, newRole: reg.role })}
-                                    >
-                                      <Users className="w-4 h-4" />
-                                    </Button>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setRoleChangeModal({ open: true, user: reg, newRole: reg.role })}
+                                          >
+                                            <Users className="w-4 h-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Alterar permissões</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                     {/* Ban/Unban button */}
                                     {reg.is_banned ? (
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
-                                        onClick={() => unbanUserMutation.mutate(reg.id)}
-                                        disabled={unbanUserMutation.isPending}
-                                        title="Desbanir usuário"
-                                      >
-                                        <ShieldCheck className="w-4 h-4" />
-                                      </Button>
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
+                                              onClick={() => unbanUserMutation.mutate(reg.id)}
+                                              disabled={unbanUserMutation.isPending}
+                                            >
+                                              <ShieldCheck className="w-4 h-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Desbanir usuário</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
                                     ) : (
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
-                                        onClick={() => setBanModal({ open: true, user: reg, reason: "" })}
-                                        title="Banir usuário"
-                                      >
-                                        <Ban className="w-4 h-4" />
-                                      </Button>
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
+                                              onClick={() => setBanModal({ open: true, user: reg, reason: "" })}
+                                            >
+                                              <Ban className="w-4 h-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Banir usuário</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
                                     )}
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                      onClick={() => setDeleteModal({ open: true, user: reg })}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                            onClick={() => setDeleteModal({ open: true, user: reg })}
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Excluir registro</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   </>
                                 )}
                               </div>
@@ -1782,31 +1846,77 @@ export const UserRegistryTab = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Resend Welcome Email Modal */}
-      <Dialog open={resendWelcomeModal.open} onOpenChange={(open) => !open && setResendWelcomeModal({ open: false, user: null })}>
+      {/* Resend Welcome Modal with Channel Selection */}
+      <Dialog open={resendWelcomeModal.open} onOpenChange={(open) => !open && setResendWelcomeModal({ open: false, user: null, channel: 'email' })}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-blue-500">
               <Send className="w-5 h-5" />
-              Reenviar Email de Boas-Vindas
+              Reenviar Boas-Vindas
             </DialogTitle>
             <DialogDescription>
-              Deseja reenviar o email de boas-vindas para <span className="font-semibold">{resendWelcomeModal.user?.first_name} {resendWelcomeModal.user?.last_name}</span> ({resendWelcomeModal.user?.email})?
-              <br /><br />
+              Reenviar mensagem de boas-vindas para <span className="font-semibold">{resendWelcomeModal.user?.first_name} {resendWelcomeModal.user?.last_name}</span>?
+              <br />
               O usuário receberá um novo link para definir sua senha.
             </DialogDescription>
           </DialogHeader>
+          
+          {/* Channel Selection */}
+          <div className="space-y-3">
+            <Label>Enviar via:</Label>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={resendWelcomeModal.channel === 'email' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setResendWelcomeModal(prev => ({ ...prev, channel: 'email' }))}
+                className="gap-2"
+              >
+                <Mail className="w-4 h-4" />
+                Email
+              </Button>
+              {resendWelcomeModal.user?.phone && (
+                <>
+                  <Button
+                    variant={resendWelcomeModal.channel === 'whatsapp' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setResendWelcomeModal(prev => ({ ...prev, channel: 'whatsapp' }))}
+                    className="gap-2"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    WhatsApp
+                  </Button>
+                  <Button
+                    variant={resendWelcomeModal.channel === 'both' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setResendWelcomeModal(prev => ({ ...prev, channel: 'both' }))}
+                    className="gap-2"
+                  >
+                    <Mail className="w-4 h-4" />
+                    +
+                    <MessageSquare className="w-4 h-4" />
+                    Ambos
+                  </Button>
+                </>
+              )}
+            </div>
+            {!resendWelcomeModal.user?.phone && (
+              <p className="text-xs text-muted-foreground">
+                Este usuário não possui telefone cadastrado. Será enviado apenas por email.
+              </p>
+            )}
+          </div>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setResendWelcomeModal({ open: false, user: null })}>
+            <Button variant="outline" onClick={() => setResendWelcomeModal({ open: false, user: null, channel: 'email' })}>
               Cancelar
             </Button>
             <Button
-              onClick={() => resendWelcomeModal.user && resendWelcomeMutation.mutate(resendWelcomeModal.user)}
+              onClick={() => resendWelcomeModal.user && resendWelcomeMutation.mutate({ user: resendWelcomeModal.user, channel: resendWelcomeModal.channel })}
               disabled={resendWelcomeMutation.isPending}
               className="bg-blue-500 hover:bg-blue-600"
             >
               {resendWelcomeMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Reenviar Email
+              Reenviar
             </Button>
           </DialogFooter>
         </DialogContent>

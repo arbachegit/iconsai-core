@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { formatDateTime } from "@/lib/date-utils";
 import { toast } from "sonner";
 import { InviteTrackingTimeline } from "./InviteTrackingTimeline";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Search,
   ChevronDown,
@@ -394,24 +395,47 @@ export const InvitesTab = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
-                              onClick={() => setResendModal({ open: true, invite })}
-                              title="Reenviar convite"
-                            >
-                              <Send className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                              onClick={() => setDeleteModal({ open: true, invite })}
-                              title="Excluir convite"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
+                                    onClick={() => setResendModal({ open: true, invite })}
+                                  >
+                                    <Send className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="flex items-center gap-1">
+                                    Reenviar convite
+                                    {invite.verification_method === 'email' ? (
+                                      <Mail className="w-3 h-3" />
+                                    ) : invite.verification_method === 'whatsapp' ? (
+                                      <MessageSquare className="w-3 h-3" />
+                                    ) : null}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                    onClick={() => setDeleteModal({ open: true, invite })}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Excluir convite</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -517,8 +541,23 @@ export const InvitesTab = () => {
               <Send className="w-5 h-5" />
               Reenviar Convite
             </DialogTitle>
-            <DialogDescription>
-              Reenviar o convite para {resendModal.invite?.email}?
+            <DialogDescription className="space-y-2">
+              <p>Reenviar o convite para {resendModal.invite?.email}?</p>
+              {resendModal.invite?.verification_method && (
+                <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+                  {resendModal.invite.verification_method === 'email' ? (
+                    <>
+                      <Mail className="w-4 h-4 text-blue-500" />
+                      <span className="text-sm">Será enviado por <strong>Email</strong></span>
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare className="w-4 h-4 text-green-500" />
+                      <span className="text-sm">Será enviado por <strong>WhatsApp</strong></span>
+                    </>
+                  )}
+                </div>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
