@@ -110,7 +110,7 @@ serve(async (req) => {
     }
 
     // Build invitation URL - redirect to PWA registration
-    const siteUrl = Deno.env.get("PUBLIC_SITE_URL") || "https://knowyou.app";
+    const siteUrl = Deno.env.get("PUBLIC_SITE_URL") || "https://hmv.knowyou.app";
     const inviteUrl = `${siteUrl}/pwa-register?token=${token}`;
 
     // Build PWA icons for email
