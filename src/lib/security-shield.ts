@@ -73,6 +73,7 @@ interface DeviceData {
 // ESTADO GLOBAL
 // ============================================
 let isBanned = false;
+let isUserWhitelisted = false; // ✅ NOVO: Estado de whitelist
 let deviceFingerprint: string | null = null;
 let deviceData: DeviceData | null = null;
 let monitoringInterval: ReturnType<typeof setInterval> | null = null;
@@ -515,6 +516,12 @@ function showBanScreen(reason: string, deviceId: string, hours?: number): void {
 // HANDLER DE VIOLAÇÃO COM TENTATIVAS PROGRESSIVAS
 // ============================================
 function handleViolation(type: ViolationType, details: Record<string, unknown> = {}): void {
+  // ✅ WHITELIST: Se usuário está na whitelist, não fazer NADA
+  if (isUserWhitelisted) {
+    console.log(`🛡️ Security Shield v4: Usuário na whitelist, ignorando ${type}`);
+    return;
+  }
+  
   // Verificar se o shield está habilitado
   if (!shieldConfig?.shield_enabled) {
     console.log(`🛡️ Security Shield v4: Shield desabilitado, ignorando violação ${type}`);
@@ -613,6 +620,7 @@ async function reportViolation(
  * Check if DevTools are open using multiple methods
  */
 function detectDevTools(): boolean {
+  if (isUserWhitelisted) return false; // ✅ WHITELIST: não detectar
   // Verificar se a detecção está habilitada
   if (!shieldConfig?.devtools_detection_enabled) return false;
   
@@ -630,6 +638,7 @@ function detectDevTools(): boolean {
  */
 function handleKeyDown(event: KeyboardEvent): void {
   if (!isProduction()) return;
+  if (isUserWhitelisted) return; // ✅ WHITELIST: sair sem fazer nada
   
   // Verificar se atalhos de teclado estão bloqueados
   if (!shieldConfig?.keyboard_shortcuts_block_enabled) return;
@@ -693,6 +702,7 @@ function handleKeyDown(event: KeyboardEvent): void {
  */
 function handleContextMenu(event: MouseEvent): void {
   if (!isProduction()) return;
+  if (isUserWhitelisted) return; // ✅ WHITELIST: sair sem fazer nada
   
   // ✅ VERIFICAR CONFIG ANTES DE AGIR
   if (!shieldConfig?.right_click_block_enabled) {
@@ -709,6 +719,7 @@ function handleContextMenu(event: MouseEvent): void {
  */
 function handleSelectStart(event: Event): void {
   if (!isProduction()) return;
+  if (isUserWhitelisted) return; // ✅ WHITELIST: permitir seleção
   
   if (!shieldConfig?.text_selection_block_enabled) {
     return; // Permitir seleção se desabilitado
@@ -721,6 +732,7 @@ function handleSelectStart(event: Event): void {
  * Check for React DevTools - OBEDECE CONFIGURAÇÃO
  */
 function detectReactDevTools(): boolean {
+  if (isUserWhitelisted) return false; // ✅ WHITELIST: não detectar
   if (!shieldConfig?.react_devtools_detection_enabled) return false;
   
   // @ts-ignore
@@ -855,6 +867,14 @@ export async function initSecurityShield(): Promise<() => void> {
   // ✅ CARREGAR CONFIGURAÇÕES DO BANCO PRIMEIRO
   await fetchSecurityConfig();
   
+  // ✅ VERIFICAR SE USUÁRIO ESTÁ NA WHITELIST
+  await checkIPWhitelist();
+  
+  if (isUserWhitelisted) {
+    console.log('🛡️ Security Shield v4: Usuário na WHITELIST - todas as proteções desativadas');
+    return () => {}; // Retornar cleanup vazio
+  }
+  
   // Check for iframe
   if (detectIframe()) {
     if (isProduction() && shieldConfig?.iframe_detection_enabled) {
@@ -884,6 +904,32 @@ export async function initSecurityShield(): Promise<() => void> {
     if (monitoringInterval) clearInterval(monitoringInterval);
     if (consoleInterval) clearInterval(consoleInterval);
   };
+}
+
+// ============================================
+// VERIFICAR SE IP ESTÁ NA WHITELIST
+// ============================================
+async function checkIPWhitelist(): Promise<void> {
+  try {
+    const fingerprint = getFingerprint();
+    
+    const { data, error } = await supabase.functions.invoke('check-ban-status', {
+      body: { deviceFingerprint: fingerprint },
+    });
+    
+    if (error) {
+      console.warn('🛡️ Security Shield v4: Erro ao verificar whitelist', error);
+      return;
+    }
+    
+    // O edge function retorna "whitelisted: true" quando IP está na whitelist
+    if (data?.whitelisted === true) {
+      isUserWhitelisted = true;
+      console.log('🛡️ Security Shield v4: IP/Dispositivo na WHITELIST');
+    }
+  } catch (error) {
+    console.warn('🛡️ Security Shield v4: Falha ao verificar whitelist', error);
+  }
 }
 
 /**
