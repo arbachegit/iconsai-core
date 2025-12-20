@@ -453,16 +453,16 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                     return (
                       <CollapsibleTrigger className={`group flex items-center justify-between w-full p-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all duration-300 ease-in-out ${
                         hasActiveChild
-                          ? 'bg-[hsl(300,100%,50%)] text-white shadow-[0_0_15px_rgba(255,0,255,0.5)]'
+                          ? 'bg-fuchsia-800 text-white/90 shadow-sm'
                           : openSections.includes(category.id) 
-                            ? 'bg-fuchsia-500 text-white shadow-[0_0_15px_rgba(255,0,255,0.4)]' 
-                            : 'text-muted-foreground hover:text-black hover:bg-[#00D4FF] hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105'
+                            ? 'bg-fuchsia-700/80 text-white/80 shadow-sm' 
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:shadow-sm'
                       }`}>
                         <div className="flex items-center gap-2">
-                          <category.icon className={`w-3.5 h-3.5 ${hasActiveChild ? 'text-white' : openSections.includes(category.id) ? 'text-white' : 'group-hover:text-black'}`} />
+                          <category.icon className={`w-3.5 h-3.5 ${hasActiveChild ? 'text-white/90' : openSections.includes(category.id) ? 'text-white/80' : 'group-hover:text-foreground'}`} />
                           {category.label}
                         </div>
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openSections.includes(category.id) ? 'rotate-180 text-white' : 'group-hover:text-black'}`} />
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openSections.includes(category.id) ? 'rotate-180 text-white/80' : 'group-hover:text-foreground'}`} />
                       </CollapsibleTrigger>
                     );
                   })()}
@@ -477,7 +477,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                         <Button
                           key={item.id}
                           variant={isActive ? "default" : "ghost"}
-                          className={`group w-full justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105"} transition-all duration-300 ease-in-out`}
+                          className={`group w-full justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted hover:text-foreground"} transition-all duration-200`}
                           onClick={() => {
                             // Navigate to external dashboard page
                             if (item.id === "dashboard-external") {
@@ -511,12 +511,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
           {!isCollapsed && (
             <button
               onClick={() => setIsControlCenterCollapsed(!isControlCenterCollapsed)}
-              className="group absolute -top-3 left-1/2 -translate-x-1/2 z-10 bg-[#0B1120] border border-white/10 rounded-full p-0.5 hover:bg-[#00D4FF] hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-110 transition-all duration-300 ease-in-out"
+              className="group absolute -top-3 left-1/2 -translate-x-1/2 z-10 bg-background border border-border rounded-full p-0.5 hover:bg-muted transition-all duration-200"
             >
               {isControlCenterCollapsed ? (
-                <ChevronUp className="w-3.5 h-3.5 text-muted-foreground group-hover:text-black" />
+                <ChevronUp className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" />
               ) : (
-                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-hover:text-black" />
+                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" />
               )}
             </button>
           )}
@@ -529,10 +529,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-10 w-10 rounded-lg hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/docs")}
                   >
-                    <BookOpen className="w-4 h-4 group-hover:text-black" />
+                    <BookOpen className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">{t('admin.documentation')}</TooltipContent>
@@ -543,10 +543,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-10 w-10 rounded-lg hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/app")}
                   >
-                    <Smartphone className="w-4 h-4 group-hover:text-black" />
+                    <Smartphone className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">App</TooltipContent>
@@ -557,10 +557,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-10 w-10 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-10 w-10 rounded-lg hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/dashboard")}
                   >
-                    <LayoutDashboard className="w-4 h-4 group-hover:text-black" />
+                    <LayoutDashboard className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Dashboard</TooltipContent>
@@ -571,10 +571,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-10 w-10 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-10 w-10 rounded-lg text-primary hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/")}
                   >
-                    <Home className="w-4 h-4 group-hover:text-black" />
+                    <Home className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Voltar ao Início</TooltipContent>
@@ -585,10 +585,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-10 w-10 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-10 w-10 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200"
                     onClick={handleLogout}
                   >
-                    <LogOut className="w-4 h-4 group-hover:text-white" />
+                    <LogOut className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">{t('admin.logout')}</TooltipContent>
@@ -602,10 +602,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-9 w-9 rounded-lg hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/docs")}
                   >
-                    <BookOpen className="w-4 h-4 group-hover:text-black" />
+                    <BookOpen className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">{t('admin.documentation')}</TooltipContent>
@@ -616,10 +616,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-9 w-9 rounded-lg hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/app")}
                   >
-                    <Smartphone className="w-4 h-4 group-hover:text-black" />
+                    <Smartphone className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">App</TooltipContent>
@@ -630,10 +630,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-9 w-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-9 w-9 rounded-lg hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/dashboard")}
                   >
-                    <LayoutDashboard className="w-4 h-4 group-hover:text-black" />
+                    <LayoutDashboard className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Dashboard</TooltipContent>
@@ -644,10 +644,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-9 w-9 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-9 w-9 rounded-lg text-primary hover:bg-muted transition-all duration-200"
                     onClick={() => navigate("/")}
                   >
-                    <Home className="w-4 h-4 group-hover:text-black" />
+                    <Home className="w-4 h-4 group-hover:text-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Voltar ao Início</TooltipContent>
@@ -658,10 +658,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="group h-9 w-9 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                    className="group h-9 w-9 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200"
                     onClick={handleLogout}
                   >
-                    <LogOut className="w-4 h-4 group-hover:text-white" />
+                    <LogOut className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">{t('admin.logout')}</TooltipContent>
@@ -672,46 +672,46 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
             <div className="flex flex-col gap-0.5">
               <Button 
                 variant="ghost" 
-                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted transition-all duration-200"
                 onClick={() => navigate("/docs")}
               >
-                <BookOpen className="w-4 h-4 shrink-0 group-hover:text-black" />
+                <BookOpen className="w-4 h-4 shrink-0 group-hover:text-foreground" />
                 <span className="whitespace-nowrap">{t('admin.documentation')}</span>
               </Button>
 
               <Button 
                 variant="ghost" 
-                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted transition-all duration-200"
                 onClick={() => navigate("/app")}
               >
-                <Smartphone className="w-4 h-4 shrink-0 group-hover:text-black" />
+                <Smartphone className="w-4 h-4 shrink-0 group-hover:text-foreground" />
                 <span className="whitespace-nowrap">App</span>
               </Button>
 
               <Button 
                 variant="ghost" 
-                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                className="group w-full justify-start gap-3 h-9 rounded-lg hover:bg-muted transition-all duration-200"
                 onClick={() => navigate("/dashboard")}
               >
-                <LayoutDashboard className="w-4 h-4 shrink-0 group-hover:text-black" />
+                <LayoutDashboard className="w-4 h-4 shrink-0 group-hover:text-foreground" />
                 <span className="whitespace-nowrap">Dashboard</span>
               </Button>
 
               <Button 
                 variant="ghost" 
-                className="group w-full justify-start gap-3 h-9 rounded-lg text-primary hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                className="group w-full justify-start gap-3 h-9 rounded-lg text-primary hover:bg-muted transition-all duration-200"
                 onClick={() => navigate("/")}
               >
-                <Home className="w-4 h-4 shrink-0 group-hover:text-black" />
+                <Home className="w-4 h-4 shrink-0 group-hover:text-foreground" />
                 <span className="whitespace-nowrap">Voltar ao Início</span>
               </Button>
 
               <Button 
                 variant="ghost" 
-                className="group w-full justify-start gap-3 h-9 rounded-lg text-destructive hover:bg-[#FF3366] hover:text-white hover:shadow-[0_0_15px_rgba(255,51,102,0.5)] hover:scale-105 transition-all duration-300 ease-in-out"
+                className="group w-full justify-start gap-3 h-9 rounded-lg text-destructive hover:bg-destructive/10 transition-all duration-200"
                 onClick={handleLogout}
               >
-                <LogOut className="w-4 h-4 shrink-0 group-hover:text-white" />
+                <LogOut className="w-4 h-4 shrink-0" />
                 <span className="whitespace-nowrap">{t('admin.logout')}</span>
               </Button>
             </div>
