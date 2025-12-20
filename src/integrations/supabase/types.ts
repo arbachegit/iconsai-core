@@ -2630,10 +2630,12 @@ export type Database = {
           id: string
           iframe_detection_enabled: boolean
           keyboard_shortcuts_block_enabled: boolean
+          max_violation_attempts: number
           monitoring_interval_ms: number
           react_devtools_detection_enabled: boolean
           right_click_block_enabled: boolean
           shield_enabled: boolean
+          show_violation_popup: boolean
           text_selection_block_enabled: boolean
           updated_at: string | null
           whitelisted_domains: string[]
@@ -2648,10 +2650,12 @@ export type Database = {
           id?: string
           iframe_detection_enabled?: boolean
           keyboard_shortcuts_block_enabled?: boolean
+          max_violation_attempts?: number
           monitoring_interval_ms?: number
           react_devtools_detection_enabled?: boolean
           right_click_block_enabled?: boolean
           shield_enabled?: boolean
+          show_violation_popup?: boolean
           text_selection_block_enabled?: boolean
           updated_at?: string | null
           whitelisted_domains?: string[]
@@ -2666,10 +2670,12 @@ export type Database = {
           id?: string
           iframe_detection_enabled?: boolean
           keyboard_shortcuts_block_enabled?: boolean
+          max_violation_attempts?: number
           monitoring_interval_ms?: number
           react_devtools_detection_enabled?: boolean
           right_click_block_enabled?: boolean
           shield_enabled?: boolean
+          show_violation_popup?: boolean
           text_selection_block_enabled?: boolean
           updated_at?: string | null
           whitelisted_domains?: string[]

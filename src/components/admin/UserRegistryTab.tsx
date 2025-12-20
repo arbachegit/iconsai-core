@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -1128,27 +1129,34 @@ export const UserRegistryTab = () => {
                                   </>
                                 ) : (
                                   <>
-                                    {/* Security Badge */}
-                                    {reg.is_banned ? (
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger>
-                                            <Badge variant="destructive" className="gap-1 mr-2">
-                                              <Ban className="w-3 h-3" />
-                                              Banido
-                                            </Badge>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>{reg.ban_reason || "Violação de segurança"}</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                    ) : (
-                                      <Badge variant="outline" className="gap-1 mr-2 text-emerald-500 border-emerald-500/30">
-                                        <ShieldCheck className="w-3 h-3" />
-                                        OK
-                                      </Badge>
-                                    )}
+                                    {/* Ban Toggle - Red when banned, Green when not */}
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="flex items-center gap-2 mr-2">
+                                            <span className="text-xs text-muted-foreground">Banimento:</span>
+                                            <Switch
+                                              checked={reg.is_banned || false}
+                                              onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                  setBanModal({ open: true, user: reg, reason: "" });
+                                                } else {
+                                                  unbanUserMutation.mutate(reg.id);
+                                                }
+                                              }}
+                                              disabled={banUserMutation.isPending || unbanUserMutation.isPending}
+                                              className={reg.is_banned 
+                                                ? "data-[state=checked]:bg-red-500" 
+                                                : "data-[state=unchecked]:bg-emerald-500"
+                                              }
+                                            />
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>{reg.is_banned ? (reg.ban_reason || "Usuário banido") : "Usuário ativo"}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
@@ -1202,45 +1210,6 @@ export const UserRegistryTab = () => {
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
-                                    {/* Ban/Unban button */}
-                                    {reg.is_banned ? (
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
-                                              onClick={() => unbanUserMutation.mutate(reg.id)}
-                                              disabled={unbanUserMutation.isPending}
-                                            >
-                                              <ShieldCheck className="w-4 h-4" />
-                                            </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>Desbanir usuário</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                    ) : (
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
-                                              onClick={() => setBanModal({ open: true, user: reg, reason: "" })}
-                                            >
-                                              <Ban className="w-4 h-4" />
-                                            </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>Banir usuário</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                    )}
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
