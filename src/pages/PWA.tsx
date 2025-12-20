@@ -355,8 +355,13 @@ export default function PWA() {
       }
       
       console.log("[PWA] Calling agent...");
-      const { data: agentData, error: agentError } = await supabase.functions.invoke('chat-pwa', {
-        body: { message: transcription, agentSlug: 'economia', deviceId }
+      const { data: agentData, error: agentError } = await supabase.functions.invoke('chat-router', {
+        body: { 
+          pwaMode: true,
+          message: transcription, 
+          agentSlug: 'economia', 
+          deviceId 
+        }
       });
       
       if (agentError) {

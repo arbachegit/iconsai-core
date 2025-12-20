@@ -395,8 +395,13 @@ export default function PWAMultiAgent() {
         return;
       }
       
-      const { data: agentData, error: agentError } = await supabase.functions.invoke("chat-pwa", {
-        body: { message: transcription, agentSlug: selectedAgent, deviceId }
+      const { data: agentData, error: agentError } = await supabase.functions.invoke("chat-router", {
+        body: { 
+          pwaMode: true,
+          message: transcription, 
+          agentSlug: selectedAgent, 
+          deviceId 
+        }
       });
       
       if (agentError) {
