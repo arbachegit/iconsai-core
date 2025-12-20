@@ -25,7 +25,10 @@ import {
   Save,
   RefreshCw,
   AlertTriangle,
-  Globe
+  Globe,
+  Loader2,
+  Eye,
+  Hash
 } from "lucide-react";
 
 interface SecurityShieldConfig {
@@ -42,6 +45,8 @@ interface SecurityShieldConfig {
   console_clear_interval_ms: number;
   auto_ban_on_violation: boolean;
   ban_duration_hours: number | null;
+  max_violation_attempts: number;
+  show_violation_popup: boolean;
   whitelisted_domains: string[];
   created_at: string;
   updated_at: string;
@@ -336,6 +341,27 @@ export function SecurityShieldConfigTab() {
             <Separator />
 
             <div className="space-y-2">
+              <Label htmlFor="max-attempts" className="flex items-center gap-2">
+                <Hash className="w-4 h-4 text-muted-foreground" />
+                Número máximo de tentativas
+              </Label>
+              <Input
+                id="max-attempts"
+                type="number"
+                min="1"
+                max="10"
+                value={config.max_violation_attempts}
+                onChange={(e) => handleNumberChange("max_violation_attempts", parseInt(e.target.value) || 3)}
+                disabled={updateMutation.isPending}
+              />
+              <p className="text-xs text-muted-foreground">
+                Quantas violações antes do banimento automático
+              </p>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
               <Label htmlFor="ban-duration">
                 Duração do banimento (horas)
                 <span className="text-muted-foreground ml-2 text-xs">
@@ -352,6 +378,26 @@ export function SecurityShieldConfigTab() {
                   const value = e.target.value ? parseInt(e.target.value) : null;
                   updateMutation.mutate({ ban_duration_hours: value });
                 }}
+                disabled={updateMutation.isPending}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Eye className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <Label htmlFor="show-popup">Pop-up de violações</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Exibir contador de tentativas e tempo restante
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="show-popup"
+                checked={config.show_violation_popup}
+                onCheckedChange={(checked) => handleToggle("show_violation_popup", checked)}
                 disabled={updateMutation.isPending}
               />
             </div>
@@ -462,8 +508,12 @@ export function SecurityShieldConfigTab() {
               onClick={() => refetch()}
               disabled={updateMutation.isPending}
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${updateMutation.isPending ? "animate-spin" : ""}`} />
-              Atualizar
+              {updateMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              {updateMutation.isPending ? "Salvando..." : "Atualizar"}
             </Button>
           </div>
         </CardContent>

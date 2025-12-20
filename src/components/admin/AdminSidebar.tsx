@@ -448,17 +448,24 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   open={openSections.includes(category.id)}
                   onOpenChange={() => toggleSection(category.id)}
                 >
-                  <CollapsibleTrigger className={`group flex items-center justify-between w-full p-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all duration-300 ease-in-out ${
-                    openSections.includes(category.id) 
-                      ? 'bg-[hsl(191,100%,35%)] text-white shadow-[0_0_15px_rgba(0,212,255,0.4)]' 
-                      : 'text-muted-foreground hover:text-black hover:bg-[#00D4FF] hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105'
-                  }`}>
-                    <div className="flex items-center gap-2">
-                      <category.icon className={`w-3.5 h-3.5 ${openSections.includes(category.id) ? 'text-white' : 'group-hover:text-black'}`} />
-                      {category.label}
-                    </div>
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openSections.includes(category.id) ? 'rotate-180 text-white' : 'group-hover:text-black'}`} />
-                  </CollapsibleTrigger>
+                  {(() => {
+                    const hasActiveChild = category.items.some(item => item.id === activeTab);
+                    return (
+                      <CollapsibleTrigger className={`group flex items-center justify-between w-full p-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all duration-300 ease-in-out ${
+                        hasActiveChild
+                          ? 'bg-[hsl(300,100%,50%)] text-white shadow-[0_0_15px_rgba(255,0,255,0.5)]'
+                          : openSections.includes(category.id) 
+                            ? 'bg-[hsl(191,100%,35%)] text-white shadow-[0_0_15px_rgba(0,212,255,0.4)]' 
+                            : 'text-muted-foreground hover:text-black hover:bg-[#00D4FF] hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <category.icon className={`w-3.5 h-3.5 ${hasActiveChild || openSections.includes(category.id) ? 'text-white' : 'group-hover:text-black'}`} />
+                          {category.label}
+                        </div>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openSections.includes(category.id) ? 'rotate-180 text-white' : 'group-hover:text-black'}`} />
+                      </CollapsibleTrigger>
+                    );
+                  })()}
                   
                   <CollapsibleContent className="space-y-0.5 mt-1">
                     {category.items.map((item) => {
