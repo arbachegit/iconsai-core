@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
         }
       );
     }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -59,6 +60,37 @@ Deno.serve(async (req) => {
     const { deviceFingerprint, userEmail } = payload;
 
     console.log(`Checking ban status for fingerprint: ${deviceFingerprint?.substring(0, 16)}...`);
+
+    // v3: Check if IP is in security_whitelist
+    if (clientIP) {
+      const { data: whitelistEntry } = await supabase
+        .from("security_whitelist")
+        .select("*")
+        .eq("ip_address", clientIP)
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      if (whitelistEntry) {
+        // Check if not expired
+        if (!whitelistEntry.expires_at || new Date(whitelistEntry.expires_at) > new Date()) {
+          console.log(`IP ${clientIP} is in security whitelist (${whitelistEntry.user_name})`);
+          return new Response(
+            JSON.stringify({
+              isBanned: false,
+              ipWhitelisted: true,
+              whitelistEntry: {
+                name: whitelistEntry.user_name,
+                description: whitelistEntry.description,
+              },
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 200,
+            }
+          );
+        }
+      }
+    }
 
     // Check if device is banned
     const { data: bannedDevice, error: deviceError } = await supabase

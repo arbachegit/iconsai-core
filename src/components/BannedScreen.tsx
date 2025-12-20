@@ -1,4 +1,4 @@
-import { Ban, ShieldAlert, AlertTriangle } from "lucide-react";
+import { Ban, ShieldAlert, AlertTriangle, Mail } from "lucide-react";
 
 interface BannedScreenProps {
   reason: string;
@@ -13,7 +13,11 @@ export const BannedScreen = ({ reason, deviceId, bannedAt }: BannedScreenProps) 
         dateStyle: "long",
         timeStyle: "short"
       })
-    : null;
+    : new Date().toLocaleString("pt-BR", { 
+        timeZone: "America/Sao_Paulo",
+        dateStyle: "long",
+        timeStyle: "short"
+      });
 
   return (
     <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-gradient-to-br from-red-950 via-red-900 to-red-950">
@@ -55,15 +59,11 @@ export const BannedScreen = ({ reason, deviceId, bannedAt }: BannedScreenProps) 
               <span className="text-red-400/70 text-sm">ID do Dispositivo:</span>
               <span className="text-red-200 text-sm font-mono">{deviceId}</span>
             </div>
-            {formattedDate && (
-              <>
-                <div className="border-t border-red-500/20" />
-                <div className="flex justify-between items-center">
-                  <span className="text-red-400/70 text-sm">Data do Banimento:</span>
-                  <span className="text-red-200 text-sm">{formattedDate}</span>
-                </div>
-              </>
-            )}
+            <div className="border-t border-red-500/20" />
+            <div className="flex justify-between items-center">
+              <span className="text-red-400/70 text-sm">Data do Banimento:</span>
+              <span className="text-red-200 text-sm">{formattedDate}</span>
+            </div>
           </div>
         </div>
 
@@ -79,9 +79,18 @@ export const BannedScreen = ({ reason, deviceId, bannedAt }: BannedScreenProps) 
           </div>
         </div>
 
+        {/* Contact Button */}
+        <a 
+          href="mailto:suporte@knowyou.app?subject=Solicitação de Revisão de Banimento&body=ID do Dispositivo: ${deviceId}"
+          className="inline-flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg transition-colors mb-6"
+        >
+          <Mail className="w-4 h-4" />
+          Contatar Suporte
+        </a>
+
         {/* Footer */}
         <p className="text-red-400/50 text-xs">
-          Sistema de Segurança KnowYOU v2 • Tolerância Zero
+          Sistema de Segurança KnowYOU v3 • Tolerância Zero
         </p>
       </div>
     </div>
