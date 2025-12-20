@@ -1,11 +1,11 @@
 {
-  "name": "Economista - Assistente de Voz",
-  "short_name": "Economista",
-  "description": "Assistente de voz para economia e finanças",
+  "name": "KnowRisk - Assistente de Voz",
+  "short_name": "KnowRisk",
+  "description": "Assistente de voz inteligente para análise de dados",
   "start_url": "/pwa",
   "display": "standalone",
   "background_color": "#0a0a0a",
-  "theme_color": "#3b82f6",
+  "theme_color": "#0a0a0a",
   "orientation": "portrait",
   "icons": [
     {
