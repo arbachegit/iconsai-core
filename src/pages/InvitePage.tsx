@@ -146,6 +146,12 @@ export default function InvitePage() {
 
         setInvitation(data as Invitation);
         setStep("form");
+        
+        // Track link opened
+        await supabase
+          .from("user_invitations")
+          .update({ link_opened_at: new Date().toISOString() })
+          .eq("token", token);
       } catch (err) {
         setStep("error");
         setErrorMessage("Erro ao validar convite");

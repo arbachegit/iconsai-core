@@ -1873,36 +1873,96 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address_cep: string | null
+          address_city: string | null
+          address_complement: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
           avatar_url: string | null
           created_at: string | null
           first_name: string | null
           id: string
           institution_study: string | null
           institution_work: string | null
+          last_browser: string | null
+          last_device_fingerprint: string | null
+          last_ip_address: unknown
+          last_language: string | null
+          last_login_at: string | null
           last_name: string | null
+          last_os: string | null
+          last_screen_resolution: string | null
+          last_timezone: string | null
           phone: string | null
+          registration_browser: string | null
+          registration_device_fingerprint: string | null
+          registration_ip_address: unknown
+          registration_location: Json | null
+          registration_os: string | null
           updated_at: string | null
         }
         Insert: {
+          address_cep?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
           avatar_url?: string | null
           created_at?: string | null
           first_name?: string | null
           id: string
           institution_study?: string | null
           institution_work?: string | null
+          last_browser?: string | null
+          last_device_fingerprint?: string | null
+          last_ip_address?: unknown
+          last_language?: string | null
+          last_login_at?: string | null
           last_name?: string | null
+          last_os?: string | null
+          last_screen_resolution?: string | null
+          last_timezone?: string | null
           phone?: string | null
+          registration_browser?: string | null
+          registration_device_fingerprint?: string | null
+          registration_ip_address?: unknown
+          registration_location?: Json | null
+          registration_os?: string | null
           updated_at?: string | null
         }
         Update: {
+          address_cep?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
           avatar_url?: string | null
           created_at?: string | null
           first_name?: string | null
           id?: string
           institution_study?: string | null
           institution_work?: string | null
+          last_browser?: string | null
+          last_device_fingerprint?: string | null
+          last_ip_address?: unknown
+          last_language?: string | null
+          last_login_at?: string | null
           last_name?: string | null
+          last_os?: string | null
+          last_screen_resolution?: string | null
+          last_timezone?: string | null
           phone?: string | null
+          registration_browser?: string | null
+          registration_device_fingerprint?: string | null
+          registration_ip_address?: unknown
+          registration_location?: Json | null
+          registration_os?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -3078,10 +3138,14 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           email: string
+          email_opened_at: string | null
+          email_sent_at: string | null
           expires_at: string
+          form_started_at: string | null
           id: string
           invited_by: string | null
           last_resend_at: string | null
+          link_opened_at: string | null
           name: string
           phone: string | null
           resend_count: number | null
@@ -3095,6 +3159,9 @@ export type Database = {
           verification_code: string | null
           verification_code_expires_at: string | null
           verification_method: string | null
+          verification_sent_at: string | null
+          whatsapp_opened_at: string | null
+          whatsapp_sent_at: string | null
         }
         Insert: {
           address_cep?: string | null
@@ -3107,10 +3174,14 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           email: string
+          email_opened_at?: string | null
+          email_sent_at?: string | null
           expires_at: string
+          form_started_at?: string | null
           id?: string
           invited_by?: string | null
           last_resend_at?: string | null
+          link_opened_at?: string | null
           name: string
           phone?: string | null
           resend_count?: number | null
@@ -3124,6 +3195,9 @@ export type Database = {
           verification_code?: string | null
           verification_code_expires_at?: string | null
           verification_method?: string | null
+          verification_sent_at?: string | null
+          whatsapp_opened_at?: string | null
+          whatsapp_sent_at?: string | null
         }
         Update: {
           address_cep?: string | null
@@ -3136,10 +3210,14 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           email?: string
+          email_opened_at?: string | null
+          email_sent_at?: string | null
           expires_at?: string
+          form_started_at?: string | null
           id?: string
           invited_by?: string | null
           last_resend_at?: string | null
+          link_opened_at?: string | null
           name?: string
           phone?: string | null
           resend_count?: number | null
@@ -3153,6 +3231,9 @@ export type Database = {
           verification_code?: string | null
           verification_code_expires_at?: string | null
           verification_method?: string | null
+          verification_sent_at?: string | null
+          whatsapp_opened_at?: string | null
+          whatsapp_sent_at?: string | null
         }
         Relationships: []
       }

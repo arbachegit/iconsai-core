@@ -12,9 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { formatDateTime } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
+import { InvitesTab } from "./InvitesTab";
+import { UserDeviceInfo } from "./UserDeviceInfo";
 import { 
   Search, 
   Download, 
@@ -31,6 +34,8 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   AlertCircle,
   Mail,
   Phone,
@@ -45,7 +50,8 @@ import {
   Send,
   Ban,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  KeyRound
 } from "lucide-react";
 import { InviteUserModal } from "./InviteUserModal";
 import { toast } from "sonner";
@@ -158,6 +164,8 @@ export const UserRegistryTab = () => {
   const [roleChangeModal, setRoleChangeModal] = useState<{ open: boolean; user: UserRegistration | null; newRole: AppRole }>({ open: false, user: null, newRole: "user" });
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [banModal, setBanModal] = useState<{ open: boolean; user: UserRegistration | null; reason: string }>({ open: false, user: null, reason: "" });
+  const [resetPasswordModal, setResetPasswordModal] = useState<{ open: boolean; user: UserRegistration | null }>({ open: false, user: null });
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   
   // CSV Import states
   const [csvData, setCsvData] = useState<CSVRow[]>([]);
@@ -458,6 +466,41 @@ export const UserRegistryTab = () => {
       toast.error(`Erro ao desbanir usuário: ${error.message}`);
     }
   });
+
+  // Reset password mutation
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (user: UserRegistration) => {
+      const { error } = await supabase.functions.invoke("reset-password-admin", {
+        body: { 
+          userId: user.id, 
+          userEmail: user.email,
+          userName: `${user.first_name} ${user.last_name}`,
+          reason: "Reset solicitado pelo Super Administrador"
+        }
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Email de reset de senha enviado!");
+      setResetPasswordModal({ open: false, user: null });
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao resetar senha: ${error.message}`);
+    }
+  });
+
+  // Toggle user expansion
+  const toggleUserExpansion = (id: string) => {
+    setExpandedUsers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
 
   // Auto-detect field mapping from CSV headers
   const autoDetectMapping = useCallback((headers: string[]) => {
@@ -850,7 +893,7 @@ export const UserRegistryTab = () => {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="active" className="gap-2">
             <Users className="w-4 h-4" />
             Usuários Ativos
@@ -863,11 +906,20 @@ export const UserRegistryTab = () => {
               <Badge className="bg-amber-500 text-white ml-1">{pendingCount}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="invites" className="gap-2">
+            <Send className="w-4 h-4" />
+            Convites
+          </TabsTrigger>
           <TabsTrigger value="import" className="gap-2">
             <FileSpreadsheet className="w-4 h-4" />
-            Importação em Massa
+            Importação
           </TabsTrigger>
         </TabsList>
+
+        {/* Tab: Invites */}
+        <TabsContent value="invites" className="space-y-4">
+          <InvitesTab />
+        </TabsContent>
 
         {/* Tab: Active Users / Pending Approvals */}
         {(activeTab === "active" || activeTab === "pending") && (
@@ -1658,6 +1710,34 @@ export const UserRegistryTab = () => {
             >
               {banUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Banir Usuário
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Modal */}
+      <Dialog open={resetPasswordModal.open} onOpenChange={(open) => !open && setResetPasswordModal({ open: false, user: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-500">
+              <KeyRound className="w-5 h-5" />
+              Resetar Senha
+            </DialogTitle>
+            <DialogDescription>
+              Enviar código de reset de senha para <span className="font-semibold">{resetPasswordModal.user?.email}</span>?
+              O usuário receberá um email informando que a senha foi resetada pelo Super Administrador.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetPasswordModal({ open: false, user: null })}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => resetPasswordModal.user && resetPasswordMutation.mutate(resetPasswordModal.user)}
+              disabled={resetPasswordMutation.isPending}
+            >
+              {resetPasswordMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Enviar Reset
             </Button>
           </DialogFooter>
         </DialogContent>
