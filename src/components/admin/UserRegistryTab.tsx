@@ -41,8 +41,10 @@ import {
   Copy,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Send
 } from "lucide-react";
+import { InviteUserModal } from "./InviteUserModal";
 import { toast } from "sonner";
 import { useDropzone } from "react-dropzone";
 import Papa from "papaparse";
@@ -145,6 +147,7 @@ export const UserRegistryTab = () => {
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; user: UserRegistration | null }>({ open: false, user: null });
   const [rejectModal, setRejectModal] = useState<{ open: boolean; user: UserRegistration | null; reason: string }>({ open: false, user: null, reason: "" });
   const [roleChangeModal, setRoleChangeModal] = useState<{ open: boolean; user: UserRegistration | null; newRole: AppRole }>({ open: false, user: null, newRole: "user" });
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
   
   // CSV Import states
   const [csvData, setCsvData] = useState<CSVRow[]>([]);
@@ -870,6 +873,12 @@ export const UserRegistryTab = () => {
                   <Button variant="outline" size="icon" onClick={() => refetch()}>
                     <RefreshCw className="w-4 h-4" />
                   </Button>
+                  
+                  {/* Invite User */}
+                  <Button onClick={() => setInviteModalOpen(true)} className="gap-2">
+                    <Send className="w-4 h-4" />
+                    Convidar Usuário
+                  </Button>
                 </div>
               </CardHeader>
               
@@ -1505,6 +1514,13 @@ export const UserRegistryTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Invite User Modal */}
+      <InviteUserModal 
+        open={inviteModalOpen} 
+        onOpenChange={setInviteModalOpen}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 };
