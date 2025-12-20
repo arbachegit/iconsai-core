@@ -341,6 +341,27 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Verificar acesso PWA (se não for anônimo)
+    if (!finalDeviceId.startsWith('anonymous-')) {
+      const { data: accessCheck } = await supabase.rpc("check_pwa_access", {
+        p_device_id: finalDeviceId,
+        p_agent_slug: agentSlug
+      });
+      
+      const access = accessCheck as { has_access: boolean; message?: string } | null;
+      
+      if (access && !access.has_access) {
+        console.log(`[chat-pwa] Acesso negado para device ${finalDeviceId} no agente ${agentSlug}`);
+        return new Response(
+          JSON.stringify({ 
+            error: "Acesso não autorizado",
+            response: access.message || "Você não tem permissão para usar este agente."
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // 1. Buscar histórico e contexto de memória
     const { sessionId, userName, messages: history } = await getRecentHistory(
       supabase, 

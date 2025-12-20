@@ -54,6 +54,7 @@ interface UserInvitation {
   verification_sent_at: string | null;
   completed_at: string | null;
   phone: string | null;
+  pwa_access: string[] | null;
 }
 
 const ROLE_CONFIG: Record<AppRole, { color: string; label: string }> = {
