@@ -457,6 +457,7 @@ export type Database = {
           device_fingerprint: string
           id: string
           ip_address: unknown
+          is_active: boolean
           is_permanent: boolean | null
           unbanned_at: string | null
           unbanned_by: string | null
@@ -472,6 +473,7 @@ export type Database = {
           device_fingerprint: string
           id?: string
           ip_address?: unknown
+          is_active?: boolean
           is_permanent?: boolean | null
           unbanned_at?: string | null
           unbanned_by?: string | null
@@ -487,6 +489,7 @@ export type Database = {
           device_fingerprint?: string
           id?: string
           ip_address?: unknown
+          is_active?: boolean
           is_permanent?: boolean | null
           unbanned_at?: string | null
           unbanned_by?: string | null
@@ -2613,6 +2616,63 @@ export type Database = {
           id?: string
           new_level?: string
           previous_level?: string
+        }
+        Relationships: []
+      }
+      security_shield_config: {
+        Row: {
+          auto_ban_on_violation: boolean
+          ban_duration_hours: number | null
+          console_clear_enabled: boolean
+          console_clear_interval_ms: number
+          created_at: string | null
+          devtools_detection_enabled: boolean
+          id: string
+          iframe_detection_enabled: boolean
+          keyboard_shortcuts_block_enabled: boolean
+          monitoring_interval_ms: number
+          react_devtools_detection_enabled: boolean
+          right_click_block_enabled: boolean
+          shield_enabled: boolean
+          text_selection_block_enabled: boolean
+          updated_at: string | null
+          whitelisted_domains: string[]
+        }
+        Insert: {
+          auto_ban_on_violation?: boolean
+          ban_duration_hours?: number | null
+          console_clear_enabled?: boolean
+          console_clear_interval_ms?: number
+          created_at?: string | null
+          devtools_detection_enabled?: boolean
+          id?: string
+          iframe_detection_enabled?: boolean
+          keyboard_shortcuts_block_enabled?: boolean
+          monitoring_interval_ms?: number
+          react_devtools_detection_enabled?: boolean
+          right_click_block_enabled?: boolean
+          shield_enabled?: boolean
+          text_selection_block_enabled?: boolean
+          updated_at?: string | null
+          whitelisted_domains?: string[]
+        }
+        Update: {
+          auto_ban_on_violation?: boolean
+          ban_duration_hours?: number | null
+          console_clear_enabled?: boolean
+          console_clear_interval_ms?: number
+          created_at?: string | null
+          devtools_detection_enabled?: boolean
+          id?: string
+          iframe_detection_enabled?: boolean
+          keyboard_shortcuts_block_enabled?: boolean
+          monitoring_interval_ms?: number
+          react_devtools_detection_enabled?: boolean
+          right_click_block_enabled?: boolean
+          shield_enabled?: boolean
+          text_selection_block_enabled?: boolean
+          updated_at?: string | null
+          whitelisted_domains?: string[]
         }
         Relationships: []
       }
