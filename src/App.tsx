@@ -55,13 +55,17 @@ interface BanInfo {
 const SecurityWrapper = ({ children }: { children: React.ReactNode }) => {
   const [banInfo, setBanInfo] = useState<BanInfo | null>(null);
   const [isChecking, setIsChecking] = useState(true);
+  const cleanupRef = React.useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    let cleanupFn: (() => void) | null = null;
+    let isMounted = true;
 
     // Initialize security shield (now async)
     const initShield = async () => {
-      cleanupFn = await initSecurityShield();
+      const cleanup = await initSecurityShield();
+      if (isMounted) {
+        cleanupRef.current = cleanup;
+      }
     };
     initShield();
 
@@ -69,7 +73,7 @@ const SecurityWrapper = ({ children }: { children: React.ReactNode }) => {
     const checkBan = async () => {
       try {
         const status = await checkBanStatus();
-        if (status.isBanned) {
+        if (status.isBanned && isMounted) {
           setBanInfo({
             reason: status.reason || status.violationType || "Violação de segurança",
             deviceId: status.deviceId || getDeviceFingerprint().substring(0, 16),
@@ -79,7 +83,9 @@ const SecurityWrapper = ({ children }: { children: React.ReactNode }) => {
       } catch (error) {
         console.error("Error checking ban status:", error);
       } finally {
-        setIsChecking(false);
+        if (isMounted) {
+          setIsChecking(false);
+        }
       }
     };
 
@@ -96,7 +102,10 @@ const SecurityWrapper = ({ children }: { children: React.ReactNode }) => {
     window.addEventListener("security-banned", handleBanned as EventListener);
 
     return () => {
-      if (cleanupFn) cleanupFn();
+      isMounted = false;
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
       window.removeEventListener("security-banned", handleBanned as EventListener);
     };
   }, []);
