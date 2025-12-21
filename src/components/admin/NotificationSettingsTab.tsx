@@ -48,7 +48,9 @@ import {
   Wifi,
   Map,
   Database,
-  Zap
+  Zap,
+  ArrowRightLeft,
+  DollarSign
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -199,6 +201,12 @@ export default function NotificationSettingsTab() {
   const [savingEmail, setSavingEmail] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
   const [testingWhatsapp, setTestingWhatsapp] = useState(false);
+  const [testingSms, setTestingSms] = useState(false);
+  
+  // SMS Configuration State
+  const [smsEnabled, setSmsEnabled] = useState(true);
+  const [smsAsFallback, setSmsAsFallback] = useState(true);
+  const [twilioSmsNumber] = useState('+17727323860');
   
   // Configuration saved states
   const [whatsappConfigured, setWhatsappConfigured] = useState(false);
@@ -307,10 +315,10 @@ export default function NotificationSettingsTab() {
       if (prefsError) throw prefsError;
       setPreferences(prefsData || []);
 
-      // Load admin settings for phone, email and global toggles
+      // Load admin settings for phone, email, SMS and global toggles
       const { data: settingsData, error: settingsError } = await supabase
         .from('admin_settings')
-        .select('whatsapp_target_phone, whatsapp_global_enabled, gmail_notification_email, email_global_enabled, last_scheduled_scan')
+        .select('whatsapp_target_phone, whatsapp_global_enabled, gmail_notification_email, email_global_enabled, last_scheduled_scan, sms_enabled, sms_as_fallback, twilio_sms_number')
         .single();
 
       if (settingsError && settingsError.code !== 'PGRST116') throw settingsError;
@@ -339,6 +347,11 @@ export default function NotificationSettingsTab() {
         if (settingsData.last_scheduled_scan) {
           setScanCronConfig(prev => ({ ...prev, lastRun: settingsData.last_scheduled_scan }));
         }
+        
+        // Load SMS settings
+        const settingsAny = settingsData as any;
+        setSmsEnabled(settingsAny.sms_enabled !== false);
+        setSmsAsFallback(settingsAny.sms_as_fallback !== false);
       }
 
       // Load security alert config
@@ -936,6 +949,53 @@ export default function NotificationSettingsTab() {
       toast.error(`Erro ao enviar WhatsApp: ${error.message}`);
     } finally {
       setTestingWhatsapp(false);
+    }
+  };
+
+  const testSms = async () => {
+    if (!targetPhone) {
+      toast.error('Configure um número de telefone primeiro');
+      return;
+    }
+
+    setTestingSms(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-sms', {
+        body: {
+          phoneNumber: targetPhone,
+          message: '🔔 Teste de SMS KnowYOU - SMS configurado corretamente!',
+          eventType: 'test_sms'
+        }
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Erro desconhecido');
+      
+      toast.success('SMS de teste enviado com sucesso!');
+    } catch (error: any) {
+      console.error('Error testing SMS:', error);
+      toast.error(`Erro ao enviar SMS: ${error.message}`);
+    } finally {
+      setTestingSms(false);
+    }
+  };
+
+  const saveSmsSettings = async () => {
+    try {
+      const { error } = await supabase
+        .from('admin_settings')
+        .update({
+          sms_enabled: smsEnabled,
+          sms_as_fallback: smsAsFallback,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', (await supabase.from('admin_settings').select('id').single()).data?.id);
+
+      if (error) throw error;
+      toast.success('Configurações de SMS salvas');
+    } catch (error: any) {
+      console.error('Error saving SMS settings:', error);
+      toast.error('Erro ao salvar configurações de SMS');
     }
   };
 
@@ -1939,6 +1999,108 @@ export default function NotificationSettingsTab() {
                 <Save className="h-4 w-4" />
               )}
               {emailConfigured ? 'Configurar' : 'Salvar Configuração'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* SMS Configuration Card */}
+      <Card className="border-primary/20">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5 text-cyan-500" />
+              <CardTitle className="text-lg">Configuração SMS (Fallback)</CardTitle>
+            </div>
+            <Badge variant={smsEnabled ? "default" : "secondary"} className={smsEnabled ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/50" : ""}>
+              {smsEnabled ? "Ativo" : "Inativo"}
+            </Badge>
+          </div>
+          <CardDescription>
+            SMS será usado automaticamente se o WhatsApp falhar
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Toggle SMS Global */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-3">
+              <Smartphone className="h-5 w-5 text-cyan-500" />
+              <div>
+                <p className="font-medium">Habilitar SMS</p>
+                <p className="text-xs text-muted-foreground">
+                  Ativar envio de notificações via SMS
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={smsEnabled}
+              onCheckedChange={(checked) => {
+                setSmsEnabled(checked);
+                saveSmsSettings();
+              }}
+            />
+          </div>
+
+          {/* Toggle Fallback Automático */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-3">
+              <ArrowRightLeft className="h-5 w-5 text-amber-500" />
+              <div>
+                <p className="font-medium">Fallback Automático</p>
+                <p className="text-xs text-muted-foreground">
+                  Se WhatsApp falhar, enviar SMS automaticamente
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={smsAsFallback}
+              onCheckedChange={(checked) => {
+                setSmsAsFallback(checked);
+                saveSmsSettings();
+              }}
+              disabled={!smsEnabled}
+            />
+          </div>
+
+          {/* Número Twilio SMS */}
+          <div className="space-y-2">
+            <Label>Número Twilio SMS</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                value={twilioSmsNumber}
+                disabled
+                className="font-mono opacity-60"
+              />
+              <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30 whitespace-nowrap">
+                ✓ Configurado
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Número de origem para envio de SMS
+            </p>
+          </div>
+
+          {/* Info de custos */}
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
+            <DollarSign className="h-4 w-4 text-cyan-400" />
+            <p className="text-xs text-cyan-400">
+              Custo aproximado: $0.05 por SMS (Brasil)
+            </p>
+          </div>
+
+          <div className="flex justify-end pt-2 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={testSms}
+              disabled={testingSms || !targetPhone || !smsEnabled}
+              className="gap-2"
+            >
+              {testingSms ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Enviar SMS de Teste
             </Button>
           </div>
         </CardContent>
