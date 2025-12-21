@@ -221,3 +221,9 @@ verify_jwt = true
 # ============================================
 [functions.migrate-tags-to-taxonomy]
 verify_jwt = true
+
+# ============================================
+# DOCUMENT PROCESSING V2 - Adaptive Chunking
+# ============================================
+[functions.process-document-v2]
+verify_jwt = false

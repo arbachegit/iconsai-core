@@ -1320,6 +1320,7 @@ export type Database = {
           is_inserted: boolean | null
           is_readable: boolean | null
           original_text: string
+          processing_progress: number | null
           readability_score: number | null
           redirected_from: string | null
           status: string | null
@@ -1342,6 +1343,7 @@ export type Database = {
           is_inserted?: boolean | null
           is_readable?: boolean | null
           original_text: string
+          processing_progress?: number | null
           readability_score?: number | null
           redirected_from?: string | null
           status?: string | null
@@ -1364,6 +1366,7 @@ export type Database = {
           is_inserted?: boolean | null
           is_readable?: boolean | null
           original_text?: string
+          processing_progress?: number | null
           readability_score?: number | null
           redirected_from?: string | null
           status?: string | null
