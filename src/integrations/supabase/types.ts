@@ -620,6 +620,7 @@ export type Database = {
           allowed_tags: string[] | null
           avatar_url: string | null
           capabilities: Json | null
+          communication_style_id: string | null
           created_at: string | null
           description: string | null
           deterministic_mode: boolean | null
@@ -650,6 +651,7 @@ export type Database = {
           allowed_tags?: string[] | null
           avatar_url?: string | null
           capabilities?: Json | null
+          communication_style_id?: string | null
           created_at?: string | null
           description?: string | null
           deterministic_mode?: boolean | null
@@ -680,6 +682,7 @@ export type Database = {
           allowed_tags?: string[] | null
           avatar_url?: string | null
           capabilities?: Json | null
+          communication_style_id?: string | null
           created_at?: string | null
           description?: string | null
           deterministic_mode?: boolean | null
@@ -705,7 +708,15 @@ export type Database = {
           system_prompt?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_agents_communication_style_id_fkey"
+            columns: ["communication_style_id"]
+            isOneToOne: false
+            referencedRelation: "communication_styles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_analytics: {
         Row: {
@@ -836,6 +847,60 @@ export type Database = {
           id?: string
           suggested_chat?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      communication_styles: {
+        Row: {
+          complexity: number | null
+          created_at: string | null
+          description: string | null
+          empathy: number | null
+          formality: number | null
+          id: string
+          is_active: boolean | null
+          max_paragraph_length: number | null
+          persona_description: string | null
+          style_code: string
+          style_name: string
+          updated_at: string | null
+          use_bullet_points: boolean | null
+          use_examples: boolean | null
+          verbosity: number | null
+        }
+        Insert: {
+          complexity?: number | null
+          created_at?: string | null
+          description?: string | null
+          empathy?: number | null
+          formality?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_paragraph_length?: number | null
+          persona_description?: string | null
+          style_code: string
+          style_name: string
+          updated_at?: string | null
+          use_bullet_points?: boolean | null
+          use_examples?: boolean | null
+          verbosity?: number | null
+        }
+        Update: {
+          complexity?: number | null
+          created_at?: string | null
+          description?: string | null
+          empathy?: number | null
+          formality?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_paragraph_length?: number | null
+          persona_description?: string | null
+          style_code?: string
+          style_name?: string
+          updated_at?: string | null
+          use_bullet_points?: boolean | null
+          use_examples?: boolean | null
+          verbosity?: number | null
         }
         Relationships: []
       }
@@ -2590,31 +2655,58 @@ export type Database = {
       }
       regional_tone_rules: {
         Row: {
+          affirmations: string[] | null
+          avoided_terms: string[] | null
           created_at: string | null
+          expressions: string[] | null
+          formality_level: number | null
+          greetings: string[] | null
           id: string
           is_active: boolean
+          preferred_terms: Json | null
           region_code: string
           region_name: string
+          speech_rate: number | null
           tone_rules: string
           updated_at: string | null
+          voice_style: string | null
+          warmth_level: number | null
         }
         Insert: {
+          affirmations?: string[] | null
+          avoided_terms?: string[] | null
           created_at?: string | null
+          expressions?: string[] | null
+          formality_level?: number | null
+          greetings?: string[] | null
           id?: string
           is_active?: boolean
+          preferred_terms?: Json | null
           region_code: string
           region_name: string
+          speech_rate?: number | null
           tone_rules: string
           updated_at?: string | null
+          voice_style?: string | null
+          warmth_level?: number | null
         }
         Update: {
+          affirmations?: string[] | null
+          avoided_terms?: string[] | null
           created_at?: string | null
+          expressions?: string[] | null
+          formality_level?: number | null
+          greetings?: string[] | null
           id?: string
           is_active?: boolean
+          preferred_terms?: Json | null
           region_code?: string
           region_name?: string
+          speech_rate?: number | null
           tone_rules?: string
           updated_at?: string | null
+          voice_style?: string | null
+          warmth_level?: number | null
         }
         Relationships: []
       }
@@ -3131,6 +3223,51 @@ export type Database = {
           user_email?: string | null
           user_id?: string | null
           user_name?: string | null
+        }
+        Relationships: []
+      }
+      speech_humanization: {
+        Row: {
+          action_type: string
+          context: string | null
+          created_at: string | null
+          duration_ms: number | null
+          emphasis_level: number | null
+          id: string
+          is_active: boolean | null
+          priority: number | null
+          speed_multiplier: number | null
+          ssml_tag: string | null
+          trigger_pattern: string
+          trigger_type: string | null
+        }
+        Insert: {
+          action_type: string
+          context?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          emphasis_level?: number | null
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          speed_multiplier?: number | null
+          ssml_tag?: string | null
+          trigger_pattern: string
+          trigger_type?: string | null
+        }
+        Update: {
+          action_type?: string
+          context?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          emphasis_level?: number | null
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          speed_multiplier?: number | null
+          ssml_tag?: string | null
+          trigger_pattern?: string
+          trigger_type?: string | null
         }
         Relationships: []
       }
