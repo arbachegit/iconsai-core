@@ -177,6 +177,12 @@ verify_jwt = true
 [functions.send-whatsapp]
 verify_jwt = true
 
+[functions.send-sms]
+verify_jwt = true
+
+[functions.send-notification]
+verify_jwt = false
+
 # ============================================
 # DATA/SYNC FUNCTIONS - Internal/Admin
 # ============================================

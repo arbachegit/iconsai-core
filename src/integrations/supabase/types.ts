@@ -74,6 +74,9 @@ export type Database = {
           security_alert_email: string | null
           security_alert_threshold: string | null
           security_scan_enabled: boolean | null
+          sms_as_fallback: boolean | null
+          sms_enabled: boolean | null
+          twilio_sms_number: string | null
           updated_at: string | null
           vimeo_history_url: string | null
           weekly_report_enabled: boolean | null
@@ -109,6 +112,9 @@ export type Database = {
           security_alert_email?: string | null
           security_alert_threshold?: string | null
           security_scan_enabled?: boolean | null
+          sms_as_fallback?: boolean | null
+          sms_enabled?: boolean | null
+          twilio_sms_number?: string | null
           updated_at?: string | null
           vimeo_history_url?: string | null
           weekly_report_enabled?: boolean | null
@@ -144,6 +150,9 @@ export type Database = {
           security_alert_email?: string | null
           security_alert_threshold?: string | null
           security_scan_enabled?: boolean | null
+          sms_as_fallback?: boolean | null
+          sms_enabled?: boolean | null
+          twilio_sms_number?: string | null
           updated_at?: string | null
           vimeo_history_url?: string | null
           weekly_report_enabled?: boolean | null
@@ -1643,8 +1652,10 @@ export type Database = {
           created_at: string | null
           error_message: string | null
           event_type: string
+          fallback_used: boolean | null
           id: string
           message_body: string
+          message_sid: string | null
           metadata: Json | null
           recipient: string
           status: string
@@ -1655,8 +1666,10 @@ export type Database = {
           created_at?: string | null
           error_message?: string | null
           event_type: string
+          fallback_used?: boolean | null
           id?: string
           message_body: string
+          message_sid?: string | null
           metadata?: Json | null
           recipient: string
           status?: string
@@ -1667,8 +1680,10 @@ export type Database = {
           created_at?: string | null
           error_message?: string | null
           event_type?: string
+          fallback_used?: boolean | null
           id?: string
           message_body?: string
+          message_sid?: string | null
           metadata?: Json | null
           recipient?: string
           status?: string

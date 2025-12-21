@@ -21,6 +21,10 @@ interface AdminSettings {
   api_sync_cron_hour: string | null;
   api_sync_cron_minute: string | null;
   api_sync_default_frequency: string | null;
+  // SMS fields
+  sms_enabled: boolean | null;
+  sms_as_fallback: boolean | null;
+  twilio_sms_number: string | null;
 }
 
 export const useAdminSettings = () => {
