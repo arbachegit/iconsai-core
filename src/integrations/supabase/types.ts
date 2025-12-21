@@ -395,6 +395,33 @@ export type Database = {
         }
         Relationships: []
       }
+      app_config: {
+        Row: {
+          category: string | null
+          description: string | null
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          category?: string | null
+          description?: string | null
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          category?: string | null
+          description?: string | null
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       audio_contents: {
         Row: {
           audio_url: string
@@ -2638,10 +2665,15 @@ export type Database = {
         Row: {
           auto_ban_on_violation: boolean
           ban_duration_hours: number | null
+          block_message: string | null
           console_clear_enabled: boolean
           console_clear_interval_ms: number
+          console_warning_body: string | null
+          console_warning_subtitle: string | null
+          console_warning_title: string | null
           created_at: string | null
           devtools_detection_enabled: boolean
+          first_warning_message: string | null
           id: string
           iframe_detection_enabled: boolean
           keyboard_shortcuts_block_enabled: boolean
@@ -2658,10 +2690,15 @@ export type Database = {
         Insert: {
           auto_ban_on_violation?: boolean
           ban_duration_hours?: number | null
+          block_message?: string | null
           console_clear_enabled?: boolean
           console_clear_interval_ms?: number
+          console_warning_body?: string | null
+          console_warning_subtitle?: string | null
+          console_warning_title?: string | null
           created_at?: string | null
           devtools_detection_enabled?: boolean
+          first_warning_message?: string | null
           id?: string
           iframe_detection_enabled?: boolean
           keyboard_shortcuts_block_enabled?: boolean
@@ -2678,10 +2715,15 @@ export type Database = {
         Update: {
           auto_ban_on_violation?: boolean
           ban_duration_hours?: number | null
+          block_message?: string | null
           console_clear_enabled?: boolean
           console_clear_interval_ms?: number
+          console_warning_body?: string | null
+          console_warning_subtitle?: string | null
+          console_warning_title?: string | null
           created_at?: string | null
           devtools_detection_enabled?: boolean
+          first_warning_message?: string | null
           id?: string
           iframe_detection_enabled?: boolean
           keyboard_shortcuts_block_enabled?: boolean
@@ -2741,36 +2783,42 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           description: string | null
+          device_fingerprint: string | null
           expires_at: string | null
           id: string
           ip_address: unknown
           is_active: boolean | null
           updated_at: string | null
           user_email: string | null
+          user_id: string | null
           user_name: string | null
         }
         Insert: {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          device_fingerprint?: string | null
           expires_at?: string | null
           id?: string
           ip_address: unknown
           is_active?: boolean | null
           updated_at?: string | null
           user_email?: string | null
+          user_id?: string | null
           user_name?: string | null
         }
         Update: {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          device_fingerprint?: string | null
           expires_at?: string | null
           id?: string
           ip_address?: unknown
           is_active?: boolean | null
           updated_at?: string | null
           user_email?: string | null
+          user_id?: string | null
           user_name?: string | null
         }
         Relationships: []

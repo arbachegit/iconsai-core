@@ -83,25 +83,57 @@ let violationCount = 0;
 let configLoaded = false;
 
 // ============================================
-// WHITELIST DE DOMÍNIOS PADRÃO
+// WHITELIST DE DOMÍNIOS - CARREGADA DO BANCO
 // ============================================
-const DEFAULT_WHITELISTED_DOMAINS = [
-  'localhost',
-  '127.0.0.1',
-  'lovable.app',
-  'lovableproject.com',
-  'gptengineer.run',
-  'webcontainer.io',
-];
+let cachedWhitelistedDomains: string[] | null = null;
 
 /**
- * Verifica se o domínio atual está na whitelist
+ * Carrega domínios da whitelist do banco de dados
+ */
+async function loadWhitelistedDomains(): Promise<string[]> {
+  if (cachedWhitelistedDomains) return cachedWhitelistedDomains;
+  
+  try {
+    const { data, error } = await supabase
+      .from('app_config')
+      .select('value')
+      .eq('key', 'security.whitelisted_domains')
+      .single();
+    
+    if (error || !data) {
+      // Fallback mínimo se banco falhar
+      return ['localhost', '127.0.0.1', 'lovable.app', 'lovableproject.com', 'gptengineer.run', 'webcontainer.io'];
+    }
+    
+    const domains = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+    cachedWhitelistedDomains = domains;
+    return domains;
+  } catch {
+    return ['localhost', '127.0.0.1', 'lovable.app', 'lovableproject.com', 'gptengineer.run', 'webcontainer.io'];
+  }
+}
+
+/**
+ * Verifica se o domínio atual está na whitelist (usa cache ou config carregada)
  */
 function isWhitelistedDomain(): boolean {
   if (typeof window === 'undefined') return true;
   const hostname = window.location.hostname;
-  const domains = shieldConfig?.whitelisted_domains || DEFAULT_WHITELISTED_DOMAINS;
-  return domains.some(domain => hostname.includes(domain));
+  
+  // Se shieldConfig já carregado, usar
+  if (shieldConfig?.whitelisted_domains) {
+    return shieldConfig.whitelisted_domains.some(domain => hostname.includes(domain));
+  }
+  
+  // Se cache disponível, usar
+  if (cachedWhitelistedDomains) {
+    return cachedWhitelistedDomains.some(domain => hostname.includes(domain));
+  }
+  
+  // Fallback de segurança para não bloquear em dev
+  return hostname.includes('localhost') || 
+         hostname.includes('lovable.app') || 
+         hostname.includes('lovableproject.com');
 }
 
 // Configuration flags
@@ -800,8 +832,8 @@ function startMonitoring(): void {
   
   console.log('🛡️ Security Shield v4: ACTIVE (production mode)');
   
-  const monitoringMs = shieldConfig.monitoring_interval_ms || 500;
-  const consoleClearMs = shieldConfig.console_clear_interval_ms || 1000;
+  const monitoringInterval_ms = shieldConfig.monitoring_interval_ms || 500;
+  
   
   // Monitor for DevTools
   monitoringInterval = setInterval(() => {
@@ -814,21 +846,22 @@ function startMonitoring(): void {
       handleViolation('devtools_open', { method: 'size_detection' });
     }
     
-    if (detectReactDevTools()) {
-      handleViolation('react_devtools', { method: 'hook_detection' });
-    }
-  }, monitoringMs);
-  
-  // Clear console periodically - OBEDECE CONFIGURAÇÃO
+  }, monitoringInterval_ms);
+  // Clear console periodically - OBEDECE CONFIGURAÇÃO usando valores do banco
   if (shieldConfig.console_clear_enabled) {
+    const consoleClearInterval = shieldConfig.console_clear_interval_ms || 1000;
+    const warningTitle = (shieldConfig as any).console_warning_title || '⛔ ACESSO RESTRITO';
+    const warningSubtitle = (shieldConfig as any).console_warning_subtitle || 'Sistema de Segurança KnowYOU v4';
+    const warningBody = (shieldConfig as any).console_warning_body || 'Qualquer tentativa de inspeção resultará em banimento.';
+    
     consoleInterval = setInterval(() => {
       if (isProduction() && !isBanned) {
         console.clear();
-        console.log('%c⛔ ACESSO RESTRITO', 'color: red; font-size: 24px; font-weight: bold;');
-        console.log('%cSistema de Segurança KnowYOU v4', 'color: orange;');
-        console.log('%cQualquer tentativa de inspeção resultará em banimento.', 'color: orange;');
+        console.log(`%c${warningTitle}`, 'color: red; font-size: 24px; font-weight: bold;');
+        console.log(`%c${warningSubtitle}`, 'color: orange;');
+        console.log(`%c${warningBody}`, 'color: orange;');
       }
-    }, consoleClearMs);
+    }, consoleClearInterval);
   }
 }
 

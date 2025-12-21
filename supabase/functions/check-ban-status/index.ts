@@ -5,19 +5,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Domínios na whitelist (desenvolvimento/preview)
-const WHITELISTED_DOMAINS = [
-  'localhost',
-  'lovable.app',
-  'lovableproject.com',
-  'gptengineer.run',
-  'webcontainer.io',
-];
-
-function isWhitelistedOrigin(origin: string): boolean {
-  return WHITELISTED_DOMAINS.some(domain => origin.includes(domain));
-}
-
 interface CheckBanPayload {
   deviceFingerprint: string;
   userEmail?: string;
@@ -30,10 +17,40 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verificar se a requisição vem de um domínio whitelisted
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get client IP from headers
+    const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+                     req.headers.get("x-real-ip") || 
+                     null;
+    
+    // Verificar origin para domínios de desenvolvimento - consultar do banco
     const origin = req.headers.get('origin') || req.headers.get('referer') || '';
-    if (isWhitelistedOrigin(origin)) {
-      console.log('[WHITELIST] Request from whitelisted domain:', origin);
+    
+    // Buscar domínios whitelist do app_config
+    const { data: whitelistConfig } = await supabase
+      .from('app_config')
+      .select('value')
+      .eq('key', 'security.whitelisted_domains')
+      .single();
+    
+    let whitelistedDomains: string[] = ['localhost', 'lovable.app', 'lovableproject.com', 'gptengineer.run', 'webcontainer.io'];
+    if (whitelistConfig?.value) {
+      try {
+        whitelistedDomains = typeof whitelistConfig.value === 'string' 
+          ? JSON.parse(whitelistConfig.value) 
+          : whitelistConfig.value;
+      } catch {
+        // Usar padrão se falhar parse
+      }
+    }
+    
+    // Verificar se origin está na whitelist de domínios de desenvolvimento
+    const isDevDomain = whitelistedDomains.some(domain => origin.includes(domain));
+    if (isDevDomain) {
+      console.log('[WHITELIST] Request from whitelisted dev domain:', origin);
       return new Response(
         JSON.stringify({ 
           isBanned: false, 
@@ -47,21 +64,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Get client IP from headers
-    const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
-                     req.headers.get("x-real-ip") || 
-                     null;
-
     const payload: CheckBanPayload = await req.json();
     const { deviceFingerprint, userEmail } = payload;
 
     console.log(`Checking ban status for fingerprint: ${deviceFingerprint?.substring(0, 16)}...`);
 
-    // v3: Check if IP is in security_whitelist
+    // ✅ VERIFICAÇÃO #1: IP na security_whitelist
     if (clientIP) {
       const { data: whitelistEntry } = await supabase
         .from("security_whitelist")
@@ -73,14 +81,44 @@ Deno.serve(async (req) => {
       if (whitelistEntry) {
         // Check if not expired
         if (!whitelistEntry.expires_at || new Date(whitelistEntry.expires_at) > new Date()) {
-          console.log(`IP ${clientIP} is in security whitelist (${whitelistEntry.user_name})`);
+          console.log(`✅ IP ${clientIP} is in security whitelist (${whitelistEntry.user_name})`);
           return new Response(
             JSON.stringify({
               isBanned: false,
-              ipWhitelisted: true,
+              whitelisted: true, // ✅ CORRIGIDO: era ipWhitelisted
               whitelistEntry: {
                 name: whitelistEntry.user_name,
                 description: whitelistEntry.description,
+              },
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 200,
+            }
+          );
+        }
+      }
+    }
+
+    // ✅ VERIFICAÇÃO #2: Device fingerprint na security_whitelist
+    if (deviceFingerprint) {
+      const { data: deviceWhitelistEntry } = await supabase
+        .from("security_whitelist")
+        .select("*")
+        .eq("device_fingerprint", deviceFingerprint)
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      if (deviceWhitelistEntry) {
+        if (!deviceWhitelistEntry.expires_at || new Date(deviceWhitelistEntry.expires_at) > new Date()) {
+          console.log(`✅ Device ${deviceFingerprint.substring(0, 16)} is in security whitelist`);
+          return new Response(
+            JSON.stringify({
+              isBanned: false,
+              whitelisted: true,
+              whitelistEntry: {
+                name: deviceWhitelistEntry.user_name,
+                description: deviceWhitelistEntry.description,
               },
             }),
             {

@@ -120,6 +120,9 @@ verify_jwt = false
 [functions.check-ban-status]
 verify_jwt = false
 
+[functions.check-whitelist]
+verify_jwt = false
+
 # ============================================
 # ADMIN FUNCTIONS - REQUIRES AUTHENTICATION
 # ============================================
