@@ -1728,6 +1728,80 @@ export type Database = {
         }
         Relationships: []
       }
+      lexicon_terms: {
+        Row: {
+          antonyms: string[] | null
+          audio_url: string | null
+          created_at: string | null
+          definition: string
+          definition_simple: string | null
+          domain: string[] | null
+          example_usage: string | null
+          id: string
+          is_approved: boolean | null
+          part_of_speech: string | null
+          pronunciation_ipa: string | null
+          pronunciation_phonetic: string | null
+          register: string | null
+          related_terms: string[] | null
+          source: string | null
+          synonyms: string[] | null
+          taxonomy_id: string | null
+          term: string
+          term_normalized: string
+        }
+        Insert: {
+          antonyms?: string[] | null
+          audio_url?: string | null
+          created_at?: string | null
+          definition: string
+          definition_simple?: string | null
+          domain?: string[] | null
+          example_usage?: string | null
+          id?: string
+          is_approved?: boolean | null
+          part_of_speech?: string | null
+          pronunciation_ipa?: string | null
+          pronunciation_phonetic?: string | null
+          register?: string | null
+          related_terms?: string[] | null
+          source?: string | null
+          synonyms?: string[] | null
+          taxonomy_id?: string | null
+          term: string
+          term_normalized: string
+        }
+        Update: {
+          antonyms?: string[] | null
+          audio_url?: string | null
+          created_at?: string | null
+          definition?: string
+          definition_simple?: string | null
+          domain?: string[] | null
+          example_usage?: string | null
+          id?: string
+          is_approved?: boolean | null
+          part_of_speech?: string | null
+          pronunciation_ipa?: string | null
+          pronunciation_phonetic?: string | null
+          register?: string | null
+          related_terms?: string[] | null
+          source?: string | null
+          synonyms?: string[] | null
+          taxonomy_id?: string | null
+          term?: string
+          term_normalized?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lexicon_terms_taxonomy_id_fkey"
+            columns: ["taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       maieutic_training_categories: {
         Row: {
           antiprompt: string | null
@@ -1937,6 +2011,89 @@ export type Database = {
           whatsapp_message?: string | null
         }
         Relationships: []
+      }
+      ontology_concepts: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          name_normalized: string
+          properties: Json | null
+          taxonomy_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          name_normalized: string
+          properties?: Json | null
+          taxonomy_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          name_normalized?: string
+          properties?: Json | null
+          taxonomy_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ontology_concepts_taxonomy_id_fkey"
+            columns: ["taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ontology_relations: {
+        Row: {
+          bidirectional: boolean | null
+          created_at: string | null
+          id: string
+          object_id: string
+          predicate: string
+          subject_id: string
+          weight: number | null
+        }
+        Insert: {
+          bidirectional?: boolean | null
+          created_at?: string | null
+          id?: string
+          object_id: string
+          predicate: string
+          subject_id: string
+          weight?: number | null
+        }
+        Update: {
+          bidirectional?: boolean | null
+          created_at?: string | null
+          id?: string
+          object_id?: string
+          predicate?: string
+          subject_id?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ontology_relations_object_id_fkey"
+            columns: ["object_id"]
+            isOneToOne: false
+            referencedRelation: "ontology_concepts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ontology_relations_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "ontology_concepts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pac_pmc_mapping: {
         Row: {
@@ -3885,6 +4042,7 @@ export type Database = {
         Returns: number
       }
       get_schema_info: { Args: never; Returns: Json }
+      get_term_context: { Args: { p_term: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
