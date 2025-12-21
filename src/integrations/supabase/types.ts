@@ -249,6 +249,51 @@ export type Database = {
           },
         ]
       }
+      agent_tag_profiles: {
+        Row: {
+          access_type: string
+          agent_id: string
+          created_at: string | null
+          id: string
+          include_children: boolean | null
+          taxonomy_id: string
+          weight: number | null
+        }
+        Insert: {
+          access_type: string
+          agent_id: string
+          created_at?: string | null
+          id?: string
+          include_children?: boolean | null
+          taxonomy_id: string
+          weight?: number | null
+        }
+        Update: {
+          access_type?: string
+          agent_id?: string
+          created_at?: string | null
+          id?: string
+          include_children?: boolean | null
+          taxonomy_id?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_tag_profiles_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "chat_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_tag_profiles_taxonomy_id_fkey"
+            columns: ["taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_audit_logs: {
         Row: {
           action_description: string
@@ -1380,6 +1425,47 @@ export type Database = {
           },
         ]
       }
+      entity_tags: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          is_primary: boolean | null
+          source: string
+          taxonomy_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          is_primary?: boolean | null
+          source: string
+          taxonomy_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          is_primary?: boolean | null
+          source?: string
+          taxonomy_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_tags_taxonomy_id_fkey"
+            columns: ["taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_flags: {
         Row: {
           created_at: string
@@ -1436,6 +1522,71 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      global_taxonomy: {
+        Row: {
+          auto_created: boolean | null
+          code: string
+          color: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          keywords: string[] | null
+          level: number
+          name: string
+          parent_id: string | null
+          status: string | null
+          synonyms: string[] | null
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          auto_created?: boolean | null
+          code: string
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          keywords?: string[] | null
+          level?: number
+          name: string
+          parent_id?: string | null
+          status?: string | null
+          synonyms?: string[] | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          auto_created?: boolean | null
+          code?: string
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          keywords?: string[] | null
+          level?: number
+          name?: string
+          parent_id?: string | null
+          status?: string | null
+          synonyms?: string[] | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_taxonomy_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       image_analytics: {
         Row: {
