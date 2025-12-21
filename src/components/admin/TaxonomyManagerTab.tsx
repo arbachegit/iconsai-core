@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -19,6 +20,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { 
   Plus, 
   Search, 
@@ -30,6 +39,9 @@ import {
   RefreshCw,
   AlertTriangle,
   CheckCircle2,
+  BarChart3,
+  FileSearch,
+  Sparkles,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -83,6 +95,41 @@ export default function TaxonomyManagerTab() {
     };
   } | null>(null);
 
+  // Gap Analysis state
+  const [analyzing, setAnalyzing] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<{
+    summary: {
+      totalDocuments: number;
+      totalTags: number;
+      uniqueTags: number;
+      taxonomyNodes: number;
+      mappedTags: number;
+      unmappedTags: number;
+      coveragePercent: number;
+    };
+    unmappedTags: Array<{
+      tagName: string;
+      tagType: string;
+      documentCount: number;
+      suggestedTaxonomy: string[];
+      sampleDocuments: string[];
+    }>;
+    suggestedNewTaxonomies: Array<{
+      code: string;
+      name: string;
+      parentCode: string;
+      reason: string;
+      basedOnTags: string[];
+    }>;
+    documentsByTargetChat: Record<string, number>;
+    tagDistribution: {
+      parentTags: number;
+      childTags: number;
+      orphanTags: number;
+    };
+  } | null>(null);
+
   const debouncedSearch = useDebounce(searchQuery, 300);
   
   // Migration handler
@@ -113,6 +160,26 @@ export default function TaxonomyManagerTab() {
       toast.error('Erro na migração: ' + error.message);
     } finally {
       setIsMigrating(false);
+    }
+  };
+
+  // Gap Analysis handler
+  const handleAnalyzeGap = async () => {
+    setAnalyzing(true);
+    setShowAnalysis(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-taxonomy-gap');
+      
+      if (error) throw error;
+      
+      setAnalysisResult(data.analysis);
+      toast.success(`Análise concluída: ${data.analysis.summary.coveragePercent}% de cobertura`);
+    } catch (error: any) {
+      console.error('Gap analysis error:', error);
+      toast.error('Erro na análise: ' + error.message);
+      setAnalysisResult(null);
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -170,6 +237,24 @@ export default function TaxonomyManagerTab() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            onClick={handleAnalyzeGap}
+            disabled={analyzing}
+            variant="outline"
+            className="gap-2 bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300"
+          >
+            {analyzing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Analisando...
+              </>
+            ) : (
+              <>
+                <BarChart3 className="h-4 w-4" />
+                Analisar Gap
+              </>
+            )}
+          </Button>
           <Button 
             onClick={() => setIsMigrationOpen(true)} 
             variant="outline"
@@ -418,6 +503,178 @@ export default function TaxonomyManagerTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Gap Analysis Panel */}
+      {showAnalysis && (
+        <Card className="border-blue-500/30">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileSearch className="h-5 w-5 text-blue-400" />
+                  Análise de Gap: Documentos vs Taxonomia
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Identificação de tags não mapeadas e sugestões de novas taxonomias
+                </CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setShowAnalysis(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {analyzing ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+                <span className="ml-3 text-muted-foreground">Analisando tags e documentos...</span>
+              </div>
+            ) : analysisResult ? (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-4 gap-4">
+                  <Card className="bg-muted/30">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-3xl font-bold text-foreground">{analysisResult.summary.totalDocuments}</p>
+                      <p className="text-sm text-muted-foreground">Documentos</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-muted/30">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-3xl font-bold text-foreground">{analysisResult.summary.uniqueTags}</p>
+                      <p className="text-sm text-muted-foreground">Tags Únicas</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-muted/30">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-3xl font-bold text-foreground">{analysisResult.summary.taxonomyNodes}</p>
+                      <p className="text-sm text-muted-foreground">Nós de Taxonomia</p>
+                    </CardContent>
+                  </Card>
+                  <Card className={`${analysisResult.summary.coveragePercent >= 70 ? 'bg-emerald-500/10' : analysisResult.summary.coveragePercent >= 40 ? 'bg-amber-500/10' : 'bg-red-500/10'}`}>
+                    <CardContent className="p-4 text-center">
+                      <p className={`text-3xl font-bold ${analysisResult.summary.coveragePercent >= 70 ? 'text-emerald-400' : analysisResult.summary.coveragePercent >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
+                        {analysisResult.summary.coveragePercent}%
+                      </p>
+                      <p className="text-sm text-muted-foreground">Cobertura</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-emerald-400">Tags Mapeadas: {analysisResult.summary.mappedTags}</span>
+                    <span className="text-amber-400">Não Mapeadas: {analysisResult.summary.unmappedTags}</span>
+                  </div>
+                  <Progress value={analysisResult.summary.coveragePercent} className="h-3" />
+                </div>
+
+                {/* Documents by Target Chat */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Documentos por Chat</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(analysisResult.documentsByTargetChat).map(([chat, count]) => (
+                      <Badge key={chat} variant="outline" className="bg-muted/50">
+                        {chat}: {count as number}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Unmapped Tags Table */}
+                {analysisResult.unmappedTags.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-400" />
+                      <p className="text-sm font-medium">Tags Não Mapeadas ({analysisResult.unmappedTags.length})</p>
+                    </div>
+                    <ScrollArea className="h-[250px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Tag</TableHead>
+                            <TableHead>Tipo</TableHead>
+                            <TableHead>Docs</TableHead>
+                            <TableHead>Sugestão</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {analysisResult.unmappedTags.slice(0, 30).map((tag, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-mono text-xs">{tag.tagName}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs">
+                                  {tag.tagType}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{tag.documentCount}</TableCell>
+                              <TableCell>
+                                {tag.suggestedTaxonomy.length > 0 ? (
+                                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-xs">
+                                    {tag.suggestedTaxonomy[0]}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-amber-400 text-xs">Criar nova</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  </div>
+                )}
+
+                {/* Suggested New Taxonomies */}
+                {analysisResult.suggestedNewTaxonomies.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-blue-400" />
+                      <p className="text-sm font-medium">Sugestões de Novas Taxonomias ({analysisResult.suggestedNewTaxonomies.length})</p>
+                    </div>
+                    <div className="grid gap-3">
+                      {analysisResult.suggestedNewTaxonomies.map((suggestion, idx) => (
+                        <Card key={idx} className="bg-muted/30">
+                          <CardContent className="p-3 flex items-center justify-between">
+                            <div className="space-y-1">
+                              <p className="font-mono text-sm text-blue-400">{suggestion.code}</p>
+                              <p className="text-xs text-muted-foreground">{suggestion.reason}</p>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {suggestion.basedOnTags.map((t, i) => (
+                                  <Badge key={i} variant="outline" className="text-xs bg-muted/50">
+                                    {t}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                              onClick={() => {
+                                setIsFormOpen(true);
+                                // Pré-preencher form com sugestão
+                              }}
+                            >
+                              <Plus className="h-3 w-3" />
+                              Criar
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Clique em "Analisar Gap" para iniciar a análise
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

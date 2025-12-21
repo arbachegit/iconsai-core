@@ -227,3 +227,9 @@ verify_jwt = true
 # ============================================
 [functions.process-document-v2]
 verify_jwt = false
+
+# ============================================
+# GAP ANALYSIS - Taxonomy vs Documents
+# ============================================
+[functions.analyze-taxonomy-gap]
+verify_jwt = false
