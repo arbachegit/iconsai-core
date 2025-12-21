@@ -215,3 +215,9 @@ verify_jwt = false
 
 [functions.sync-renda-hardcoded]
 verify_jwt = true
+
+# ============================================
+# MIGRATION FUNCTIONS - ONE-TIME (Admin only)
+# ============================================
+[functions.migrate-tags-to-taxonomy]
+verify_jwt = true
