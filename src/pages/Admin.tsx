@@ -58,7 +58,6 @@ const TagsManagementTab = lazy(() => import("@/components/admin/TagsManagementTa
 const MLDashboardTab = lazy(() => import("@/components/admin/MLDashboardTab").then(m => ({ default: m.MLDashboardTab })));
 const MaieuticTrainingTab = lazy(() => import("@/components/admin/MaieuticTrainingTab").then(m => ({ default: m.MaieuticTrainingTab })));
 const TaxonomyMLAuditTab = lazy(() => import("@/components/admin/TaxonomyMLAuditTab").then(m => ({ default: m.TaxonomyMLAuditTab })));
-const ManageTaxonomyTab = lazy(() => import("@/components/admin/ManageTaxonomyTab").then(m => ({ default: m.ManageTaxonomyTab })));
 const TaxonomyManagerTab = lazy(() => import("@/components/admin/TaxonomyManagerTab"));
 const SecurityIntegrityTab = lazy(() => import("@/components/admin/SecurityIntegrityTab").then(m => ({ default: m.SecurityIntegrityTab })));
 const SecurityDashboard = lazy(() => import("@/components/admin/SecurityDashboard").then(m => ({ default: m.SecurityDashboard })));
@@ -87,7 +86,7 @@ const TabLoadingFallback = () => (
   </div>
 );
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "taxonomy-manager" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa" | "app-config";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa" | "app-config";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -122,7 +121,6 @@ const TAB_LABELS: Record<TabType, string> = {
   "ml-dashboard": "Machine Learning ML",
   "maieutic-training": "Treino IA Maiêutica",
   "taxonomy-ml-audit": "Taxonomy ML",
-  "manage-taxonomy": "Gerenciar Taxonomia",
   "taxonomy-manager": "Taxonomia Global",
   "security-integrity": "Segurança & Integridade",
   "security-dashboard": "Dashboard Segurança",
@@ -299,7 +297,6 @@ const Admin = () => {
         case "ml-dashboard": return <MLDashboardTab />;
         case "maieutic-training": return <MaieuticTrainingTab />;
         case "taxonomy-ml-audit": return <TaxonomyMLAuditTab />;
-        case "manage-taxonomy": return <ManageTaxonomyTab />;
         case "taxonomy-manager": return <TaxonomyManagerTab />;
         case "security-integrity": return <SecurityIntegrityTab />;
         case "security-dashboard": return <SecurityDashboard />;

@@ -82,7 +82,7 @@ const DOMAIN_CATEGORIES: Record<string, {
     icon: Brain,
     color: 'bg-purple-500/10 border-purple-500/30',
     badgeColor: 'bg-purple-500/20 text-purple-600 dark:text-purple-400',
-    tables: ['maieutic_training_categories', 'deterministic_analysis', 'taxonomy_rules',
+    tables: ['maieutic_training_categories', 'deterministic_analysis',
              'tag_merge_rules', 'regional_tone_rules', 'suggestion_audit', 'suggestion_clicks'],
   },
   audit: {
@@ -221,7 +221,6 @@ const TABLE_DESCRIPTIONS: Record<string, string> = {
   tag_management_events: 'Eventos de gerenciamento de tags',
   tag_merge_rules: 'Regras de merge de tags duplicadas',
   tag_modification_logs: 'Log de modificações de tags',
-  taxonomy_rules: 'Regras de taxonomia para classificação',
   tooltip_contents: 'Conteúdo dos tooltips da landing page com áudio',
   typing_latency_logs: 'Logs de latência de digitação',
   user_activity_logs: 'Log de atividades administrativas',
