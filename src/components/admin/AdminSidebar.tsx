@@ -60,10 +60,11 @@ import {
   Smartphone,
   Home,
   DollarSign,
+  TreeDeciduous,
 } from "lucide-react";
 
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "dashboard-external" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "pwa" | "app-config";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "manage-taxonomy" | "taxonomy-manager" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "dashboard-external" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "pwa" | "app-config";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -222,6 +223,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
         { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
         { id: "manage-taxonomy" as TabType, label: "Gerenciar Taxonomia", icon: Settings },
+        { id: "taxonomy-manager" as TabType, label: "Taxonomia Global", icon: TreeDeciduous },
       ]
     },
     {
