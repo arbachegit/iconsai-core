@@ -69,7 +69,7 @@ function extractFilename(query: string): string | null {
   return null;
 }
 
-// Apply tag filters to search results
+// Apply tag filters to search results (legacy)
 async function applyTagFilters(
   supabase: any, 
   results: any[], 
@@ -121,6 +121,34 @@ async function applyTagFilters(
   return filteredResults;
 }
 
+// Search using global taxonomy system (new)
+async function searchByTaxonomy(
+  supabase: any,
+  queryEmbedding: number[],
+  taxonomyCodes: string[],
+  excludeCodes: string[] = [],
+  matchThreshold: number = 0.15,
+  matchCount: number = 10
+): Promise<any[]> {
+  console.log(`[searchByTaxonomy] Searching with codes: ${taxonomyCodes.join(', ')}`);
+  
+  const { data, error } = await supabase.rpc('search_by_taxonomy', {
+    query_embedding: queryEmbedding,
+    tag_codes: taxonomyCodes,
+    exclude_tag_codes: excludeCodes.length > 0 ? excludeCodes : null,
+    match_threshold: matchThreshold,
+    match_count: matchCount
+  });
+
+  if (error) {
+    console.error('[searchByTaxonomy] Error:', error);
+    return [];
+  }
+
+  console.log(`[searchByTaxonomy] Found ${data?.length || 0} results`);
+  return data || [];
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -136,14 +164,18 @@ serve(async (req) => {
       sessionId, 
       useHybridSearch = false,
       allowedTags = [],
-      forbiddenTags = []
+      forbiddenTags = [],
+      taxonomyCodes = []  // NEW: Array of global taxonomy codes
     } = await req.json();
     
     console.log(`Searching documents for query: "${query}" (target: ${targetChat})`);
     
-    // Log tag filters if provided
+    // Log filters if provided
     if (allowedTags.length > 0 || forbiddenTags.length > 0) {
       console.log(`Tag filters: allowed=[${allowedTags.join(',')}], forbidden=[${forbiddenTags.join(',')}]`);
+    }
+    if (taxonomyCodes.length > 0) {
+      console.log(`Taxonomy codes: [${taxonomyCodes.join(',')}]`);
     }
     
     // Check if query contains a filename - if so, do filename search first
@@ -230,6 +262,83 @@ serve(async (req) => {
     let error;
     let searchType = 'vector';
     
+    // PRIORITY 1: If taxonomyCodes provided, use taxonomy-based search
+    if (taxonomyCodes && taxonomyCodes.length > 0) {
+      console.log(`Using taxonomy search with codes: ${taxonomyCodes.join(', ')}`);
+      searchType = 'taxonomy';
+      
+      const taxonomyResults = await searchByTaxonomy(
+        supabase,
+        queryEmbedding,
+        taxonomyCodes,
+        forbiddenTags, // Use forbiddenTags as excludeCodes
+        matchThreshold,
+        matchCount * 2 // Fetch more for diversification
+      );
+
+      if (taxonomyResults.length > 0) {
+        // Format results to expected standard
+        const formattedResults = taxonomyResults.map((r: any) => ({
+          chunk_id: r.chunk_id,
+          document_id: r.document_id,
+          content: r.content,
+          similarity: r.similarity,
+          document_filename: r.document_filename,
+          tags: r.tags,
+          search_type: 'taxonomy'
+        }));
+
+        // Diversify and limit results
+        results = diversifyResults(formattedResults, 3, matchCount);
+        console.log(`Taxonomy search: ${results.length} diversified results`);
+        
+        // Calculate latency and log analytics
+        const latencyMs = Date.now() - startTime;
+        const topScore = results.length > 0 ? results[0].similarity : null;
+        
+        console.log(`RAG Taxonomy Search completed: ${results.length} results, top score: ${topScore?.toFixed(3) || 'N/A'}, latency: ${latencyMs}ms`);
+        
+        // Log analytics asynchronously
+        supabase.from("rag_analytics").insert({
+          query: query,
+          target_chat: targetChat || null,
+          latency_ms: latencyMs,
+          success_status: results.length > 0,
+          results_count: results.length,
+          top_similarity_score: topScore,
+          match_threshold: matchThreshold,
+          session_id: sessionId || null,
+          metadata: {
+            match_count_requested: matchCount,
+            search_type: 'taxonomy',
+            taxonomy_codes: taxonomyCodes
+          }
+        }).then(
+          () => console.log("Analytics logged (taxonomy)"),
+          (err: Error) => console.error("Analytics logging failed:", err)
+        );
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            results: results,
+            count: results.length,
+            search_type: 'taxonomy',
+            taxonomy_codes: taxonomyCodes,
+            analytics: {
+              latency_ms: latencyMs,
+              top_score: topScore
+            }
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      console.log('Taxonomy search returned no results, falling back to legacy search');
+      searchType = 'taxonomy_fallback';
+    }
+    
+    // PRIORITY 2: Hybrid or vector search (legacy)
     if (useHybridSearch) {
       // Hybrid Search: Combine vector similarity + tag matching
       console.log("Using hybrid search (vector + tags)");
