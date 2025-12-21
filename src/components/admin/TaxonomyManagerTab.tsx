@@ -11,6 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   Plus, 
   Search, 
@@ -18,8 +26,13 @@ import {
   Loader2,
   TreeDeciduous,
   Filter,
-  X
+  X,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
   useTaxonomyData,
   TaxonomyNode,
@@ -50,8 +63,58 @@ export default function TaxonomyManagerTab() {
   const [editingNode, setEditingNode] = useState<TaxonomyNode | null>(null);
   const [deletingNode, setDeletingNode] = useState<TaxonomyNode | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  
+  // Migration state
+  const [isMigrationOpen, setIsMigrationOpen] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationResults, setMigrationResults] = useState<{
+    success: boolean;
+    message: string;
+    results?: {
+      documentsProcessed: number;
+      tagsCreated: number;
+      tagsMapped: number;
+      tagsPending: number;
+      agentProfilesCreated: number;
+      errors: string[];
+      details?: {
+        unmappedTags: string[];
+      };
+    };
+  } | null>(null);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
+  
+  // Migration handler
+  const handleRunMigration = async () => {
+    setIsMigrating(true);
+    setMigrationResults(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('migrate-tags-to-taxonomy');
+      
+      if (error) {
+        throw error;
+      }
+      
+      setMigrationResults(data);
+      
+      if (data.success) {
+        toast.success('Migração concluída com sucesso!');
+      } else {
+        toast.error('Migração falhou: ' + data.error);
+      }
+    } catch (error: any) {
+      console.error('Migration error:', error);
+      setMigrationResults({
+        success: false,
+        message: error.message || 'Erro desconhecido na migração',
+      });
+      toast.error('Erro na migração: ' + error.message);
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   // Stats
   const totalTags = items.length;
@@ -106,10 +169,20 @@ export default function TaxonomyManagerTab() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setIsFormOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Tag
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => setIsMigrationOpen(true)} 
+            variant="outline"
+            className="gap-2 bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20 hover:text-orange-300"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Migrar Tags Legadas
+          </Button>
+          <Button onClick={() => setIsFormOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nova Tag
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -256,6 +329,95 @@ export default function TaxonomyManagerTab() {
         node={deletingNode}
         isDeleting={isDeleting}
       />
+
+      {/* Migration Modal */}
+      <Dialog open={isMigrationOpen} onOpenChange={setIsMigrationOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-400" />
+              Migrar Tags Legadas para Taxonomia Global
+            </DialogTitle>
+            <DialogDescription>
+              Esta operação é <strong>ONE-TIME</strong> e irá migrar:
+              <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                <li>Tags de <code>document_tags</code> → <code>entity_tags</code></li>
+                <li><code>allowed_tags</code> / <code>forbidden_tags</code> dos agentes → <code>agent_tag_profiles</code></li>
+                <li>Documentos sem tags serão marcados como pendentes</li>
+              </ul>
+            </DialogDescription>
+          </DialogHeader>
+
+          {migrationResults && (
+            <div className={`p-4 rounded-lg ${migrationResults.success ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+              <div className="flex items-center gap-2 mb-3">
+                {migrationResults.success ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-red-400" />
+                )}
+                <span className="font-medium">{migrationResults.message}</span>
+              </div>
+              
+              {migrationResults.results && (
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-1">
+                    <p><strong>Tags Criadas:</strong> {migrationResults.results.tagsCreated}</p>
+                    <p><strong>Tags Mapeadas:</strong> {migrationResults.results.tagsMapped}</p>
+                    <p><strong>Tags Pendentes:</strong> {migrationResults.results.tagsPending}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p><strong>Docs Processados:</strong> {migrationResults.results.documentsProcessed}</p>
+                    <p><strong>Perfis de Agente:</strong> {migrationResults.results.agentProfilesCreated}</p>
+                    <p><strong>Erros:</strong> {migrationResults.results.errors.length}</p>
+                  </div>
+                  
+                  {migrationResults.results.details?.unmappedTags && migrationResults.results.details.unmappedTags.length > 0 && (
+                    <div className="col-span-2 mt-2">
+                      <p className="font-medium text-amber-400 mb-1">Tags não mapeadas:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {migrationResults.results.details.unmappedTags.slice(0, 10).map((tag, i) => (
+                          <Badge key={i} variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {migrationResults.results.details.unmappedTags.length > 10 && (
+                          <Badge variant="outline" className="bg-muted">
+                            +{migrationResults.results.details.unmappedTags.length - 10} mais
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMigrationOpen(false)}>
+              Fechar
+            </Button>
+            <Button
+              onClick={handleRunMigration}
+              disabled={isMigrating}
+              className="gap-2 bg-orange-500 hover:bg-orange-600"
+            >
+              {isMigrating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Migrando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Executar Migração
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
