@@ -4240,6 +4240,25 @@ export type Database = {
         }
         Returns: Json
       }
+      search_by_taxonomy: {
+        Args: {
+          exclude_tag_codes?: string[]
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+          tag_codes: string[]
+        }
+        Returns: {
+          chunk_id: string
+          content: string
+          document_filename: string
+          document_id: string
+          metadata: Json
+          search_source: string
+          similarity: number
+          taxonomy_code: string
+        }[]
+      }
       search_documents: {
         Args: {
           match_count?: number
