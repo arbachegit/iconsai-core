@@ -41,8 +41,6 @@ const VersionControlTab = lazy(() => import("@/components/admin/VersionControlTa
 const DocumentAnalysisTab = lazy(() => import("@/components/admin/DocumentAnalysisTab").then(m => ({ default: m.DocumentAnalysisTab })));
 const DocumentRoutingLogsTab = lazy(() => import("@/components/admin/DocumentRoutingLogsTab").then(m => ({ default: m.DocumentRoutingLogsTab })));
 const RagDiagnosticsTab = lazy(() => import("@/components/admin/RagDiagnosticsTab").then(m => ({ default: m.RagDiagnosticsTab })));
-const ChatScopeConfigTab = lazy(() => import("@/components/admin/ChatScopeConfigTab").then(m => ({ default: m.ChatScopeConfigTab })));
-const RagDocumentationTab = lazy(() => import("@/components/admin/RagDocumentationTab").then(m => ({ default: m.RagDocumentationTab })));
 const PodcastManagementTab = lazy(() => import("@/components/admin/PodcastManagementTab").then(m => ({ default: m.PodcastManagementTab })));
 const ContentManagementTab = lazy(() => import("@/components/admin/ContentManagementTab").then(m => ({ default: m.ContentManagementTab })));
 const ActivityLogsTab = lazy(() => import("@/components/admin/ActivityLogsTab").then(m => ({ default: m.ActivityLogsTab })));
@@ -86,7 +84,7 @@ const TabLoadingFallback = () => (
   </div>
 );
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "chat-scope-config" | "rag-documentation" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa" | "app-config";
+type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa" | "app-config";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -105,8 +103,6 @@ const TAB_LABELS: Record<TabType, string> = {
   "document-analysis": "Análise Documentos",
   "document-routing-logs": "Logs de Roteamento",
   "rag-diagnostics": "Diagnóstico RAG",
-  "chat-scope-config": "Delimitações",
-  "rag-documentation": "Documentação RAG",
   "content-management": "Seções Landing Page",
   "podcasts": "Podcasts",
   "activity-logs": "Log de Atividades",
@@ -279,8 +275,6 @@ const Admin = () => {
         case "document-analysis": return <DocumentAnalysisTab />;
         case "document-routing-logs": return <DocumentRoutingLogsTab />;
         case "rag-diagnostics": return <RagDiagnosticsTab />;
-        case "chat-scope-config": return <ChatScopeConfigTab />;
-        case "rag-documentation": return <RagDocumentationTab />;
         case "content-management": return <ContentManagementTab />;
         case "podcasts": return <PodcastManagementTab />;
         case "activity-logs": return <ActivityLogsTab />;
