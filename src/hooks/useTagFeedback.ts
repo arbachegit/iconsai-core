@@ -249,6 +249,35 @@ export function useBulkRejectSuggestions() {
   });
 }
 
+export function useRevertSuggestion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (suggestionId: string) => {
+      const { data, error } = await supabase.rpc("revert_tag_suggestion", {
+        p_suggestion_id: suggestionId,
+        p_reviewer_id: null,
+      });
+      if (error) throw error;
+      return data as { success: boolean; error?: string; previous_status?: string };
+    },
+    onSuccess: (data) => {
+      if (data?.success) {
+        toast.success("Sugestão revertida para pendente");
+        queryClient.invalidateQueries({ queryKey: ["tag-suggestions"] });
+        queryClient.invalidateQueries({ queryKey: ["tag-feedback-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["entity-tags"] });
+        queryClient.invalidateQueries({ queryKey: ["tag-feedback-history"] });
+      } else {
+        toast.error(data?.error || "Erro ao reverter sugestão");
+      }
+    },
+    onError: (error) => {
+      toast.error(`Erro: ${error.message}`);
+    },
+  });
+}
+
 export function useTagFeedbackHistory() {
   return useQuery({
     queryKey: ["tag-feedback-history"],

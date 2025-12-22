@@ -34,6 +34,7 @@ import {
   TrendingUp,
   Clock,
   BarChart3,
+  RotateCcw,
 } from "lucide-react";
 import {
   useTagSuggestions,
@@ -44,6 +45,7 @@ import {
   useBulkApproveSuggestions,
   useBulkRejectSuggestions,
   useTagFeedbackHistory,
+  useRevertSuggestion,
   type TagSuggestion,
 } from "@/hooks/useTagFeedback";
 import { useQuery } from "@tanstack/react-query";
@@ -100,6 +102,7 @@ export default function TagSuggestionReviewTab() {
   const correctMutation = useCorrectSuggestion();
   const bulkApproveMutation = useBulkApproveSuggestions();
   const bulkRejectMutation = useBulkRejectSuggestions();
+  const revertMutation = useRevertSuggestion();
 
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -298,6 +301,8 @@ export default function TagSuggestionReviewTab() {
               <SuggestionList
                 suggestions={suggestions || []}
                 isLoading={isLoading}
+                onRevert={(id) => revertMutation.mutate(id)}
+                showRevertAction
               />
             </TabsContent>
 
@@ -305,6 +310,8 @@ export default function TagSuggestionReviewTab() {
               <SuggestionList
                 suggestions={suggestions || []}
                 isLoading={isLoading}
+                onRevert={(id) => revertMutation.mutate(id)}
+                showRevertAction
               />
             </TabsContent>
 
@@ -313,6 +320,8 @@ export default function TagSuggestionReviewTab() {
                 suggestions={suggestions || []}
                 isLoading={isLoading}
                 showCorrection
+                onRevert={(id) => revertMutation.mutate(id)}
+                showRevertAction
               />
             </TabsContent>
 
@@ -407,8 +416,10 @@ function SuggestionList({
   onApprove,
   onReject,
   onCorrect,
+  onRevert,
   showActions = false,
   showCorrection = false,
+  showRevertAction = false,
 }: {
   suggestions: TagSuggestion[];
   isLoading: boolean;
@@ -418,8 +429,10 @@ function SuggestionList({
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
   onCorrect?: (suggestion: TagSuggestion) => void;
+  onRevert?: (id: string) => void;
   showActions?: boolean;
   showCorrection?: boolean;
+  showRevertAction?: boolean;
 }) {
   if (isLoading) {
     return (
@@ -515,6 +528,19 @@ function SuggestionList({
                   <X className="h-4 w-4" />
                 </Button>
               </div>
+            )}
+
+            {showRevertAction && onRevert && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100 gap-1"
+                onClick={() => onRevert(suggestion.id)}
+                title="Reverter para pendente"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span className="text-xs">Reverter</span>
+              </Button>
             )}
           </div>
         ))}
