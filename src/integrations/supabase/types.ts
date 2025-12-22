@@ -1563,6 +1563,7 @@ export type Database = {
       documents: {
         Row: {
           ai_summary: string | null
+          ai_title: string | null
           content_hash: string | null
           created_at: string | null
           error_message: string | null
@@ -1573,6 +1574,7 @@ export type Database = {
           inserted_in_chat: string | null
           is_inserted: boolean | null
           is_readable: boolean | null
+          needs_title_review: boolean | null
           original_text: string
           processing_progress: number | null
           readability_score: number | null
@@ -1586,6 +1588,7 @@ export type Database = {
         }
         Insert: {
           ai_summary?: string | null
+          ai_title?: string | null
           content_hash?: string | null
           created_at?: string | null
           error_message?: string | null
@@ -1596,6 +1599,7 @@ export type Database = {
           inserted_in_chat?: string | null
           is_inserted?: boolean | null
           is_readable?: boolean | null
+          needs_title_review?: boolean | null
           original_text: string
           processing_progress?: number | null
           readability_score?: number | null
@@ -1609,6 +1613,7 @@ export type Database = {
         }
         Update: {
           ai_summary?: string | null
+          ai_title?: string | null
           content_hash?: string | null
           created_at?: string | null
           error_message?: string | null
@@ -1619,6 +1624,7 @@ export type Database = {
           inserted_in_chat?: string | null
           is_inserted?: boolean | null
           is_readable?: boolean | null
+          needs_title_review?: boolean | null
           original_text?: string
           processing_progress?: number | null
           readability_score?: number | null

@@ -2409,15 +2409,39 @@ export const DocumentsTab = () => {
                   <TableCell className="font-medium">
                     <Popover>
                       <PopoverTrigger asChild>
-                        <span className="cursor-pointer text-primary hover:underline">
-                          {doc.filename}
-                        </span>
+                        <div className="cursor-pointer text-primary hover:underline">
+                          <span className="flex items-center gap-2">
+                            {doc.ai_title || doc.filename}
+                            {doc.ai_title && doc.needs_title_review && (
+                              <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-500">
+                                IA
+                              </Badge>
+                            )}
+                          </span>
+                          {doc.ai_title && (
+                            <span className="block text-xs text-muted-foreground mt-0.5 truncate max-w-[200px]">
+                              {doc.filename}
+                            </span>
+                          )}
+                        </div>
                       </PopoverTrigger>
                       <PopoverContent className="w-96 p-4" side="right">
                         {/* Header */}
                         <div className="flex items-center gap-2 mb-3">
                           <FileText className="h-5 w-5 text-primary" />
-                          <h4 className="font-semibold text-sm truncate">{doc.filename}</h4>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-sm truncate">
+                              {doc.ai_title || doc.filename}
+                            </h4>
+                            {doc.ai_title && (
+                              <p className="text-xs text-muted-foreground truncate">{doc.filename}</p>
+                            )}
+                          </div>
+                          {doc.ai_title && doc.needs_title_review && (
+                            <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-500 shrink-0">
+                              Título sugerido pela IA
+                            </Badge>
+                          )}
                         </div>
                         
                         {/* Resumo AI */}

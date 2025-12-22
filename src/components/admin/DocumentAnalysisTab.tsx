@@ -68,6 +68,8 @@ import { TaxonomyAdoptionModal } from "./TaxonomyAdoptionModal";
 interface Document {
   id: string;
   filename: string;
+  ai_title: string | null;
+  needs_title_review: boolean | null;
   target_chat: string;
   ai_summary: string | null;
   status: string;
@@ -757,7 +759,20 @@ export const DocumentAnalysisTab = () => {
                           </Button>
                         </CollapsibleTrigger>
                         <div className="flex-1">
-                          <div className="font-semibold text-lg mb-2">{doc.filename}</div>
+                          <div className="font-semibold text-lg mb-1">
+                            {doc.ai_title || doc.filename}
+                            {doc.ai_title && doc.needs_title_review && (
+                              <Badge variant="outline" className="ml-2 text-xs border-blue-500/50 text-blue-500">
+                                Título IA
+                              </Badge>
+                            )}
+                          </div>
+                          {doc.ai_title && (
+                            <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                              <FileText className="h-3 w-3" />
+                              {doc.filename}
+                            </div>
+                          )}
                           <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant={getChatBadgeVariant(doc.target_chat)} className="flex items-center gap-1">
                             {doc.target_chat === "health" ? (
