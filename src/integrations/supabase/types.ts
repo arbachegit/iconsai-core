@@ -5292,6 +5292,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      revert_tag_suggestion: {
+        Args: { p_reviewer_id?: string; p_suggestion_id: string }
+        Returns: Json
+      }
       search_by_taxonomy: {
         Args: {
           exclude_tag_codes?: string[]
