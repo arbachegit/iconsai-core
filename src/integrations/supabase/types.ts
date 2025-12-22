@@ -1247,6 +1247,69 @@ export type Database = {
           },
         ]
       }
+      document_onboarding_log: {
+        Row: {
+          applied_taxonomies: Json | null
+          auto_applied_count: number | null
+          avg_confidence: number | null
+          created_at: string | null
+          document_id: string
+          error_message: string | null
+          highest_confidence: number | null
+          id: string
+          processing_time_ms: number | null
+          source_text_preview: string | null
+          status: string
+          suggested_taxonomies: Json | null
+          total_suggestions: number | null
+        }
+        Insert: {
+          applied_taxonomies?: Json | null
+          auto_applied_count?: number | null
+          avg_confidence?: number | null
+          created_at?: string | null
+          document_id: string
+          error_message?: string | null
+          highest_confidence?: number | null
+          id?: string
+          processing_time_ms?: number | null
+          source_text_preview?: string | null
+          status: string
+          suggested_taxonomies?: Json | null
+          total_suggestions?: number | null
+        }
+        Update: {
+          applied_taxonomies?: Json | null
+          auto_applied_count?: number | null
+          avg_confidence?: number | null
+          created_at?: string | null
+          document_id?: string
+          error_message?: string | null
+          highest_confidence?: number | null
+          id?: string
+          processing_time_ms?: number | null
+          source_text_preview?: string | null
+          status?: string
+          suggested_taxonomies?: Json | null
+          total_suggestions?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_onboarding_log_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_onboarding_log_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "v_document_taxonomies"
+            referencedColumns: ["document_id"]
+          },
+        ]
+      }
       document_routing_log: {
         Row: {
           action_type: string
@@ -4839,6 +4902,19 @@ export type Database = {
           total_suggestions: number
         }[]
       }
+      get_onboarding_stats: {
+        Args: never
+        Returns: {
+          auto_classified: number
+          avg_confidence: number
+          errors: number
+          last_24h_count: number
+          no_suggestions: number
+          pending_documents: number
+          pending_review: number
+          total_onboarded: number
+        }[]
+      }
       get_orchestrated_context: {
         Args: { p_override_slug?: string; p_query: string }
         Returns: Json
@@ -4911,6 +4987,19 @@ export type Database = {
         }
         Returns: string
       }
+      onboard_document_taxonomy: {
+        Args: {
+          p_auto_apply_threshold?: number
+          p_document_id: string
+          p_review_threshold?: number
+        }
+        Returns: {
+          applied_count: number
+          message: string
+          pending_count: number
+          status: string
+        }[]
+      }
       process_all_pmc_conversions: {
         Args: never
         Returns: {
@@ -4933,6 +5022,16 @@ export type Database = {
         Returns: {
           indicator_code: string
           records_inserted: number
+        }[]
+      }
+      process_pending_onboarding: {
+        Args: { p_limit?: number }
+        Returns: {
+          auto_classified: number
+          errors: number
+          no_suggestions: number
+          pending_review: number
+          processed: number
         }[]
       }
       process_pmc_national_aggregation: {
