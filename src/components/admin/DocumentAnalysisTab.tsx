@@ -63,6 +63,7 @@ import { exportData, type ExportFormat } from "@/lib/export-utils";
 import { toast } from "sonner";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { TagConflictResolutionModal } from "./TagConflictResolutionModal";
+import { DocumentRenameStats } from "./DocumentRenameStats";
 import { TaxonomyAdoptionModal } from "./TaxonomyAdoptionModal";
 
 interface Document {
@@ -613,6 +614,9 @@ export const DocumentAnalysisTab = () => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Document Rename Stats */}
+      <DocumentRenameStats className="mb-2" />
 
       {/* Filters */}
       <Card className="p-4">
