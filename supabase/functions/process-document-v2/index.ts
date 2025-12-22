@@ -468,6 +468,30 @@ serve(async (req) => {
       })
       .eq('id', documentId);
 
+    // ========== ONBOARDING DE TAXONOMIA ==========
+    let onboardingResult: { status: string; applied_count: number; pending_count: number; message: string } | null = null;
+    
+    try {
+      console.log(`[process-document-v2] Starting taxonomy onboarding for ${documentId}`);
+      
+      const { data: onboardData, error: onboardError } = await supabase.rpc(
+        'onboard_document_taxonomy',
+        { p_document_id: documentId }
+      );
+      
+      if (onboardError) {
+        console.warn(`[process-document-v2] Onboarding warning:`, onboardError.message);
+      } else if (onboardData && onboardData[0]) {
+        const ob = onboardData[0] as { status: string; applied_count: number; pending_count: number; message: string };
+        onboardingResult = ob;
+        console.log(`[process-document-v2] Onboarding result: ${ob.status} - Applied: ${ob.applied_count}, Pending: ${ob.pending_count}`);
+      }
+    } catch (onboardException) {
+      // Não falhar o processamento se onboarding falhar
+      console.warn(`[process-document-v2] Onboarding exception (non-fatal):`, onboardException);
+    }
+    // ========== FIM ONBOARDING ==========
+
     console.log(`=== Document processed successfully ===`);
     console.log(`Total chunks: ${result.totalChunks}`);
     console.log(`Processing time: ${result.processingTimeMs}ms`);
@@ -477,6 +501,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         result,
+        onboarding: onboardingResult,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
