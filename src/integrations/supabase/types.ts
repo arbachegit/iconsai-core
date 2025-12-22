@@ -4910,9 +4910,16 @@ export type Database = {
         }[]
       }
       approve_tag_suggestion:
-        | { Args: { p_suggestion_id: string }; Returns: Json }
         | {
             Args: { p_reviewer_id?: string; p_suggestion_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_notes?: string
+              p_reviewer_id?: string
+              p_suggestion_id: string
+            }
             Returns: Json
           }
       approve_taxonomy_suggestion: {
@@ -4951,24 +4958,15 @@ export type Database = {
         }
         Returns: number
       }
-      correct_tag_suggestion:
-        | {
-            Args: {
-              p_correct_taxonomy_id: string
-              p_notes?: string
-              p_reviewer_id?: string
-              p_suggestion_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_new_taxonomy_id: string
-              p_notes?: string
-              p_suggestion_id: string
-            }
-            Returns: Json
-          }
+      correct_tag_suggestion: {
+        Args: {
+          p_new_taxonomy_id: string
+          p_notes?: string
+          p_reviewer_id?: string
+          p_suggestion_id: string
+        }
+        Returns: Json
+      }
       count_agent_accessible_documents: {
         Args: { agent_slug: string }
         Returns: {
