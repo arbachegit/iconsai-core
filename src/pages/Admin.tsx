@@ -82,13 +82,14 @@ const AppConfigTab = lazy(() => import("@/components/admin/AppConfigTab"));
 const DocumentReclassificationTab = lazy(() => import("@/components/admin/DocumentReclassificationTab").then(m => ({ default: m.DocumentReclassificationTab })));
 const TaxonomySuggestionsTab = lazy(() => import("@/components/admin/TaxonomySuggestionsTab"));
 const DocumentOnboardingTab = lazy(() => import("@/components/admin/DocumentOnboardingTab"));
+const TaxonomyAnalyticsTab = lazy(() => import("@/components/admin/TaxonomyAnalyticsTab"));
 const TabLoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
   </div>
 );
 
-type TabType = "dashboard" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding";
+type TabType = "dashboard" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding" | "taxonomy-analytics";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -148,6 +149,7 @@ const TAB_LABELS: Record<TabType, string> = {
   "doc-reclassification": "Re-classificar Docs",
   "taxonomy-suggestions": "Auto-Gestão Taxonomia",
   "document-onboarding": "Onboarding Docs",
+  "taxonomy-analytics": "Analytics Taxonomia",
 };
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -323,6 +325,7 @@ const Admin = () => {
         case "doc-reclassification": return <DocumentReclassificationTab />;
         case "taxonomy-suggestions": return <TaxonomySuggestionsTab />;
         case "document-onboarding": return <DocumentOnboardingTab />;
+        case "taxonomy-analytics": return <TaxonomyAnalyticsTab />;
         default: return <DashboardTab />;
       }
     })();
