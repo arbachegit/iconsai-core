@@ -76,6 +76,8 @@ interface OnboardingLogItem {
   error_message: string | null;
   created_at: string;
   filename?: string;
+  ai_title?: string | null;
+  needs_title_review?: boolean | null;
   target_chat?: string;
 }
 
@@ -102,7 +104,7 @@ export const DocumentOnboardingTab = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("documents")
-        .select("id, filename, target_chat, created_at, ai_summary")
+        .select("id, filename, ai_title, needs_title_review, target_chat, created_at, ai_summary")
         .not("id", "in", `(SELECT document_id FROM document_onboarding_log)`)
         .eq("status", "completed")
         .order("created_at", { ascending: false })
@@ -132,7 +134,7 @@ export const DocumentOnboardingTab = () => {
           applied_taxonomies,
           error_message,
           created_at,
-          documents!inner(filename, target_chat)
+          documents!inner(filename, ai_title, needs_title_review, target_chat)
         `)
         .eq("status", "pending_review")
         .order("created_at", { ascending: false })
@@ -143,6 +145,8 @@ export const DocumentOnboardingTab = () => {
       return (data || []).map((item: any) => ({
         ...item,
         filename: item.documents?.filename,
+        ai_title: item.documents?.ai_title,
+        needs_title_review: item.documents?.needs_title_review,
         target_chat: item.documents?.target_chat,
       })) as OnboardingLogItem[];
     },
@@ -168,7 +172,7 @@ export const DocumentOnboardingTab = () => {
           applied_taxonomies,
           error_message,
           created_at,
-          documents!inner(filename, target_chat)
+          documents!inner(filename, ai_title, needs_title_review, target_chat)
         `)
         .in("status", ["completed", "reviewed", "failed"])
         .order("created_at", { ascending: false })
@@ -179,6 +183,8 @@ export const DocumentOnboardingTab = () => {
       return (data || []).map((item: any) => ({
         ...item,
         filename: item.documents?.filename,
+        ai_title: item.documents?.ai_title,
+        needs_title_review: item.documents?.needs_title_review,
         target_chat: item.documents?.target_chat,
       })) as OnboardingLogItem[];
     },
@@ -530,9 +536,19 @@ export const DocumentOnboardingTab = () => {
                         <TableRow key={doc.id}>
                           <TableCell>
                             <div className="max-w-[300px]">
-                              <p className="font-medium truncate">{doc.filename}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium truncate">{doc.ai_title || doc.filename}</p>
+                                {doc.ai_title && doc.needs_title_review && (
+                                  <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-500 shrink-0">
+                                    IA
+                                  </Badge>
+                                )}
+                              </div>
+                              {doc.ai_title && (
+                                <p className="text-xs text-muted-foreground truncate">{doc.filename}</p>
+                              )}
                               {doc.ai_summary && (
-                                <p className="text-xs text-muted-foreground truncate">
+                                <p className="text-xs text-muted-foreground truncate mt-1">
                                   {doc.ai_summary}
                                 </p>
                               )}
@@ -607,7 +623,17 @@ export const DocumentOnboardingTab = () => {
                         <TableRow key={doc.id}>
                           <TableCell>
                             <div className="max-w-[250px]">
-                              <p className="font-medium truncate">{doc.filename}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium truncate">{doc.ai_title || doc.filename}</p>
+                                {doc.ai_title && doc.needs_title_review && (
+                                  <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-500 shrink-0">
+                                    IA
+                                  </Badge>
+                                )}
+                              </div>
+                              {doc.ai_title && (
+                                <p className="text-xs text-muted-foreground truncate">{doc.filename}</p>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -685,7 +711,17 @@ export const DocumentOnboardingTab = () => {
                         <TableRow key={doc.id}>
                           <TableCell>
                             <div className="max-w-[250px]">
-                              <p className="font-medium truncate">{doc.filename}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium truncate">{doc.ai_title || doc.filename}</p>
+                                {doc.ai_title && doc.needs_title_review && (
+                                  <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-500 shrink-0">
+                                    IA
+                                  </Badge>
+                                )}
+                              </div>
+                              {doc.ai_title && (
+                                <p className="text-xs text-muted-foreground truncate">{doc.filename}</p>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>{getStatusBadge(doc.status)}</TableCell>
@@ -719,7 +755,10 @@ export const DocumentOnboardingTab = () => {
           <DialogHeader>
             <DialogTitle>Revisar Sugestões de Taxonomia</DialogTitle>
             <DialogDescription>
-              {selectedDoc?.filename}
+              {selectedDoc?.ai_title || selectedDoc?.filename}
+              {selectedDoc?.ai_title && (
+                <span className="block text-xs mt-1">{selectedDoc?.filename}</span>
+              )}
             </DialogDescription>
           </DialogHeader>
 
