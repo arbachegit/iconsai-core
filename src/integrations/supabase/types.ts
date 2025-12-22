@@ -2979,6 +2979,66 @@ export type Database = {
         }
         Relationships: []
       }
+      reclassification_jobs: {
+        Row: {
+          auto_approve_threshold: number
+          auto_approved_count: number | null
+          batch_size: number
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          current_batch: number | null
+          error_count: number | null
+          errors: Json | null
+          filter: string
+          id: string
+          pending_review_count: number | null
+          processed_documents: number | null
+          started_at: string | null
+          status: string
+          total_documents: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_approve_threshold?: number
+          auto_approved_count?: number | null
+          batch_size?: number
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_batch?: number | null
+          error_count?: number | null
+          errors?: Json | null
+          filter?: string
+          id?: string
+          pending_review_count?: number | null
+          processed_documents?: number | null
+          started_at?: string | null
+          status?: string
+          total_documents?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_approve_threshold?: number
+          auto_approved_count?: number | null
+          batch_size?: number
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_batch?: number | null
+          error_count?: number | null
+          errors?: Json | null
+          filter?: string
+          id?: string
+          pending_review_count?: number | null
+          processed_documents?: number | null
+          started_at?: string | null
+          status?: string
+          total_documents?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       regional_tone_rules: {
         Row: {
           affirmations: string[] | null
@@ -4456,6 +4516,14 @@ export type Database = {
       }
     }
     Functions: {
+      apply_batch_taxonomy: {
+        Args: { p_batch: Json }
+        Returns: {
+          error_count: number
+          errors: Json
+          success_count: number
+        }[]
+      }
       approve_tag_suggestion: {
         Args: { p_reviewer_id?: string; p_suggestion_id: string }
         Returns: Json
@@ -4499,6 +4567,10 @@ export type Database = {
           taxonomy_name: string
         }[]
       }
+      count_documents_for_reclassification: {
+        Args: { p_filter?: string }
+        Returns: number
+      }
       detect_context: {
         Args: { p_query: string }
         Returns: {
@@ -4519,6 +4591,21 @@ export type Database = {
       get_agent_taxonomy_codes: {
         Args: { agent_slug: string }
         Returns: string[]
+      }
+      get_documents_for_reclassification: {
+        Args: { p_filter?: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          ai_summary: string
+          avg_confidence: number
+          created_at: string
+          current_taxonomies: Json
+          document_id: string
+          filename: string
+          has_pending_tag: boolean
+          tag_count: number
+          target_chat: string
+          text_preview: string
+        }[]
       }
       get_learned_patterns: {
         Args: { p_keywords: string[] }
@@ -4547,6 +4634,19 @@ export type Database = {
         Returns: Json
       }
       get_schema_info: { Args: never; Returns: Json }
+      get_taxonomy_coverage_stats: {
+        Args: never
+        Returns: {
+          avg_tags_per_document: number
+          coverage_percentage: number
+          documents_by_source: Json
+          documents_with_taxonomy: number
+          documents_without_taxonomy: number
+          low_confidence_count: number
+          pending_classification: number
+          total_documents: number
+        }[]
+      }
       get_term_context: { Args: { p_term: string }; Returns: Json }
       has_role: {
         Args: {

@@ -233,3 +233,9 @@ verify_jwt = false
 # ============================================
 [functions.analyze-taxonomy-gap]
 verify_jwt = false
+
+# ============================================
+# RECLASSIFICATION - Document taxonomy batch
+# ============================================
+[functions.reclassify-documents]
+verify_jwt = true
