@@ -30,8 +30,6 @@ interface CoverageStats {
   documents_with_taxonomy: number;
   documents_without_taxonomy: number;
   coverage_percentage: number;
-  avg_tags_per_document: number;
-  documents_by_source: Record<string, number>;
   pending_classification: number;
   low_confidence_count: number;
 }
@@ -300,7 +298,11 @@ export function DocumentReclassificationTab() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Cobertura</p>
-                <p className="text-2xl font-bold text-primary">{stats?.coverage_percentage || 0}%</p>
+                <p className="text-2xl font-bold text-primary">
+                  {stats?.coverage_percentage != null 
+                    ? Number(stats.coverage_percentage).toFixed(2) 
+                    : '0.00'}%
+                </p>
               </div>
               <BarChart3 className="h-8 w-8 text-primary/50" />
             </div>
