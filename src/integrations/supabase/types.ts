@@ -1576,13 +1576,17 @@ export type Database = {
           is_readable: boolean | null
           needs_title_review: boolean | null
           original_text: string
+          original_title: string | null
           processing_progress: number | null
           readability_score: number | null
           redirected_from: string | null
+          rename_reason: string | null
+          renamed_at: string | null
           status: string | null
           target_chat: string
           text_preview: string | null
           title_source: string | null
+          title_was_renamed: boolean | null
           total_chunks: number | null
           total_words: number | null
           updated_at: string | null
@@ -1602,13 +1606,17 @@ export type Database = {
           is_readable?: boolean | null
           needs_title_review?: boolean | null
           original_text: string
+          original_title?: string | null
           processing_progress?: number | null
           readability_score?: number | null
           redirected_from?: string | null
+          rename_reason?: string | null
+          renamed_at?: string | null
           status?: string | null
           target_chat: string
           text_preview?: string | null
           title_source?: string | null
+          title_was_renamed?: boolean | null
           total_chunks?: number | null
           total_words?: number | null
           updated_at?: string | null
@@ -1628,13 +1636,17 @@ export type Database = {
           is_readable?: boolean | null
           needs_title_review?: boolean | null
           original_text?: string
+          original_title?: string | null
           processing_progress?: number | null
           readability_score?: number | null
           redirected_from?: string | null
+          rename_reason?: string | null
+          renamed_at?: string | null
           status?: string | null
           target_chat?: string
           text_preview?: string | null
           title_source?: string | null
+          title_was_renamed?: boolean | null
           total_chunks?: number | null
           total_words?: number | null
           updated_at?: string | null

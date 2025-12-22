@@ -18,6 +18,99 @@ export interface PDFMetadata {
   creator?: string;
 }
 
+export type RenameReason = 
+  | 'approved_ai_suggestion'
+  | 'manual_edit'
+  | 'auto_metadata'
+  | 'auto_first_lines'
+  | 'bulk_rename'
+  | 'merged_documents';
+
+export interface TitleApprovalResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Approves or edits a document title with full audit trail
+ * @param docId The document ID
+ * @param newTitle The new title to set
+ * @param reason The reason for the title change
+ * @returns Success status and any error message
+ */
+export async function approveOrEditTitle(
+  docId: string,
+  newTitle: string,
+  reason: RenameReason
+): Promise<TitleApprovalResult> {
+  try {
+    const { error } = await supabase
+      .from("documents")
+      .update({
+        ai_title: newTitle.trim().substring(0, 80),
+        title_was_renamed: true,
+        renamed_at: new Date().toISOString(),
+        rename_reason: reason,
+        needs_title_review: false
+      })
+      .eq("id", docId);
+
+    if (error) {
+      console.error('Error approving title:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error in approveOrEditTitle:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Restores the original filename as the document title
+ * @param docId The document ID
+ * @returns Success status and any error message
+ */
+export async function restoreOriginalTitle(docId: string): Promise<TitleApprovalResult> {
+  try {
+    // First, get the original_title
+    const { data: doc, error: fetchError } = await supabase
+      .from("documents")
+      .select("original_title, filename")
+      .eq("id", docId)
+      .single();
+
+    if (fetchError || !doc) {
+      return { success: false, error: 'Document not found' };
+    }
+
+    const originalTitle = doc.original_title || doc.filename;
+
+    const { error } = await supabase
+      .from("documents")
+      .update({
+        ai_title: null,
+        title_was_renamed: false,
+        renamed_at: null,
+        rename_reason: null,
+        needs_title_review: false,
+        title_source: 'filename'
+      })
+      .eq("id", docId);
+
+    if (error) {
+      console.error('Error restoring title:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error in restoreOriginalTitle:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 /**
  * Detects if a filename needs to be renamed (is unintelligible)
  * Returns TRUE if:
