@@ -86,6 +86,20 @@ interface DocumentTag {
   document_id: string;
 }
 
+// New taxonomy system interface
+interface DocumentTaxonomy {
+  id: string;
+  entity_id: string;
+  taxonomy_id: string;
+  confidence: number | null;
+  source: string;
+  is_primary: boolean | null;
+  taxonomy_code: string;
+  taxonomy_name: string;
+  taxonomy_color: string | null;
+  taxonomy_icon: string | null;
+}
+
 export const DocumentAnalysisTab = () => {
   const [filterChat, setFilterChat] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -123,7 +137,7 @@ export const DocumentAnalysisTab = () => {
     },
   });
 
-  // Fetch all tags
+  // Fetch all legacy tags
   const { data: allTags, isLoading: tagsLoading } = useQuery({
     queryKey: ["document-tags-all"],
     queryFn: async () => {
@@ -133,6 +147,45 @@ export const DocumentAnalysisTab = () => {
 
       if (error) throw error;
       return data as DocumentTag[];
+    },
+  });
+
+  // Fetch new taxonomy system data (entity_tags + global_taxonomy)
+  const { data: allTaxonomies, isLoading: taxonomiesLoading } = useQuery({
+    queryKey: ["document-taxonomies-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("entity_tags")
+        .select(`
+          id,
+          entity_id,
+          taxonomy_id,
+          confidence,
+          source,
+          is_primary,
+          global_taxonomy!inner (
+            code,
+            name,
+            color,
+            icon
+          )
+        `)
+        .eq("entity_type", "document");
+
+      if (error) throw error;
+      
+      return (data || []).map((item: any) => ({
+        id: item.id,
+        entity_id: item.entity_id,
+        taxonomy_id: item.taxonomy_id,
+        confidence: item.confidence,
+        source: item.source,
+        is_primary: item.is_primary,
+        taxonomy_code: item.global_taxonomy?.code || '',
+        taxonomy_name: item.global_taxonomy?.name || '',
+        taxonomy_color: item.global_taxonomy?.color,
+        taxonomy_icon: item.global_taxonomy?.icon
+      })) as DocumentTaxonomy[];
     },
   });
 
@@ -382,6 +435,15 @@ export const DocumentAnalysisTab = () => {
     return acc;
   }, {} as Record<string, DocumentTag[]>) || {};
 
+  // Map new taxonomies by document
+  const taxonomiesByDocument = allTaxonomies?.reduce((acc, tax) => {
+    if (!acc[tax.entity_id]) {
+      acc[tax.entity_id] = [];
+    }
+    acc[tax.entity_id].push(tax);
+    return acc;
+  }, {} as Record<string, DocumentTaxonomy[]>) || {};
+
   // Filter documents
   const filteredDocs = documents?.filter((doc) => {
     const matchesChat = filterChat === "all" || doc.target_chat === filterChat;
@@ -464,7 +526,7 @@ export const DocumentAnalysisTab = () => {
     return docTags.filter((t) => t.parent_tag_id === parentId);
   };
 
-  if (docsLoading || tagsLoading) {
+  if (docsLoading || tagsLoading || taxonomiesLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -773,7 +835,67 @@ export const DocumentAnalysisTab = () => {
                         </div>
                       )}
 
-                      {/* Card de Classificação Completa */}
+                      {/* NEW TAXONOMY SYSTEM - entity_tags */}
+                      {(() => {
+                        const docTaxonomies = taxonomiesByDocument[doc.id] || [];
+                        if (docTaxonomies.length === 0) return null;
+                        
+                        return (
+                          <div className="p-4 bg-gradient-to-r from-green-500/5 to-emerald-500/5 rounded-lg border border-green-500/20">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-semibold flex items-center gap-2 text-green-700 dark:text-green-400">
+                                <FolderTree className="h-4 w-4" />
+                                Taxonomias (Novo Sistema)
+                                <Badge variant="outline" className="ml-2 text-xs border-green-500/50 text-green-600">
+                                  entity_tags
+                                </Badge>
+                              </h4>
+                              <Badge variant="secondary" className="text-xs">
+                                {docTaxonomies.length} taxonomia{docTaxonomies.length !== 1 ? 's' : ''}
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {docTaxonomies.map((tax) => (
+                                <TooltipProvider key={tax.id}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Badge 
+                                        variant="outline"
+                                        className="gap-2 py-1.5 border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300"
+                                        style={tax.taxonomy_color ? { borderColor: tax.taxonomy_color } : undefined}
+                                      >
+                                        <span className="font-mono text-xs opacity-70">{tax.taxonomy_code}</span>
+                                        <span>{tax.taxonomy_name}</span>
+                                        {tax.confidence && (
+                                          <span className={`text-xs ${
+                                            tax.confidence >= 0.8 ? 'text-green-600' : 
+                                            tax.confidence >= 0.6 ? 'text-yellow-600' : 'text-red-500'
+                                          }`}>
+                                            {Math.round(tax.confidence * 100)}%
+                                          </span>
+                                        )}
+                                        {tax.is_primary && (
+                                          <Check className="h-3 w-3 text-green-500" />
+                                        )}
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <div className="space-y-1">
+                                        <p><strong>Código:</strong> {tax.taxonomy_code}</p>
+                                        <p><strong>Confiança:</strong> {tax.confidence ? `${Math.round(tax.confidence * 100)}%` : 'N/A'}</p>
+                                        <p><strong>Fonte:</strong> {tax.source}</p>
+                                        {tax.is_primary && <p className="text-green-500"><strong>Taxonomia primária</strong></p>}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Legacy Card de Classificação Completa (document_tags) */}
                       {parentTags.length > 0 ? (
                         <div className="p-4 bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg border border-primary/20">
                           <div className="flex items-center justify-between mb-3">

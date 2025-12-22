@@ -4803,7 +4803,7 @@ export type Database = {
         Returns: string[]
       }
       get_documents_for_reclassification: {
-        Args: { p_filter?: string; p_limit?: number; p_offset?: number }
+        Args: { p_filter: string; p_limit: number; p_offset: number }
         Returns: {
           ai_summary: string
           avg_confidence: number
