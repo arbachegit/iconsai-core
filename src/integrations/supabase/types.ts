@@ -4022,6 +4022,99 @@ export type Database = {
           },
         ]
       }
+      taxonomy_suggestions: {
+        Row: {
+          based_on_documents: string[] | null
+          based_on_keywords: string[] | null
+          confidence: number | null
+          created_at: string | null
+          created_taxonomy_id: string | null
+          id: string
+          occurrence_count: number | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_notes: string | null
+          sample_contexts: string[] | null
+          source: string | null
+          status: string | null
+          suggested_code: string
+          suggested_color: string | null
+          suggested_description: string | null
+          suggested_icon: string | null
+          suggested_keywords: string[] | null
+          suggested_name: string
+          suggested_parent_code: string | null
+          suggested_parent_id: string | null
+          suggested_synonyms: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          based_on_documents?: string[] | null
+          based_on_keywords?: string[] | null
+          confidence?: number | null
+          created_at?: string | null
+          created_taxonomy_id?: string | null
+          id?: string
+          occurrence_count?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          sample_contexts?: string[] | null
+          source?: string | null
+          status?: string | null
+          suggested_code: string
+          suggested_color?: string | null
+          suggested_description?: string | null
+          suggested_icon?: string | null
+          suggested_keywords?: string[] | null
+          suggested_name: string
+          suggested_parent_code?: string | null
+          suggested_parent_id?: string | null
+          suggested_synonyms?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          based_on_documents?: string[] | null
+          based_on_keywords?: string[] | null
+          confidence?: number | null
+          created_at?: string | null
+          created_taxonomy_id?: string | null
+          id?: string
+          occurrence_count?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          sample_contexts?: string[] | null
+          source?: string | null
+          status?: string | null
+          suggested_code?: string
+          suggested_color?: string | null
+          suggested_description?: string | null
+          suggested_icon?: string | null
+          suggested_keywords?: string[] | null
+          suggested_name?: string
+          suggested_parent_code?: string | null
+          suggested_parent_id?: string | null
+          suggested_synonyms?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "taxonomy_suggestions_created_taxonomy_id_fkey"
+            columns: ["created_taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "taxonomy_suggestions_suggested_parent_id_fkey"
+            columns: ["suggested_parent_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tooltip_contents: {
         Row: {
           audio_url: string | null
@@ -4528,6 +4621,16 @@ export type Database = {
         Args: { p_reviewer_id?: string; p_suggestion_id: string }
         Returns: Json
       }
+      approve_taxonomy_suggestion: {
+        Args: {
+          p_modify_code?: string
+          p_modify_name?: string
+          p_notes?: string
+          p_reviewer_id?: string
+          p_suggestion_id: string
+        }
+        Returns: string
+      }
       check_all_agents_coverage: {
         Args: never
         Returns: {
@@ -4571,6 +4674,20 @@ export type Database = {
         Args: { p_filter?: string }
         Returns: number
       }
+      create_taxonomy_suggestion: {
+        Args: {
+          p_code: string
+          p_confidence?: number
+          p_description?: string
+          p_keywords?: string[]
+          p_name: string
+          p_parent_id?: string
+          p_related_docs?: string[]
+          p_sample_contexts?: string[]
+          p_source?: string
+        }
+        Returns: string
+      }
       detect_context: {
         Args: { p_query: string }
         Returns: {
@@ -4578,6 +4695,27 @@ export type Database = {
           context_code: string
           context_name: string
           score: number
+        }[]
+      }
+      detect_taxonomy_gaps: {
+        Args: never
+        Returns: {
+          description: string
+          document_count: number
+          gap_type: string
+          sample_documents: Json
+          severity: string
+          suggested_action: string
+        }[]
+      }
+      extract_frequent_keywords: {
+        Args: { p_limit?: number; p_min_occurrences?: number }
+        Returns: {
+          document_ids: string[]
+          existing_taxonomy_code: string
+          keyword: string
+          occurrence_count: number
+          sample_contexts: string[]
         }[]
       }
       extract_keywords_from_text: {
@@ -4647,6 +4785,7 @@ export type Database = {
           total_documents: number
         }[]
       }
+      get_taxonomy_health_stats: { Args: never; Returns: Json }
       get_term_context: { Args: { p_term: string }; Returns: Json }
       has_role: {
         Args: {
@@ -4751,6 +4890,14 @@ export type Database = {
           p_suggestion_id: string
         }
         Returns: Json
+      }
+      reject_taxonomy_suggestion: {
+        Args: {
+          p_notes?: string
+          p_reviewer_id?: string
+          p_suggestion_id: string
+        }
+        Returns: boolean
       }
       search_by_taxonomy: {
         Args: {
