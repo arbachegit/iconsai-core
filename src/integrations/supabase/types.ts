@@ -1942,6 +1942,140 @@ export type Database = {
         }
         Relationships: []
       }
+      ml_tag_feedback: {
+        Row: {
+          admin_notes: string | null
+          confidence_after: number | null
+          confidence_before: number | null
+          corrected_code: string | null
+          corrected_taxonomy_id: string | null
+          created_at: string
+          created_by: string | null
+          document_id: string
+          feedback_type: string
+          id: string
+          original_code: string | null
+          original_taxonomy_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          confidence_after?: number | null
+          confidence_before?: number | null
+          corrected_code?: string | null
+          corrected_taxonomy_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          feedback_type: string
+          id?: string
+          original_code?: string | null
+          original_taxonomy_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          confidence_after?: number | null
+          confidence_before?: number | null
+          corrected_code?: string | null
+          corrected_taxonomy_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          feedback_type?: string
+          id?: string
+          original_code?: string | null
+          original_taxonomy_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ml_tag_feedback_corrected_taxonomy_id_fkey"
+            columns: ["corrected_taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ml_tag_feedback_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ml_tag_feedback_original_taxonomy_id_fkey"
+            columns: ["original_taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ml_tag_suggestions: {
+        Row: {
+          confidence: number
+          corrected_to_taxonomy_id: string | null
+          created_at: string
+          document_id: string
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_notes: string | null
+          source: string
+          status: string
+          suggested_code: string
+          taxonomy_id: string
+        }
+        Insert: {
+          confidence?: number
+          corrected_to_taxonomy_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          source?: string
+          status?: string
+          suggested_code: string
+          taxonomy_id: string
+        }
+        Update: {
+          confidence?: number
+          corrected_to_taxonomy_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          source?: string
+          status?: string
+          suggested_code?: string
+          taxonomy_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ml_tag_suggestions_corrected_to_taxonomy_id_fkey"
+            columns: ["corrected_to_taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ml_tag_suggestions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ml_tag_suggestions_taxonomy_id_fkey"
+            columns: ["taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_logic_config: {
         Row: {
           config: Json
@@ -4130,6 +4264,10 @@ export type Database = {
       }
     }
     Functions: {
+      approve_tag_suggestion: {
+        Args: { p_reviewer_id?: string; p_suggestion_id: string }
+        Returns: Json
+      }
       check_all_agents_coverage: {
         Args: never
         Returns: {
@@ -4152,6 +4290,15 @@ export type Database = {
         }
         Returns: number
       }
+      correct_tag_suggestion: {
+        Args: {
+          p_correct_taxonomy_id: string
+          p_notes?: string
+          p_reviewer_id?: string
+          p_suggestion_id: string
+        }
+        Returns: Json
+      }
       count_agent_accessible_documents: {
         Args: { agent_slug: string }
         Returns: {
@@ -4167,6 +4314,18 @@ export type Database = {
       get_agent_taxonomy_codes: {
         Args: { agent_slug: string }
         Returns: string[]
+      }
+      get_ml_suggestion_stats: {
+        Args: never
+        Returns: {
+          approval_rate: number
+          approved_count: number
+          avg_confidence: number
+          corrected_count: number
+          pending_count: number
+          rejected_count: number
+          total_suggestions: number
+        }[]
       }
       get_schema_info: { Args: never; Returns: Json }
       get_term_context: { Args: { p_term: string }; Returns: Json }
@@ -4263,6 +4422,14 @@ export type Database = {
           p_name: string
           p_phone?: string
           p_user_agent?: string
+        }
+        Returns: Json
+      }
+      reject_tag_suggestion: {
+        Args: {
+          p_notes?: string
+          p_reviewer_id?: string
+          p_suggestion_id: string
         }
         Returns: Json
       }
