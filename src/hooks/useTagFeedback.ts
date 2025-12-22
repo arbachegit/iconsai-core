@@ -168,7 +168,7 @@ export function useCorrectSuggestion() {
     }): Promise<RpcResult> => {
       const { data, error } = await supabase.rpc("correct_tag_suggestion", {
         p_suggestion_id: suggestionId,
-        p_correct_taxonomy_id: correctTaxonomyId,
+        p_new_taxonomy_id: correctTaxonomyId,
         p_reviewer_id: null,
         p_notes: notes || null,
       });

@@ -88,6 +88,115 @@ const BRAZILIAN_STATES: Record<string, string> = {
   'to': 'TO', 'tocantins': 'TO',
 };
 
+// ===================== MAIEUTIC METRICS LOGGING =====================
+async function logMaieuticMetrics(
+  supabase: any,
+  sessionId: string | null,
+  cognitiveMode: string,
+  detectedCategories: string[],
+  responseText: string,
+  contextCode: string
+): Promise<void> {
+  try {
+    // Contar pílulas (parágrafos de 1-3 frases)
+    const pillboxCount = responseText.split(/\n\n+/).filter(p => p.trim().length > 0).length;
+    
+    // Contar perguntas feitas pela IA
+    const questionsAsked = (responseText.match(/\?/g) || []).length;
+    
+    await supabase.from('maieutic_metrics').insert({
+      session_id: sessionId || null,
+      cognitive_mode: cognitiveMode,
+      detected_categories: detectedCategories,
+      response_length: responseText.length,
+      pillbox_count: pillboxCount,
+      questions_asked: questionsAsked,
+      user_asked_clarification: false,
+      user_confirmed_understanding: false,
+      conversation_continued: false,
+      context_code: contextCode
+    });
+    
+    console.log(`[Maieutic Metrics] Logged: mode=${cognitiveMode}, categories=${detectedCategories.length}, pillbox=${pillboxCount}, questions=${questionsAsked}`);
+  } catch (err) {
+    console.error('[Maieutic Metrics] Failed to log:', err);
+  }
+}
+
+function detectUserFeedbackType(message: string): { 
+  askedClarification: boolean; 
+  confirmedUnderstanding: boolean 
+} {
+  const clarificationPatterns = [
+    /não entendi|nao entendi/i,
+    /pode explicar/i,
+    /como assim/i,
+    /o que você quis dizer|o que voce quis dizer/i,
+    /me perdi/i,
+    /confuso|confusa/i,
+    /repete|repetir|repita/i,
+    /hã\?|hein\?|oi\?/i,
+    /não ficou claro|nao ficou claro/i,
+    /explica melhor/i,
+    /não sei o que|nao sei o que/i,
+    /o que significa/i,
+    /traduz|traduzir/i,
+    /simplifica|simplificar/i
+  ];
+  
+  const understandingPatterns = [
+    /entendi|entendido/i,
+    /ficou claro/i,
+    /agora faz sentido/i,
+    /^ok$|^okay$/i,
+    /perfeito|ótimo|otimo|legal/i,
+    /obrigad[oa]/i,
+    /valeu|vlw/i,
+    /aham|uhum|hum/i,
+    /faz sentido/i,
+    /show|massa|top/i,
+    /agora sim/i,
+    /boa explicação|boa explicacao/i
+  ];
+  
+  const askedClarification = clarificationPatterns.some(p => p.test(message));
+  const confirmedUnderstanding = understandingPatterns.some(p => p.test(message));
+  
+  return { askedClarification, confirmedUnderstanding };
+}
+
+async function updatePreviousMetricWithFeedback(
+  supabase: any,
+  sessionId: string,
+  feedbackType: { askedClarification: boolean; confirmedUnderstanding: boolean }
+): Promise<void> {
+  try {
+    // Buscar a última métrica desta sessão
+    const { data: lastMetric } = await supabase
+      .from('maieutic_metrics')
+      .select('id')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (lastMetric) {
+      await supabase
+        .from('maieutic_metrics')
+        .update({
+          user_asked_clarification: feedbackType.askedClarification,
+          user_confirmed_understanding: feedbackType.confirmedUnderstanding,
+          conversation_continued: true
+        })
+        .eq('id', lastMetric.id);
+      
+      console.log(`[Maieutic Metrics] Updated feedback: clarification=${feedbackType.askedClarification}, understanding=${feedbackType.confirmedUnderstanding}`);
+    }
+  } catch (err) {
+    console.error('[Maieutic Metrics] Failed to update feedback:', err);
+  }
+}
+
 // ===================== ORCHESTRATOR =====================
 async function getOrchestratedContext(
   supabase: any,
@@ -776,6 +885,12 @@ serve(async (req) => {
       const detectedName = await detectAndSaveName(supabase, pwaSessionId, pwaMessage, userName);
       const currentUserName = detectedName || userName;
 
+      // Detect implicit feedback from previous message and update metrics
+      const feedbackType = detectUserFeedbackType(pwaMessage);
+      if (feedbackType.askedClarification || feedbackType.confirmedUnderstanding) {
+        await updatePreviousMetricWithFeedback(supabase, pwaSessionId, feedbackType);
+      }
+
       // Save user message
       await saveMessage(supabase, pwaSessionId, 'user', pwaMessage);
 
@@ -951,9 +1066,22 @@ serve(async (req) => {
       // Save assistant response
       await saveMessage(supabase, pwaSessionId, 'assistant', response);
 
+      // Log maieutic metrics
+      const cognitiveMode = orchestratedContext?.cognitiveMode || 'normal';
+      const detectedCategories = orchestratedContext?.taxonomyCodes || [];
+      await logMaieuticMetrics(
+        supabase,
+        pwaSessionId,
+        cognitiveMode,
+        detectedCategories,
+        response,
+        contextCode
+      );
+
       logger.info("PWA request completed", { 
         sessionId: pwaSessionId, 
         contextCode,
+        cognitiveMode,
         responseLength: response.length,
         durationMs: logger.getDuration() 
       });
@@ -988,6 +1116,14 @@ serve(async (req) => {
     // Get last user message for RAG
     const lastUserMessage = messages.filter(m => m.role === "user").pop();
     const userQuery = lastUserMessage?.content || "";
+
+    // Detect implicit feedback from user message and update previous metrics
+    if (sessionId && userQuery) {
+      const feedbackType = detectUserFeedbackType(userQuery);
+      if (feedbackType.askedClarification || feedbackType.confirmedUnderstanding) {
+        await updatePreviousMetricWithFeedback(supabase, sessionId, feedbackType);
+      }
+    }
 
     // ===== ORQUESTRADOR: Usar contexto dinâmico para Standard Mode =====
     const orchestratedContext = await getOrchestratedContext(supabase, userQuery, chatType);
@@ -1111,7 +1247,22 @@ serve(async (req) => {
       return errorResponse("Erro ao processar mensagem", 500);
     }
 
-    logger.info("Request completed", { contextCode, ragDocsFound: documentTitles.length, durationMs: logger.getDuration() });
+    // Log initial maieutic metrics for streaming mode (will be updated by frontend later)
+    const cognitiveMode = orchestratedContext?.cognitiveMode || 'normal';
+    const detectedCategories = orchestratedContext?.taxonomyCodes || [];
+    
+    // For streaming, we log with placeholder values (response_length will be 0)
+    // This captures the context detection even without full response data
+    await logMaieuticMetrics(
+      supabase,
+      sessionId || null,
+      cognitiveMode,
+      detectedCategories,
+      '', // Empty response since we're streaming
+      contextCode
+    );
+
+    logger.info("Request completed", { contextCode, cognitiveMode, ragDocsFound: documentTitles.length, durationMs: logger.getDuration() });
 
     return new Response(response.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
