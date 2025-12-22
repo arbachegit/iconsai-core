@@ -28,7 +28,7 @@ import {
 import { DashboardTab } from "@/components/admin/DashboardTab";
 
 // Lazy load all other tabs for better initial bundle size
-const ChatConfigTab = lazy(() => import("@/components/admin/ChatConfigTab").then(m => ({ default: m.ChatConfigTab })));
+// ChatConfigTab removed - config now in AgentManagementTab
 const TooltipsTab = lazy(() => import("@/components/admin/TooltipsTab").then(m => ({ default: m.TooltipsTab })));
 const GmailTab = lazy(() => import("@/components/admin/GmailTab").then(m => ({ default: m.GmailTab })));
 const AnalyticsTab = lazy(() => import("@/components/admin/AnalyticsTab").then(m => ({ default: m.AnalyticsTab })));
@@ -85,12 +85,11 @@ const TabLoadingFallback = () => (
   </div>
 );
 
-type TabType = "dashboard" | "chat" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa" | "app-config";
+type TabType = "dashboard" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa" | "app-config";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
   "dashboard": "Dashboard",
-  "chat": "Chat Config",
   "tooltips": "Tooltips",
   "gmail": "Gmail",
   "analytics": "Analytics",
@@ -265,7 +264,6 @@ const Admin = () => {
 
     const LazyComponent = (() => {
       switch (activeTab) {
-        case "chat": return <ChatConfigTab />;
         case "tooltips": return <TooltipsTab />;
         case "conversations": return <ConversationsTab />;
         case "gmail": return <GmailTab />;
