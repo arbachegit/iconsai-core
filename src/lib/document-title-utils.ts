@@ -18,17 +18,74 @@ export interface PDFMetadata {
   creator?: string;
 }
 
+// Auto-detected problems (why the original title was unreadable)
+export type OriginalTitleProblem = 
+  | 'numeric'        // >50% digits
+  | 'hash'           // Looks like hexadecimal hash
+  | 'uuid'           // Contains UUID pattern
+  | 'unreadable'     // Less than 3 readable characters
+  | 'technical'      // Generic pattern (doc_123, file-xyz)
+  | 'mixed_pattern'; // Mixed pattern without meaning
+
+// Complete rename reasons (includes manual actions)
 export type RenameReason = 
-  | 'approved_ai_suggestion'
-  | 'manual_edit'
-  | 'auto_metadata'
-  | 'auto_first_lines'
-  | 'bulk_rename'
-  | 'merged_documents';
+  | OriginalTitleProblem           // Auto-detected
+  | 'approved_ai_suggestion'       // Admin approved AI suggestion
+  | 'manual_edit'                  // Admin edited manually
+  | 'auto_metadata'                // Came from PDF metadata
+  | 'auto_first_lines'             // Came from first lines
+  | 'bulk_rename'                  // Bulk rename operation
+  | 'merged_documents';            // Document merge
 
 export interface TitleApprovalResult {
   success: boolean;
   error?: string;
+}
+
+/**
+ * Detects WHY a filename needs to be renamed
+ * Returns the specific problem with the original title
+ */
+export function detectRenameReason(filename: string): OriginalTitleProblem | null {
+  const cleanTitle = filename.replace(/\.(pdf|docx?|txt|xlsx?|pptx?|csv|rtf|odt)$/i, '').trim();
+  
+  if (cleanTitle.length === 0) return 'unreadable';
+  
+  // 1. Check for UUID pattern
+  if (/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i.test(cleanTitle)) {
+    return 'uuid';
+  }
+  
+  // 2. Check for hash pattern (16+ hex chars)
+  if (/^[a-f0-9]{16,}$/i.test(cleanTitle.replace(/[^a-z0-9]/gi, ''))) {
+    return 'hash';
+  }
+  
+  // 3. Check numeric ratio
+  const numericRatio = (cleanTitle.match(/\d/g) || []).length / cleanTitle.length;
+  if (numericRatio > 0.5) {
+    return 'numeric';
+  }
+  
+  // 4. Check for technical patterns
+  const technicalPattern = /^(doc|file|scan|img|pdf|download|document|arquivo|upload|temp|tmp|copy|copia)[-_]?[a-z0-9]+$/i;
+  if (technicalPattern.test(cleanTitle)) {
+    return 'technical';
+  }
+  
+  // 5. Check for mixed pattern without meaning
+  const mixedPattern = /^[a-z0-9]{1,3}[-_][a-z0-9]+[-_][a-z0-9]+$/i;
+  if (mixedPattern.test(cleanTitle)) {
+    return 'mixed_pattern';
+  }
+  
+  // 6. Check readable characters
+  const readableChars = cleanTitle.replace(/[^a-záàâãéèêíïóôõöúçñ\s]/gi, '').trim();
+  if (readableChars.length < 3) {
+    return 'unreadable';
+  }
+  
+  return null; // Title is fine, no renaming needed
 }
 
 /**
