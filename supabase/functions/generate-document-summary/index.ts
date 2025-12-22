@@ -145,11 +145,17 @@ Formato esperado:
       is_readable: analysis.isReadable
     };
     
-    // Add ai_title if generated
+    // Add ai_title if generated and auto-apply to filename
     if (shouldGenerateTitle && analysis.suggestedTitle) {
       updateData.ai_title = analysis.suggestedTitle;
-      updateData.needs_title_review = true;
-      console.log(`Generated AI title: ${analysis.suggestedTitle}`);
+      updateData.filename = analysis.suggestedTitle; // Auto-aplicar ao filename
+      updateData.original_title = filename; // Preservar o nome original
+      updateData.title_was_renamed = true;
+      updateData.title_source = 'ai';
+      updateData.renamed_at = new Date().toISOString();
+      updateData.rename_reason = 'approved_ai_suggestion';
+      updateData.needs_title_review = false; // Já aplicado automaticamente
+      console.log(`Generated and applied AI title: ${analysis.suggestedTitle}`);
     }
     
     // Update document with summary and readability

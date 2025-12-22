@@ -444,7 +444,7 @@ export default function TagSuggestionReviewTab() {
                   {correctionModal.suggestion.suggested_code}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Documento: {correctionModal.suggestion.document?.filename}
+                  Documento: {correctionModal.suggestion.document?.ai_title || correctionModal.suggestion.document?.filename}
                 </p>
               </div>
             )}
@@ -516,12 +516,12 @@ export default function TagSuggestionReviewTab() {
                 <div className="p-3 bg-muted rounded-lg">
                   <p className="text-xs text-muted-foreground mb-1">Documento:</p>
                   <p className="font-medium text-sm">
-                    {summaryModal.document.filename}
+                    {summaryModal.document.ai_title || summaryModal.document.filename}
                   </p>
                   {summaryModal.document.ai_title && 
                    summaryModal.document.ai_title !== summaryModal.document.filename && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Título AI: {summaryModal.document.ai_title}
+                      Nome original: {summaryModal.document.filename}
                     </p>
                   )}
                 </div>
@@ -635,10 +635,10 @@ function SuggestionList({
                 <ConfidenceBadge confidence={suggestion.confidence} />
                 {!showActions && <StatusBadge status={suggestion.status} />}
               </div>
-              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                 <FileText className="h-3 w-3" />
                 <span className="truncate max-w-[200px]">
-                  {suggestion.document?.filename || suggestion.document_id}
+                  {suggestion.document?.ai_title || suggestion.document?.filename || suggestion.document_id}
                 </span>
                 {onOpenSummary && suggestion.document && (
                   <Badge 
@@ -756,8 +756,8 @@ function FeedbackHistory({ history }: { history: any[] }) {
                   </>
                 )}
               </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {item.document?.filename} •{" "}
+                <div className="text-xs text-muted-foreground mt-1">
+                {item.document?.ai_title || item.document?.filename} •{" "}
                 {new Date(item.created_at).toLocaleDateString("pt-BR")}
               </div>
               {item.admin_notes && (

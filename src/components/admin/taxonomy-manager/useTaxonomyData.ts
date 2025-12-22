@@ -241,7 +241,8 @@ export function useDocumentsByTaxonomy(taxonomyId: string | null) {
     queryFn: async () => {
       if (!taxonomyId) return [];
 
-      const { data, error } = await supabase
+      // Primeiro buscar entity_tags
+      const { data: entityTags, error: entityError } = await supabase
         .from('entity_tags')
         .select(`
           id,
@@ -254,8 +255,34 @@ export function useDocumentsByTaxonomy(taxonomyId: string | null) {
         .eq('taxonomy_id', taxonomyId)
         .limit(50);
 
-      if (error) throw error;
-      return data;
+      if (entityError) throw entityError;
+      if (!entityTags || entityTags.length === 0) return [];
+
+      // Buscar nomes dos documentos para entity_type = 'document'
+      const documentIds = entityTags
+        .filter(e => e.entity_type === 'document')
+        .map(e => e.entity_id);
+
+      let documentNames = new Map<string, string>();
+      
+      if (documentIds.length > 0) {
+        const { data: docs } = await supabase
+          .from('documents')
+          .select('id, filename, ai_title')
+          .in('id', documentIds);
+        
+        if (docs) {
+          docs.forEach(doc => {
+            documentNames.set(doc.id, doc.ai_title || doc.filename);
+          });
+        }
+      }
+
+      // Retornar dados enriquecidos
+      return entityTags.map(tag => ({
+        ...tag,
+        document_name: documentNames.get(tag.entity_id) || null
+      }));
     },
     enabled: !!taxonomyId,
   });
