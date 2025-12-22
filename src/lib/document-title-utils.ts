@@ -3,6 +3,21 @@
  * Functions to detect unintelligible filenames and generate readable titles
  */
 
+import { supabase } from "@/integrations/supabase/client";
+
+export interface TitleExtractionResult {
+  title: string;
+  source: 'metadata' | 'filename' | 'ai' | 'first_lines';
+  confidence: number;
+}
+
+export interface PDFMetadata {
+  title?: string;
+  author?: string;
+  subject?: string;
+  creator?: string;
+}
+
 /**
  * Detects if a filename needs to be renamed (is unintelligible)
  * Returns TRUE if:
@@ -105,4 +120,135 @@ export function isValidTitle(title: string): boolean {
   
   const readableChars = title.replace(/[^a-záàâãéèêíïóôõöúçñ\s]/gi, '').trim();
   return readableChars.length >= 5;
+}
+
+/**
+ * Extracts the first meaningful lines from document text that could serve as a title
+ * @param text The full document text
+ * @returns A potential title from the first lines, or null if none found
+ */
+export function extractFirstMeaningfulLines(text: string): string | null {
+  const lines = text.split('\n').filter(l => l.trim().length > 10);
+  const firstLine = lines[0]?.trim();
+  
+  // Verify if first line looks like a title
+  if (firstLine && firstLine.length >= 5 && firstLine.length <= 100) {
+    // Skip if it starts with page number, date, etc.
+    if (!/^(\d+|página|page|\d{2}\/\d{2}|sumário|índice|table of contents)/i.test(firstLine)) {
+      // Clean up common artifacts
+      const cleaned = firstLine
+        .replace(/^\d+\s*[-–—]\s*/, '') // Remove leading page numbers
+        .replace(/\s*[-–—]\s*\d+$/, '') // Remove trailing page numbers
+        .trim();
+      
+      if (cleaned.length >= 5 && !needsRenaming(cleaned)) {
+        return cleaned;
+      }
+    }
+  }
+  
+  // Try second line if first didn't work
+  const secondLine = lines[1]?.trim();
+  if (secondLine && secondLine.length >= 5 && secondLine.length <= 100) {
+    if (!/^(\d+|página|page|\d{2}\/\d{2})/i.test(secondLine)) {
+      const cleaned = secondLine.replace(/^\d+\s*[-–—]\s*/, '').trim();
+      if (cleaned.length >= 5 && !needsRenaming(cleaned)) {
+        return cleaned;
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Calls the AI edge function to generate a title from document text
+ * @param textSample The first ~2000 chars of the document
+ * @returns The AI-generated title
+ */
+export async function generateTitleWithAI(textSample: string): Promise<string> {
+  try {
+    const { data, error } = await supabase.functions.invoke('generate-document-title', {
+      body: {
+        textSample: textSample.slice(0, 2000)
+      }
+    });
+    
+    if (error) {
+      console.error('Error generating title with AI:', error);
+      return '';
+    }
+    
+    return data?.title || '';
+  } catch (error) {
+    console.error('Error calling generate-document-title:', error);
+    return '';
+  }
+}
+
+/**
+ * Extracts a readable title using a hierarchical approach:
+ * 1. PDF metadata title (if readable)
+ * 2. Filename (if readable)
+ * 3. First meaningful lines from text
+ * 4. AI-generated title as fallback
+ * 
+ * @param text The full document text
+ * @param filename The original filename
+ * @param pdfMetadata Optional PDF metadata
+ * @returns The extracted title with source and confidence
+ */
+export async function extractReadableTitle(
+  text: string,
+  filename: string,
+  pdfMetadata?: PDFMetadata
+): Promise<TitleExtractionResult> {
+  // 1. Try PDF metadata title first (highest confidence)
+  if (pdfMetadata?.title && pdfMetadata.title.trim().length > 3) {
+    const metaTitle = pdfMetadata.title.trim();
+    if (!needsRenaming(metaTitle) && isValidTitle(metaTitle)) {
+      return {
+        title: metaTitle.substring(0, 80),
+        source: 'metadata',
+        confidence: 0.95
+      };
+    }
+  }
+  
+  // 2. If filename is readable, use it
+  const cleanFilename = filename.replace(/\.(pdf|docx?|txt|xlsx?|pptx?|csv|rtf|odt)$/i, '').trim();
+  if (!needsRenaming(filename) && isValidTitle(cleanFilename)) {
+    return {
+      title: cleanFilename.substring(0, 80),
+      source: 'filename',
+      confidence: 0.9
+    };
+  }
+  
+  // 3. Try to extract from first meaningful lines
+  const firstLines = extractFirstMeaningfulLines(text);
+  if (firstLines && isValidTitle(firstLines)) {
+    return {
+      title: firstLines.substring(0, 80),
+      source: 'first_lines',
+      confidence: 0.7
+    };
+  }
+  
+  // 4. Fall back to AI generation
+  const aiTitle = await generateTitleWithAI(text.slice(0, 2000));
+  if (aiTitle && aiTitle.length > 0) {
+    return {
+      title: aiTitle.substring(0, 80),
+      source: 'ai',
+      confidence: 0.85
+    };
+  }
+  
+  // Last resort: use the filename even if not ideal
+  return {
+    title: cleanFilename.substring(0, 80) || 'Documento sem título',
+    source: 'filename',
+    confidence: 0.3
+  };
 }

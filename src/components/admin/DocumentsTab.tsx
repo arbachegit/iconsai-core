@@ -29,9 +29,16 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { RagFlowDiagram } from "./RagFlowDiagram";
+import { extractReadableTitle, type PDFMetadata } from "@/lib/document-title-utils";
 
 // Configure PDF.js worker with local bundle
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+interface PDFExtractionResult {
+  text: string;
+  metadata: PDFMetadata;
+}
+
 interface FileUploadStatus {
   id: string;
   fileName: string;
@@ -221,11 +228,27 @@ export const DocumentsTab = () => {
     file: File,
     onProgress?: (page: number, total: number) => void,
     abortRef?: React.MutableRefObject<boolean>
-  ): Promise<string> => {
+  ): Promise<PDFExtractionResult> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({
       data: arrayBuffer,
     }).promise;
+    
+    // Extract PDF metadata
+    let pdfMetadata: PDFMetadata = {};
+    try {
+      const metadata = await pdf.getMetadata();
+      const info = (metadata?.info || {}) as Record<string, unknown>;
+      pdfMetadata = {
+        title: typeof info.Title === 'string' ? info.Title : undefined,
+        author: typeof info.Author === 'string' ? info.Author : undefined,
+        subject: typeof info.Subject === 'string' ? info.Subject : undefined,
+        creator: typeof info.Creator === 'string' ? info.Creator : undefined,
+      };
+    } catch (e) {
+      console.log('Could not extract PDF metadata:', e);
+    }
+    
     let fullText = "";
     const totalPages = pdf.numPages;
     
@@ -269,10 +292,15 @@ export const DocumentsTab = () => {
     }
     
     // Clean up extra whitespace while preserving structure
-    return fullText
+    const cleanedText = fullText
       .replace(/\s+/g, ' ')
       .replace(/\n\s*\n/g, '\n\n')
       .trim();
+    
+    return {
+      text: cleanedText,
+      metadata: pdfMetadata
+    };
   };
 
   // Get ML-suggested chat based on filename pattern matching
@@ -444,9 +472,18 @@ export const DocumentsTab = () => {
               progress: 10,
               details: useDocumentAI ? 'Extraindo com Google Document AI (tabelas)...' : 'Extraindo texto do PDF...'
             } : s));
-            const extractedText = useDocumentAI 
-              ? await extractTextWithDocumentAI(file)
-              : await extractTextFromPDF(file);
+            
+            let extractedText: string;
+            let pdfMetadata: PDFMetadata = {};
+            
+            if (useDocumentAI) {
+              extractedText = await extractTextWithDocumentAI(file);
+            } else {
+              const pdfResult = await extractTextFromPDF(file);
+              extractedText = pdfResult.text;
+              pdfMetadata = pdfResult.metadata;
+            }
+            
             if (extractedText.length < 100) {
               setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
                 ...s,
@@ -457,15 +494,23 @@ export const DocumentsTab = () => {
               continue;
             }
 
-            // Phase 2: Uploading - Check ML suggestions first
+            // Phase 2: Generate readable title using hierarchical approach
             setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
               ...s,
               status: 'uploading',
+              progress: 25,
+              details: 'Gerando título legível...'
+            } : s));
+            
+            const titleResult = await extractReadableTitle(extractedText, file.name, pdfMetadata);
+            
+            setUploadStatuses(prev => prev.map(s => s.id === fileId ? {
+              ...s,
               progress: 35,
-              details: 'Verificando regras ML...'
+              details: `Título: ${titleResult.title} (${titleResult.source})`
             } : s));
 
-            // Check if there's a ML-suggested chat based on filename pattern
+            // Check ML suggestions for chat routing
             const mlSuggestion = await getMLSuggestedChat(file.name);
             let finalChat = "general";
             let mlDecision: 'accepted' | 'rejected' | null = null;
@@ -534,7 +579,11 @@ export const DocumentsTab = () => {
               original_text: extractedText,
               text_preview: extractedText.substring(0, 500),
               status: "pending",
-              target_chat: finalChat
+              target_chat: finalChat,
+              // New title fields
+              ai_title: titleResult.source !== 'filename' ? titleResult.title : null,
+              needs_title_review: titleResult.source === 'ai',
+              title_source: titleResult.source
             }]).select();
             const document = documents?.[0];
             if (docError || !document) {
@@ -1189,7 +1238,7 @@ export const DocumentsTab = () => {
       }
       
       try {
-        const text = await extractTextFromPDF(
+        const pdfResult = await extractTextFromPDF(
           file,
           (currentPage, totalPages) => {
             setExtractionProgress(prev => prev ? {
@@ -1200,10 +1249,10 @@ export const DocumentsTab = () => {
           },
           extractionAbortRef
         );
-        const analysis = analyzeTextQuality(text);
+        const analysis = analyzeTextQuality(pdfResult.text);
         previews.push({
           file,
-          extractedText: text,
+          extractedText: pdfResult.text,
           ...analysis
         });
       } catch (error: any) {

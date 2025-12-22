@@ -245,3 +245,9 @@ verify_jwt = true
 # ============================================
 [functions.taxonomy-auto-manager]
 verify_jwt = false
+
+# ============================================
+# DOCUMENT TITLE GENERATION - Lightweight AI
+# ============================================
+[functions.generate-document-title]
+verify_jwt = false
