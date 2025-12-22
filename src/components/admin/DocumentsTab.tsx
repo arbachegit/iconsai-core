@@ -576,14 +576,16 @@ export const DocumentsTab = () => {
               error: docError
             } = await supabase.from("documents").insert([{
               filename: file.name,
+              original_title: file.name, // Always preserve the original filename
               original_text: extractedText,
               text_preview: extractedText.substring(0, 500),
               status: "pending",
               target_chat: finalChat,
-              // New title fields
+              // Title fields with audit trail
               ai_title: titleResult.source !== 'filename' ? titleResult.title : null,
               needs_title_review: titleResult.source === 'ai',
-              title_source: titleResult.source
+              title_source: titleResult.source,
+              title_was_renamed: false // Not renamed yet
             }]).select();
             const document = documents?.[0];
             if (docError || !document) {
