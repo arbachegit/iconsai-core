@@ -6,15 +6,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface TaxonomyNode {
+  id: string;
+  code: string;
+  name: string;
+  parent_id: string | null;
+  level: number;
+  description: string | null;
+  keywords: string[];
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { documentId, text, chatType } = await req.json();
+    const { documentId, text, chatType, saveSuggestions = true } = await req.json();
     
-    console.log(`Generating tags for document ${documentId} (chat: ${chatType || 'unknown'})`);
+    console.log(`[suggest-document-tags] Document ${documentId}, chat: ${chatType || 'unknown'}, saveSuggestions: ${saveSuggestions}`);
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -26,114 +36,126 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // Fetch existing parent tags to avoid duplicates
-    const { data: existingTags } = await supabase
-      .from("document_tags")
-      .select("id, tag_name, tag_type")
-      .is("parent_tag_id", null)
-      .order("tag_name");
+    // 1. Fetch global taxonomy tree
+    const { data: taxonomyNodes, error: taxonomyError } = await supabase
+      .from("global_taxonomy")
+      .select("id, code, name, parent_id, level, description, keywords")
+      .eq("status", "approved")
+      .order("level")
+      .order("name");
     
-    const existingTagNames = existingTags?.map(t => t.tag_name) || [];
-    console.log(`Found ${existingTagNames.length} existing parent tags`);
+    if (taxonomyError) {
+      console.error("[suggest-document-tags] Error fetching taxonomy:", taxonomyError);
+      throw new Error("Failed to fetch taxonomy");
+    }
     
-    // Fetch machine learning merge rules to prevent duplicate creation
-    const { data: mergeRules } = await supabase
-      .from("tag_merge_rules")
-      .select("source_tag, canonical_tag")
-      .eq("chat_type", chatType || "health");
+    console.log(`[suggest-document-tags] Loaded ${taxonomyNodes?.length || 0} taxonomy nodes`);
     
-    const mergeRulesMap = new Map<string, string>();
-    mergeRules?.forEach(rule => {
-      mergeRulesMap.set(rule.source_tag.toLowerCase(), rule.canonical_tag);
-    });
-    console.log(`Loaded ${mergeRulesMap.size} machine learning merge rules`);
+    // Build taxonomy tree representation for AI
+    const buildTaxonomyTree = (nodes: TaxonomyNode[]): string => {
+      const rootNodes = nodes.filter(n => !n.parent_id);
+      const childMap = new Map<string, TaxonomyNode[]>();
+      
+      nodes.forEach(node => {
+        if (node.parent_id) {
+          const children = childMap.get(node.parent_id) || [];
+          children.push(node);
+          childMap.set(node.parent_id, children);
+        }
+      });
+      
+      const renderNode = (node: TaxonomyNode, indent: string = ""): string => {
+        let result = `${indent}- ${node.code}: "${node.name}"`;
+        if (node.keywords?.length > 0) {
+          result += ` [keywords: ${node.keywords.join(', ')}]`;
+        }
+        result += "\n";
+        
+        const children = childMap.get(node.id) || [];
+        children.forEach(child => {
+          result += renderNode(child, indent + "  ");
+        });
+        
+        return result;
+      };
+      
+      return rootNodes.map(n => renderNode(n)).join("");
+    };
     
-    // Build merge rules instruction for AI
-    const mergeRulesInstruction = mergeRules && mergeRules.length > 0 
-      ? `\n\n🔴 REGRAS DE APRENDIZADO (NÃO VIOLAR):
-As seguintes variações foram corrigidas pelo admin e NÃO devem ser usadas:
-${mergeRules.map(r => `- "${r.source_tag}" → USE "${r.canonical_tag}"`).join('\n')}
-
-NUNCA gere as tags do lado esquerdo. SEMPRE use as tags do lado direito.`
-      : '';
+    const taxonomyTree = buildTaxonomyTree(taxonomyNodes || []);
     
-    // Build contextual guidance based on chatType
+    // 2. Fetch existing ML feedback to learn from corrections
+    const { data: feedbackData } = await supabase
+      .from("ml_tag_feedback")
+      .select("original_code, corrected_code, feedback_type")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    
+    // Build correction rules from feedback
+    const correctionRules = feedbackData
+      ?.filter(f => f.feedback_type === 'corrected' && f.original_code && f.corrected_code)
+      .map(f => `- "${f.original_code}" → "${f.corrected_code}"`)
+      .join('\n') || '';
+    
+    const rejectedCodes = feedbackData
+      ?.filter(f => f.feedback_type === 'rejected' && f.original_code)
+      .map(f => f.original_code) || [];
+    
+    console.log(`[suggest-document-tags] Loaded ${feedbackData?.length || 0} feedback entries, ${rejectedCodes.length} rejected codes`);
+    
+    // 3. Build contextual guidance based on chatType
     let contextualGuidance = '';
     
     if (chatType === 'economia') {
       contextualGuidance = `
-🎯 CONTEXTO: Este documento é de ECONOMIA/FINANÇAS.
-
-TAGS PRIORITÁRIAS para documentos de economia:
-- Tags Pai RECOMENDADAS: "Economia", "Indicadores Econômicos", "Política Monetária", "Mercado de Trabalho", "Finanças", "Comércio"
-- Tags Filho RECOMENDADAS: "IPCA", "Selic", "PIB", "Inflação", "Câmbio", "Dólar", "Renda", "Desemprego", "Juros", "PMC", "Varejo", "Investimentos", "CDI", "PTAX"
-
-⚠️ EVITE tags genéricas como "Metodologia", "Linguística", "Categoria", "Relatório", "JEL Classification", "Administração Pública", "Séries Temporais", "Estatística".
-PRIORIZE tags específicas de economia que ajudem na busca por indicadores e conceitos econômicos brasileiros.
-`;
+🎯 CONTEXTO: Documento de ECONOMIA/FINANÇAS.
+PRIORIZE códigos em: economia.*, tecnologia.dados
+EVITE códigos muito genéricos se existirem específicos.`;
     } else if (chatType === 'health') {
       contextualGuidance = `
-🎯 CONTEXTO: Este documento é de SAÚDE.
-
-TAGS PRIORITÁRIAS para documentos de saúde:
-- Tags Pai RECOMENDADAS: "Saúde", "Medicina", "Tratamentos", "Prevenção", "Bem-estar", "Hospital"
-- Tags Filho: termos médicos específicos extraídos do documento
-
-⚠️ EVITE tags genéricas. PRIORIZE termos médicos e de saúde.
-`;
+🎯 CONTEXTO: Documento de SAÚDE.
+PRIORIZE códigos em: saude.*, conhecimento.ciencias
+EVITE códigos não relacionados a saúde.`;
     } else if (chatType === 'study') {
       contextualGuidance = `
-🎯 CONTEXTO: Este documento é de ESTUDO/EDUCAÇÃO.
-
-TAGS PRIORITÁRIAS para documentos de estudo:
-- Tags Pai RECOMENDADAS: "Educação", "Tecnologia", "Inteligência Artificial", "Inovação", "Pesquisa"
-- Tags Filho: conceitos técnicos específicos do documento
-
-⚠️ EVITE tags genéricas. PRIORIZE termos técnicos e educacionais.
-`;
+🎯 CONTEXTO: Documento de ESTUDO/EDUCAÇÃO.
+PRIORIZE códigos em: conhecimento.*, tecnologia.*, ideias.*
+EVITE códigos muito específicos de outros domínios.`;
     }
     
-    // Use Lovable AI to generate hierarchical tags with context of existing tags
-    const systemPrompt = `Você é um especialista em categorização de documentos. Analise o texto e gere tags hierárquicas.
+    // 4. Build AI prompt
+    const systemPrompt = `Você é um especialista em classificação de documentos usando uma taxonomia hierárquica pré-definida.
+
+## TAXONOMIA DISPONÍVEL (USE APENAS ESTES CÓDIGOS):
+${taxonomyTree}
+
 ${contextualGuidance}
 
-TAGS EXISTENTES NO SISTEMA:
-${existingTagNames.length > 0 ? existingTagNames.map(name => `- "${name}"`).join('\n') : '(Nenhuma tag existente)'}
-${mergeRulesInstruction}
+## REGRAS DE APRENDIZADO (NÃO VIOLAR):
+${correctionRules ? `Correções aprendidas (use sempre a versão corrigida):
+${correctionRules}` : '(Nenhuma correção registrada)'}
 
-REGRAS DE PADRONIZAÇÃO:
-1. SE uma tag existente é semanticamente equivalente à que você criaria, USE A EXISTENTE (retorne "existingName" com o nome exato)
-2. SE a tag não existe mas é similar (ex: "IA" vs "Inteligência Artificial"), sugira a versão mais completa e padronizada
-3. NUNCA crie duplicatas como "Machine Learning" e "Aprendizado de Máquina" - escolha UMA versão padronizada
-4. Para tags filhas, certifique-se de que o nome seja específico e não genérico
-5. Priorize REUTILIZAR tags existentes quando o documento se enquadrar nelas
-6. SE existe uma REGRA DE APRENDIZADO para uma tag, USE OBRIGATORIAMENTE a versão canônica
+${rejectedCodes.length > 0 ? `
+Códigos rejeitados (NÃO USE):
+${rejectedCodes.map(c => `- ${c}`).join('\n')}` : ''}
 
-IMPORTANTE: Retorne APENAS um JSON válido, sem markdown, sem explicações.
+## INSTRUÇÕES:
+1. Analise o texto do documento
+2. Selecione 2-5 códigos de taxonomia que MELHOR representam o conteúdo
+3. Use APENAS códigos que existem na taxonomia acima
+4. Atribua confidence de 0.5 a 1.0 baseado na relevância
+5. Priorize códigos mais específicos (níveis mais baixos) quando aplicável
 
-Formato esperado:
+## FORMATO DE RESPOSTA (APENAS JSON, SEM MARKDOWN):
 {
-  "parentTags": [
-    {"name": "Categoria Ampla 1", "confidence": 0.95, "existingName": "nome-exato-se-existir-ou-null"},
-    {"name": "Categoria Ampla 2", "confidence": 0.85, "existingName": null}
+  "suggestions": [
+    {"code": "economia.indicadores", "confidence": 0.95},
+    {"code": "tecnologia.dados", "confidence": 0.80}
   ],
-  "childTags": {
-    "Categoria Ampla 1": [
-      {"name": "Tópico Específico A", "confidence": 0.90},
-      {"name": "Tópico Específico B", "confidence": 0.80}
-    ],
-    "Categoria Ampla 2": [
-      {"name": "Tópico Específico C", "confidence": 0.85}
-    ]
-  }
-}
-
-Regras:
-- 3-5 tags pai (categorias amplas)
-- 5-10 tags filhas no total, distribuídas entre os pais
-- Confidence entre 0.0 e 1.0 (NUNCA use percentagens)
-- Use "existingName" quando a tag já existe no sistema para evitar duplicatas`;
+  "reasoning": "Breve explicação da classificação"
+}`;
     
+    // 5. Call AI
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -143,16 +165,10 @@ Regras:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: `Analise este documento e gere tags hierárquicas:\n\n${text.substring(0, 3000)}`
-          }
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Classifique este documento:\n\n${text.substring(0, 4000)}` }
         ],
-        temperature: 0.3,
+        temperature: 0.2,
       }),
     });
     
@@ -163,120 +179,107 @@ Regras:
     const data = await response.json();
     const content = data.choices[0].message.content;
     
-    // Parse JSON response
-    let tags;
+    // 6. Parse response
+    let result;
     try {
-      // Remove markdown code blocks if present
       const cleanContent = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      tags = JSON.parse(cleanContent);
+      result = JSON.parse(cleanContent);
     } catch (e) {
-      console.error("Failed to parse tags JSON:", content);
+      console.error("[suggest-document-tags] Failed to parse AI response:", content);
       throw new Error("Failed to parse AI response");
     }
     
-    // Create index of existing tags for fast lookup
-    const existingTagIndex = new Map(
-      existingTags?.map(t => [t.tag_name.toLowerCase(), t.id]) || []
-    );
+    console.log(`[suggest-document-tags] AI suggested ${result.suggestions?.length || 0} taxonomy codes`);
     
-  // Helper function to apply merge rules and track usage
-  const appliedRules: string[] = [];
-  const applyMergeRules = (tagName: string): string => {
-    const canonical = mergeRulesMap.get(tagName.toLowerCase());
-    if (canonical) {
-      console.log(`ML Rule applied: "${tagName}" → "${canonical}"`);
-      appliedRules.push(tagName.toLowerCase());
-      return canonical;
-    }
-    return tagName;
-  };
-  
-  // Function to increment merge_count for applied rules
-  const incrementAppliedRulesCount = async () => {
-    if (appliedRules.length === 0) return;
+    // 7. Validate and enrich suggestions with taxonomy data
+    const validSuggestions: Array<{
+      code: string;
+      confidence: number;
+      taxonomy_id: string;
+      taxonomy_name: string;
+    }> = [];
     
-    for (const sourceTag of appliedRules) {
-      try {
-        await supabase.rpc("increment_merge_rule_count", { 
-          p_source_tag: sourceTag, 
-          p_chat_type: chatType || "health" 
+    const taxonomyMap = new Map(taxonomyNodes?.map(n => [n.code, n]) || []);
+    
+    for (const suggestion of result.suggestions || []) {
+      const taxonomy = taxonomyMap.get(suggestion.code);
+      if (taxonomy) {
+        validSuggestions.push({
+          code: suggestion.code,
+          confidence: Math.min(1, Math.max(0.5, suggestion.confidence)),
+          taxonomy_id: taxonomy.id,
+          taxonomy_name: taxonomy.name,
         });
-        console.log(`Incremented count for ML rule: ${sourceTag}`);
-      } catch (err) {
-        console.log(`Could not increment count for rule: ${sourceTag}`, err);
-      }
-    }
-  };
-    
-    // Save parent tags (reuse existing or create new)
-    const parentTagIds: { [key: string]: string } = {};
-    
-    for (const parentTag of tags.parentTags) {
-      // Apply merge rules first
-      let tagNameToUse = parentTag.existingName || parentTag.name;
-      tagNameToUse = applyMergeRules(tagNameToUse);
-      
-      const existingId = existingTagIndex.get(tagNameToUse.toLowerCase());
-      
-      if (existingId) {
-        // Reuse existing tag
-        parentTagIds[parentTag.name] = existingId;
-        console.log(`Reusing existing parent tag: ${tagNameToUse}`);
       } else {
-        // Create new tag
-        const { data: savedTag } = await supabase
-          .from("document_tags")
-          .insert({
-            document_id: documentId,
-            tag_name: tagNameToUse,
-            tag_type: "parent",
-            confidence: parentTag.confidence,
-            source: "ai"
-          })
-          .select()
-          .single();
-        
-        if (savedTag) {
-          parentTagIds[parentTag.name] = savedTag.id;
-          console.log(`Created new parent tag: ${tagNameToUse}`);
-        }
+        console.log(`[suggest-document-tags] Ignoring invalid code: ${suggestion.code}`);
       }
     }
     
-    // Save child tags
-    for (const [parentName, childTags] of Object.entries(tags.childTags)) {
-      const parentId = parentTagIds[parentName];
-      if (!parentId) continue;
+    console.log(`[suggest-document-tags] ${validSuggestions.length} valid suggestions after validation`);
+    
+    // 8. Save to ml_tag_suggestions if requested
+    if (saveSuggestions && validSuggestions.length > 0) {
+      const suggestionsToInsert = validSuggestions.map(s => ({
+        document_id: documentId,
+        taxonomy_id: s.taxonomy_id,
+        suggested_code: s.code,
+        confidence: s.confidence,
+        source: 'ai_suggestion',
+        status: 'pending',
+      }));
       
-      for (const childTag of childTags as any[]) {
-        // Apply merge rules to child tags too
-        const childTagName = applyMergeRules(childTag.name);
-        
-        await supabase
-          .from("document_tags")
-          .insert({
-            document_id: documentId,
-            tag_name: childTagName,
-            tag_type: "child",
-            parent_tag_id: parentId,
-            confidence: childTag.confidence,
-            source: "ai"
-          });
+      const { error: insertError } = await supabase
+        .from("ml_tag_suggestions")
+        .insert(suggestionsToInsert);
+      
+      if (insertError) {
+        console.error("[suggest-document-tags] Error saving suggestions:", insertError);
+        // Don't throw - still return the suggestions
+      } else {
+        console.log(`[suggest-document-tags] Saved ${suggestionsToInsert.length} suggestions to ml_tag_suggestions`);
       }
     }
     
-    // Increment usage counts for applied ML rules
-    await incrementAppliedRulesCount();
+    // 9. Also create entity_tags directly for high-confidence suggestions (auto-approve)
+    const highConfidenceSuggestions = validSuggestions.filter(s => s.confidence >= 0.9);
     
-    console.log(`Tags generated for document ${documentId}, ${appliedRules.length} ML rules applied`);
+    if (highConfidenceSuggestions.length > 0) {
+      const entityTagsToInsert = highConfidenceSuggestions.map(s => ({
+        entity_id: documentId,
+        entity_type: 'document',
+        taxonomy_id: s.taxonomy_id,
+        source: 'ai_auto',
+        confidence: s.confidence,
+        is_primary: false,
+      }));
+      
+      const { error: entityError } = await supabase
+        .from("entity_tags")
+        .upsert(entityTagsToInsert, { 
+          onConflict: 'entity_id,entity_type,taxonomy_id',
+          ignoreDuplicates: true 
+        });
+      
+      if (entityError) {
+        console.log("[suggest-document-tags] Error auto-creating entity_tags:", entityError);
+      } else {
+        console.log(`[suggest-document-tags] Auto-created ${highConfidenceSuggestions.length} entity_tags (confidence >= 0.9)`);
+      }
+    }
     
     return new Response(
-      JSON.stringify({ success: true, tags, rulesApplied: appliedRules.length }),
+      JSON.stringify({
+        success: true,
+        suggestions: validSuggestions,
+        reasoning: result.reasoning,
+        autoApproved: highConfidenceSuggestions.length,
+        pendingReview: validSuggestions.length - highConfidenceSuggestions.length,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
     
   } catch (error) {
-    console.error("Error generating tags:", error);
+    console.error("[suggest-document-tags] Error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
