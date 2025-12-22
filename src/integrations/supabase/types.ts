@@ -1582,6 +1582,7 @@ export type Database = {
           status: string | null
           target_chat: string
           text_preview: string | null
+          title_source: string | null
           total_chunks: number | null
           total_words: number | null
           updated_at: string | null
@@ -1607,6 +1608,7 @@ export type Database = {
           status?: string | null
           target_chat: string
           text_preview?: string | null
+          title_source?: string | null
           total_chunks?: number | null
           total_words?: number | null
           updated_at?: string | null
@@ -1632,6 +1634,7 @@ export type Database = {
           status?: string | null
           target_chat?: string
           text_preview?: string | null
+          title_source?: string | null
           total_chunks?: number | null
           total_words?: number | null
           updated_at?: string | null
