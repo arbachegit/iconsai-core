@@ -17,7 +17,11 @@ export interface TagSuggestion {
   created_at: string;
   // Joined data
   document?: {
+    id: string;
     filename: string;
+    ai_title: string | null;
+    ai_summary: string | null;
+    title_was_renamed: boolean | null;
   };
   taxonomy?: {
     name: string;
@@ -55,7 +59,7 @@ export function useTagSuggestions(status: string = "pending") {
         .from("ml_tag_suggestions")
         .select(`
           *,
-          document:documents(filename),
+          document:documents(id, filename, ai_title, ai_summary, title_was_renamed),
           taxonomy:global_taxonomy!ml_tag_suggestions_taxonomy_id_fkey(name, code),
           corrected_taxonomy:global_taxonomy!ml_tag_suggestions_corrected_to_taxonomy_id_fkey(name, code)
         `)
