@@ -4847,9 +4847,7 @@ export type Database = {
       get_taxonomy_coverage_stats: {
         Args: never
         Returns: {
-          avg_tags_per_document: number
           coverage_percentage: number
-          documents_by_source: Json
           documents_with_taxonomy: number
           documents_without_taxonomy: number
           low_confidence_count: number
