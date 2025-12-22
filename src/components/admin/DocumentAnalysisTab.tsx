@@ -51,7 +51,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle, Heart, BookOpen, Package, Check, AlertTriangle, X, Plus, Trash2, Merge, FolderTree } from "lucide-react";
+import { FileText, ChevronDown, Loader2, Tag, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileJson, FileDown, HelpCircle, Heart, BookOpen, Package, Check, AlertTriangle, X, Plus, Trash2, Merge, FolderTree, Database, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
@@ -123,6 +123,9 @@ export const DocumentAnalysisTab = () => {
   const [unifyModalOpen, setUnifyModalOpen] = useState(false);
   const [adoptModalOpen, setAdoptModalOpen] = useState(false);
   const [isAdoptProcessing, setIsAdoptProcessing] = useState(false);
+  
+  // Migration state
+  const [isMigrating, setIsMigrating] = useState(false);
   
   const queryClient = useQueryClient();
 
@@ -591,28 +594,81 @@ export const DocumentAnalysisTab = () => {
             Visualização detalhada de documentos e suas categorizações
           </p>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => handleExport('csv')}>
-              <FileText className="h-4 w-4 mr-2" /> CSV
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('xlsx')}>
-              <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('json')}>
-              <FileJson className="h-4 w-4 mr-2" /> JSON
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('pdf')}>
-              <FileDown className="h-4 w-4 mr-2" /> PDF
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={isMigrating}
+                  onClick={async () => {
+                    setIsMigrating(true);
+                    try {
+                      const { data, error } = await supabase.functions.invoke('migrate-document-titles');
+                      
+                      if (error) {
+                        toast.error(`Erro na migração: ${error.message}`);
+                        return;
+                      }
+                      
+                      if (data?.results) {
+                        const { renamed, kept, errors } = data.results;
+                        toast.success(
+                          `Migração concluída: ${renamed} renomeados, ${kept} mantidos` +
+                          (errors?.length > 0 ? `, ${errors.length} erros` : '')
+                        );
+                      } else {
+                        toast.info(data?.message || 'Migração concluída');
+                      }
+                      
+                      // Refresh documents list
+                      queryClient.invalidateQueries({ queryKey: ["documents-analysis"] });
+                    } catch (err: any) {
+                      toast.error(`Erro: ${err.message}`);
+                    } finally {
+                      setIsMigrating(false);
+                    }
+                  }}
+                >
+                  {isMigrating ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-2" />
+                  )}
+                  {isMigrating ? 'Migrando...' : 'Migrar Títulos'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-sm">Processa documentos legados, detectando títulos ilegíveis</p>
+                <p className="text-xs text-muted-foreground">e gerando títulos otimizados com IA</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <FileText className="h-4 w-4 mr-2" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('json')}>
+                <FileJson className="h-4 w-4 mr-2" /> JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <FileDown className="h-4 w-4 mr-2" /> PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Document Rename Stats */}

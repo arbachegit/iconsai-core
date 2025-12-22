@@ -251,3 +251,9 @@ verify_jwt = false
 # ============================================
 [functions.generate-document-title]
 verify_jwt = false
+
+# ============================================
+# DOCUMENT TITLE MIGRATION - One-time (Admin)
+# ============================================
+[functions.migrate-document-titles]
+verify_jwt = true
