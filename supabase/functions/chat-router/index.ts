@@ -42,6 +42,22 @@ interface ChatRequest {
   deviceId?: string;
 }
 
+interface OrchestratedContext {
+  contextCode: string;
+  contextName: string;
+  promptTemplate: string;
+  promptAdditions: string;
+  antiprompt: string;
+  maieuticPrompt: string;
+  taxonomyCodes: string[];
+  matchThreshold: number;
+  matchCount: number;
+  tone: string;
+  cognitiveMode: "normal" | "simplified" | "maieutic";
+  confidence: number;
+  wasOverridden: boolean;
+}
+
 // ===================== CONSTANTS =====================
 const INDICATOR_KEYWORDS: Record<string, string[]> = {
   'SELIC': ['selic', 'taxa básica', 'juros básico', 'taxa de juros'],
@@ -71,6 +87,53 @@ const BRAZILIAN_STATES: Record<string, string> = {
   'sp': 'SP', 'são paulo': 'SP', 'se': 'SE', 'sergipe': 'SE',
   'to': 'TO', 'tocantins': 'TO',
 };
+
+// ===================== ORCHESTRATOR =====================
+async function getOrchestratedContext(
+  supabase: any,
+  query: string,
+  overrideSlug?: string | null
+): Promise<OrchestratedContext | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_orchestrated_context', {
+      p_query: query,
+      p_override_slug: overrideSlug || null
+    });
+
+    if (error) {
+      console.error('[Orchestrator] RPC error:', error);
+      return null;
+    }
+
+    if (!data) {
+      console.warn('[Orchestrator] No context returned');
+      return null;
+    }
+
+    const context: OrchestratedContext = {
+      contextCode: data.contextCode || 'geral',
+      contextName: data.contextName || 'Contexto Geral',
+      promptTemplate: data.promptTemplate || '',
+      promptAdditions: data.promptAdditions || '',
+      antiprompt: data.antiprompt || '',
+      maieuticPrompt: data.maieuticPrompt || '',
+      taxonomyCodes: data.taxonomyCodes || [],
+      matchThreshold: data.matchThreshold || 0.15,
+      matchCount: data.matchCount || 5,
+      tone: data.tone || 'formal',
+      cognitiveMode: data.cognitiveMode || 'normal',
+      confidence: data.confidence || 0.5,
+      wasOverridden: data.wasOverridden || false
+    };
+
+    console.log(`[Orchestrator] Detected context: ${context.contextCode} (confidence: ${(context.confidence * 100).toFixed(1)}%, mode: ${context.cognitiveMode})`);
+    
+    return context;
+  } catch (err) {
+    console.error('[Orchestrator] Exception:', err);
+    return null;
+  }
+}
 
 // ===================== HELPER FUNCTIONS =====================
 function detectIndicators(query: string): string[] {
@@ -380,7 +443,7 @@ async function getChatConfig(supabase: any, chatType: string) {
   };
 }
 
-// Busca taxonomyCodes do agente via agent_tag_profiles
+// Busca taxonomyCodes do agente via agent_tag_profiles (fallback legado)
 async function getAgentTaxonomyCodes(
   supabase: any, 
   agentSlug: string
@@ -558,6 +621,8 @@ function buildSystemPrompt({
   userContext,
   memoryContext,
   isPwaMode,
+  maieuticPrompt,
+  antiprompt,
 }: {
   chatType: string;
   customPrompt?: string;
@@ -571,6 +636,8 @@ function buildSystemPrompt({
   userContext?: string;
   memoryContext?: string;
   isPwaMode?: boolean;
+  maieuticPrompt?: string;
+  antiprompt?: string;
 }): string {
   const topicsContext = scopeTopics.length > 0 
     ? `\nTópicos do escopo: ${scopeTopics.join(", ")}`
@@ -585,6 +652,12 @@ function buildSystemPrompt({
 - Varie suas respostas, não repita frases iguais
 - Seja natural e amigável
 - SEMPRE cite a fonte e data quando mencionar dados econômicos` : "";
+
+  // Antiprompt: o que NÃO fazer
+  const antipromptSection = antiprompt ? `
+
+## ⛔ RESTRIÇÕES (NÃO FAÇA ISSO):
+${antiprompt}` : "";
 
   return `Você é um assistente de IA especializado em fornecer informações precisas e relevantes.
 
@@ -603,6 +676,10 @@ ${indicatorsContext || ""}
 ${emotionalContext || ""}
 
 ${getAdaptiveResponseProtocol()}
+
+${maieuticPrompt || ""}
+
+${antipromptSection}
 
 ${ragContext}
 
@@ -702,23 +779,51 @@ serve(async (req) => {
       // Save user message
       await saveMessage(supabase, pwaSessionId, 'user', pwaMessage);
 
-      // Get agent config from database
-      const { data: agent, error: agentError } = await supabase
-        .from("chat_agents")
-        .select("*")
-        .eq("slug", agentSlug || 'economia')
-        .eq("is_active", true)
-        .single();
+      // ===== ORQUESTRADOR: Usar contexto dinâmico =====
+      const orchestratedContext = await getOrchestratedContext(supabase, pwaMessage, agentSlug);
+      
+      let contextCode = agentSlug || 'economia';
+      let systemPromptFromContext = '';
+      let maieuticPrompt = '';
+      let antiprompt = '';
+      let taxonomyCodes: string[] = [];
+      let matchThreshold = 0.15;
+      let matchCount = 5;
 
-      if (agentError || !agent) {
-        logger.error("Agent not found", { agentSlug, error: agentError });
-        return new Response(
-          JSON.stringify({ 
-            response: "Desculpe, o agente não está disponível no momento.",
-            sessionId: pwaSessionId
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      if (orchestratedContext) {
+        contextCode = orchestratedContext.contextCode;
+        systemPromptFromContext = orchestratedContext.promptTemplate;
+        maieuticPrompt = orchestratedContext.maieuticPrompt;
+        antiprompt = orchestratedContext.antiprompt;
+        taxonomyCodes = orchestratedContext.taxonomyCodes;
+        matchThreshold = orchestratedContext.matchThreshold;
+        matchCount = orchestratedContext.matchCount;
+        
+        logger.info("Orchestrator context applied", {
+          contextCode,
+          cognitiveMode: orchestratedContext.cognitiveMode,
+          taxonomyCount: taxonomyCodes.length,
+          wasOverridden: orchestratedContext.wasOverridden
+        });
+      } else {
+        // Fallback: buscar agente legado
+        logger.warn("Orchestrator fallback to legacy agent", { agentSlug });
+        const { data: agent } = await supabase
+          .from("chat_agents")
+          .select("*")
+          .eq("slug", agentSlug || 'economia')
+          .eq("is_active", true)
+          .single();
+
+        if (agent) {
+          systemPromptFromContext = agent.system_prompt || '';
+          matchThreshold = agent.match_threshold || 0.15;
+          matchCount = agent.match_count || 5;
+          
+          // Buscar taxonomyCodes via legado
+          const agentTaxonomies = await getAgentTaxonomyCodes(supabase, agentSlug || 'economia');
+          taxonomyCodes = agentTaxonomies.included;
+        }
       }
 
       // Detect and fetch indicators
@@ -733,36 +838,27 @@ serve(async (req) => {
         logger.info("Indicators fetched", { codes: Object.keys(indicatorData) });
       }
 
-      // Buscar taxonomyCodes do agente
-      const agentTaxonomies = await getAgentTaxonomyCodes(supabase, agentSlug || 'economia');
-      logger.info("Agent taxonomies loaded", { 
-        slug: agentSlug, 
-        included: agentTaxonomies.included,
-        excluded: agentTaxonomies.excluded
-      });
-
-      // RAG search usando taxonomias
+      // RAG search usando taxonomias do orquestrador
       let ragContext = "";
-      if (agent.rag_collection || agentTaxonomies.included.length > 0) {
+      if (taxonomyCodes.length > 0 || contextCode) {
         try {
-          // Usar search-documents edge function com taxonomias
           const { context, documentTitles } = await searchRAGDocuments(
             supabase,
             pwaMessage,
-            agent.rag_collection || agentSlug || 'economia',
-            agent.match_threshold || 0.15,
-            agent.match_count || 5,
-            agent.allowed_tags,
-            agent.forbidden_tags,
-            agentTaxonomies.included,
-            agentTaxonomies.excluded
+            contextCode,
+            matchThreshold,
+            matchCount,
+            null,
+            null,
+            taxonomyCodes,
+            []
           );
           
           if (context) {
             ragContext = context;
-            logger.info("RAG documents found via taxonomy", { 
+            logger.info("RAG documents found via orchestrator", { 
               count: documentTitles.length,
-              taxonomies: agentTaxonomies.included
+              taxonomies: taxonomyCodes
             });
           }
         } catch (ragError) {
@@ -781,18 +877,20 @@ serve(async (req) => {
 
       // Build system prompt
       const systemPrompt = buildSystemPrompt({
-        chatType: chatType as string,
-        customPrompt: agent.system_prompt,
+        chatType: contextCode,
+        customPrompt: systemPromptFromContext,
         ragContext,
         fileContext: "",
         culturalTone: "",
-        guardrails: getCategoryGuardrails(chatType as string),
+        guardrails: getCategoryGuardrails(contextCode),
         scopeTopics: [],
         indicatorsContext,
         emotionalContext,
         userContext,
         memoryContext,
         isPwaMode: true,
+        maieuticPrompt,
+        antiprompt,
       });
 
       // Build messages
@@ -803,7 +901,7 @@ serve(async (req) => {
       ];
 
       // Call AI (non-streaming for PWA)
-      logger.info("Calling AI Gateway (PWA mode)");
+      logger.info("Calling AI Gateway (PWA mode)", { contextCode });
       
       const chatResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -848,7 +946,6 @@ serve(async (req) => {
 
       const chatData = await chatResponse.json();
       const response = chatData.choices?.[0]?.message?.content || 
-                       agent.rejection_message || 
                        "Desculpe, não consegui processar sua pergunta.";
 
       // Save assistant response
@@ -856,12 +953,13 @@ serve(async (req) => {
 
       logger.info("PWA request completed", { 
         sessionId: pwaSessionId, 
+        contextCode,
         responseLength: response.length,
         durationMs: logger.getDuration() 
       });
 
       return new Response(
-        JSON.stringify({ response, sessionId: pwaSessionId }),
+        JSON.stringify({ response, sessionId: pwaSessionId, contextCode }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -891,34 +989,61 @@ serve(async (req) => {
     const lastUserMessage = messages.filter(m => m.role === "user").pop();
     const userQuery = lastUserMessage?.content || "";
 
-    // Get chat configuration
-    const chatConfig = await getChatConfig(supabase, chatType);
-    logger.info("Chat config loaded", { 
-      threshold: chatConfig.matchThreshold, 
-      count: chatConfig.matchCount 
-    });
+    // ===== ORQUESTRADOR: Usar contexto dinâmico para Standard Mode =====
+    const orchestratedContext = await getOrchestratedContext(supabase, userQuery, chatType);
+    
+    let contextCode = chatType;
+    let systemPromptFromContext = '';
+    let maieuticPrompt = '';
+    let antiprompt = '';
+    let taxonomyCodes: string[] = [];
+    let matchThreshold = 0.15;
+    let matchCount = 5;
+    let scopeTopics: string[] = [];
 
-    // Buscar taxonomyCodes do agente (Standard mode)
-    const agentTaxonomies = await getAgentTaxonomyCodes(supabase, chatType);
-    if (agentTaxonomies.included.length > 0) {
-      logger.info("Agent taxonomies loaded (standard)", { 
-        chatType, 
-        included: agentTaxonomies.included 
+    if (orchestratedContext) {
+      contextCode = orchestratedContext.contextCode;
+      systemPromptFromContext = orchestratedContext.promptTemplate;
+      maieuticPrompt = orchestratedContext.maieuticPrompt;
+      antiprompt = orchestratedContext.antiprompt;
+      taxonomyCodes = orchestratedContext.taxonomyCodes;
+      matchThreshold = orchestratedContext.matchThreshold;
+      matchCount = orchestratedContext.matchCount;
+      
+      logger.info("Orchestrator context applied (standard)", {
+        contextCode,
+        cognitiveMode: orchestratedContext.cognitiveMode,
+        taxonomyCount: taxonomyCodes.length
       });
+    } else {
+      // Fallback para chat_config legado
+      logger.warn("Orchestrator fallback to legacy chat_config", { chatType });
+      const chatConfig = await getChatConfig(supabase, chatType);
+      matchThreshold = chatConfig.matchThreshold;
+      matchCount = chatConfig.matchCount;
+      systemPromptFromContext = chatConfig.systemPromptBase;
+      scopeTopics = chatConfig.scopeTopics;
+      
+      // Buscar taxonomyCodes via legado
+      const agentTaxonomies = await getAgentTaxonomyCodes(supabase, chatType);
+      taxonomyCodes = agentTaxonomies.included;
     }
 
+    // Use agentConfig overrides if provided
+    const finalPrompt = agentConfig?.systemPrompt || systemPromptFromContext;
+
     // Search RAG documents with taxonomy support
-    const ragTargetChat = agentConfig?.ragCollection || chatType;
+    const ragTargetChat = agentConfig?.ragCollection || contextCode;
     const { context: ragContext, documentTitles } = await searchRAGDocuments(
       supabase,
       userQuery,
       ragTargetChat,
-      chatConfig.matchThreshold,
-      chatConfig.matchCount,
+      matchThreshold,
+      matchCount,
       agentConfig?.allowedTags,
       agentConfig?.forbiddenTags,
-      agentTaxonomies.included,
-      agentTaxonomies.excluded
+      taxonomyCodes,
+      []
     );
 
     if (documentTitles.length > 0) {
@@ -933,14 +1058,16 @@ serve(async (req) => {
 
     // Build system prompt
     const systemPrompt = buildSystemPrompt({
-      chatType,
-      customPrompt: agentConfig?.systemPrompt || chatConfig.systemPromptBase,
+      chatType: contextCode,
+      customPrompt: finalPrompt,
       ragContext,
       fileContext,
       culturalTone,
-      guardrails: getCategoryGuardrails(chatType),
-      scopeTopics: chatConfig.scopeTopics,
+      guardrails: getCategoryGuardrails(contextCode),
+      scopeTopics,
       isPwaMode: false,
+      maieuticPrompt,
+      antiprompt,
     });
 
     // Prepare messages for API
@@ -950,7 +1077,7 @@ serve(async (req) => {
     }));
 
     // Call Lovable AI Gateway
-    logger.info("Calling AI Gateway (streaming)");
+    logger.info("Calling AI Gateway (streaming)", { contextCode });
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -984,7 +1111,7 @@ serve(async (req) => {
       return errorResponse("Erro ao processar mensagem", 500);
     }
 
-    logger.info("Request completed", { chatType, ragDocsFound: documentTitles.length, durationMs: logger.getDuration() });
+    logger.info("Request completed", { contextCode, ragDocsFound: documentTitles.length, durationMs: logger.getDuration() });
 
     return new Response(response.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
