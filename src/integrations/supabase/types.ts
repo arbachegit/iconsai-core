@@ -5212,6 +5212,12 @@ export type Database = {
         }
         Returns: string
       }
+      normalize_document_names: {
+        Args: never
+        Returns: {
+          updated_count: number
+        }[]
+      }
       onboard_document_taxonomy: {
         Args: {
           p_auto_apply_threshold?: number
