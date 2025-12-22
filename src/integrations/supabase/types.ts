@@ -2077,6 +2077,57 @@ export type Database = {
           },
         ]
       }
+      maieutic_metrics: {
+        Row: {
+          cognitive_mode: string
+          conversation_continued: boolean | null
+          created_at: string | null
+          detected_categories: string[] | null
+          id: string
+          message_id: string | null
+          next_message_type: string | null
+          pillbox_count: number | null
+          questions_asked: number | null
+          response_length: number | null
+          session_id: string | null
+          time_to_next_message: number | null
+          user_asked_clarification: boolean | null
+          user_confirmed_understanding: boolean | null
+        }
+        Insert: {
+          cognitive_mode?: string
+          conversation_continued?: boolean | null
+          created_at?: string | null
+          detected_categories?: string[] | null
+          id?: string
+          message_id?: string | null
+          next_message_type?: string | null
+          pillbox_count?: number | null
+          questions_asked?: number | null
+          response_length?: number | null
+          session_id?: string | null
+          time_to_next_message?: number | null
+          user_asked_clarification?: boolean | null
+          user_confirmed_understanding?: boolean | null
+        }
+        Update: {
+          cognitive_mode?: string
+          conversation_continued?: boolean | null
+          created_at?: string | null
+          detected_categories?: string[] | null
+          id?: string
+          message_id?: string | null
+          next_message_type?: string | null
+          pillbox_count?: number | null
+          questions_asked?: number | null
+          response_length?: number | null
+          session_id?: string | null
+          time_to_next_message?: number | null
+          user_asked_clarification?: boolean | null
+          user_confirmed_understanding?: boolean | null
+        }
+        Relationships: []
+      }
       maieutic_training_categories: {
         Row: {
           antiprompt: string | null
@@ -4816,6 +4867,19 @@ export type Database = {
           max_date: string | null
           min_date: string | null
           total_count: number | null
+        }
+        Relationships: []
+      }
+      maieutic_effectiveness: {
+        Row: {
+          asked_clarification: number | null
+          avg_pillbox_count: number | null
+          avg_questions_asked: number | null
+          avg_response_time: number | null
+          cognitive_mode: string | null
+          confirmed_understanding: number | null
+          date: string | null
+          total_interactions: number | null
         }
         Relationships: []
       }
