@@ -2080,6 +2080,7 @@ export type Database = {
       maieutic_metrics: {
         Row: {
           cognitive_mode: string
+          context_code: string | null
           conversation_continued: boolean | null
           created_at: string | null
           detected_categories: string[] | null
@@ -2096,6 +2097,7 @@ export type Database = {
         }
         Insert: {
           cognitive_mode?: string
+          context_code?: string | null
           conversation_continued?: boolean | null
           created_at?: string | null
           detected_categories?: string[] | null
@@ -2112,6 +2114,7 @@ export type Database = {
         }
         Update: {
           cognitive_mode?: string
+          context_code?: string | null
           conversation_continued?: boolean | null
           created_at?: string | null
           detected_categories?: string[] | null
