@@ -29,7 +29,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { RagFlowDiagram } from "./RagFlowDiagram";
-import { extractReadableTitle, type PDFMetadata } from "@/lib/document-title-utils";
+import { extractReadableTitle, detectRenameReason, type PDFMetadata } from "@/lib/document-title-utils";
 
 // Configure PDF.js worker with local bundle
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -571,6 +571,10 @@ export const DocumentsTab = () => {
               } : s));
             }
 
+            // Detect WHY the title needs renaming (if it does)
+            const originalProblem = detectRenameReason(file.name);
+            const wasRenamed = titleResult.source !== 'filename';
+
             const {
               data: documents,
               error: docError
@@ -581,11 +585,13 @@ export const DocumentsTab = () => {
               text_preview: extractedText.substring(0, 500),
               status: "pending",
               target_chat: finalChat,
-              // Title fields with audit trail
-              ai_title: titleResult.source !== 'filename' ? titleResult.title : null,
+              // Title fields with full audit trail
+              ai_title: wasRenamed ? titleResult.title : null,
               needs_title_review: titleResult.source === 'ai',
               title_source: titleResult.source,
-              title_was_renamed: false // Not renamed yet
+              title_was_renamed: wasRenamed,
+              renamed_at: wasRenamed ? new Date().toISOString() : null,
+              rename_reason: originalProblem // 'numeric' | 'hash' | 'uuid' | 'unreadable' | 'technical' | 'mixed_pattern' | null
             }]).select();
             const document = documents?.[0];
             if (docError || !document) {
