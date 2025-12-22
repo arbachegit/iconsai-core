@@ -4130,6 +4130,16 @@ export type Database = {
       }
     }
     Functions: {
+      check_all_agents_coverage: {
+        Args: never
+        Returns: {
+          agent_name: string
+          agent_slug: string
+          coverage_status: string
+          taxonomy_codes: string[]
+          total_documents: number
+        }[]
+      }
       check_pwa_access: {
         Args: { p_agent_slug?: string; p_device_id: string }
         Returns: Json
@@ -4141,6 +4151,22 @@ export type Database = {
           p_uf_code: number
         }
         Returns: number
+      }
+      count_agent_accessible_documents: {
+        Args: { agent_slug: string }
+        Returns: {
+          document_count: number
+          taxonomy_code: string
+          taxonomy_name: string
+        }[]
+      }
+      get_agent_excluded_taxonomy_codes: {
+        Args: { agent_slug: string }
+        Returns: string[]
+      }
+      get_agent_taxonomy_codes: {
+        Args: { agent_slug: string }
+        Returns: string[]
       }
       get_schema_info: { Args: never; Returns: Json }
       get_term_context: { Args: { p_term: string }; Returns: Json }

@@ -380,6 +380,36 @@ async function getChatConfig(supabase: any, chatType: string) {
   };
 }
 
+// Busca taxonomyCodes do agente via agent_tag_profiles
+async function getAgentTaxonomyCodes(
+  supabase: any, 
+  agentSlug: string
+): Promise<{ included: string[]; excluded: string[] }> {
+  try {
+    // Buscar taxonomias incluídas
+    const { data: includedData } = await supabase.rpc("get_agent_taxonomy_codes", {
+      agent_slug: agentSlug
+    });
+    
+    // Buscar taxonomias excluídas
+    const { data: excludedData } = await supabase.rpc("get_agent_excluded_taxonomy_codes", {
+      agent_slug: agentSlug
+    });
+    
+    const included = includedData || [];
+    const excluded = excludedData || [];
+    
+    if (included.length > 0 || excluded.length > 0) {
+      console.log(`[chat-router] Agent ${agentSlug} taxonomies: included=[${included.join(',')}], excluded=[${excluded.join(',')}]`);
+    }
+    
+    return { included, excluded };
+  } catch (error) {
+    console.error(`[chat-router] Error fetching agent taxonomies for ${agentSlug}:`, error);
+    return { included: [], excluded: [] };
+  }
+}
+
 async function searchRAGDocuments(
   supabase: any,
   query: string,
@@ -387,7 +417,9 @@ async function searchRAGDocuments(
   matchThreshold: number,
   matchCount: number,
   allowedTags?: string[] | null,
-  forbiddenTags?: string[] | null
+  forbiddenTags?: string[] | null,
+  taxonomyCodes?: string[] | null,
+  excludeTaxonomyCodes?: string[] | null
 ): Promise<{ context: string; documentTitles: string[] }> {
   try {
     const { data: searchResults } = await supabase.functions.invoke("search-documents", {
@@ -397,7 +429,9 @@ async function searchRAGDocuments(
         matchThreshold,
         matchCount,
         allowedTags: allowedTags || [],
-        forbiddenTags: forbiddenTags || []
+        forbiddenTags: forbiddenTags || [],
+        taxonomyCodes: taxonomyCodes || [],
+        excludeTaxonomyCodes: excludeTaxonomyCodes || []
       }
     });
 
@@ -405,6 +439,8 @@ async function searchRAGDocuments(
       const documentTitles: string[] = [...new Set(searchResults.results.map((r: any) => 
         r.document_filename || r.metadata?.document_title
       ).filter(Boolean))] as string[];
+      
+      console.log(`[searchRAGDocuments] Found ${searchResults.results.length} results${taxonomyCodes?.length ? ` using taxonomies: [${taxonomyCodes.join(',')}]` : ''}`);
       
       const context = `\n\n📚 CONTEXTO RELEVANTE DOS DOCUMENTOS:\n\n${
         searchResults.results.map((r: any) => r.content).join("\n\n---\n\n")
@@ -697,39 +733,37 @@ serve(async (req) => {
         logger.info("Indicators fetched", { codes: Object.keys(indicatorData) });
       }
 
-      // RAG search
+      // Buscar taxonomyCodes do agente
+      const agentTaxonomies = await getAgentTaxonomyCodes(supabase, agentSlug || 'economia');
+      logger.info("Agent taxonomies loaded", { 
+        slug: agentSlug, 
+        included: agentTaxonomies.included,
+        excluded: agentTaxonomies.excluded
+      });
+
+      // RAG search usando taxonomias
       let ragContext = "";
-      if (agent.rag_collection) {
+      if (agent.rag_collection || agentTaxonomies.included.length > 0) {
         try {
-          const embeddingResponse = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "text-embedding-3-small",
-              input: pwaMessage,
-            }),
-          });
-
-          if (embeddingResponse.ok) {
-            const embeddingData = await embeddingResponse.json();
-            const queryEmbedding = embeddingData.data?.[0]?.embedding;
-
-            if (queryEmbedding) {
-              const { data: docs } = await supabase.rpc("search_documents", {
-                query_embedding: queryEmbedding,
-                target_chat_filter: agent.rag_collection,
-                match_threshold: agent.match_threshold || 0.15,
-                match_count: agent.match_count || 5,
-              });
-
-              if (docs?.length) {
-                ragContext = `\n\n📚 CONTEXTO DOS DOCUMENTOS:\n\n${docs.map((d: any) => d.content).join("\n\n---\n\n")}`;
-                logger.info("RAG documents found", { count: docs.length });
-              }
-            }
+          // Usar search-documents edge function com taxonomias
+          const { context, documentTitles } = await searchRAGDocuments(
+            supabase,
+            pwaMessage,
+            agent.rag_collection || agentSlug || 'economia',
+            agent.match_threshold || 0.15,
+            agent.match_count || 5,
+            agent.allowed_tags,
+            agent.forbidden_tags,
+            agentTaxonomies.included,
+            agentTaxonomies.excluded
+          );
+          
+          if (context) {
+            ragContext = context;
+            logger.info("RAG documents found via taxonomy", { 
+              count: documentTitles.length,
+              taxonomies: agentTaxonomies.included
+            });
           }
         } catch (ragError) {
           logger.warn("RAG search failed", { error: ragError });
@@ -864,7 +898,16 @@ serve(async (req) => {
       count: chatConfig.matchCount 
     });
 
-    // Search RAG documents
+    // Buscar taxonomyCodes do agente (Standard mode)
+    const agentTaxonomies = await getAgentTaxonomyCodes(supabase, chatType);
+    if (agentTaxonomies.included.length > 0) {
+      logger.info("Agent taxonomies loaded (standard)", { 
+        chatType, 
+        included: agentTaxonomies.included 
+      });
+    }
+
+    // Search RAG documents with taxonomy support
     const ragTargetChat = agentConfig?.ragCollection || chatType;
     const { context: ragContext, documentTitles } = await searchRAGDocuments(
       supabase,
@@ -873,7 +916,9 @@ serve(async (req) => {
       chatConfig.matchThreshold,
       chatConfig.matchCount,
       agentConfig?.allowedTags,
-      agentConfig?.forbiddenTags
+      agentConfig?.forbiddenTags,
+      agentTaxonomies.included,
+      agentTaxonomies.excluded
     );
 
     if (documentTitles.length > 0) {
