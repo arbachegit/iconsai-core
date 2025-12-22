@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap, Eye, Settings2, AlertTriangle, RotateCcw, Table2 as TableIcon, Brain, Tags, TrendingUp } from "lucide-react";
+import { Upload, FileText, Loader2, Trash2, RefreshCw, FileCode, CheckCircle2, XCircle, Clock, Download, Edit, ArrowUpDown, X, Plus, Search, Boxes, Package, BookOpen, Lightbulb, HelpCircle, Heart, GraduationCap, Eye, Settings2, AlertTriangle, RotateCcw, Table2 as TableIcon, Brain, Tags, TrendingUp, Sparkles, Hash, Shuffle } from "lucide-react";
+import { formatDateTime } from "@/lib/date-utils";
 import { DocumentTagEnrichmentModal, SelectedTag } from "./DocumentTagEnrichmentModal";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
@@ -2486,12 +2487,68 @@ export const DocumentsTab = () => {
                     <Popover>
                       <PopoverTrigger asChild>
                         <div className="cursor-pointer text-primary hover:underline">
-                          <span className="flex items-center gap-2">
+                          <span className="flex items-center gap-2 flex-wrap">
                             {doc.ai_title || doc.filename}
                             {doc.ai_title && doc.needs_title_review && (
                               <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-500">
                                 IA
                               </Badge>
+                            )}
+                            {doc.title_was_renamed && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge 
+                                      variant="secondary" 
+                                      className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 cursor-help"
+                                    >
+                                      <Sparkles className="w-3 h-3 mr-1" />
+                                      Otimizado
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-[280px]">
+                                    <div className="space-y-1">
+                                      <p className="text-sm font-medium">Título original:</p>
+                                      <p className="text-xs text-muted-foreground break-all">
+                                        {doc.original_title || doc.filename}
+                                      </p>
+                                      {doc.renamed_at && (
+                                        <p className="text-xs text-muted-foreground">
+                                          Renomeado em: {formatDateTime(doc.renamed_at)}
+                                        </p>
+                                      )}
+                                      {doc.rename_reason && (
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                          {doc.rename_reason === 'hash' || doc.rename_reason === 'uuid' || doc.rename_reason === 'numeric' ? (
+                                            <Hash className="h-3 w-3" />
+                                          ) : doc.rename_reason === 'technical' ? (
+                                            <Settings2 className="h-3 w-3" />
+                                          ) : doc.rename_reason === 'mixed_pattern' ? (
+                                            <Shuffle className="h-3 w-3" />
+                                          ) : doc.rename_reason === 'approved_ai_suggestion' ? (
+                                            <Brain className="h-3 w-3" />
+                                          ) : doc.rename_reason === 'manual_edit' ? (
+                                            <Edit className="h-3 w-3" />
+                                          ) : (
+                                            <AlertTriangle className="h-3 w-3" />
+                                          )}
+                                          <span>
+                                            {doc.rename_reason === 'numeric' ? 'Título era numérico' :
+                                             doc.rename_reason === 'hash' ? 'Título era hash' :
+                                             doc.rename_reason === 'uuid' ? 'Título era UUID' :
+                                             doc.rename_reason === 'technical' ? 'Título era técnico' :
+                                             doc.rename_reason === 'unreadable' ? 'Título era ilegível' :
+                                             doc.rename_reason === 'mixed_pattern' ? 'Título era misto' :
+                                             doc.rename_reason === 'manual_edit' ? 'Editado manualmente' :
+                                             doc.rename_reason === 'approved_ai_suggestion' ? 'Sugestão IA aprovada' :
+                                             doc.rename_reason}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                           </span>
                           {doc.ai_title && (
@@ -2506,8 +2563,17 @@ export const DocumentsTab = () => {
                         <div className="flex items-center gap-2 mb-3">
                           <FileText className="h-5 w-5 text-primary" />
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm truncate">
+                            <h4 className="font-semibold text-sm truncate flex items-center gap-2">
                               {doc.ai_title || doc.filename}
+                              {doc.title_was_renamed && (
+                                <Badge 
+                                  variant="secondary" 
+                                  className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                                >
+                                  <Sparkles className="w-3 h-3 mr-1" />
+                                  Otimizado
+                                </Badge>
+                              )}
                             </h4>
                             {doc.ai_title && (
                               <p className="text-xs text-muted-foreground truncate">{doc.filename}</p>
