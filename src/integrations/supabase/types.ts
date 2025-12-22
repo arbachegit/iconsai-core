@@ -937,6 +937,104 @@ export type Database = {
         }
         Relationships: []
       }
+      context_detection_rules: {
+        Row: {
+          context_id: string | null
+          created_at: string | null
+          id: string
+          rule_type: string | null
+          rule_value: string
+          weight: number | null
+        }
+        Insert: {
+          context_id?: string | null
+          created_at?: string | null
+          id?: string
+          rule_type?: string | null
+          rule_value: string
+          weight?: number | null
+        }
+        Update: {
+          context_id?: string | null
+          created_at?: string | null
+          id?: string
+          rule_type?: string | null
+          rule_value?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "context_detection_rules_context_id_fkey"
+            columns: ["context_id"]
+            isOneToOne: false
+            referencedRelation: "context_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      context_profiles: {
+        Row: {
+          antiprompt: string | null
+          code: string
+          created_at: string | null
+          description: string | null
+          detection_keywords: string[] | null
+          detection_priority: number | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          maieutic_enabled: boolean | null
+          match_count: number | null
+          match_threshold: number | null
+          name: string
+          prompt_additions: string | null
+          prompt_template: string
+          taxonomy_codes: string[] | null
+          tone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          antiprompt?: string | null
+          code: string
+          created_at?: string | null
+          description?: string | null
+          detection_keywords?: string[] | null
+          detection_priority?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          maieutic_enabled?: boolean | null
+          match_count?: number | null
+          match_threshold?: number | null
+          name: string
+          prompt_additions?: string | null
+          prompt_template?: string
+          taxonomy_codes?: string[] | null
+          tone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          antiprompt?: string | null
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          detection_keywords?: string[] | null
+          detection_priority?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          maieutic_enabled?: boolean | null
+          match_count?: number | null
+          match_threshold?: number | null
+          name?: string
+          prompt_additions?: string | null
+          prompt_template?: string
+          taxonomy_codes?: string[] | null
+          tone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       conversation_history: {
         Row: {
           chat_type: string | null
@@ -4401,6 +4499,15 @@ export type Database = {
           taxonomy_name: string
         }[]
       }
+      detect_context: {
+        Args: { p_query: string }
+        Returns: {
+          confidence: number
+          context_code: string
+          context_name: string
+          score: number
+        }[]
+      }
       extract_keywords_from_text: {
         Args: { p_limit?: number; p_text: string }
         Returns: string[]
@@ -4434,6 +4541,10 @@ export type Database = {
           rejected_count: number
           total_suggestions: number
         }[]
+      }
+      get_orchestrated_context: {
+        Args: { p_override_slug?: string; p_query: string }
+        Returns: Json
       }
       get_schema_info: { Args: never; Returns: Json }
       get_term_context: { Args: { p_term: string }; Returns: Json }
