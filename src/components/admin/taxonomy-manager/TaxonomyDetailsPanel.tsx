@@ -246,7 +246,9 @@ export function TaxonomyDetailsPanel({
                   className="flex items-center gap-2 p-2 rounded bg-muted/30 text-xs"
                 >
                   <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
-                  <span className="truncate flex-1 font-mono">{doc.entity_id.slice(0, 8)}...</span>
+                  <span className="truncate flex-1" title={doc.document_name || doc.entity_id}>
+                    {doc.document_name || `${doc.entity_id.slice(0, 8)}...`}
+                  </span>
                   <Badge variant="outline" className="text-[10px]">{doc.entity_type}</Badge>
                   <span className="text-muted-foreground">{Math.round((doc.confidence || 1) * 100)}%</span>
                 </div>
