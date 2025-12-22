@@ -4141,6 +4141,78 @@ export type Database = {
           },
         ]
       }
+      taxonomy_metrics_daily: {
+        Row: {
+          active_taxonomies: number | null
+          auto_classified: number | null
+          avg_confidence: number | null
+          classifications_ai_suggested: number | null
+          classifications_auto: number | null
+          classifications_manual: number | null
+          coverage_percentage: number | null
+          created_at: string | null
+          documents_with_taxonomy: number | null
+          documents_without_taxonomy: number | null
+          id: string
+          metric_date: string
+          new_taxonomies_created: number | null
+          onboarded_documents: number | null
+          orphan_taxonomies: number | null
+          pending_review: number | null
+          suggestions_approved: number | null
+          suggestions_pending: number | null
+          suggestions_rejected: number | null
+          total_documents: number | null
+          total_taxonomies: number | null
+        }
+        Insert: {
+          active_taxonomies?: number | null
+          auto_classified?: number | null
+          avg_confidence?: number | null
+          classifications_ai_suggested?: number | null
+          classifications_auto?: number | null
+          classifications_manual?: number | null
+          coverage_percentage?: number | null
+          created_at?: string | null
+          documents_with_taxonomy?: number | null
+          documents_without_taxonomy?: number | null
+          id?: string
+          metric_date: string
+          new_taxonomies_created?: number | null
+          onboarded_documents?: number | null
+          orphan_taxonomies?: number | null
+          pending_review?: number | null
+          suggestions_approved?: number | null
+          suggestions_pending?: number | null
+          suggestions_rejected?: number | null
+          total_documents?: number | null
+          total_taxonomies?: number | null
+        }
+        Update: {
+          active_taxonomies?: number | null
+          auto_classified?: number | null
+          avg_confidence?: number | null
+          classifications_ai_suggested?: number | null
+          classifications_auto?: number | null
+          classifications_manual?: number | null
+          coverage_percentage?: number | null
+          created_at?: string | null
+          documents_with_taxonomy?: number | null
+          documents_without_taxonomy?: number | null
+          id?: string
+          metric_date?: string
+          new_taxonomies_created?: number | null
+          onboarded_documents?: number | null
+          orphan_taxonomies?: number | null
+          pending_review?: number | null
+          suggestions_approved?: number | null
+          suggestions_pending?: number | null
+          suggestions_rejected?: number | null
+          total_documents?: number | null
+          total_taxonomies?: number | null
+        }
+        Relationships: []
+      }
       taxonomy_suggestions: {
         Row: {
           based_on_documents: string[] | null
@@ -4780,6 +4852,10 @@ export type Database = {
         Args: { p_agent_slug?: string; p_device_id: string }
         Returns: Json
       }
+      collect_daily_taxonomy_metrics: {
+        Args: { p_date?: string }
+        Returns: undefined
+      }
       convert_pmc_to_reais: {
         Args: {
           p_pmc_indicator_code: string
@@ -4929,6 +5005,29 @@ export type Database = {
         Returns: Json
       }
       get_schema_info: { Args: never; Returns: Json }
+      get_taxonomy_analytics_report: {
+        Args: { p_days?: number }
+        Returns: {
+          approval_rate: number
+          auto_rate: number
+          avg_confidence: number
+          coverage_trend: number
+          current_active_taxonomies: number
+          current_coverage: number
+          current_total_docs: number
+          current_total_taxonomies: number
+          current_with_taxonomy: number
+          docs_low_confidence: number
+          docs_trend: number
+          docs_without_taxonomy: number
+          pending_suggestions: number
+          taxonomies_trend: number
+          top_taxonomies: Json
+          total_auto_classifications: number
+          total_manual_classifications: number
+          total_suggestions_processed: number
+        }[]
+      }
       get_taxonomy_coverage_stats: {
         Args: never
         Returns: {
