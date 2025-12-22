@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { MLLearningPatternsSection } from "./MLLearningPatternsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1080,7 +1081,10 @@ export const MLDashboardTab = () => {
             </div>
           </div>
         </div>
-      </Card>
+    </Card>
+
+      {/* ML Learning Patterns Section - FASE 3 */}
+      <MLLearningPatternsSection />
     </div>
   );
 };
