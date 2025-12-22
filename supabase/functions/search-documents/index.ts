@@ -165,7 +165,8 @@ serve(async (req) => {
       useHybridSearch = false,
       allowedTags = [],
       forbiddenTags = [],
-      taxonomyCodes = []  // NEW: Array of global taxonomy codes
+      taxonomyCodes = [],         // Array of global taxonomy codes to include
+      excludeTaxonomyCodes = []   // Array of global taxonomy codes to exclude
     } = await req.json();
     
     console.log(`Searching documents for query: "${query}" (target: ${targetChat})`);
@@ -174,8 +175,8 @@ serve(async (req) => {
     if (allowedTags.length > 0 || forbiddenTags.length > 0) {
       console.log(`Tag filters: allowed=[${allowedTags.join(',')}], forbidden=[${forbiddenTags.join(',')}]`);
     }
-    if (taxonomyCodes.length > 0) {
-      console.log(`Taxonomy codes: [${taxonomyCodes.join(',')}]`);
+    if (taxonomyCodes.length > 0 || excludeTaxonomyCodes.length > 0) {
+      console.log(`Taxonomy codes: include=[${taxonomyCodes.join(',')}], exclude=[${excludeTaxonomyCodes.join(',')}]`);
     }
     
     // Check if query contains a filename - if so, do filename search first
@@ -271,7 +272,7 @@ serve(async (req) => {
         supabase,
         queryEmbedding,
         taxonomyCodes,
-        forbiddenTags, // Use forbiddenTags as excludeCodes
+        excludeTaxonomyCodes.length > 0 ? excludeTaxonomyCodes : forbiddenTags, // Use excludeTaxonomyCodes or fallback to forbiddenTags
         matchThreshold,
         matchCount * 2 // Fetch more for diversification
       );
