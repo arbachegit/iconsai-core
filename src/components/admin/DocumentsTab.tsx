@@ -62,6 +62,7 @@ export const DocumentsTab = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [chatFilter, setChatFilter] = useState<string>("all");
   const [readabilityFilter, setReadabilityFilter] = useState<string>("all");
+  const [showOnlyRenamed, setShowOnlyRenamed] = useState(false);
   const [sortField, setSortField] = useState<"created_at" | "filename" | "total_chunks" | "status" | "target_chat" | "is_inserted" | "inserted_in_chat" | "readability_score">("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [searchQuery, setSearchQuery] = useState("");
@@ -1524,6 +1525,11 @@ export const DocumentsTab = () => {
       }
     }
 
+    // Title renamed filter
+    if (showOnlyRenamed) {
+      filtered = filtered.filter(d => d.title_was_renamed === true);
+    }
+
     // Sorting
     filtered = [...filtered].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;
@@ -1556,7 +1562,7 @@ export const DocumentsTab = () => {
       return 0;
     });
     return filtered;
-  }, [documents, statusFilter, chatFilter, readabilityFilter, sortField, sortDirection, searchQuery]);
+  }, [documents, statusFilter, chatFilter, readabilityFilter, showOnlyRenamed, sortField, sortDirection, searchQuery]);
 
   // Pagination calculations
   const totalPages = Math.ceil((filteredDocuments?.length || 0) / itemsPerPage);
@@ -2201,10 +2207,23 @@ export const DocumentsTab = () => {
                 </Select>
               </div>
               
+              {/* Renamed filter toggle */}
+              <div className="flex items-center gap-2 self-end pb-1">
+                <Switch 
+                  id="renamed-filter"
+                  checked={showOnlyRenamed}
+                  onCheckedChange={setShowOnlyRenamed}
+                />
+                <Label htmlFor="renamed-filter" className="text-sm cursor-pointer whitespace-nowrap">
+                  Apenas otimizados
+                </Label>
+              </div>
+              
               <Button variant="outline" onClick={() => {
               setStatusFilter("all");
               setChatFilter("all");
               setReadabilityFilter("all");
+              setShowOnlyRenamed(false);
               setSearchQuery("");
               setSortField("created_at");
               setSortDirection("desc");
