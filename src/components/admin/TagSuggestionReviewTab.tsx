@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,11 +30,12 @@ import {
   XCircle,
   Brain,
   FileText,
-  Tag,
   TrendingUp,
   Clock,
   BarChart3,
   RotateCcw,
+  Search,
+  FileSearch,
 } from "lucide-react";
 import {
   useTagSuggestions,
@@ -48,8 +49,10 @@ import {
   useRevertSuggestion,
   type TagSuggestion,
 } from "@/hooks/useTagFeedback";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 function ConfidenceBadge({ confidence }: { confidence: number }) {
   const percent = Math.round(confidence * 100);
@@ -75,14 +78,20 @@ function StatusBadge({ status }: { status: string }) {
 export default function TagSuggestionReviewTab() {
   const [activeTab, setActiveTab] = useState("pending");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
   const [correctionModal, setCorrectionModal] = useState<{
     open: boolean;
     suggestion: TagSuggestion | null;
   }>({ open: false, suggestion: null });
   const [correctionTaxonomyId, setCorrectionTaxonomyId] = useState("");
   const [correctionNotes, setCorrectionNotes] = useState("");
+  const [summaryModal, setSummaryModal] = useState<{
+    open: boolean;
+    document: TagSuggestion["document"] | null;
+  }>({ open: false, document: null });
 
-  const { data: suggestions, isLoading, refetch } = useTagSuggestions(activeTab);
+  const queryClient = useQueryClient();
+  const { data: suggestions, isLoading, refetch, isFetching } = useTagSuggestions(activeTab);
   const { data: stats } = useTagFeedbackStats();
   const { data: history } = useTagFeedbackHistory();
   const { data: taxonomyList } = useQuery({
@@ -103,6 +112,70 @@ export default function TagSuggestionReviewTab() {
   const bulkApproveMutation = useBulkApproveSuggestions();
   const bulkRejectMutation = useBulkRejectSuggestions();
   const revertMutation = useRevertSuggestion();
+
+  // Mutation para padronização de nomes de documentos
+  const standardizeMutation = useMutation({
+    mutationFn: async () => {
+      // Buscar documentos das sugestões pendentes que têm ai_title mas não foram renomeados
+      const docIds = [...new Set(suggestions?.map(s => s.document?.id).filter(Boolean) || [])];
+      
+      if (docIds.length === 0) return { updated: 0 };
+      
+      const { data: docs } = await supabase
+        .from("documents")
+        .select("id, filename, ai_title, title_was_renamed")
+        .in("id", docIds)
+        .not("ai_title", "is", null)
+        .or("title_was_renamed.is.null,title_was_renamed.eq.false");
+      
+      if (!docs?.length) return { updated: 0 };
+      
+      // Atualizar cada documento com seu ai_title
+      for (const doc of docs) {
+        await supabase
+          .from("documents")
+          .update({
+            original_title: doc.filename,
+            filename: doc.ai_title,
+            title_was_renamed: true,
+            renamed_at: new Date().toISOString(),
+            rename_reason: "ml_review_standardization"
+          })
+          .eq("id", doc.id);
+      }
+      
+      return { updated: docs.length };
+    },
+    onSuccess: (result) => {
+      if (result.updated > 0) {
+        toast.success(`${result.updated} documento(s) padronizado(s)`);
+        queryClient.invalidateQueries({ queryKey: ["tag-suggestions"] });
+      }
+    },
+    onError: (error) => {
+      toast.error(`Erro ao padronizar: ${error.message}`);
+    }
+  });
+
+  // Filtrar sugestões baseado no termo de busca
+  const filteredSuggestions = useMemo(() => {
+    if (!searchTerm || !suggestions) return suggestions || [];
+    const term = searchTerm.toLowerCase();
+    return suggestions.filter(s =>
+      s.document?.filename?.toLowerCase().includes(term) ||
+      s.suggested_code?.toLowerCase().includes(term) ||
+      s.taxonomy?.name?.toLowerCase().includes(term) ||
+      s.taxonomy?.code?.toLowerCase().includes(term)
+    );
+  }, [suggestions, searchTerm]);
+
+  // Estado combinado de loading
+  const isRefreshing = isFetching || standardizeMutation.isPending;
+
+  const handleRefreshAndStandardize = async () => {
+    await standardizeMutation.mutateAsync();
+    refetch();
+  };
 
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -228,10 +301,26 @@ export default function TagSuggestionReviewTab() {
               <Brain className="h-5 w-5" />
               Revisão de Sugestões ML
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4 mr-1" />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefreshAndStandardize}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={cn("h-4 w-4 mr-1", isRefreshing && "animate-spin")} />
               Atualizar
             </Button>
+          </div>
+          
+          {/* Search Field */}
+          <div className="relative mt-3">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por documento ou taxonomia..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -267,7 +356,7 @@ export default function TagSuggestionReviewTab() {
                     onClick={handleBulkApprove}
                     disabled={bulkApproveMutation.isPending}
                   >
-                    <CheckCheck className="h-4 w-4 mr-1" />
+                    <CheckCheck className={cn("h-4 w-4 mr-1", bulkApproveMutation.isPending && "animate-spin")} />
                     Aprovar Todos
                   </Button>
                   <Button
@@ -276,7 +365,7 @@ export default function TagSuggestionReviewTab() {
                     onClick={handleBulkReject}
                     disabled={bulkRejectMutation.isPending}
                   >
-                    <XCircle className="h-4 w-4 mr-1" />
+                    <XCircle className={cn("h-4 w-4 mr-1", bulkRejectMutation.isPending && "animate-spin")} />
                     Rejeitar Todos
                   </Button>
                 </div>
@@ -285,7 +374,7 @@ export default function TagSuggestionReviewTab() {
 
             <TabsContent value="pending" className="mt-0">
               <SuggestionList
-                suggestions={suggestions || []}
+                suggestions={filteredSuggestions}
                 isLoading={isLoading}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
@@ -293,34 +382,38 @@ export default function TagSuggestionReviewTab() {
                 onApprove={(id) => approveMutation.mutate(id)}
                 onReject={(id) => rejectMutation.mutate({ suggestionId: id })}
                 onCorrect={openCorrectionModal}
+                onOpenSummary={(doc) => setSummaryModal({ open: true, document: doc })}
                 showActions
               />
             </TabsContent>
 
             <TabsContent value="approved" className="mt-0">
               <SuggestionList
-                suggestions={suggestions || []}
+                suggestions={filteredSuggestions}
                 isLoading={isLoading}
                 onRevert={(id) => revertMutation.mutate(id)}
+                onOpenSummary={(doc) => setSummaryModal({ open: true, document: doc })}
                 showRevertAction
               />
             </TabsContent>
 
             <TabsContent value="rejected" className="mt-0">
               <SuggestionList
-                suggestions={suggestions || []}
+                suggestions={filteredSuggestions}
                 isLoading={isLoading}
                 onRevert={(id) => revertMutation.mutate(id)}
+                onOpenSummary={(doc) => setSummaryModal({ open: true, document: doc })}
                 showRevertAction
               />
             </TabsContent>
 
             <TabsContent value="corrected" className="mt-0">
               <SuggestionList
-                suggestions={suggestions || []}
+                suggestions={filteredSuggestions}
                 isLoading={isLoading}
                 showCorrection
                 onRevert={(id) => revertMutation.mutate(id)}
+                onOpenSummary={(doc) => setSummaryModal({ open: true, document: doc })}
                 showRevertAction
               />
             </TabsContent>
@@ -402,6 +495,62 @@ export default function TagSuggestionReviewTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Summary Modal */}
+      <Dialog
+        open={summaryModal.open}
+        onOpenChange={(open) =>
+          !open && setSummaryModal({ open: false, document: null })
+        }
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSearch className="h-5 w-5" />
+              Resumo do Documento
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {summaryModal.document && (
+              <>
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Documento:</p>
+                  <p className="font-medium text-sm">
+                    {summaryModal.document.filename}
+                  </p>
+                  {summaryModal.document.ai_title && 
+                   summaryModal.document.ai_title !== summaryModal.document.filename && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Título AI: {summaryModal.document.ai_title}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Resumo AI:</label>
+                  {summaryModal.document.ai_summary ? (
+                    <div className="p-4 bg-muted/50 rounded-lg text-sm leading-relaxed">
+                      {summaryModal.document.ai_summary}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-muted/50 rounded-lg text-sm text-muted-foreground italic">
+                      Resumo não disponível para este documento.
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSummaryModal({ open: false, document: null })}
+            >
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -417,6 +566,7 @@ function SuggestionList({
   onReject,
   onCorrect,
   onRevert,
+  onOpenSummary,
   showActions = false,
   showCorrection = false,
   showRevertAction = false,
@@ -430,6 +580,7 @@ function SuggestionList({
   onReject?: (id: string) => void;
   onCorrect?: (suggestion: TagSuggestion) => void;
   onRevert?: (id: string) => void;
+  onOpenSummary?: (doc: TagSuggestion["document"]) => void;
   showActions?: boolean;
   showCorrection?: boolean;
   showRevertAction?: boolean;
@@ -486,9 +637,22 @@ function SuggestionList({
               </div>
               <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                 <FileText className="h-3 w-3" />
-                <span className="truncate">
+                <span className="truncate max-w-[200px]">
                   {suggestion.document?.filename || suggestion.document_id}
                 </span>
+                {onOpenSummary && suggestion.document && (
+                  <Badge 
+                    variant="secondary"
+                    className="cursor-pointer hover:bg-primary/10 text-[10px] gap-1 px-1.5 py-0.5 shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenSummary(suggestion.document);
+                    }}
+                  >
+                    <FileSearch className="h-3 w-3" />
+                    Acesse o resumo
+                  </Badge>
+                )}
               </div>
               {showCorrection && suggestion.corrected_taxonomy && (
                 <div className="flex items-center gap-1 mt-1 text-xs text-green-600">
