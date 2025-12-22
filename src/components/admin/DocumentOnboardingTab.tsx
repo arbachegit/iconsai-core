@@ -248,7 +248,7 @@ export const DocumentOnboardingTab = () => {
           entity_id: documentId,
           entity_type: "document",
           taxonomy_id: taxonomyId,
-          source: "admin_review",
+          source: "manual",
           confidence: 1.0,
         });
       
