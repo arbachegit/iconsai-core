@@ -249,7 +249,7 @@ serve(async (req) => {
           entity_type: 'document',
           entity_id: oldTag.document_id,
           taxonomy_id: pendingTaxonomyId,
-          source: 'migration_pending',
+          source: 'ai_suggested',
           confidence: 0.5,
         }, { 
           onConflict: 'entity_type,entity_id,taxonomy_id',
@@ -382,7 +382,7 @@ serve(async (req) => {
           entity_type: 'document',
           entity_id: doc.id,
           taxonomy_id: pendingTaxonomyId,
-          source: 'migration_untagged',
+          source: 'ai_suggested',
           confidence: 0.3,
         });
 
