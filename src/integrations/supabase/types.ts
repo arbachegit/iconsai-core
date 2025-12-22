@@ -1238,6 +1238,13 @@ export type Database = {
             referencedRelation: "documents"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "document_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "v_document_taxonomies"
+            referencedColumns: ["document_id"]
+          },
         ]
       }
       document_routing_log: {
@@ -1288,6 +1295,13 @@ export type Database = {
             referencedRelation: "documents"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "document_routing_log_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "v_document_taxonomies"
+            referencedColumns: ["document_id"]
+          },
         ]
       }
       document_tags: {
@@ -1331,6 +1345,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "documents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_tags_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "v_document_taxonomies"
+            referencedColumns: ["document_id"]
           },
           {
             foreignKeyName: "document_tags_parent_tag_id_fkey"
@@ -1388,6 +1409,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "documents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "v_document_taxonomies"
+            referencedColumns: ["document_id"]
           },
         ]
       }
@@ -2193,6 +2221,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ml_tag_feedback_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "v_document_taxonomies"
+            referencedColumns: ["document_id"]
+          },
+          {
             foreignKeyName: "ml_tag_feedback_original_taxonomy_id_fkey"
             columns: ["original_taxonomy_id"]
             isOneToOne: false
@@ -2258,6 +2293,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "documents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ml_tag_suggestions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "v_document_taxonomies"
+            referencedColumns: ["document_id"]
           },
           {
             foreignKeyName: "ml_tag_suggestions_taxonomy_id_fkey"
@@ -3738,6 +3780,13 @@ export type Database = {
             referencedRelation: "documents"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "suggestion_clicks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "v_document_taxonomies"
+            referencedColumns: ["document_id"]
+          },
         ]
       }
       system_api_registry: {
@@ -4012,6 +4061,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "documents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_modification_logs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "v_document_taxonomies"
+            referencedColumns: ["document_id"]
           },
           {
             foreignKeyName: "tag_modification_logs_merge_rule_id_fkey"
@@ -4604,6 +4660,22 @@ export type Database = {
           max_date: string | null
           min_date: string | null
           total_count: number | null
+        }
+        Relationships: []
+      }
+      v_document_taxonomies: {
+        Row: {
+          confidence: number | null
+          document_id: string | null
+          entity_tag_id: string | null
+          filename: string | null
+          source: string | null
+          status: string | null
+          tagged_at: string | null
+          target_chat: string | null
+          taxonomy_code: string | null
+          taxonomy_level: number | null
+          taxonomy_name: string | null
         }
         Relationships: []
       }
