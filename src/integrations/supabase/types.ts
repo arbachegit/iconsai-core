@@ -4865,6 +4865,15 @@ export type Database = {
         Args: { agent_slug: string }
         Returns: string[]
       }
+      get_classification_sources_stats: {
+        Args: never
+        Returns: {
+          avg_confidence: number
+          classification_count: number
+          percentage: number
+          source: string
+        }[]
+      }
       get_documents_for_reclassification: {
         Args: { p_filter: string; p_limit: number; p_offset: number }
         Returns: {
@@ -4931,7 +4940,27 @@ export type Database = {
           total_documents: number
         }[]
       }
+      get_taxonomy_distribution_by_domain: {
+        Args: never
+        Returns: {
+          avg_confidence: number
+          document_count: number
+          domain: string
+          taxonomy_count: number
+        }[]
+      }
       get_taxonomy_health_stats: { Args: never; Returns: Json }
+      get_taxonomy_metrics_timeseries: {
+        Args: { p_days?: number }
+        Returns: {
+          avg_confidence: number
+          classifications_total: number
+          coverage_percentage: number
+          documents_with_taxonomy: number
+          metric_date: string
+          total_documents: number
+        }[]
+      }
       get_term_context: { Args: { p_term: string }; Returns: Json }
       has_role: {
         Args: {
