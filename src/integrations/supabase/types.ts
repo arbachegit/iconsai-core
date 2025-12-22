@@ -1942,6 +1942,100 @@ export type Database = {
         }
         Relationships: []
       }
+      ml_correlations: {
+        Row: {
+          correlation_strength: number
+          created_at: string | null
+          id: string
+          keyword: string
+          last_validated_at: string | null
+          occurrence_count: number
+          source: string
+          taxonomy_code: string
+          taxonomy_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          correlation_strength?: number
+          created_at?: string | null
+          id?: string
+          keyword: string
+          last_validated_at?: string | null
+          occurrence_count?: number
+          source?: string
+          taxonomy_code: string
+          taxonomy_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          correlation_strength?: number
+          created_at?: string | null
+          id?: string
+          keyword?: string
+          last_validated_at?: string | null
+          occurrence_count?: number
+          source?: string
+          taxonomy_code?: string
+          taxonomy_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ml_correlations_taxonomy_id_fkey"
+            columns: ["taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ml_restrictions: {
+        Row: {
+          created_at: string | null
+          id: string
+          keyword: string
+          last_validated_at: string | null
+          occurrence_count: number
+          restricted_taxonomy_code: string
+          restricted_taxonomy_id: string | null
+          restriction_strength: number
+          source: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          keyword: string
+          last_validated_at?: string | null
+          occurrence_count?: number
+          restricted_taxonomy_code: string
+          restricted_taxonomy_id?: string | null
+          restriction_strength?: number
+          source?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          keyword?: string
+          last_validated_at?: string | null
+          occurrence_count?: number
+          restricted_taxonomy_code?: string
+          restricted_taxonomy_id?: string | null
+          restriction_strength?: number
+          source?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ml_restrictions_restricted_taxonomy_id_fkey"
+            columns: ["restricted_taxonomy_id"]
+            isOneToOne: false
+            referencedRelation: "global_taxonomy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ml_tag_feedback: {
         Row: {
           admin_notes: string | null
@@ -4307,6 +4401,10 @@ export type Database = {
           taxonomy_name: string
         }[]
       }
+      extract_keywords_from_text: {
+        Args: { p_limit?: number; p_text: string }
+        Returns: string[]
+      }
       get_agent_excluded_taxonomy_codes: {
         Args: { agent_slug: string }
         Returns: string[]
@@ -4314,6 +4412,16 @@ export type Database = {
       get_agent_taxonomy_codes: {
         Args: { agent_slug: string }
         Returns: string[]
+      }
+      get_learned_patterns: {
+        Args: { p_keywords: string[] }
+        Returns: {
+          keyword: string
+          occurrences: number
+          pattern_type: string
+          strength: number
+          taxonomy_code: string
+        }[]
       }
       get_ml_suggestion_stats: {
         Args: never

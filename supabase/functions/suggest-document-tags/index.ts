@@ -16,6 +16,42 @@ interface TaxonomyNode {
   keywords: string[];
 }
 
+interface LearnedPattern {
+  pattern_type: string;
+  keyword: string;
+  taxonomy_code: string;
+  strength: number;
+  occurrences: number;
+}
+
+// Helper function to extract keywords from text (same logic as SQL function)
+function extractKeywordsFromText(text: string, limit: number = 20): string[] {
+  const stopwords = new Set([
+    'a', 'o', 'e', 'de', 'da', 'do', 'em', 'para', 'com', 'por', 'que', 'uma', 'um',
+    'os', 'as', 'no', 'na', 'ao', 'ou', 'se', 'é', 'são', 'foi', 'ser', 'ter', 'como',
+    'mais', 'sua', 'seu', 'the', 'and', 'of', 'to', 'in', 'is', 'for', 'on', 'with',
+    'that', 'by', 'this', 'from', 'at', 'an', 'não', 'dos', 'das', 'nos', 'nas'
+  ]);
+  
+  // Normalize text: remove special chars, lowercase
+  const normalized = text.toLowerCase().replace(/[^a-zA-ZÀ-ÿ\s]/g, ' ');
+  const words = normalized.split(/\s+/);
+  
+  // Filter: unique, not stopword, min 3 chars
+  const seen = new Set<string>();
+  const result: string[] = [];
+  
+  for (const word of words) {
+    if (word.length >= 3 && !stopwords.has(word) && !seen.has(word)) {
+      seen.add(word);
+      result.push(word);
+      if (result.length >= limit) break;
+    }
+  }
+  
+  return result;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -84,7 +120,28 @@ serve(async (req) => {
     
     const taxonomyTree = buildTaxonomyTree(taxonomyNodes || []);
     
-    // 2. Fetch existing ML feedback to learn from corrections
+    // 2. Extract keywords from document text for pattern matching
+    const documentKeywords = extractKeywordsFromText(text, 30);
+    console.log(`[suggest-document-tags] Extracted ${documentKeywords.length} keywords from document`);
+    
+    // 3. Fetch learned patterns (correlations and restrictions) for these keywords
+    let learnedCorrelations: LearnedPattern[] = [];
+    let learnedRestrictions: LearnedPattern[] = [];
+    
+    if (documentKeywords.length > 0) {
+      const { data: patterns, error: patternsError } = await supabase
+        .rpc('get_learned_patterns', { p_keywords: documentKeywords });
+      
+      if (!patternsError && patterns) {
+        learnedCorrelations = patterns.filter((p: LearnedPattern) => p.pattern_type === 'correlation');
+        learnedRestrictions = patterns.filter((p: LearnedPattern) => p.pattern_type === 'restriction');
+        console.log(`[suggest-document-tags] Found ${learnedCorrelations.length} correlations, ${learnedRestrictions.length} restrictions`);
+      } else if (patternsError) {
+        console.log(`[suggest-document-tags] Error fetching patterns (non-critical):`, patternsError);
+      }
+    }
+    
+    // 4. Fetch existing ML feedback to learn from corrections (legacy support)
     const { data: feedbackData } = await supabase
       .from("ml_tag_feedback")
       .select("original_code, corrected_code, feedback_type")
@@ -103,7 +160,7 @@ serve(async (req) => {
     
     console.log(`[suggest-document-tags] Loaded ${feedbackData?.length || 0} feedback entries, ${rejectedCodes.length} rejected codes`);
     
-    // 3. Build contextual guidance based on chatType
+    // 5. Build contextual guidance based on chatType
     let contextualGuidance = '';
     
     if (chatType === 'economia') {
@@ -123,15 +180,69 @@ PRIORIZE códigos em: conhecimento.*, tecnologia.*, ideias.*
 EVITE códigos muito específicos de outros domínios.`;
     }
     
-    // 4. Build AI prompt
+    // 6. Build learned patterns section for the prompt
+    let learnedPatternsSection = '';
+    
+    if (learnedCorrelations.length > 0 || learnedRestrictions.length > 0) {
+      learnedPatternsSection = `\n## 🧠 PADRÕES APRENDIDOS (OBRIGATÓRIO RESPEITAR):\n`;
+      
+      if (learnedCorrelations.length > 0) {
+        learnedPatternsSection += `\n### ✅ CORRELAÇÕES POSITIVAS (PRIORIZAR estes códigos):\n`;
+        
+        // Group by taxonomy_code and show strongest correlations
+        const correlationMap = new Map<string, { keywords: string[], strength: number }>();
+        for (const c of learnedCorrelations) {
+          const existing = correlationMap.get(c.taxonomy_code);
+          if (!existing || c.strength > existing.strength) {
+            correlationMap.set(c.taxonomy_code, {
+              keywords: existing ? [...existing.keywords, c.keyword] : [c.keyword],
+              strength: Math.max(existing?.strength || 0, c.strength)
+            });
+          } else {
+            existing.keywords.push(c.keyword);
+          }
+        }
+        
+        for (const [code, data] of correlationMap) {
+          const keywordsPreview = data.keywords.slice(0, 3).join(', ');
+          learnedPatternsSection += `- Quando texto contém [${keywordsPreview}...], USAR: ${code} (força: ${(data.strength * 100).toFixed(0)}%)\n`;
+        }
+      }
+      
+      if (learnedRestrictions.length > 0) {
+        learnedPatternsSection += `\n### ❌ RESTRIÇÕES NEGATIVAS (NÃO USAR estes códigos):\n`;
+        
+        // Group by taxonomy_code
+        const restrictionMap = new Map<string, { keywords: string[], strength: number }>();
+        for (const r of learnedRestrictions) {
+          const existing = restrictionMap.get(r.taxonomy_code);
+          if (!existing || r.strength > existing.strength) {
+            restrictionMap.set(r.taxonomy_code, {
+              keywords: existing ? [...existing.keywords, r.keyword] : [r.keyword],
+              strength: Math.max(existing?.strength || 0, r.strength)
+            });
+          } else {
+            existing.keywords.push(r.keyword);
+          }
+        }
+        
+        for (const [code, data] of restrictionMap) {
+          const keywordsPreview = data.keywords.slice(0, 3).join(', ');
+          learnedPatternsSection += `- Quando texto contém [${keywordsPreview}...], NUNCA USAR: ${code} (força: ${(data.strength * 100).toFixed(0)}%)\n`;
+        }
+      }
+    }
+    
+    // 7. Build AI prompt
     const systemPrompt = `Você é um especialista em classificação de documentos usando uma taxonomia hierárquica pré-definida.
 
 ## TAXONOMIA DISPONÍVEL (USE APENAS ESTES CÓDIGOS):
 ${taxonomyTree}
 
 ${contextualGuidance}
+${learnedPatternsSection}
 
-## REGRAS DE APRENDIZADO (NÃO VIOLAR):
+## REGRAS DE APRENDIZADO LEGADAS (NÃO VIOLAR):
 ${correctionRules ? `Correções aprendidas (use sempre a versão corrigida):
 ${correctionRules}` : '(Nenhuma correção registrada)'}
 
@@ -145,6 +256,7 @@ ${rejectedCodes.map(c => `- ${c}`).join('\n')}` : ''}
 3. Use APENAS códigos que existem na taxonomia acima
 4. Atribua confidence de 0.5 a 1.0 baseado na relevância
 5. Priorize códigos mais específicos (níveis mais baixos) quando aplicável
+6. RESPEITE os padrões aprendidos: boost para correlações, evite restrições
 
 ## FORMATO DE RESPOSTA (APENAS JSON, SEM MARKDOWN):
 {
@@ -155,7 +267,7 @@ ${rejectedCodes.map(c => `- ${c}`).join('\n')}` : ''}
   "reasoning": "Breve explicação da classificação"
 }`;
     
-    // 5. Call AI
+    // 8. Call AI
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -179,7 +291,7 @@ ${rejectedCodes.map(c => `- ${c}`).join('\n')}` : ''}
     const data = await response.json();
     const content = data.choices[0].message.content;
     
-    // 6. Parse response
+    // 9. Parse response
     let result;
     try {
       const cleanContent = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -191,40 +303,63 @@ ${rejectedCodes.map(c => `- ${c}`).join('\n')}` : ''}
     
     console.log(`[suggest-document-tags] AI suggested ${result.suggestions?.length || 0} taxonomy codes`);
     
-    // 7. Validate and enrich suggestions with taxonomy data
+    // 10. Validate and enrich suggestions with taxonomy data + apply learned patterns
     const validSuggestions: Array<{
       code: string;
       confidence: number;
       taxonomy_id: string;
       taxonomy_name: string;
+      boosted_by_correlation: boolean;
     }> = [];
     
     const taxonomyMap = new Map(taxonomyNodes?.map(n => [n.code, n]) || []);
     
-    for (const suggestion of result.suggestions || []) {
-      const taxonomy = taxonomyMap.get(suggestion.code);
-      if (taxonomy) {
-        validSuggestions.push({
-          code: suggestion.code,
-          confidence: Math.min(1, Math.max(0.5, suggestion.confidence)),
-          taxonomy_id: taxonomy.id,
-          taxonomy_name: taxonomy.name,
-        });
-      } else {
-        console.log(`[suggest-document-tags] Ignoring invalid code: ${suggestion.code}`);
-      }
+    // Build a map of restrictions for quick lookup
+    const restrictedCodes = new Set(learnedRestrictions.map(r => r.taxonomy_code));
+    
+    // Build a map of correlations for confidence boost
+    const correlationBoosts = new Map<string, number>();
+    for (const c of learnedCorrelations) {
+      const current = correlationBoosts.get(c.taxonomy_code) || 0;
+      correlationBoosts.set(c.taxonomy_code, Math.max(current, c.strength * 0.1)); // Max +10% boost
     }
     
-    console.log(`[suggest-document-tags] ${validSuggestions.length} valid suggestions after validation`);
+    for (const suggestion of result.suggestions || []) {
+      const taxonomy = taxonomyMap.get(suggestion.code);
+      if (!taxonomy) {
+        console.log(`[suggest-document-tags] Ignoring invalid code: ${suggestion.code}`);
+        continue;
+      }
+      
+      // Skip if there's a strong restriction
+      if (restrictedCodes.has(suggestion.code)) {
+        console.log(`[suggest-document-tags] Skipping restricted code: ${suggestion.code}`);
+        continue;
+      }
+      
+      // Apply correlation boost
+      const boost = correlationBoosts.get(suggestion.code) || 0;
+      const adjustedConfidence = Math.min(1, Math.max(0.5, suggestion.confidence + boost));
+      
+      validSuggestions.push({
+        code: suggestion.code,
+        confidence: adjustedConfidence,
+        taxonomy_id: taxonomy.id,
+        taxonomy_name: taxonomy.name,
+        boosted_by_correlation: boost > 0,
+      });
+    }
     
-    // 8. Save to ml_tag_suggestions if requested
+    console.log(`[suggest-document-tags] ${validSuggestions.length} valid suggestions after validation and pattern filtering`);
+    
+    // 11. Save to ml_tag_suggestions if requested
     if (saveSuggestions && validSuggestions.length > 0) {
       const suggestionsToInsert = validSuggestions.map(s => ({
         document_id: documentId,
         taxonomy_id: s.taxonomy_id,
         suggested_code: s.code,
         confidence: s.confidence,
-        source: 'ai_suggestion',
+        source: s.boosted_by_correlation ? 'ai_suggestion_boosted' : 'ai_suggestion',
         status: 'pending',
       }));
       
@@ -240,7 +375,7 @@ ${rejectedCodes.map(c => `- ${c}`).join('\n')}` : ''}
       }
     }
     
-    // 9. Also create entity_tags directly for high-confidence suggestions (auto-approve)
+    // 12. Also create entity_tags directly for high-confidence suggestions (auto-approve)
     const highConfidenceSuggestions = validSuggestions.filter(s => s.confidence >= 0.9);
     
     if (highConfidenceSuggestions.length > 0) {
@@ -274,6 +409,10 @@ ${rejectedCodes.map(c => `- ${c}`).join('\n')}` : ''}
         reasoning: result.reasoning,
         autoApproved: highConfidenceSuggestions.length,
         pendingReview: validSuggestions.length - highConfidenceSuggestions.length,
+        patternsUsed: {
+          correlations: learnedCorrelations.length,
+          restrictions: learnedRestrictions.length,
+        },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
