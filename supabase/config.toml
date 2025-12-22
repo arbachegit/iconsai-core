@@ -239,3 +239,9 @@ verify_jwt = false
 # ============================================
 [functions.reclassify-documents]
 verify_jwt = true
+
+# ============================================
+# TAXONOMY AUTO-MANAGER - Suggestions workflow
+# ============================================
+[functions.taxonomy-auto-manager]
+verify_jwt = true
