@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SectorAnalysisGrid } from "./data-analysis/SectorAnalysisGrid";
 import { Simulator2026 } from "./data-analysis/Simulator2026";
 import { CorrelationsTab } from "./data-analysis/CorrelationsTab";
-
+import { useRealTimeIndicators } from "@/hooks/useRealTimeIndicators";
 // Mapeamento de códigos de indicadores para variáveis do modelo
 const INDICATOR_MAPPING: Record<string, string> = {
   "PMC": "sales",
@@ -72,6 +72,8 @@ const SECTOR_TABS = [
 export default function DataAnalysisTab() {
   const [activeTab, setActiveTab] = useState("varejo");
 
+  // Hook para indicadores em tempo real
+  const { data: realIndicators, isLoading: isLoadingIndicators } = useRealTimeIndicators();
   // Fetch de dados reais do banco (query em 2 etapas)
   const { data: annualData, isLoading, error, refetch } = useQuery({
     queryKey: ["data-analysis-annual", "v2"],
@@ -333,7 +335,11 @@ export default function DataAnalysisTab() {
 
         {/* TAB Simulador 2026 */}
         <TabsContent value="simulador" className="mt-6">
-          <Simulator2026 annualData={annualData || []} />
+          <Simulator2026 
+            annualData={annualData || []} 
+            realIndicators={realIndicators}
+            isLoadingIndicators={isLoadingIndicators}
+          />
         </TabsContent>
       </Tabs>
     </div>
