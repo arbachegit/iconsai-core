@@ -3,9 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   MessageSquare, FileText, ShieldAlert, Users, 
-  ArrowUpRight, ArrowDownRight, Activity, Info
+  ArrowUpRight, ArrowDownRight, Activity, Info, Clock
 } from "lucide-react";
-import APIsUsedTable from "./APIsUsedTable";
 import {
   Tooltip,
   TooltipContent,
@@ -17,7 +16,6 @@ import {
 } from "recharts";
 import { format, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock } from "lucide-react";
 
 // Stat Card Component
 const StatCard = ({ 
@@ -509,9 +507,6 @@ export const DashboardTab = () => {
           </ResponsiveContainer>
         </div>
       </div>
-
-      {/* APIs de Dados Econômicos */}
-      <APIsUsedTable />
     </div>
   );
 };
