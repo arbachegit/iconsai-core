@@ -7,8 +7,30 @@ const corsHeaders = {
 
 // Sanitize phone number: remove spaces, parentheses, hyphens, and other formatting
 const sanitizePhoneNumber = (phone: string): string => {
-  // Keep only + and digits
-  return phone.replace(/[^\d+]/g, '');
+  // Remove all non-digit characters
+  let numbers = phone.replace(/\D/g, '');
+  
+  // If it starts with country code (55 for Brazil), keep it
+  // If not and it's 11 digits (DDD + number), add +55
+  if (numbers.length === 11) {
+    numbers = '55' + numbers;
+  }
+  
+  // Return with + prefix
+  return '+' + numbers;
+};
+
+// Map common Twilio error codes to user-friendly messages
+const twilioErrorMessages: Record<string, string> = {
+  '21608': 'O número de destino não está registrado no WhatsApp',
+  '21614': 'Número de destino inválido',
+  '21211': 'Número "From" inválido - verifique TWILIO_FROM_NUMBER',
+  '21408': 'O usuário precisa enviar uma mensagem para o sandbox primeiro (join <code>)',
+  '21610': 'Número bloqueado ou não pode receber mensagens',
+  '20003': 'Autenticação falhou - verifique TWILIO_ACCOUNT_SID e TWILIO_AUTH_TOKEN',
+  '20404': 'Recurso não encontrado - verifique TWILIO_FROM_NUMBER',
+  '63016': 'Template de mensagem não aprovado',
+  '63024': 'Janela de 24h expirou - usuário precisa enviar mensagem primeiro',
 };
 
 serve(async (req) => {
@@ -28,12 +50,12 @@ serve(async (req) => {
 
     // Sanitize phone number before validation
     const phoneNumber = sanitizePhoneNumber(rawPhoneNumber);
-    // [SECURITY] Phone number redacted from logs
+    console.log(`[WhatsApp] Sanitized phone: ${phoneNumber.slice(0, 4)}***${phoneNumber.slice(-2)}`);
 
     // Validate phone number format (E.164: should start with + and country code)
-    if (!phoneNumber.match(/^\+[1-9]\d{1,14}$/)) {
-      console.error('[WhatsApp] Invalid phone number format');
-      throw new Error('Invalid phone number format. Must include country code (e.g., +1234567890 or +5511999999999)');
+    if (!phoneNumber.match(/^\+[1-9]\d{10,14}$/)) {
+      console.error('[WhatsApp] Invalid phone number format after sanitization');
+      throw new Error('Número de telefone inválido. Verifique o DDD e o número.');
     }
 
     // Get Twilio credentials from environment
@@ -42,13 +64,24 @@ serve(async (req) => {
     const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER');
 
     if (!accountSid || !authToken || !fromNumber) {
-      console.error('[WhatsApp] Twilio credentials not configured');
-      throw new Error('Twilio credentials not configured. Please check TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER secrets.');
+      console.error('[WhatsApp] Twilio credentials not configured:', {
+        hasAccountSid: !!accountSid,
+        hasAuthToken: !!authToken,
+        hasFromNumber: !!fromNumber
+      });
+      throw new Error('Credenciais do Twilio não configuradas. Verifique TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN e TWILIO_FROM_NUMBER.');
     }
 
-    console.log(`[WhatsApp] Sending message for event: ${eventType || 'manual_test'}`);
+    // Validate fromNumber format
+    if (!fromNumber.startsWith('+')) {
+      console.error('[WhatsApp] TWILIO_FROM_NUMBER must start with +');
+      throw new Error('TWILIO_FROM_NUMBER deve começar com + (ex: +14155238886)');
+    }
 
-    // Use Twilio REST API directly instead of npm package
+    console.log(`[WhatsApp] Sending message for event: ${eventType || 'manual'}`);
+    console.log(`[WhatsApp] From: whatsapp:${fromNumber} To: whatsapp:${phoneNumber}`);
+
+    // Use Twilio REST API directly
     const twilioApiUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     
     const formData = new URLSearchParams();
@@ -68,8 +101,17 @@ serve(async (req) => {
     const responseData = await response.json();
 
     if (!response.ok) {
-      console.error('[WhatsApp] Twilio API error:', responseData);
-      throw new Error(responseData.message || `Twilio API error: ${response.status}`);
+      console.error('[WhatsApp] Twilio API error:', JSON.stringify({
+        status: response.status,
+        statusText: response.statusText,
+        errorCode: responseData.code,
+        errorMessage: responseData.message,
+        moreInfo: responseData.more_info
+      }));
+      
+      // Get friendly error message
+      const friendlyError = twilioErrorMessages[responseData.code?.toString()] || responseData.message || `Erro do Twilio: ${response.status}`;
+      throw new Error(friendlyError);
     }
 
     console.log(`[WhatsApp] Message sent successfully: ${responseData.sid}`);

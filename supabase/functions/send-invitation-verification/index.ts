@@ -191,18 +191,36 @@ serve(async (req) => {
       try {
         const whatsappMessage = `🔐 *Código de Verificação*\n\nSeu código para completar o cadastro na Plataforma KnowYOU Health:\n\n*${verificationCode}*\n\n⏰ Este código expira em 2 minutos.`;
 
-        await supabase.functions.invoke("send-whatsapp", {
+        console.log(`[Verification] Sending WhatsApp to: ${phone.slice(0, 6)}***`);
+        
+        const { data: whatsappResult, error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
           body: {
             phoneNumber: phone,
-            message: whatsappMessage
+            message: whatsappMessage,
+            eventType: "verification_code"
           }
         });
 
-        console.log("Verification code sent via WhatsApp to:", phone);
-      } catch (whatsappError) {
-        console.error("Error sending verification WhatsApp:", whatsappError);
+        if (whatsappError) {
+          console.error("[Verification] WhatsApp function error:", whatsappError);
+          throw whatsappError;
+        }
+
+        if (whatsappResult?.error) {
+          console.error("[Verification] WhatsApp API error:", whatsappResult.error);
+          return new Response(
+            JSON.stringify({ error: whatsappResult.error }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        console.log("[Verification] WhatsApp sent successfully:", whatsappResult?.sid);
+      } catch (whatsappError: any) {
+        console.error("[Verification] Error sending WhatsApp:", whatsappError);
         return new Response(
-          JSON.stringify({ error: "Erro ao enviar código por WhatsApp" }),
+          JSON.stringify({ 
+            error: whatsappError?.message || "Erro ao enviar código por WhatsApp. Tente por email." 
+          }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
