@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { Mic, Square, Loader2, Play, Pause, HelpCircle, X, Download, Share2, TrendingUp, TrendingDown, Minus, AlertCircle } from "lucide-react";
+import { Mic, Square, Loader2, Play, Pause, X, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import knowriskLogo from "@/assets/knowrisk-pwa-logo.png";
+import { PWAAuthGate } from "@/components/gates/PWAAuthGate";
+import { PWABottomBar, PWAHelpModal } from "@/components/pwa";
+import { getAgentConfig, AGENT_COLORS } from "@/lib/pwa-animations";
 
 type AppState = "idle" | "recording" | "processing" | "ready";
 
@@ -14,28 +16,6 @@ const SILENCE_WAIT_MS = 5000;
 const COUNTDOWN_SECONDS = 5;
 const VAD_CHECK_INTERVAL = 100;
 
-// Configuração dos agentes
-const AGENTS_CONFIG: Record<string, { icon: string; name: string; color: string; bgGradient: string }> = {
-  economia: { 
-    icon: "💹", 
-    name: "Economista", 
-    color: "text-emerald-500",
-    bgGradient: "from-emerald-900/20 to-slate-950"
-  },
-  health: { 
-    icon: "🏥", 
-    name: "Saúde", 
-    color: "text-blue-500",
-    bgGradient: "from-blue-900/20 to-slate-950"
-  },
-  ideias: { 
-    icon: "💡", 
-    name: "Ideias", 
-    color: "text-amber-500",
-    bgGradient: "from-amber-900/20 to-slate-950"
-  },
-};
-
 interface Indicator {
   code: string;
   name: string;
@@ -44,18 +24,12 @@ interface Indicator {
   trend?: 'up' | 'down' | 'stable';
 }
 
-interface AccessInfo {
-  has_access: boolean;
-  reason?: string;
-  message?: string;
-  user_id?: string;
-  user_name?: string;
-  pwa_access?: string[];
+interface PWAContentProps {
+  fingerprint: string;
+  pwaAccess: string[];
 }
 
-export default function PWAMultiAgent() {
-  const navigate = useNavigate();
-  
+function PWAMultiAgentContent({ fingerprint, pwaAccess }: PWAContentProps) {
   // Estados de UI
   const [state, setState] = useState<AppState>("idle");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -63,18 +37,14 @@ export default function PWAMultiAgent() {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [showIOSPrompt, setShowIOSPrompt] = useState(false);
-  const [deviceId, setDeviceId] = useState("");
   const [countdownDisplay, setCountdownDisplay] = useState<number | null>(null);
   const [statusText, setStatusText] = useState("Toque para perguntar");
   const [indicators, setIndicators] = useState<Indicator[]>([]);
-  const [loadingIndicators, setLoadingIndicators] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
   
-  // Estados de acesso
-  const [checkingAccess, setCheckingAccess] = useState(true);
-  const [accessInfo, setAccessInfo] = useState<AccessInfo | null>(null);
-  const [availableAgents, setAvailableAgents] = useState<string[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<string>("economia");
+  // Agentes disponíveis
+  const availableAgents = pwaAccess.length > 0 ? pwaAccess : ["economia", "health", "ideias"];
+  const [selectedAgent, setSelectedAgent] = useState<string>(availableAgents[0] || "economia");
   
   // Refs de mídia
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -100,51 +70,6 @@ export default function PWAMultiAgent() {
   const shouldProcessOnStopRef = useRef(false);
   const isStoppingRef = useRef(false);
 
-  // Verificar acesso ao carregar
-  useEffect(() => {
-    const checkAccess = async () => {
-      if (!deviceId) return;
-      
-      try {
-        setCheckingAccess(true);
-        const { data, error } = await supabase.rpc("check_pwa_access", {
-          p_device_id: deviceId,
-          p_agent_slug: null, // Verificar acesso geral primeiro
-        });
-
-        if (error) throw error;
-
-        const result = data as unknown as AccessInfo;
-        setAccessInfo(result);
-
-        if (result.has_access) {
-          const agents = result.pwa_access || [];
-          // Se não tem agentes específicos, libera todos
-          if (agents.length === 0) {
-            setAvailableAgents(["economia", "health", "ideias"]);
-          } else {
-            setAvailableAgents(agents);
-          }
-          // Selecionar primeiro agente disponível
-          if (agents.length > 0) {
-            setSelectedAgent(agents[0]);
-          }
-        }
-      } catch (error) {
-        console.error("Error checking access:", error);
-        // Em caso de erro, permitir acesso padrão (backward compatibility)
-        setAccessInfo({ has_access: true, pwa_access: ["economia"] });
-        setAvailableAgents(["economia"]);
-      } finally {
-        setCheckingAccess(false);
-      }
-    };
-
-    if (deviceId) {
-      checkAccess();
-    }
-  }, [deviceId]);
-
   // Buscar indicadores (apenas para economia)
   useEffect(() => {
     if (selectedAgent !== "economia") {
@@ -154,7 +79,6 @@ export default function PWAMultiAgent() {
 
     const fetchIndicators = async () => {
       try {
-        setLoadingIndicators(true);
         const { data, error } = await supabase
           .from("indicator_values")
           .select(`value, reference_date, indicator_id, economic_indicators!inner(code, name, unit)`)
@@ -201,8 +125,6 @@ export default function PWAMultiAgent() {
       } catch (error) {
         console.error("[PWA] Error fetching indicators:", error);
         setIndicators([]);
-      } finally {
-        setLoadingIndicators(false);
       }
     };
     
@@ -210,26 +132,6 @@ export default function PWAMultiAgent() {
     const interval = window.setInterval(fetchIndicators, 5 * 60 * 1000);
     return () => window.clearInterval(interval);
   }, [selectedAgent]);
-
-  // Device ID
-  useEffect(() => {
-    let id = localStorage.getItem("pwa-device-id");
-    if (!id) {
-      id = `device-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      localStorage.setItem("pwa-device-id", id);
-    }
-    setDeviceId(id);
-  }, []);
-
-  // iOS prompt
-  useEffect(() => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
-    const isPWA = (window.navigator as any).standalone === true;
-    if (isIOS && !isStandalone && !isPWA && !localStorage.getItem("ios-prompt-dismissed")) {
-      window.setTimeout(() => setShowIOSPrompt(true), 2000);
-    }
-  }, []);
 
   // Cleanup
   useEffect(() => {
@@ -400,7 +302,7 @@ export default function PWAMultiAgent() {
           pwaMode: true,
           message: transcription, 
           agentSlug: selectedAgent, 
-          deviceId 
+          deviceId: fingerprint 
         }
       });
       
@@ -424,7 +326,7 @@ export default function PWAMultiAgent() {
     } finally {
       isProcessingRef.current = false;
     }
-  }, [deviceId, goToIdle, playTTSResponse, selectedAgent]);
+  }, [fingerprint, goToIdle, playTTSResponse, selectedAgent]);
 
   // VAD
   const checkVoiceActivity = useCallback((): boolean => {
@@ -682,81 +584,15 @@ export default function PWAMultiAgent() {
     }
   };
 
-  // Se está verificando acesso
-  if (checkingAccess) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Verificando acesso...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Se não tem acesso
-  if (!accessInfo?.has_access) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-card rounded-2xl p-8 shadow-xl border border-border text-center">
-          <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="h-8 w-8 text-destructive" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Acesso Necessário</h1>
-          <p className="text-muted-foreground mb-6">
-            {accessInfo?.message || "Você precisa de um convite para acessar os PWAs."}
-          </p>
-          <button
-            onClick={() => navigate("/")}
-            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
-          >
-            Voltar ao Início
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const agentConfig = AGENTS_CONFIG[selectedAgent] || AGENTS_CONFIG.economia;
+  const agentConfig = getAgentConfig(selectedAgent);
+  const colors = AGENT_COLORS[selectedAgent] || AGENT_COLORS.economia;
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${agentConfig.bgGradient} flex flex-col transition-colors duration-500`}>
+    <div className={`min-h-screen bg-gradient-to-b ${colors.bg} flex flex-col transition-colors duration-500 pb-20`}>
       {/* Header */}
-      <header className="p-4 flex items-center justify-between">
+      <header className="p-4 flex items-center justify-center">
         <img src={knowriskLogo} alt="KnowYOU" className="h-10" />
-        <button
-          onClick={() => setShowIOSPrompt(true)}
-          className="p-2 rounded-full hover:bg-white/10"
-        >
-          <HelpCircle className="h-5 w-5 text-muted-foreground" />
-        </button>
       </header>
-
-      {/* Agent Toggle */}
-      {availableAgents.length > 1 && (
-        <div className="px-4 py-2">
-          <div className="flex gap-2 justify-center">
-            {availableAgents.map((slug) => {
-              const config = AGENTS_CONFIG[slug];
-              if (!config) return null;
-              return (
-                <button
-                  key={slug}
-                  onClick={() => setSelectedAgent(slug)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
-                    selectedAgent === slug
-                      ? "bg-primary text-primary-foreground shadow-lg scale-105"
-                      : "bg-card/50 text-muted-foreground hover:bg-card/80"
-                  }`}
-                >
-                  <span className="text-xl">{config.icon}</span>
-                  <span className="text-sm font-medium">{config.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Indicators (only for economia) */}
       {selectedAgent === "economia" && indicators.length > 0 && (
@@ -786,15 +622,19 @@ export default function PWAMultiAgent() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-4">
         {/* Agent Icon */}
-        <div className="text-6xl mb-4">{agentConfig.icon}</div>
-        <h2 className={`text-2xl font-bold ${agentConfig.color} mb-2`}>{agentConfig.name}</h2>
+        <div className={`text-6xl mb-4 transition-transform duration-300 ${state === "recording" ? "scale-110" : ""}`}>
+          {agentConfig.icon}
+        </div>
+        <h2 className={`text-2xl font-bold ${colors.primary} mb-2 transition-colors duration-300`}>
+          {agentConfig.name}
+        </h2>
         
         {/* Status */}
         <p className="text-muted-foreground mb-8">{statusText}</p>
         
         {/* Countdown */}
         {countdownDisplay !== null && (
-          <div className="text-4xl font-bold text-primary mb-4">{countdownDisplay}</div>
+          <div className="text-4xl font-bold text-primary mb-4 animate-pulse">{countdownDisplay}</div>
         )}
 
         {/* Main Button */}
@@ -802,7 +642,7 @@ export default function PWAMultiAgent() {
           {state === "idle" && (
             <button
               onClick={startRecording}
-              className="w-32 h-32 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-transform"
+              className={`w-32 h-32 rounded-full bg-primary flex items-center justify-center shadow-lg ${colors.glow} hover:scale-105 active:scale-95 transition-transform`}
             >
               <Mic className="h-12 w-12 text-primary-foreground" />
             </button>
@@ -840,7 +680,7 @@ export default function PWAMultiAgent() {
 
       {/* Audio Player */}
       {audioUrl && (
-        <div className="p-4 bg-card/50 backdrop-blur">
+        <div className="p-4 bg-card/50 backdrop-blur mb-16">
           <audio
             ref={audioRef}
             src={audioUrl}
@@ -898,48 +738,33 @@ export default function PWAMultiAgent() {
         </div>
       )}
 
-      {/* iOS Prompt */}
-      {showIOSPrompt && (
-        <div className="fixed inset-0 bg-black/80 flex items-end justify-center z-50">
-          <div className="bg-card rounded-t-3xl p-6 w-full max-w-md">
-            <button
-              onClick={() => {
-                setShowIOSPrompt(false);
-                localStorage.setItem("ios-prompt-dismissed", "true");
-              }}
-              className="absolute top-4 right-4 p-2"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            
-            <h3 className="text-xl font-bold mb-4">Adicionar à Tela Inicial</h3>
-            <ol className="space-y-3 text-sm text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">1</span>
-                Toque no botão <Share2 className="h-4 w-4 inline" /> compartilhar
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">2</span>
-                Selecione "Adicionar à Tela de Início"
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">3</span>
-                Toque em "Adicionar"
-              </li>
-            </ol>
-            
-            <button
-              onClick={() => {
-                setShowIOSPrompt(false);
-                localStorage.setItem("ios-prompt-dismissed", "true");
-              }}
-              className="w-full mt-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium"
-            >
-              Entendi
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Bottom Bar */}
+      <PWABottomBar
+        activeSlug={selectedAgent}
+        availableSlugs={availableAgents}
+        onSlugChange={setSelectedAgent}
+        onHelpClick={() => setShowHelp(true)}
+      />
+
+      {/* Help Modal */}
+      <PWAHelpModal
+        isOpen={showHelp}
+        onClose={() => setShowHelp(false)}
+      />
     </div>
+  );
+}
+
+// Main component with auth gate
+export default function PWAMultiAgent() {
+  return (
+    <PWAAuthGate>
+      {({ fingerprint, pwaAccess }) => (
+        <PWAMultiAgentContent 
+          fingerprint={fingerprint} 
+          pwaAccess={pwaAccess} 
+        />
+      )}
+    </PWAAuthGate>
   );
 }
