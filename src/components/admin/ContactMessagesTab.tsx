@@ -367,6 +367,7 @@ export const ContactMessagesTab = () => {
     
     setIsSendingReply(true);
     try {
+      const siteUrl = window.location.origin;
       const { error } = await supabase.functions.invoke('send-email', {
         body: {
           to: replyToMessage.email,
@@ -375,7 +376,7 @@ export const ContactMessagesTab = () => {
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
               <!-- Header -->
               <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
-                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">Health AI App</h1>
+                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">KnowYOU AI</h1>
               </div>
               
               <!-- Corpo -->
@@ -385,12 +386,23 @@ export const ContactMessagesTab = () => {
                 <p style="color: #64748b; font-size: 12px; font-style: italic;">
                   Em resposta à sua mensagem: "${replyToMessage.subject}"
                 </p>
+                
+                <!-- Return Link Block -->
+                <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center;">
+                  <p style="color: #0369a1; margin: 0 0 12px 0; font-weight: 500;">📲 Para continuar a conversa:</p>
+                  <a href="${siteUrl}/contact" style="display: inline-block; background: #0ea5e9; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                    Acessar Mensagens
+                  </a>
+                  <p style="color: #64748b; font-size: 11px; margin: 12px 0 0 0;">
+                    Clique no botão acima para retornar à tela de mensagens
+                  </p>
+                </div>
               </div>
               
               <!-- Footer -->
               <div style="text-align: center; padding: 16px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
                 <p style="color: #64748b; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} Health AI App
+                  © ${new Date().getFullYear()} KnowYOU AI
                 </p>
               </div>
             </div>

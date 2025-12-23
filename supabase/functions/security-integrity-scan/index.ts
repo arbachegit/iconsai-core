@@ -379,7 +379,7 @@ Deno.serve(async (req) => {
             threat_type: `${summary.critical} críticos, ${summary.warning} avisos`,
             affected_asset: 'Sistema completo',
             timestamp,
-            platform_name: 'Plataforma KnowYOU Health',
+            platform_name: 'Plataforma KnowYOU',
             critical_count: String(summary.critical),
             warning_count: String(summary.warning),
             passed_count: String(summary.passed)

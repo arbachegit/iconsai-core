@@ -154,7 +154,7 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
     const timestamp = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     const variables: Record<string, string> = {
       timestamp,
-      platform_name: 'Plataforma KnowYOU Health',
+      platform_name: 'Plataforma KnowYOU',
       ...(payload.metadata || {})
     };
 
@@ -186,7 +186,7 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
           const { error } = await supabase.functions.invoke('send-email', {
             body: {
               to: emailRecipient,
-              subject: emailSubject || `[Plataforma KnowYOU Health] Notificação`,
+              subject: emailSubject || `[Plataforma KnowYOU] Notificação`,
               body: emailBody
             }
           });
@@ -230,7 +230,7 @@ export async function dispatchNotification(payload: NotificationPayload): Promis
         // Use custom template or fallback with standard format
         whatsappMessage = template?.whatsapp_message 
           ? injectVariables(template.whatsapp_message, variables)
-          : `${timestamp} - Plataforma KnowYOU Health: ${payload.subject}. ${payload.message}`;
+          : `${timestamp} - Plataforma KnowYOU: ${payload.subject}. ${payload.message}`;
 
         // Never send empty messages
         if (!whatsappMessage || whatsappMessage.trim() === '') {
@@ -420,7 +420,7 @@ export const notifyUserRegistrationRequest = (userName: string, userEmail: strin
 export const notifyUserRegistrationApproved = (userName: string, userEmail: string, recoveryLink: string) => 
   dispatchNotification({
     eventType: 'user_registration_approved',
-    subject: 'Bem-vindo à Plataforma KnowYOU Health',
+    subject: 'Bem-vindo à Plataforma KnowYOU',
     message: `Olá, ${userName}! Seu cadastro foi aprovado.`,
     metadata: {
       user_name: userName,

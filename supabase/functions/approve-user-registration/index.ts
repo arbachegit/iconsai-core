@@ -164,14 +164,14 @@ serve(async (req) => {
     if (prefs?.email_enabled && template) {
       // Replace variables in template
       let emailBody = template.email_body || "";
-      let emailSubject = template.email_subject || "Bem-vindo à Plataforma KnowYOU Health!";
+      let emailSubject = template.email_subject || "Bem-vindo à Plataforma KnowYOU!";
       
       const variables: Record<string, string> = {
         user_name: userName,
         user_email: registration.email,
         recovery_link: recoveryLink,
         timestamp: new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-        platform_name: "Plataforma KnowYOU Health",
+        platform_name: "Plataforma KnowYOU",
       };
 
       for (const [key, value] of Object.entries(variables)) {
@@ -223,12 +223,11 @@ serve(async (req) => {
       },
     });
 
-    // Log notification
     await supabase.from("notification_logs").insert({
       event_type: "user_registration_approved",
       channel: "email",
       recipient: registration.email,
-      subject: "Bem-vindo à Plataforma KnowYOU Health!",
+      subject: "Bem-vindo à Plataforma KnowYOU!",
       message_body: `Usuário ${userName} aprovado com link de recuperação enviado.`,
       status: "success",
       metadata: { registration_id: registrationId },
