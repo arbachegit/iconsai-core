@@ -24,13 +24,24 @@ import {
   XCircle,
   RefreshCw,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  MessageCircle
 } from "lucide-react";
 import knowYouLogo from "@/assets/knowyou-admin-logo.png";
 
+// DDDs inválidos do Brasil
+const DDDS_INVALIDOS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 23, 25, 26, 29, 30, 36, 39, 40, 50, 52, 56, 57, 58, 59, 60, 70, 72, 76, 78, 80, 90];
+
 // Form schemas for each step
 const addressSchema = z.object({
-  phone: z.string().min(14, "Telefone inválido"),
+  phone: z.string()
+    .min(14, "Telefone inválido")
+    .refine((val) => {
+      const numbers = val.replace(/\D/g, '');
+      if (numbers.length !== 11) return false;
+      const ddd = parseInt(numbers.substring(0, 2));
+      return ddd >= 11 && ddd <= 99 && !DDDS_INVALIDOS.includes(ddd);
+    }, "DDD inválido. Use um DDD válido do Brasil (ex: 11, 21, 31)."),
   addressCep: z.string().min(8, "CEP inválido"),
   addressStreet: z.string().min(3, "Rua é obrigatória"),
   addressNumber: z.string().min(1, "Número é obrigatório"),
@@ -269,7 +280,33 @@ export default function InvitePage() {
       setCanResend(false);
       setStep("verification");
     } catch (err: any) {
-      toast.error(err.message || "Erro ao enviar código");
+      const errorMessage = err.message || "Erro ao enviar código";
+      
+      // Se erro de WhatsApp, oferecer fallback para email
+      if (verificationMethod === "whatsapp" && 
+          (errorMessage.includes("WhatsApp") || errorMessage.includes("Twilio"))) {
+        toast.error(
+          <div className="flex flex-col gap-2">
+            <p className="font-medium">Não foi possível enviar por WhatsApp</p>
+            <p className="text-sm opacity-80">{errorMessage}</p>
+            <Button 
+              size="sm" 
+              variant="secondary"
+              onClick={() => {
+                setVerificationMethod("email");
+                toast.dismiss();
+                setTimeout(() => handleFormSubmit(), 100);
+              }}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              Tentar por Email
+            </Button>
+          </div>,
+          { duration: 15000 }
+        );
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
