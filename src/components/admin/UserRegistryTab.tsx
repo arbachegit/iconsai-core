@@ -210,7 +210,7 @@ export const UserRegistryTab = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_registrations")
-        .select("*, has_platform_access, has_app_access, platform_registered_at, pwa_registered_at, street, street_number, complement, neighborhood, city, state, zip_code")
+        .select("*")
         .order("requested_at", { ascending: false });
       
       if (error) throw error;
@@ -1105,7 +1105,7 @@ export const UserRegistryTab = () => {
                                 userPhone={reg.phone || undefined}
                                 hasPlatformAccess={reg.has_platform_access ?? true}
                                 hasAppAccess={reg.has_app_access ?? false}
-                                platformRegistered={!!reg.platform_registered_at || !!reg.approved_at}
+                                platformRegistered={!!reg.approved_at}
                                 appRegistered={!!reg.pwa_registered_at}
                                 onInviteSent={() => refetch()}
                               />

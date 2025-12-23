@@ -5200,6 +5200,17 @@ export type Database = {
         Args: { p_date?: string }
         Returns: undefined
       }
+      complete_pwa_registration: {
+        Args: {
+          p_device_id: string
+          p_email: string
+          p_invitation_token: string
+          p_name: string
+          p_phone?: string
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
       convert_pmc_to_reais: {
         Args: {
           p_pmc_indicator_code: string
