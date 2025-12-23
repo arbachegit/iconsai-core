@@ -682,12 +682,12 @@ export default function InvitePage() {
                   className="gap-3"
                 >
                   <InputOTPGroup className="gap-2">
-                    <InputOTPSlot index={0} className="w-12 h-14 text-2xl font-bold border-2 rounded-lg" />
-                    <InputOTPSlot index={1} className="w-12 h-14 text-2xl font-bold border-2 rounded-lg" />
-                    <InputOTPSlot index={2} className="w-12 h-14 text-2xl font-bold border-2 rounded-lg" />
-                    <InputOTPSlot index={3} className="w-12 h-14 text-2xl font-bold border-2 rounded-lg" />
-                    <InputOTPSlot index={4} className="w-12 h-14 text-2xl font-bold border-2 rounded-lg" />
-                    <InputOTPSlot index={5} className="w-12 h-14 text-2xl font-bold border-2 rounded-lg" />
+                    <InputOTPSlot index={0} className="w-11 h-14 sm:w-12 sm:h-16 text-xl sm:text-2xl font-bold border-2 border-cyan-500 rounded-lg focus:border-fuchsia-500 focus:ring-2 focus:ring-fuchsia-500/30 transition-colors" />
+                    <InputOTPSlot index={1} className="w-11 h-14 sm:w-12 sm:h-16 text-xl sm:text-2xl font-bold border-2 border-cyan-500 rounded-lg focus:border-fuchsia-500 focus:ring-2 focus:ring-fuchsia-500/30 transition-colors" />
+                    <InputOTPSlot index={2} className="w-11 h-14 sm:w-12 sm:h-16 text-xl sm:text-2xl font-bold border-2 border-cyan-500 rounded-lg focus:border-fuchsia-500 focus:ring-2 focus:ring-fuchsia-500/30 transition-colors" />
+                    <InputOTPSlot index={3} className="w-11 h-14 sm:w-12 sm:h-16 text-xl sm:text-2xl font-bold border-2 border-cyan-500 rounded-lg focus:border-fuchsia-500 focus:ring-2 focus:ring-fuchsia-500/30 transition-colors" />
+                    <InputOTPSlot index={4} className="w-11 h-14 sm:w-12 sm:h-16 text-xl sm:text-2xl font-bold border-2 border-cyan-500 rounded-lg focus:border-fuchsia-500 focus:ring-2 focus:ring-fuchsia-500/30 transition-colors" />
+                    <InputOTPSlot index={5} className="w-11 h-14 sm:w-12 sm:h-16 text-xl sm:text-2xl font-bold border-2 border-cyan-500 rounded-lg focus:border-fuchsia-500 focus:ring-2 focus:ring-fuchsia-500/30 transition-colors" />
                   </InputOTPGroup>
                 </InputOTP>
               </div>

@@ -44,6 +44,13 @@ serve(async (req) => {
       verificationMethod
     }: SendVerificationRequest = await req.json();
 
+    // Debug log at start
+    console.log("[Verification] Starting verification process:", {
+      token: token ? token.substring(0, 8) + "..." : "N/A",
+      verificationMethod,
+      phone: phone ? phone.substring(0, 6) + "****" : "N/A"
+    });
+
     // Validate token
     const { data: invitation, error: fetchError } = await supabase
       .from("user_invitations")
@@ -132,6 +139,10 @@ serve(async (req) => {
     // For now, we'll store it encrypted or use session
 
     // Send verification code via chosen method
+    console.log("[Verification] Sending code via:", verificationMethod, "to:", 
+      verificationMethod === "email" ? invitation.email : phone?.substring(0, 6) + "****"
+    );
+
     if (verificationMethod === "email") {
       try {
         const emailHtml = `
@@ -180,10 +191,18 @@ serve(async (req) => {
         });
 
         console.log("Verification code sent via email to:", invitation.email);
-      } catch (emailError) {
-        console.error("Error sending verification email:", emailError);
+      } catch (emailError: any) {
+        console.error("[Verification] Error sending email:", {
+          error: emailError.message,
+          stack: emailError.stack,
+          email: invitation.email,
+          method: "email"
+        });
         return new Response(
-          JSON.stringify({ error: "Erro ao enviar código por email" }),
+          JSON.stringify({ 
+            error: `Erro ao enviar código por email: ${emailError.message}`,
+            details: "Verifique se RESEND_API_KEY está configurado e o domínio verificado"
+          }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
