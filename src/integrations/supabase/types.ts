@@ -974,18 +974,25 @@ export type Database = {
       }
       context_profiles: {
         Row: {
+          adaptation_speed: string | null
           antiprompt: string | null
+          auto_detect_region: boolean | null
           code: string
+          color: string | null
           created_at: string | null
+          default_region_code: string | null
           description: string | null
           detection_keywords: string[] | null
           detection_priority: number | null
           id: string
+          initial_cognitive_level: number | null
           is_active: boolean | null
           is_default: boolean | null
           maieutic_enabled: boolean | null
           match_count: number | null
           match_threshold: number | null
+          max_cognitive_level: number | null
+          min_cognitive_level: number | null
           name: string
           prompt_additions: string | null
           prompt_template: string
@@ -994,18 +1001,25 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          adaptation_speed?: string | null
           antiprompt?: string | null
+          auto_detect_region?: boolean | null
           code: string
+          color?: string | null
           created_at?: string | null
+          default_region_code?: string | null
           description?: string | null
           detection_keywords?: string[] | null
           detection_priority?: number | null
           id?: string
+          initial_cognitive_level?: number | null
           is_active?: boolean | null
           is_default?: boolean | null
           maieutic_enabled?: boolean | null
           match_count?: number | null
           match_threshold?: number | null
+          max_cognitive_level?: number | null
+          min_cognitive_level?: number | null
           name: string
           prompt_additions?: string | null
           prompt_template?: string
@@ -1014,18 +1028,25 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          adaptation_speed?: string | null
           antiprompt?: string | null
+          auto_detect_region?: boolean | null
           code?: string
+          color?: string | null
           created_at?: string | null
+          default_region_code?: string | null
           description?: string | null
           detection_keywords?: string[] | null
           detection_priority?: number | null
           id?: string
+          initial_cognitive_level?: number | null
           is_active?: boolean | null
           is_default?: boolean | null
           maieutic_enabled?: boolean | null
           match_count?: number | null
           match_threshold?: number | null
+          max_cognitive_level?: number | null
+          min_cognitive_level?: number | null
           name?: string
           prompt_additions?: string | null
           prompt_template?: string
@@ -2895,6 +2916,30 @@ export type Database = {
           spotify_episode_id?: string
           title?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profile_taxonomies: {
+        Row: {
+          access_type: string
+          created_at: string | null
+          id: string
+          profile_code: string
+          taxonomy_code: string
+        }
+        Insert: {
+          access_type: string
+          created_at?: string | null
+          id?: string
+          profile_code: string
+          taxonomy_code: string
+        }
+        Update: {
+          access_type?: string
+          created_at?: string | null
+          id?: string
+          profile_code?: string
+          taxonomy_code?: string
         }
         Relationships: []
       }
