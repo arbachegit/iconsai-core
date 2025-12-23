@@ -61,10 +61,9 @@ export const DocumentsTab = () => {
 
   // Filter and sort states
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [chatFilter, setChatFilter] = useState<string>("all");
   const [readabilityFilter, setReadabilityFilter] = useState<string>("all");
   const [showOnlyRenamed, setShowOnlyRenamed] = useState(false);
-  const [sortField, setSortField] = useState<"created_at" | "filename" | "total_chunks" | "status" | "target_chat" | "is_inserted" | "inserted_in_chat" | "readability_score">("created_at");
+  const [sortField, setSortField] = useState<"created_at" | "filename" | "total_chunks" | "status" | "readability_score">("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -1508,11 +1507,6 @@ export const DocumentsTab = () => {
       filtered = filtered.filter(d => d.status === statusFilter);
     }
 
-    // Chat filter
-    if (chatFilter !== "all") {
-      filtered = filtered.filter(d => d.target_chat?.toLowerCase() === chatFilter);
-    }
-
     // Readability filter
     if (readabilityFilter !== "all") {
       if (readabilityFilter === "high") {
@@ -1548,22 +1542,13 @@ export const DocumentsTab = () => {
       if (sortField === "status") {
         return (a.status || "").localeCompare(b.status || "") * direction;
       }
-      if (sortField === "target_chat") {
-        return (a.target_chat || "").localeCompare(b.target_chat || "") * direction;
-      }
-      if (sortField === "is_inserted") {
-        return ((a.is_inserted ? 1 : 0) - (b.is_inserted ? 1 : 0)) * direction;
-      }
-      if (sortField === "inserted_in_chat") {
-        return (a.inserted_in_chat || "").localeCompare(b.inserted_in_chat || "") * direction;
-      }
       if (sortField === "readability_score") {
         return ((a.readability_score || 0) - (b.readability_score || 0)) * direction;
       }
       return 0;
     });
     return filtered;
-  }, [documents, statusFilter, chatFilter, readabilityFilter, showOnlyRenamed, sortField, sortDirection, searchQuery]);
+  }, [documents, statusFilter, readabilityFilter, showOnlyRenamed, sortField, sortDirection, searchQuery]);
 
   // Pagination calculations
   const totalPages = Math.ceil((filteredDocuments?.length || 0) / itemsPerPage);
@@ -1574,7 +1559,7 @@ export const DocumentsTab = () => {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, chatFilter, readabilityFilter, searchQuery]);
+  }, [statusFilter, readabilityFilter, searchQuery]);
 
   // Toggle document selection
   const toggleDocSelection = useCallback((docId: string) => {
@@ -2161,23 +2146,6 @@ export const DocumentsTab = () => {
               </div>
               
               <div className="flex-1">
-                <Label className="text-sm font-medium mb-2 block">Chat Destino</Label>
-                <Select value={chatFilter} onValueChange={setChatFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="health">Health</SelectItem>
-                    <SelectItem value="study">Study</SelectItem>
-                    <SelectItem value="both">Both</SelectItem>
-                    <SelectItem value="general">General</SelectItem>
-                    <SelectItem value="economia">Economia</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex-1">
                 <Label className="text-sm font-medium mb-2 block">Legibilidade</Label>
                 <Select value={readabilityFilter} onValueChange={setReadabilityFilter}>
                   <SelectTrigger>
@@ -2222,7 +2190,6 @@ export const DocumentsTab = () => {
               
               <Button variant="outline" onClick={() => {
               setStatusFilter("all");
-              setChatFilter("all");
               setReadabilityFilter("all");
               setShowOnlyRenamed(false);
               setSearchQuery("");
@@ -2353,54 +2320,6 @@ export const DocumentsTab = () => {
                         </TooltipTrigger>
                         <TooltipContent>
                           <p className="text-sm">Estado atual do processamento do documento</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </TableHead>
-                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("target_chat")}>
-                  <div className="flex items-center gap-2">
-                    Chat
-                    <ArrowUpDown className={cn("h-4 w-4", sortField === "target_chat" && "text-primary")} />
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-sm">Chat de destino detectado automaticamente pela IA</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </TableHead>
-                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("inserted_in_chat")}>
-                  <div className="flex items-center gap-2">
-                    Chat Inserido
-                    <ArrowUpDown className={cn("h-4 w-4", sortField === "inserted_in_chat" && "text-primary")} />
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-sm">Chat onde o documento foi efetivamente inserido</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </TableHead>
-                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => toggleSort("is_inserted")}>
-                  <div className="flex items-center gap-2">
-                    Inserido
-                    <ArrowUpDown className={cn("h-4 w-4", sortField === "is_inserted" && "text-primary")} />
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-sm">Indica se o documento já foi inserido em algum chat</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -2648,90 +2567,6 @@ export const DocumentsTab = () => {
                         </span>
                       ) : doc.status}
                     </Badge>
-                  </TableCell>
-                  <TableCell onClick={() => setSelectedDoc(doc)}>
-                    <Badge variant="outline">{doc.target_chat || "pendente"}</Badge>
-                  </TableCell>
-                  <TableCell onClick={e => e.stopPropagation()}>
-                    {doc.is_inserted && doc.inserted_in_chat ? (
-                      <Select
-                        value={doc.inserted_in_chat}
-                        onValueChange={(newChat) => {
-                          if (newChat !== doc.inserted_in_chat) {
-                            updateInsertedChatMutation.mutate({
-                              docId: doc.id,
-                              newChat,
-                              previousChat: doc.inserted_in_chat
-                            });
-                          }
-                        }}
-                      >
-                        <SelectTrigger className={cn(
-                          "h-8 w-[100px] text-xs",
-                          doc.inserted_in_chat === "health" && "border-red-500/50 text-red-400",
-                          doc.inserted_in_chat === "study" && "border-purple-500/50 text-purple-400",
-                          doc.inserted_in_chat === "economia" && "border-teal-500/50 text-teal-400"
-                        )}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="health">
-                            <div className="flex items-center gap-2">
-                              <Heart className="h-3 w-3 text-red-500" />
-                              <span>health</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="study">
-                            <div className="flex items-center gap-2">
-                              <GraduationCap className="h-3 w-3 text-purple-500" />
-                              <span>study</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="both">
-                            <div className="flex items-center gap-2">
-                              <Boxes className="h-3 w-3 text-emerald-500" />
-                              <span>both</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="economia">
-                            <div className="flex items-center gap-2">
-                              <TrendingUp className="h-3 w-3 text-teal-500" />
-                              <span>economia</span>
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" onClick={e => {
-                              e.stopPropagation();
-                              setInsertionModalDoc(doc);
-                            }} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 border-blue-500/30">
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-sm">Inserir manualmente em um chat (Health ou Study)</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </TableCell>
-                  <TableCell onClick={() => setSelectedDoc(doc)} className="text-center">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="inline-flex">
-                            {doc.is_inserted ? <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" /> : <XCircle className="h-5 w-5 text-gray-400 mx-auto" />}
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-sm">{doc.is_inserted ? "Documento inserido em um chat" : "Documento ainda não inserido"}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
                   </TableCell>
                   <TableCell onClick={() => setSelectedDoc(doc)}>
                     <Button variant="ghost" size="sm" onClick={e => {
