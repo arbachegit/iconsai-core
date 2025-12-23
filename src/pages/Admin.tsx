@@ -86,6 +86,7 @@ const TaxonomyAnalyticsTab = lazy(() => import("@/components/admin/TaxonomyAnaly
 const MaieuticEffectivenessTab = lazy(() => import("@/components/admin/MaieuticEffectivenessTab"));
 const ContentProfilesTab = lazy(() => import("@/components/admin/ContentProfilesTab"));
 const LexiconPhoneticsTab = lazy(() => import("@/components/admin/LexiconPhoneticsTab"));
+const OntologyConceptsTab = lazy(() => import("@/components/admin/OntologyConceptsTab"));
 const TabLoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -336,6 +337,7 @@ const Admin = () => {
         case "maieutic-effectiveness": return <MaieuticEffectivenessTab />;
         case "content-profiles": return <ContentProfilesTab />;
         case "lexicon-phonetics": return <LexiconPhoneticsTab />;
+        case "ontology-concepts": return <OntologyConceptsTab />;
         default: return <DashboardTab />;
       }
     })();
