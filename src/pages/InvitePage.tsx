@@ -606,56 +606,112 @@ export default function InvitePage() {
 
           {/* Verification Step */}
           {step === "verification" && (
-            <div className="space-y-6 text-center">
+            <div className="space-y-6">
+              {/* Method badge */}
               <div className="flex justify-center">
-                <CircularTimer timeLeft={timeLeft} totalTime={TIMER_DURATION} />
+                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+                  verificationMethod === 'email' 
+                    ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' 
+                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                }`}>
+                  {verificationMethod === 'email' ? (
+                    <>
+                      <Mail className="h-4 w-4" />
+                      Enviado por Email
+                    </>
+                  ) : (
+                    <>
+                      <Phone className="h-4 w-4" />
+                      Enviado por WhatsApp
+                    </>
+                  )}
+                </div>
               </div>
 
+              {/* Timer with urgency */}
+              <div className="flex justify-center">
+                <div className={timeLeft <= 30 ? 'animate-pulse' : ''}>
+                  <CircularTimer timeLeft={timeLeft} totalTime={TIMER_DURATION} size={140} />
+                </div>
+              </div>
+
+              {/* Larger OTP fields */}
               <div className="flex justify-center">
                 <InputOTP
                   maxLength={6}
                   value={otpValue}
                   onChange={setOtpValue}
-                  disabled={isLoading}
+                  disabled={isLoading || timeLeft === 0}
+                  className="gap-3"
                 >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
+                  <InputOTPGroup className="gap-2">
+                    <InputOTPSlot index={0} className="w-12 h-14 text-2xl font-bold border-2 rounded-lg" />
+                    <InputOTPSlot index={1} className="w-12 h-14 text-2xl font-bold border-2 rounded-lg" />
+                    <InputOTPSlot index={2} className="w-12 h-14 text-2xl font-bold border-2 rounded-lg" />
+                    <InputOTPSlot index={3} className="w-12 h-14 text-2xl font-bold border-2 rounded-lg" />
+                    <InputOTPSlot index={4} className="w-12 h-14 text-2xl font-bold border-2 rounded-lg" />
+                    <InputOTPSlot index={5} className="w-12 h-14 text-2xl font-bold border-2 rounded-lg" />
                   </InputOTPGroup>
                 </InputOTP>
               </div>
 
+              {/* Loading feedback */}
               {isLoading && (
-                <div className="flex justify-center">
+                <div className="flex flex-col items-center gap-2">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="text-sm text-muted-foreground">Verificando...</span>
                 </div>
               )}
 
-              {canResend && (
-                <Button
-                  variant="outline"
-                  onClick={handleResendCode}
-                  disabled={isLoading}
-                >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Reenviar código
-                </Button>
+              {/* Expired message */}
+              {timeLeft === 0 && !isLoading && (
+                <div className="text-center text-destructive text-sm font-medium">
+                  Código expirado. Reenvie para continuar.
+                </div>
               )}
 
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setStep("form");
-                  setOtpValue("");
-                }}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar
-              </Button>
+              {/* Action buttons - always visible */}
+              <div className="flex flex-col gap-3">
+                {/* Resend button - always visible */}
+                <Button
+                  variant={canResend ? "default" : "outline"}
+                  onClick={handleResendCode}
+                  disabled={!canResend || isLoading}
+                  className="w-full"
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  {canResend 
+                    ? "Reenviar código" 
+                    : `Reenviar em ${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}`
+                  }
+                </Button>
+
+                {/* Back button */}
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setStep("form");
+                    setOtpValue("");
+                    setTimeLeft(TIMER_DURATION);
+                    setCanResend(false);
+                  }}
+                  disabled={isLoading}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Voltar e editar dados
+                </Button>
+              </div>
+
+              {/* Help tip */}
+              <div className="text-center text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+                <p className="font-medium mb-1">Não recebeu o código?</p>
+                <p>
+                  {verificationMethod === 'email' 
+                    ? 'Verifique sua pasta de spam ou lixo eletrônico.'
+                    : 'Verifique se seu WhatsApp está ativo e conectado.'
+                  }
+                </p>
+              </div>
             </div>
           )}
 
