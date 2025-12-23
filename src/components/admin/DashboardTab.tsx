@@ -5,6 +5,7 @@ import {
   MessageSquare, FileText, ShieldAlert, Users, 
   ArrowUpRight, ArrowDownRight, Activity, Info
 } from "lucide-react";
+import APIsUsedTable from "./APIsUsedTable";
 import {
   Tooltip,
   TooltipContent,
@@ -508,6 +509,9 @@ export const DashboardTab = () => {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* APIs de Dados Econômicos */}
+      <APIsUsedTable />
     </div>
   );
 };
