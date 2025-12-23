@@ -5319,26 +5319,7 @@ export type Database = {
       get_schema_info: { Args: never; Returns: Json }
       get_taxonomy_analytics_report: {
         Args: { p_days?: number }
-        Returns: {
-          approval_rate: number
-          auto_rate: number
-          avg_confidence: number
-          coverage_trend: number
-          current_active_taxonomies: number
-          current_coverage: number
-          current_total_docs: number
-          current_total_taxonomies: number
-          current_with_taxonomy: number
-          docs_low_confidence: number
-          docs_trend: number
-          docs_without_taxonomy: number
-          pending_suggestions: number
-          taxonomies_trend: number
-          top_taxonomies: Json
-          total_auto_classifications: number
-          total_manual_classifications: number
-          total_suggestions_processed: number
-        }[]
+        Returns: Json
       }
       get_taxonomy_coverage_stats: {
         Args: never
