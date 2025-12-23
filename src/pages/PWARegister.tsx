@@ -75,6 +75,15 @@ export default function PWARegister() {
           setName(result.name || "");
           setEmail(result.email || "");
           setPhone(result.phone || "");
+          
+          // Track invitation open (notifies admin on first open)
+          try {
+            await supabase.functions.invoke("track-invitation-open", {
+              body: { token, source: "app" },
+            });
+          } catch (trackError) {
+            console.log("Track open error (non-blocking):", trackError);
+          }
         }
       } catch (error: any) {
         console.error("Error verifying invitation:", error);
