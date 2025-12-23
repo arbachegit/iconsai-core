@@ -88,7 +88,7 @@ export default function InvitePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [verificationMethod, setVerificationMethod] = useState<"email" | "whatsapp">("email");
+  const [verificationMethod, setVerificationMethod] = useState<"email" | "sms" | "whatsapp">("email");
   const [maskedDestination, setMaskedDestination] = useState("");
   const [otpValue, setOtpValue] = useState("");
   const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
@@ -600,7 +600,7 @@ export default function InvitePage() {
                 <Label>Receber código de verificação via:</Label>
                 <RadioGroup
                   value={verificationMethod}
-                  onValueChange={(v) => setVerificationMethod(v as "email" | "whatsapp")}
+                  onValueChange={(v) => setVerificationMethod(v as "email" | "sms" | "whatsapp")}
                   className="flex gap-4"
                 >
                   <div className="flex items-center gap-2">
@@ -608,6 +608,13 @@ export default function InvitePage() {
                     <Label htmlFor="email" className="flex items-center gap-1 cursor-pointer">
                       <Mail className="h-4 w-4" />
                       Email
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="sms" id="sms" />
+                    <Label htmlFor="sms" className="flex items-center gap-1 cursor-pointer">
+                      <MessageCircle className="h-4 w-4" />
+                      SMS
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">

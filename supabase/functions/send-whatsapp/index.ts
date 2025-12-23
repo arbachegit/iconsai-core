@@ -40,12 +40,23 @@ serve(async (req) => {
   }
 
   try {
-    const { phoneNumber: rawPhoneNumber, message, eventType } = await req.json();
+    const { 
+      phoneNumber: rawPhoneNumber, 
+      message, 
+      eventType,
+      contentSid,        // SID do template (ex: HXxxxxxxxxx)
+      contentVariables   // Variáveis do template (ex: {"1": "123456"})
+    } = await req.json();
     
     // Validate required inputs
-    if (!rawPhoneNumber || !message) {
-      console.error('[WhatsApp] Missing required fields: phoneNumber or message');
-      throw new Error('phoneNumber and message are required');
+    if (!rawPhoneNumber) {
+      console.error('[WhatsApp] Missing required field: phoneNumber');
+      throw new Error('phoneNumber is required');
+    }
+    
+    if (!message && !contentSid) {
+      console.error('[WhatsApp] Missing required field: message or contentSid');
+      throw new Error('message or contentSid is required');
     }
 
     // Sanitize phone number before validation
@@ -85,9 +96,19 @@ serve(async (req) => {
     const twilioApiUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     
     const formData = new URLSearchParams();
-    formData.append('Body', message);
     formData.append('From', `whatsapp:${fromNumber}`);
     formData.append('To', `whatsapp:${phoneNumber}`);
+    
+    // Se tem ContentSid, usar template; senão, mensagem livre
+    if (contentSid) {
+      formData.append('ContentSid', contentSid);
+      if (contentVariables) {
+        formData.append('ContentVariables', JSON.stringify(contentVariables));
+      }
+      console.log(`[WhatsApp] Using template: ${contentSid}`);
+    } else {
+      formData.append('Body', message);
+    }
 
     const response = await fetch(twilioApiUrl, {
       method: 'POST',
