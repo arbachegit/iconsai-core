@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -23,14 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Mail, Phone, Copy, Check, UserPlus, Smartphone } from "lucide-react";
-
-// Ícones para os agentes PWA
-const AGENT_ICONS: Record<string, string> = {
-  economia: "💹",
-  health: "🏥",
-  ideias: "💡",
-};
+import { Loader2, Mail, Phone, Copy, Check, UserPlus, Monitor, Smartphone } from "lucide-react";
 
 const inviteSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
@@ -39,23 +33,20 @@ const inviteSchema = z.object({
   role: z.enum(["user", "admin", "superadmin"]),
   sendViaEmail: z.boolean(),
   sendViaWhatsapp: z.boolean(),
-  pwaAccess: z.array(z.string()).default([]),
+  hasPlatformAccess: z.boolean().default(true),
+  hasAppAccess: z.boolean().default(false),
 }).refine(
   (data) => data.sendViaEmail || data.sendViaWhatsapp,
   { message: "Selecione pelo menos um método de envio", path: ["sendViaEmail"] }
 ).refine(
   (data) => !data.sendViaWhatsapp || (data.phone && data.phone.length >= 10),
   { message: "Telefone é obrigatório para envio via WhatsApp", path: ["phone"] }
+).refine(
+  (data) => data.hasPlatformAccess || data.hasAppAccess,
+  { message: "Selecione pelo menos um tipo de acesso", path: ["hasPlatformAccess"] }
 );
 
 type InviteFormData = z.infer<typeof inviteSchema>;
-
-interface PWAAgent {
-  slug: string;
-  name: string;
-  description: string | null;
-  is_active: boolean;
-}
 
 interface InviteUserModalV2Props {
   open: boolean;
@@ -67,8 +58,6 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
   const [isLoading, setIsLoading] = useState(false);
   const [inviteResult, setInviteResult] = useState<{ url: string; token: string } | null>(null);
   const [copied, setCopied] = useState(false);
-  const [pwaAgents, setPwaAgents] = useState<PWAAgent[]>([]);
-  const [loadingAgents, setLoadingAgents] = useState(true);
 
   const {
     register,
@@ -86,60 +75,28 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
       role: "user",
       sendViaEmail: true,
       sendViaWhatsapp: false,
-      pwaAccess: [],
+      hasPlatformAccess: true,
+      hasAppAccess: false,
     },
   });
 
   const sendViaWhatsapp = watch("sendViaWhatsapp");
-  const selectedPwaAccess = watch("pwaAccess");
-
-  // Buscar agentes PWA disponíveis
-  useEffect(() => {
-    const fetchAgents = async () => {
-      try {
-        setLoadingAgents(true);
-        const { data, error } = await supabase
-          .from("chat_agents")
-          .select("slug, name, description, is_active")
-          .in("slug", ["economia", "health", "ideias"])
-          .eq("is_active", true)
-          .order("display_order");
-
-        if (error) throw error;
-        setPwaAgents(data || []);
-      } catch (error) {
-        console.error("Error fetching PWA agents:", error);
-        // Fallback para agentes padrão
-        setPwaAgents([
-          { slug: "economia", name: "Economista", description: "Assistente de economia", is_active: true },
-          { slug: "health", name: "Saúde", description: "Assistente de saúde", is_active: true },
-        ]);
-      } finally {
-        setLoadingAgents(false);
-      }
-    };
-
-    if (open) {
-      fetchAgents();
-    }
-  }, [open]);
-
-  const togglePwaAccess = (slug: string) => {
-    const current = selectedPwaAccess || [];
-    if (current.includes(slug)) {
-      setValue("pwaAccess", current.filter((s) => s !== slug));
-    } else {
-      setValue("pwaAccess", [...current, slug]);
-    }
-  };
+  const hasPlatformAccess = watch("hasPlatformAccess");
+  const hasAppAccess = watch("hasAppAccess");
 
   const onSubmit = async (data: InviteFormData) => {
     setIsLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke("create-invitation", {
         body: {
-          ...data,
-          pwaAccess: data.pwaAccess,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          role: data.role,
+          sendViaEmail: data.sendViaEmail,
+          sendViaWhatsapp: data.sendViaWhatsapp,
+          hasPlatformAccess: data.hasPlatformAccess,
+          hasAppAccess: data.hasAppAccess,
         },
       });
 
@@ -191,10 +148,10 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Convidar Usuário (PWA)
+            Convidar Usuário
           </DialogTitle>
           <DialogDescription>
-            Envie um convite para um novo usuário se cadastrar e acessar os PWAs de voz.
+            Envie um convite para um novo usuário se cadastrar na plataforma.
           </DialogDescription>
         </DialogHeader>
 
@@ -243,71 +200,66 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Tipo de acesso *</Label>
-              <Select
-                defaultValue="user"
-                onValueChange={(value) => setValue("role", value as any)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo de acesso" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="user">Usuário</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                  <SelectItem value="superadmin">Super Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Seção de Acesso */}
+            <div className="space-y-4 pt-2 border-t">
+              <Label className="text-base font-semibold">Tipo de Acesso *</Label>
+              
+              {errors.hasPlatformAccess && (
+                <p className="text-sm text-destructive">{errors.hasPlatformAccess.message}</p>
+              )}
 
-            {/* PWA Access Selection */}
-            <div className="space-y-3 pt-2">
-              <Label className="flex items-center gap-2">
-                <Smartphone className="h-4 w-4" />
-                PWAs de Voz (acesso liberado)
-              </Label>
-              <div className="grid grid-cols-2 gap-3">
-                {loadingAgents ? (
-                  <div className="col-span-2 text-sm text-muted-foreground">
-                    Carregando agentes...
+              {/* Acesso à Plataforma */}
+              <div className={`p-4 rounded-lg border transition-colors ${hasPlatformAccess ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Monitor className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-medium">Acesso à Plataforma</p>
+                      <p className="text-sm text-muted-foreground">Computador ou Tablet</p>
+                    </div>
                   </div>
-                ) : pwaAgents.length === 0 ? (
-                  <div className="col-span-2 text-sm text-muted-foreground">
-                    Nenhum agente PWA disponível
-                  </div>
-                ) : (
-                  pwaAgents.map((agent) => (
-                    <label
-                      key={agent.slug}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedPwaAccess?.includes(agent.slug)
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                      onClick={() => togglePwaAccess(agent.slug)}
+                  <Switch
+                    checked={hasPlatformAccess}
+                    onCheckedChange={(checked) => setValue("hasPlatformAccess", checked)}
+                  />
+                </div>
+                
+                {hasPlatformAccess && (
+                  <div className="mt-4 pt-4 border-t border-border/50">
+                    <Label className="text-sm">Tipo de permissão</Label>
+                    <Select
+                      defaultValue="user"
+                      onValueChange={(value) => setValue("role", value as any)}
                     >
-                      <Checkbox
-                        checked={selectedPwaAccess?.includes(agent.slug)}
-                        onCheckedChange={() => togglePwaAccess(agent.slug)}
-                      />
-                      <span className="text-xl">{AGENT_ICONS[agent.slug] || "🤖"}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm">{agent.name}</div>
-                        {agent.description && (
-                          <div className="text-xs text-muted-foreground truncate">
-                            {agent.description}
-                          </div>
-                        )}
-                      </div>
-                    </label>
-                  ))
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Selecione o tipo de acesso" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">Usuário</SelectItem>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="superadmin">Super Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               </div>
-              {selectedPwaAccess && selectedPwaAccess.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {selectedPwaAccess.length} PWA(s) selecionado(s)
-                </p>
-              )}
+
+              {/* Acesso ao APP */}
+              <div className={`p-4 rounded-lg border transition-colors ${hasAppAccess ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Smartphone className="h-5 w-5 text-emerald-500" />
+                    <div>
+                      <p className="font-medium">Acesso ao APP</p>
+                      <p className="text-sm text-muted-foreground">Apenas Celular via WhatsApp</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={hasAppAccess}
+                    onCheckedChange={(checked) => setValue("hasAppAccess", checked)}
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-3 pt-2">
@@ -361,16 +313,20 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
               <p className="text-sm text-muted-foreground mt-1">
                 O usuário receberá o convite pelos métodos selecionados.
               </p>
-              {selectedPwaAccess && selectedPwaAccess.length > 0 && (
-                <div className="flex items-center justify-center gap-2 mt-3">
-                  <span className="text-sm text-muted-foreground">PWAs:</span>
-                  {selectedPwaAccess.map((slug) => (
-                    <span key={slug} className="text-xl" title={slug}>
-                      {AGENT_ICONS[slug] || "🤖"}
-                    </span>
-                  ))}
-                </div>
-              )}
+              <div className="flex items-center justify-center gap-3 mt-3">
+                {hasPlatformAccess && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Monitor className="h-4 w-4" />
+                    <span>Plataforma</span>
+                  </div>
+                )}
+                {hasAppAccess && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Smartphone className="h-4 w-4" />
+                    <span>APP</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">

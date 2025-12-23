@@ -13,7 +13,8 @@ interface CreateInvitationRequest {
   role: "user" | "admin" | "superadmin";
   sendViaEmail: boolean;
   sendViaWhatsapp: boolean;
-  pwaAccess?: string[];
+  hasPlatformAccess: boolean;
+  hasAppAccess: boolean;
 }
 
 serve(async (req) => {
@@ -26,12 +27,31 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { name, email, phone, role, sendViaEmail, sendViaWhatsapp, pwaAccess }: CreateInvitationRequest = await req.json();
+    const { 
+      name, 
+      email, 
+      phone, 
+      role, 
+      sendViaEmail, 
+      sendViaWhatsapp, 
+      hasPlatformAccess, 
+      hasAppAccess 
+    }: CreateInvitationRequest = await req.json();
+
+    console.log("Creating invitation:", { name, email, hasPlatformAccess, hasAppAccess });
 
     // Validate required fields
     if (!name || !email) {
       return new Response(
         JSON.stringify({ error: "Nome e email são obrigatórios" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate at least one access type
+    if (!hasPlatformAccess && !hasAppAccess) {
+      return new Response(
+        JSON.stringify({ error: "Selecione pelo menos um tipo de acesso" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -96,7 +116,9 @@ serve(async (req) => {
         send_via_whatsapp: sendViaWhatsapp,
         expires_at: expiresAt.toISOString(),
         status: "pending",
-        pwa_access: pwaAccess || []
+        has_platform_access: hasPlatformAccess,
+        has_app_access: hasAppAccess,
+        pwa_access: hasAppAccess ? ["economia", "health", "ideias"] : [] // Legacy support
       })
       .select()
       .single();
@@ -109,17 +131,28 @@ serve(async (req) => {
       );
     }
 
-    // Build invitation URL - redirect to PWA registration
+    // Build invitation URL based on access type
     const siteUrl = Deno.env.get("PUBLIC_SITE_URL") || "https://hmv.knowyou.app";
-    const inviteUrl = `${siteUrl}/pwa-register?token=${token}`;
+    
+    // Determine the appropriate URL based on access type
+    let inviteUrl: string;
+    if (hasAppAccess && !hasPlatformAccess) {
+      // APP only - redirect to PWA register
+      inviteUrl = `${siteUrl}/pwa-register?token=${token}`;
+    } else {
+      // Platform access (with or without APP) - redirect to invite page
+      inviteUrl = `${siteUrl}/invite/${token}`;
+    }
 
-    // Build PWA icons for email
-    const pwaIcons: Record<string, string> = {
-      economia: "💹",
-      health: "🏥",
-      ideias: "💡"
-    };
-    const pwaAccessDisplay = (pwaAccess || []).map(slug => pwaIcons[slug] || "🤖").join(" ");
+    // Build access type description for email/whatsapp
+    const accessDescriptions: string[] = [];
+    if (hasPlatformAccess) {
+      accessDescriptions.push("🖥️ Plataforma (Computador/Tablet)");
+    }
+    if (hasAppAccess) {
+      accessDescriptions.push("📱 APP (Celular via WhatsApp)");
+    }
+    const accessDisplay = accessDescriptions.join("\n");
 
     // Send email if enabled
     if (sendViaEmail) {
@@ -137,6 +170,10 @@ serve(async (req) => {
               .button { display: inline-block; background: #6366f1; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
               .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
               .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; }
+              .access-badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 6px; margin: 4px; font-size: 14px; }
+              .platform-badge { background: #6366f1; color: white; }
+              .app-badge { background: #10b981; color: white; }
+              .warning { background: #fef3c7; border: 1px solid #fcd34d; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 14px; color: #92400e; }
             </style>
           </head>
           <body>
@@ -150,9 +187,34 @@ serve(async (req) => {
                 
                 <div class="info">
                   <p><strong>📧 Email:</strong> ${email}</p>
-                  <p><strong>👤 Tipo de acesso:</strong> ${role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Administrador' : 'Usuário'}</p>
-                  ${pwaAccess && pwaAccess.length > 0 ? `<p><strong>📱 PWAs de Voz:</strong> ${pwaAccessDisplay}</p>` : ''}
+                  ${hasPlatformAccess ? `<p><strong>👤 Tipo de acesso:</strong> ${role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Administrador' : 'Usuário'}</p>` : ''}
+                  <p style="margin-top: 12px;"><strong>🔓 Seus acessos:</strong></p>
+                  <div style="margin-top: 8px;">
+                    ${hasPlatformAccess ? '<span class="access-badge platform-badge">🖥️ Plataforma</span>' : ''}
+                    ${hasAppAccess ? '<span class="access-badge app-badge">📱 APP</span>' : ''}
+                  </div>
                 </div>
+
+                ${hasPlatformAccess && !hasAppAccess ? `
+                <div class="warning">
+                  <strong>⚠️ Atenção:</strong> Seu acesso é exclusivo à <strong>Plataforma</strong>. 
+                  Acesse pelo computador ou tablet para se cadastrar.
+                </div>
+                ` : ''}
+
+                ${!hasPlatformAccess && hasAppAccess ? `
+                <div class="warning">
+                  <strong>📱 Atenção:</strong> Seu acesso é exclusivo ao <strong>APP</strong>. 
+                  Use o celular para se cadastrar. O APP funciona apenas pelo WhatsApp.
+                </div>
+                ` : ''}
+
+                ${hasPlatformAccess && hasAppAccess ? `
+                <div class="warning" style="background: #dbeafe; border-color: #60a5fa; color: #1e40af;">
+                  <strong>✨ Acesso Completo:</strong> Você pode acessar tanto a <strong>Plataforma</strong> (computador/tablet) 
+                  quanto o <strong>APP</strong> (celular via WhatsApp).
+                </div>
+                ` : ''}
                 
                 <p style="text-align: center;">
                   <a href="${inviteUrl}" class="button">Completar Cadastro</a>
@@ -174,7 +236,7 @@ serve(async (req) => {
         await supabase.functions.invoke("send-email", {
           body: {
             to: email,
-            subject: "🎉 Você foi convidado para a Plataforma KnowYOU Health",
+            subject: "🎉 Você foi convidado para a Plataforma KnowYOU",
             body: emailHtml
           }
         });
@@ -188,7 +250,28 @@ serve(async (req) => {
     // Send WhatsApp if enabled
     if (sendViaWhatsapp && phone) {
       try {
-        const whatsappMessage = `🎉 *Convite KnowYOU*\n\nOlá ${name}!\n\nVocê foi convidado para a Plataforma KnowYOU.${pwaAccess && pwaAccess.length > 0 ? `\n\n📱 PWAs: ${pwaAccessDisplay}` : ''}\n\n🔗 Complete seu cadastro:\n${inviteUrl}\n\n⏰ Este convite expira em 7 dias.`;
+        let accessInfo = "";
+        if (hasPlatformAccess && hasAppAccess) {
+          accessInfo = "✅ Plataforma (computador/tablet)\n✅ APP (celular via WhatsApp)";
+        } else if (hasPlatformAccess) {
+          accessInfo = "✅ Plataforma (computador/tablet)\n⚠️ Acesse pelo computador ou tablet";
+        } else if (hasAppAccess) {
+          accessInfo = "✅ APP (celular via WhatsApp)\n📱 O APP funciona apenas pelo celular";
+        }
+
+        const whatsappMessage = `🎉 *Convite KnowYOU*
+
+Olá ${name}!
+
+Você foi convidado para a Plataforma KnowYOU.
+
+*📱 Seu Acesso:*
+${accessInfo}
+
+🔗 Complete seu cadastro:
+${inviteUrl}
+
+⏰ Este convite expira em 7 dias.`;
 
         await supabase.functions.invoke("send-whatsapp", {
           body: {
@@ -212,7 +295,18 @@ serve(async (req) => {
 
       if (settings?.whatsapp_global_enabled && settings?.whatsapp_target_phone) {
         const roleLabel = role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Admin' : 'Usuário';
-        const adminMessage = `📧 *Convite Enviado*\n\n👤 ${name}\n📧 ${email}\n🔑 Role: ${roleLabel}\n\n✅ Aguardando preenchimento do formulário.`;
+        const accessLabels = [];
+        if (hasPlatformAccess) accessLabels.push("🖥️ Plataforma");
+        if (hasAppAccess) accessLabels.push("📱 APP");
+        
+        const adminMessage = `📧 *Convite Enviado*
+
+👤 ${name}
+📧 ${email}
+🔑 Role: ${roleLabel}
+🔓 Acesso: ${accessLabels.join(" + ")}
+
+✅ Aguardando preenchimento do formulário.`;
 
         await supabase.functions.invoke("send-whatsapp", {
           body: {
@@ -231,9 +325,9 @@ serve(async (req) => {
       channel: "system",
       recipient: email,
       subject: "Convite enviado",
-      message_body: `Convite criado para ${name} (${email}) com role ${role}`,
+      message_body: `Convite criado para ${name} (${email}) - Plataforma: ${hasPlatformAccess}, APP: ${hasAppAccess}`,
       status: "success",
-      metadata: { token, role, sendViaEmail, sendViaWhatsapp }
+      metadata: { token, role, sendViaEmail, sendViaWhatsapp, hasPlatformAccess, hasAppAccess }
     });
 
     return new Response(

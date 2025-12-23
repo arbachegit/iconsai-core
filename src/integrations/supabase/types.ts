@@ -3034,6 +3034,7 @@ export type Database = {
           created_at: string | null
           device_id: string
           expires_at: string | null
+          has_app_access: boolean | null
           id: string
           is_active: boolean | null
           last_interaction: string | null
@@ -3047,6 +3048,7 @@ export type Database = {
           created_at?: string | null
           device_id: string
           expires_at?: string | null
+          has_app_access?: boolean | null
           id?: string
           is_active?: boolean | null
           last_interaction?: string | null
@@ -3060,6 +3062,7 @@ export type Database = {
           created_at?: string | null
           device_id?: string
           expires_at?: string | null
+          has_app_access?: boolean | null
           id?: string
           is_active?: boolean | null
           last_interaction?: string | null
@@ -4589,6 +4592,8 @@ export type Database = {
           email_sent_at: string | null
           expires_at: string
           form_started_at: string | null
+          has_app_access: boolean | null
+          has_platform_access: boolean | null
           id: string
           invited_by: string | null
           last_resend_at: string | null
@@ -4626,6 +4631,8 @@ export type Database = {
           email_sent_at?: string | null
           expires_at: string
           form_started_at?: string | null
+          has_app_access?: boolean | null
+          has_platform_access?: boolean | null
           id?: string
           invited_by?: string | null
           last_resend_at?: string | null
@@ -4663,6 +4670,8 @@ export type Database = {
           email_sent_at?: string | null
           expires_at?: string
           form_started_at?: string | null
+          has_app_access?: boolean | null
+          has_platform_access?: boolean | null
           id?: string
           invited_by?: string | null
           last_resend_at?: string | null
@@ -4732,6 +4741,8 @@ export type Database = {
           dns_origin: string | null
           email: string
           first_name: string
+          has_app_access: boolean | null
+          has_platform_access: boolean | null
           id: string
           institution_study: string | null
           institution_work: string | null
@@ -4761,6 +4772,8 @@ export type Database = {
           dns_origin?: string | null
           email: string
           first_name: string
+          has_app_access?: boolean | null
+          has_platform_access?: boolean | null
           id?: string
           institution_study?: string | null
           institution_work?: string | null
@@ -4790,6 +4803,8 @@ export type Database = {
           dns_origin?: string | null
           email?: string
           first_name?: string
+          has_app_access?: boolean | null
+          has_platform_access?: boolean | null
           id?: string
           institution_study?: string | null
           institution_work?: string | null

@@ -30,7 +30,9 @@ import {
   XCircle,
   Send,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  Monitor,
+  Smartphone
 } from "lucide-react";
 
 type AppRole = "user" | "admin" | "superadmin";
@@ -55,6 +57,9 @@ interface UserInvitation {
   completed_at: string | null;
   phone: string | null;
   pwa_access: string[] | null;
+  // New access fields
+  has_platform_access: boolean | null;
+  has_app_access: boolean | null;
 }
 
 const ROLE_CONFIG: Record<AppRole, { color: string; label: string }> = {
@@ -346,8 +351,8 @@ export const InvitesTab = () => {
                   <SortableHeader label="Nome" sortKey="name" />
                   <SortableHeader label="Email" sortKey="email" />
                   <SortableHeader label="Telefone" sortKey="phone" />
+                  <TableHead>Acesso</TableHead>
                   <SortableHeader label="Data Envio" sortKey="date" />
-                  <TableHead>Hora Envio</TableHead>
                   <SortableHeader label="Role" sortKey="role" />
                   <SortableHeader label="Status" sortKey="status" />
                   <TableHead className="text-right">Ações</TableHead>
@@ -377,8 +382,38 @@ export const InvitesTab = () => {
                         <TableCell className="font-medium">{invite.name}</TableCell>
                         <TableCell>{invite.email}</TableCell>
                         <TableCell>{invite.phone || "-"}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {invite.has_platform_access && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Badge variant="outline" className="gap-1 text-xs px-1.5">
+                                      <Monitor className="w-3 h-3" />
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Plataforma (Computador/Tablet)</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            {invite.has_app_access && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Badge variant="outline" className="gap-1 text-xs px-1.5 border-emerald-500 text-emerald-600">
+                                      <Smartphone className="w-3 h-3" />
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>APP (Celular via WhatsApp)</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            {!invite.has_platform_access && !invite.has_app_access && (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{formatDateTime(invite.created_at).split(' ')[0]}</TableCell>
-                        <TableCell>{formatTime(invite.created_at)}</TableCell>
                         <TableCell>{renderRoleBadge(invite.role)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">

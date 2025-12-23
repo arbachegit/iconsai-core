@@ -132,7 +132,7 @@ serve(async (req) => {
       console.error("Error creating profile:", profileError);
     }
 
-    // Add to user_registrations for tracking
+    // Add to user_registrations for tracking (with new access fields)
     const { error: regError } = await supabase
       .from("user_registrations")
       .insert({
@@ -142,7 +142,9 @@ serve(async (req) => {
         phone: invitation.phone,
         role: invitation.role,
         status: "approved",
-        approved_at: new Date().toISOString()
+        approved_at: new Date().toISOString(),
+        has_platform_access: invitation.has_platform_access ?? true,
+        has_app_access: invitation.has_app_access ?? false
       });
 
     if (regError) {
@@ -173,7 +175,19 @@ serve(async (req) => {
       if (settings?.whatsapp_global_enabled && settings?.whatsapp_target_phone) {
         const roleLabel = invitation.role === 'superadmin' ? 'Super Admin' : invitation.role === 'admin' ? 'Admin' : 'Usuário';
         const methodLabel = invitation.verification_method === 'email' ? 'Email' : 'WhatsApp';
-        const adminMessage = `✅ *Cadastro Concluído*\n\n👤 ${invitation.name}\n📧 ${invitation.email}\n🔑 Role: ${roleLabel}\n✔️ Verificado via: ${methodLabel}\n\n🎉 Usuário pode fazer login.`;
+        const accessLabels = [];
+        if (invitation.has_platform_access) accessLabels.push("🖥️ Plataforma");
+        if (invitation.has_app_access) accessLabels.push("📱 APP");
+        
+        const adminMessage = `✅ *Cadastro Concluído*
+
+👤 ${invitation.name}
+📧 ${invitation.email}
+🔑 Role: ${roleLabel}
+🔓 Acesso: ${accessLabels.join(" + ") || "Plataforma"}
+✔️ Verificado via: ${methodLabel}
+
+🎉 Usuário pode fazer login.`;
 
         await supabase.functions.invoke("send-whatsapp", {
           body: {
@@ -194,7 +208,13 @@ serve(async (req) => {
       subject: "Cadastro concluído",
       message_body: `${invitation.name} completou o cadastro com role ${invitation.role}`,
       status: "success",
-      metadata: { token, role: invitation.role, verificationMethod: invitation.verification_method }
+      metadata: { 
+        token, 
+        role: invitation.role, 
+        verificationMethod: invitation.verification_method,
+        hasPlatformAccess: invitation.has_platform_access,
+        hasAppAccess: invitation.has_app_access
+      }
     });
 
     return new Response(
