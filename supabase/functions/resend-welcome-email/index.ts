@@ -169,7 +169,7 @@ serve(async (req) => {
                 <p style="font-size: 12px; color: #666;">Este link é válido por 24 horas.</p>
               </div>
               <div class="footer">
-                <p>Plataforma KnowYOU Health &copy; ${new Date().getFullYear()}</p>
+                <p>Plataforma KnowYOU &copy; ${new Date().getFullYear()}</p>
               </div>
             </div>
           </body>
@@ -180,7 +180,7 @@ serve(async (req) => {
           await supabase.functions.invoke("send-email", {
             body: {
               to: registration.email,
-              subject: "🎉 Bem-vindo à Plataforma KnowYOU Health!",
+              subject: "🎉 Bem-vindo à Plataforma KnowYOU!",
               body: defaultHtml,
             },
           });
@@ -192,14 +192,14 @@ serve(async (req) => {
       } else {
         // Use custom template
         let emailBody = template.email_body || "";
-        let emailSubject = template.email_subject || "Bem-vindo à Plataforma KnowYOU Health!";
+        let emailSubject = template.email_subject || "Bem-vindo à Plataforma KnowYOU!";
         
         const variables: Record<string, string> = {
           user_name: userName,
           user_email: registration.email,
           recovery_link: recoveryLink,
           timestamp: new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-          platform_name: "Plataforma KnowYOU Health",
+          platform_name: "Plataforma KnowYOU",
         };
 
         for (const [key, value] of Object.entries(variables)) {
@@ -249,7 +249,7 @@ serve(async (req) => {
           .single();
 
         let whatsappMessage = whatsappTemplate?.whatsapp_message || 
-          `🎉 Olá ${userName}!\n\nSeu cadastro na Plataforma KnowYOU Health foi aprovado!\n\nClique no link abaixo para definir sua senha e começar a usar:\n${recoveryLink}\n\n⏰ Este link é válido por 24 horas.`;
+          `🎉 Olá ${userName}!\n\nSeu cadastro na Plataforma KnowYOU foi aprovado!\n\nClique no link abaixo para definir sua senha e começar a usar:\n${recoveryLink}\n\n⏰ Este link é válido por 24 horas.`;
 
         // Replace variables
         const variables: Record<string, string> = {
@@ -257,7 +257,7 @@ serve(async (req) => {
           user_email: registration.email,
           recovery_link: recoveryLink,
           timestamp: new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-          platform_name: "Plataforma KnowYOU Health",
+          platform_name: "Plataforma KnowYOU",
         };
 
         for (const [key, value] of Object.entries(variables)) {

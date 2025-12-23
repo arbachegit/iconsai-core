@@ -4780,6 +4780,10 @@ export type Database = {
           address_number: string | null
           address_state: string | null
           address_street: string | null
+          app_completed_at: string | null
+          app_first_opened_at: string | null
+          app_last_opened_at: string | null
+          app_open_count: number | null
           completed_at: string | null
           created_at: string | null
           email: string
@@ -4798,6 +4802,10 @@ export type Database = {
           name: string
           open_count: number | null
           phone: string | null
+          platform_completed_at: string | null
+          platform_first_opened_at: string | null
+          platform_last_opened_at: string | null
+          platform_open_count: number | null
           pwa_access: string[] | null
           resend_count: number | null
           role: Database["public"]["Enums"]["app_role"]
@@ -4822,6 +4830,10 @@ export type Database = {
           address_number?: string | null
           address_state?: string | null
           address_street?: string | null
+          app_completed_at?: string | null
+          app_first_opened_at?: string | null
+          app_last_opened_at?: string | null
+          app_open_count?: number | null
           completed_at?: string | null
           created_at?: string | null
           email: string
@@ -4840,6 +4852,10 @@ export type Database = {
           name: string
           open_count?: number | null
           phone?: string | null
+          platform_completed_at?: string | null
+          platform_first_opened_at?: string | null
+          platform_last_opened_at?: string | null
+          platform_open_count?: number | null
           pwa_access?: string[] | null
           resend_count?: number | null
           role?: Database["public"]["Enums"]["app_role"]
@@ -4864,6 +4880,10 @@ export type Database = {
           address_number?: string | null
           address_state?: string | null
           address_street?: string | null
+          app_completed_at?: string | null
+          app_first_opened_at?: string | null
+          app_last_opened_at?: string | null
+          app_open_count?: number | null
           completed_at?: string | null
           created_at?: string | null
           email?: string
@@ -4882,6 +4902,10 @@ export type Database = {
           name?: string
           open_count?: number | null
           phone?: string | null
+          platform_completed_at?: string | null
+          platform_first_opened_at?: string | null
+          platform_last_opened_at?: string | null
+          platform_open_count?: number | null
           pwa_access?: string[] | null
           resend_count?: number | null
           role?: Database["public"]["Enums"]["app_role"]

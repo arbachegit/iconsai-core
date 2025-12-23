@@ -327,9 +327,13 @@ ${appUrl}
 
       if (sendWhatsapp && phone) {
         try {
-          const msg = `🔐 *Código de Verificação*
+          const msg = `🔐 *Código de Verificação KnowYOU*
 
-Seu código: *${verificationCode}*
+Seu código:
+
+\`\`\`${verificationCode}\`\`\`
+
+📋 _Toque no código acima para copiar_
 
 ⏰ Expira em 2 minutos.`;
 

@@ -20,12 +20,12 @@ function getEmailTemplate(code: string, userName: string): string {
 <head><meta charset="utf-8"></head>
 <body style="font-family: Arial, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 40px; margin: 0;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #1e293b; border-radius: 12px; padding: 32px;">
-    <h2 style="color: #60a5fa; margin: 0 0 24px 0; font-size: 24px;">Plataforma KnowYOU Health</h2>
+    <h2 style="color: #60a5fa; margin: 0 0 24px 0; font-size: 24px;">Plataforma KnowYOU</h2>
     <hr style="border: none; border-top: 1px solid #334155; margin: 0 0 24px 0;">
     
     <h3 style="color: #f8fafc; margin: 0 0 16px 0; font-size: 18px;">Recuperação de Senha</h3>
     <p style="color: #cbd5e1; margin: 0 0 24px 0; line-height: 1.6;">
-      Olá, ${userName}. Recebemos uma solicitação para redefinir sua senha na Plataforma KnowYOU Health.
+      Olá, ${userName}. Recebemos uma solicitação para redefinir sua senha na Plataforma KnowYOU.
     </p>
     
     <p style="color: #cbd5e1; margin: 0 0 8px 0;">Seu código de verificação é:</p>
@@ -45,7 +45,7 @@ function getEmailTemplate(code: string, userName: string): string {
     
     <hr style="border: none; border-top: 1px solid #334155; margin: 0 0 16px 0;">
     <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">
-      © ${currentYear} Plataforma KnowYOU Health. Todos os direitos reservados.
+      © ${currentYear} Plataforma KnowYOU. Todos os direitos reservados.
     </p>
   </div>
 </body>
@@ -147,9 +147,9 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Plataforma KnowYOU Health <noreply@knowyou.app>",
+        from: "Plataforma KnowYOU <noreply@knowyou.app>",
         to: [email],
-        subject: "🔐 Código de Recuperação - Plataforma KnowYOU Health",
+        subject: "🔐 Código de Recuperação - Plataforma KnowYOU",
         html: getEmailTemplate(code, userName),
       }),
     });
@@ -225,7 +225,7 @@ serve(async (req) => {
           otp_code: code,
           user_name: userName,
           timestamp,
-          platform_name: 'Plataforma KnowYOU Health'
+          platform_name: 'Plataforma KnowYOU'
         };
 
         const injectVars = (tpl: string) => {
@@ -241,11 +241,11 @@ serve(async (req) => {
         if (prefData.email_enabled && emailGlobalEnabled && settings?.gmail_notification_email) {
           const emailSubject = template?.email_subject 
             ? injectVars(template.email_subject)
-            : "🔐 Solicitação de Recuperação de Senha - Plataforma KnowYOU Health";
+            : "🔐 Solicitação de Recuperação de Senha - Plataforma KnowYOU";
           
           const emailBody = template?.email_body
             ? injectVars(template.email_body)
-            : `Olá, ${userName}.\n\nRecebemos uma solicitação para redefinir sua senha na Plataforma KnowYOU Health.\n\nSeu código de verificação é: ${code}\n\nEste código expira em 10 minutos.`;
+            : `Olá, ${userName}.\n\nRecebemos uma solicitação para redefinir sua senha na Plataforma KnowYOU.\n\nSeu código de verificação é: ${code}\n\nEste código expira em 10 minutos.`;
 
           try {
             const emailResponse = await fetch("https://api.resend.com/emails", {
@@ -255,7 +255,7 @@ serve(async (req) => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                from: "Plataforma KnowYOU Health <noreply@knowyou.app>",
+                from: "Plataforma KnowYOU <noreply@knowyou.app>",
                 to: [settings.gmail_notification_email],
                 subject: emailSubject,
                 html: `<pre style="font-family: sans-serif;">${emailBody}</pre>`,
@@ -280,7 +280,7 @@ serve(async (req) => {
         if (prefData.whatsapp_enabled && settings?.whatsapp_global_enabled && settings?.whatsapp_target_phone) {
           const whatsappMessage = template?.whatsapp_message
             ? injectVars(template.whatsapp_message)
-            : `🔐 ${timestamp} - Plataforma KnowYOU Health: Solicitação de recuperação de senha para ${userName}.`;
+            : `🔐 ${timestamp} - Plataforma KnowYOU: Solicitação de recuperação de senha para ${userName}.`;
 
           try {
             const whatsappResponse = await supabase.functions.invoke("send-whatsapp", {

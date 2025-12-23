@@ -268,7 +268,7 @@ export const DashboardTab = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Visão geral do sistema KnowYOU Health.</p>
+          <p className="text-muted-foreground mt-1">Visão geral do sistema KnowYOU.</p>
         </div>
       </div>
 

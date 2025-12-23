@@ -190,7 +190,7 @@ const sendFailureAlert = async (
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
             
             <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-              Health AI App - Sistema de Documentação Técnica
+              KnowYOU AI - Sistema de Documentação Técnica
             </p>
           </div>
         `,

@@ -116,13 +116,13 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "Plataforma KnowYOU Health <noreply@knowyou.app>",
+          from: "KnowYOU AI <noreply@knowyou.app>",
           to: [recipientEmail],
           subject: `[Contato KnowYOU] ${subject}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
               <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
-                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">Health AI App</h1>
+                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">KnowYOU AI</h1>
               </div>
               <div style="padding: 30px; background: #ffffff;">
                 <h2 style="color: #1e3a5f; margin-top: 0;">Nova mensagem de contato</h2>
@@ -136,7 +136,7 @@ serve(async (req) => {
               </div>
               <div style="text-align: center; padding: 16px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
                 <p style="color: #64748b; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} Health AI App
+                  © ${new Date().getFullYear()} KnowYOU AI
                 </p>
               </div>
             </div>
@@ -169,13 +169,13 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "Plataforma KnowYOU Health <noreply@knowyou.app>",
+          from: "KnowYOU AI <noreply@knowyou.app>",
           to: [email],
           subject: `Recebemos sua mensagem - ${subject}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
               <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);">
-                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">Health AI App</h1>
+                <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600;">KnowYOU AI</h1>
               </div>
               <div style="padding: 30px; background: #ffffff;">
                 <h2 style="color: #0ea5e9; margin-top: 0;">Obrigado por entrar em contato!</h2>
@@ -190,7 +190,7 @@ serve(async (req) => {
               </div>
               <div style="text-align: center; padding: 16px; background: #f1f5f9; border-top: 1px solid #e2e8f0;">
                 <p style="color: #64748b; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} Health AI App
+                  © ${new Date().getFullYear()} KnowYOU AI
                 </p>
               </div>
             </div>
@@ -251,7 +251,7 @@ serve(async (req) => {
         sender_email: email,
         snippet: message.substring(0, 100),
         timestamp,
-        platform_name: "Plataforma KnowYOU Health",
+        platform_name: "KnowYOU AI",
       };
 
       const injectVars = (tpl: string) => {
@@ -280,7 +280,7 @@ serve(async (req) => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              from: "Plataforma KnowYOU Health <noreply@knowyou.app>",
+              from: "KnowYOU AI <noreply@knowyou.app>",
               to: [recipientEmail],
               subject: emailSubject,
               html: `<pre style="font-family: sans-serif;">${emailBody}</pre>`,
