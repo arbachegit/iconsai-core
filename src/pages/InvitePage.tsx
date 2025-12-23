@@ -164,11 +164,14 @@ export default function InvitePage() {
         setInvitation(data as Invitation);
         setStep("form");
         
-        // Track link opened
-        await supabase
-          .from("user_invitations")
-          .update({ link_opened_at: new Date().toISOString() })
-          .eq("token", token);
+        // Track link opened via edge function (notifies admin on first open)
+        try {
+          await supabase.functions.invoke("track-invitation-open", {
+            body: { token, source: "platform" },
+          });
+        } catch (trackError) {
+          console.log("Track open error (non-blocking):", trackError);
+        }
       } catch (err) {
         setStep("error");
         setErrorMessage("Erro ao validar convite");

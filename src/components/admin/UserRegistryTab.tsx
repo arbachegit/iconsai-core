@@ -18,6 +18,7 @@ import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
 import { formatDateTime } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { InvitesTab } from "./InvitesTab";
+import { InviteConversionStats } from "./InviteConversionStats";
 import { UserDeviceInfo } from "./UserDeviceInfo";
 import { 
   Search, 
@@ -915,28 +916,33 @@ export const UserRegistryTab = () => {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="active" className="gap-2">
-            <Users className="w-4 h-4" />
-            Usuários Ativos
-            <Badge className="ml-1 bg-fuchsia-300 text-fuchsia-900">{activeCount}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="pending" className="gap-2">
-            <Clock className="w-4 h-4" />
-            Lista de Aprovação
-            {pendingCount > 0 && (
-              <Badge className="bg-amber-500 text-white ml-1">{pendingCount}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="invites" className="gap-2">
-            <Send className="w-4 h-4" />
-            Convites
-          </TabsTrigger>
-          <TabsTrigger value="import" className="gap-2">
-            <FileSpreadsheet className="w-4 h-4" />
-            Importação
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between gap-4 mb-2">
+          <TabsList className="grid grid-cols-4 flex-1">
+            <TabsTrigger value="active" className="gap-2">
+              <Users className="w-4 h-4" />
+              Usuários Ativos
+              <Badge className="ml-1 bg-fuchsia-300 text-fuchsia-900">{activeCount}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="gap-2">
+              <Clock className="w-4 h-4" />
+              Lista de Aprovação
+              {pendingCount > 0 && (
+                <Badge className="bg-amber-500 text-white ml-1">{pendingCount}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="invites" className="gap-2">
+              <Send className="w-4 h-4" />
+              Convites
+            </TabsTrigger>
+            <TabsTrigger value="import" className="gap-2">
+              <FileSpreadsheet className="w-4 h-4" />
+              Importação
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* Conversion stats - only show on invites tab */}
+          {activeTab === "invites" && <InviteConversionStats />}
+        </div>
 
         {/* Tab: Invites */}
         <TabsContent value="invites" className="space-y-4">

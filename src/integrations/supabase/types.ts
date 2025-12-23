@@ -4786,14 +4786,17 @@ export type Database = {
           email_opened_at: string | null
           email_sent_at: string | null
           expires_at: string
+          first_opened_at: string | null
           form_started_at: string | null
           has_app_access: boolean | null
           has_platform_access: boolean | null
           id: string
           invited_by: string | null
+          last_opened_at: string | null
           last_resend_at: string | null
           link_opened_at: string | null
           name: string
+          open_count: number | null
           phone: string | null
           pwa_access: string[] | null
           resend_count: number | null
@@ -4825,14 +4828,17 @@ export type Database = {
           email_opened_at?: string | null
           email_sent_at?: string | null
           expires_at: string
+          first_opened_at?: string | null
           form_started_at?: string | null
           has_app_access?: boolean | null
           has_platform_access?: boolean | null
           id?: string
           invited_by?: string | null
+          last_opened_at?: string | null
           last_resend_at?: string | null
           link_opened_at?: string | null
           name: string
+          open_count?: number | null
           phone?: string | null
           pwa_access?: string[] | null
           resend_count?: number | null
@@ -4864,14 +4870,17 @@ export type Database = {
           email_opened_at?: string | null
           email_sent_at?: string | null
           expires_at?: string
+          first_opened_at?: string | null
           form_started_at?: string | null
           has_app_access?: boolean | null
           has_platform_access?: boolean | null
           id?: string
           invited_by?: string | null
+          last_opened_at?: string | null
           last_resend_at?: string | null
           link_opened_at?: string | null
           name?: string
+          open_count?: number | null
           phone?: string | null
           pwa_access?: string[] | null
           resend_count?: number | null

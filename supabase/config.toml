@@ -111,6 +111,9 @@ verify_jwt = false
 [functions.resend-invitation-code]
 verify_jwt = false
 
+[functions.track-invitation-open]
+verify_jwt = false
+
 # ============================================
 # SECURITY - Public (for reporting violations)
 # ============================================
