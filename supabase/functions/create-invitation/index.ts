@@ -131,158 +131,192 @@ serve(async (req) => {
       );
     }
 
-    // Build invitation URL based on access type
+    // Build invitation URLs
     const siteUrl = Deno.env.get("PUBLIC_SITE_URL") || "https://hmv.knowyou.app";
-    
-    // Determine the appropriate URL based on access type
-    let inviteUrl: string;
-    if (hasAppAccess && !hasPlatformAccess) {
-      // APP only - redirect to PWA register
-      inviteUrl = `${siteUrl}/pwa-register?token=${token}`;
-    } else {
-      // Platform access (with or without APP) - redirect to invite page
-      inviteUrl = `${siteUrl}/invite/${token}`;
-    }
+    const platformUrl = `${siteUrl}/invite/${token}`;
+    const appUrl = `${siteUrl}/pwa-register?token=${token}`;
 
-    // Build access type description for email/whatsapp
-    const accessDescriptions: string[] = [];
-    if (hasPlatformAccess) {
-      accessDescriptions.push("🖥️ Plataforma (Computador/Tablet)");
-    }
-    if (hasAppAccess) {
-      accessDescriptions.push("📱 APP (Celular via WhatsApp)");
-    }
-    const accessDisplay = accessDescriptions.join("\n");
-
-    // Send email if enabled
+    // Send emails based on access type - SEPARATE emails for each product
     if (sendViaEmail) {
-      try {
-        const emailHtml = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-              .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
-              .button { display: inline-block; background: #6366f1; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
-              .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
-              .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; }
-              .access-badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 6px; margin: 4px; font-size: 14px; }
-              .platform-badge { background: #6366f1; color: white; }
-              .app-badge { background: #10b981; color: white; }
-              .warning { background: #fef3c7; border: 1px solid #fcd34d; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 14px; color: #92400e; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h1 style="margin:0;">🎉 Você foi convidado!</h1>
-              </div>
-              <div class="content">
-                <p>Olá <strong>${name}</strong>,</p>
-                <p>Você recebeu um convite para fazer parte da <strong>Plataforma KnowYOU</strong>.</p>
-                
-                <div class="info">
-                  <p><strong>📧 Email:</strong> ${email}</p>
-                  ${hasPlatformAccess ? `<p><strong>👤 Tipo de acesso:</strong> ${role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Administrador' : 'Usuário'}</p>` : ''}
-                  <p style="margin-top: 12px;"><strong>🔓 Seus acessos:</strong></p>
-                  <div style="margin-top: 8px;">
-                    ${hasPlatformAccess ? '<span class="access-badge platform-badge">🖥️ Plataforma</span>' : ''}
-                    ${hasAppAccess ? '<span class="access-badge app-badge">📱 APP</span>' : ''}
+      // Email para PLATAFORMA
+      if (hasPlatformAccess) {
+        try {
+          const platformEmailHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                .container { max-width: 600px; margin: 0 auto; }
+                .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+                .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
+                .badge { display: inline-block; background: #6366f1; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
+                .button { display: inline-block; background: #6366f1; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+                .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+                .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6366f1; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1 style="margin:0;">🖥️ Convite KnowYOU Plataforma</h1>
+                </div>
+                <div class="content">
+                  <span class="badge">🖥️ PLATAFORMA</span>
+                  <p>Olá <strong>${name}</strong>,</p>
+                  <p>Você foi convidado para a <strong>KnowYOU Plataforma</strong>!</p>
+                  
+                  <div class="info">
+                    <p style="margin:0;">💻 Acesse pelo <strong>computador ou tablet</strong> para aproveitar todos os recursos.</p>
                   </div>
+                  
+                  <p style="text-align: center;">
+                    <a href="${platformUrl}" class="button">Acessar Plataforma</a>
+                  </p>
+                  
+                  <p style="font-size: 14px; color: #64748b; text-align: center;">
+                    ⏰ Este convite expira em <strong>7 dias</strong>.
+                  </p>
                 </div>
-
-                ${hasPlatformAccess && !hasAppAccess ? `
-                <div class="warning">
-                  <strong>⚠️ Atenção:</strong> Seu acesso é exclusivo à <strong>Plataforma</strong>. 
-                  Acesse pelo computador ou tablet para se cadastrar.
+                <div class="footer">
+                  <p>KnowYOU Plataforma &copy; ${new Date().getFullYear()}</p>
                 </div>
-                ` : ''}
-
-                ${!hasPlatformAccess && hasAppAccess ? `
-                <div class="warning">
-                  <strong>📱 Atenção:</strong> Seu acesso é exclusivo ao <strong>APP</strong>. 
-                  Use o celular para se cadastrar. O APP funciona apenas pelo WhatsApp.
-                </div>
-                ` : ''}
-
-                ${hasPlatformAccess && hasAppAccess ? `
-                <div class="warning" style="background: #dbeafe; border-color: #60a5fa; color: #1e40af;">
-                  <strong>✨ Acesso Completo:</strong> Você pode acessar tanto a <strong>Plataforma</strong> (computador/tablet) 
-                  quanto o <strong>APP</strong> (celular via WhatsApp).
-                </div>
-                ` : ''}
-                
-                <p style="text-align: center;">
-                  <a href="${inviteUrl}" class="button">Completar Cadastro</a>
-                </p>
-                
-                <p style="font-size: 14px; color: #64748b;">
-                  Este convite expira em <strong>7 dias</strong>. Se você não solicitou este convite, ignore este email.
-                </p>
               </div>
-              <div class="footer">
-                <p>Plataforma KnowYOU &copy; ${new Date().getFullYear()}</p>
-                <p>Este é um email automático, não responda.</p>
+            </body>
+            </html>
+          `;
+
+          await supabase.functions.invoke("send-email", {
+            body: {
+              to: email,
+              subject: "🖥️ Convite KnowYOU Plataforma",
+              body: platformEmailHtml
+            }
+          });
+          console.log("Platform invitation email sent to:", email);
+        } catch (emailError) {
+          console.error("Error sending platform email:", emailError);
+        }
+      }
+
+      // Email para APP
+      if (hasAppAccess) {
+        try {
+          const appEmailHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                .container { max-width: 600px; margin: 0 auto; }
+                .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+                .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
+                .badge { display: inline-block; background: #10b981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
+                .button { display: inline-block; background: #10b981; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+                .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+                .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #10b981; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1 style="margin:0;">📱 Convite KnowYOU APP</h1>
+                </div>
+                <div class="content">
+                  <span class="badge">📱 APP</span>
+                  <p>Olá <strong>${name}</strong>,</p>
+                  <p>Você foi convidado para o <strong>KnowYOU APP</strong>!</p>
+                  
+                  <div class="info">
+                    <p style="margin:0;">📲 Acesse pelo <strong>celular via WhatsApp</strong> para ter o assistente sempre com você.</p>
+                  </div>
+                  
+                  <p style="text-align: center;">
+                    <a href="${appUrl}" class="button">Cadastrar no APP</a>
+                  </p>
+                  
+                  <p style="font-size: 14px; color: #64748b; text-align: center;">
+                    ⏰ Este convite expira em <strong>7 dias</strong>.
+                  </p>
+                </div>
+                <div class="footer">
+                  <p>KnowYOU APP &copy; ${new Date().getFullYear()}</p>
+                </div>
               </div>
-            </div>
-          </body>
-          </html>
-        `;
+            </body>
+            </html>
+          `;
 
-        await supabase.functions.invoke("send-email", {
-          body: {
-            to: email,
-            subject: "🎉 Você foi convidado para a Plataforma KnowYOU",
-            body: emailHtml
-          }
-        });
-
-        console.log("Invitation email sent to:", email);
-      } catch (emailError) {
-        console.error("Error sending invitation email:", emailError);
+          await supabase.functions.invoke("send-email", {
+            body: {
+              to: email,
+              subject: "📱 Convite KnowYOU APP",
+              body: appEmailHtml
+            }
+          });
+          console.log("APP invitation email sent to:", email);
+        } catch (emailError) {
+          console.error("Error sending APP email:", emailError);
+        }
       }
     }
 
-    // Send WhatsApp if enabled
+    // Send WhatsApp based on access type - SEPARATE messages for each product
     if (sendViaWhatsapp && phone) {
-      try {
-        let accessInfo = "";
-        if (hasPlatformAccess && hasAppAccess) {
-          accessInfo = "✅ Plataforma (computador/tablet)\n✅ APP (celular via WhatsApp)";
-        } else if (hasPlatformAccess) {
-          accessInfo = "✅ Plataforma (computador/tablet)\n⚠️ Acesse pelo computador ou tablet";
-        } else if (hasAppAccess) {
-          accessInfo = "✅ APP (celular via WhatsApp)\n📱 O APP funciona apenas pelo celular";
-        }
-
-        const whatsappMessage = `🎉 *Convite KnowYOU*
+      // WhatsApp para PLATAFORMA
+      if (hasPlatformAccess) {
+        try {
+          const platformWhatsappMessage = `🖥️ *Convite KnowYOU Plataforma*
 
 Olá ${name}!
 
-Você foi convidado para a Plataforma KnowYOU.
+Você foi convidado para a *KnowYOU Plataforma*.
 
-*📱 Seu Acesso:*
-${accessInfo}
+💻 Acesse pelo computador ou tablet.
 
-🔗 Complete seu cadastro:
-${inviteUrl}
+🔗 Link: ${platformUrl}
 
-⏰ Este convite expira em 7 dias.`;
+⏰ Expira em 7 dias.`;
 
-        await supabase.functions.invoke("send-whatsapp", {
-          body: {
-            phoneNumber: phone,
-            message: whatsappMessage
-          }
-        });
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phoneNumber: phone,
+              message: platformWhatsappMessage
+            }
+          });
+          console.log("Platform WhatsApp sent to:", phone);
+        } catch (whatsappError) {
+          console.error("Error sending platform WhatsApp:", whatsappError);
+        }
+      }
 
-        console.log("Invitation WhatsApp sent to:", phone);
-      } catch (whatsappError) {
-        console.error("Error sending invitation WhatsApp:", whatsappError);
+      // WhatsApp para APP
+      if (hasAppAccess) {
+        try {
+          const appWhatsappMessage = `📱 *Convite KnowYOU APP*
+
+Olá ${name}!
+
+Você foi convidado para o *KnowYOU APP*.
+
+📲 Acesse pelo celular para ter o assistente sempre com você.
+
+🔗 Link: ${appUrl}
+
+⏰ Expira em 7 dias.`;
+
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phoneNumber: phone,
+              message: appWhatsappMessage
+            }
+          });
+          console.log("APP WhatsApp sent to:", phone);
+        } catch (whatsappError) {
+          console.error("Error sending APP WhatsApp:", whatsappError);
+        }
       }
     }
 
@@ -329,6 +363,9 @@ ${inviteUrl}
       status: "success",
       metadata: { token, role, sendViaEmail, sendViaWhatsapp, hasPlatformAccess, hasAppAccess }
     });
+
+    // Return the primary URL based on access type
+    const inviteUrl = hasAppAccess && !hasPlatformAccess ? appUrl : platformUrl;
 
     return new Response(
       JSON.stringify({
