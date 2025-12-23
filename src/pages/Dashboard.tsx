@@ -1,4 +1,5 @@
 import { DashboardTab } from "@/components/admin/DashboardTab";
+import { IndicatorAPITable } from "@/components/dashboard/IndicatorAPITable";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -22,8 +23,9 @@ const Dashboard = () => {
       </header>
 
       {/* Dashboard Content */}
-      <main className="container py-6 px-4">
+      <main className="container py-6 px-4 space-y-6">
         <DashboardTab />
+        <IndicatorAPITable />
       </main>
     </div>
   );
