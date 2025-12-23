@@ -17,7 +17,7 @@ const ChartDatabaseTab = lazy(() => import("@/components/admin/ChartDatabaseTab"
 const TableDatabaseTab = lazy(() => import("@/components/admin/TableDatabaseTab").then(m => ({ default: m.TableDatabaseTab })));
 const AIChat = lazy(() => import("@/components/dashboard/AIChat").then(m => ({ default: m.AIChat })));
 const DataAnalyticsUF = lazy(() => import("@/components/dashboard/DataAnalyticsUF").then(m => ({ default: m.DataAnalyticsUF })));
-
+const IndicatorAPITable = lazy(() => import("@/components/dashboard/IndicatorAPITable"));
 // Loading fallback
 const TabLoader = () => (
   <div className="flex-1 flex items-center justify-center">
@@ -82,6 +82,12 @@ const DashboardAdmin = () => {
     switch (activeTab) {
       case "indicators":
         return <DashboardTab />;
+      case "api":
+        return (
+          <div className="p-6">
+            <IndicatorAPITable />
+          </div>
+        );
       case "ai":
         return <AIChat />;
       case "data-analysis":

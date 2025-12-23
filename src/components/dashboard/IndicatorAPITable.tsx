@@ -50,14 +50,20 @@ const StatusBadge = ({ status }: { status: string | null }) => {
   switch (status) {
     case "active":
       return (
-        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+        <Badge
+          variant="outline"
+          className="bg-primary/10 text-primary border-primary/30"
+        >
           <CheckCircle className="w-3 h-3 mr-1" />
           Ativo
         </Badge>
       );
     case "error":
       return (
-        <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">
+        <Badge
+          variant="outline"
+          className="bg-destructive/10 text-destructive border-destructive/30"
+        >
           <XCircle className="w-3 h-3 mr-1" />
           Erro
         </Badge>
