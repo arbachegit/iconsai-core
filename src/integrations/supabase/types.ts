@@ -3039,6 +3039,156 @@ export type Database = {
         }
         Relationships: []
       }
+      pwa_devices: {
+        Row: {
+          block_reason: string | null
+          blocked_at: string | null
+          blocked_by: string | null
+          browser_name: string | null
+          browser_version: string | null
+          created_at: string | null
+          device_fingerprint: string
+          device_model: string | null
+          device_vendor: string | null
+          failed_verification_attempts: number | null
+          first_seen_at: string | null
+          has_camera: boolean | null
+          has_geolocation: boolean | null
+          has_microphone: boolean | null
+          has_touch: boolean | null
+          id: string
+          ip_address: unknown
+          ip_city: string | null
+          ip_country: string | null
+          ip_isp: string | null
+          ip_region: string | null
+          is_blocked: boolean | null
+          is_verified: boolean | null
+          last_active_at: string | null
+          last_seen_at: string | null
+          latitude: number | null
+          location_accuracy: number | null
+          location_timestamp: string | null
+          longitude: number | null
+          metadata: Json | null
+          os_name: string | null
+          os_version: string | null
+          phone_number: string | null
+          pixel_ratio: number | null
+          pwa_slugs: string[] | null
+          screen_height: number | null
+          screen_width: number | null
+          total_messages: number | null
+          total_sessions: number | null
+          updated_at: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+          user_name: string | null
+          verification_code: string | null
+          verification_expires_at: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          block_reason?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          browser_name?: string | null
+          browser_version?: string | null
+          created_at?: string | null
+          device_fingerprint: string
+          device_model?: string | null
+          device_vendor?: string | null
+          failed_verification_attempts?: number | null
+          first_seen_at?: string | null
+          has_camera?: boolean | null
+          has_geolocation?: boolean | null
+          has_microphone?: boolean | null
+          has_touch?: boolean | null
+          id?: string
+          ip_address?: unknown
+          ip_city?: string | null
+          ip_country?: string | null
+          ip_isp?: string | null
+          ip_region?: string | null
+          is_blocked?: boolean | null
+          is_verified?: boolean | null
+          last_active_at?: string | null
+          last_seen_at?: string | null
+          latitude?: number | null
+          location_accuracy?: number | null
+          location_timestamp?: string | null
+          longitude?: number | null
+          metadata?: Json | null
+          os_name?: string | null
+          os_version?: string | null
+          phone_number?: string | null
+          pixel_ratio?: number | null
+          pwa_slugs?: string[] | null
+          screen_height?: number | null
+          screen_width?: number | null
+          total_messages?: number | null
+          total_sessions?: number | null
+          updated_at?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+          verification_code?: string | null
+          verification_expires_at?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          block_reason?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          browser_name?: string | null
+          browser_version?: string | null
+          created_at?: string | null
+          device_fingerprint?: string
+          device_model?: string | null
+          device_vendor?: string | null
+          failed_verification_attempts?: number | null
+          first_seen_at?: string | null
+          has_camera?: boolean | null
+          has_geolocation?: boolean | null
+          has_microphone?: boolean | null
+          has_touch?: boolean | null
+          id?: string
+          ip_address?: unknown
+          ip_city?: string | null
+          ip_country?: string | null
+          ip_isp?: string | null
+          ip_region?: string | null
+          is_blocked?: boolean | null
+          is_verified?: boolean | null
+          last_active_at?: string | null
+          last_seen_at?: string | null
+          latitude?: number | null
+          location_accuracy?: number | null
+          location_timestamp?: string | null
+          longitude?: number | null
+          metadata?: Json | null
+          os_name?: string | null
+          os_version?: string | null
+          phone_number?: string | null
+          pixel_ratio?: number | null
+          pwa_slugs?: string[] | null
+          screen_height?: number | null
+          screen_width?: number | null
+          total_messages?: number | null
+          total_sessions?: number | null
+          updated_at?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+          verification_code?: string | null
+          verification_expires_at?: string | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       pwa_messages: {
         Row: {
           audio_url: string | null
@@ -4995,6 +5145,10 @@ export type Database = {
         }
         Returns: string
       }
+      block_pwa_device: {
+        Args: { p_device_id: string; p_reason?: string }
+        Returns: Json
+      }
       check_all_agents_coverage: {
         Args: never
         Returns: {
@@ -5161,6 +5315,7 @@ export type Database = {
         Args: { p_override_slug?: string; p_query: string }
         Returns: Json
       }
+      get_pwa_device_stats: { Args: never; Returns: Json }
       get_schema_info: { Args: never; Returns: Json }
       get_taxonomy_analytics_report: {
         Args: { p_days?: number }
@@ -5332,6 +5487,39 @@ export type Database = {
           records_inserted: number
         }[]
       }
+      register_pwa_device: {
+        Args: {
+          p_browser_name?: string
+          p_browser_version?: string
+          p_device_model?: string
+          p_device_vendor?: string
+          p_fingerprint: string
+          p_has_camera?: boolean
+          p_has_geolocation?: boolean
+          p_has_microphone?: boolean
+          p_has_touch?: boolean
+          p_ip_address?: string
+          p_ip_city?: string
+          p_ip_country?: string
+          p_ip_isp?: string
+          p_ip_region?: string
+          p_latitude?: number
+          p_location_accuracy?: number
+          p_longitude?: number
+          p_metadata?: Json
+          p_os_name?: string
+          p_os_version?: string
+          p_phone_number?: string
+          p_pixel_ratio?: number
+          p_pwa_slugs?: string[]
+          p_screen_height?: number
+          p_screen_width?: number
+          p_user_agent?: string
+          p_user_email?: string
+          p_user_name?: string
+        }
+        Returns: Json
+      }
       register_pwa_user: {
         Args: {
           p_device_id: string
@@ -5428,6 +5616,23 @@ export type Database = {
           metadata: Json
           similarity: number
         }[]
+      }
+      unblock_pwa_device: { Args: { p_device_id: string }; Returns: Json }
+      update_device_activity: {
+        Args: {
+          p_fingerprint: string
+          p_increment_messages?: boolean
+          p_ip_address?: string
+          p_latitude?: number
+          p_longitude?: number
+          p_new_session?: boolean
+        }
+        Returns: Json
+      }
+      verify_pwa_device: { Args: { p_fingerprint: string }; Returns: Json }
+      verify_pwa_device_code: {
+        Args: { p_code: string; p_fingerprint: string }
+        Returns: Json
       }
       verify_pwa_invitation: { Args: { p_token: string }; Returns: Json }
     }
