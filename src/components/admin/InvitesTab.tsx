@@ -13,6 +13,7 @@ import { formatDateTime } from "@/lib/date-utils";
 import { toast } from "sonner";
 import { InviteTrackingTimeline } from "./InviteTrackingTimeline";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ResendInvitationModal } from "./ResendInvitationModal";
 import {
   Search,
   ChevronDown,
@@ -39,6 +40,7 @@ type AppRole = "user" | "admin" | "superadmin";
 
 interface UserInvitation {
   id: string;
+  token: string;
   name: string;
   email: string;
   role: AppRole;
@@ -223,23 +225,10 @@ export const InvitesTab = () => {
     }
   });
 
-  // Resend invite mutation
-  const resendMutation = useMutation({
-    mutationFn: async (invite: UserInvitation) => {
-      const { error } = await supabase.functions.invoke("resend-invitation-code", {
-        body: { token: invite.id }
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Convite reenviado com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ["user-invitations"] });
-      setResendModal({ open: false, invite: null });
-    },
-    onError: (error: Error) => {
-      toast.error(`Erro ao reenviar convite: ${error.message}`);
-    }
-  });
+  // Handle resend modal success
+  const handleResendSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ["user-invitations"] });
+  };
 
   const renderRoleBadge = (role: AppRole) => {
     const config = ROLE_CONFIG[role];
@@ -569,47 +558,13 @@ export const InvitesTab = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Resend Confirmation Modal */}
-      <Dialog open={resendModal.open} onOpenChange={(open) => !open && setResendModal({ open: false, invite: null })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-blue-500">
-              <Send className="w-5 h-5" />
-              Reenviar Convite
-            </DialogTitle>
-            <DialogDescription className="space-y-2">
-              <p>Reenviar o convite para {resendModal.invite?.email}?</p>
-              {resendModal.invite?.verification_method && (
-                <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
-                  {resendModal.invite.verification_method === 'email' ? (
-                    <>
-                      <Mail className="w-4 h-4 text-blue-500" />
-                      <span className="text-sm">Será enviado por <strong>Email</strong></span>
-                    </>
-                  ) : (
-                    <>
-                      <MessageSquare className="w-4 h-4 text-green-500" />
-                      <span className="text-sm">Será enviado por <strong>WhatsApp</strong></span>
-                    </>
-                  )}
-                </div>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setResendModal({ open: false, invite: null })}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={() => resendModal.invite && resendMutation.mutate(resendModal.invite)}
-              disabled={resendMutation.isPending}
-            >
-              {resendMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Reenviar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Resend Modal with Product/Channel Selection */}
+      <ResendInvitationModal
+        open={resendModal.open}
+        onClose={() => setResendModal({ open: false, invite: null })}
+        invitation={resendModal.invite}
+        onSuccess={handleResendSuccess}
+      />
     </Card>
   );
 };
