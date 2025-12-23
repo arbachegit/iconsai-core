@@ -163,7 +163,7 @@ serve(async (req) => {
                 <p class="warning">⏰ Este código expira em <strong>2 minutos</strong>.</p>
               </div>
               <div class="footer">
-                <p>Plataforma KnowYOU Health &copy; ${new Date().getFullYear()}</p>
+                <p>Plataforma KnowYOU &copy; ${new Date().getFullYear()}</p>
                 <p>Se você não solicitou este código, ignore este email.</p>
               </div>
             </div>
@@ -174,7 +174,7 @@ serve(async (req) => {
         await supabase.functions.invoke("send-email", {
           body: {
             to: invitation.email,
-            subject: "🔐 Código de Verificação - KnowYOU Health",
+            subject: "🔐 Código de Verificação - KnowYOU",
             body: emailHtml
           }
         });
@@ -189,7 +189,7 @@ serve(async (req) => {
       }
     } else if (verificationMethod === "whatsapp") {
       try {
-        const whatsappMessage = `🔐 *Código de Verificação*\n\nSeu código para completar o cadastro na Plataforma KnowYOU Health:\n\n*${verificationCode}*\n\n⏰ Este código expira em 2 minutos.`;
+        const whatsappMessage = `🔐 *Código de Verificação*\n\nSeu código para completar o cadastro na Plataforma KnowYOU:\n\n*${verificationCode}*\n\n⏰ Este código expira em 2 minutos.`;
 
         console.log(`[Verification] Sending WhatsApp to: ${phone.slice(0, 6)}***`);
         
