@@ -2,8 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 interface EmailRequest {
@@ -13,38 +12,67 @@ interface EmailRequest {
   replyTo?: string;
 }
 
-const handler = async (req: Request): Promise<Response> => {
+serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log("=== SEND-EMAIL START ===");
+
   try {
     const { to, subject, body, replyTo }: EmailRequest = await req.json();
 
+    // Validações
     if (!to || !subject || !body) {
-      throw new Error("Campos obrigatórios: to, subject, body");
+      console.error("❌ Missing required fields");
+      return new Response(
+        JSON.stringify({ success: false, error: "Campos obrigatórios: to, subject, body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(to)) {
-      throw new Error("Email inválido");
+      console.error("❌ Invalid email format:", to);
+      return new Response(
+        JSON.stringify({ success: false, error: "Email inválido" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (subject.length > 200) {
-      throw new Error("Assunto muito longo (máximo 200 caracteres)");
+      console.error("❌ Subject too long");
+      return new Response(
+        JSON.stringify({ success: false, error: "Assunto muito longo (máximo 200 caracteres)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    if (body.length > 10000) {
-      throw new Error("Corpo muito longo (máximo 10000 caracteres)");
+    if (body.length > 50000) {
+      console.error("❌ Body too long");
+      return new Response(
+        JSON.stringify({ success: false, error: "Corpo muito longo (máximo 50000 caracteres)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    console.log("[Resend] Processing email request to:", to);
+    console.log(`📧 Sending to: ${to}`);
+    console.log(`📋 Subject: ${subject.substring(0, 50)}...`);
 
+    // Verificar API Key
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    
+    console.log("🔑 RESEND_API_KEY configured:", !!RESEND_API_KEY);
+    
     if (!RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY not configured");
+      console.error("❌ RESEND_API_KEY not configured");
+      return new Response(
+        JSON.stringify({ success: false, error: "RESEND_API_KEY não configurada" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
+    // Preparar payload
     const emailPayload: any = {
       from: "KnowYOU <noreply@knowyou.app>",
       to: [to],
@@ -54,8 +82,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (replyTo && emailRegex.test(replyTo)) {
       emailPayload.reply_to = replyTo;
+      console.log(`↩️ Reply-to: ${replyTo}`);
     }
 
+    console.log("📤 Sending via Resend...");
+
+    // Enviar
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -68,32 +100,41 @@ const handler = async (req: Request): Promise<Response> => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("[Resend] Error sending email:", data);
-      throw new Error(data.message || "Failed to send email");
+      console.error("❌ Resend API error:", {
+        status: response.status,
+        error: data
+      });
+      
+      // Mensagens de erro amigáveis
+      let friendlyError = data.message || `Erro Resend: ${response.status}`;
+      
+      if (data.message?.includes("domain")) {
+        friendlyError = "Domínio não verificado no Resend. Verifique knowyou.app no painel do Resend.";
+      } else if (data.message?.includes("API key")) {
+        friendlyError = "API Key do Resend inválida ou expirada.";
+      } else if (data.message?.includes("rate limit")) {
+        friendlyError = "Limite de envios atingido. Tente novamente em alguns minutos.";
+      }
+      
+      return new Response(
+        JSON.stringify({ success: false, error: friendlyError }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    console.log("[Resend] Email sent successfully:", data?.id);
+    console.log(`✅ Email sent: ${data?.id}`);
+    console.log("=== SEND-EMAIL END ===");
 
     return new Response(
-      JSON.stringify({ success: true, message: "Email enviado com sucesso", id: data?.id }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
-      }
+      JSON.stringify({ success: true, id: data?.id }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (error: any) {
-    console.error("[Resend] Error in send-email function:", error);
+    console.error("=== SEND-EMAIL FATAL ERROR ===", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      JSON.stringify({ success: false, error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-};
-
-serve(handler);
+});

@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Mail, Phone, Copy, Check, UserPlus, Monitor, Smartphone } from "lucide-react";
+import { Loader2, Mail, Phone, Copy, Check, UserPlus, Monitor, Smartphone, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 
 const inviteSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
@@ -48,6 +48,13 @@ const inviteSchema = z.object({
 
 type InviteFormData = z.infer<typeof inviteSchema>;
 
+interface SendResult {
+  channel: string;
+  product: string;
+  success: boolean;
+  error?: string;
+}
+
 interface InviteUserModalV2Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -56,7 +63,12 @@ interface InviteUserModalV2Props {
 
 export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserModalV2Props) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [inviteResult, setInviteResult] = useState<{ url: string; token: string } | null>(null);
+  const [inviteResult, setInviteResult] = useState<{ 
+    url: string; 
+    token: string; 
+    sendResults?: SendResult[];
+    warnings?: string[];
+  } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const {
@@ -106,9 +118,23 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
       setInviteResult({
         url: result.inviteUrl,
         token: result.invitation.token,
+        sendResults: result.sendResults,
+        warnings: result.warnings,
       });
 
-      toast.success("Convite enviado com sucesso!");
+      // Mostrar sucesso principal
+      toast.success("Convite criado com sucesso!");
+
+      // Mostrar warnings se houver
+      if (result.warnings && result.warnings.length > 0) {
+        result.warnings.forEach((warning: string) => {
+          toast.warning("Aviso no envio", {
+            description: warning,
+            duration: 10000
+          });
+        });
+      }
+
       onSuccess?.();
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar convite");
@@ -141,6 +167,16 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
     if (numbers.length <= 11) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
     return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
   };
+
+  // Helper to get send status for a specific channel/product
+  const getSendStatus = (channel: string, product: string) => {
+    if (!inviteResult?.sendResults) return null;
+    return inviteResult.sendResults.find(r => r.channel === channel && r.product === product);
+  };
+
+  // Check if there are any failures
+  const hasFailures = inviteResult?.sendResults?.some(r => !r.success) ?? false;
+  const allSuccess = inviteResult?.sendResults?.every(r => r.success) ?? true;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -305,13 +341,26 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
           </form>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-4 text-center">
-              <div className="text-4xl mb-2">✅</div>
-              <h3 className="font-semibold text-lg text-emerald-600">
-                Convite Enviado!
+            {/* Status principal */}
+            <div className={`rounded-lg p-4 text-center ${
+              allSuccess 
+                ? 'bg-emerald-500/10 border border-emerald-500/20' 
+                : hasFailures 
+                  ? 'bg-amber-500/10 border border-amber-500/20'
+                  : 'bg-emerald-500/10 border border-emerald-500/20'
+            }`}>
+              <div className="text-4xl mb-2">
+                {allSuccess ? '✅' : hasFailures ? '⚠️' : '✅'}
+              </div>
+              <h3 className={`font-semibold text-lg ${
+                allSuccess ? 'text-emerald-600' : hasFailures ? 'text-amber-600' : 'text-emerald-600'
+              }`}>
+                Convite Criado!
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                O usuário receberá o convite pelos métodos selecionados.
+                {allSuccess 
+                  ? 'O usuário receberá o convite pelos métodos selecionados.'
+                  : 'Convite criado, mas alguns envios falharam.'}
               </p>
               <div className="flex items-center justify-center gap-3 mt-3">
                 {hasPlatformAccess && (
@@ -328,6 +377,56 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
                 )}
               </div>
             </div>
+
+            {/* Status detalhado dos envios */}
+            {inviteResult.sendResults && inviteResult.sendResults.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Status dos envios</Label>
+                <div className="space-y-2">
+                  {inviteResult.sendResults.map((result, idx) => (
+                    <div 
+                      key={idx}
+                      className={`flex items-center justify-between p-2 rounded-lg text-sm ${
+                        result.success 
+                          ? 'bg-emerald-500/10 text-emerald-700' 
+                          : 'bg-destructive/10 text-destructive'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {result.success ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          <XCircle className="h-4 w-4" />
+                        )}
+                        <span className="capitalize">
+                          {result.channel === 'email' ? '📧' : '💬'} {result.channel} / {result.product}
+                        </span>
+                      </div>
+                      <span className="text-xs">
+                        {result.success ? 'Enviado' : result.error}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Warnings */}
+            {inviteResult.warnings && inviteResult.warnings.length > 0 && (
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-600">Avisos:</p>
+                    <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                      {inviteResult.warnings.map((warning, idx) => (
+                        <li key={idx} className="text-xs">{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Link do convite</Label>
@@ -351,7 +450,7 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Este link expira em 7 dias.
+                Este link expira em 7 dias. Você pode copiar e enviar manualmente se necessário.
               </p>
             </div>
 
