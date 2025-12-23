@@ -17,7 +17,7 @@ interface SendVerificationRequest {
   addressCity: string;
   addressState: string;
   password: string;
-  verificationMethod: "email" | "whatsapp";
+  verificationMethod: "email" | "sms" | "whatsapp";
 }
 
 serve(async (req) => {
@@ -206,7 +206,48 @@ serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+    } else if (verificationMethod === "sms") {
+      // SMS direto (mais confiável que WhatsApp para verificação)
+      try {
+        const smsMessage = `KnowYOU - Código: ${verificationCode}. Expira em 2 min.`;
+        
+        console.log(`[Verification] Sending SMS to: ${phone.slice(0, 6)}***`);
+        
+        const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {
+          body: {
+            phoneNumber: phone,
+            message: smsMessage,
+            eventType: "verification_code"
+          }
+        });
+
+        if (smsError) {
+          console.error("[Verification] SMS function error:", smsError);
+          throw smsError;
+        }
+
+        if (smsResult?.error) {
+          console.error("[Verification] SMS API error:", smsResult.error);
+          return new Response(
+            JSON.stringify({ error: smsResult.error }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        console.log("[Verification] SMS sent successfully:", smsResult?.sid);
+      } catch (smsError: any) {
+        console.error("[Verification] Error sending SMS:", smsError);
+        return new Response(
+          JSON.stringify({ 
+            error: smsError?.message || "Erro ao enviar código por SMS. Tente por email." 
+          }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     } else if (verificationMethod === "whatsapp") {
+      // WhatsApp com fallback para SMS
+      let sent = false;
+      
       try {
         const whatsappMessage = `🔐 *Código de Verificação*\n\nSeu código para completar o cadastro na Plataforma KnowYOU:\n\n*${verificationCode}*\n\n⏰ Este código expira em 2 minutos.`;
 
@@ -220,28 +261,47 @@ serve(async (req) => {
           }
         });
 
-        if (whatsappError) {
-          console.error("[Verification] WhatsApp function error:", whatsappError);
-          throw whatsappError;
+        if (!whatsappError && !whatsappResult?.error) {
+          sent = true;
+          console.log("[Verification] WhatsApp sent successfully:", whatsappResult?.sid);
+        } else {
+          console.log("[Verification] WhatsApp failed, trying SMS fallback...", whatsappError || whatsappResult?.error);
         }
+      } catch (whatsappError: any) {
+        console.log("[Verification] WhatsApp exception, trying SMS fallback...", whatsappError?.message);
+      }
 
-        if (whatsappResult?.error) {
-          console.error("[Verification] WhatsApp API error:", whatsappResult.error);
+      // Fallback para SMS se WhatsApp falhou
+      if (!sent) {
+        try {
+          const smsMessage = `KnowYOU - Código: ${verificationCode}. Expira em 2 min.`;
+          
+          console.log(`[Verification] Sending SMS fallback to: ${phone.slice(0, 6)}***`);
+          
+          const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {
+            body: {
+              phoneNumber: phone,
+              message: smsMessage,
+              eventType: "verification_code"
+            }
+          });
+          
+          if (smsError || smsResult?.error) {
+            console.error("[Verification] SMS fallback also failed:", smsError || smsResult?.error);
+            return new Response(
+              JSON.stringify({ error: "Não foi possível enviar código por WhatsApp nem SMS. Tente por email." }),
+              { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          
+          console.log("[Verification] SMS sent as fallback:", smsResult?.sid);
+        } catch (smsError: any) {
+          console.error("[Verification] SMS fallback exception:", smsError);
           return new Response(
-            JSON.stringify({ error: whatsappResult.error }),
+            JSON.stringify({ error: "Não foi possível enviar código por WhatsApp nem SMS. Tente por email." }),
             { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-
-        console.log("[Verification] WhatsApp sent successfully:", whatsappResult?.sid);
-      } catch (whatsappError: any) {
-        console.error("[Verification] Error sending WhatsApp:", whatsappError);
-        return new Response(
-          JSON.stringify({ 
-            error: whatsappError?.message || "Erro ao enviar código por WhatsApp. Tente por email." 
-          }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
       }
     }
 
