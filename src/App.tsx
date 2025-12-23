@@ -30,6 +30,7 @@ const PWA = lazy(() => import("./pages/PWA"));
 const PWAMultiAgent = lazy(() => import("./pages/PWAMultiAgent"));
 const PWARegister = lazy(() => import("./pages/PWARegister"));
 const InvitePage = lazy(() => import("./pages/InvitePage"));
+const Contact = lazy(() => import("./pages/Contact"));
 
 // Simple loading fallback
 const PageLoader = () => (
@@ -187,6 +188,7 @@ const App = () => (
                     {/* Public Routes */}
                     <Route path="/docs" element={<Documentation />} />
                     <Route path="/arquitetura" element={<Arquitetura />} />
+                    <Route path="/contact" element={<Contact />} />
                     
                     {/* PWA Routes - Mobile Only */}
                     <Route path="/pwa" element={
