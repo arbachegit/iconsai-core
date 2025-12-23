@@ -144,8 +144,8 @@ export default function InvitePage() {
           return;
         }
 
-        // Redirect to PWA register if has PWA access
-        if (data.pwa_access && Array.isArray(data.pwa_access) && data.pwa_access.length > 0) {
+        // Redirect to PWA register if has APP access ONLY (no platform access)
+        if (data.has_app_access && !data.has_platform_access) {
           navigate(`/pwa-register?token=${token}`);
           return;
         }
