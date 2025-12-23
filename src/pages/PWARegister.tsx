@@ -8,12 +8,6 @@ import { toast } from "sonner";
 import { Loader2, Smartphone, CheckCircle, AlertCircle, User, Mail, Phone } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-pwa-logo.png";
 
-// Ícones para os agentes PWA
-const AGENT_ICONS: Record<string, { icon: string; name: string; color: string }> = {
-  economia: { icon: "💹", name: "Economista", color: "text-emerald-500" },
-  health: { icon: "🏥", name: "Saúde", color: "text-blue-500" },
-  ideias: { icon: "💡", name: "Ideias", color: "text-amber-500" },
-};
 
 interface InvitationData {
   valid: boolean;
@@ -201,24 +195,6 @@ export default function PWARegister() {
           <p className="text-muted-foreground mt-2">Complete seu cadastro para acessar os PWAs</p>
         </div>
 
-        {/* PWA Access Badges */}
-        {invitation.pwa_access && invitation.pwa_access.length > 0 && (
-          <div className="flex justify-center gap-3 mb-6">
-            {invitation.pwa_access.map((slug) => {
-              const agent = AGENT_ICONS[slug];
-              if (!agent) return null;
-              return (
-                <div
-                  key={slug}
-                  className="flex items-center gap-2 px-4 py-2 bg-card/50 rounded-full border border-border"
-                >
-                  <span className="text-2xl">{agent.icon}</span>
-                  <span className={`text-sm font-medium ${agent.color}`}>{agent.name}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         {/* Registration Form */}
         <form onSubmit={handleSubmit} className="bg-card rounded-2xl p-6 shadow-xl border border-border space-y-5">

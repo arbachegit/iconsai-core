@@ -15,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AdminTitleWithInfo } from "./AdminTitleWithInfo";
+import { UserModalityIcons } from "./UserModalityIcons";
+import { UserAddressCollapsible } from "./UserAddressCollapsible";
 import { formatDateTime } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { InvitesTab } from "./InvitesTab";
@@ -80,6 +82,19 @@ interface UserRegistration {
   mass_import_at: string | null;
   approved_by: string | null;
   rejection_reason: string | null;
+  // Access type fields
+  has_platform_access?: boolean;
+  has_app_access?: boolean;
+  platform_registered_at?: string | null;
+  pwa_registered_at?: string | null;
+  // Address fields
+  street?: string | null;
+  street_number?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
   // Security fields
   is_banned?: boolean;
   banned_at?: string | null;
@@ -195,7 +210,7 @@ export const UserRegistryTab = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_registrations")
-        .select("*")
+        .select("*, has_platform_access, has_app_access, platform_registered_at, pwa_registered_at, street, street_number, complement, neighborhood, city, state, zip_code")
         .order("requested_at", { ascending: false });
       
       if (error) throw error;
@@ -1055,6 +1070,7 @@ export const UserRegistryTab = () => {
                             </div>
                           </TableHead>
                           <TableHead className="text-center">Telefone</TableHead>
+                          <TableHead className="text-center">Acesso</TableHead>
                           <TableHead className="text-center">DNS</TableHead>
                           <TableHead className="text-center">Role</TableHead>
                           <TableHead className="text-center">Status</TableHead>
@@ -1081,6 +1097,19 @@ export const UserRegistryTab = () => {
                             </TableCell>
                             <TableCell className="text-center">{reg.email}</TableCell>
                             <TableCell className="text-center">{reg.phone || "-"}</TableCell>
+                            <TableCell className="text-center">
+                              <UserModalityIcons
+                                userId={reg.id}
+                                userName={`${reg.first_name} ${reg.last_name}`}
+                                userEmail={reg.email}
+                                userPhone={reg.phone || undefined}
+                                hasPlatformAccess={reg.has_platform_access ?? true}
+                                hasAppAccess={reg.has_app_access ?? false}
+                                platformRegistered={!!reg.platform_registered_at || !!reg.approved_at}
+                                appRegistered={!!reg.pwa_registered_at}
+                                onInviteSent={() => refetch()}
+                              />
+                            </TableCell>
                             <TableCell className="text-center">
                               {reg.dns_origin && (
                                 <Badge variant="outline" className="gap-1">
