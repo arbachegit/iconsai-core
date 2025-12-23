@@ -2,11 +2,13 @@ import { useState, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
-import { Bot, TrendingUp } from "lucide-react";
+import { Bot, TrendingUp, Database } from "lucide-react";
 import { MacroSliders } from "./simulator/MacroSliders";
 import { ScenarioButtons } from "./simulator/ScenarioButtons";
 import { SeasonalBars } from "./simulator/SeasonalBars";
 import { MonthlyProjection2026 } from "./simulator/MonthlyProjection2026";
+import { MacroIndicatorsCard } from "./simulator/MacroIndicatorsCard";
+import { RealIndicators } from "@/hooks/useRealTimeIndicators";
 
 interface AnnualData {
   year: number;
@@ -16,6 +18,8 @@ interface AnnualData {
 
 interface Simulator2026Props {
   annualData: AnnualData[];
+  realIndicators?: RealIndicators;
+  isLoadingIndicators?: boolean;
 }
 
 type ScenarioType = "neutral" | "optimistic" | "pessimistic";
@@ -28,15 +32,6 @@ interface Sliders2026 {
   desemprego: number;
 }
 
-const SCENARIOS_2026: Record<ScenarioType, Sliders2026> = {
-  neutral: { renda: 1950, dolar: 5.80, selic: 12.5, ipca: 4.5, desemprego: 7.5 },
-  optimistic: { renda: 2200, dolar: 5.20, selic: 10.0, ipca: 3.5, desemprego: 6.0 },
-  pessimistic: { renda: 1750, dolar: 6.50, selic: 15.0, ipca: 6.5, desemprego: 9.5 },
-};
-
-// Baselines para cálculo de efeito
-const BASELINE = { renda: 1950, dolar: 5.80, selic: 12.5, ipca: 4.5, desemprego: 7.5 };
-
 // Elasticidades estimadas (efeito % no PMC para cada 1% de variação)
 const ELASTICITIES = {
   renda: 0.8,       // +1% renda → +0.8% vendas
@@ -46,11 +41,56 @@ const ELASTICITIES = {
   desemprego: -0.3, // +1pp desemprego → -0.3% vendas
 };
 
-export function Simulator2026({ annualData }: Simulator2026Props) {
-  const [activeScenario, setActiveScenario] = useState<ScenarioType>("neutral");
-  const [sliders, setSliders] = useState<Sliders2026>(SCENARIOS_2026.neutral);
-  const [isAnimating, setIsAnimating] = useState(false);
+// Fallback quando não há dados reais
+const FALLBACK_BASELINE = { 
+  renda: 1950, 
+  dolar: 5.80, 
+  selic: 12.5, 
+  ipca: 4.5, 
+  desemprego: 7.5 
+};
+
+export function Simulator2026({ annualData, realIndicators, isLoadingIndicators }: Simulator2026Props) {
   const animationRef = useRef<number | null>(null);
+
+  // BASELINE DINÂMICO: usa dados reais do banco ou fallback
+  const BASELINE = useMemo(() => ({
+    renda: realIndicators?.renda ?? FALLBACK_BASELINE.renda,
+    dolar: realIndicators?.dolar ?? FALLBACK_BASELINE.dolar,
+    selic: realIndicators?.selic ?? FALLBACK_BASELINE.selic,
+    ipca: realIndicators?.ipca ?? FALLBACK_BASELINE.ipca,
+    desemprego: realIndicators?.desemprego ?? FALLBACK_BASELINE.desemprego,
+  }), [realIndicators]);
+
+  // CENÁRIOS DINÂMICOS: calculados como variações do baseline real
+  const SCENARIOS_2026 = useMemo((): Record<ScenarioType, Sliders2026> => ({
+    neutral: { ...BASELINE },
+    optimistic: {
+      renda: Math.round(BASELINE.renda * 1.12),           // +12%
+      dolar: Math.round(BASELINE.dolar * 0.90 * 100) / 100, // -10%
+      selic: Math.round(BASELINE.selic * 0.75 * 10) / 10,   // -25%
+      ipca: Math.round(BASELINE.ipca * 0.70 * 100) / 100,   // -30%
+      desemprego: Math.round(BASELINE.desemprego * 0.85 * 10) / 10, // -15%
+    },
+    pessimistic: {
+      renda: Math.round(BASELINE.renda * 0.92),           // -8%
+      dolar: Math.round(BASELINE.dolar * 1.15 * 100) / 100, // +15%
+      selic: Math.round(BASELINE.selic * 1.20 * 10) / 10,   // +20%
+      ipca: Math.round(BASELINE.ipca * 1.40 * 100) / 100,   // +40%
+      desemprego: Math.round(BASELINE.desemprego * 1.30 * 10) / 10, // +30%
+    },
+  }), [BASELINE]);
+
+  const [activeScenario, setActiveScenario] = useState<ScenarioType>("neutral");
+  const [sliders, setSliders] = useState<Sliders2026>(BASELINE);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  // Sincronizar sliders quando baseline muda
+  useMemo(() => {
+    if (!isAnimating) {
+      setSliders(SCENARIOS_2026[activeScenario]);
+    }
+  }, [BASELINE, activeScenario, isAnimating]);
 
   // Função para animar sliders ao mudar cenário
   const applyScenario = (scenario: ScenarioType) => {
@@ -122,7 +162,7 @@ export function Simulator2026({ annualData }: Simulator2026Props) {
     const change = Math.round((projected / base - 1) * 1000) / 10;
     
     return { base, projected, change };
-  }, [sliders, annualData]);
+  }, [sliders, annualData, BASELINE]);
 
   // Dados HISTÓRICOS - FIXOS (não dependem dos sliders!)
   const historicalData = useMemo(() => {
@@ -133,7 +173,7 @@ export function Simulator2026({ annualData }: Simulator2026Props) {
         year: d.year,
         historical: Math.round(d.sales * 10) / 10,
       }));
-  }, [annualData]); // SÓ depende de annualData, NÃO dos sliders
+  }, [annualData]);
 
   // Dados do gráfico - Combina histórico FIXO + projeção DINÂMICA
   const chartData = useMemo(() => {
@@ -159,18 +199,36 @@ export function Simulator2026({ annualData }: Simulator2026Props) {
     ];
   }, [historicalData, projection.projected]);
 
+  const hasRealData = !!realIndicators && realIndicators.sources.renda !== "Fallback";
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Bot className="h-8 w-8 text-primary" />
-        <div>
-          <h3 className="text-xl font-semibold">Simulador de Cenários 2026</h3>
-          <p className="text-muted-foreground text-sm">
-            Projete vendas 2026 com base em variáveis macroeconômicas
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Bot className="h-8 w-8 text-primary" />
+          <div>
+            <h3 className="text-xl font-semibold">Simulador de Cenários 2026</h3>
+            <p className="text-muted-foreground text-sm">
+              Projete vendas 2026 com base em variáveis macroeconômicas
+            </p>
+          </div>
         </div>
+        {hasRealData && (
+          <Badge variant="outline" className="gap-1.5 bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+            <Database className="h-3.5 w-3.5" />
+            Dados Reais
+          </Badge>
+        )}
       </div>
+
+      {/* Card de Indicadores Atuais */}
+      {realIndicators && (
+        <MacroIndicatorsCard 
+          indicators={realIndicators} 
+          isLoading={isLoadingIndicators} 
+        />
+      )}
 
       {/* Gráfico de Projeção */}
       <Card>
@@ -276,6 +334,7 @@ export function Simulator2026({ annualData }: Simulator2026Props) {
         baseProjection={projection.projected} 
         scenario={activeScenario} 
       />
+      
       {/* Controles: Sliders + Cenários */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
