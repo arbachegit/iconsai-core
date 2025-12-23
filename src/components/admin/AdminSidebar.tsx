@@ -61,10 +61,13 @@ import {
   Home,
   DollarSign,
   TreeDeciduous,
+  Volume2,
+  Network,
+  Layers,
 } from "lucide-react";
 
 
-type TabType = "dashboard" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "dashboard-external" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding" | "taxonomy-analytics" | "maieutic-effectiveness";
+type TabType = "dashboard" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "dashboard-external" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding" | "taxonomy-analytics" | "maieutic-effectiveness" | "lexicon-phonetics" | "ontology-concepts" | "content-profiles";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -201,13 +204,15 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       label: "Chat & Conversas",
       icon: MessageCircle,
       items: [
-        { id: "agent-management" as TabType, label: "Gestão de Agentes", icon: Bot },
-        { id: "maieutic-training" as TabType, label: "Treino IA Maiêutica", icon: Sparkles },
-        { id: "regional-config" as TabType, label: "Configurações Regionais", icon: Globe },
         { id: "conversations" as TabType, label: "Conversas", icon: MessagesSquare },
-        { id: "deterministic-analysis" as TabType, label: "Fala Determinística", icon: Target },
-        { id: "rag-diagnostics" as TabType, label: "Diagnóstico RAG", icon: TestTube },
         { id: "pwa" as TabType, label: "PWA Voz", icon: Smartphone },
+        { id: "maieutic-training" as TabType, label: "Treino IA Maiêutica", icon: Sparkles },
+        { id: "maieutic-effectiveness" as TabType, label: "Eficácia Maiêutica", icon: Brain },
+        { id: "regional-config" as TabType, label: "Configurações Regionais", icon: Globe },
+        { id: "lexicon-phonetics" as TabType, label: "Léxico & Fonética TTS", icon: Volume2 },
+        { id: "ontology-concepts" as TabType, label: "Ontologia Conceitos", icon: Network },
+        { id: "deterministic-analysis" as TabType, label: "Fala Determinística", icon: Target },
+        { id: "agent-management" as TabType, label: "Gestão de Agentes", icon: Bot },
       ]
     },
     {
@@ -217,15 +222,16 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       items: [
         { id: "documents" as TabType, label: "RAG Documentos", icon: FileText },
         { id: "rag-metrics" as TabType, label: "Métricas RAG", icon: Database },
-        { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
-        { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
+        { id: "rag-diagnostics" as TabType, label: "Diagnóstico RAG", icon: TestTube },
+        { id: "content-profiles" as TabType, label: "Perfis de Conteúdo", icon: Layers },
         { id: "taxonomy-manager" as TabType, label: "Taxonomia Global", icon: TreeDeciduous },
         { id: "taxonomy-suggestions" as TabType, label: "Auto-Gestão Taxonomia", icon: Sparkles },
+        { id: "taxonomy-analytics" as TabType, label: "Analytics Taxonomia", icon: BarChart3 },
+        { id: "tags" as TabType, label: "Gerenciar Tags", icon: Tags },
+        { id: "document-analysis" as TabType, label: "Análise Documentos", icon: Search },
         { id: "doc-reclassification" as TabType, label: "Re-classificar Docs", icon: RefreshCw },
         { id: "document-onboarding" as TabType, label: "Onboarding Docs", icon: FileText },
-        { id: "taxonomy-analytics" as TabType, label: "Analytics Taxonomia", icon: BarChart3 },
         { id: "ml-review" as TabType, label: "Revisão ML", icon: Sparkles },
-        { id: "maieutic-effectiveness" as TabType, label: "Eficácia Maiêutica", icon: Brain },
       ]
     },
     {
