@@ -9,6 +9,8 @@ export interface SecurityMetrics {
   totalViolations: number;
   activeBans: number;
   whitelistedCount: number;
+  whitelistedIPs: number;
+  whitelistedFingerprints: number;
   lastScanStatus: 'healthy' | 'warning' | 'critical' | 'unknown';
   lastScanDate: string | null;
   criticalFindings: number;
@@ -31,6 +33,8 @@ export interface PWADevice {
   os_version: string | null;
   browser_name: string | null;
   browser_version: string | null;
+  screen_width: number | null;
+  screen_height: number | null;
   verified_at: string | null;
   created_at: string;
   updated_at: string;
@@ -59,10 +63,12 @@ export function useSecurityMetrics() {
       
       const { data: whitelist } = await supabase
         .from("security_whitelist")
-        .select("id")
+        .select("id, ip_address, device_fingerprint")
         .eq("is_active", true);
       
       const whitelistedCount = whitelist?.length || 0;
+      const whitelistedIPs = whitelist?.filter(w => w.ip_address).length || 0;
+      const whitelistedFingerprints = whitelist?.filter(w => w.device_fingerprint).length || 0;
       
       const { data: auditLogs } = await supabase
         .from("security_audit_log")
@@ -101,7 +107,7 @@ export function useSecurityMetrics() {
       
       return {
         totalDevices, verifiedDevices, blockedDevices, pendingVerification,
-        totalViolations, activeBans, whitelistedCount,
+        totalViolations, activeBans, whitelistedCount, whitelistedIPs, whitelistedFingerprints,
         lastScanStatus, lastScanDate, criticalFindings, warningFindings, passedFindings,
         overallScore: Math.round(overallScore), riskLevel,
       };
@@ -116,7 +122,7 @@ export function usePWADevices() {
     queryFn: async (): Promise<PWADevice[]> => {
       const { data, error } = await supabase
         .from("pwa_devices")
-        .select("id, device_fingerprint, user_name, user_email, phone_number, is_verified, is_blocked, pwa_slugs, os_name, os_version, browser_name, browser_version, verified_at, created_at, updated_at, last_active_at")
+        .select("id, device_fingerprint, user_name, user_email, phone_number, is_verified, is_blocked, pwa_slugs, os_name, os_version, browser_name, browser_version, screen_width, screen_height, verified_at, created_at, updated_at, last_active_at")
         .order("created_at", { ascending: false });
       
       if (error) throw error;
