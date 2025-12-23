@@ -13,6 +13,7 @@ import { useApiRegistrySync } from "./hooks/useApiRegistrySync";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { BannedScreen } from "./components/BannedScreen";
+import { DeviceGate } from "./components/gates";
 import { initSecurityShield, checkBanStatus, getDeviceFingerprint } from "./lib/security-shield";
 
 // Lazy load non-critical pages
@@ -146,39 +147,64 @@ const App = () => (
                     <Route path="/admin/signup" element={<AdminSignup />} />
                     <Route path="/admin/reset-password" element={<AdminResetPassword />} />
                     
-                    {/* Protected Routes */}
+                    {/* Protected Routes - Desktop Only */}
                     <Route path="/hub" element={
-                      <ProtectedRoute requiredRole="superadmin">
-                        <Hub />
-                      </ProtectedRoute>
+                      <DeviceGate allowMobile={false}>
+                        <ProtectedRoute requiredRole="superadmin">
+                          <Hub />
+                        </ProtectedRoute>
+                      </DeviceGate>
                     } />
                     <Route path="/app" element={
-                      <ProtectedRoute>
-                        <AppPage />
-                      </ProtectedRoute>
+                      <DeviceGate allowMobile={false}>
+                        <ProtectedRoute>
+                          <AppPage />
+                        </ProtectedRoute>
+                      </DeviceGate>
                     } />
                     <Route path="/dashboard" element={
-                      <ProtectedRoute requiredRole="admin">
-                        <DashboardAdmin />
-                      </ProtectedRoute>
+                      <DeviceGate allowMobile={false}>
+                        <ProtectedRoute requiredRole="admin">
+                          <DashboardAdmin />
+                        </ProtectedRoute>
+                      </DeviceGate>
                     } />
                     <Route path="/admin/dashboard" element={
-                      <ProtectedRoute requiredRole="admin">
-                        <Dashboard />
-                      </ProtectedRoute>
+                      <DeviceGate allowMobile={false}>
+                        <ProtectedRoute requiredRole="admin">
+                          <Dashboard />
+                        </ProtectedRoute>
+                      </DeviceGate>
                     } />
                     <Route path="/admin" element={
-                      <ProtectedRoute requiredRole="superadmin">
-                        <Admin />
-                      </ProtectedRoute>
+                      <DeviceGate allowMobile={false}>
+                        <ProtectedRoute requiredRole="superadmin">
+                          <Admin />
+                        </ProtectedRoute>
+                      </DeviceGate>
                     } />
                     
                     {/* Public Routes */}
                     <Route path="/docs" element={<Documentation />} />
                     <Route path="/arquitetura" element={<Arquitetura />} />
-                    <Route path="/pwa" element={<PWAMultiAgent />} />
-                    <Route path="/pwa-legacy" element={<PWA />} />
-                    <Route path="/pwa-register" element={<PWARegister />} />
+                    
+                    {/* PWA Routes - Mobile Only */}
+                    <Route path="/pwa" element={
+                      <DeviceGate allowDesktop={false}>
+                        <PWAMultiAgent />
+                      </DeviceGate>
+                    } />
+                    <Route path="/pwa-legacy" element={
+                      <DeviceGate allowDesktop={false}>
+                        <PWA />
+                      </DeviceGate>
+                    } />
+                    <Route path="/pwa-register" element={
+                      <DeviceGate allowDesktop={false}>
+                        <PWARegister />
+                      </DeviceGate>
+                    } />
+                    
                     <Route path="/invite/:token" element={<InvitePage />} />
                     
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
