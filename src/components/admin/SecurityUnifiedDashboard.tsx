@@ -420,20 +420,20 @@ export function SecurityUnifiedDashboard() {
                             </div>
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">{device.name || 'Sem nome'}</span>
-                                {getStatusBadge(device.status)}
-                                {device.agent_slug && (
-                                  <Badge variant="outline">{device.agent_slug}</Badge>
+                                <span className="font-medium">{device.user_name || 'Sem nome'}</span>
+                                {getStatusBadge(device.is_blocked ? 'blocked' : device.is_verified ? 'verified' : 'pending')}
+                                {device.pwa_slugs && device.pwa_slugs.length > 0 && (
+                                  <Badge variant="outline">{device.pwa_slugs[0]}</Badge>
                                 )}
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                {device.email || device.phone || 'Sem contato'}
+                                {device.user_email || device.phone_number || 'Sem contato'}
                               </div>
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                 <span>{device.os_name} {device.os_version}</span>
                                 <span>{device.browser_name} {device.browser_version}</span>
-                                {device.screen_resolution && (
-                                  <span>{device.screen_resolution}</span>
+                                {device.screen_width && device.screen_height && (
+                                  <span>{device.screen_width}x{device.screen_height}</span>
                                 )}
                               </div>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -441,11 +441,11 @@ export function SecurityUnifiedDashboard() {
                                 <span>
                                   Registrado: {new Date(device.created_at).toLocaleString('pt-BR')}
                                 </span>
-                                {device.last_access_at && (
+                                {device.last_active_at && (
                                   <>
                                     <span>•</span>
                                     <span>
-                                      Último acesso: {new Date(device.last_access_at).toLocaleString('pt-BR')}
+                                      Último acesso: {new Date(device.last_active_at).toLocaleString('pt-BR')}
                                     </span>
                                   </>
                                 )}
@@ -461,13 +461,13 @@ export function SecurityUnifiedDashboard() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => {
-                                navigator.clipboard.writeText(device.device_id);
+                                navigator.clipboard.writeText(device.device_fingerprint);
                                 toast({ title: "Device ID copiado" });
                               }}>
                                 <Eye className="h-4 w-4 mr-2" />
                                 Copiar Device ID
                               </DropdownMenuItem>
-                              {device.status === 'blocked' ? (
+                              {device.is_blocked ? (
                                 <DropdownMenuItem onClick={() => openActionDialog(device.id, 'unblock')}>
                                   <Unlock className="h-4 w-4 mr-2" />
                                   Desbloquear
