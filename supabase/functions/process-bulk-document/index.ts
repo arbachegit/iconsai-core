@@ -556,7 +556,7 @@ serve(async (req) => {
               file_name: doc.title,
               upload_date: timestamp,
               target_chat: targetChat,
-              platform_name: 'Plataforma KnowYOU Health'
+              platform_name: 'Plataforma KnowYOU'
             };
             
             const injectVars = (tpl: string) => {
@@ -582,7 +582,7 @@ serve(async (req) => {
                     "Content-Type": "application/json",
                   },
                   body: JSON.stringify({
-                    from: "Plataforma KnowYOU Health <noreply@knowyou.app>",
+                    from: "Plataforma KnowYOU <noreply@knowyou.app>",
                     to: [settings.gmail_notification_email],
                     subject: template?.email_subject ? injectVars(template.email_subject) : `📄 Novo Documento: ${doc.title}`,
                     html: `<pre style="font-family: sans-serif;">${emailBody}</pre>`,

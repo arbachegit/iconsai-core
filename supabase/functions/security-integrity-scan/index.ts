@@ -452,7 +452,7 @@ Scan concluído em: ${timestamp}`;
             
             const whatsappMessage = template?.whatsapp_message
               ? injectVars(template.whatsapp_message)
-              : `${severityIcon} ${timestamp} - Plataforma KnowYOU Health: Alerta de Segurança. ${summary.critical} críticos, ${summary.warning} avisos detectados.`;
+              : `${severityIcon} ${timestamp} - Plataforma KnowYOU: Alerta de Segurança. ${summary.critical} críticos, ${summary.warning} avisos detectados.`;
 
             try {
               const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke('send-whatsapp', {
