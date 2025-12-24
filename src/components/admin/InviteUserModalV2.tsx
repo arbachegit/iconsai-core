@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Mail, Phone, Copy, Check, UserPlus, Monitor, Smartphone, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { extractEdgeFunctionError, formatEdgeFunctionErrorForToast } from "@/lib/edge-function-errors";
 
 const inviteSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
@@ -112,8 +113,21 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
         },
       });
 
-      if (error) throw error;
-      if (result.error) throw new Error(result.error);
+      if (error) {
+        // Extrai erro detalhado da edge function
+        const parsed = extractEdgeFunctionError(error);
+        throw new Error(parsed.message);
+      }
+      
+      // Verifica se a resposta contém success: false (novo padrão)
+      if (result?.success === false) {
+        throw new Error(result.error || result.message || 'Erro ao criar convite');
+      }
+      
+      // Erro legado (campo error direto)
+      if (result?.error) {
+        throw new Error(result.error);
+      }
 
       setInviteResult({
         url: result.inviteUrl,
@@ -136,8 +150,10 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
       }
 
       onSuccess?.();
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao criar convite");
+    } catch (err: unknown) {
+      const { title, description } = formatEdgeFunctionErrorForToast(err);
+      toast.error(title, { description });
+      console.error('[InviteUserModalV2] Erro detalhado:', err);
     } finally {
       setIsLoading(false);
     }

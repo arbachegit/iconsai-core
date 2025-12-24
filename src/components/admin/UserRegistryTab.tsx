@@ -1106,20 +1106,18 @@ export const UserRegistryTab = () => {
                               <TableRow key={reg.id} className="group">
                                 <TableCell className="font-medium text-center">
                                   <div className="flex items-center gap-2 justify-center">
-                                    {hasAddress && (
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6"
-                                        onClick={() => toggleUserExpansion(reg.id)}
-                                      >
-                                        {isExpanded ? (
-                                          <ChevronUp className="w-4 h-4" />
-                                        ) : (
-                                          <ChevronDown className="w-4 h-4" />
-                                        )}
-                                      </Button>
-                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={() => toggleUserExpansion(reg.id)}
+                                    >
+                                      {isExpanded ? (
+                                        <ChevronUp className="w-4 h-4" />
+                                      ) : (
+                                        <ChevronDown className="w-4 h-4" />
+                                      )}
+                                    </Button>
                                     <span>{reg.first_name} {reg.last_name}</span>
                                   </div>
                                 </TableCell>
@@ -1310,7 +1308,7 @@ export const UserRegistryTab = () => {
                                 </TableCell>
                               </TableRow>
                               {/* Expanded Address Row */}
-                              {isExpanded && hasAddress && (
+                              {isExpanded && (
                                 <TableRow key={`${reg.id}-address`} className="bg-muted/30">
                                   <TableCell colSpan={10} className="py-3">
                                     <div className="flex items-start gap-6 px-4">
@@ -1318,22 +1316,30 @@ export const UserRegistryTab = () => {
                                         <Building2 className="w-4 h-4" />
                                         <span className="font-medium">Endereço:</span>
                                       </div>
-                                      <div className="text-sm space-y-1">
-                                        {(reg.street || reg.street_number) && (
-                                          <p>
-                                            {reg.street}{reg.street_number && `, ${reg.street_number}`}
-                                            {reg.complement && ` - ${reg.complement}`}
-                                          </p>
-                                        )}
-                                        {(reg.neighborhood || reg.city || reg.state) && (
-                                          <p className="text-muted-foreground">
-                                            {[reg.neighborhood, reg.city, reg.state].filter(Boolean).join(' - ')}
-                                          </p>
-                                        )}
-                                        {reg.zip_code && (
-                                          <p className="text-muted-foreground text-xs">CEP: {reg.zip_code}</p>
-                                        )}
-                                      </div>
+                                      {hasAddress ? (
+                                        <div className="text-sm space-y-1">
+                                          {(reg.street || reg.street_number) && (
+                                            <p>
+                                              {reg.street}{reg.street_number && `, ${reg.street_number}`}
+                                              {reg.complement && ` - ${reg.complement}`}
+                                            </p>
+                                          )}
+                                          {(reg.neighborhood || reg.city || reg.state) && (
+                                            <p className="text-muted-foreground">
+                                              {[reg.neighborhood, reg.city, reg.state].filter(Boolean).join(' - ')}
+                                            </p>
+                                          )}
+                                          {reg.zip_code && (
+                                            <p className="text-muted-foreground text-xs">CEP: {reg.zip_code}</p>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-3">
+                                          <span className="text-sm text-muted-foreground italic">
+                                            Endereço não cadastrado
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
                                   </TableCell>
                                 </TableRow>
