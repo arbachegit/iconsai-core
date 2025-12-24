@@ -42,7 +42,7 @@ const CHART_PERIOD_OPTIONS = [
 
 const CHAT_TYPE_CONFIG: Record<string, { color: string; icon: React.ElementType; label: string }> = {
   study: { color: "bg-blue-500", icon: GraduationCap, label: "Estudo" },
-  health: { color: "bg-emerald-500", icon: Heart, label: "Saúde" },
+  health: { color: "bg-emerald-500", icon: Heart, label: "KnowYOU" },
 };
 
 type SortField = "started_at" | "user_name" | "chat_type" | "message_count" | "audio_plays";
