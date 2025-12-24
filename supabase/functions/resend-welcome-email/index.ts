@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface ResendWelcomeRequest {
   registrationId: string;
-  channel?: 'email' | 'whatsapp' | 'both';
+  channel?: 'email' | 'whatsapp' | 'both'; // Ignorado - usamos regra por produto
 }
 
 serve(async (req) => {
@@ -57,7 +57,7 @@ serve(async (req) => {
       );
     }
 
-    const { registrationId, channel = 'email' }: ResendWelcomeRequest = await req.json();
+    const { registrationId }: ResendWelcomeRequest = await req.json();
 
     if (!registrationId) {
       return new Response(
@@ -97,39 +97,45 @@ serve(async (req) => {
       );
     }
 
-    console.log("[resend-welcome-email] Resending to:", registration.email, "via channel:", channel);
+    console.log("[resend-welcome-email] Resending to:", registration.email);
 
     const userName = `${registration.first_name} ${registration.last_name}`;
-    const channelsToSend: string[] = [];
     const results: { email?: boolean; whatsapp?: boolean } = {};
 
-    // Determine which channels to send
-    if (channel === 'email' || channel === 'both') {
-      channelsToSend.push('email');
+    // =====================================================
+    // REGRA DE CANAL POR PRODUTO:
+    // - PLATAFORMA → EMAIL (plataforma não abre no celular)
+    // - APP → WHATSAPP (app é para mobile)
+    // - Se só tem Plataforma + tem telefone → WhatsApp informativo
+    // =====================================================
+
+    const hasPlatformAccess = registration.has_platform_access;
+    const hasAppAccess = registration.has_app_access;
+    const siteUrl = Deno.env.get("PUBLIC_SITE_URL") || "https://hmv.knowyou.app";
+    const appUrl = `${siteUrl}/pwa-register`;
+
+    // Generate new password recovery link para Plataforma
+    let recoveryLink = "";
+    if (hasPlatformAccess) {
+      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+        type: "recovery",
+        email: registration.email,
+      });
+
+      if (linkError) {
+        console.error("[resend-welcome-email] Recovery link generation error:", linkError);
+        return new Response(
+          JSON.stringify({ error: "Failed to generate recovery link. User may not exist in auth system." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      recoveryLink = linkData?.properties?.action_link || `${supabaseUrl.replace('.supabase.co', '')}/admin/reset-password`;
+      console.log("[resend-welcome-email] Recovery link generated");
     }
-    if ((channel === 'whatsapp' || channel === 'both') && registration.phone) {
-      channelsToSend.push('whatsapp');
-    }
 
-    // Generate new password recovery link
-    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-      type: "recovery",
-      email: registration.email,
-    });
-
-    if (linkError) {
-      console.error("[resend-welcome-email] Recovery link generation error:", linkError);
-      return new Response(
-        JSON.stringify({ error: "Failed to generate recovery link. User may not exist in auth system." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const recoveryLink = linkData?.properties?.action_link || `${supabaseUrl.replace('.supabase.co', '')}/admin/reset-password`;
-    console.log("[resend-welcome-email] Recovery link generated");
-
-    // Send via Email
-    if (channelsToSend.includes('email')) {
+    // EMAIL para PLATAFORMA (obrigatório se tem acesso)
+    if (hasPlatformAccess) {
       // Get template
       const { data: template } = await supabase
         .from("notification_templates")
@@ -153,16 +159,22 @@ serve(async (req) => {
               .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
               .button { display: inline-block; background: #6366f1; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
               .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+              .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6366f1; }
             </style>
           </head>
           <body>
             <div class="container">
               <div class="header">
-                <h1 style="margin:0;">🎉 Bem-vindo à Plataforma!</h1>
+                <h1 style="margin:0;">🖥️ Bem-vindo à Plataforma!</h1>
               </div>
               <div class="content">
                 <p>Olá <strong>${userName}</strong>,</p>
                 <p>Seu cadastro foi aprovado! Para acessar a plataforma, clique no botão abaixo para definir sua senha:</p>
+                
+                <div class="info">
+                  <p style="margin:0;">💻 Acesse pelo <strong>computador ou tablet</strong> para aproveitar todos os recursos.</p>
+                </div>
+                
                 <p style="text-align: center;">
                   <a href="${recoveryLink}" class="button" style="color: white;">Definir Minha Senha</a>
                 </p>
@@ -180,7 +192,7 @@ serve(async (req) => {
           await supabase.functions.invoke("send-email", {
             body: {
               to: registration.email,
-              subject: "🎉 Bem-vindo à Plataforma KnowYOU!",
+              subject: "🖥️ Bem-vindo à Plataforma KnowYOU!",
               body: defaultHtml,
             },
           });
@@ -230,62 +242,86 @@ serve(async (req) => {
           event_type: "user_registration_resend_welcome",
           channel: "email",
           recipient: registration.email,
-          subject: "Reenvio de email de boas-vindas",
+          subject: "Reenvio de email de boas-vindas (Plataforma)",
           message_body: `Email de boas-vindas reenviado para ${userName} com novo link de recuperação.`,
           status: "success",
           metadata: { registration_id: registrationId, triggered_by: adminUser.email },
         });
       }
+
+      // WhatsApp INFORMATIVO (só se NÃO tem APP)
+      // Apenas avisa que enviamos email - NÃO envia link!
+      if (registration.phone && !hasAppAccess) {
+        try {
+          const infoMessage = `*KnowYOU*
+
+Olá ${userName},
+
+Reenviamos um email com as instruções para acessar a Plataforma KnowYOU.
+
+Acesse pelo computador ou tablet para definir sua senha e começar.
+
+_Verifique também sua pasta de spam_`;
+
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phoneNumber: registration.phone,
+              message: infoMessage,
+            },
+          });
+
+          console.log("[resend-welcome-email] WhatsApp info sent to:", registration.phone);
+          results.whatsapp = true;
+
+          await supabase.from("notification_logs").insert({
+            event_type: "user_registration_resend_welcome",
+            channel: "whatsapp",
+            recipient: registration.phone,
+            subject: "WhatsApp informativo (Plataforma)",
+            message_body: infoMessage,
+            status: "success",
+            metadata: { registration_id: registrationId, triggered_by: adminUser.email },
+          });
+        } catch (whatsappError) {
+          console.error("[resend-welcome-email] WhatsApp info error:", whatsappError);
+        }
+      }
     }
 
-    // Send via WhatsApp
-    if (channelsToSend.includes('whatsapp') && registration.phone) {
+    // WhatsApp para APP (com link)
+    if (hasAppAccess && registration.phone) {
       try {
-        // Get WhatsApp template
-        const { data: whatsappTemplate } = await supabase
-          .from("notification_templates")
-          .select("whatsapp_message")
-          .eq("event_type", "user_registration_approved")
-          .single();
+        const appMessage = `*KnowYOU APP*
 
-        let whatsappMessage = whatsappTemplate?.whatsapp_message || 
-          `🎉 Olá ${userName}!\n\nSeu cadastro na Plataforma KnowYOU foi aprovado!\n\nClique no link abaixo para definir sua senha e começar a usar:\n${recoveryLink}\n\n⏰ Este link é válido por 24 horas.`;
+Olá ${userName}, seu cadastro foi aprovado!
 
-        // Replace variables
-        const variables: Record<string, string> = {
-          user_name: userName,
-          user_email: registration.email,
-          recovery_link: recoveryLink,
-          timestamp: new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-          platform_name: "Plataforma KnowYOU",
-        };
+Acesse pelo celular para ter seu assistente sempre com você.
 
-        for (const [key, value] of Object.entries(variables)) {
-          whatsappMessage = whatsappMessage.replace(new RegExp(`\\{${key}\\}`, "g"), value);
-        }
+Link: ${appUrl}
+
+_Lembre-se: o APP funciona apenas no celular_`;
 
         await supabase.functions.invoke("send-whatsapp", {
           body: {
             phoneNumber: registration.phone,
-            message: whatsappMessage,
+            message: appMessage,
           },
         });
 
-        console.log("[resend-welcome-email] WhatsApp message sent to:", registration.phone);
+        console.log("[resend-welcome-email] WhatsApp APP sent to:", registration.phone);
         results.whatsapp = true;
 
-        // Log WhatsApp notification
         await supabase.from("notification_logs").insert({
           event_type: "user_registration_resend_welcome",
           channel: "whatsapp",
           recipient: registration.phone,
-          subject: "Reenvio de boas-vindas via WhatsApp",
-          message_body: whatsappMessage,
+          subject: "WhatsApp APP com link",
+          message_body: appMessage,
           status: "success",
           metadata: { registration_id: registrationId, triggered_by: adminUser.email },
         });
       } catch (whatsappError) {
-        console.error("[resend-welcome-email] WhatsApp send error:", whatsappError);
+        console.error("[resend-welcome-email] WhatsApp APP error:", whatsappError);
         results.whatsapp = false;
       }
     }
@@ -295,12 +331,13 @@ serve(async (req) => {
       user_email: adminUser.email,
       user_id: adminUser.id,
       action_category: "USER_REGISTRATION_RESEND_WELCOME",
-      action: `Reenviou boas-vindas para ${userName} (${registration.email}) via ${channel}`,
+      action: `Reenviou boas-vindas para ${userName} (${registration.email})`,
       details: {
         registration_id: registrationId,
         user_email: registration.email,
         user_name: userName,
-        channel,
+        has_platform_access: hasPlatformAccess,
+        has_app_access: hasAppAccess,
         results,
       },
     });
