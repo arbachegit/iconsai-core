@@ -266,7 +266,7 @@ serve(async (req) => {
 
         await supabase.functions.invoke("send-whatsapp", {
           body: {
-            to: registration.phone,
+            phoneNumber: registration.phone,
             message: whatsappMessage,
           },
         });
