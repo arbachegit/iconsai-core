@@ -9,7 +9,7 @@ const corsHeaders = {
 interface ResendRequest {
   token: string;
   product?: "platform" | "app" | "both";  // Qual produto reenviar
-  channel?: "email" | "whatsapp" | "both"; // Qual canal usar
+  channel?: "email" | "whatsapp" | "both"; // Qual canal usar (ignorado - usamos regra por produto)
 }
 
 serve(async (req) => {
@@ -22,9 +22,9 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { token, product = "both", channel = "both" }: ResendRequest = await req.json();
+    const { token, product = "both" }: ResendRequest = await req.json();
 
-    console.log("Resend request:", { token, product, channel });
+    console.log("Resend request:", { token, product });
 
     // Fetch invitation
     const { data: invitation, error: fetchError } = await supabase
@@ -70,162 +70,107 @@ serve(async (req) => {
     const results: string[] = [];
 
     // =====================================================
+    // REGRA DE CANAL POR PRODUTO:
+    // - PLATAFORMA → EMAIL (plataforma não abre no celular)
+    // - APP → WHATSAPP (app é para mobile)
+    // - Se só tem Plataforma + tem telefone → WhatsApp informativo
+    // =====================================================
+
+    // =====================================================
     // CASO 1: Convite em status "pending" (sem verification_method)
     // Reenvia o CONVITE original
     // =====================================================
     if (!verification_method || status === "pending") {
       console.log("Resending original invitation (status pending)");
 
-      // PLATAFORMA
+      // PLATAFORMA - Sempre via EMAIL
       if ((product === "platform" || product === "both") && has_platform_access) {
         // Email Plataforma
-        if (channel === "email" || channel === "both") {
-          try {
-            const platformEmailHtml = `
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <meta charset="utf-8">
-                <style>
-                  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-                  .container { max-width: 600px; margin: 0 auto; }
-                  .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-                  .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
-                  .badge { display: inline-block; background: #f59e0b; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
-                  .button { display: inline-block; background: #6366f1; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
-                  .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
-                  .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6366f1; }
-                </style>
-              </head>
-              <body>
-                <div class="container">
-                  <div class="header">
-                    <h1 style="margin:0;">🖥️ Lembrete: KnowYOU Plataforma</h1>
-                  </div>
-                  <div class="content">
-                    <span class="badge">🔄 LEMBRETE</span>
-                    <p>Olá <strong>${name}</strong>,</p>
-                    <p>Você ainda não completou seu cadastro na <strong>KnowYOU Plataforma</strong>.</p>
-                    
-                    <div class="info">
-                      <p style="margin:0;">💻 Acesse pelo <strong>computador ou tablet</strong> para começar!</p>
-                    </div>
-                    
-                    <p style="text-align: center;">
-                      <a href="${platformUrl}" class="button">Completar Cadastro</a>
-                    </p>
-                    
-                    <p style="font-size: 14px; color: #64748b; text-align: center;">
-                      ⏰ Expira em: <strong>${new Date(invitation.expires_at).toLocaleDateString('pt-BR')}</strong>
-                    </p>
-                  </div>
-                  <div class="footer">
-                    <p>KnowYOU Plataforma &copy; ${new Date().getFullYear()}</p>
-                  </div>
+        try {
+          const platformEmailHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                .container { max-width: 600px; margin: 0 auto; }
+                .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+                .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
+                .badge { display: inline-block; background: #f59e0b; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
+                .button { display: inline-block; background: #6366f1; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+                .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+                .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6366f1; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1 style="margin:0;">🖥️ Lembrete: KnowYOU Plataforma</h1>
                 </div>
-              </body>
-              </html>
-            `;
+                <div class="content">
+                  <span class="badge">🔄 LEMBRETE</span>
+                  <p>Olá <strong>${name}</strong>,</p>
+                  <p>Você ainda não completou seu cadastro na <strong>KnowYOU Plataforma</strong>.</p>
+                  
+                  <div class="info">
+                    <p style="margin:0;">💻 Acesse pelo <strong>computador ou tablet</strong> para começar!</p>
+                  </div>
+                  
+                  <p style="text-align: center;">
+                    <a href="${platformUrl}" class="button">Completar Cadastro</a>
+                  </p>
+                  
+                  <p style="font-size: 14px; color: #64748b; text-align: center;">
+                    ⏰ Expira em: <strong>${new Date(invitation.expires_at).toLocaleDateString('pt-BR')}</strong>
+                  </p>
+                </div>
+                <div class="footer">
+                  <p>KnowYOU Plataforma &copy; ${new Date().getFullYear()}</p>
+                </div>
+              </div>
+            </body>
+            </html>
+          `;
 
-            await supabase.functions.invoke("send-email", {
-              body: { to: email, subject: "🖥️ Lembrete: Complete seu cadastro na KnowYOU Plataforma", body: platformEmailHtml }
-            });
-            results.push("✅ Email Plataforma enviado");
-          } catch (e) {
-            console.error("Error sending platform email:", e);
-            results.push("❌ Erro ao enviar email Plataforma");
-          }
+          await supabase.functions.invoke("send-email", {
+            body: { to: email, subject: "🖥️ Lembrete: Complete seu cadastro na KnowYOU Plataforma", body: platformEmailHtml }
+          });
+          results.push("✅ Email Plataforma enviado");
+        } catch (e) {
+          console.error("Error sending platform email:", e);
+          results.push("❌ Erro ao enviar email Plataforma");
         }
 
-        // WhatsApp Plataforma - Clean style
-        if ((channel === "whatsapp" || channel === "both") && phone) {
+        // WhatsApp INFORMATIVO para Plataforma (só se NÃO tem APP)
+        // Apenas avisa que enviamos um email - NÃO envia link!
+        if (phone && !has_app_access) {
           try {
-            const msg = `*KnowYOU Plataforma*
+            const msg = `*KnowYOU*
 
-Olá ${name}, você foi convidado!
+Olá ${name},
+
+Reenviamos um email com seu convite para a Plataforma KnowYOU.
 
 Acesse pelo computador ou tablet para completar seu cadastro.
 
-Link: ${platformUrl}
-
-_Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-BR')}_`;
+_Verifique também sua pasta de spam_`;
 
             await supabase.functions.invoke("send-whatsapp", {
               body: { phoneNumber: phone, message: msg }
             });
-            results.push("✅ WhatsApp Plataforma enviado");
+            results.push("✅ WhatsApp informativo enviado");
           } catch (e) {
-            console.error("Error sending platform WhatsApp:", e);
-            results.push("❌ Erro ao enviar WhatsApp Plataforma");
+            console.error("Error sending platform info WhatsApp:", e);
+            results.push("❌ Erro ao enviar WhatsApp informativo");
           }
         }
       }
 
-      // APP
-      if ((product === "app" || product === "both") && has_app_access) {
-        // Email APP
-        if (channel === "email" || channel === "both") {
-          try {
-            const appEmailHtml = `
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <meta charset="utf-8">
-                <style>
-                  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-                  .container { max-width: 600px; margin: 0 auto; }
-                  .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-                  .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
-                  .badge { display: inline-block; background: #f59e0b; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
-                  .button { display: inline-block; background: #10b981; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
-                  .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
-                  .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #10b981; }
-                </style>
-              </head>
-              <body>
-                <div class="container">
-                  <div class="header">
-                    <h1 style="margin:0;">📱 Lembrete: KnowYOU APP</h1>
-                  </div>
-                  <div class="content">
-                    <span class="badge">🔄 LEMBRETE</span>
-                    <p>Olá <strong>${name}</strong>,</p>
-                    <p>Você ainda não completou seu cadastro no <strong>KnowYOU APP</strong>.</p>
-                    
-                    <div class="info">
-                      <p style="margin:0;">📲 Acesse pelo <strong>celular</strong> para ter o assistente sempre com você!</p>
-                    </div>
-                    
-                    <p style="text-align: center;">
-                      <a href="${appUrl}" class="button">Cadastrar no APP</a>
-                    </p>
-                    
-                    <p style="font-size: 14px; color: #64748b; text-align: center;">
-                      ⏰ Expira em: <strong>${new Date(invitation.expires_at).toLocaleDateString('pt-BR')}</strong>
-                    </p>
-                  </div>
-                  <div class="footer">
-                    <p>KnowYOU APP &copy; ${new Date().getFullYear()}</p>
-                  </div>
-                </div>
-              </body>
-              </html>
-            `;
-
-            await supabase.functions.invoke("send-email", {
-              body: { to: email, subject: "📱 Lembrete: Complete seu cadastro no KnowYOU APP", body: appEmailHtml }
-            });
-            results.push("✅ Email APP enviado");
-          } catch (e) {
-            console.error("Error sending APP email:", e);
-            results.push("❌ Erro ao enviar email APP");
-          }
-        }
-
-        // WhatsApp APP - Clean style (no slugs)
-        if ((channel === "whatsapp" || channel === "both") && phone) {
-          try {
-            const msg = `*KnowYOU APP*
+      // APP - Sempre via WhatsApp (com link)
+      if ((product === "app" || product === "both") && has_app_access && phone) {
+        try {
+          const msg = `*KnowYOU APP*
 
 Olá ${name}, você foi convidado!
 
@@ -235,14 +180,13 @@ Link: ${appUrl}
 
 _Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-BR')}_`;
 
-            await supabase.functions.invoke("send-whatsapp", {
-              body: { phoneNumber: phone, message: msg }
-            });
-            results.push("✅ WhatsApp APP enviado");
-          } catch (e) {
-            console.error("Error sending APP WhatsApp:", e);
-            results.push("❌ Erro ao enviar WhatsApp APP");
-          }
+          await supabase.functions.invoke("send-whatsapp", {
+            body: { phoneNumber: phone, message: msg }
+          });
+          results.push("✅ WhatsApp APP enviado");
+        } catch (e) {
+          console.error("Error sending APP WhatsApp:", e);
+          results.push("❌ Erro ao enviar WhatsApp APP");
         }
       }
     }
@@ -271,11 +215,8 @@ _Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-B
         })
         .eq("token", token);
 
-      // Send via chosen channel (or original method if not specified)
-      const sendEmail = channel === "email" || channel === "both" || (channel !== "whatsapp" && verification_method === "email");
-      const sendWhatsapp = channel === "whatsapp" || channel === "both" || (channel !== "email" && verification_method === "whatsapp");
-
-      if (sendEmail) {
+      // Enviar código pelo método original de verificação
+      if (verification_method === "email") {
         try {
           const codeEmailHtml = `
             <!DOCTYPE html>
@@ -323,7 +264,7 @@ _Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-B
         }
       }
 
-      if (sendWhatsapp && phone) {
+      if (verification_method === "whatsapp" && phone) {
         try {
           const msg = `*Código de Verificação*
 
@@ -357,12 +298,12 @@ _Toque e segure o código para copiar_`;
     // Log the event
     await supabase.from("notification_logs").insert({
       event_type: "invitation_resend",
-      channel: channel,
+      channel: "system",
       recipient: email,
-      subject: `Reenvio: ${product} via ${channel}`,
+      subject: `Reenvio: ${product}`,
       message_body: results.join(", "),
       status: results.some(r => r.includes("✅")) ? "success" : "failed",
-      metadata: { token, product, channel, status: invitation.status, results }
+      metadata: { token, product, status: invitation.status, results }
     });
 
     return new Response(

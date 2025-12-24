@@ -179,162 +179,90 @@ serve(async (req) => {
 
     console.log("🔑 Secrets check:", { hasResendKey, hasTwilioSid, hasTwilioToken, hasTwilioFrom });
 
-    // 7. ENVIAR EMAIL (não falha se der erro)
-    if (sendViaEmail) {
+    // =====================================================
+    // REGRA DE CANAL POR PRODUTO:
+    // - PLATAFORMA → EMAIL (plataforma não abre no celular)
+    // - APP → WHATSAPP (app é para mobile)
+    // - Se só tem Plataforma + tem telefone → WhatsApp informativo
+    // =====================================================
+
+    // 7. EMAIL PARA PLATAFORMA (obrigatório se tem acesso à plataforma)
+    if (hasPlatformAccess && sendViaEmail) {
       if (!hasResendKey) {
         console.warn("⚠️ RESEND_API_KEY not configured");
-        if (hasPlatformAccess) {
-          results.push({ channel: "email", product: "platform", success: false, error: "RESEND_API_KEY não configurada" });
-        }
-        if (hasAppAccess) {
-          results.push({ channel: "email", product: "app", success: false, error: "RESEND_API_KEY não configurada" });
-        }
+        results.push({ channel: "email", product: "platform", success: false, error: "RESEND_API_KEY não configurada" });
       } else {
-        // Email para PLATAFORMA
-        if (hasPlatformAccess) {
-          console.log("📧 Sending platform email...");
-          try {
-            const platformEmailHtml = `
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <meta charset="utf-8">
-                <style>
-                  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-                  .container { max-width: 600px; margin: 0 auto; }
-                  .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-                  .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
-                  .badge { display: inline-block; background: #6366f1; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
-                  .button { display: inline-block; background: #6366f1; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
-                  .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
-                  .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6366f1; }
-                </style>
-              </head>
-              <body>
-                <div class="container">
-                  <div class="header">
-                    <h1 style="margin:0;">🖥️ Convite KnowYOU Plataforma</h1>
-                  </div>
-                  <div class="content">
-                    <span class="badge">🖥️ PLATAFORMA</span>
-                    <p>Olá <strong>${name}</strong>,</p>
-                    <p>Você foi convidado para a <strong>KnowYOU Plataforma</strong>!</p>
-                    
-                    <div class="info">
-                      <p style="margin:0;">💻 Acesse pelo <strong>computador ou tablet</strong> para aproveitar todos os recursos.</p>
-                    </div>
-                    
-                    <p style="text-align: center;">
-                      <a href="${platformUrl}" class="button">Acessar Plataforma</a>
-                    </p>
-                    
-                    <p style="font-size: 14px; color: #64748b; text-align: center;">
-                      ⏰ Este convite expira em <strong>7 dias</strong>.
-                    </p>
-                  </div>
-                  <div class="footer">
-                    <p>KnowYOU Plataforma &copy; ${new Date().getFullYear()}</p>
-                  </div>
+        console.log("📧 Sending platform email...");
+        try {
+          const platformEmailHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                .container { max-width: 600px; margin: 0 auto; }
+                .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+                .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
+                .badge { display: inline-block; background: #6366f1; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
+                .button { display: inline-block; background: #6366f1; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+                .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+                .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6366f1; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1 style="margin:0;">🖥️ Convite KnowYOU Plataforma</h1>
                 </div>
-              </body>
-              </html>
-            `;
-
-            const { error: emailError } = await supabase.functions.invoke("send-email", {
-              body: {
-                to: email,
-                subject: "🖥️ Convite KnowYOU Plataforma",
-                body: platformEmailHtml
-              }
-            });
-
-            if (emailError) {
-              console.error("❌ Platform email error:", emailError);
-              results.push({ channel: "email", product: "platform", success: false, error: emailError.message });
-            } else {
-              console.log("✅ Platform email sent");
-              results.push({ channel: "email", product: "platform", success: true });
-            }
-          } catch (emailCatch: any) {
-            console.error("❌ Platform email exception:", emailCatch);
-            results.push({ channel: "email", product: "platform", success: false, error: emailCatch.message });
-          }
-        }
-
-        // Email para APP
-        if (hasAppAccess) {
-          console.log("📧 Sending app email...");
-          try {
-            const appEmailHtml = `
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <meta charset="utf-8">
-                <style>
-                  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-                  .container { max-width: 600px; margin: 0 auto; }
-                  .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-                  .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
-                  .badge { display: inline-block; background: #10b981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
-                  .button { display: inline-block; background: #10b981; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
-                  .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
-                  .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #10b981; }
-                </style>
-              </head>
-              <body>
-                <div class="container">
-                  <div class="header">
-                    <h1 style="margin:0;">📱 Convite KnowYOU APP</h1>
+                <div class="content">
+                  <span class="badge">🖥️ PLATAFORMA</span>
+                  <p>Olá <strong>${name}</strong>,</p>
+                  <p>Você foi convidado para a <strong>KnowYOU Plataforma</strong>!</p>
+                  
+                  <div class="info">
+                    <p style="margin:0;">💻 Acesse pelo <strong>computador ou tablet</strong> para aproveitar todos os recursos.</p>
                   </div>
-                  <div class="content">
-                    <span class="badge">📱 APP</span>
-                    <p>Olá <strong>${name}</strong>,</p>
-                    <p>Você foi convidado para o <strong>KnowYOU APP</strong>!</p>
-                    
-                    <div class="info">
-                      <p style="margin:0;">📲 Acesse pelo <strong>celular via WhatsApp</strong> para ter o assistente sempre com você.</p>
-                    </div>
-                    
-                    <p style="text-align: center;">
-                      <a href="${appUrl}" class="button">Cadastrar no APP</a>
-                    </p>
-                    
-                    <p style="font-size: 14px; color: #64748b; text-align: center;">
-                      ⏰ Este convite expira em <strong>7 dias</strong>.
-                    </p>
-                  </div>
-                  <div class="footer">
-                    <p>KnowYOU APP &copy; ${new Date().getFullYear()}</p>
-                  </div>
+                  
+                  <p style="text-align: center;">
+                    <a href="${platformUrl}" class="button">Acessar Plataforma</a>
+                  </p>
+                  
+                  <p style="font-size: 14px; color: #64748b; text-align: center;">
+                    ⏰ Este convite expira em <strong>7 dias</strong>.
+                  </p>
                 </div>
-              </body>
-              </html>
-            `;
+                <div class="footer">
+                  <p>KnowYOU Plataforma &copy; ${new Date().getFullYear()}</p>
+                </div>
+              </div>
+            </body>
+            </html>
+          `;
 
-            const { error: emailError } = await supabase.functions.invoke("send-email", {
-              body: {
-                to: email,
-                subject: "📱 Convite KnowYOU APP",
-                body: appEmailHtml
-              }
-            });
-
-            if (emailError) {
-              console.error("❌ App email error:", emailError);
-              results.push({ channel: "email", product: "app", success: false, error: emailError.message });
-            } else {
-              console.log("✅ App email sent");
-              results.push({ channel: "email", product: "app", success: true });
+          const { error: emailError } = await supabase.functions.invoke("send-email", {
+            body: {
+              to: email,
+              subject: "🖥️ Convite KnowYOU Plataforma",
+              body: platformEmailHtml
             }
-          } catch (emailCatch: any) {
-            console.error("❌ App email exception:", emailCatch);
-            results.push({ channel: "email", product: "app", success: false, error: emailCatch.message });
+          });
+
+          if (emailError) {
+            console.error("❌ Platform email error:", emailError);
+            results.push({ channel: "email", product: "platform", success: false, error: emailError.message });
+          } else {
+            console.log("✅ Platform email sent");
+            results.push({ channel: "email", product: "platform", success: true });
           }
+        } catch (emailCatch: any) {
+          console.error("❌ Platform email exception:", emailCatch);
+          results.push({ channel: "email", product: "platform", success: false, error: emailCatch.message });
         }
       }
     }
 
-    // 8. ENVIAR WHATSAPP (não falha se der erro)
+    // 8. WHATSAPP - Lógica correta por produto
     if (sendViaWhatsapp && phone) {
       if (!hasTwilioCredentials) {
         const missing = [];
@@ -344,53 +272,16 @@ serve(async (req) => {
         const errorMsg = `Credenciais Twilio incompletas: ${missing.join(", ")}`;
         
         console.warn("⚠️ " + errorMsg);
-        if (hasPlatformAccess) {
-          results.push({ channel: "whatsapp", product: "platform", success: false, error: errorMsg });
-        }
         if (hasAppAccess) {
           results.push({ channel: "whatsapp", product: "app", success: false, error: errorMsg });
         }
-      } else {
-        // WhatsApp para PLATAFORMA - Clean style
-        if (hasPlatformAccess) {
-          console.log("💬 Sending platform WhatsApp...");
-          try {
-            const platformWhatsappMessage = `*KnowYOU Plataforma*
-
-Olá ${name}, você foi convidado!
-
-Acesse pelo computador ou tablet para começar.
-
-Link: ${platformUrl}
-
-_Convite válido por 7 dias_`;
-
-            const { data: whatsappResult, error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
-              body: {
-                phoneNumber: phone,
-                message: platformWhatsappMessage
-              }
-            });
-
-            if (whatsappError) {
-              console.error("❌ Platform WhatsApp error:", whatsappError);
-              results.push({ channel: "whatsapp", product: "platform", success: false, error: whatsappError.message });
-            } else if (whatsappResult?.error) {
-              console.error("❌ Platform WhatsApp API error:", whatsappResult.error);
-              results.push({ channel: "whatsapp", product: "platform", success: false, error: whatsappResult.error });
-            } else {
-              console.log("✅ Platform WhatsApp sent");
-              results.push({ channel: "whatsapp", product: "platform", success: true });
-            }
-          } catch (whatsappCatch: any) {
-            console.error("❌ Platform WhatsApp exception:", whatsappCatch);
-            results.push({ channel: "whatsapp", product: "platform", success: false, error: whatsappCatch.message });
-          }
+        if (hasPlatformAccess && !hasAppAccess) {
+          results.push({ channel: "whatsapp", product: "platform_info", success: false, error: errorMsg });
         }
-
-        // WhatsApp para APP - Clean style (no slugs)
+      } else {
+        // WhatsApp para APP - Mensagem com link (APP é para mobile!)
         if (hasAppAccess) {
-          console.log("💬 Sending app WhatsApp...");
+          console.log("💬 Sending app WhatsApp with link...");
           try {
             const appWhatsappMessage = `*KnowYOU APP*
 
@@ -422,6 +313,44 @@ _Convite válido por 7 dias_`;
           } catch (whatsappCatch: any) {
             console.error("❌ App WhatsApp exception:", whatsappCatch);
             results.push({ channel: "whatsapp", product: "app", success: false, error: whatsappCatch.message });
+          }
+        }
+
+        // WhatsApp INFORMATIVO para Plataforma (só se NÃO tem APP)
+        // Apenas avisa que enviamos um email - NÃO envia link!
+        if (hasPlatformAccess && !hasAppAccess) {
+          console.log("💬 Sending platform info WhatsApp (no link)...");
+          try {
+            const platformInfoMessage = `*KnowYOU*
+
+Olá ${name},
+
+Enviamos um email com seu convite para a Plataforma KnowYOU.
+
+Acesse pelo computador ou tablet para começar.
+
+_Verifique também sua pasta de spam_`;
+
+            const { data: whatsappResult, error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
+              body: {
+                phoneNumber: phone,
+                message: platformInfoMessage
+              }
+            });
+
+            if (whatsappError) {
+              console.error("❌ Platform info WhatsApp error:", whatsappError);
+              results.push({ channel: "whatsapp", product: "platform_info", success: false, error: whatsappError.message });
+            } else if (whatsappResult?.error) {
+              console.error("❌ Platform info WhatsApp API error:", whatsappResult.error);
+              results.push({ channel: "whatsapp", product: "platform_info", success: false, error: whatsappResult.error });
+            } else {
+              console.log("✅ Platform info WhatsApp sent");
+              results.push({ channel: "whatsapp", product: "platform_info", success: true });
+            }
+          } catch (whatsappCatch: any) {
+            console.error("❌ Platform info WhatsApp exception:", whatsappCatch);
+            results.push({ channel: "whatsapp", product: "platform_info", success: false, error: whatsappCatch.message });
           }
         }
       }
