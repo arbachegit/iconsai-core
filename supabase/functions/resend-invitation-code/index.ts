@@ -35,16 +35,16 @@ serve(async (req) => {
 
     if (fetchError || !invitation) {
       return new Response(
-        JSON.stringify({ error: "Convite não encontrado" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "INVALID_TOKEN", error: "Convite não encontrado" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Check if already completed
     if (invitation.status === "completed") {
       return new Response(
-        JSON.stringify({ error: "Este convite já foi utilizado" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "INVITE_USED", error: "Este convite já foi utilizado" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -55,8 +55,8 @@ serve(async (req) => {
     if (invitation.last_resend_at && new Date(invitation.last_resend_at) > oneHourAgo) {
       if ((invitation.resend_count || 0) >= 10) {
         return new Response(
-          JSON.stringify({ error: "Limite de reenvios atingido. Tente novamente em 1 hora." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ success: false, error_code: "RATE_LIMIT", error: "Limite de reenvios atingido. Tente novamente em 1 hora." }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }

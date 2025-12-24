@@ -65,8 +65,8 @@ serve(async (req) => {
     } catch (parseError: any) {
       console.error("❌ Error parsing request body:", parseError.message);
       return new Response(
-        JSON.stringify({ error: "Corpo da requisição inválido", details: parseError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "VALIDATION_ERROR", error: "Corpo da requisição inválido", details: parseError.message }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -84,20 +84,20 @@ serve(async (req) => {
       verificationMethod
     } = body;
 
-    // Step 3: Validate required fields
+    // Step 3: Validate required fields - retornar HTTP 200 com success: false
     if (!token) {
       console.error("❌ Missing token");
       return new Response(
-        JSON.stringify({ error: "Token é obrigatório" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "VALIDATION_ERROR", error: "Token é obrigatório" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (!verificationMethod || !["email", "sms", "whatsapp"].includes(verificationMethod)) {
       console.error("❌ Invalid verification method:", verificationMethod);
       return new Response(
-        JSON.stringify({ error: "Método de verificação inválido. Use: email, sms ou whatsapp" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "VALIDATION_ERROR", error: "Método de verificação inválido. Use: email, sms ou whatsapp" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -112,16 +112,16 @@ serve(async (req) => {
     if (fetchError) {
       console.error("❌ Error fetching invitation:", fetchError);
       return new Response(
-        JSON.stringify({ error: "Erro ao buscar convite: " + fetchError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "INTERNAL_ERROR", error: "Erro ao buscar convite: " + fetchError.message }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (!invitation) {
       console.error("❌ Invitation not found for token");
       return new Response(
-        JSON.stringify({ error: "Convite não encontrado" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "INVALID_TOKEN", error: "Convite não encontrado" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -137,16 +137,16 @@ serve(async (req) => {
     if (invitation.status === "completed") {
       console.error("❌ Invitation already completed");
       return new Response(
-        JSON.stringify({ error: "Este convite já foi utilizado" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "INVITE_USED", error: "Este convite já foi utilizado" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (new Date(invitation.expires_at) < new Date()) {
       console.error("❌ Invitation expired:", invitation.expires_at);
       return new Response(
-        JSON.stringify({ error: "Este convite expirou" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "INVITE_EXPIRED", error: "Este convite expirou" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -155,8 +155,8 @@ serve(async (req) => {
     if (!password || !passwordRegex.test(password)) {
       console.error("❌ Invalid password format");
       return new Response(
-        JSON.stringify({ error: "A senha deve ter pelo menos 8 caracteres, uma letra maiúscula, uma minúscula e um número" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "VALIDATION_ERROR", error: "A senha deve ter pelo menos 8 caracteres, uma letra maiúscula, uma minúscula e um número" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     console.log("✅ Password validated");
@@ -165,8 +165,8 @@ serve(async (req) => {
     if ((verificationMethod === "whatsapp" || verificationMethod === "sms") && !phone) {
       console.error("❌ Phone required for", verificationMethod, "but not provided");
       return new Response(
-        JSON.stringify({ error: `Telefone é obrigatório para verificação via ${verificationMethod === 'whatsapp' ? 'WhatsApp' : 'SMS'}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "PHONE_REQUIRED", error: `Telefone é obrigatório para verificação via ${verificationMethod === 'whatsapp' ? 'WhatsApp' : 'SMS'}` }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -368,12 +368,20 @@ Seu código:
     // Step 11: Handle send failure
     if (!sendResult.success) {
       console.error("❌ Failed to send verification code:", sendResult);
+      
+      // Detectar tipo de erro do provedor
+      const errorCode = sendResult.error?.toLowerCase().includes("window") || sendResult.error?.toLowerCase().includes("24")
+        ? "WHATSAPP_WINDOW_EXPIRED"
+        : sendResult.method === "whatsapp" ? "TWILIO_ERROR" : "EMAIL_FAILED";
+      
       return new Response(
         JSON.stringify({
+          success: false,
+          error_code: errorCode,
           error: `Erro ao enviar código: ${sendResult.error}`,
           details: "O código foi gerado mas não foi possível enviar. Tente outro método de verificação."
         }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

@@ -64,32 +64,32 @@ serve(async (req) => {
     } catch (parseError) {
       console.error("❌ Invalid request body:", parseError);
       return new Response(
-        JSON.stringify({ error: "Corpo da requisição inválido" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "VALIDATION_ERROR", error: "Corpo da requisição inválido" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const { name, email, phone, role, sendViaEmail, sendViaWhatsapp, hasPlatformAccess, hasAppAccess } = body;
 
-    // Validações básicas
+    // Validações básicas - retornar HTTP 200 com success: false
     if (!name || !email) {
       return new Response(
-        JSON.stringify({ error: "Nome e email são obrigatórios" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "VALIDATION_ERROR", error: "Nome e email são obrigatórios" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (!hasPlatformAccess && !hasAppAccess) {
       return new Response(
-        JSON.stringify({ error: "Selecione pelo menos um tipo de acesso" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "VALIDATION_ERROR", error: "Selecione pelo menos um tipo de acesso" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (sendViaWhatsapp && !phone) {
       return new Response(
-        JSON.stringify({ error: "Telefone é obrigatório para envio via WhatsApp" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "PHONE_REQUIRED", error: "Telefone é obrigatório para envio via WhatsApp" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -104,8 +104,8 @@ serve(async (req) => {
 
     if (existingInvite) {
       return new Response(
-        JSON.stringify({ error: "Já existe um convite pendente para este email" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "DUPLICATE_INVITE", error: "Já existe um convite pendente para este email" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -118,8 +118,8 @@ serve(async (req) => {
 
     if (existingReg) {
       return new Response(
-        JSON.stringify({ error: "Este email já está cadastrado no sistema" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error_code: "ALREADY_REGISTERED", error: "Este email já está cadastrado no sistema" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
