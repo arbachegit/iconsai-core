@@ -389,6 +389,15 @@ export const UserRegistryTab = () => {
           last_name: user.last_name,
           email: user.email,
           phone: user.phone,
+          street: user.street,
+          street_number: user.street_number,
+          complement: user.complement,
+          neighborhood: user.neighborhood,
+          city: user.city,
+          state: user.state,
+          zip_code: user.zip_code,
+          has_platform_access: user.has_platform_access,
+          has_app_access: user.has_app_access,
         })
         .eq("id", user.id);
       if (error) throw error;
@@ -945,18 +954,17 @@ export const UserRegistryTab = () => {
                 <Badge className="bg-amber-500 text-white ml-1">{pendingCount}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="invites" className="gap-2">
+            <TabsTrigger value="invites" className="gap-2 relative">
               <Send className="w-4 h-4" />
               Convites
+              {/* Inline conversion indicator */}
+              <InviteConversionStats />
             </TabsTrigger>
             <TabsTrigger value="import" className="gap-2">
               <FileSpreadsheet className="w-4 h-4" />
               Importação
             </TabsTrigger>
           </TabsList>
-          
-          {/* Conversion stats - only show on invites tab */}
-          {activeTab === "invites" && <InviteConversionStats />}
         </div>
 
         {/* Tab: Invites */}
@@ -1090,198 +1098,249 @@ export const UserRegistryTab = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedRegistrations.map((reg) => (
-                          <TableRow key={reg.id}>
-                            <TableCell className="font-medium text-center">
-                              {reg.first_name} {reg.last_name}
-                            </TableCell>
-                            <TableCell className="text-center">{reg.email}</TableCell>
-                            <TableCell className="text-center">{reg.phone || "-"}</TableCell>
-                            <TableCell className="text-center">
-                              <UserModalityIcons
-                                userId={reg.id}
-                                userName={`${reg.first_name} ${reg.last_name}`}
-                                userEmail={reg.email}
-                                userPhone={reg.phone || undefined}
-                                hasPlatformAccess={reg.has_platform_access ?? true}
-                                hasAppAccess={reg.has_app_access ?? false}
-                                platformRegistered={!!reg.approved_at}
-                                appRegistered={!!reg.pwa_registered_at}
-                                onInviteSent={() => refetch()}
-                              />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {reg.dns_origin && (
-                                <Badge variant="outline" className="gap-1">
-                                  <Globe className="w-3 h-3" />
-                                  @{reg.dns_origin}
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center">{renderRoleBadge(reg.role)}</TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex justify-center">
-                                <Switch
-                                  checked={reg.status === "approved"}
-                                  className={reg.status === "approved"
-                                    ? "data-[state=checked]:bg-emerald-500" 
-                                    : "data-[state=unchecked]:bg-red-500"
-                                  }
-                                  disabled
-                                />
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex justify-center">
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div>
-                                        <Switch
-                                          checked={reg.is_banned || false}
-                                          onCheckedChange={(checked) => {
-                                            if (checked) {
-                                              setBanModal({ open: true, user: reg, reason: "" });
-                                            } else {
-                                              unbanUserMutation.mutate(reg.id);
-                                            }
-                                          }}
-                                          disabled={banUserMutation.isPending || unbanUserMutation.isPending}
-                                          className={reg.is_banned 
-                                            ? "data-[state=checked]:bg-red-500" 
-                                            : "data-[state=unchecked]:bg-emerald-500"
-                                          }
-                                        />
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>{reg.is_banned ? (reg.ban_reason || "Usuário banido") : "Usuário ativo"}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center text-sm text-muted-foreground">
-                              {formatDateTime(reg.requested_at)}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                {activeTab === "pending" ? (
-                                  <>
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
-                                            onClick={() => approveMutation.mutate(reg)}
-                                            disabled={approveMutation.isPending}
-                                          >
-                                            <Check className="w-4 h-4" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Aprovar cadastro</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                            onClick={() => setRejectModal({ open: true, user: reg, reason: "" })}
-                                          >
-                                            <X className="w-4 h-4" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Rejeitar cadastro</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                  </>
-                                ) : (
-                                  <>
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => setEditModal({ open: true, user: reg })}
-                                          >
-                                            <Edit2 className="w-4 h-4" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Editar usuário</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                    {/* Resend welcome email button - only for approved, non-banned users */}
-                                    {!reg.is_banned && (
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
-                                              onClick={() => setResendWelcomeModal({ open: true, user: reg, channel: reg.phone ? 'both' : 'email' })}
-                                              disabled={resendWelcomeMutation.isPending}
-                                            >
-                                              <Send className="w-4 h-4" />
-                                            </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>Reenviar email de boas-vindas</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
+                        {paginatedRegistrations.map((reg) => {
+                          const isExpanded = expandedUsers.has(reg.id);
+                          const hasAddress = reg.street || reg.city || reg.zip_code;
+                          return (
+                            <>
+                              <TableRow key={reg.id} className="group">
+                                <TableCell className="font-medium text-center">
+                                  <div className="flex items-center gap-2 justify-center">
+                                    {hasAddress && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => toggleUserExpansion(reg.id)}
+                                      >
+                                        {isExpanded ? (
+                                          <ChevronUp className="w-4 h-4" />
+                                        ) : (
+                                          <ChevronDown className="w-4 h-4" />
+                                        )}
+                                      </Button>
                                     )}
+                                    <span>{reg.first_name} {reg.last_name}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-center">{reg.email}</TableCell>
+                                <TableCell className="text-center">{reg.phone || "-"}</TableCell>
+                                <TableCell className="text-center">
+                                  <UserModalityIcons
+                                    userId={reg.id}
+                                    userName={`${reg.first_name} ${reg.last_name}`}
+                                    userEmail={reg.email}
+                                    userPhone={reg.phone || undefined}
+                                    hasPlatformAccess={reg.has_platform_access ?? true}
+                                    hasAppAccess={reg.has_app_access ?? false}
+                                    platformRegistered={!!reg.approved_at}
+                                    appRegistered={!!reg.pwa_registered_at}
+                                    onInviteSent={() => refetch()}
+                                  />
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {reg.dns_origin && (
+                                    <Badge variant="outline" className="gap-1">
+                                      <Globe className="w-3 h-3" />
+                                      @{reg.dns_origin}
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">{renderRoleBadge(reg.role)}</TableCell>
+                                <TableCell className="text-center">
+                                  <div className="flex justify-center">
+                                    <Switch
+                                      checked={reg.status === "approved"}
+                                      className={reg.status === "approved"
+                                        ? "data-[state=checked]:bg-emerald-500" 
+                                        : "data-[state=unchecked]:bg-red-500"
+                                      }
+                                      disabled
+                                    />
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <div className="flex justify-center">
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => setRoleChangeModal({ open: true, user: reg, newRole: reg.role })}
-                                          >
-                                            <Users className="w-4 h-4" />
-                                          </Button>
+                                          <div>
+                                            <Switch
+                                              checked={reg.is_banned || false}
+                                              onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                  setBanModal({ open: true, user: reg, reason: "" });
+                                                } else {
+                                                  unbanUserMutation.mutate(reg.id);
+                                                }
+                                              }}
+                                              disabled={banUserMutation.isPending || unbanUserMutation.isPending}
+                                              className={reg.is_banned 
+                                                ? "data-[state=checked]:bg-red-500" 
+                                                : "data-[state=unchecked]:bg-emerald-500"
+                                              }
+                                            />
+                                          </div>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p>Alterar permissões</p>
+                                          <p>{reg.is_banned ? (reg.ban_reason || "Usuário banido") : "Usuário ativo"}</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                            onClick={() => setDeleteModal({ open: true, user: reg })}
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Excluir registro</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                  </>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-center text-sm text-muted-foreground">
+                                  {formatDateTime(reg.requested_at)}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    {activeTab === "pending" ? (
+                                      <>
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
+                                                onClick={() => approveMutation.mutate(reg)}
+                                                disabled={approveMutation.isPending}
+                                              >
+                                                <Check className="w-4 h-4" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Aprovar cadastro</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                                onClick={() => setRejectModal({ open: true, user: reg, reason: "" })}
+                                              >
+                                                <X className="w-4 h-4" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Rejeitar cadastro</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setEditModal({ open: true, user: reg })}
+                                              >
+                                                <Edit2 className="w-4 h-4" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Editar usuário</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                        {/* Resend welcome email button - only for approved, non-banned users */}
+                                        {!reg.is_banned && (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
+                                                  onClick={() => setResendWelcomeModal({ open: true, user: reg, channel: reg.phone ? 'both' : 'email' })}
+                                                  disabled={resendWelcomeMutation.isPending}
+                                                >
+                                                  <Send className="w-4 h-4" />
+                                                </Button>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p>Reenviar email de boas-vindas</p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        )}
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setRoleChangeModal({ open: true, user: reg, newRole: reg.role })}
+                                              >
+                                                <Users className="w-4 h-4" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Alterar permissões</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                                onClick={() => setDeleteModal({ open: true, user: reg })}
+                                              >
+                                                <Trash2 className="w-4 h-4" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Excluir registro</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      </>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                              {/* Expanded Address Row */}
+                              {isExpanded && hasAddress && (
+                                <TableRow key={`${reg.id}-address`} className="bg-muted/30">
+                                  <TableCell colSpan={10} className="py-3">
+                                    <div className="flex items-start gap-6 px-4">
+                                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Building2 className="w-4 h-4" />
+                                        <span className="font-medium">Endereço:</span>
+                                      </div>
+                                      <div className="text-sm space-y-1">
+                                        {(reg.street || reg.street_number) && (
+                                          <p>
+                                            {reg.street}{reg.street_number && `, ${reg.street_number}`}
+                                            {reg.complement && ` - ${reg.complement}`}
+                                          </p>
+                                        )}
+                                        {(reg.neighborhood || reg.city || reg.state) && (
+                                          <p className="text-muted-foreground">
+                                            {[reg.neighborhood, reg.city, reg.state].filter(Boolean).join(' - ')}
+                                          </p>
+                                        )}
+                                        {reg.zip_code && (
+                                          <p className="text-muted-foreground text-xs">CEP: {reg.zip_code}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                     
@@ -1606,12 +1665,13 @@ export const UserRegistryTab = () => {
 
       {/* Edit Modal */}
       <Dialog open={editModal.open} onOpenChange={(open) => !open && setEditModal({ open: false, user: null })}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Usuário</DialogTitle>
           </DialogHeader>
           {editModal.user && (
             <div className="space-y-4">
+              {/* Basic Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nome</Label>
@@ -1634,27 +1694,153 @@ export const UserRegistryTab = () => {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={editModal.user.email}
-                  onChange={(e) => setEditModal(prev => ({
-                    ...prev,
-                    user: prev.user ? { ...prev.user, email: e.target.value } : null
-                  }))}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    value={editModal.user.email}
+                    onChange={(e) => setEditModal(prev => ({
+                      ...prev,
+                      user: prev.user ? { ...prev.user, email: e.target.value } : null
+                    }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefone</Label>
+                  <Input
+                    value={editModal.user.phone || ""}
+                    onChange={(e) => setEditModal(prev => ({
+                      ...prev,
+                      user: prev.user ? { ...prev.user, phone: e.target.value } : null
+                    }))}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Telefone</Label>
-                <Input
-                  value={editModal.user.phone || ""}
-                  onChange={(e) => setEditModal(prev => ({
-                    ...prev,
-                    user: prev.user ? { ...prev.user, phone: e.target.value } : null
-                  }))}
-                />
+
+              {/* Access Flags */}
+              <div className="space-y-2 pt-2 border-t">
+                <Label className="text-sm font-medium">Acesso</Label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Switch
+                      checked={editModal.user.has_platform_access ?? true}
+                      onCheckedChange={(checked) => setEditModal(prev => ({
+                        ...prev,
+                        user: prev.user ? { ...prev.user, has_platform_access: checked } : null
+                      }))}
+                    />
+                    <span className="text-sm">Plataforma</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Switch
+                      checked={editModal.user.has_app_access ?? false}
+                      onCheckedChange={(checked) => setEditModal(prev => ({
+                        ...prev,
+                        user: prev.user ? { ...prev.user, has_app_access: checked } : null
+                      }))}
+                    />
+                    <span className="text-sm">APP</span>
+                  </label>
+                </div>
               </div>
+
+              {/* Address Section */}
+              <Collapsible className="pt-2 border-t">
+                <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors w-full justify-between py-2">
+                  <span className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4" />
+                    Endereço
+                  </span>
+                  <ChevronDown className="w-4 h-4" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3 space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2 space-y-2">
+                      <Label className="text-xs">Rua</Label>
+                      <Input
+                        value={editModal.user.street || ""}
+                        onChange={(e) => setEditModal(prev => ({
+                          ...prev,
+                          user: prev.user ? { ...prev.user, street: e.target.value } : null
+                        }))}
+                        placeholder="Nome da rua"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Número</Label>
+                      <Input
+                        value={editModal.user.street_number || ""}
+                        onChange={(e) => setEditModal(prev => ({
+                          ...prev,
+                          user: prev.user ? { ...prev.user, street_number: e.target.value } : null
+                        }))}
+                        placeholder="123"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Complemento</Label>
+                      <Input
+                        value={editModal.user.complement || ""}
+                        onChange={(e) => setEditModal(prev => ({
+                          ...prev,
+                          user: prev.user ? { ...prev.user, complement: e.target.value } : null
+                        }))}
+                        placeholder="Apto 101"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Bairro</Label>
+                      <Input
+                        value={editModal.user.neighborhood || ""}
+                        onChange={(e) => setEditModal(prev => ({
+                          ...prev,
+                          user: prev.user ? { ...prev.user, neighborhood: e.target.value } : null
+                        }))}
+                        placeholder="Centro"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-1 space-y-2">
+                      <Label className="text-xs">CEP</Label>
+                      <Input
+                        value={editModal.user.zip_code || ""}
+                        onChange={(e) => setEditModal(prev => ({
+                          ...prev,
+                          user: prev.user ? { ...prev.user, zip_code: e.target.value } : null
+                        }))}
+                        placeholder="00000-000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Cidade</Label>
+                      <Input
+                        value={editModal.user.city || ""}
+                        onChange={(e) => setEditModal(prev => ({
+                          ...prev,
+                          user: prev.user ? { ...prev.user, city: e.target.value } : null
+                        }))}
+                        placeholder="São Paulo"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Estado</Label>
+                      <Input
+                        value={editModal.user.state || ""}
+                        onChange={(e) => setEditModal(prev => ({
+                          ...prev,
+                          user: prev.user ? { ...prev.user, state: e.target.value } : null
+                        }))}
+                        placeholder="SP"
+                        maxLength={2}
+                      />
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           )}
           <DialogFooter>

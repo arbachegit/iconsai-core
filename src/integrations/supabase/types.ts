@@ -4965,6 +4965,8 @@ export type Database = {
           ban_type: string | null
           banned_at: string | null
           banned_by: string | null
+          city: string | null
+          complement: string | null
           created_at: string | null
           dns_origin: string | null
           email: string
@@ -4977,6 +4979,7 @@ export type Database = {
           is_banned: boolean | null
           last_name: string
           mass_import_at: string | null
+          neighborhood: string | null
           phone: string | null
           pwa_access: string[] | null
           pwa_registered_at: string | null
@@ -4984,10 +4987,14 @@ export type Database = {
           rejection_reason: string | null
           requested_at: string | null
           role: Database["public"]["Enums"]["app_role"]
+          state: string | null
           status: string
+          street: string | null
+          street_number: string | null
           unbanned_at: string | null
           unbanned_by: string | null
           updated_at: string | null
+          zip_code: string | null
         }
         Insert: {
           approved_at?: string | null
@@ -4996,6 +5003,8 @@ export type Database = {
           ban_type?: string | null
           banned_at?: string | null
           banned_by?: string | null
+          city?: string | null
+          complement?: string | null
           created_at?: string | null
           dns_origin?: string | null
           email: string
@@ -5008,6 +5017,7 @@ export type Database = {
           is_banned?: boolean | null
           last_name: string
           mass_import_at?: string | null
+          neighborhood?: string | null
           phone?: string | null
           pwa_access?: string[] | null
           pwa_registered_at?: string | null
@@ -5015,10 +5025,14 @@ export type Database = {
           rejection_reason?: string | null
           requested_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          state?: string | null
           status?: string
+          street?: string | null
+          street_number?: string | null
           unbanned_at?: string | null
           unbanned_by?: string | null
           updated_at?: string | null
+          zip_code?: string | null
         }
         Update: {
           approved_at?: string | null
@@ -5027,6 +5041,8 @@ export type Database = {
           ban_type?: string | null
           banned_at?: string | null
           banned_by?: string | null
+          city?: string | null
+          complement?: string | null
           created_at?: string | null
           dns_origin?: string | null
           email?: string
@@ -5039,6 +5055,7 @@ export type Database = {
           is_banned?: boolean | null
           last_name?: string
           mass_import_at?: string | null
+          neighborhood?: string | null
           phone?: string | null
           pwa_access?: string[] | null
           pwa_registered_at?: string | null
@@ -5046,10 +5063,14 @@ export type Database = {
           rejection_reason?: string | null
           requested_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          state?: string | null
           status?: string
+          street?: string | null
+          street_number?: string | null
           unbanned_at?: string | null
           unbanned_by?: string | null
           updated_at?: string | null
+          zip_code?: string | null
         }
         Relationships: []
       }
