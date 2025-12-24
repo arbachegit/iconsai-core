@@ -41,13 +41,19 @@ serve(async (req) => {
   console.log("=== SEND-WHATSAPP START ===");
 
   try {
-    const { phoneNumber: rawPhoneNumber, message, eventType, contentSid, contentVariables } = await req.json();
+    const body = await req.json();
+    
+    // Retrocompatibility: accept both 'phoneNumber' and 'to'
+    const rawPhoneNumber = body.phoneNumber || body.to;
+    const { message, eventType, contentSid, contentVariables } = body;
+    
+    console.log('📥 Request body keys:', Object.keys(body));
     
     // Validações
     if (!rawPhoneNumber) {
-      console.error('❌ Missing phoneNumber');
+      console.error('❌ Missing phoneNumber/to');
       return new Response(
-        JSON.stringify({ success: false, error: 'phoneNumber é obrigatório' }),
+        JSON.stringify({ success: false, error: 'phoneNumber ou to é obrigatório' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
