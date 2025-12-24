@@ -111,16 +111,24 @@ serve(async (req) => {
 
     const { data: existingReg } = await supabase
       .from("user_registrations")
-      .select("id, status")
+      .select("id, status, platform_registered_at, pwa_registered_at, has_platform_access, has_app_access")
       .eq("email", email.toLowerCase())
       .eq("status", "approved")
       .maybeSingle();
 
+    // Usuário já aprovado pode ainda precisar concluir cadastro em um dos produtos.
+    // Ex.: usuário aprovado na plataforma, mas ainda não concluiu cadastro no APP (PWA).
     if (existingReg) {
-      return new Response(
-        JSON.stringify({ success: false, error_code: "ALREADY_REGISTERED", error: "Este email já está cadastrado no sistema" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const needsPlatformRegistration = !!hasPlatformAccess && !existingReg.platform_registered_at;
+      const needsAppRegistration = !!hasAppAccess && !existingReg.pwa_registered_at;
+
+      // Se já está tudo registrado para o(s) acesso(s) solicitado(s), não cria novo convite.
+      if (!needsPlatformRegistration && !needsAppRegistration) {
+        return new Response(
+          JSON.stringify({ success: false, error_code: "ALREADY_REGISTERED", error: "Este email já está cadastrado no sistema" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // 4. GERAR TOKEN E CRIAR CONVITE
