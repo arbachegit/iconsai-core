@@ -351,21 +351,19 @@ serve(async (req) => {
           results.push({ channel: "whatsapp", product: "app", success: false, error: errorMsg });
         }
       } else {
-        // WhatsApp para PLATAFORMA
+        // WhatsApp para PLATAFORMA - Clean style
         if (hasPlatformAccess) {
           console.log("💬 Sending platform WhatsApp...");
           try {
-            const platformWhatsappMessage = `🖥️ *Convite KnowYOU Plataforma*
+            const platformWhatsappMessage = `*KnowYOU Plataforma*
 
-Olá ${name}!
+Olá ${name}, você foi convidado!
 
-Você foi convidado para a *KnowYOU Plataforma*.
+Acesse pelo computador ou tablet para começar.
 
-💻 Acesse pelo computador ou tablet.
+Link: ${platformUrl}
 
-🔗 Link: ${platformUrl}
-
-⏰ Expira em 7 dias.`;
+_Convite válido por 7 dias_`;
 
             const { data: whatsappResult, error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
               body: {
@@ -390,21 +388,19 @@ Você foi convidado para a *KnowYOU Plataforma*.
           }
         }
 
-        // WhatsApp para APP
+        // WhatsApp para APP - Clean style (no slugs)
         if (hasAppAccess) {
           console.log("💬 Sending app WhatsApp...");
           try {
-            const appWhatsappMessage = `📱 *Convite KnowYOU APP*
+            const appWhatsappMessage = `*KnowYOU APP*
 
-Olá ${name}!
+Olá ${name}, você foi convidado!
 
-Você foi convidado para o *KnowYOU APP*.
+Acesse pelo celular para ter seu assistente sempre com você.
 
-📲 Acesse pelo celular para ter o assistente sempre com você.
+Link: ${appUrl}
 
-🔗 Link: ${appUrl}
-
-⏰ Expira em 7 dias.`;
+_Convite válido por 7 dias_`;
 
             const { data: whatsappResult, error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
               body: {

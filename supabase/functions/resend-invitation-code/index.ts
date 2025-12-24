@@ -137,19 +137,18 @@ serve(async (req) => {
           }
         }
 
-        // WhatsApp Plataforma
+        // WhatsApp Plataforma - Clean style
         if ((channel === "whatsapp" || channel === "both") && phone) {
           try {
-            const msg = `🖥️ *Lembrete: KnowYOU Plataforma*
+            const msg = `*KnowYOU Plataforma*
 
-Olá ${name}!
+Olá ${name}, você foi convidado!
 
-Você ainda não completou seu cadastro.
+Acesse pelo computador ou tablet para completar seu cadastro.
 
-💻 Acesse pelo computador ou tablet:
-${platformUrl}
+Link: ${platformUrl}
 
-⏰ Expira em: ${new Date(invitation.expires_at).toLocaleDateString('pt-BR')}`;
+_Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-BR')}_`;
 
             await supabase.functions.invoke("send-whatsapp", {
               body: { phoneNumber: phone, message: msg }
@@ -223,19 +222,18 @@ ${platformUrl}
           }
         }
 
-        // WhatsApp APP
+        // WhatsApp APP - Clean style (no slugs)
         if ((channel === "whatsapp" || channel === "both") && phone) {
           try {
-            const msg = `📱 *Lembrete: KnowYOU APP*
+            const msg = `*KnowYOU APP*
 
-Olá ${name}!
+Olá ${name}, você foi convidado!
 
-Você ainda não completou seu cadastro.
+Acesse pelo celular para ter seu assistente sempre com você.
 
-📲 Acesse pelo celular:
-${appUrl}
+Link: ${appUrl}
 
-⏰ Expira em: ${new Date(invitation.expires_at).toLocaleDateString('pt-BR')}`;
+_Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-BR')}_`;
 
             await supabase.functions.invoke("send-whatsapp", {
               body: { phoneNumber: phone, message: msg }
@@ -327,15 +325,13 @@ ${appUrl}
 
       if (sendWhatsapp && phone) {
         try {
-          const msg = `🔐 *Código de Verificação KnowYOU*
+          const msg = `*Código de Verificação*
 
-Seu código:
+Seu código: *${verificationCode}*
 
-\`\`\`${verificationCode}\`\`\`
+Este código expira em 2 minutos.
 
-📋 _Toque no código acima para copiar_
-
-⏰ Expira em 2 minutos.`;
+_Toque e segure o código para copiar_`;
 
           await supabase.functions.invoke("send-whatsapp", {
             body: { phoneNumber: phone, message: msg }
