@@ -20,7 +20,8 @@ import {
   ChevronDown,
   Settings,
   Smartphone,
-  Home
+  Home,
+  Route
 } from "lucide-react";
 
 export type DashboardTabType =
@@ -30,7 +31,8 @@ export type DashboardTabType =
   | "data-analysis"
   | "analytics-uf"
   | "chart-database"
-  | "table-database";
+  | "table-database"
+  | "data-flow";
 
 interface DashboardSidebarProps {
   activeTab: DashboardTabType;
@@ -48,6 +50,7 @@ const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType 
   { id: "analytics-uf", label: "UF DataSet", icon: MapPin },
   { id: "chart-database", label: "Chart DataSet", icon: Database },
   { id: "table-database", label: "Table DataSet", icon: Database },
+  { id: "data-flow", label: "Data Flow", icon: Route },
 ];
 
 export function DashboardSidebar({ 
