@@ -6,12 +6,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  BarChart3, 
-  Bot, 
-  TrendingUp, 
-  MapPin, 
-  Database,
-  Monitor,
   LogOut,
   Menu,
   X,
@@ -24,15 +18,7 @@ import {
   Route
 } from "lucide-react";
 
-export type DashboardTabType =
-  | "indicators"
-  | "api"
-  | "ai"
-  | "data-analysis"
-  | "analytics-uf"
-  | "chart-database"
-  | "table-database"
-  | "data-flow";
+export type DashboardTabType = "data-flow";
 
 interface DashboardSidebarProps {
   activeTab: DashboardTabType;
@@ -43,14 +29,7 @@ interface DashboardSidebarProps {
 }
 
 const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType }[] = [
-  { id: "indicators", label: "Indicadores de Uso", icon: BarChart3 },
-  { id: "api", label: "API", icon: Monitor },
-  { id: "ai", label: "IA", icon: Bot },
-  { id: "data-analysis", label: "Data Analysis", icon: TrendingUp },
-  { id: "analytics-uf", label: "UF DataSet", icon: MapPin },
-  { id: "chart-database", label: "Chart DataSet", icon: Database },
-  { id: "table-database", label: "Table DataSet", icon: Database },
-  { id: "data-flow", label: "Data Flow", icon: Route },
+  { id: "data-flow", label: "DataFlow", icon: Route },
 ];
 
 export function DashboardSidebar({ 
