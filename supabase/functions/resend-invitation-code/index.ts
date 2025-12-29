@@ -61,7 +61,7 @@ serve(async (req) => {
       }
     }
 
-    const siteUrl = Deno.env.get("PUBLIC_SITE_URL") || "https://fia.iconsai.ai";
+    const siteUrl = "https://fia.iconsai.ai";
     const platformUrl = `${siteUrl}/invite/${token}`;
     const appUrl = `${siteUrl}/pwa-register?token=${token}`;
     
