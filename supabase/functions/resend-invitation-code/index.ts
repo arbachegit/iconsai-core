@@ -192,33 +192,19 @@ _Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-B
     }
     // =====================================================
     // CASO 2: Convite em status "form_submitted" (tem verification_method)
-    // Reenvia o CÓDIGO de verificação
+    // Reenvia o LINK de acesso (usuário solicita novo código na página)
     // =====================================================
-    else if (status === "form_submitted" && verification_method) {
-      console.log("Resending verification code (status form_submitted)");
+    else if (status === "form_submitted") {
+      console.log("Resending access link (status form_submitted)");
 
-      // Generate new 6-digit verification code
-      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // Set code expiration to 2 minutes
-      const codeExpiresAt = new Date();
-      codeExpiresAt.setMinutes(codeExpiresAt.getMinutes() + 2);
+      // Determinar URL correta baseada no tipo de acesso
+      const accessUrl = has_app_access && !has_platform_access ? appUrl : platformUrl;
+      const expirationDate = new Date(invitation.expires_at).toLocaleDateString('pt-BR');
 
-      // Update invitation with new code
-      await supabase
-        .from("user_invitations")
-        .update({
-          verification_code: verificationCode,
-          verification_code_expires_at: codeExpiresAt.toISOString(),
-          verification_attempts: 0,
-          updated_at: new Date().toISOString()
-        })
-        .eq("token", token);
-
-      // Enviar código pelo método original de verificação
-      if (verification_method === "email") {
+      // PLATAFORMA ou ambos - Enviar email com link
+      if (has_platform_access) {
         try {
-          const codeEmailHtml = `
+          const linkEmailHtml = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -227,27 +213,35 @@ _Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-B
                 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
                 .container { max-width: 600px; margin: 0 auto; }
                 .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-                .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; text-align: center; }
-                .code { font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #6366f1; background: #fff; padding: 20px 30px; border-radius: 8px; margin: 20px 0; display: inline-block; border: 2px dashed #6366f1; }
-                .warning { color: #dc2626; font-size: 14px; margin-top: 20px; }
+                .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
+                .button { display: inline-block; background: #6366f1; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
                 .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+                .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6366f1; }
               </style>
             </head>
             <body>
               <div class="container">
                 <div class="header">
-                  <h1 style="margin:0;">🔐 Código de Verificação</h1>
+                  <h1 style="margin:0;">🔗 Continue seu Cadastro</h1>
                 </div>
                 <div class="content">
                   <p>Olá <strong>${name}</strong>,</p>
-                  <p>Seu código de verificação:</p>
+                  <p>Você solicitou o reenvio do seu acesso à <strong>KnowYOU Plataforma</strong>.</p>
                   
-                  <div class="code">${verificationCode}</div>
+                  <div class="info">
+                    <p style="margin:0;">💡 Clique no botão abaixo para continuar de onde parou. Na página, você poderá solicitar um novo código de verificação.</p>
+                  </div>
                   
-                  <p class="warning">⏰ Este código expira em <strong>2 minutos</strong>.</p>
+                  <p style="text-align: center;">
+                    <a href="${platformUrl}" class="button">Continuar Cadastro</a>
+                  </p>
+                  
+                  <p style="font-size: 14px; color: #64748b; text-align: center;">
+                    ⏰ Link válido até: <strong>${expirationDate}</strong>
+                  </p>
                 </div>
                 <div class="footer">
-                  <p>KnowYOU &copy; ${new Date().getFullYear()}</p>
+                  <p>KnowYOU Plataforma &copy; ${new Date().getFullYear()}</p>
                 </div>
               </div>
             </body>
@@ -255,32 +249,61 @@ _Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-B
           `;
 
           await supabase.functions.invoke("send-email", {
-            body: { to: email, subject: "🔐 Código de Verificação - KnowYOU", body: codeEmailHtml }
+            body: { to: email, subject: "🔗 Continue seu cadastro - KnowYOU", body: linkEmailHtml }
           });
-          results.push("✅ Código enviado por Email");
+          results.push("✅ Email com link de acesso enviado");
         } catch (e) {
-          console.error("Error sending code email:", e);
-          results.push("❌ Erro ao enviar código por Email");
+          console.error("Error sending link email:", e);
+          results.push("❌ Erro ao enviar email com link");
         }
       }
 
-      if (verification_method === "whatsapp" && phone) {
+      // APP ou ambos - Enviar WhatsApp com link
+      if (phone && has_app_access) {
         try {
-          const msg = `*Código de Verificação*
+          const msg = `*KnowYOU*
 
-Seu código: *${verificationCode}*
+Olá ${name},
 
-Este código expira em 2 minutos.
+Você solicitou o reenvio do seu acesso.
 
-_Toque e segure o código para copiar_`;
+Clique no link abaixo para continuar seu cadastro:
+
+${appUrl}
+
+💡 Na página, você poderá solicitar um novo código de verificação.
+
+_Link válido até ${expirationDate}_`;
 
           await supabase.functions.invoke("send-whatsapp", {
             body: { phoneNumber: phone, message: msg }
           });
-          results.push("✅ Código enviado por WhatsApp");
+          results.push("✅ WhatsApp com link de acesso enviado");
         } catch (e) {
-          console.error("Error sending code WhatsApp:", e);
-          results.push("❌ Erro ao enviar código por WhatsApp");
+          console.error("Error sending link WhatsApp:", e);
+          results.push("❌ Erro ao enviar WhatsApp com link");
+        }
+      }
+      
+      // Se só tem plataforma e tem telefone, envia WhatsApp informativo
+      if (phone && has_platform_access && !has_app_access) {
+        try {
+          const msg = `*KnowYOU*
+
+Olá ${name},
+
+Reenviamos um email com o link para continuar seu cadastro na Plataforma.
+
+Acesse pelo computador ou tablet.
+
+_Verifique também sua pasta de spam_`;
+
+          await supabase.functions.invoke("send-whatsapp", {
+            body: { phoneNumber: phone, message: msg }
+          });
+          results.push("✅ WhatsApp informativo enviado");
+        } catch (e) {
+          console.error("Error sending info WhatsApp:", e);
         }
       }
     }

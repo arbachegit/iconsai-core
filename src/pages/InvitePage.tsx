@@ -70,6 +70,7 @@ interface Invitation {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: string;
   status: string;
   expires_at: string;
@@ -163,6 +164,17 @@ export default function InvitePage() {
 
         setInvitation(data as Invitation);
         setStep("form");
+        
+        // Pre-fill phone from invitation if available
+        if (data.phone) {
+          // Format phone from +5511999999999 to (11) 99999-9999
+          const phoneDigits = data.phone.replace(/\D/g, '');
+          const localPhone = phoneDigits.startsWith('55') ? phoneDigits.slice(2) : phoneDigits;
+          if (localPhone.length === 11) {
+            const formatted = `(${localPhone.slice(0, 2)}) ${localPhone.slice(2, 7)}-${localPhone.slice(7)}`;
+            addressForm.setValue("phone", formatted);
+          }
+        }
         
         // Track link opened via edge function (notifies admin on first open)
         try {
