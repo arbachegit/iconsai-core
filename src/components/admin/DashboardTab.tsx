@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { format, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import DataFlowDiagram from "@/components/DataFlowDiagram";
 
 // Stat Card Component
 const StatCard = ({ 
@@ -507,6 +508,9 @@ export const DashboardTab = () => {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* DATA FLOW DIAGRAM */}
+      <DataFlowDiagram />
     </div>
   );
 };
