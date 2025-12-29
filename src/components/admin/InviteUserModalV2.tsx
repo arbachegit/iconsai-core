@@ -334,6 +334,16 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
                   <span className="text-sm">WhatsApp</span>
                 </label>
               </div>
+              {watch("sendViaWhatsapp") && !watch("phone") && (
+                <p className="text-xs text-destructive ml-6">
+                  ⚠️ Preencha o telefone para enviar via WhatsApp
+                </p>
+              )}
+              {watch("sendViaWhatsapp") && watch("phone") && (
+                <p className="text-xs text-emerald-600 ml-6">
+                  ✓ WhatsApp será enviado para {watch("phone")}
+                </p>
+              )}
               {errors.sendViaEmail && (
                 <p className="text-sm text-destructive">{errors.sendViaEmail.message}</p>
               )}
@@ -394,36 +404,55 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
               </div>
             </div>
 
+            {/* Aviso proeminente se WhatsApp falhou */}
+            {inviteResult.sendResults?.some(r => r.channel === 'whatsapp' && !r.success) && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-destructive font-semibold text-sm">⚠️ WhatsApp NÃO foi enviado!</p>
+                <p className="text-destructive/80 text-xs mt-1">
+                  Verifique as credenciais Twilio no Supabase.
+                </p>
+              </div>
+            )}
+
             {/* Status detalhado dos envios */}
-            {inviteResult.sendResults && inviteResult.sendResults.length > 0 && (
+            {inviteResult && (
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Status dos envios</Label>
-                <div className="space-y-2">
-                  {inviteResult.sendResults.map((result, idx) => (
-                    <div 
-                      key={idx}
-                      className={`flex items-center justify-between p-2 rounded-lg text-sm ${
-                        result.success 
-                          ? 'bg-emerald-500/10 text-emerald-700' 
-                          : 'bg-destructive/10 text-destructive'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        {result.success ? (
-                          <CheckCircle2 className="h-4 w-4" />
-                        ) : (
-                          <XCircle className="h-4 w-4" />
-                        )}
-                        <span className="capitalize">
-                          {result.channel === 'email' ? '📧' : '💬'} {result.channel} / {result.product}
+                {inviteResult.sendResults && inviteResult.sendResults.length > 0 ? (
+                  <div className="space-y-2">
+                    {inviteResult.sendResults.map((result, idx) => (
+                      <div 
+                        key={idx}
+                        className={`flex items-center justify-between p-2 rounded-lg text-sm ${
+                          result.success 
+                            ? 'bg-emerald-500/10 text-emerald-700' 
+                            : 'bg-destructive/10 text-destructive'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {result.success ? (
+                            <CheckCircle2 className="h-4 w-4" />
+                          ) : (
+                            <XCircle className="h-4 w-4" />
+                          )}
+                          <span className="capitalize">
+                            {result.channel === 'email' ? '📧' : '💬'} {result.channel} / {result.product}
+                          </span>
+                        </div>
+                        <span className="text-xs">
+                          {result.success ? 'Enviado' : result.error}
                         </span>
                       </div>
-                      <span className="text-xs">
-                        {result.success ? 'Enviado' : result.error}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm">
+                    <p className="text-amber-600 font-medium">⚠️ Nenhum envio registrado</p>
+                    <p className="text-muted-foreground text-xs mt-1">
+                      Verifique se marcou Email ou WhatsApp no formulário.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
