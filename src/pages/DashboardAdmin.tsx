@@ -11,8 +11,13 @@ import { DashboardAnalyticsProvider } from "@/contexts/DashboardAnalyticsContext
 import { useAgentByLocation } from "@/hooks/useAgentByLocation";
 
 // Lazy load tab components
-const DataFlowPage = lazy(() => import("@/components/dashboard/tabs/DataFlowPage"));
-
+const DashboardTab = lazy(() => import("@/components/admin/DashboardTab").then(m => ({ default: m.DashboardTab })));
+const DataAnalysisTab = lazy(() => import("@/components/admin/DataAnalysisTab"));
+const ChartDatabaseTab = lazy(() => import("@/components/admin/ChartDatabaseTab").then(m => ({ default: m.ChartDatabaseTab })));
+const TableDatabaseTab = lazy(() => import("@/components/admin/TableDatabaseTab").then(m => ({ default: m.TableDatabaseTab })));
+const AIChat = lazy(() => import("@/components/dashboard/AIChat").then(m => ({ default: m.AIChat })));
+const DataAnalyticsUF = lazy(() => import("@/components/dashboard/DataAnalyticsUF").then(m => ({ default: m.DataAnalyticsUF })));
+const IndicatorAPITable = lazy(() => import("@/components/dashboard/IndicatorAPITable"));
 // Loading fallback
 const TabLoader = () => (
   <div className="flex-1 flex items-center justify-center">
@@ -22,7 +27,7 @@ const TabLoader = () => (
 
 const DashboardAdmin = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<DashboardTabType>("data-flow");
+  const [activeTab, setActiveTab] = useState<DashboardTabType>("indicators");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -74,7 +79,40 @@ const DashboardAdmin = () => {
   };
 
   const renderContent = () => {
-    return <DataFlowPage />;
+    switch (activeTab) {
+      case "indicators":
+        return <DashboardTab />;
+      case "api":
+        return (
+          <div className="p-6">
+            <IndicatorAPITable />
+          </div>
+        );
+      case "ai":
+        return <AIChat />;
+      case "data-analysis":
+        return (
+          <div className="p-6">
+            <DataAnalysisTab />
+          </div>
+        );
+      case "analytics-uf":
+        return <DataAnalyticsUF />;
+      case "chart-database":
+        return (
+          <div className="p-6">
+            <ChartDatabaseTab />
+          </div>
+        );
+      case "table-database":
+        return (
+          <div className="p-6">
+            <TableDatabaseTab />
+          </div>
+        );
+      default:
+        return <DashboardTab />;
+    }
   };
 
   if (isLoading) {
