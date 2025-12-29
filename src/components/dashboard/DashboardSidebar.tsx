@@ -18,9 +18,17 @@ import {
   Search,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   Settings,
   Smartphone,
-  Home
+  Home,
+  Route,
+  Network,
+  FolderPlus,
+  MessageSquare,
+  ShoppingCart,
+  Gauge,
+  Building2
 } from "lucide-react";
 
 export type DashboardTabType =
@@ -30,7 +38,13 @@ export type DashboardTabType =
   | "data-analysis"
   | "analytics-uf"
   | "chart-database"
-  | "table-database";
+  | "table-database"
+  | "dataflow-architecture"
+  | "dataflow-new-domain"
+  | "dataflow-talk-app"
+  | "dataflow-retail-system"
+  | "dataflow-autocontrol"
+  | "dataflow-gov-system";
 
 interface DashboardSidebarProps {
   activeTab: DashboardTabType;
@@ -50,6 +64,15 @@ const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType 
   { id: "table-database", label: "Table DataSet", icon: Database },
 ];
 
+const dataFlowItems: { id: DashboardTabType; label: string; icon: React.ElementType }[] = [
+  { id: "dataflow-architecture", label: "Architecture", icon: Network },
+  { id: "dataflow-new-domain", label: "New Domain", icon: FolderPlus },
+  { id: "dataflow-talk-app", label: "Talk APP", icon: MessageSquare },
+  { id: "dataflow-retail-system", label: "Retail System", icon: ShoppingCart },
+  { id: "dataflow-autocontrol", label: "AutoControl", icon: Gauge },
+  { id: "dataflow-gov-system", label: "Gov System Icons AI", icon: Building2 },
+];
+
 export function DashboardSidebar({ 
   activeTab, 
   onTabChange, 
@@ -60,6 +83,7 @@ export function DashboardSidebar({
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isControlCenterCollapsed, setIsControlCenterCollapsed] = useState(false);
+  const [isDataFlowExpanded, setIsDataFlowExpanded] = useState(false);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -102,6 +126,23 @@ export function DashboardSidebar({
       item.label.toLowerCase().includes(query)
     );
   }, [searchQuery]);
+
+  // Filter dataflow items based on search query
+  const filteredDataFlowItems = useMemo(() => {
+    if (!searchQuery.trim()) return dataFlowItems;
+    const query = searchQuery.toLowerCase();
+    return dataFlowItems.filter(item => 
+      item.label.toLowerCase().includes(query)
+    );
+  }, [searchQuery]);
+
+  // Auto-expand DataFlow section when a sub-tab is active
+  useEffect(() => {
+    const isDataFlowTab = activeTab.startsWith("dataflow-");
+    if (isDataFlowTab && !isDataFlowExpanded) {
+      setIsDataFlowExpanded(true);
+    }
+  }, [activeTab, isDataFlowExpanded]);
 
   // Resize observer for scroll indicators
   useEffect(() => {
@@ -193,7 +234,7 @@ export function DashboardSidebar({
           onScroll={handleNavScroll}
           className={`flex-1 overflow-y-auto ${isCollapsed ? 'px-2' : 'px-3'} py-4 pb-48 space-y-1`}
         >
-          {filteredItems.map((item) => {
+        {filteredItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             
@@ -237,6 +278,89 @@ export function DashboardSidebar({
               </Button>
             );
           })}
+
+          {/* DataFlow Expandable Section */}
+          {(filteredDataFlowItems.length > 0 || !searchQuery.trim()) && (
+            <div className="mt-4 pt-4 border-t border-border/50">
+              {isCollapsed ? (
+                <div className="flex justify-center">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          "group w-full h-12 rounded-lg transition-all duration-300 ease-in-out",
+                          activeTab.startsWith("dataflow-")
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] hover:scale-105"
+                        )}
+                        onClick={() => {
+                          onToggleCollapse();
+                          setIsDataFlowExpanded(true);
+                        }}
+                      >
+                        <Route className={cn("w-5 h-5", !activeTab.startsWith("dataflow-") && "group-hover:text-black")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="font-medium">
+                      DataFlow
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              ) : (
+                <>
+                  {/* DataFlow Header */}
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "group w-full justify-between gap-3 h-11 px-3 rounded-lg transition-all duration-300 ease-in-out",
+                      activeTab.startsWith("dataflow-")
+                        ? "bg-primary/20 text-primary"
+                        : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => setIsDataFlowExpanded(!isDataFlowExpanded)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Route className="h-5 w-5 shrink-0" />
+                      <span className="truncate font-medium">DataFlow</span>
+                    </div>
+                    <ChevronRight className={cn(
+                      "h-4 w-4 shrink-0 transition-transform duration-200",
+                      isDataFlowExpanded && "rotate-90"
+                    )} />
+                  </Button>
+
+                  {/* DataFlow Sub-items */}
+                  {isDataFlowExpanded && (
+                    <div className="mt-1 ml-3 pl-3 border-l border-border/50 space-y-1">
+                      {filteredDataFlowItems.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = activeTab === item.id;
+                        
+                        return (
+                          <Button
+                            key={item.id}
+                            variant="ghost"
+                            className={cn(
+                              "group w-full justify-start gap-3 h-10 px-3 rounded-lg transition-all duration-300 ease-in-out text-sm",
+                              isActive
+                                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                                : "hover:bg-[#00D4FF] hover:text-black hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] text-muted-foreground hover:text-black"
+                            )}
+                            onClick={() => onTabChange(item.id)}
+                          >
+                            <Icon className={cn("h-4 w-4 shrink-0", !isActive && "group-hover:text-black")} />
+                            <span className="truncate">{item.label}</span>
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </nav>
 
         {/* Bottom fade indicator */}
