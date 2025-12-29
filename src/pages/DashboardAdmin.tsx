@@ -18,6 +18,7 @@ const TableDatabaseTab = lazy(() => import("@/components/admin/TableDatabaseTab"
 const AIChat = lazy(() => import("@/components/dashboard/AIChat").then(m => ({ default: m.AIChat })));
 const DataAnalyticsUF = lazy(() => import("@/components/dashboard/DataAnalyticsUF").then(m => ({ default: m.DataAnalyticsUF })));
 const IndicatorAPITable = lazy(() => import("@/components/dashboard/IndicatorAPITable"));
+const DataFlowDiagram = lazy(() => import("@/components/DataFlowDiagram").then(m => ({ default: m.DataFlowDiagram })));
 // Loading fallback
 const TabLoader = () => (
   <div className="flex-1 flex items-center justify-center">
@@ -108,6 +109,57 @@ const DashboardAdmin = () => {
         return (
           <div className="p-6">
             <TableDatabaseTab />
+          </div>
+        );
+      case "dataflow-architecture":
+        return (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
+            <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
+              Architecture
+            </h1>
+            <p className="text-muted-foreground">Coming soon...</p>
+          </div>
+        );
+      case "dataflow-new-domain":
+        return (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
+            <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
+              New Domain
+            </h1>
+            <p className="text-muted-foreground">Coming soon...</p>
+          </div>
+        );
+      case "dataflow-talk-app":
+        return (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
+            <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
+              Talk APP
+            </h1>
+            <p className="text-muted-foreground">Coming soon...</p>
+          </div>
+        );
+      case "dataflow-retail-system":
+        return (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
+            <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
+              Retail System
+            </h1>
+            <p className="text-muted-foreground">Coming soon...</p>
+          </div>
+        );
+      case "dataflow-autocontrol":
+        return (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
+            <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
+              AutoControl
+            </h1>
+            <p className="text-muted-foreground">Coming soon...</p>
+          </div>
+        );
+      case "dataflow-gov-system":
+        return (
+          <div className="p-6">
+            <DataFlowDiagram />
           </div>
         );
       default:
