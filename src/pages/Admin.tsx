@@ -87,13 +87,14 @@ const MaieuticEffectivenessTab = lazy(() => import("@/components/admin/MaieuticE
 const ContentProfilesTab = lazy(() => import("@/components/admin/ContentProfilesTab"));
 const LexiconPhoneticsTab = lazy(() => import("@/components/admin/LexiconPhoneticsTab"));
 const OntologyConceptsTab = lazy(() => import("@/components/admin/OntologyConceptsTab"));
+const DataFlowTab = lazy(() => import("@/components/admin/DataFlowTab"));
 const TabLoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
   </div>
 );
 
-type TabType = "dashboard" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding" | "taxonomy-analytics" | "maieutic-effectiveness" | "lexicon-phonetics" | "ontology-concepts" | "content-profiles";
+type TabType = "dashboard" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding" | "taxonomy-analytics" | "maieutic-effectiveness" | "lexicon-phonetics" | "ontology-concepts" | "content-profiles" | "data-flow";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -158,6 +159,7 @@ const TAB_LABELS: Record<TabType, string> = {
   "lexicon-phonetics": "Léxico & Fonética TTS",
   "ontology-concepts": "Ontologia Conceitos",
   "content-profiles": "Perfis de Conteúdo",
+  "data-flow": "Data Flow",
 };
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -338,6 +340,7 @@ const Admin = () => {
         case "content-profiles": return <ContentProfilesTab />;
         case "lexicon-phonetics": return <LexiconPhoneticsTab />;
         case "ontology-concepts": return <OntologyConceptsTab />;
+        case "data-flow": return <DataFlowTab />;
         default: return <DashboardTab />;
       }
     })();
