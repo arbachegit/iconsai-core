@@ -302,6 +302,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // 1.5. Check Device Fingerprint Whitelist (BUG FIX: verificar por fingerprint além de IP)
+    if (!isIPWhitelisted && deviceFingerprint) {
+      const { data: deviceWhitelistEntry } = await supabase
+        .from("security_whitelist")
+        .select("*")
+        .eq("device_fingerprint", deviceFingerprint)
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      if (deviceWhitelistEntry) {
+        // Check if not expired
+        if (!deviceWhitelistEntry.expires_at || new Date(deviceWhitelistEntry.expires_at) > new Date()) {
+          isIPWhitelisted = true;
+          console.log(`[WHITELIST] Device ${deviceFingerprint.substring(0, 16)} is whitelisted by fingerprint`);
+        }
+      }
+    }
+
     // 2. Fetch Geolocation Data
     const geoData = await fetchGeoData(clientIP);
     if (geoData) {

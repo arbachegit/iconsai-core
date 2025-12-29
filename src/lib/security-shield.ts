@@ -81,6 +81,7 @@ let consoleInterval: ReturnType<typeof setInterval> | null = null;
 let shieldConfig: SecurityShieldConfig | null = null;
 let violationCount = 0;
 let configLoaded = false;
+let whitelistCheckComplete = false; // ✅ BUG FIX: Flag para evitar race condition
 
 // ============================================
 // WHITELIST DE DOMÍNIOS - CARREGADA DO BANCO
@@ -489,6 +490,56 @@ function showWarningPopup(remainingAttempts: number, banHours: number): void {
 }
 
 // ============================================
+// NOTIFICAR ADMIN SOBRE AVISO (SEM BANIMENTO)
+// ============================================
+async function notifyAdminWarning(
+  type: ViolationType,
+  attemptNumber: number,
+  maxAttempts: number,
+  details: Record<string, unknown> = {}
+): Promise<void> {
+  try {
+    const fingerprint = getFingerprint();
+    const data = collectDeviceData();
+    
+    // Get current user info if available
+    let userEmail: string | undefined;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        userEmail = user.email;
+      }
+    } catch {
+      // Ignore auth errors
+    }
+    
+    // Chamar edge function para notificar via WhatsApp
+    await supabase.functions.invoke('send-whatsapp', {
+      body: {
+        to: 'admin', // O edge function deve buscar o número do admin_settings
+        message: `⚠️ *AVISO DE SEGURANÇA KnowYOU*
+
+📛 *Tipo:* ${type}
+🔢 *Tentativa:* ${attemptNumber}/${maxAttempts}
+👤 *Usuário:* ${userEmail || 'Anônimo'}
+📱 *Dispositivo:* ${fingerprint.substring(0, 16)}...
+💻 *Browser:* ${data.browserName} ${data.browserVersion}
+🖥️ *OS:* ${data.osName} ${data.osVersion}
+📍 *Página:* ${window.location.pathname}
+${Object.keys(details).length > 0 ? `📋 *Detalhes:* ${JSON.stringify(details)}` : ''}
+
+_Usuário recebeu aviso. Não foi banido ainda._
+⏰ ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+      }
+    });
+    
+    console.log('🛡️ Security Shield v4: Admin notificado sobre aviso');
+  } catch (error) {
+    console.warn('🛡️ Security Shield v4: Erro ao notificar admin sobre aviso', error);
+  }
+}
+
+// ============================================
 // TELA DE BANIMENTO ATUALIZADA
 // ============================================
 function showBanScreen(reason: string, deviceId: string, hours?: number): void {
@@ -548,6 +599,12 @@ function showBanScreen(reason: string, deviceId: string, hours?: number): void {
 // HANDLER DE VIOLAÇÃO COM TENTATIVAS PROGRESSIVAS
 // ============================================
 function handleViolation(type: ViolationType, details: Record<string, unknown> = {}): void {
+  // ✅ BUG FIX: Aguardar whitelist check completar antes de processar violações
+  if (!whitelistCheckComplete) {
+    console.log(`🛡️ Security Shield v4: Aguardando verificação de whitelist...`);
+    return;
+  }
+  
   // ✅ WHITELIST: Se usuário está na whitelist, não fazer NADA
   if (isUserWhitelisted) {
     console.log(`🛡️ Security Shield v4: Usuário na whitelist, ignorando ${type}`);
@@ -578,6 +635,8 @@ function handleViolation(type: ViolationType, details: Record<string, unknown> =
   } else if (shieldConfig.show_violation_popup) {
     // Mostrar pop-up de aviso
     showWarningPopup(remainingAttempts, banHours);
+    // ✅ BUG FIX: Notificar admin sobre aviso (sem banimento)
+    notifyAdminWarning(type, violationCount, maxAttempts, details);
   }
 }
 
@@ -648,21 +707,66 @@ async function reportViolation(
   showBanScreen(type, fingerprint, banHours);
 }
 
+// ============================================
+// DETECÇÃO DE DEVTOOLS COM DETALHES (BUG FIX #3)
+// ============================================
+interface DevToolsDetectionResult {
+  detected: boolean;
+  method: string;
+  details: Record<string, unknown>;
+}
+
 /**
- * Check if DevTools are open using multiple methods
+ * Check if DevTools are open using multiple methods - returns detailed info
  */
-function detectDevTools(): boolean {
-  if (isUserWhitelisted) return false; // ✅ WHITELIST: não detectar
-  // Verificar se a detecção está habilitada
-  if (!shieldConfig?.devtools_detection_enabled) return false;
+function detectDevTools(): DevToolsDetectionResult {
+  const result: DevToolsDetectionResult = {
+    detected: false,
+    method: 'none',
+    details: {}
+  };
   
-  const widthThreshold = 160;
-  const heightThreshold = 160;
-  const devtoolsOpen = 
-    window.outerWidth - window.innerWidth > widthThreshold ||
-    window.outerHeight - window.innerHeight > heightThreshold;
-    
-  return devtoolsOpen;
+  if (isUserWhitelisted) return result; // ✅ WHITELIST: não detectar
+  if (!shieldConfig?.devtools_detection_enabled) return result;
+  
+  // Check 1: Window size difference (Chrome, Firefox, Edge DevTools)
+  const widthDiff = window.outerWidth - window.innerWidth;
+  const heightDiff = window.outerHeight - window.innerHeight;
+  
+  if (widthDiff > 160 || heightDiff > 160) {
+    result.detected = true;
+    result.method = 'size_detection';
+    result.details = {
+      outerWidth: window.outerWidth,
+      innerWidth: window.innerWidth,
+      outerHeight: window.outerHeight,
+      innerHeight: window.innerHeight,
+      widthDiff,
+      heightDiff,
+      dockPosition: widthDiff > heightDiff ? 'side' : 'bottom'
+    };
+    return result;
+  }
+  
+  // Check 2: React DevTools (se habilitado separadamente)
+  if (shieldConfig?.react_devtools_detection_enabled) {
+    // @ts-ignore
+    if (window.__REACT_DEVTOOLS_GLOBAL_HOOK__) {
+      // @ts-ignore
+      const hook = window.__REACT_DEVTOOLS_GLOBAL_HOOK__;
+      if (hook.isDisabled !== true && hook.supportsFiber) {
+        result.detected = true;
+        result.method = 'react_devtools';
+        result.details = {
+          supportsFiber: hook.supportsFiber,
+          renderers: hook.renderers ? Object.keys(hook.renderers).length : 0
+        };
+        return result;
+      }
+    }
+  }
+  
+  return result;
 }
 
 /**
@@ -835,15 +939,19 @@ function startMonitoring(): void {
   const monitoringInterval_ms = shieldConfig.monitoring_interval_ms || 500;
   
   
-  // Monitor for DevTools
+  // Monitor for DevTools - agora com detalhes
   monitoringInterval = setInterval(() => {
     if (isBanned) {
       if (monitoringInterval) clearInterval(monitoringInterval);
       return;
     }
     
-    if (detectDevTools()) {
-      handleViolation('devtools_open', { method: 'size_detection' });
+    const devToolsResult = detectDevTools();
+    if (devToolsResult.detected) {
+      handleViolation('devtools_open', {
+        method: devToolsResult.method,
+        ...devToolsResult.details
+      });
     }
     
   }, monitoringInterval_ms);
@@ -952,6 +1060,7 @@ async function checkIPWhitelist(): Promise<void> {
     
     if (error) {
       console.warn('🛡️ Security Shield v4: Erro ao verificar whitelist', error);
+      whitelistCheckComplete = true; // ✅ BUG FIX: Marcar como completo mesmo com erro
       return;
     }
     
@@ -962,6 +1071,8 @@ async function checkIPWhitelist(): Promise<void> {
     }
   } catch (error) {
     console.warn('🛡️ Security Shield v4: Falha ao verificar whitelist', error);
+  } finally {
+    whitelistCheckComplete = true; // ✅ BUG FIX: SEMPRE marcar como completo
   }
 }
 
