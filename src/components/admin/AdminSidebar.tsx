@@ -255,15 +255,24 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "youtube" as TabType, label: "Inserir Vídeos", icon: Youtube },
       ]
     },
+    // ========== NOVA CATEGORIA: SEGURANÇA ==========
+    {
+      id: "security",
+      label: "Segurança",
+      icon: Shield,
+      items: [
+        { id: "security-integrity" as TabType, label: "Segurança e Integridade", icon: ShieldCheck },
+        { id: "security-dashboard" as TabType, label: "Dashboard de Segurança", icon: ShieldCheck },
+        { id: "security-whitelist" as TabType, label: "Whitelist de IPs", icon: ShieldCheck },
+        { id: "security-shield-config" as TabType, label: "Config. Security Shield", icon: Shield },
+      ]
+    },
+    // ========== AUDITORIA (SEM ITENS DE SEGURANÇA) ==========
     {
       id: "audit",
       label: "Auditoria",
       icon: ClipboardCheck,
       items: [
-        { id: "security-integrity" as TabType, label: "Segurança & Integridade", icon: ShieldCheck },
-        { id: "security-dashboard" as TabType, label: "Dashboard Segurança", icon: ShieldCheck },
-        { id: "security-whitelist" as TabType, label: "Whitelist de IPs", icon: ShieldCheck },
-        { id: "security-shield-config" as TabType, label: "Config. Security Shield", icon: Shield },
         { id: "api-audit-logs" as TabType, label: "Log de APIs", icon: Webhook },
         { id: "activity-logs" as TabType, label: "Log de Atividades (admin)", icon: History },
         { id: "user-usage-logs" as TabType, label: "Log de Uso (Usuários)", icon: Users },
@@ -292,6 +301,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "json-data" as TabType, label: "JSON Dados", icon: FileJson },
       ]
     },
+    // ========== ANALYTICS (SEM DATA FLOW) ==========
     {
       id: "analytics-hub",
       label: "ANALYTICS",
@@ -304,12 +314,13 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "table-database" as TabType, label: "Table DataSet", icon: Database },
       ]
     },
+    // ========== CONFIGURAÇÕES (RENOMEADO DE SISTEMA) ==========
     {
-      id: "system",
-      label: "Sistema",
+      id: "settings",
+      label: "Configurações",
       icon: Settings,
       items: [
-        { id: "app-config" as TabType, label: "Configurações", icon: Settings },
+        { id: "app-config" as TabType, label: "Config. de Sistemas", icon: Settings },
         { id: "notification-settings" as TabType, label: "Notificação", icon: Bell },
         { id: "architecture" as TabType, label: "Arquitetura", icon: Cpu },
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },

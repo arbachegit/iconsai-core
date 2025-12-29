@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { toast } from "sonner";
 import { 
   Shield, 
   Ban, 
@@ -21,7 +23,10 @@ import {
   RefreshCw,
   Search,
   CheckCircle2,
-  XCircle
+  XCircle,
+  ChevronDown,
+  ChevronRight,
+  Unlock
 } from "lucide-react";
 import {
   PieChart,
@@ -61,12 +66,14 @@ interface AuditLog {
   whatsapp_sent: boolean;
   page_url: string | null;
   occurred_at: string;
+  violation_details?: Record<string, unknown>; // ✅ BUG FIX: Adicionado para mostrar detalhes
 }
 
 const COLORS = ['#e94560', '#0f3460', '#16213e', '#1a1a2e', '#533483', '#f39c12'];
 
 export function SecurityDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
 
   // Fetch audit logs
   const { data: auditLogs, isLoading: logsLoading, refetch } = useQuery({
@@ -370,88 +377,173 @@ export function SecurityDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[400px]">
+          <ScrollArea className="h-[500px]">
             <div className="space-y-2">
-              {filteredLogs?.map((log) => (
-                <div
-                  key={log.id}
-                  className={`p-3 rounded-lg border ${
-                    log.was_whitelisted 
-                      ? 'border-green-500/30 bg-green-500/5' 
-                      : 'border-red-500/30 bg-red-500/5'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge 
-                          variant={log.severity === 'critical' ? 'destructive' : 'secondary'}
-                        >
-                          {log.incident_type}
-                        </Badge>
-                        <Badge variant="outline">
-                          {log.action_taken}
-                        </Badge>
-                        {log.was_whitelisted && (
-                          <Badge className="bg-green-500">Whitelisted</Badge>
-                        )}
-                        {log.email_sent && (
-                          <Mail className="h-3 w-3 text-orange-500" />
-                        )}
-                        {log.whatsapp_sent && (
-                          <MessageSquare className="h-3 w-3 text-green-500" />
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {new Date(log.occurred_at).toLocaleString("pt-BR")}
-                        </span>
-                        
-                        <span className="flex items-center gap-1">
-                          <Globe className="h-3 w-3" />
-                          {log.ip_address || 'N/A'}
-                        </span>
-                        
-                        {log.geo_city && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {log.geo_city}, {log.geo_country}
-                            {log.geo_lat && log.geo_lon && (
-                              <a
-                                href={`https://www.google.com/maps?q=${log.geo_lat},${log.geo_lon}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            )}
-                          </span>
-                        )}
-                        
-                        {log.browser_name && (
-                          <span className="flex items-center gap-1">
-                            <Monitor className="h-3 w-3" />
-                            {log.browser_name} {log.browser_version} / {log.os_name} {log.os_version}
-                          </span>
-                        )}
-                      </div>
-                      
-                      {log.user_email && (
-                        <div className="text-xs text-muted-foreground">
-                          👤 {log.user_email}
-                        </div>
-                      )}
-                    </div>
+              {filteredLogs?.map((log) => {
+                const isExpanded = expandedLogs.has(log.id);
+                const hasViolationDetails = log.violation_details && Object.keys(log.violation_details).length > 0;
+                
+                const handleUnban = async () => {
+                  try {
+                    // Remover da tabela banned_devices
+                    const { error } = await supabase
+                      .from('banned_devices')
+                      .update({ is_active: false, unbanned_at: new Date().toISOString() })
+                      .eq('device_fingerprint', log.device_fingerprint);
                     
-                    <div className="text-right text-xs text-muted-foreground">
-                      <div className="font-mono">{log.device_fingerprint?.substring(0, 12)}...</div>
+                    if (error) throw error;
+                    
+                    toast.success('Banimento removido com sucesso!');
+                    refetch();
+                  } catch (error) {
+                    console.error('Erro ao remover banimento:', error);
+                    toast.error('Erro ao remover banimento');
+                  }
+                };
+                
+                return (
+                  <Collapsible 
+                    key={log.id} 
+                    open={isExpanded}
+                    onOpenChange={(open) => {
+                      setExpandedLogs(prev => {
+                        const newSet = new Set(prev);
+                        if (open) {
+                          newSet.add(log.id);
+                        } else {
+                          newSet.delete(log.id);
+                        }
+                        return newSet;
+                      });
+                    }}
+                  >
+                    <div
+                      className={`p-3 rounded-lg border ${
+                        log.was_whitelisted 
+                          ? 'border-green-500/30 bg-green-500/5' 
+                          : 'border-red-500/30 bg-red-500/5'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge 
+                              variant={log.severity === 'critical' ? 'destructive' : 'secondary'}
+                            >
+                              {log.incident_type}
+                            </Badge>
+                            <Badge variant="outline">
+                              {log.action_taken}
+                            </Badge>
+                            {log.was_whitelisted && (
+                              <Badge className="bg-green-500">Whitelisted</Badge>
+                            )}
+                            {log.email_sent && (
+                              <Mail className="h-3 w-3 text-orange-500" />
+                            )}
+                            {log.whatsapp_sent && (
+                              <MessageSquare className="h-3 w-3 text-green-500" />
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {new Date(log.occurred_at).toLocaleString("pt-BR")}
+                            </span>
+                            
+                            <span className="flex items-center gap-1">
+                              <Globe className="h-3 w-3" />
+                              {log.ip_address || 'N/A'}
+                            </span>
+                            
+                            {log.geo_city && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {log.geo_city}, {log.geo_country}
+                                {log.geo_lat && log.geo_lon && (
+                                  <a
+                                    href={`https://www.google.com/maps?q=${log.geo_lat},${log.geo_lon}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                )}
+                              </span>
+                            )}
+                            
+                            {log.browser_name && (
+                              <span className="flex items-center gap-1">
+                                <Monitor className="h-3 w-3" />
+                                {log.browser_name} {log.browser_version} / {log.os_name} {log.os_version}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {log.user_email && (
+                            <div className="text-xs text-muted-foreground">
+                              👤 {log.user_email}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {(hasViolationDetails || log.ban_applied) && (
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                {isExpanded ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </CollapsibleTrigger>
+                          )}
+                          <div className="text-right text-xs text-muted-foreground">
+                            <div className="font-mono">{log.device_fingerprint?.substring(0, 12)}...</div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <CollapsibleContent className="mt-3 pt-3 border-t border-border/50">
+                        <div className="space-y-3">
+                          {/* Detalhes da Violação */}
+                          {hasViolationDetails && (
+                            <div className="space-y-2">
+                              <h4 className="text-xs font-semibold text-muted-foreground">Detalhes da Detecção</h4>
+                              <div className="bg-muted/30 rounded p-2 text-xs font-mono overflow-x-auto">
+                                <pre className="whitespace-pre-wrap">
+                                  {JSON.stringify(log.violation_details, null, 2)}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Botão para Desbanir */}
+                          {log.ban_applied && !log.was_whitelisted && (
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={handleUnban}
+                                className="text-green-600 border-green-600 hover:bg-green-600/10"
+                              >
+                                <Unlock className="h-3 w-3 mr-1" />
+                                Remover Banimento
+                              </Button>
+                              <span className="text-xs text-muted-foreground">
+                                Fingerprint: {log.device_fingerprint}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </CollapsibleContent>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  </Collapsible>
+                );
+              })}
               
               {filteredLogs?.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
