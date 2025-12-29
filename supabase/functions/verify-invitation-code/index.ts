@@ -82,27 +82,60 @@ serve(async (req) => {
       );
     }
 
-    // Code is correct! Create user in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: invitation.email,
-      password: password,
-      email_confirm: true, // Auto-confirm since they verified via code
-      user_metadata: {
-        first_name: invitation.name.split(" ")[0],
-        last_name: invitation.name.split(" ").slice(1).join(" ") || "",
-        phone: invitation.phone
+    // Code is correct! Create user in Supabase Auth or get existing
+    let userId: string;
+    
+    // First, check if user already exists
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    const existingUser = existingUsers?.users?.find(u => u.email === invitation.email);
+    
+    if (existingUser) {
+      console.log("User already exists, updating password...");
+      userId = existingUser.id;
+      
+      // Update the existing user's password
+      const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          first_name: invitation.name.split(" ")[0],
+          last_name: invitation.name.split(" ").slice(1).join(" ") || "",
+          phone: invitation.phone
+        }
+      });
+      
+      if (updateError) {
+        console.error("Error updating existing user:", updateError);
+        return new Response(
+          JSON.stringify({ error: `Erro ao atualizar usuário: ${updateError.message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-    });
+    } else {
+      // Create new user
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: invitation.email,
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          first_name: invitation.name.split(" ")[0],
+          last_name: invitation.name.split(" ").slice(1).join(" ") || "",
+          phone: invitation.phone
+        }
+      });
 
-    if (authError) {
-      console.error("Error creating auth user:", authError);
-      return new Response(
-        JSON.stringify({ error: `Erro ao criar usuário: ${authError.message}` }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (authError) {
+        console.error("Error creating auth user:", authError);
+        return new Response(
+          JSON.stringify({ error: `Erro ao criar usuário: ${authError.message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      userId = authData.user.id;
     }
 
-    const userId = authData.user.id;
+    
 
     // Assign role in user_roles table
     const { error: roleError } = await supabase
