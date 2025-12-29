@@ -418,3 +418,17 @@ All colors MUST be HSL.
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
 }
+
+/* Data Flow Diagram Animation */
+@keyframes flow {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -20;
+  }
+}
+
+.animate-flow {
+  animation: flow 1s linear infinite;
+}
