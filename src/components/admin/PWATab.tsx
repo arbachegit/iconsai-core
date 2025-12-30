@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { 
   Smartphone, Copy, ExternalLink, CheckCircle, Mic, Loader2, Wifi, Battery,
-  Settings, Volume2, RotateCcw, Save, Play
+  Settings, Volume2, RotateCcw, Save, Play, Maximize2
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,10 +40,39 @@ export default function PWATab() {
   const [showSimulator, setShowSimulator] = useState(false);
   const [testingVoice, setTestingVoice] = useState(false);
   
+  // Fullscreen and zoom states
+  const [simulatorScale, setSimulatorScale] = useState(0.9);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
+  
   const { config, isLoading: configLoading, isSaving, updateConfig, saveConfig, resetToDefaults } = useConfigPWA();
   
   const pwaUrl = `${window.location.origin}/pwa`;
-  
+
+  // Handle fullscreen change events
+  const handleFullscreenChange = useCallback(() => {
+    setIsFullscreen(!!document.fullscreenElement);
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [handleFullscreenChange]);
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement && fullscreenRef.current) {
+        await fullscreenRef.current.requestFullscreen();
+      } else if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error('Error toggling fullscreen:', err);
+      toast.error('Não foi possível alternar para tela cheia');
+    }
+  }, []);
   useEffect(() => {
     const fetchAgent = async () => {
       const { data } = await supabase
@@ -324,18 +353,42 @@ export default function PWATab() {
               {showSimulator ? "Simulador interativo do PWA" : "Simulação de como o aplicativo aparece no celular"}
             </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSimulator(!showSimulator)}
-          >
-            {showSimulator ? "Mostrar Estático" : "Abrir Simulador"}
-          </Button>
+          <div className="flex gap-2">
+            {showSimulator && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleFullscreen}
+              >
+                <Maximize2 className="w-4 h-4 mr-2" />
+                Tela Cheia
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSimulator(!showSimulator)}
+            >
+              {showSimulator ? "Mostrar Estático" : "Abrir Simulador"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {showSimulator ? (
-            <div className="flex justify-center py-4">
-              <PWASimulator showFrame={true} />
+            <div 
+              ref={fullscreenRef}
+              className={`flex flex-col items-center justify-center py-4 ${
+                isFullscreen ? 'fixed inset-0 z-50 bg-background/95 backdrop-blur-sm' : ''
+              }`}
+            >
+              <PWASimulator 
+                showFrame={true}
+                scale={simulatorScale}
+                onScaleChange={setSimulatorScale}
+                isFullscreen={isFullscreen}
+                onToggleFullscreen={toggleFullscreen}
+                showControls={true}
+              />
             </div>
           ) : (
             <>

@@ -1,20 +1,55 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Smartphone, Volume2, Wifi } from "lucide-react";
+import { 
+  Smartphone, Volume2, Wifi, ZoomIn, ZoomOut, Maximize2, Minimize2, RotateCcw 
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PWAVoiceAssistant } from "@/components/pwa/voice/PWAVoiceAssistant";
 
 interface PWASimulatorProps {
   showFrame?: boolean;
   scale?: number;
+  onScaleChange?: (scale: number) => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  showControls?: boolean;
 }
+
+const MIN_SCALE = 0.5;
+const MAX_SCALE = 1.5;
+const SCALE_STEP = 0.1;
+const DEFAULT_SCALE = 0.9;
 
 export const PWASimulator: React.FC<PWASimulatorProps> = ({ 
   showFrame = true,
-  scale = 0.9 
+  scale = DEFAULT_SCALE,
+  onScaleChange,
+  isFullscreen = false,
+  onToggleFullscreen,
+  showControls = false
 }) => {
   // iPhone 14/15 dimensions for better visibility
   const phoneWidth = 390;
   const phoneHeight = 844;
+
+  const handleZoomIn = () => {
+    if (onScaleChange && scale < MAX_SCALE) {
+      onScaleChange(Math.min(scale + SCALE_STEP, MAX_SCALE));
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (onScaleChange && scale > MIN_SCALE) {
+      onScaleChange(Math.max(scale - SCALE_STEP, MIN_SCALE));
+    }
+  };
+
+  const handleResetZoom = () => {
+    if (onScaleChange) {
+      onScaleChange(DEFAULT_SCALE);
+    }
+  };
+
   if (!showFrame) {
     return (
       <div className="w-full h-full overflow-hidden">
@@ -23,13 +58,74 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
     );
   }
 
+  const zoomPercentage = Math.round(scale * 100);
+
   return (
     <div className="flex flex-col items-center gap-4">
-      {/* Title */}
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Smartphone className="w-4 h-4" />
-        <span className="text-sm font-medium">Simulador PWA (Preview)</span>
-      </div>
+      {/* Control Bar */}
+      {showControls && (
+        <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg border border-border/50">
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleZoomOut}
+              disabled={scale <= MIN_SCALE}
+              className="h-8 w-8 p-0"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </Button>
+            <span className="text-sm font-mono min-w-[50px] text-center">
+              {zoomPercentage}%
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleZoomIn}
+              disabled={scale >= MAX_SCALE}
+              className="h-8 w-8 p-0"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="w-px h-6 bg-border" />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleResetZoom}
+            className="h-8 px-2"
+            title="Resetar zoom"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+
+          <div className="w-px h-6 bg-border" />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleFullscreen}
+            className="h-8 px-2"
+            title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="w-4 h-4" />
+            ) : (
+              <Maximize2 className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* Title (only when not in fullscreen) */}
+      {!isFullscreen && !showControls && (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Smartphone className="w-4 h-4" />
+          <span className="text-sm font-medium">Simulador PWA (Preview)</span>
+        </div>
+      )}
 
       {/* Phone Frame */}
       <motion.div
@@ -115,11 +211,13 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
         />
       </motion.div>
 
-      {/* Instructions */}
-      <p className="text-xs text-muted-foreground/60 text-center max-w-xs">
-        Interaja com o simulador acima. Para testar funcionalidades de voz, 
-        acesse <span className="text-primary">/pwa</span> em um dispositivo móvel.
-      </p>
+      {/* Instructions (only when not in fullscreen) */}
+      {!isFullscreen && (
+        <p className="text-xs text-muted-foreground/60 text-center max-w-xs">
+          Interaja com o simulador acima. Para testar funcionalidades de voz, 
+          acesse <span className="text-primary">/pwa</span> em um dispositivo móvel.
+        </p>
+      )}
     </div>
   );
 };
