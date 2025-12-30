@@ -41,7 +41,6 @@ import {
   History,
   Users,
   Target,
-  Cpu,
   Globe,
   Sparkles,
   Menu,
@@ -49,7 +48,6 @@ import {
   Monitor,
   RefreshCw,
   Bell,
-  FilePlus2,
   ScrollText,
   TrendingUp,
   Newspaper,
@@ -64,6 +62,7 @@ import {
   Volume2,
   Network,
   Layers,
+  Star,
 } from "lucide-react";
 import { NotificationBell } from './NotificationBell';
 
@@ -108,6 +107,23 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
   const [isControlCenterCollapsed, setIsControlCenterCollapsed] = useState(false);
+  
+  // Favorites state with localStorage persistence
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    const saved = localStorage.getItem('admin-sidebar-favorites');
+    return saved ? JSON.parse(saved) : ['dashboard'];
+  });
+
+  // Toggle favorite function
+  const toggleFavorite = (tabId: string) => {
+    setFavorites(prev => {
+      const newFavorites = prev.includes(tabId)
+        ? prev.filter(id => id !== tabId)
+        : [...prev, tabId];
+      localStorage.setItem('admin-sidebar-favorites', JSON.stringify(newFavorites));
+      return newFavorites;
+    });
+  };
 
   // Check scroll position to show/hide fade indicators
   const handleNavScroll = useCallback(() => {
@@ -226,15 +242,8 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
     );
   };
 
-  const menuCategories = [
-    {
-      id: "quick-access",
-      label: "Acesso Rápido",
-      icon: Zap,
-      items: [
-        { id: "dashboard" as TabType, label: "Dashboard", icon: LayoutDashboard },
-      ]
-    },
+  // Base menu categories (excluding quick-access which will be dynamic)
+  const baseMenuCategories = [
     {
       id: "chat",
       label: "Chat & Conversas",
@@ -271,15 +280,6 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       ]
     },
     {
-      id: "database",
-      label: "Banco de Dados",
-      icon: Database,
-      items: [
-        { id: "user-registry" as TabType, label: "Cadastro de Usuários", icon: Users },
-        { id: "data-registry" as TabType, label: "Cadastro de Dados", icon: FilePlus2 },
-      ]
-    },
-    {
       id: "media",
       label: "Mídia & Conteúdo",
       icon: Film,
@@ -291,7 +291,6 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "youtube" as TabType, label: "Inserir Vídeos", icon: Youtube },
       ]
     },
-    // ========== SEGURANÇA ==========
     {
       id: "security",
       label: "Segurança",
@@ -303,7 +302,6 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "security-shield-config" as TabType, label: "Config. Security Shield", icon: Shield },
       ]
     },
-    // ========== MENSAGENS & NOTIFICAÇÕES (NOVA CATEGORIA) ==========
     {
       id: "messages-notifications",
       label: "Mensagens & Notificações",
@@ -313,7 +311,6 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "notification-logs" as TabType, label: "Notificações", icon: Bell },
       ]
     },
-    // ========== AUDITORIA (SEM MENSAGENS/NOTIFICAÇÕES) ==========
     {
       id: "audit",
       label: "Auditoria",
@@ -346,7 +343,6 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "json-data" as TabType, label: "JSON Dados", icon: FileJson },
       ]
     },
-    // ========== ANALYTICS (SEM DATA FLOW) ==========
     {
       id: "analytics-hub",
       label: "ANALYTICS",
@@ -358,7 +354,6 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "table-database" as TabType, label: "Table DataSet", icon: Database },
       ]
     },
-    // ========== CONFIGURAÇÕES ==========
     {
       id: "settings",
       label: "Configurações",
@@ -366,11 +361,38 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       items: [
         { id: "app-config" as TabType, label: "Config. de Sistemas", icon: Settings },
         { id: "notification-settings" as TabType, label: "Config. Notificações", icon: Bell },
-        { id: "architecture" as TabType, label: "Arquitetura", icon: Cpu },
+        { id: "user-registry" as TabType, label: "Cadastro de Usuários", icon: Users },
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
       ]
     }
   ];
+
+  // Get all items from all categories for favorite lookup
+  const allItems = useMemo(() => {
+    const items: { id: TabType; label: string; icon: any }[] = [
+      { id: "dashboard" as TabType, label: "Dashboard", icon: LayoutDashboard }
+    ];
+    baseMenuCategories.forEach(cat => {
+      cat.items.forEach(item => items.push(item));
+    });
+    return items;
+  }, []);
+
+  // Build dynamic quick-access category from favorites
+  const quickAccessCategory = useMemo(() => ({
+    id: "quick-access",
+    label: "Acesso Rápido",
+    icon: Zap,
+    items: favorites
+      .map(favId => allItems.find(item => item.id === favId))
+      .filter((item): item is { id: TabType; label: string; icon: any } => item !== undefined)
+  }), [favorites, allItems]);
+
+  // Combine quick-access with base categories
+  const menuCategories = useMemo(() => [
+    quickAccessCategory,
+    ...baseMenuCategories
+  ], [quickAccessCategory]);
 
   // Filter menu categories based on search query
   const filteredCategories = useMemo(() => {
@@ -553,27 +575,47 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                       const badgeCount = showContactBadge ? pendingMessagesCount : (showNotificationBadge ? unreadNotificationsCount : 0);
 
                       return (
-                        <Button
-                          key={item.id}
-                          variant={isActive ? "default" : "ghost"}
-                          className={`group w-full justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted hover:text-foreground"} transition-all duration-200`}
-                          onClick={() => {
-                            // Navigate to external dashboard page
-                            if (item.id === "dashboard-external") {
-                              navigate("/dashboard");
-                            } else {
-                              onTabChange(item.id);
-                            }
-                          }}
-                        >
-                          <Icon className="w-4 h-4 shrink-0 group-hover:text-black" />
-                          <span className="truncate">{item.label}</span>
-                          {(showContactBadge || showNotificationBadge) && (
-                            <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
-                              {badgeCount}
-                            </Badge>
+                        <div key={item.id} className="flex items-center gap-1">
+                          <Button
+                            variant={isActive ? "default" : "ghost"}
+                            className={`group flex-1 justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted hover:text-foreground"} transition-all duration-200`}
+                            onClick={() => {
+                              // Navigate to external dashboard page
+                              if (item.id === "dashboard-external") {
+                                navigate("/dashboard");
+                              } else {
+                                onTabChange(item.id);
+                              }
+                            }}
+                          >
+                            <Icon className="w-4 h-4 shrink-0 group-hover:text-black" />
+                            <span className="truncate">{item.label}</span>
+                            {(showContactBadge || showNotificationBadge) && (
+                              <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
+                                {badgeCount}
+                              </Badge>
+                            )}
+                          </Button>
+                          {category.id !== "quick-access" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 shrink-0 opacity-40 hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(item.id);
+                              }}
+                            >
+                              <Star 
+                                className={`h-3.5 w-3.5 transition-colors ${
+                                  favorites.includes(item.id) 
+                                    ? 'fill-yellow-400 text-yellow-400' 
+                                    : 'text-muted-foreground hover:text-yellow-400'
+                                }`} 
+                              />
+                            </Button>
                           )}
-                        </Button>
+                        </div>
                       );
                     })}
                   </CollapsibleContent>

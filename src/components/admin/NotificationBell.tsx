@@ -237,8 +237,6 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
   };
 
   const handleNotificationClick = (notification: Notification) => {
-    markAsRead(notification.id);
-    
     const config = EVENT_CONFIG[notification.event_type] || DEFAULT_CONFIG;
     onNavigate(config.tab);
     setIsOpen(false);
@@ -387,9 +385,24 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                         </span>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {notification.recipient} • {notification.channel}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground truncate">
+                        {notification.recipient} • {notification.channel}
+                      </p>
+                      {!notification.is_read && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 px-2 text-[10px] text-primary hover:text-primary shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markAsRead(notification.id);
+                          }}
+                        >
+                          Marcar como lida
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </DropdownMenuItem>
               );

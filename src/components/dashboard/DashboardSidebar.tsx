@@ -70,7 +70,7 @@ const dataFlowItems: { id: DashboardTabType; label: string; icon: React.ElementT
   { id: "dataflow-talk-app", label: "Talk APP", icon: MessageSquare },
   { id: "dataflow-retail-system", label: "Retail System", icon: ShoppingCart },
   { id: "dataflow-autocontrol", label: "AutoControl", icon: Gauge },
-  { id: "dataflow-gov-system", label: "Gov System Icons AI", icon: Building2 },
+  { id: "dataflow-gov-system", label: "Gov System AI", icon: Building2 },
 ];
 
 export function DashboardSidebar({ 
