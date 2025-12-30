@@ -270,3 +270,6 @@ verify_jwt = true
 [functions.send-pwa-verification]
 verify_jwt = false
 
+[functions.send-pwa-verification-direct]
+verify_jwt = false
+

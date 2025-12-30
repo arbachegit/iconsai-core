@@ -24,6 +24,7 @@ const RetailSystemDiagram = lazy(() => import("@/components/DataFlowDiagram/modu
 const AutoControlDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/AutoControlDiagram").then(m => ({ default: m.AutoControlDiagram })));
 const TutorDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/TutorDiagram").then(m => ({ default: m.TutorDiagram })));
 const HealthCareDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/HealthCareDiagram").then(m => ({ default: m.HealthCareDiagram })));
+const PWASimulator = lazy(() => import("@/components/admin/PWASimulator"));
 
 // Loading fallback
 const TabLoader = () => (
@@ -125,11 +126,21 @@ const DashboardAdmin = () => {
         );
       case "dataflow-talk-app":
         return (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
-            <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
-              Talk APP
-            </h1>
-            <p className="text-muted-foreground">Coming soon...</p>
+          <div className="flex flex-col items-center justify-center h-full p-6">
+            <div className="mb-6 text-center">
+              <h1 className="text-2xl font-bold mb-2 bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
+                Talk APP Preview
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Preview do aplicativo de voz
+              </p>
+            </div>
+            <PWASimulator 
+              showFrame={true}
+              scale={0.85}
+              showControls={false}
+              isLandscape={false}
+            />
           </div>
         );
       case "dataflow-retail-system":

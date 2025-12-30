@@ -180,14 +180,36 @@ export function usePWAAuth() {
         return { success: false, error: result.error || 'Erro ao registrar' };
       }
 
-      // Atualizar estado com código de verificação (para teste)
+      // Enviar código via WhatsApp/SMS
+      if (result.verification_code) {
+        try {
+          console.log('[PWA Auth] Sending verification code via WhatsApp/SMS...');
+          const { data: sendResult, error: sendError } = await supabase.functions.invoke('send-pwa-verification-direct', {
+            body: {
+              phone: params.phone,
+              code: result.verification_code,
+              name: params.name || ''
+            }
+          });
+          
+          if (sendError) {
+            console.warn('[PWA Auth] Failed to send code:', sendError);
+          } else {
+            console.log('[PWA Auth] Code sent via:', sendResult?.channel || 'unknown');
+          }
+        } catch (err) {
+          console.warn('[PWA Auth] Error sending code:', err);
+        }
+      }
+
+      // Atualizar estado
       setState(prev => ({
         ...prev,
         status: 'needs_verification',
         userPhone: params.phone,
         userName: params.name || null,
         userEmail: params.email || null,
-        verificationCode: result.verification_code || null,
+        verificationCode: result.verification_code || null, // Mantido para debug
       }));
 
       return { success: true };
@@ -283,7 +305,23 @@ export function usePWAAuth() {
         return { success: false, error: result.error || 'Erro ao reenviar código' };
       }
 
-      // Atualizar código de verificação (para teste)
+      // Enviar código via WhatsApp/SMS
+      if (result.verification_code) {
+        try {
+          console.log('[PWA Auth] Resending verification code via WhatsApp/SMS...');
+          await supabase.functions.invoke('send-pwa-verification-direct', {
+            body: {
+              phone: state.userPhone,
+              code: result.verification_code,
+              name: state.userName || ''
+            }
+          });
+        } catch (err) {
+          console.warn('[PWA Auth] Error resending code:', err);
+        }
+      }
+
+      // Atualizar código de verificação
       setState(prev => ({
         ...prev,
         verificationCode: result.verification_code || null,

@@ -466,6 +466,31 @@ All colors MUST be HSL.
   -webkit-touch-callout: none;
 }
 
+/* PWA Fullscreen - Ocupar tela inteira sem scroll */
+.pwa-fullscreen {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100dvh; /* Dynamic viewport height */
+  overflow: hidden !important;
+  touch-action: none;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
+}
+
+/* Prevenir scroll e pull-to-refresh quando PWA está ativo */
+html:has(.pwa-fullscreen),
+body:has(.pwa-fullscreen) {
+  overflow: hidden !important;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    PWA VOICE V2 - DESIGN SYSTEM
    Zero Emojis | Zero Scroll | Zero Navigation | Morfismo Obrigatório
