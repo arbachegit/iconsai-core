@@ -28,7 +28,9 @@ import {
   MessageSquare,
   ShoppingCart,
   Gauge,
-  Building2
+  Building2,
+  Brain,
+  Heart
 } from "lucide-react";
 
 export type DashboardTabType =
@@ -44,7 +46,9 @@ export type DashboardTabType =
   | "dataflow-talk-app"
   | "dataflow-retail-system"
   | "dataflow-autocontrol"
-  | "dataflow-gov-system";
+  | "dataflow-gov-system"
+  | "dataflow-tutor"
+  | "dataflow-healthcare";
 
 interface DashboardSidebarProps {
   activeTab: DashboardTabType;
@@ -66,11 +70,13 @@ const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType 
 
 const dataFlowItems: { id: DashboardTabType; label: string; icon: React.ElementType }[] = [
   { id: "dataflow-architecture", label: "Architecture", icon: Network },
-  { id: "dataflow-new-domain", label: "New Domain", icon: FolderPlus },
-  { id: "dataflow-talk-app", label: "Talk APP", icon: MessageSquare },
+  { id: "dataflow-gov-system", label: "Gov System AI", icon: Building2 },
   { id: "dataflow-retail-system", label: "Retail System", icon: ShoppingCart },
   { id: "dataflow-autocontrol", label: "AutoControl", icon: Gauge },
-  { id: "dataflow-gov-system", label: "Gov System AI", icon: Building2 },
+  { id: "dataflow-tutor", label: "Tutor", icon: Brain },
+  { id: "dataflow-healthcare", label: "HealthCare", icon: Heart },
+  { id: "dataflow-new-domain", label: "New Domain", icon: FolderPlus },
+  { id: "dataflow-talk-app", label: "Talk APP", icon: MessageSquare },
 ];
 
 export function DashboardSidebar({ 

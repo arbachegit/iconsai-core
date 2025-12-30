@@ -20,6 +20,10 @@ const DataAnalyticsUF = lazy(() => import("@/components/dashboard/DataAnalyticsU
 const IndicatorAPITable = lazy(() => import("@/components/dashboard/IndicatorAPITable"));
 const DataFlowDiagram = lazy(() => import("@/components/DataFlowDiagram").then(m => ({ default: m.DataFlowDiagram })));
 const InfrastructureArchitectureTab = lazy(() => import("@/components/admin/InfrastructureArchitectureTab").then(m => ({ default: m.InfrastructureArchitectureTab })));
+const RetailSystemDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/RetailSystemDiagram").then(m => ({ default: m.RetailSystemDiagram })));
+const AutoControlDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/AutoControlDiagram").then(m => ({ default: m.AutoControlDiagram })));
+const TutorDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/TutorDiagram").then(m => ({ default: m.TutorDiagram })));
+const HealthCareDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/HealthCareDiagram").then(m => ({ default: m.HealthCareDiagram })));
 
 // Loading fallback
 const TabLoader = () => (
@@ -139,20 +143,26 @@ const DashboardAdmin = () => {
         );
       case "dataflow-retail-system":
         return (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
-            <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
-              Retail System
-            </h1>
-            <p className="text-muted-foreground">Coming soon...</p>
+          <div className="p-6 h-full">
+            <RetailSystemDiagram />
           </div>
         );
       case "dataflow-autocontrol":
         return (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
-            <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
-              AutoControl
-            </h1>
-            <p className="text-muted-foreground">Coming soon...</p>
+          <div className="p-6 h-full">
+            <AutoControlDiagram />
+          </div>
+        );
+      case "dataflow-tutor":
+        return (
+          <div className="p-6 h-full">
+            <TutorDiagram />
+          </div>
+        );
+      case "dataflow-healthcare":
+        return (
+          <div className="p-6 h-full">
+            <HealthCareDiagram />
           </div>
         );
       case "dataflow-gov-system":
