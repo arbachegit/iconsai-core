@@ -29,6 +29,7 @@ const Hub = lazy(() => import("./pages/Hub"));
 const PWA = lazy(() => import("./pages/PWA"));
 const PWAMultiAgent = lazy(() => import("./pages/PWAMultiAgent"));
 const PWARegister = lazy(() => import("./pages/PWARegister"));
+const PWAVoiceAssistant = lazy(() => import("./components/pwa/voice/PWAVoiceAssistant"));
 const InvitePage = lazy(() => import("./pages/InvitePage"));
 const Contact = lazy(() => import("./pages/Contact"));
 const TestRetailDiagram = lazy(() => import("./pages/TestRetailDiagram"));
@@ -205,6 +206,11 @@ const App = () => (
                     <Route path="/pwa-register" element={
                       <DeviceGate allowDesktop={false}>
                         <PWARegister />
+                      </DeviceGate>
+                    } />
+                    <Route path="/pwa-knowyou" element={
+                      <DeviceGate allowDesktop={false}>
+                        <PWAVoiceAssistant />
                       </DeviceGate>
                     } />
                     
