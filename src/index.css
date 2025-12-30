@@ -465,3 +465,276 @@ All colors MUST be HSL.
   user-select: none;
   -webkit-touch-callout: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PWA VOICE V2 - DESIGN SYSTEM
+   Zero Emojis | Zero Scroll | Zero Navigation | Morfismo Obrigatório
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* PWA Voice - Cores Primárias */
+  --pwa-primary: 191 100% 50%;
+  --pwa-primary-glow: 191 100% 50% / 0.5;
+  --pwa-primary-dim: 191 100% 50% / 0.2;
+  
+  /* PWA Voice - Estados */
+  --pwa-listening: 0 84% 60%;
+  --pwa-listening-glow: 0 84% 60% / 0.5;
+  --pwa-success: 142 76% 36%;
+  --pwa-success-glow: 142 76% 36% / 0.5;
+  --pwa-warning: 38 92% 50%;
+  --pwa-processing: 262 83% 58%;
+  
+  /* PWA Voice - Módulos */
+  --pwa-help: 217 91% 60%;
+  --pwa-world: 160 84% 39%;
+  --pwa-health: 347 77% 50%;
+  --pwa-ideas: 38 92% 50%;
+  
+  /* PWA Voice - Superfícies */
+  --pwa-background: 225 71% 5%;
+  --pwa-surface: 225 54% 8% / 0.9;
+  --pwa-surface-elevated: 225 40% 12% / 0.95;
+  --pwa-on-surface: 210 40% 98%;
+  --pwa-on-surface-muted: 215 16% 60%;
+  
+  /* PWA Voice - Estrelas */
+  --pwa-star: 0 0% 100%;
+  --pwa-star-glow: 0 0% 100% / 0.8;
+}
+
+/* PWA Voice - Keyframes para Border Rotation Glow */
+@keyframes pwa-rotate-glow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pwa-rotate-glow-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+/* PWA Voice - Keyframes para Mic Pulse */
+@keyframes pwa-pulse-mic {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 hsl(var(--pwa-listening-glow));
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px 10px hsl(var(--pwa-listening-glow));
+  }
+}
+
+@keyframes pwa-pulse-mic-fast {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 hsl(var(--pwa-listening-glow));
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 30px 15px hsl(var(--pwa-listening-glow));
+  }
+}
+
+/* PWA Voice - Keyframes para Ondas */
+@keyframes pwa-wave-expand {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+@keyframes pwa-wave-expand-red {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+    border-color: hsl(var(--pwa-listening));
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+    border-color: hsl(var(--pwa-listening) / 0);
+  }
+}
+
+/* PWA Voice - Keyframes para Estrelas */
+@keyframes pwa-star-twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes pwa-star-grow {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* PWA Voice - Keyframes para Fade Waves internas */
+@keyframes pwa-fade-wave {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* PWA Voice - Keyframes para Waveform */
+@keyframes pwa-waveform {
+  0%, 100% {
+    height: 8px;
+  }
+  50% {
+    height: var(--wave-height, 24px);
+  }
+}
+
+/* PWA Voice - Keyframes para Bits emanando */
+@keyframes pwa-bit-emanate {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(
+      calc(-50% + var(--bit-x, 0px)), 
+      calc(-50% + var(--bit-y, -60px))
+    ) scale(1);
+    opacity: 0;
+  }
+}
+
+/* PWA Voice - Keyframes para Indicador Status */
+@keyframes pwa-status-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.7;
+  }
+}
+
+/* PWA Voice - Keyframes para Morfismo */
+@keyframes pwa-morph-in {
+  0% {
+    clip-path: circle(0% at 50% 50%);
+    opacity: 0;
+  }
+  100% {
+    clip-path: circle(100% at 50% 50%);
+    opacity: 1;
+  }
+}
+
+@keyframes pwa-morph-out {
+  0% {
+    clip-path: circle(100% at 50% 50%);
+    opacity: 1;
+  }
+  100% {
+    clip-path: circle(0% at 50% 50%);
+    opacity: 0;
+  }
+}
+
+/* PWA Voice - Utility Classes */
+.pwa-voice-container {
+  background: hsl(var(--pwa-background));
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+}
+
+.pwa-glow-primary {
+  box-shadow: 0 0 30px hsl(var(--pwa-primary-glow));
+}
+
+.pwa-glow-listening {
+  box-shadow: 0 0 30px hsl(var(--pwa-listening-glow));
+}
+
+.pwa-glow-success {
+  box-shadow: 0 0 30px hsl(var(--pwa-success-glow));
+}
+
+.pwa-border-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.pwa-border-glow::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    hsl(var(--pwa-primary)) 60deg,
+    hsl(var(--pwa-primary-glow)) 120deg,
+    transparent 180deg
+  );
+  animation: pwa-rotate-glow 3s linear infinite;
+  z-index: -1;
+  border-radius: inherit;
+}
+
+.pwa-animate-pulse-mic {
+  animation: pwa-pulse-mic 1.5s ease-in-out infinite;
+}
+
+.pwa-animate-pulse-mic-fast {
+  animation: pwa-pulse-mic-fast 0.5s ease-in-out infinite;
+}
+
+.pwa-animate-wave-expand {
+  animation: pwa-wave-expand 2s ease-out infinite;
+}
+
+.pwa-animate-star-twinkle {
+  animation: pwa-star-twinkle 2s ease-in-out infinite;
+}
+
+.pwa-animate-morph-in {
+  animation: pwa-morph-in 0.5s ease-out forwards;
+}
+
+.pwa-animate-morph-out {
+  animation: pwa-morph-out 0.3s ease-in forwards;
+}

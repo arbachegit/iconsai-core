@@ -1,227 +1,120 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Volume2, Loader2, Play, Pause, RotateCcw } from "lucide-react";
-import { CometBorder } from "./CometBorder";
-import { StatusIndicator } from "./StatusIndicator";
-import { MicrophoneButton } from "./MicrophoneButton";
+import { Play, Pause, Loader2, Volume2, RotateCcw } from "lucide-react";
 
-type PlayerState = "idle" | "loading" | "playing" | "listening" | "processing";
+export type PlayerState = "idle" | "loading" | "playing" | "waiting" | "processing";
 
 interface VoicePlayerBoxProps {
   state: PlayerState;
-  onMicClick: () => void;
-  onPlayPause?: () => void;
+  onPlay?: () => void;
+  onPause?: () => void;
   onReset?: () => void;
+  onMicClick?: () => void;
+  audioProgress?: number;
   showMic?: boolean;
   title?: string;
   subtitle?: string;
 }
 
-export const VoicePlayerBox: React.FC<VoicePlayerBoxProps> = ({ 
-  state, 
-  onMicClick,
-  onPlayPause,
+export const VoicePlayerBox: React.FC<VoicePlayerBoxProps> = ({
+  state,
+  onPlay,
+  onPause,
   onReset,
-  showMic = true,
-  title,
-  subtitle,
+  audioProgress = 0,
 }) => {
-  const isAnimating = state === "loading" || state === "processing";
-  const isActive = state !== "idle";
-
-  // Determinar velocidade da animação baseado no estado
-  const getAnimationSpeed = () => {
+  const rotationDuration = useMemo(() => {
     switch (state) {
-      case "loading": return 1.5;
-      case "processing": return 1;
+      case "loading": case "processing": return 1.5;
       case "playing": return 3;
-      default: return 4;
+      case "waiting": return 4;
+      default: return 6;
     }
-  };
+  }, [state]);
 
-  // Cor da borda baseada no estado
-  const getBorderColor = () => {
-    switch (state) {
-      case "listening": return "#EF4444"; // vermelho
-      case "processing": return "#F59E0B"; // âmbar
-      default: return "#00D4FF"; // cyan
-    }
+  const isAnimating = state === "loading" || state === "processing" || state === "playing";
+  const isWaiting = state === "waiting" || state === "idle";
+
+  const handleClick = () => {
+    if (state === "playing" && onPause) onPause();
+    else if (onPlay) onPlay();
   };
 
   return (
-    <CometBorder 
-      isActive={isAnimating || state === "playing"} 
-      speed={getAnimationSpeed()}
-      color={getBorderColor()}
-      glowColor={`${getBorderColor()}80`}
-      className="w-full max-w-sm mx-auto"
-    >
-      <div className="flex flex-col items-center gap-6 p-6">
-        {/* Título opcional */}
-        {title && (
-          <motion.div
-            className="text-center"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <h3 className="text-lg font-semibold text-white">{title}</h3>
-            {subtitle && (
-              <p className="text-sm text-slate-400 mt-1">{subtitle}</p>
-            )}
-          </motion.div>
+    <div className="relative flex flex-col items-center gap-6">
+      <div className="relative w-40 h-40">
+        <motion.div className="absolute inset-0 rounded-full" style={{ background: `conic-gradient(from 0deg, transparent 0deg, hsl(191, 100%, 50%) 60deg, hsl(191, 100%, 50%, 0.5) 120deg, transparent 180deg, transparent 360deg)`, opacity: isAnimating ? 1 : 0.3 }} animate={{ rotate: 360 }} transition={{ duration: rotationDuration, repeat: Infinity, ease: "linear" }} />
+
+        <AnimatePresence>
+          {isAnimating && (
+            <motion.div className="absolute inset-0 rounded-full blur-md" style={{ background: `conic-gradient(from 0deg, transparent 0deg, hsl(191, 100%, 50%, 0.6) 40deg, transparent 100deg)` }} initial={{ opacity: 0 }} animate={{ opacity: 1, rotate: 360 }} exit={{ opacity: 0 }} transition={{ opacity: { duration: 0.3 }, rotate: { duration: rotationDuration * 0.8, repeat: Infinity, ease: "linear" } }} />
+          )}
+        </AnimatePresence>
+
+        {isWaiting && (
+          <motion.div className="absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle, hsl(191, 100%, 50%, 0.2) 0%, transparent 70%)" }} animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} />
         )}
 
-        {/* Área central do player */}
-        <div className="relative">
-          {/* Círculo de fundo com gradiente */}
-          <motion.div
-            className="w-24 h-24 rounded-full flex items-center justify-center"
-            style={{
-              background: "linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)",
-            }}
-            animate={state === "playing" ? {
-              scale: [1, 1.05, 1],
-              boxShadow: [
-                "0 0 20px rgba(0, 212, 255, 0.2)",
-                "0 0 40px rgba(0, 212, 255, 0.4)",
-                "0 0 20px rgba(0, 212, 255, 0.2)",
-              ],
-            } : {}}
-            transition={{
-              duration: 1,
-              repeat: state === "playing" ? Infinity : 0,
-              ease: "easeInOut",
-            }}
-          >
-            {/* Ícone central baseado no estado */}
+        <div className="absolute inset-2 rounded-full flex items-center justify-center overflow-hidden" style={{ background: "hsl(225, 54%, 8%)", border: "1px solid hsl(191, 100%, 50%, 0.2)" }}>
+          <AnimatePresence>
+            {isWaiting && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                {[1, 2, 3].map((i) => (
+                  <motion.div key={i} className="absolute rounded-full border" style={{ width: `${40 + i * 20}%`, height: `${40 + i * 20}%`, borderColor: "hsl(191, 100%, 50%, 0.2)" }} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: [0.8, 1.2, 0.8], opacity: [0, 0.3, 0] }} transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.5, ease: "easeInOut" }} />
+                ))}
+              </div>
+            )}
+          </AnimatePresence>
+
+          <motion.button className="relative z-10 w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, hsl(191, 100%, 50%) 0%, hsl(191, 100%, 40%) 100%)", boxShadow: "0 0 30px hsl(191, 100%, 50%, 0.4)" }} onClick={handleClick} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <AnimatePresence mode="wait">
               {state === "loading" || state === "processing" ? (
-                <motion.div
-                  key="loader"
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.5 }}
-                >
-                  <Loader2 className="w-10 h-10 text-cyan-400 animate-spin" />
+                <motion.div key="loader" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}>
+                  <Loader2 className="w-8 h-8 animate-spin" style={{ color: "hsl(225, 71%, 8%)" }} />
                 </motion.div>
               ) : state === "playing" ? (
-                <motion.div
-                  key="playing"
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.5 }}
-                >
-                  <Volume2 className="w-10 h-10 text-cyan-400" />
+                <motion.div key="pause" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}>
+                  <Pause className="w-8 h-8" style={{ color: "hsl(225, 71%, 8%)" }} />
                 </motion.div>
               ) : (
-                <motion.div
-                  key="idle"
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.5 }}
-                >
-                  <Play className="w-10 h-10 text-cyan-400" />
+                <motion.div key="play" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}>
+                  <Play className="w-8 h-8 ml-1" style={{ color: "hsl(225, 71%, 8%)" }} />
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
+          </motion.button>
 
-          {/* Ondas de áudio (quando playing) */}
           <AnimatePresence>
-            {state === "playing" && (
-              <motion.div
-                className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex items-end gap-1 h-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                {[...Array(7)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    className="w-1 bg-cyan-400 rounded-full"
-                    animate={{
-                      height: [4, 16 + Math.random() * 8, 4],
-                    }}
-                    transition={{
-                      duration: 0.4 + Math.random() * 0.2,
-                      repeat: Infinity,
-                      delay: i * 0.05,
-                      ease: "easeInOut",
-                    }}
-                  />
-                ))}
-              </motion.div>
+            {state === "playing" && audioProgress > 0 && (
+              <motion.svg className="absolute inset-0 w-full h-full -rotate-90" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <circle cx="50%" cy="50%" r="45%" fill="none" stroke="hsl(191, 100%, 50%, 0.2)" strokeWidth="2" />
+                <motion.circle cx="50%" cy="50%" r="45%" fill="none" stroke="hsl(191, 100%, 50%)" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 45}`} strokeDashoffset={`${2 * Math.PI * 45 * (1 - audioProgress / 100)}`} style={{ transition: "stroke-dashoffset 0.1s linear" }} />
+              </motion.svg>
             )}
           </AnimatePresence>
         </div>
-
-        {/* Status e controles */}
-        <div className="flex flex-col items-center gap-4 w-full">
-          {/* Indicador de status */}
-          <div className="flex items-center gap-2">
-            <StatusIndicator isActive={isActive} color={getBorderColor()} />
-            <span className="text-sm text-slate-400">
-              {state === "idle" && "Pronto para começar"}
-              {state === "loading" && "Carregando..."}
-              {state === "playing" && "Reproduzindo..."}
-              {state === "listening" && "Ouvindo você..."}
-              {state === "processing" && "Processando..."}
-            </span>
-          </div>
-
-          {/* Controles de reprodução */}
-          {onPlayPause && (state === "playing" || state === "idle") && (
-            <div className="flex items-center gap-4">
-              <motion.button
-                onClick={onPlayPause}
-                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                {state === "playing" ? (
-                  <Pause className="w-5 h-5 text-white" />
-                ) : (
-                  <Play className="w-5 h-5 text-white" />
-                )}
-              </motion.button>
-              
-              {onReset && (
-                <motion.button
-                  onClick={onReset}
-                  className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <RotateCcw className="w-5 h-5 text-white" />
-                </motion.button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Botão de microfone (aparece após reprodução ou em listening) */}
-        <AnimatePresence>
-          {showMic && (state === "idle" || state === "listening") && (
-            <motion.div
-              initial={{ y: 30, opacity: 0, scale: 0.8 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 30, opacity: 0, scale: 0.8 }}
-              transition={{ 
-                type: "spring", 
-                stiffness: 300,
-                damping: 20,
-              }}
-              className="mt-4"
-            >
-              <MicrophoneButton
-                isListening={state === "listening"}
-                onClick={onMicClick}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
-    </CometBorder>
+
+      <AnimatePresence>
+        {state === "playing" && (
+          <motion.div className="flex items-end justify-center gap-1 h-8" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}>
+            {[...Array(9)].map((_, i) => {
+              const heights = [16, 24, 32, 20, 28, 18, 30, 22, 14];
+              return <motion.div key={i} className="w-1 rounded-full" style={{ background: "hsl(191, 100%, 50%)", height: 8 }} animate={{ height: [8, heights[i], 8] }} transition={{ duration: 0.6 + Math.random() * 0.4, repeat: Infinity, delay: i * 0.08, ease: "easeInOut" }} />;
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {state === "playing" && (
+          <motion.div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}>
+            <Volume2 className="w-4 h-4" style={{ color: "hsl(191, 100%, 50%)" }} />
+            <span className="text-xs" style={{ color: "hsl(191, 100%, 50%)" }}>Reproduzindo</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
 
