@@ -29,12 +29,30 @@ export const VoicePlayerBox: React.FC<VoicePlayerBoxProps> = ({
       case "loading": case "processing": return 1.5;
       case "playing": return 3;
       case "waiting": return 4;
+      case "listening": return 2;
       default: return 6;
     }
   }, [state]);
 
-  const isAnimating = state === "loading" || state === "processing" || state === "playing";
+  const isAnimating = state === "loading" || state === "processing" || state === "playing" || state === "listening";
   const isWaiting = state === "waiting" || state === "idle";
+  
+  // Dynamic glow color: cyan when playing, purple otherwise
+  const glowColor = state === "playing" 
+    ? "hsl(191, 100%, 50%)" 
+    : "hsl(271, 76%, 53%)";
+  
+  const getStatusText = () => {
+    switch (state) {
+      case "idle": return "Toque para ouvir";
+      case "waiting": return "Pronto para começar";
+      case "loading": return "Carregando...";
+      case "playing": return "Reproduzindo...";
+      case "processing": return "Processando...";
+      case "listening": return "Ouvindo...";
+      default: return "";
+    }
+  };
 
   const handleClick = () => {
     if (state === "playing" && onPause) onPause();
@@ -110,11 +128,16 @@ export const VoicePlayerBox: React.FC<VoicePlayerBoxProps> = ({
       <AnimatePresence>
         {state === "playing" && (
           <motion.div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}>
-            <Volume2 className="w-4 h-4" style={{ color: "hsl(191, 100%, 50%)" }} />
-            <span className="text-xs" style={{ color: "hsl(191, 100%, 50%)" }}>Reproduzindo</span>
+            <Volume2 className="w-4 h-4" style={{ color: glowColor }} />
+            <span className="text-xs" style={{ color: glowColor }}>Reproduzindo</span>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Status text for all states */}
+      <p className="text-sm text-center mt-4" style={{ color: "hsl(215, 20%, 65%)" }}>
+        {getStatusText()}
+      </p>
     </div>
   );
 };

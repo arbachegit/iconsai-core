@@ -4,7 +4,7 @@ import { persist } from "zustand/middleware";
 // Types
 export type AppState = "splash" | "welcome" | "idle" | "listening" | "processing" | "playing" | "module";
 export type ModuleId = "help" | "world" | "health" | "ideas" | null;
-export type PlayerState = "idle" | "loading" | "playing" | "waiting" | "processing";
+export type PlayerState = "idle" | "loading" | "playing" | "waiting" | "processing" | "listening";
 export type MicState = "hidden" | "emerging" | "listening" | "timeout" | "captured";
 export type ModalType = "conversations" | "summary" | null;
 
