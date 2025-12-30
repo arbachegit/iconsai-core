@@ -18,7 +18,12 @@ import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { PWAAuthGate } from "@/components/gates/PWAAuthGate";
 
-export const PWAVoiceAssistant: React.FC = () => {
+interface PWAVoiceAssistantProps {
+  /** When true, component is embedded (simulator) - no global scroll lock */
+  embedded?: boolean;
+}
+
+export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded = false }) => {
   const { 
     appState, 
     setAppState, 
@@ -45,6 +50,19 @@ export const PWAVoiceAssistant: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [isConversationsOpen, setIsConversationsOpen] = useState(false);
   const [playingConversationId, setPlayingConversationId] = useState<string | null>(null);
+
+  // Lock scroll on html/body only for real PWA (not embedded)
+  useEffect(() => {
+    if (embedded) return;
+    
+    document.documentElement.classList.add('pwa-scroll-lock');
+    document.body.classList.add('pwa-scroll-lock');
+    
+    return () => {
+      document.documentElement.classList.remove('pwa-scroll-lock');
+      document.body.classList.remove('pwa-scroll-lock');
+    };
+  }, [embedded]);
 
   // Check if mobile device
   useEffect(() => {
@@ -188,8 +206,13 @@ export const PWAVoiceAssistant: React.FC = () => {
       }
     }, [fingerprint]);
 
+    // Use absolute positioning for embedded mode, fixed for real PWA
+    const wrapperClass = embedded 
+      ? "absolute inset-0 bg-background flex flex-col pwa-no-select overflow-hidden"
+      : "fixed inset-0 bg-background flex flex-col pwa-no-select pwa-fullscreen overflow-hidden touch-none";
+
     return (
-      <div className="fixed inset-0 bg-background flex flex-col pwa-no-select pwa-fullscreen overflow-hidden touch-none">
+      <div className={wrapperClass}>
         <AnimatePresence mode="wait">
           {/* Splash Screen */}
           {appState === "splash" && (

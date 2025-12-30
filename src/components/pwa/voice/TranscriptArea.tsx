@@ -37,7 +37,7 @@ export const TranscriptArea: React.FC<TranscriptAreaProps> = ({
     <div className="w-full px-4">
       <div
         ref={scrollRef}
-        className="rounded-xl bg-background/30 backdrop-blur-md border border-border/20 p-4 overflow-y-auto"
+        className="rounded-xl bg-background/30 backdrop-blur-md border border-border/20 p-4 overflow-y-auto pwa-scrollable-area"
         style={{ maxHeight }}
       >
         <AnimatePresence mode="popLayout">
