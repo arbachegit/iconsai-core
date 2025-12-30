@@ -29,6 +29,13 @@ export function ResendInvitationModal({ open, onClose, invitation, onSuccess }: 
   const [channel, setChannel] = useState<"email" | "whatsapp" | "both">("both");
   const [loading, setLoading] = useState(false);
 
+  // Force WhatsApp when product is "app" (PWA-only) - MUST be before conditional return
+  useEffect(() => {
+    if (product === "app") {
+      setChannel("whatsapp");
+    }
+  }, [product]);
+
   if (!invitation) return null;
 
   const hasBothAccess = invitation.has_platform_access && invitation.has_app_access;
@@ -36,13 +43,6 @@ export function ResendInvitationModal({ open, onClose, invitation, onSuccess }: 
   
   // CRITICAL RULE: PWA-only = WhatsApp ONLY, Email is FORBIDDEN
   const isEmailDisabled = product === "app";
-
-  // Force WhatsApp when product is "app" (PWA-only)
-  useEffect(() => {
-    if (product === "app") {
-      setChannel("whatsapp");
-    }
-  }, [product]);
 
   const handleResend = async () => {
     setLoading(true);
