@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { HelpCircle, ChevronRight, Volume2 } from "lucide-react";
+import { HelpCircle, ChevronRight, Volume2, CheckCircle } from "lucide-react";
 import { VoicePlayerBox } from "../voice/VoicePlayerBox";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
-import { usePWAStore } from "@/stores/pwaStore";
+import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 
 interface HelpStep {
   id: string;
@@ -48,8 +48,8 @@ const helpSteps: HelpStep[] = [
 export const HelpModule: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
-  const { speak, isPlaying, isLoading } = useTextToSpeech();
-  const { setPlayerState } = usePWAStore();
+  const { speak, isPlaying, isLoading, progress } = useTextToSpeech();
+  const { setPlayerState } = usePWAVoiceStore();
 
   const currentHelpStep = helpSteps[currentStep];
 
@@ -125,7 +125,11 @@ export const HelpModule: React.FC = () => {
               animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
-              <HelpCircle className="w-8 h-8 text-blue-400" />
+              {completedSteps.includes(currentHelpStep.id) ? (
+                <CheckCircle className="w-8 h-8 text-emerald-400" />
+              ) : (
+                <HelpCircle className="w-8 h-8 text-blue-400" />
+              )}
             </motion.div>
             <h2 className="text-xl font-bold text-white mb-2">
               {currentHelpStep.title}
@@ -141,6 +145,7 @@ export const HelpModule: React.FC = () => {
               state={getPlayerState()} 
               onMicClick={() => {}} 
               showMic={false}
+              audioProgress={progress}
             />
           </div>
 

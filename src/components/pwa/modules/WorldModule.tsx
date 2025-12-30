@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Globe, Send } from "lucide-react";
 import { VoicePlayerBox } from "../voice/VoicePlayerBox";
-import { MicrophoneButton } from "../voice/MicrophoneButton";
+import { MicrophoneOrb } from "../voice/MicrophoneOrb";
+import { TranscriptArea } from "../voice/TranscriptArea";
 import { useVoiceRecognition } from "@/hooks/useVoiceRecognition";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
-import { usePWAStore } from "@/stores/pwaStore";
+import { usePWAVoiceStore, ConversationMessage } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
@@ -30,8 +31,8 @@ export const WorldModule: React.FC = () => {
     isSupported,
   } = useVoiceRecognition();
   
-  const { speak, isPlaying, isLoading } = useTextToSpeech();
-  const { setPlayerState, addMessage } = usePWAStore();
+  const { speak, isPlaying, isLoading, progress } = useTextToSpeech();
+  const { setPlayerState, addMessageToCurrentConversation, userName } = usePWAVoiceStore();
 
   // Scroll para última mensagem
   useEffect(() => {
@@ -43,14 +44,14 @@ export const WorldModule: React.FC = () => {
     if (hasSpokenWelcome.current) return;
     hasSpokenWelcome.current = true;
     
-    const welcomeMessage = "Olá! Sou seu assistente de conhecimento geral. Pergunte-me sobre qualquer assunto: ciência, história, tecnologia, cultura, ou o que você quiser saber. Toque no microfone para começar.";
+    const welcomeMessage = `Olá${userName ? ` ${userName}` : ""}! Sou seu assistente de conhecimento geral. Pergunte-me sobre qualquer assunto: ciência, história, tecnologia, cultura, ou o que você quiser saber. Toque no microfone para começar.`;
     speak(welcomeMessage);
     setMessages([{
       role: "assistant",
       content: welcomeMessage,
       timestamp: new Date(),
     }]);
-  }, [speak]);
+  }, [speak, userName]);
 
   // Atualizar estado do player
   useEffect(() => {
@@ -83,7 +84,7 @@ export const WorldModule: React.FC = () => {
       timestamp: new Date(),
     };
     setMessages(prev => [...prev, userMessage]);
-    addMessage("user", input);
+    addMessageToCurrentConversation({ role: "user", content: input, timestamp: new Date() });
 
     setIsProcessing(true);
 
@@ -107,7 +108,7 @@ export const WorldModule: React.FC = () => {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMessage]);
-      addMessage("assistant", aiResponse);
+      addMessageToCurrentConversation({ role: "assistant", content: aiResponse, timestamp: new Date() });
       
       // Falar a resposta
       await speak(aiResponse);
@@ -132,6 +133,10 @@ export const WorldModule: React.FC = () => {
     } else {
       startListening();
     }
+  };
+
+  const handleMicTimeout = async () => {
+    await speak("Não ouvi nada. Toque no microfone quando estiver pronto para perguntar.");
   };
 
   const handleTextSubmit = (e: React.FormEvent) => {
@@ -252,23 +257,21 @@ export const WorldModule: React.FC = () => {
             state={getPlayerState()} 
             onMicClick={handleMicClick}
             showMic={false}
+            audioProgress={progress}
           />
           
-          <MicrophoneButton
+          <MicrophoneOrb
+            isVisible={!isProcessing && !isPlaying}
+            onCapture={(capturedTranscript) => handleUserInput(capturedTranscript)}
+            onTimeout={handleMicTimeout}
+            autoStart={false}
+          />
+          
+          <TranscriptArea
+            messages={messages.map(m => ({ role: m.role, content: m.content }))}
+            interimTranscript={transcript}
             isListening={isListening}
-            onClick={handleMicClick}
-            disabled={isProcessing || isPlaying}
-            size="md"
           />
-          
-          <p className="text-xs text-slate-500 text-center">
-            {isListening 
-              ? "Ouvindo... toque para parar" 
-              : isPlaying 
-                ? "Reproduzindo resposta..."
-                : "Toque no microfone para perguntar"
-            }
-          </p>
 
           {/* Fallback de texto */}
           {!isSupported && (
