@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Menu, X, BarChart3, Bot, GitBranch, ChevronRight, ChevronDown, RotateCcw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Menu, X, BarChart3, Bot, GitBranch, ChevronRight, ChevronDown, RotateCcw, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { AIChat } from '@/components/dashboard/AIChat';
@@ -14,6 +14,8 @@ interface MobilePlatformViewProps {
 type ViewType = 'chat' | 'api' | 'dataflow-architecture' | 'dataflow-new-domain' | 
   'dataflow-talk-app' | 'dataflow-retail-system' | 'dataflow-autocontrol' | 'dataflow-gov-system';
 
+const STORAGE_KEY = 'knowyou-mobile-last-view';
+
 const dataFlowItems: { id: ViewType; label: string }[] = [
   { id: 'dataflow-architecture', label: 'Architecture' },
   { id: 'dataflow-new-domain', label: 'New Domain' },
@@ -26,13 +28,52 @@ const dataFlowItems: { id: ViewType; label: string }[] = [
 export function MobilePlatformView({ isAdmin = false }: MobilePlatformViewProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeView, setActiveView] = useState<ViewType>('chat');
+  const [previousView, setPreviousView] = useState<ViewType>('chat');
   const [dataFlowExpanded, setDataFlowExpanded] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const isDataFlowView = activeView.startsWith('dataflow-');
-  const { showRotateMessage } = useLandscapeMode(isDataFlowView);
+  const { isLandscape, showRotateMessage } = useLandscapeMode(isDataFlowView);
+
+  // Carregar última view do localStorage para admin
+  useEffect(() => {
+    if (isAdmin) {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved && ['chat', 'api', ...dataFlowItems.map(d => d.id)].includes(saved)) {
+          setActiveView(saved as ViewType);
+          if (saved.startsWith('dataflow-')) {
+            setDataFlowExpanded(true);
+          }
+        }
+      } catch (e) {
+        console.log('Could not load saved view');
+      }
+    }
+  }, [isAdmin]);
+
+  // Salvar view atual no localStorage
+  useEffect(() => {
+    if (isAdmin) {
+      try {
+        localStorage.setItem(STORAGE_KEY, activeView);
+      } catch (e) {
+        console.log('Could not save view');
+      }
+    }
+  }, [activeView, isAdmin]);
 
   const handleMenuClick = (viewId: ViewType) => {
-    setActiveView(viewId);
+    if (viewId !== activeView) {
+      setIsTransitioning(true);
+      setPreviousView(activeView);
+      
+      // Pequeno delay para animação
+      setTimeout(() => {
+        setActiveView(viewId);
+        setTimeout(() => setIsTransitioning(false), 300);
+      }, 150);
+    }
     setMenuOpen(false);
   };
 
@@ -50,9 +91,40 @@ export function MobilePlatformView({ isAdmin = false }: MobilePlatformViewProps)
     );
   }
 
+  // Overlay para forçar landscape no DataFlow
+  const LandscapeOverlay = () => (
+    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center animate-fade-in">
+      <div className="text-center p-8 max-w-sm animate-scale-in">
+        <div className="relative mx-auto mb-6">
+          <div className="w-24 h-16 border-2 border-primary rounded-lg flex items-center justify-center bg-primary/10">
+            <Smartphone className="w-8 h-8 text-primary" />
+          </div>
+          <RotateCcw className="absolute -right-4 -bottom-2 w-8 h-8 text-primary animate-spin" style={{ animationDuration: '3s' }} />
+        </div>
+        
+        <h2 className="text-xl font-bold text-foreground mb-3">
+          Rotacione seu Dispositivo
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          Para melhor visualização do <span className="font-medium text-primary">{getDataFlowLabel()}</span>, 
+          gire seu celular para o modo paisagem.
+        </p>
+        
+        <div className="flex justify-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-primary/40 animate-pulse" style={{ animationDelay: '0s' }} />
+          <div className="w-3 h-3 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: '0.2s' }} />
+          <div className="w-3 h-3 rounded-full bg-primary animate-pulse" style={{ animationDelay: '0.4s' }} />
+        </div>
+      </div>
+    </div>
+  );
+
   // Admin: Chat + Hamburger Menu
   return (
     <div className="h-screen w-full bg-background flex flex-col">
+      {/* Overlay de landscape para DataFlow */}
+      {isDataFlowView && showRotateMessage && !isLandscape && <LandscapeOverlay />}
+
       {/* Header com Hamburger */}
       <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 shrink-0">
         <h1 className="text-lg font-semibold text-foreground">KnowYOU</h1>
@@ -76,8 +148,9 @@ export function MobilePlatformView({ isAdmin = false }: MobilePlatformViewProps)
               <button
                 onClick={() => handleMenuClick('api')}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors",
-                  activeView === 'api' && "bg-muted text-primary font-medium"
+                  "flex items-center gap-3 px-4 py-3 text-left transition-all duration-200",
+                  "hover:bg-muted/50 hover:translate-x-1",
+                  activeView === 'api' && "bg-primary/10 text-primary font-medium border-l-2 border-primary"
                 )}
               >
                 <BarChart3 className="h-5 w-5" />
@@ -88,8 +161,9 @@ export function MobilePlatformView({ isAdmin = false }: MobilePlatformViewProps)
               <button
                 onClick={() => handleMenuClick('chat')}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors",
-                  activeView === 'chat' && "bg-muted text-primary font-medium"
+                  "flex items-center gap-3 px-4 py-3 text-left transition-all duration-200",
+                  "hover:bg-muted/50 hover:translate-x-1",
+                  activeView === 'chat' && "bg-primary/10 text-primary font-medium border-l-2 border-primary"
                 )}
               >
                 <Bot className="h-5 w-5" />
@@ -101,7 +175,8 @@ export function MobilePlatformView({ isAdmin = false }: MobilePlatformViewProps)
                 <button
                   onClick={() => setDataFlowExpanded(!dataFlowExpanded)}
                   className={cn(
-                    "flex items-center justify-between w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors",
+                    "flex items-center justify-between w-full px-4 py-3 text-left transition-all duration-200",
+                    "hover:bg-muted/50",
                     isDataFlowView && "text-primary"
                   )}
                 >
@@ -109,68 +184,88 @@ export function MobilePlatformView({ isAdmin = false }: MobilePlatformViewProps)
                     <GitBranch className="h-5 w-5" />
                     <span>DataFlow</span>
                   </div>
-                  {dataFlowExpanded ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
+                  <div className={cn(
+                    "transition-transform duration-200",
+                    dataFlowExpanded && "rotate-90"
+                  )}>
                     <ChevronRight className="h-4 w-4" />
-                  )}
+                  </div>
                 </button>
                 
-                {dataFlowExpanded && (
+                <div className={cn(
+                  "overflow-hidden transition-all duration-300 ease-out",
+                  dataFlowExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                )}>
                   <div className="bg-muted/30">
-                    {dataFlowItems.map(item => (
+                    {dataFlowItems.map((item, index) => (
                       <button
                         key={item.id}
                         onClick={() => handleMenuClick(item.id)}
+                        style={{ transitionDelay: `${index * 50}ms` }}
                         className={cn(
-                          "w-full text-left pl-12 pr-4 py-2.5 text-sm hover:bg-muted/50 transition-colors",
-                          activeView === item.id && "bg-muted text-primary font-medium"
+                          "w-full text-left pl-12 pr-4 py-2.5 text-sm transition-all duration-200",
+                          "hover:bg-muted/50 hover:translate-x-1",
+                          activeView === item.id && "bg-primary/10 text-primary font-medium"
                         )}
                       >
                         {item.label}
                       </button>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
             </nav>
           </SheetContent>
         </Sheet>
       </header>
 
-      {/* Conteúdo baseado na view ativa */}
-      <main className="flex-1 overflow-hidden">
-        {activeView === 'chat' && <AIChat />}
+      {/* Conteúdo baseado na view ativa com transições */}
+      <main className="flex-1 overflow-hidden relative">
+        {/* Chat View */}
+        <div className={cn(
+          "absolute inset-0 transition-all duration-300 ease-out",
+          activeView === 'chat' 
+            ? "opacity-100 translate-x-0" 
+            : previousView === 'chat' && isTransitioning
+              ? "opacity-0 -translate-x-4"
+              : "opacity-0 pointer-events-none translate-x-4"
+        )}>
+          {(activeView === 'chat' || previousView === 'chat') && <AIChat />}
+        </div>
         
-        {activeView === 'api' && (
-          <div className="h-full overflow-auto p-4">
-            <IndicatorAPITable />
-          </div>
-        )}
+        {/* API View */}
+        <div className={cn(
+          "absolute inset-0 transition-all duration-300 ease-out overflow-auto p-4",
+          activeView === 'api' 
+            ? "opacity-100 translate-x-0" 
+            : previousView === 'api' && isTransitioning
+              ? "opacity-0 -translate-x-4"
+              : "opacity-0 pointer-events-none translate-x-4"
+        )}>
+          {(activeView === 'api' || previousView === 'api') && <IndicatorAPITable />}
+        </div>
         
-        {isDataFlowView && (
-          <div className="h-full flex flex-col">
-            {showRotateMessage && (
-              <div className="bg-primary/10 border border-primary/20 rounded-lg mx-4 mt-4 p-4 flex items-center gap-3">
-                <RotateCcw className="h-5 w-5 text-primary animate-pulse" />
-                <p className="text-sm text-foreground">
-                  Rotacione o celular para melhor visualização do {getDataFlowLabel()}
+        {/* DataFlow Views */}
+        <div className={cn(
+          "absolute inset-0 transition-all duration-300 ease-out overflow-auto p-4",
+          isDataFlowView 
+            ? "opacity-100 translate-x-0" 
+            : previousView.startsWith('dataflow-') && isTransitioning
+              ? "opacity-0 -translate-x-4"
+              : "opacity-0 pointer-events-none translate-x-4"
+        )}>
+          {(isDataFlowView || previousView.startsWith('dataflow-')) && (
+            <div className="bg-card rounded-lg border border-border p-6 min-h-[300px] flex items-center justify-center animate-fade-in">
+              <div className="text-center space-y-2">
+                <GitBranch className="h-12 w-12 text-muted-foreground mx-auto" />
+                <h3 className="text-lg font-semibold">{getDataFlowLabel()}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Visualização do fluxo de dados
                 </p>
               </div>
-            )}
-            <div className="flex-1 overflow-auto p-4">
-              <div className="bg-card rounded-lg border border-border p-6 min-h-[300px] flex items-center justify-center">
-                <div className="text-center space-y-2">
-                  <GitBranch className="h-12 w-12 text-muted-foreground mx-auto" />
-                  <h3 className="text-lg font-semibold">{getDataFlowLabel()}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Visualização do fluxo de dados
-                  </p>
-                </div>
-              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
     </div>
   );
