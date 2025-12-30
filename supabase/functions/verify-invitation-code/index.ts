@@ -137,7 +137,18 @@ serve(async (req) => {
 
     
 
-    // Assign role in user_roles table
+    // Assign role in user_roles table (delete+insert pattern for reliability)
+    // First, remove any existing roles for this user to ensure correct role
+    const { error: deleteRoleError } = await supabase
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId);
+
+    if (deleteRoleError) {
+      console.warn("Warning: Could not delete existing roles:", deleteRoleError);
+    }
+
+    // Now insert the correct role
     const { error: roleError } = await supabase
       .from("user_roles")
       .insert({
@@ -146,9 +157,30 @@ serve(async (req) => {
       });
 
     if (roleError) {
-      console.error("Error assigning role:", roleError);
-      // Don't fail the whole process, but log it
+      console.error("CRITICAL: Error assigning role:", roleError);
+      
+      // Log this critical error to notification_logs
+      await supabase.from("notification_logs").insert({
+        event_type: "role_assignment_error",
+        channel: "system",
+        recipient: invitation.email,
+        subject: "Erro crítico ao atribuir role",
+        message_body: `Falha ao atribuir role ${invitation.role} para ${invitation.email}: ${roleError.message}`,
+        status: "error",
+        metadata: { userId, role: invitation.role, error: roleError.message }
+      });
+
+      // Return error - role assignment is critical
+      return new Response(
+        JSON.stringify({ 
+          error: "Erro ao configurar permissões. Contate o administrador.",
+          details: roleError.message 
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    console.log(`Role ${invitation.role} assigned successfully to user ${userId}`);
 
     // Create profile
     const nameParts = invitation.name.split(" ");
