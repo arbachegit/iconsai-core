@@ -15,6 +15,7 @@ import { WorldModule } from "../modules/WorldModule";
 import { HealthModule } from "../modules/HealthModule";
 import { IdeasModule } from "../modules/IdeasModule";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { PWAAuthGate } from "@/components/gates/PWAAuthGate";
 
 export const PWAVoiceAssistant: React.FC = () => {
@@ -33,7 +34,9 @@ export const PWAVoiceAssistant: React.FC = () => {
     setFirstVisit,
   } = usePWAVoiceStore();
   
-  const { speak, isPlaying, isLoading, progress, stop } = useTextToSpeech();
+  const { config } = useConfigPWA();
+  const { speak, isPlaying, isLoading, progress, stop } = useTextToSpeech({ voice: config.ttsVoice });
+  
   const [isMobile, setIsMobile] = useState(true);
   const [showDesktopWarning, setShowDesktopWarning] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -69,14 +72,12 @@ export const PWAVoiceAssistant: React.FC = () => {
 
   // Welcome message when entering home (only on first visit)
   useEffect(() => {
-    if (appState === "idle" && isFirstVisit) {
-      const greeting = userName 
-        ? `Olá ${userName}! Bem-vindo ao KnowYOU. Escolha um módulo para começar.`
-        : "Bem-vindo ao KnowYOU! Escolha um módulo para começar nossa conversa.";
+    if (appState === "idle" && isFirstVisit && config.welcomeText) {
+      const greeting = config.welcomeText.replace("[name]", userName || "");
       speak(greeting);
       setFirstVisit(false);
     }
-  }, [appState, isFirstVisit, userName, speak, setFirstVisit]);
+  }, [appState, isFirstVisit, userName, speak, setFirstVisit, config.welcomeText]);
 
   const handleSplashComplete = () => {
     setAppState("idle");

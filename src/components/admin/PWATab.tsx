@@ -3,10 +3,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Smartphone, Copy, ExternalLink, CheckCircle, Mic, Loader2, Wifi, Battery } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Smartphone, Copy, ExternalLink, CheckCircle, Mic, Loader2, Wifi, Battery,
+  Settings, Volume2, RotateCcw, Save, Play
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PWASimulator } from "./PWASimulator";
+import { useConfigPWA } from "@/hooks/useConfigPWA";
 
 interface AgentInfo {
   name: string;
@@ -15,11 +25,22 @@ interface AgentInfo {
   rag_collection: string | null;
 }
 
+const VOICE_OPTIONS = [
+  { value: "fernando", label: "Fernando (PT-BR)", provider: "ElevenLabs" },
+  { value: "alloy", label: "Alloy (Neutro)", provider: "OpenAI" },
+  { value: "onyx", label: "Onyx (Grave)", provider: "OpenAI" },
+  { value: "nova", label: "Nova (Feminino)", provider: "OpenAI" },
+  { value: "shimmer", label: "Shimmer (Suave)", provider: "OpenAI" },
+];
+
 export default function PWATab() {
   const [copied, setCopied] = useState(false);
   const [agent, setAgent] = useState<AgentInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSimulator, setShowSimulator] = useState(false);
+  const [testingVoice, setTestingVoice] = useState(false);
+  
+  const { config, isLoading: configLoading, isSaving, updateConfig, saveConfig, resetToDefaults } = useConfigPWA();
   
   const pwaUrl = `${window.location.origin}/pwa`;
   
@@ -47,6 +68,38 @@ export default function PWATab() {
   
   const openPWA = () => {
     window.open(pwaUrl, '_blank');
+  };
+
+  const testVoice = async () => {
+    setTestingVoice(true);
+    try {
+      const testText = "Olá! Esta é uma demonstração da voz selecionada para o KnowYOU.";
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text: testText, voice: config.ttsVoice }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Erro ao gerar áudio");
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      await audio.play();
+      toast.success("Reproduzindo teste de voz...");
+    } catch (err) {
+      console.error("Erro ao testar voz:", err);
+      toast.error("Erro ao testar voz");
+    } finally {
+      setTestingVoice(false);
+    }
   };
 
   return (
@@ -96,6 +149,169 @@ export default function PWATab() {
               <li>• <strong>iPhone:</strong> Abra no Safari → Compartilhar (↑) → "Adicionar à Tela de Início"</li>
             </ul>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Configurações do PWA */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-muted-foreground" />
+            <CardTitle>Configurações do PWA</CardTitle>
+          </div>
+          <CardDescription>
+            Personalize o comportamento do assistente de voz
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {configLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              {/* Texto de Boas-Vindas */}
+              <div className="space-y-2">
+                <Label htmlFor="welcome-text" className="text-base font-medium">
+                  Texto de Boas-Vindas
+                </Label>
+                <Textarea
+                  id="welcome-text"
+                  value={config.welcomeText}
+                  onChange={(e) => updateConfig("welcomeText", e.target.value)}
+                  placeholder="Digite o texto de boas-vindas..."
+                  className="min-h-[100px] resize-none"
+                  maxLength={500}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use <code className="bg-muted px-1 rounded">[name]</code> para inserir o nome do usuário.
+                  <span className="float-right">{config.welcomeText.length}/500</span>
+                </p>
+              </div>
+
+              <Separator />
+
+              {/* Voz TTS */}
+              <div className="space-y-2">
+                <Label className="text-base font-medium">Voz TTS</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={config.ttsVoice}
+                    onValueChange={(value) => updateConfig("ttsVoice", value)}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecione uma voz" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VOICE_OPTIONS.map((voice) => (
+                        <SelectItem key={voice.value} value={voice.value}>
+                          <div className="flex items-center gap-2">
+                            <Volume2 className="w-4 h-4" />
+                            <span>{voice.label}</span>
+                            <Badge variant="outline" className="ml-2 text-xs">
+                              {voice.provider}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    onClick={testVoice}
+                    disabled={testingVoice}
+                  >
+                    {testingVoice ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Play className="w-4 h-4" />
+                    )}
+                    <span className="ml-2">Testar</span>
+                  </Button>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Timeout do Microfone */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">Timeout do Microfone</Label>
+                  <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                    {config.micTimeoutSeconds}s
+                  </span>
+                </div>
+                <Slider
+                  value={[config.micTimeoutSeconds]}
+                  onValueChange={([value]) => updateConfig("micTimeoutSeconds", value)}
+                  min={5}
+                  max={30}
+                  step={1}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>5s</span>
+                  <span>30s</span>
+                </div>
+              </div>
+
+              {/* Mostrar Contagem Regressiva */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-base font-medium">Mostrar Contagem Regressiva</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Exibe os últimos 5 segundos antes do timeout
+                  </p>
+                </div>
+                <Switch
+                  checked={config.enableCountdown}
+                  onCheckedChange={(checked) => updateConfig("enableCountdown", checked)}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Duração do Splash */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">Duração do Splash Screen</Label>
+                  <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                    {config.splashDurationMs}ms
+                  </span>
+                </div>
+                <Slider
+                  value={[config.splashDurationMs]}
+                  onValueChange={([value]) => updateConfig("splashDurationMs", value)}
+                  min={1000}
+                  max={5000}
+                  step={500}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>1s</span>
+                  <span>5s</span>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Botões de ação */}
+              <div className="flex gap-3 pt-2">
+                <Button onClick={saveConfig} disabled={isSaving} className="flex-1">
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Salvar Configurações
+                </Button>
+                <Button variant="outline" onClick={resetToDefaults}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Restaurar Padrões
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

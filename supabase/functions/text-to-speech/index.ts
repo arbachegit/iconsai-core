@@ -343,13 +343,16 @@ function humanizeTextForSpeech(text: string): string {
 }
 
 
+// OpenAI TTS voices
+const OPENAI_VOICES = ["alloy", "onyx", "nova", "shimmer", "echo", "fable"];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { text, chatType, agentSlug } = await req.json();
+    const { text, chatType, agentSlug, voice = "fernando" } = await req.json();
     
     if (!text) {
       throw new Error("Texto é obrigatório");
@@ -419,51 +422,94 @@ serve(async (req) => {
 
     console.log("Texto original:", sanitizedText.substring(0, 100));
     console.log("Após humanização:", normalizedText.substring(0, 150));
-    console.log("Total de termos no mapa fonético:", Object.keys(phoneticMap).length);
+    console.log("Voice selecionada:", voice);
 
-    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
-    const VOICE_ID = Deno.env.get("ELEVENLABS_VOICE_ID_FERNANDO");
+    // Check if using OpenAI voice or ElevenLabs (fernando)
+    const isOpenAIVoice = OPENAI_VOICES.includes(voice);
+    
+    if (isOpenAIVoice) {
+      // Use OpenAI TTS
+      const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+      if (!OPENAI_API_KEY) {
+        throw new Error("OpenAI API Key não configurada");
+      }
 
-    if (!ELEVENLABS_API_KEY || !VOICE_ID) {
-      throw new Error("Credenciais ElevenLabs não configuradas");
-    }
-
-    // Gerar áudio com ElevenLabs usando modelo Turbo v2.5 para baixa latência
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream`,
-      {
+      console.log("Usando OpenAI TTS com voz:", voice);
+      
+      const response = await fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
         headers: {
-          "xi-api-key": ELEVENLABS_API_KEY,
+          "Authorization": `Bearer ${OPENAI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text: normalizedText,
-          model_id: "eleven_turbo_v2_5",
-          voice_settings: {
-            stability: 0.30,           // REDUZIDO: Mais variação = mais natural
-            similarity_boost: 0.65,    // REDUZIDO: Menos robótico
-            style: 0.45,               // AUMENTADO: Mais expressividade emocional
-            use_speaker_boost: true,
-          },
+          model: "tts-1",
+          input: normalizedText,
+          voice: voice,
+          response_format: "mp3",
         }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Erro OpenAI TTS:", response.status, errorText);
+        throw new Error(`Falha ao gerar áudio OpenAI: ${response.status}`);
       }
-    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro ElevenLabs:", response.status, errorText);
-      throw new Error(`Falha ao gerar áudio: ${response.status}`);
+      return new Response(response.body, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "audio/mpeg",
+          "Transfer-Encoding": "chunked",
+        },
+      });
+    } else {
+      // Use ElevenLabs (default - fernando)
+      const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+      const VOICE_ID = Deno.env.get("ELEVENLABS_VOICE_ID_FERNANDO");
+
+      if (!ELEVENLABS_API_KEY || !VOICE_ID) {
+        throw new Error("Credenciais ElevenLabs não configuradas");
+      }
+
+      console.log("Usando ElevenLabs TTS com voice_id:", VOICE_ID);
+
+      // Gerar áudio com ElevenLabs usando modelo Turbo v2.5 para baixa latência
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream`,
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": ELEVENLABS_API_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: normalizedText,
+            model_id: "eleven_turbo_v2_5",
+            voice_settings: {
+              stability: 0.30,
+              similarity_boost: 0.65,
+              style: 0.45,
+              use_speaker_boost: true,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Erro ElevenLabs:", response.status, errorText);
+        throw new Error(`Falha ao gerar áudio: ${response.status}`);
+      }
+
+      return new Response(response.body, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "audio/mpeg",
+          "Transfer-Encoding": "chunked",
+        },
+      });
     }
-
-    // Stream the audio directly back to the client
-    return new Response(response.body, {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "audio/mpeg",
-        "Transfer-Encoding": "chunked",
-      },
-    });
   } catch (error) {
     console.error("Erro no text-to-speech:", error);
     return new Response(
