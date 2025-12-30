@@ -2544,14 +2544,19 @@ export type Database = {
         Row: {
           channel: string
           created_at: string | null
+          delivery_attempts: number | null
           error_message: string | null
           event_type: string
           fallback_used: boolean | null
+          final_status: string | null
+          final_status_at: string | null
           id: string
           is_read: boolean | null
           message_body: string
           message_sid: string | null
           metadata: Json | null
+          provider_error_code: string | null
+          provider_status: string | null
           recipient: string
           status: string
           subject: string | null
@@ -2559,14 +2564,19 @@ export type Database = {
         Insert: {
           channel: string
           created_at?: string | null
+          delivery_attempts?: number | null
           error_message?: string | null
           event_type: string
           fallback_used?: boolean | null
+          final_status?: string | null
+          final_status_at?: string | null
           id?: string
           is_read?: boolean | null
           message_body: string
           message_sid?: string | null
           metadata?: Json | null
+          provider_error_code?: string | null
+          provider_status?: string | null
           recipient: string
           status?: string
           subject?: string | null
@@ -2574,14 +2584,19 @@ export type Database = {
         Update: {
           channel?: string
           created_at?: string | null
+          delivery_attempts?: number | null
           error_message?: string | null
           event_type?: string
           fallback_used?: boolean | null
+          final_status?: string | null
+          final_status_at?: string | null
           id?: string
           is_read?: boolean | null
           message_body?: string
           message_sid?: string | null
           metadata?: Json | null
+          provider_error_code?: string | null
+          provider_status?: string | null
           recipient?: string
           status?: string
           subject?: string | null

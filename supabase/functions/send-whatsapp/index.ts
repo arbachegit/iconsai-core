@@ -124,9 +124,20 @@ serve(async (req) => {
     // Preparar request
     const twilioApiUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     
+    // Build status callback URL
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const statusCallbackUrl = supabaseUrl ? 
+      `${supabaseUrl}/functions/v1/twilio-status-callback` : null;
+    
     const formData = new URLSearchParams();
     formData.append('From', `whatsapp:${fromNumber}`);
     formData.append('To', `whatsapp:${phoneNumber}`);
+    
+    // Add status callback for delivery tracking
+    if (statusCallbackUrl) {
+      formData.append('StatusCallback', statusCallbackUrl);
+      console.log(`📡 StatusCallback: ${statusCallbackUrl}`);
+    }
     
     if (contentSid) {
       formData.append('ContentSid', contentSid);
