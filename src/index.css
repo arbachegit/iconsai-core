@@ -432,3 +432,36 @@ All colors MUST be HSL.
 .animate-flow {
   animation: flow 1s linear infinite;
 }
+
+/* PWA Safe Area */
+.safe-area-inset {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* PWA Custom Scrollbar */
+.pwa-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.pwa-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pwa-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 2px;
+}
+
+.pwa-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
+/* Disable text selection in PWA */
+.pwa-no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
