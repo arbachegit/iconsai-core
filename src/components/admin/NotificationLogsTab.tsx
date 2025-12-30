@@ -11,6 +11,11 @@ import {
   Clock,
   Filter,
   RefreshCw,
+  Phone,
+  Copy,
+  ExternalLink,
+  AlertTriangle,
+  Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,11 +50,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "@/hooks/use-toast";
 
 interface NotificationLog {
   id: string;
   event_type: string;
-  channel: "email" | "whatsapp";
+  channel: "email" | "whatsapp" | "sms";
   recipient: string;
   subject: string | null;
   message_body: string;
@@ -58,6 +64,13 @@ interface NotificationLog {
   metadata: Record<string, any>;
   created_at: string;
   is_read: boolean;
+  message_sid: string | null;
+  provider_status: string | null;
+  provider_error_code: string | null;
+  final_status: string | null;
+  final_status_at: string | null;
+  delivery_attempts: number | null;
+  fallback_used: boolean | null;
 }
 
 // Event type labels in Portuguese
@@ -166,12 +179,47 @@ export const NotificationLogsTab = () => {
     };
   }, [queryClient]);
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, finalStatus?: string | null) => {
+    // If we have a final delivery status, show that instead
+    if (finalStatus) {
+      switch (finalStatus) {
+        case "delivered":
+          return (
+            <Badge className="bg-green-500/20 text-green-400 border-green-500/30 gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Entregue
+            </Badge>
+          );
+        case "read":
+          return (
+            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 gap-1">
+              <Eye className="h-3 w-3" />
+              Lido
+            </Badge>
+          );
+        case "undelivered":
+          return (
+            <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Não Entregue
+            </Badge>
+          );
+        case "failed":
+          return (
+            <Badge className="bg-red-500/20 text-red-400 border-red-500/30 gap-1">
+              <XCircle className="h-3 w-3" />
+              Falha
+            </Badge>
+          );
+      }
+    }
+
+    // Fallback to original status
     switch (status) {
       case "success":
         return (
-          <Badge className="bg-green-500/20 text-green-400 border-green-500/30 gap-1">
-            <CheckCircle2 className="h-3 w-3" />
+          <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 gap-1">
+            <Truck className="h-3 w-3" />
             Enviado
           </Badge>
         );
@@ -184,7 +232,7 @@ export const NotificationLogsTab = () => {
         );
       case "pending":
         return (
-          <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 gap-1">
+          <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30 gap-1">
             <Clock className="h-3 w-3" />
             Processando
           </Badge>
@@ -194,12 +242,42 @@ export const NotificationLogsTab = () => {
     }
   };
 
+  const getFinalStatusBadge = (finalStatus: string | null, providerStatus: string | null) => {
+    if (!finalStatus && !providerStatus) {
+      return (
+        <span className="text-xs text-muted-foreground">—</span>
+      );
+    }
+    
+    if (finalStatus) {
+      return getStatusBadge("pending", finalStatus);
+    }
+    
+    // Show provider status if no final status yet
+    return (
+      <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 gap-1">
+        <Clock className="h-3 w-3" />
+        {providerStatus === 'queued' ? 'Na fila' : 
+         providerStatus === 'sent' ? 'Enviando...' : 
+         providerStatus === 'accepted' ? 'Aceito' : providerStatus}
+      </Badge>
+    );
+  };
+
   const getEventTypeBadge = (eventType: string) => {
     const config = EVENT_TYPE_LABELS[eventType] || {
       label: eventType,
       color: "bg-gray-500/20 text-gray-400 border-gray-500/30",
     };
     return <Badge className={config.color}>{config.label}</Badge>;
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copiado!",
+      description: `${label} copiado para a área de transferência`,
+    });
   };
 
   const clearFilters = () => {
@@ -317,11 +395,12 @@ export const NotificationLogsTab = () => {
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="w-[40px]"></TableHead>
-              <TableHead className="w-[160px]">Data/Hora</TableHead>
+              <TableHead className="w-[150px]">Data/Hora</TableHead>
               <TableHead>Tipo</TableHead>
-              <TableHead className="w-[100px] text-center">Canal</TableHead>
-              <TableHead className="w-[120px]">Status</TableHead>
-              <TableHead className="w-[100px] text-center">Ações</TableHead>
+              <TableHead className="w-[80px] text-center">Canal</TableHead>
+              <TableHead className="w-[100px]">Envio</TableHead>
+              <TableHead className="w-[120px]">Entrega</TableHead>
+              <TableHead className="w-[80px] text-center">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -333,6 +412,7 @@ export const NotificationLogsTab = () => {
                   <TableCell><Skeleton className="h-6 w-36" /></TableCell>
                   <TableCell><Skeleton className="h-6 w-8 mx-auto" /></TableCell>
                   <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-16 mx-auto" /></TableCell>
                 </TableRow>
               ))
@@ -342,7 +422,6 @@ export const NotificationLogsTab = () => {
                   key={log.id} 
                   className={`hover:bg-muted/30 cursor-pointer ${!log.is_read ? 'bg-primary/5' : ''}`}
                   onClick={() => {
-                    // Auto-mark as read when clicking the row
                     if (!log.is_read) {
                       markAsRead(log.id);
                     }
@@ -354,7 +433,7 @@ export const NotificationLogsTab = () => {
                       <div className="h-2 w-2 rounded-full bg-primary" />
                     )}
                   </TableCell>
-                  <TableCell className="font-mono text-sm">
+                  <TableCell className="font-mono text-xs">
                     {formatDateTime(log.created_at)}
                   </TableCell>
                   <TableCell>{getEventTypeBadge(log.event_type)}</TableCell>
@@ -365,6 +444,8 @@ export const NotificationLogsTab = () => {
                           <div className="inline-flex items-center justify-center">
                             {log.channel === "email" ? (
                               <Mail className="h-5 w-5 text-blue-400" />
+                            ) : log.channel === "sms" ? (
+                              <Phone className="h-5 w-5 text-purple-400" />
                             ) : (
                               <MessageCircle className="h-5 w-5 text-green-400" />
                             )}
@@ -372,7 +453,7 @@ export const NotificationLogsTab = () => {
                         </TooltipTrigger>
                         <TooltipContent>
                           <p className="text-xs">
-                            {log.channel === "email" ? "Enviado para: " : "Enviado para: "}
+                            {log.channel === "email" ? "Email: " : log.channel === "sms" ? "SMS: " : "WhatsApp: "}
                             {log.recipient}
                           </p>
                         </TooltipContent>
@@ -380,6 +461,7 @@ export const NotificationLogsTab = () => {
                     </TooltipProvider>
                   </TableCell>
                   <TableCell>{getStatusBadge(log.status)}</TableCell>
+                  <TableCell>{getFinalStatusBadge(log.final_status, log.provider_status)}</TableCell>
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-1">
                       <Button
@@ -387,7 +469,6 @@ export const NotificationLogsTab = () => {
                         size="icon"
                         onClick={(e) => {
                           e.stopPropagation();
-                          // Auto-mark as read when opening details
                           if (!log.is_read) {
                             markAsRead(log.id);
                           }
@@ -403,7 +484,7 @@ export const NotificationLogsTab = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
                   Nenhum log de notificação encontrado.
                 </TableCell>
               </TableRow>
@@ -434,6 +515,8 @@ export const NotificationLogsTab = () => {
             <DialogTitle className="flex items-center gap-3">
               {selectedLog?.channel === "email" ? (
                 <Mail className="h-5 w-5 text-blue-400" />
+              ) : selectedLog?.channel === "sms" ? (
+                <Phone className="h-5 w-5 text-purple-400" />
               ) : (
                 <MessageCircle className="h-5 w-5 text-green-400" />
               )}
@@ -444,15 +527,19 @@ export const NotificationLogsTab = () => {
           {selectedLog && (
             <ScrollArea className="max-h-[60vh]">
               <div className="space-y-4">
-                {/* Metadata Grid */}
+                {/* Status Grid */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Tipo do Evento</Label>
                     <div>{getEventTypeBadge(selectedLog.event_type)}</div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Status</Label>
+                    <Label className="text-xs text-muted-foreground">Status de Envio</Label>
                     <div>{getStatusBadge(selectedLog.status)}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Status de Entrega</Label>
+                    <div>{getFinalStatusBadge(selectedLog.final_status, selectedLog.provider_status)}</div>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Canal</Label>
@@ -462,13 +549,70 @@ export const NotificationLogsTab = () => {
                     <Label className="text-xs text-muted-foreground">Destinatário</Label>
                     <p className="text-sm font-mono">{selectedLog.recipient}</p>
                   </div>
-                  <div className="space-y-1 col-span-2">
-                    <Label className="text-xs text-muted-foreground">Data/Hora</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Data/Hora Envio</Label>
                     <p className="text-sm">
                       {formatDateTimeAt(selectedLog.created_at)}
                     </p>
                   </div>
                 </div>
+
+                {/* Delivery Tracking Section */}
+                {(selectedLog.message_sid || selectedLog.final_status) && (
+                  <div className="bg-muted/30 border border-border rounded-lg p-4 space-y-3">
+                    <Label className="text-xs text-muted-foreground font-semibold">Rastreio de Entrega</Label>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      {selectedLog.message_sid && (
+                        <div className="space-y-1 col-span-2">
+                          <Label className="text-xs text-muted-foreground">Message SID</Label>
+                          <div className="flex items-center gap-2">
+                            <code className="text-xs bg-background px-2 py-1 rounded font-mono flex-1 overflow-hidden text-ellipsis">
+                              {selectedLog.message_sid}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => copyToClipboard(selectedLog.message_sid!, 'Message SID')}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      {selectedLog.provider_status && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Status do Provedor</Label>
+                          <p className="text-sm capitalize">{selectedLog.provider_status}</p>
+                        </div>
+                      )}
+                      {selectedLog.final_status && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Status Final</Label>
+                          <p className="text-sm capitalize">{selectedLog.final_status}</p>
+                        </div>
+                      )}
+                      {selectedLog.final_status_at && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Atualizado em</Label>
+                          <p className="text-sm">{formatDateTimeAt(selectedLog.final_status_at)}</p>
+                        </div>
+                      )}
+                      {selectedLog.delivery_attempts && selectedLog.delivery_attempts > 0 && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Tentativas</Label>
+                          <p className="text-sm">{selectedLog.delivery_attempts}</p>
+                        </div>
+                      )}
+                      {selectedLog.provider_error_code && (
+                        <div className="space-y-1 col-span-2">
+                          <Label className="text-xs text-red-400">Código de Erro</Label>
+                          <p className="text-sm text-red-400">{selectedLog.provider_error_code}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Subject (for email) */}
                 {selectedLog.subject && (
@@ -493,6 +637,14 @@ export const NotificationLogsTab = () => {
                     <div className="bg-red-500/10 border border-red-500/30 p-3 rounded text-sm text-red-400">
                       {selectedLog.error_message}
                     </div>
+                  </div>
+                )}
+
+                {/* Fallback indicator */}
+                {selectedLog.fallback_used && (
+                  <div className="flex items-center gap-2 text-sm text-orange-400">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>Fallback utilizado (WhatsApp → SMS)</span>
                   </div>
                 )}
 

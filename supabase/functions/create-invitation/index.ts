@@ -347,11 +347,11 @@ _Convite válido por 7 dias_`;
               console.error("❌ App WhatsApp error:", whatsappError || whatsappResult?.error);
               results.push({ channel: "whatsapp", product: "app", success: false, error: whatsappError?.message || whatsappResult?.error });
             } else {
-              console.log("✅ App WhatsApp sent");
+              console.log("✅ App WhatsApp sent, SID:", whatsappResult?.sid);
               results.push({ channel: "whatsapp", product: "app", success: true });
             }
 
-            // Log WhatsApp attempt for APP
+            // Log WhatsApp attempt for APP with message_sid for tracking
             await supabase.from("notification_logs").insert({
               event_type: "invitation_send",
               channel: "whatsapp",
@@ -360,6 +360,8 @@ _Convite válido por 7 dias_`;
               message_body: appWhatsappMessage,
               status: appWhatsappSuccess ? "success" : "failed",
               error_message: whatsappError?.message || whatsappResult?.error || null,
+              message_sid: whatsappResult?.sid || null,
+              provider_status: whatsappResult?.status || null,
               metadata: { token, product: "app", action: "create", rule_version: "mandatory_v1" }
             });
           } catch (whatsappCatch: any) {
@@ -395,11 +397,11 @@ _Verifique também sua pasta de spam_`;
               console.error("❌ Platform info WhatsApp error:", whatsappError || whatsappResult?.error);
               results.push({ channel: "whatsapp", product: "platform_info", success: false, error: whatsappError?.message || whatsappResult?.error });
             } else {
-              console.log("✅ Platform info WhatsApp sent");
+              console.log("✅ Platform info WhatsApp sent, SID:", whatsappResult?.sid);
               results.push({ channel: "whatsapp", product: "platform_info", success: true });
             }
 
-            // Log WhatsApp attempt for Platform info
+            // Log WhatsApp attempt for Platform info with message_sid
             await supabase.from("notification_logs").insert({
               event_type: "invitation_send",
               channel: "whatsapp",
@@ -408,6 +410,8 @@ _Verifique também sua pasta de spam_`;
               message_body: platformInfoMessage,
               status: platformWhatsappSuccess ? "success" : "failed",
               error_message: whatsappError?.message || whatsappResult?.error || null,
+              message_sid: whatsappResult?.sid || null,
+              provider_status: whatsappResult?.status || null,
               metadata: { token, product: "platform_info", action: "create", rule_version: "mandatory_v1" }
             });
           } catch (whatsappCatch: any) {

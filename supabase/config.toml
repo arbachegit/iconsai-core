@@ -273,3 +273,9 @@ verify_jwt = false
 [functions.send-pwa-verification-direct]
 verify_jwt = false
 
+# ============================================
+# TWILIO STATUS CALLBACK - Public (Twilio webhooks)
+# ============================================
+[functions.twilio-status-callback]
+verify_jwt = false
+
