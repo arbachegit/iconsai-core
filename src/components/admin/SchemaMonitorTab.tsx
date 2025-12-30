@@ -1,15 +1,28 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, CheckCircle, XCircle, RefreshCw, Database, Code, Shield, Clock } from 'lucide-react';
-import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Database, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Shield, Key, Link2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
+interface RLSResult {
+  status: string;
+  has_rls: boolean;
+  policy_count: number;
+  operations_covered: string[];
+  missing_operations: string[];
+}
+
+interface FKResult {
+  status: string;
+  constraint_name: string;
+  target_table: string;
+  target_column: string;
+}
 
 interface SchemaCheckResult {
   success: boolean;
@@ -20,12 +33,16 @@ interface SchemaCheckResult {
     warnings: number;
     tables_checked: number;
     functions_checked: number;
+    rls_tables_checked?: number;
+    fk_tables_checked?: number;
     all_ok: boolean;
   };
   results: {
     tables: Record<string, { status: string; columns?: string[]; missing?: string[] }>;
     functions: Record<string, { status: string }>;
     references: Record<string, { status: string; contains_required?: boolean; contains_forbidden?: boolean }>;
+    rls_policies?: Record<string, RLSResult>;
+    foreign_keys?: Record<string, FKResult[]>;
   };
   divergences: Array<{
     check_type: string;
@@ -33,7 +50,7 @@ interface SchemaCheckResult {
     expected_state: object;
     actual_state: object;
     divergence_type: string;
-    severity: 'critical' | 'warning' | 'info';
+    severity: string;
   }>;
 }
 
@@ -50,413 +67,158 @@ interface AuditLogEntry {
   created_at: string;
 }
 
-export default function SchemaMonitorTab() {
+const SchemaMonitorTab = () => {
   const queryClient = useQueryClient();
-  const [lastCheck, setLastCheck] = useState<SchemaCheckResult | null>(null);
+  const [lastResult, setLastResult] = useState<SchemaCheckResult | null>(null);
 
-  // Fetch audit log history
   const { data: auditLogs, isLoading: logsLoading } = useQuery({
-    queryKey: ['schema-audit-logs'],
+    queryKey: ["schema-audit-logs"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('schema_audit_log')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-      
+        .from("schema_audit_log")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100);
       if (error) throw error;
       return data as AuditLogEntry[];
     },
   });
 
-  // Run schema check mutation
   const runCheckMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('schema-monitor');
+      const { data, error } = await supabase.functions.invoke("schema-monitor");
       if (error) throw error;
       return data as SchemaCheckResult;
     },
     onSuccess: (data) => {
-      setLastCheck(data);
-      queryClient.invalidateQueries({ queryKey: ['schema-audit-logs'] });
+      setLastResult(data);
+      queryClient.invalidateQueries({ queryKey: ["schema-audit-logs"] });
       if (data.summary.all_ok) {
-        toast.success('Schema OK - Nenhuma divergência encontrada');
+        toast.success("Schema íntegro!");
       } else {
         toast.warning(`${data.summary.total_divergences} divergência(s) encontrada(s)`);
       }
     },
-    onError: (error) => {
-      toast.error('Erro ao verificar schema: ' + error.message);
-    },
+    onError: (error) => toast.error("Erro: " + (error as Error).message),
   });
 
-  // Resolve divergence mutation
   const resolveMutation = useMutation({
     mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
-      const { error } = await supabase
-        .from('schema_audit_log')
-        .update({
-          is_resolved: true,
-          resolved_at: new Date().toISOString(),
-          resolved_by: 'admin',
-          resolution_notes: notes,
-        })
-        .eq('id', id);
-      
+      const { error } = await supabase.from("schema_audit_log").update({
+        is_resolved: true,
+        resolved_at: new Date().toISOString(),
+        resolved_by: "admin",
+        resolution_notes: notes,
+      }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['schema-audit-logs'] });
-      toast.success('Divergência marcada como resolvida');
+      queryClient.invalidateQueries({ queryKey: ["schema-audit-logs"] });
+      toast.success("Divergência resolvida");
     },
   });
 
   const getSeverityBadge = (severity: string) => {
-    switch (severity) {
-      case 'critical':
-        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Crítico</Badge>;
-      case 'warning':
-        return <Badge variant="outline" className="border-yellow-500 text-yellow-600"><AlertTriangle className="w-3 h-3 mr-1" />Aviso</Badge>;
-      default:
-        return <Badge variant="secondary">Info</Badge>;
-    }
+    if (severity === "critical") return <Badge variant="destructive">Crítico</Badge>;
+    if (severity === "warning") return <Badge className="bg-yellow-500/20 text-yellow-600">Aviso</Badge>;
+    return <Badge variant="outline">Info</Badge>;
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'ok':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'missing':
-      case 'issue':
-        return <XCircle className="w-4 h-4 text-red-500" />;
-      case 'incomplete':
-        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
-      default:
-        return null;
-    }
+    if (status === "ok") return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+    if (status === "missing" || status === "rls_disabled") return <XCircle className="h-4 w-4 text-red-500" />;
+    return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
   };
 
-  const unresolvedCount = auditLogs?.filter(l => !l.is_resolved).length || 0;
-  const criticalUnresolved = auditLogs?.filter(l => !l.is_resolved && l.severity === 'critical').length || 0;
+  const pendingLogs = auditLogs?.filter(log => !log.is_resolved) || [];
 
   return (
-    <div className="space-y-6">
-      {/* Header with status */}
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Monitor de Schema</h2>
-          <p className="text-muted-foreground">Verificação de integridade do banco de dados</p>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Database className="h-6 w-6" />
+            Monitor de Schema
+          </h2>
+          <p className="text-muted-foreground">Verificação de integridade, RLS e relações</p>
         </div>
-        <div className="flex items-center gap-4">
-          {criticalUnresolved > 0 ? (
-            <Badge variant="destructive" className="text-lg px-4 py-2">
-              {criticalUnresolved} Crítico(s)
-            </Badge>
-          ) : unresolvedCount > 0 ? (
-            <Badge variant="outline" className="border-yellow-500 text-yellow-600 text-lg px-4 py-2">
-              {unresolvedCount} Pendente(s)
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="border-green-500 text-green-600 text-lg px-4 py-2">
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Schema OK
-            </Badge>
-          )}
-          <Button 
-            onClick={() => runCheckMutation.mutate()}
-            disabled={runCheckMutation.isPending}
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${runCheckMutation.isPending ? 'animate-spin' : ''}`} />
-            Verificar Agora
-          </Button>
-        </div>
+        <Button onClick={() => runCheckMutation.mutate()} disabled={runCheckMutation.isPending}>
+          {runCheckMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+          Verificar Agora
+        </Button>
       </div>
 
-      <Tabs defaultValue="status">
+      {lastResult && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Status</p><p className="text-2xl font-bold">{lastResult.summary.all_ok ? "OK" : "Problemas"}</p></CardContent></Card>
+          <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Críticos</p><p className="text-2xl font-bold text-red-500">{lastResult.summary.critical}</p></CardContent></Card>
+          <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Avisos</p><p className="text-2xl font-bold text-yellow-500">{lastResult.summary.warnings}</p></CardContent></Card>
+          <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Última Verificação</p><p className="text-sm">{new Date(lastResult.summary.timestamp).toLocaleString("pt-BR")}</p></CardContent></Card>
+        </div>
+      )}
+
+      <Tabs defaultValue="current" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="status">
-            <Database className="w-4 h-4 mr-2" />
-            Status Atual
-          </TabsTrigger>
-          <TabsTrigger value="history">
-            <Clock className="w-4 h-4 mr-2" />
-            Histórico
-          </TabsTrigger>
+          <TabsTrigger value="current">Status Atual</TabsTrigger>
+          <TabsTrigger value="rls"><Shield className="h-4 w-4 mr-1" />RLS</TabsTrigger>
+          <TabsTrigger value="fk"><Link2 className="h-4 w-4 mr-1" />FK</TabsTrigger>
+          <TabsTrigger value="history">Histórico {pendingLogs.length > 0 && <Badge variant="destructive" className="ml-2">{pendingLogs.length}</Badge>}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="status" className="space-y-4">
-          {lastCheck ? (
-            <>
-              {/* Summary Cards */}
-              <div className="grid grid-cols-4 gap-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Tabelas Verificadas</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{lastCheck.summary.tables_checked}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Funções Verificadas</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{lastCheck.summary.functions_checked}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Divergências Críticas</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className={`text-2xl font-bold ${lastCheck.summary.critical > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                      {lastCheck.summary.critical}
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Avisos</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className={`text-2xl font-bold ${lastCheck.summary.warnings > 0 ? 'text-yellow-500' : 'text-green-500'}`}>
-                      {lastCheck.summary.warnings}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Tables Status */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Database className="w-5 h-5" />
-                    Tabelas Críticas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Tabela</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Colunas</TableHead>
-                        <TableHead>Colunas Faltando</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.entries(lastCheck.results.tables).map(([name, info]) => (
-                        <TableRow key={name}>
-                          <TableCell className="font-mono">{name}</TableCell>
-                          <TableCell>{getStatusIcon(info.status)} {info.status}</TableCell>
-                          <TableCell>{info.columns?.length || 0}</TableCell>
-                          <TableCell>
-                            {info.missing?.length ? (
-                              <span className="text-red-500 font-mono text-sm">
-                                {info.missing.join(', ')}
-                              </span>
-                            ) : (
-                              <span className="text-green-500">-</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-
-              {/* Functions Status */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Code className="w-5 h-5" />
-                    Funções RPC Críticas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(lastCheck.results.functions).map(([name, info]) => (
-                      <Badge 
-                        key={name} 
-                        variant={info.status === 'ok' ? 'outline' : 'destructive'}
-                        className={info.status === 'ok' ? 'border-green-500 text-green-600' : ''}
-                      >
-                        {getStatusIcon(info.status)}
-                        <span className="ml-1 font-mono">{name}</span>
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Reference Checks */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="w-5 h-5" />
-                    Verificação de Referências
-                  </CardTitle>
-                  <CardDescription>
-                    Verifica se funções referenciam tabelas corretas
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Função</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Referência Correta</TableHead>
-                        <TableHead>Referência Proibida</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.entries(lastCheck.results.references).map(([name, info]) => (
-                        <TableRow key={name}>
-                          <TableCell className="font-mono">{name}</TableCell>
-                          <TableCell>{getStatusIcon(info.status)}</TableCell>
-                          <TableCell>
-                            {info.contains_required ? (
-                              <CheckCircle className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <XCircle className="w-4 h-4 text-red-500" />
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {info.contains_forbidden ? (
-                              <XCircle className="w-4 h-4 text-red-500" />
-                            ) : (
-                              <CheckCircle className="w-4 h-4 text-green-500" />
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-
-              {/* Divergences */}
-              {lastCheck.divergences.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-red-500">
-                      <AlertTriangle className="w-5 h-5" />
-                      Divergências Detectadas
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Entidade</TableHead>
-                          <TableHead>Problema</TableHead>
-                          <TableHead>Severidade</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {lastCheck.divergences.map((div, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>{div.check_type}</TableCell>
-                            <TableCell className="font-mono">{div.entity_name}</TableCell>
-                            <TableCell>{div.divergence_type}</TableCell>
-                            <TableCell>{getSeverityBadge(div.severity)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              )}
-            </>
+        <TabsContent value="current">
+          {lastResult ? (
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card><CardHeader><CardTitle className="text-lg">Tabelas</CardTitle></CardHeader><CardContent><div className="space-y-2">
+                {Object.entries(lastResult.results.tables).map(([t, r]) => (
+                  <div key={t} className="flex items-center justify-between p-2 border rounded">{getStatusIcon(r.status)}<span className="font-mono text-sm flex-1 ml-2">{t}</span><Badge variant={r.status === "ok" ? "default" : "destructive"}>{r.status}</Badge></div>
+                ))}
+              </div></CardContent></Card>
+              <Card><CardHeader><CardTitle className="text-lg">Funções</CardTitle></CardHeader><CardContent><div className="space-y-2">
+                {Object.entries(lastResult.results.functions).map(([f, r]) => (
+                  <div key={f} className="flex items-center justify-between p-2 border rounded">{getStatusIcon(r.status)}<span className="font-mono text-sm flex-1 ml-2">{f}</span><Badge variant={r.status === "ok" ? "default" : "destructive"}>{r.status}</Badge></div>
+                ))}
+              </div></CardContent></Card>
+            </div>
           ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Database className="w-12 h-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  Clique em "Verificar Agora" para executar a verificação de schema
-                </p>
-                <Button onClick={() => runCheckMutation.mutate()} disabled={runCheckMutation.isPending}>
-                  <RefreshCw className={`w-4 h-4 mr-2 ${runCheckMutation.isPending ? 'animate-spin' : ''}`} />
-                  Verificar Agora
-                </Button>
-              </CardContent>
-            </Card>
+            <Card><CardContent className="py-12 text-center"><Database className="h-12 w-12 mx-auto text-muted-foreground mb-4" /><p className="text-muted-foreground">Clique em "Verificar Agora"</p></CardContent></Card>
           )}
         </TabsContent>
 
+        <TabsContent value="rls">
+          {lastResult?.results.rls_policies ? (
+            <Card><CardHeader><CardTitle><Shield className="h-5 w-5 inline mr-2" />RLS Policies</CardTitle></CardHeader><CardContent>
+              <Table><TableHeader><TableRow><TableHead>Tabela</TableHead><TableHead>RLS</TableHead><TableHead>Políticas</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+              <TableBody>{Object.entries(lastResult.results.rls_policies).map(([t, r]) => (
+                <TableRow key={t}><TableCell className="font-mono text-sm">{t}</TableCell><TableCell>{r.has_rls ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}</TableCell><TableCell><Badge variant="outline">{r.policy_count}</Badge></TableCell><TableCell>{getStatusIcon(r.status)}</TableCell></TableRow>
+              ))}</TableBody></Table>
+            </CardContent></Card>
+          ) : <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">Execute uma verificação</p></CardContent></Card>}
+        </TabsContent>
+
+        <TabsContent value="fk">
+          {lastResult?.results.foreign_keys && Object.keys(lastResult.results.foreign_keys).length > 0 ? (
+            <Card><CardHeader><CardTitle><Key className="h-5 w-5 inline mr-2" />Foreign Keys</CardTitle></CardHeader><CardContent>
+              <Table><TableHeader><TableRow><TableHead>Origem</TableHead><TableHead>Constraint</TableHead><TableHead>Destino</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+              <TableBody>{Object.entries(lastResult.results.foreign_keys).flatMap(([t, fks]) => fks.map((fk, i) => (
+                <TableRow key={`${t}-${i}`}><TableCell className="font-mono text-sm">{t}</TableCell><TableCell className="font-mono text-xs">{fk.constraint_name}</TableCell><TableCell className="font-mono text-sm">{fk.target_table}.{fk.target_column}</TableCell><TableCell>{getStatusIcon(fk.status)}</TableCell></TableRow>
+              )))}</TableBody></Table>
+            </CardContent></Card>
+          ) : <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">Execute uma verificação</p></CardContent></Card>}
+        </TabsContent>
+
         <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle>Histórico de Divergências</CardTitle>
-              <CardDescription>Últimas 50 divergências detectadas</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {logsLoading ? (
-                <div className="flex justify-center py-8">
-                  <RefreshCw className="w-6 h-6 animate-spin" />
-                </div>
-              ) : auditLogs?.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhuma divergência registrada
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Entidade</TableHead>
-                      <TableHead>Problema</TableHead>
-                      <TableHead>Severidade</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {auditLogs?.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="text-sm">
-                          {format(new Date(log.created_at), 'dd/MM HH:mm', { locale: ptBR })}
-                        </TableCell>
-                        <TableCell>{log.check_type}</TableCell>
-                        <TableCell className="font-mono text-sm">{log.entity_name}</TableCell>
-                        <TableCell>{log.divergence_type}</TableCell>
-                        <TableCell>{getSeverityBadge(log.severity)}</TableCell>
-                        <TableCell>
-                          {log.is_resolved ? (
-                            <Badge variant="outline" className="border-green-500 text-green-600">
-                              Resolvido
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="border-yellow-500 text-yellow-600">
-                              Pendente
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {!log.is_resolved && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => resolveMutation.mutate({ id: log.id, notes: 'Resolvido manualmente' })}
-                            >
-                              Resolver
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+          <Card><CardHeader><CardTitle>Histórico</CardTitle></CardHeader><CardContent>
+            {logsLoading ? <Loader2 className="h-8 w-8 animate-spin mx-auto" /> : auditLogs?.length ? (
+              <Table><TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Entidade</TableHead><TableHead>Tipo</TableHead><TableHead>Severidade</TableHead><TableHead>Status</TableHead><TableHead>Ações</TableHead></TableRow></TableHeader>
+              <TableBody>{auditLogs.map(log => (
+                <TableRow key={log.id}><TableCell className="text-sm">{new Date(log.created_at).toLocaleString("pt-BR")}</TableCell><TableCell className="font-mono text-sm">{log.entity_name}</TableCell><TableCell>{log.divergence_type}</TableCell><TableCell>{getSeverityBadge(log.severity)}</TableCell><TableCell>{log.is_resolved ? <Badge className="bg-green-500">Resolvido</Badge> : <Badge variant="destructive">Pendente</Badge>}</TableCell><TableCell>{!log.is_resolved && <Button size="sm" variant="outline" onClick={() => resolveMutation.mutate({ id: log.id, notes: "Resolvido" })}>Resolver</Button>}</TableCell></TableRow>
+              ))}</TableBody></Table>
+            ) : <p className="text-center text-muted-foreground py-8">Nenhum registro</p>}
+          </CardContent></Card>
         </TabsContent>
       </Tabs>
     </div>
   );
-}
+};
+
+export default SchemaMonitorTab;
