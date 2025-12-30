@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { 
-  Smartphone, Volume2, Wifi, ZoomIn, ZoomOut, Maximize2, Minimize2, RotateCcw 
+  Smartphone, Volume2, Wifi, ZoomIn, ZoomOut, Maximize2, Minimize2, RotateCcw, RotateCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PWAVoiceAssistant } from "@/components/pwa/voice/PWAVoiceAssistant";
@@ -13,6 +13,8 @@ interface PWASimulatorProps {
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   showControls?: boolean;
+  isLandscape?: boolean;
+  onToggleLandscape?: () => void;
 }
 
 const MIN_SCALE = 0.5;
@@ -26,11 +28,15 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
   onScaleChange,
   isFullscreen = false,
   onToggleFullscreen,
-  showControls = false
+  showControls = false,
+  isLandscape = false,
+  onToggleLandscape
 }) => {
-  // iPhone 14/15 dimensions for better visibility
-  const phoneWidth = 390;
-  const phoneHeight = 844;
+  // iPhone 14/15 dimensions - swap for landscape
+  const baseWidth = 390;
+  const baseHeight = 844;
+  const phoneWidth = isLandscape ? baseHeight : baseWidth;
+  const phoneHeight = isLandscape ? baseWidth : baseHeight;
 
   const handleZoomIn = () => {
     if (onScaleChange && scale < MAX_SCALE) {
@@ -64,58 +70,85 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
     <div className="flex flex-col items-center gap-4">
       {/* Control Bar */}
       {showControls && (
-        <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg border border-border/50">
-          <div className="flex items-center gap-1">
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg border border-border/50">
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleZoomOut}
+                disabled={scale <= MIN_SCALE}
+                className="h-8 w-8 p-0"
+                title="Zoom out (-)"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </Button>
+              <span className="text-sm font-mono min-w-[50px] text-center">
+                {zoomPercentage}%
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleZoomIn}
+                disabled={scale >= MAX_SCALE}
+                className="h-8 w-8 p-0"
+                title="Zoom in (+)"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="w-px h-6 bg-border" />
+
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleZoomOut}
-              disabled={scale <= MIN_SCALE}
-              className="h-8 w-8 p-0"
+              onClick={handleResetZoom}
+              className="h-8 px-2"
+              title="Resetar zoom (R)"
             >
-              <ZoomOut className="w-4 h-4" />
+              <RotateCcw className="w-4 h-4" />
             </Button>
-            <span className="text-sm font-mono min-w-[50px] text-center">
-              {zoomPercentage}%
-            </span>
+
+            <div className="w-px h-6 bg-border" />
+
+            <Button
+              variant={isLandscape ? "secondary" : "ghost"}
+              size="sm"
+              onClick={onToggleLandscape}
+              className="h-8 px-2"
+              title="Alternar paisagem (L)"
+            >
+              <RotateCw className="w-4 h-4" />
+            </Button>
+
+            <div className="w-px h-6 bg-border" />
+
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleZoomIn}
-              disabled={scale >= MAX_SCALE}
-              className="h-8 w-8 p-0"
+              onClick={onToggleFullscreen}
+              className="h-8 px-2"
+              title={isFullscreen ? "Sair da tela cheia (F)" : "Tela cheia (F)"}
             >
-              <ZoomIn className="w-4 h-4" />
+              {isFullscreen ? (
+                <Minimize2 className="w-4 h-4" />
+              ) : (
+                <Maximize2 className="w-4 h-4" />
+              )}
             </Button>
           </div>
 
-          <div className="w-px h-6 bg-border" />
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleResetZoom}
-            className="h-8 px-2"
-            title="Resetar zoom"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </Button>
-
-          <div className="w-px h-6 bg-border" />
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleFullscreen}
-            className="h-8 px-2"
-            title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
-          >
-            {isFullscreen ? (
-              <Minimize2 className="w-4 h-4" />
-            ) : (
-              <Maximize2 className="w-4 h-4" />
-            )}
-          </Button>
+          {/* Keyboard shortcuts hint */}
+          <p className="text-xs text-muted-foreground/60">
+            Atalhos: <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">+/-</kbd> Zoom 
+            <span className="mx-1">•</span>
+            <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">R</kbd> Reset 
+            <span className="mx-1">•</span>
+            <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">L</kbd> Paisagem 
+            <span className="mx-1">•</span>
+            <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">F</kbd> Tela Cheia
+          </p>
         </div>
       )}
 
@@ -131,6 +164,8 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        layout
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className="relative"
         style={{ 
           width: phoneWidth * scale, 
@@ -153,15 +188,21 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
               border: "1px solid hsl(var(--border)/0.3)"
             }}
           >
-            {/* Status bar */}
+            {/* Status bar - adjusted for landscape */}
             <div 
-              className="absolute top-0 left-0 right-0 h-7 flex items-center justify-between px-6 z-20"
+              className={`absolute z-20 flex items-center justify-between ${
+                isLandscape 
+                  ? "top-0 left-0 bottom-0 w-7 flex-col py-6 px-1" 
+                  : "top-0 left-0 right-0 h-7 px-6"
+              }`}
               style={{ 
-                background: "linear-gradient(180deg, hsl(225, 54%, 8%) 0%, transparent 100%)" 
+                background: isLandscape 
+                  ? "linear-gradient(90deg, hsl(225, 54%, 8%) 0%, transparent 100%)"
+                  : "linear-gradient(180deg, hsl(225, 54%, 8%) 0%, transparent 100%)" 
               }}
             >
-              <span className="text-[10px] text-muted-foreground/60">9:41</span>
-              <div className="flex items-center gap-1">
+              <span className={`text-[10px] text-muted-foreground/60 ${isLandscape ? "rotate-90" : ""}`}>9:41</span>
+              <div className={`flex items-center gap-1 ${isLandscape ? "flex-col rotate-90" : ""}`}>
                 <Wifi className="w-3 h-3 text-muted-foreground/60" />
                 <Volume2 className="w-3 h-3 text-muted-foreground/60" />
                 <div className="w-5 h-2 rounded-sm border border-muted-foreground/40 flex items-center justify-end p-px">
@@ -170,14 +211,22 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
               </div>
             </div>
 
-            {/* Dynamic Island / Notch */}
+            {/* Dynamic Island / Notch - adjusted for landscape */}
             <div 
-              className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-6 rounded-full z-30"
+              className={`absolute z-30 ${
+                isLandscape 
+                  ? "left-2 top-1/2 -translate-y-1/2 h-24 w-6 rounded-full" 
+                  : "top-2 left-1/2 -translate-x-1/2 w-24 h-6 rounded-full"
+              }`}
               style={{ background: "hsl(0, 0%, 0%)" }}
             >
               {/* Camera dot */}
               <div 
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full"
+                className={`absolute w-2 h-2 rounded-full ${
+                  isLandscape 
+                    ? "bottom-4 left-1/2 -translate-x-1/2" 
+                    : "right-4 top-1/2 -translate-y-1/2"
+                }`}
                 style={{ 
                   background: "radial-gradient(circle, hsl(210, 100%, 30%) 0%, hsl(210, 100%, 10%) 100%)",
                   boxShadow: "0 0 3px hsl(210, 100%, 50%, 0.3)"
@@ -186,16 +235,22 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
             </div>
 
             {/* Screen content - PWA App */}
-            <div className="absolute inset-0 pt-8 pb-4 overflow-hidden">
+            <div className={`absolute inset-0 overflow-hidden ${
+              isLandscape ? "pl-8 pr-4 py-4" : "pt-8 pb-4"
+            }`}>
               <div className="w-full h-full overflow-auto">
                 <PWAVoiceAssistant />
               </div>
             </div>
 
-            {/* Home indicator */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20">
+            {/* Home indicator - adjusted for landscape */}
+            <div className={`absolute z-20 ${
+              isLandscape 
+                ? "right-2 top-1/2 -translate-y-1/2" 
+                : "bottom-2 left-1/2 -translate-x-1/2"
+            }`}>
               <div 
-                className="w-28 h-1 rounded-full"
+                className={`rounded-full ${isLandscape ? "w-1 h-28" : "w-28 h-1"}`}
                 style={{ background: "hsl(var(--muted-foreground)/0.4)" }}
               />
             </div>
