@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Smartphone } from "lucide-react";
-import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
+import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
 import { SplashScreen } from "./SplashScreen";
 import { VoicePlayerBox } from "./VoicePlayerBox";
 import { ModuleSelector } from "./ModuleSelector";
 import { ModuleHeader } from "./ModuleHeader";
+import { HeaderActions } from "./HeaderActions";
+import { FooterModules } from "./FooterModules";
+import { TranscriptArea } from "./TranscriptArea";
 import { HelpModule } from "../modules/HelpModule";
 import { WorldModule } from "../modules/WorldModule";
 import { HealthModule } from "../modules/HealthModule";
 import { IdeasModule } from "../modules/IdeasModule";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { PWAAuthGate } from "@/components/gates/PWAAuthGate";
-
-type ModuleId = "help" | "world" | "health" | "ideas";
 
 export const PWAVoiceAssistant: React.FC = () => {
   const { 
@@ -30,6 +31,10 @@ export const PWAVoiceAssistant: React.FC = () => {
   const { speak, isPlaying, isLoading } = useTextToSpeech();
   const [isMobile, setIsMobile] = useState(true);
   const [showDesktopWarning, setShowDesktopWarning] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [interimTranscript, setInterimTranscript] = useState("");
+  const [isListening, setIsListening] = useState(false);
 
   // Check if mobile device
   useEffect(() => {
@@ -65,7 +70,7 @@ export const PWAVoiceAssistant: React.FC = () => {
     setAppState("idle");
   };
 
-  const handleModuleSelect = (moduleId: ModuleId) => {
+  const handleModuleSelect = (moduleId: Exclude<ModuleId, null>) => {
     setActiveModule(moduleId);
   };
 
@@ -73,6 +78,18 @@ export const PWAVoiceAssistant: React.FC = () => {
     setActiveModule(null);
     setAppState("idle");
     setPlayerState("idle");
+  };
+
+  const handleSummarize = async () => {
+    if (messages.length === 0) return;
+    setIsSummarizing(true);
+    // TODO: Implement summarize logic - send to WhatsApp
+    setTimeout(() => setIsSummarizing(false), 2000);
+  };
+
+  const handleOpenConversations = () => {
+    // TODO: Open conversations modal
+    console.log("Open conversations");
   };
 
   const renderModule = () => {
@@ -155,24 +172,36 @@ export const PWAVoiceAssistant: React.FC = () => {
               exit={{ opacity: 0 }}
               className="flex-1 flex flex-col safe-area-inset"
             >
-              {/* Header */}
-              <div className="text-center py-8 px-4">
-                <motion.h1
+              {/* Header with actions */}
+              <div className="flex items-center justify-between py-4 px-4">
+                <div className="flex-1" />
+                <motion.div
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent"
+                  className="text-center"
                 >
-                  KnowYOU
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-muted-foreground mt-1"
-                >
-                  Seu assistente de voz inteligente
-                </motion.p>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                    KnowYOU
+                  </h1>
+                </motion.div>
+                <div className="flex-1 flex justify-end">
+                  <HeaderActions
+                    onSummarize={handleSummarize}
+                    onOpenChat={handleOpenConversations}
+                    hasConversations={messages.length > 0}
+                    isSummarizing={isSummarizing}
+                  />
+                </div>
               </div>
+
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-muted-foreground text-center -mt-2 mb-4"
+              >
+                Seu assistente de voz inteligente
+              </motion.p>
 
               {/* Voice Player Box */}
               <div className="px-4 mb-8">
@@ -212,13 +241,37 @@ export const PWAVoiceAssistant: React.FC = () => {
               exit={{ opacity: 0, x: -20 }}
               className="flex-1 flex flex-col"
             >
-              {/* Module Header */}
-              <ModuleHeader moduleId={activeModule} onBack={handleBackToHome} />
+              {/* Module Header with actions */}
+              <div className="flex items-center justify-between px-4">
+                <div className="flex-1">
+                  <ModuleHeader moduleId={activeModule} onBack={handleBackToHome} />
+                </div>
+                <HeaderActions
+                  onSummarize={handleSummarize}
+                  onOpenChat={handleOpenConversations}
+                  hasConversations={messages.length > 0}
+                  isSummarizing={isSummarizing}
+                />
+              </div>
+
+              {/* Transcript Area */}
+              <TranscriptArea
+                messages={messages}
+                interimTranscript={interimTranscript}
+                isListening={isListening}
+              />
 
               {/* Module content */}
               <div className="flex-1 overflow-hidden pwa-scrollbar">
                 {renderModule()}
               </div>
+
+              {/* Footer Modules for quick navigation */}
+              <FooterModules
+                activeModule={activeModule}
+                onSelectModule={handleModuleSelect}
+                showIndicators={true}
+              />
             </motion.div>
           )}
         </AnimatePresence>
