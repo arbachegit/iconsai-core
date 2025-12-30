@@ -5773,9 +5773,9 @@ export type Database = {
         | {
             Args: {
               p_device_id: string
-              p_email: string
+              p_email?: string
               p_invitation_token: string
-              p_name: string
+              p_name?: string
               p_phone?: string
               p_user_agent?: string
             }
