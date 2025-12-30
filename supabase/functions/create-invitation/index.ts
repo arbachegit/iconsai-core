@@ -269,7 +269,7 @@ serve(async (req) => {
             </html>
           `;
 
-          const { error: emailError } = await supabase.functions.invoke("send-email", {
+          const { data: emailData, error: emailError } = await supabase.functions.invoke("send-email", {
             body: {
               to: email,
               subject: "🖥️ Convite KnowYOU Plataforma",
@@ -277,13 +277,26 @@ serve(async (req) => {
             }
           });
 
-          if (emailError) {
-            console.error("❌ Platform email error:", emailError);
-            results.push({ channel: "email", product: "platform", success: false, error: emailError.message });
+          const emailSuccess = !emailError && !emailData?.error;
+          if (!emailSuccess) {
+            console.error("❌ Platform email error:", emailError || emailData?.error);
+            results.push({ channel: "email", product: "platform", success: false, error: emailError?.message || emailData?.error });
           } else {
             console.log("✅ Platform email sent");
             results.push({ channel: "email", product: "platform", success: true });
           }
+
+          // Log email attempt
+          await supabase.from("notification_logs").insert({
+            event_type: "invitation_send",
+            channel: "email",
+            recipient: email,
+            subject: "Convite Plataforma",
+            message_body: "Email de convite para plataforma",
+            status: emailSuccess ? "success" : "failed",
+            error_message: emailError?.message || emailData?.error || null,
+            metadata: { token, product: "platform", action: "create", rule_version: "mandatory_v1" }
+          });
         } catch (emailCatch: any) {
           console.error("❌ Platform email exception:", emailCatch);
           results.push({ channel: "email", product: "platform", success: false, error: emailCatch.message });
@@ -329,16 +342,26 @@ _Convite válido por 7 dias_`;
               }
             });
 
-            if (whatsappError) {
-              console.error("❌ App WhatsApp error:", whatsappError);
-              results.push({ channel: "whatsapp", product: "app", success: false, error: whatsappError.message });
-            } else if (whatsappResult?.error) {
-              console.error("❌ App WhatsApp API error:", whatsappResult.error);
-              results.push({ channel: "whatsapp", product: "app", success: false, error: whatsappResult.error });
+            const appWhatsappSuccess = !whatsappError && !whatsappResult?.error;
+            if (!appWhatsappSuccess) {
+              console.error("❌ App WhatsApp error:", whatsappError || whatsappResult?.error);
+              results.push({ channel: "whatsapp", product: "app", success: false, error: whatsappError?.message || whatsappResult?.error });
             } else {
               console.log("✅ App WhatsApp sent");
               results.push({ channel: "whatsapp", product: "app", success: true });
             }
+
+            // Log WhatsApp attempt for APP
+            await supabase.from("notification_logs").insert({
+              event_type: "invitation_send",
+              channel: "whatsapp",
+              recipient: phone,
+              subject: "Convite APP",
+              message_body: appWhatsappMessage,
+              status: appWhatsappSuccess ? "success" : "failed",
+              error_message: whatsappError?.message || whatsappResult?.error || null,
+              metadata: { token, product: "app", action: "create", rule_version: "mandatory_v1" }
+            });
           } catch (whatsappCatch: any) {
             console.error("❌ App WhatsApp exception:", whatsappCatch);
             results.push({ channel: "whatsapp", product: "app", success: false, error: whatsappCatch.message });
@@ -367,16 +390,26 @@ _Verifique também sua pasta de spam_`;
               }
             });
 
-            if (whatsappError) {
-              console.error("❌ Platform info WhatsApp error:", whatsappError);
-              results.push({ channel: "whatsapp", product: "platform_info", success: false, error: whatsappError.message });
-            } else if (whatsappResult?.error) {
-              console.error("❌ Platform info WhatsApp API error:", whatsappResult.error);
-              results.push({ channel: "whatsapp", product: "platform_info", success: false, error: whatsappResult.error });
+            const platformWhatsappSuccess = !whatsappError && !whatsappResult?.error;
+            if (!platformWhatsappSuccess) {
+              console.error("❌ Platform info WhatsApp error:", whatsappError || whatsappResult?.error);
+              results.push({ channel: "whatsapp", product: "platform_info", success: false, error: whatsappError?.message || whatsappResult?.error });
             } else {
               console.log("✅ Platform info WhatsApp sent");
               results.push({ channel: "whatsapp", product: "platform_info", success: true });
             }
+
+            // Log WhatsApp attempt for Platform info
+            await supabase.from("notification_logs").insert({
+              event_type: "invitation_send",
+              channel: "whatsapp",
+              recipient: phone,
+              subject: "Convite Plataforma Info",
+              message_body: platformInfoMessage,
+              status: platformWhatsappSuccess ? "success" : "failed",
+              error_message: whatsappError?.message || whatsappResult?.error || null,
+              metadata: { token, product: "platform_info", action: "create", rule_version: "mandatory_v1" }
+            });
           } catch (whatsappCatch: any) {
             console.error("❌ Platform info WhatsApp exception:", whatsappCatch);
             results.push({ channel: "whatsapp", product: "platform_info", success: false, error: whatsappCatch.message });

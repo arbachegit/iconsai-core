@@ -5,7 +5,9 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Monitor, Smartphone, Mail, MessageSquare, Send, Loader2 } from "lucide-react";
+import { Monitor, Smartphone, Send, Loader2, AlertCircle, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
 interface Invitation {
   id: string;
   token: string;
@@ -26,43 +28,58 @@ interface ResendInvitationModalProps {
 
 export function ResendInvitationModal({ open, onClose, invitation, onSuccess }: ResendInvitationModalProps) {
   const [product, setProduct] = useState<"platform" | "app" | "both">("both");
-  const [channel, setChannel] = useState<"email" | "whatsapp" | "both">("both");
   const [loading, setLoading] = useState(false);
 
-  // Force WhatsApp when product is "app" (PWA-only) - MUST be before conditional return
+  // Auto-select product based on invitation access
   useEffect(() => {
-    if (product === "app") {
-      setChannel("whatsapp");
+    if (invitation) {
+      if (invitation.has_platform_access && invitation.has_app_access) {
+        setProduct("both");
+      } else if (invitation.has_app_access && !invitation.has_platform_access) {
+        setProduct("app");
+      } else if (invitation.has_platform_access && !invitation.has_app_access) {
+        setProduct("platform");
+      }
     }
-  }, [product]);
+  }, [invitation]);
 
   if (!invitation) return null;
 
   const hasBothAccess = invitation.has_platform_access && invitation.has_app_access;
   const hasPhone = !!invitation.phone;
   
-  // CRITICAL RULE: PWA-only = WhatsApp ONLY, Email is FORBIDDEN
-  const isEmailDisabled = product === "app";
+  // REGRA: APP = WhatsApp obrigatório, precisa de telefone
+  const isAppSelected = product === "app" || (product === "both" && invitation.has_app_access);
+  const cannotSendApp = isAppSelected && !hasPhone;
 
   const handleResend = async () => {
+    if (cannotSendApp) {
+      toast.error("Telefone obrigatório para APP", {
+        description: "Convites de APP são enviados exclusivamente via WhatsApp."
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("resend-invitation-code", {
         body: {
           token: invitation.token,
-          product,
-          channel
+          product
         }
       });
 
       if (error) throw error;
 
-      toast.success("Convite reenviado!", {
-        description: data.results?.join("\n") || "Enviado com sucesso"
-      });
-
-      onSuccess?.();
-      onClose();
+      if (data.success) {
+        toast.success("Convite reenviado!", {
+          description: data.results?.join("\n") || "Enviado com sucesso"
+        });
+        onSuccess?.();
+        onClose();
+      } else {
+        throw new Error(data.error || "Erro ao reenviar");
+      }
     } catch (err: any) {
       toast.error("Erro ao reenviar", {
         description: err.message
@@ -70,6 +87,21 @@ export function ResendInvitationModal({ open, onClose, invitation, onSuccess }: 
     } finally {
       setLoading(false);
     }
+  };
+
+  // Determine what channels will be used based on product
+  const getChannelInfo = () => {
+    if (product === "app") {
+      return "📱 WhatsApp (obrigatório para APP)";
+    }
+    if (product === "platform") {
+      return hasPhone ? "📧 Email + 💬 WhatsApp (informativo)" : "📧 Email";
+    }
+    // both
+    if (hasPhone) {
+      return "📧 Email (Plataforma) + 💬 WhatsApp (APP + Plataforma)";
+    }
+    return "📧 Email (Plataforma) - ⚠️ WhatsApp não disponível (sem telefone)";
   };
 
   return (
@@ -90,11 +122,27 @@ export function ResendInvitationModal({ open, onClose, invitation, onSuccess }: 
             {invitation.phone && (
               <p className="text-sm text-muted-foreground">{invitation.phone}</p>
             )}
+            {!invitation.phone && (
+              <p className="text-sm text-amber-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Sem telefone cadastrado
+              </p>
+            )}
           </div>
+
+          {/* Regra obrigatória */}
+          <Alert className="bg-blue-500/10 border-blue-500/30">
+            <Info className="h-4 w-4 text-blue-500" />
+            <AlertDescription className="text-sm text-blue-600 dark:text-blue-400">
+              <strong>Regra de envio:</strong><br/>
+              • Plataforma: Email + WhatsApp (informativo)<br/>
+              • APP: WhatsApp obrigatório
+            </AlertDescription>
+          </Alert>
 
           {/* Seleção de Produto */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Produto</Label>
+            <Label className="text-sm font-medium">Produto para reenviar</Label>
             <RadioGroup
               value={product}
               onValueChange={(v) => setProduct(v as "platform" | "app" | "both")}
@@ -119,30 +167,47 @@ export function ResendInvitationModal({ open, onClose, invitation, onSuccess }: 
 
               {invitation.has_app_access && (
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="app" id="app" className="sr-only" />
+                  <RadioGroupItem 
+                    value="app" 
+                    id="app" 
+                    className="sr-only" 
+                    disabled={!hasPhone}
+                  />
                   <Label
                     htmlFor="app"
-                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all w-full ${
-                      product === "app"
-                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
-                        : "border-border hover:border-emerald-300"
+                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all w-full ${
+                      !hasPhone
+                        ? "opacity-50 cursor-not-allowed border-border"
+                        : product === "app"
+                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 cursor-pointer"
+                        : "border-border hover:border-emerald-300 cursor-pointer"
                     }`}
                   >
                     <Smartphone className="w-5 h-5" />
                     <span className="text-xs">APP</span>
+                    {!hasPhone && (
+                      <span className="text-[10px] text-amber-500">Sem tel.</span>
+                    )}
                   </Label>
                 </div>
               )}
 
               {hasBothAccess && (
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="both" id="both-product" className="sr-only" />
+                  <RadioGroupItem 
+                    value="both" 
+                    id="both-product" 
+                    className="sr-only"
+                    disabled={!hasPhone}
+                  />
                   <Label
                     htmlFor="both-product"
-                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all w-full ${
-                      product === "both"
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:border-primary/50"
+                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all w-full ${
+                      !hasPhone
+                        ? "opacity-50 cursor-not-allowed border-border"
+                        : product === "both"
+                        ? "border-primary bg-primary/10 text-primary cursor-pointer"
+                        : "border-border hover:border-primary/50 cursor-pointer"
                     }`}
                   >
                     <div className="flex -space-x-1">
@@ -150,100 +215,40 @@ export function ResendInvitationModal({ open, onClose, invitation, onSuccess }: 
                       <Smartphone className="w-4 h-4 text-emerald-500" />
                     </div>
                     <span className="text-xs">Ambos</span>
+                    {!hasPhone && (
+                      <span className="text-[10px] text-amber-500">Sem tel.</span>
+                    )}
                   </Label>
                 </div>
               )}
             </RadioGroup>
           </div>
 
-          {/* Seleção de Canal */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Canal de Envio</Label>
-            <RadioGroup
-              value={channel}
-              onValueChange={(v) => setChannel(v as "email" | "whatsapp" | "both")}
-              className="grid grid-cols-3 gap-2"
-            >
-              {/* Email - DISABLED for PWA-only */}
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="email" id="email" className="sr-only" disabled={isEmailDisabled} />
-                <Label
-                  htmlFor="email"
-                  className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all w-full ${
-                    isEmailDisabled
-                      ? "opacity-40 cursor-not-allowed border-border"
-                      : channel === "email"
-                      ? "border-blue-500 bg-blue-500/10 text-blue-600 cursor-pointer"
-                      : "border-border hover:border-blue-300 cursor-pointer"
-                  }`}
-                >
-                  <Mail className="w-5 h-5" />
-                  <span className="text-xs">Email</span>
-                  {isEmailDisabled && (
-                    <span className="text-[10px] text-amber-500">N/A</span>
-                  )}
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="whatsapp" id="whatsapp" className="sr-only" disabled={!hasPhone} />
-                <Label
-                  htmlFor="whatsapp"
-                  className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all w-full ${
-                    !hasPhone
-                      ? "opacity-50 cursor-not-allowed"
-                      : channel === "whatsapp"
-                      ? "border-green-500 bg-green-500/10 text-green-600"
-                      : "border-border hover:border-green-300"
-                  }`}
-                >
-                  <MessageSquare className="w-5 h-5" />
-                  <span className="text-xs">WhatsApp</span>
-                </Label>
-              </div>
-
-              {/* Ambos - DISABLED for PWA-only */}
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="both" id="both-channel" className="sr-only" disabled={isEmailDisabled} />
-                <Label
-                  htmlFor="both-channel"
-                  className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all w-full ${
-                    isEmailDisabled
-                      ? "opacity-40 cursor-not-allowed border-border"
-                      : channel === "both"
-                      ? "border-primary bg-primary/10 text-primary cursor-pointer"
-                      : "border-border hover:border-primary/50 cursor-pointer"
-                  }`}
-                >
-                  <div className="flex -space-x-1">
-                    <Mail className="w-4 h-4 text-blue-500" />
-                    <MessageSquare className="w-4 h-4 text-green-500" />
-                  </div>
-                  <span className="text-xs">Ambos</span>
-                  {isEmailDisabled && (
-                    <span className="text-[10px] text-amber-500">N/A</span>
-                  )}
-                </Label>
-              </div>
-            </RadioGroup>
-            {!hasPhone && (
-              <p className="text-xs text-amber-500 flex items-center gap-1">
-                ⚠️ WhatsApp indisponível (telefone não cadastrado)
-              </p>
-            )}
-            {isEmailDisabled && (
-              <p className="text-xs text-amber-500 flex items-center gap-1">
-                ⚠️ Convites de APP são enviados exclusivamente via WhatsApp
-              </p>
-            )}
+          {/* Canal que será usado */}
+          <div className="p-3 rounded-lg bg-muted/30 border border-border">
+            <p className="text-xs text-muted-foreground mb-1">Canais que serão usados:</p>
+            <p className="text-sm font-medium">{getChannelInfo()}</p>
           </div>
+
+          {/* Warning se não tem telefone mas selecionou APP */}
+          {cannotSendApp && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Convites de APP requerem telefone cadastrado para envio via WhatsApp.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={handleResend} disabled={loading}>
+          <Button 
+            onClick={handleResend} 
+            disabled={loading || cannotSendApp}
+          >
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
