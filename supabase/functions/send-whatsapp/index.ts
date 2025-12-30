@@ -30,7 +30,7 @@ const twilioErrorMessages: Record<string, string> = {
   '20404': 'Recurso não encontrado - verifique TWILIO_FROM_NUMBER',
   '63015': 'Número não está no sandbox - use WhatsApp Business',
   '63016': 'Template não aprovado pelo WhatsApp',
-  '63024': 'Janela de 24h expirada - use template aprovado',
+  '63024': 'Destinatário inválido - número não habilitado para WhatsApp ou não aceitou os Termos de Serviço',
 };
 
 serve(async (req) => {
