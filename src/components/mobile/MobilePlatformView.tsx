@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Menu, X, BarChart3, Bot, GitBranch, ChevronRight, ChevronDown, RotateCcw, Smartphone } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Menu, X, BarChart3, Bot, GitBranch, ChevronRight, RotateCcw, Smartphone, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { AIChat } from '@/components/dashboard/AIChat';
@@ -129,13 +130,23 @@ export function MobilePlatformView({ isAdmin = false }: MobilePlatformViewProps)
       <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 shrink-0">
         <h1 className="text-lg font-semibold text-foreground">KnowYOU</h1>
         
-        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-10 w-10">
-              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-72 p-0">
+        <div className="flex items-center gap-2">
+          {/* Ícone Brain - Link Admin */}
+          <Link 
+            to="/admin" 
+            className="text-foreground/60 hover:text-primary transition-colors p-2"
+            title="Admin Panel"
+          >
+            <Brain className="w-5 h-5" />
+          </Link>
+          
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-10 w-10">
+                {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72 p-0 !bg-card border-l border-border">
             <SheetTitle className="sr-only">Menu de Navegação</SheetTitle>
             <nav className="flex flex-col pt-6">
               <div className="px-4 pb-4 border-b border-border">
@@ -215,8 +226,9 @@ export function MobilePlatformView({ isAdmin = false }: MobilePlatformViewProps)
                 </div>
               </div>
             </nav>
-          </SheetContent>
-        </Sheet>
+            </SheetContent>
+          </Sheet>
+        </div>
       </header>
 
       {/* Conteúdo baseado na view ativa com transições */}
