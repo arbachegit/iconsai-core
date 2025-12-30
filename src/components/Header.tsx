@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, X, Brain, Languages, Check, Loader2 } from "lucide-react";
 import Cookies from 'js-cookie';
 import knowriskLogo from "@/assets/knowrisk-logo.png";
@@ -83,7 +84,7 @@ const Header = () => {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? "bg-background/80 backdrop-blur-lg shadow-lg" : "bg-transparent"
+        isScrolled || isMobileMenuOpen ? "bg-background/95 backdrop-blur-lg shadow-lg" : "bg-transparent"
       }`}
     >
       {/* Scroll Progress Bar */}
@@ -161,56 +162,95 @@ const Header = () => {
             </Link>
           </nav>
 
-          {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </Button>
-        </div>
+          <div className="flex items-center gap-1">
+            {/* Mobile Brain (Login) */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              asChild
+            >
+              <Link to="/admin/login" aria-label="Login Admin" title="Login Admin">
+                <Brain className="h-6 w-6" />
+              </Link>
+            </Button>
 
-        {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
-          <nav className="lg:hidden mt-4 pb-4 space-y-3 animate-fade-in">
-            {navItems.map((item) => (
-              <button
-                key={item.href}
-                onClick={() => scrollToSection(item.href)}
-                className="block w-full text-left py-2 px-4 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
-              >
-                {item.label}
-              </button>
-            ))}
-            
-            {/* Language options in mobile menu */}
-            <div className="border-t border-border pt-3 mt-3">
-              <p className="px-4 text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                Idioma
-              </p>
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => handleLanguageChange(lang.code)}
-                  className={cn(
-                    "flex items-center gap-3 w-full py-2 px-4 rounded-lg transition-all",
-                    i18n.language === lang.code 
-                      ? "bg-primary/10 text-primary" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
+            {/* Mobile Menu (Sheet) */}
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden"
+                  aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
                 >
-                  <span className="text-lg">{lang.flag}</span>
-                  <span>{lang.label}</span>
-                  {i18n.language === lang.code && (
-                    <Check className="w-4 h-4 ml-auto" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </nav>
-        )}
+                  {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                </Button>
+              </SheetTrigger>
+
+              <SheetContent side="right" className="w-[min(92vw,22rem)] p-0 !bg-card border-l border-border">
+                <SheetTitle className="sr-only">Menu</SheetTitle>
+
+                <div className="px-4 pt-6 pb-4 border-b border-border">
+                  <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                    Menu
+                  </h2>
+                </div>
+
+                <nav className="flex flex-col py-2">
+                  {navItems.map((item) => (
+                    <button
+                      key={item.href}
+                      onClick={() => scrollToSection(item.href)}
+                      className="flex items-center w-full text-left py-2.5 px-4 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-lg transition-all"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+
+                  {/* Login */}
+                  <div className="border-t border-border mt-2 pt-2 px-2">
+                    <Link
+                      to="/admin/login"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+                      aria-label="Login Admin"
+                      title="Login Admin"
+                    >
+                      <Brain className="h-5 w-5" />
+                      <span>Login</span>
+                    </Link>
+                  </div>
+
+                  {/* Language options in mobile menu */}
+                  <div className="border-t border-border pt-3 mt-3">
+                    <p className="px-4 text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                      Idioma
+                    </p>
+                    <div className="px-2 pb-2">
+                      {languages.map((lang) => (
+                        <button
+                          key={lang.code}
+                          onClick={() => handleLanguageChange(lang.code)}
+                          className={cn(
+                            "flex items-center gap-3 w-full py-2 px-3 rounded-lg transition-all",
+                            i18n.language === lang.code
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                          )}
+                        >
+                          <span className="text-lg">{lang.flag}</span>
+                          <span>{lang.label}</span>
+                          {i18n.language === lang.code && <Check className="w-4 h-4 ml-auto" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </div>
       </div>
     </header>
   );
