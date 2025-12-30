@@ -1,10 +1,16 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Smartphone, Volume2, Wifi, ZoomIn, ZoomOut, Maximize2, Minimize2, RotateCcw, RotateCw
+  Smartphone, Volume2, Wifi, ZoomIn, ZoomOut, Maximize2, Minimize2, RotateCcw, RotateCw,
+  HelpCircle, X, MonitorSmartphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PWAVoiceAssistant } from "@/components/pwa/voice/PWAVoiceAssistant";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface PWASimulatorProps {
   showFrame?: boolean;
@@ -137,18 +143,90 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
                 <Maximize2 className="w-4 h-4" />
               )}
             </Button>
-          </div>
 
-          {/* Keyboard shortcuts hint */}
-          <p className="text-xs text-muted-foreground/60">
-            Atalhos: <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">+/-</kbd> Zoom 
-            <span className="mx-1">•</span>
-            <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">R</kbd> Reset 
-            <span className="mx-1">•</span>
-            <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">L</kbd> Paisagem 
-            <span className="mx-1">•</span>
-            <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">F</kbd> Tela Cheia
-          </p>
+            <div className="w-px h-6 bg-border" />
+
+            {/* Orientation Indicator */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={isLandscape ? "landscape" : "portrait"}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/50 border border-border/50"
+              >
+                <motion.div
+                  animate={{ rotate: isLandscape ? 90 : 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-primary" />
+                </motion.div>
+                <span className="text-xs font-medium text-foreground/80">
+                  {isLandscape ? "Paisagem" : "Retrato"}
+                </span>
+              </motion.div>
+            </AnimatePresence>
+
+            <div className="w-px h-6 bg-border" />
+
+            {/* Help Panel */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  title="Atalhos de teclado"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent 
+                className="w-64 p-0" 
+                align="end"
+                sideOffset={8}
+              >
+                <div className="p-3 border-b border-border bg-muted/30">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <MonitorSmartphone className="w-4 h-4 text-primary" />
+                    Atalhos de Teclado
+                  </h4>
+                </div>
+                <div className="p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Aumentar zoom</span>
+                    <div className="flex gap-1">
+                      <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">+</kbd>
+                      <span className="text-muted-foreground text-xs">ou</span>
+                      <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">=</kbd>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Diminuir zoom</span>
+                    <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">-</kbd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Resetar zoom</span>
+                    <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">R</kbd>
+                  </div>
+                  <div className="h-px bg-border my-2" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Alternar paisagem</span>
+                    <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">L</kbd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Tela cheia</span>
+                    <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">F</kbd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Sair tela cheia</span>
+                    <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">ESC</kbd>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       )}
 
