@@ -123,15 +123,6 @@ const DashboardAdmin = () => {
             <InfrastructureArchitectureTab />
           </div>
         );
-      case "dataflow-new-domain":
-        return (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
-            <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
-              New Domain
-            </h1>
-            <p className="text-muted-foreground">Coming soon...</p>
-          </div>
-        );
       case "dataflow-talk-app":
         return (
           <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
