@@ -4,13 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 interface UseTextToSpeechReturn {
   speak: (text: string) => Promise<void>;
   stop: () => void;
+  pause: () => void;
+  resume: () => void;
   isPlaying: boolean;
+  isPaused: boolean;
   isLoading: boolean;
   error: string | null;
 }
 
 export const useTextToSpeech = (): UseTextToSpeechReturn => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -49,11 +53,19 @@ export const useTextToSpeech = (): UseTextToSpeechReturn => {
 
         audio.onplay = () => {
           setIsPlaying(true);
+          setIsPaused(false);
           setIsLoading(false);
+        };
+
+        audio.onpause = () => {
+          if (audioRef.current && audioRef.current.currentTime < audioRef.current.duration) {
+            setIsPaused(true);
+          }
         };
 
         audio.onended = () => {
           setIsPlaying(false);
+          setIsPaused(false);
           URL.revokeObjectURL(audioUrl);
           audioRef.current = null;
         };
@@ -82,9 +94,24 @@ export const useTextToSpeech = (): UseTextToSpeechReturn => {
       audioRef.current = null;
     }
     setIsPlaying(false);
+    setIsPaused(false);
   }, []);
 
-  return { speak, stop, isPlaying, isLoading, error };
+  const pause = useCallback(() => {
+    if (audioRef.current && isPlaying && !isPaused) {
+      audioRef.current.pause();
+      setIsPaused(true);
+    }
+  }, [isPlaying, isPaused]);
+
+  const resume = useCallback(() => {
+    if (audioRef.current && isPaused) {
+      audioRef.current.play();
+      setIsPaused(false);
+    }
+  }, [isPaused]);
+
+  return { speak, stop, pause, resume, isPlaying, isPaused, isLoading, error };
 };
 
 // Helper function to convert base64 to blob
