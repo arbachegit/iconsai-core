@@ -24,7 +24,7 @@ import {
   Home,
   Route,
   Network,
-  FolderPlus,
+  
   MessageSquare,
   ShoppingCart,
   Gauge,
@@ -42,7 +42,6 @@ export type DashboardTabType =
   | "chart-database"
   | "table-database"
   | "dataflow-architecture"
-  | "dataflow-new-domain"
   | "dataflow-talk-app"
   | "dataflow-retail-system"
   | "dataflow-autocontrol"
@@ -75,7 +74,6 @@ const dataFlowItems: { id: DashboardTabType; label: string; icon: React.ElementT
   { id: "dataflow-autocontrol", label: "AutoControl", icon: Gauge },
   { id: "dataflow-tutor", label: "Tutor", icon: Brain },
   { id: "dataflow-healthcare", label: "HealthCare", icon: Heart },
-  { id: "dataflow-new-domain", label: "New Domain", icon: FolderPlus },
   { id: "dataflow-talk-app", label: "Talk APP", icon: MessageSquare },
 ];
 
@@ -282,7 +280,7 @@ export function DashboardSidebar({
 
           {/* DataFlow Expandable Section */}
           {(filteredDataFlowItems.length > 0 || !searchQuery.trim()) && (
-            <div className="mt-4 pt-4 border-t border-border/50">
+            <div className="mt-1">
               {isCollapsed ? (
                 <div className="flex justify-center">
                   <Tooltip>
