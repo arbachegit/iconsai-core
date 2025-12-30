@@ -4,7 +4,7 @@ import { Loader2, Languages } from "lucide-react";
 import { UserBadge } from "@/components/UserBadge";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
-import { NotificationsPanel } from "@/components/admin/NotificationsPanel";
+import { NotificationBell } from "@/components/admin/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -435,7 +435,7 @@ const Admin = () => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div>
-                    <NotificationsPanel />
+                    <NotificationBell onNavigate={(tab) => setActiveTab(tab as TabType)} />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">

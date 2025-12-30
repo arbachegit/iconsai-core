@@ -201,12 +201,17 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
   }, [fetchNotifications, fetchContactMessages]);
 
   const markAsRead = async (id: string) => {
+    console.log('[NotificationBell] Marking as read:', id);
+    
     const { error } = await supabase
       .from('notification_logs')
       .update({ is_read: true })
       .eq('id', id);
 
-    if (!error) {
+    if (error) {
+      console.error('[NotificationBell] Error marking as read:', error);
+    } else {
+      console.log('[NotificationBell] Successfully marked as read');
       setNotifications(prev => 
         prev.map(n => n.id === id ? { ...n, is_read: true } : n)
       );
