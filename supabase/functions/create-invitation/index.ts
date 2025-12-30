@@ -93,6 +93,27 @@ serve(async (req) => {
       );
     }
 
+    // REGRA CRÍTICA: PWA-only = WhatsApp obrigatório, Email proibido
+    let finalSendViaEmail = sendViaEmail;
+    let finalSendViaWhatsapp = sendViaWhatsapp;
+    
+    if (hasAppAccess && !hasPlatformAccess) {
+      if (!phone) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error_code: "PHONE_REQUIRED_FOR_PWA", 
+            error: "Telefone é obrigatório para convites de APP. O convite será enviado via WhatsApp." 
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      // Forçar WhatsApp, desabilitar Email para PWA-only
+      finalSendViaWhatsapp = true;
+      finalSendViaEmail = false;
+      console.log("📱 PWA-only: Forçando WhatsApp, desabilitando Email");
+    }
+
     // 3. VERIFICAR SE JÁ EXISTE
     console.log("🔍 Checking existing invitations...");
     const { data: existingInvite } = await supabase
@@ -149,8 +170,8 @@ serve(async (req) => {
         email: email.toLowerCase(),
         phone: phone || null,
         role,
-        send_via_email: sendViaEmail,
-        send_via_whatsapp: sendViaWhatsapp,
+        send_via_email: finalSendViaEmail,
+        send_via_whatsapp: finalSendViaWhatsapp,
         expires_at: expiresAt.toISOString(),
         status: "pending",
         has_platform_access: hasPlatformAccess,
@@ -195,7 +216,7 @@ serve(async (req) => {
     // =====================================================
 
     // 7. EMAIL PARA PLATAFORMA (obrigatório se tem acesso à plataforma)
-    if (hasPlatformAccess && sendViaEmail) {
+    if (hasPlatformAccess && finalSendViaEmail) {
       if (!hasResendKey) {
         console.warn("⚠️ RESEND_API_KEY not configured");
         results.push({ channel: "email", product: "platform", success: false, error: "RESEND_API_KEY não configurada" });
@@ -271,7 +292,7 @@ serve(async (req) => {
     }
 
     // 8. WHATSAPP - Lógica correta por produto
-    if (sendViaWhatsapp && phone) {
+    if (finalSendViaWhatsapp && phone) {
       if (!hasTwilioCredentials) {
         const missing = [];
         if (!hasTwilioSid) missing.push("TWILIO_ACCOUNT_SID");

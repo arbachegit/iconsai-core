@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Smartphone, CheckCircle, AlertCircle, User, Mail, Phone } from "lucide-react";
+import { Loader2, Smartphone, CheckCircle, AlertCircle, User, Mail, Phone, ArrowLeft, RefreshCw } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-pwa-logo.png";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 
 interface InvitationData {
@@ -20,6 +21,8 @@ interface InvitationData {
   pwa_access?: string[];
   expires_at?: string;
 }
+
+type Step = "confirm" | "verify";
 
 export default function PWARegister() {
   const [searchParams] = useSearchParams();
@@ -36,6 +39,13 @@ export default function PWARegister() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
+  // 2-step flow
+  const [step, setStep] = useState<Step>("confirm");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [codeExpiresAt, setCodeExpiresAt] = useState<Date | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [sendChannel, setSendChannel] = useState<string>("whatsapp");
+
   // Gerar ou recuperar device ID
   useEffect(() => {
     let id = localStorage.getItem("pwa-device-id");
@@ -45,6 +55,14 @@ export default function PWARegister() {
     }
     setDeviceId(id);
   }, []);
+
+  // Cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   // Verificar convite
   useEffect(() => {
@@ -98,60 +116,88 @@ export default function PWARegister() {
     return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  // ETAPA 1: Confirmar e enviar código
+  const handleConfirm = async () => {
     if (!token || !invitation?.valid) {
       toast.error("Convite inválido");
       return;
     }
 
-    if (!name.trim() || !email.trim()) {
-      toast.error("Nome e email são obrigatórios");
+    const phoneToUse = phone.trim() || invitation.phone;
+    if (!phoneToUse || phoneToUse.replace(/\D/g, "").length < 10) {
+      toast.error("Telefone é obrigatório para verificação");
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // Log payload for debugging (without sensitive data)
-      console.log(`[PWA-REGISTER] ${new Date().toISOString()} - Calling register_pwa_user`, {
-        p_device_id: deviceId,
-        p_name: name.trim().substring(0, 3) + "***",
-        p_email: email.trim().toLowerCase().substring(0, 3) + "***",
-        p_phone: phone.trim() ? "provided" : "not provided",
+      console.log("[PWA-REGISTER] Sending verification code...");
+      
+      const { data, error } = await supabase.functions.invoke("send-pwa-verification", {
+        body: { 
+          token,
+          phone: phoneToUse.replace(/\D/g, "") // Clean phone number
+        }
       });
 
-      const { data, error } = await supabase.rpc("register_pwa_user", {
+      if (error) {
+        console.error("[PWA-REGISTER] Error sending code:", error);
+        throw new Error(error.message || "Erro ao enviar código");
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || "Erro ao enviar código de verificação");
+      }
+
+      toast.success(data.message || `Código enviado via ${data.channel === "whatsapp" ? "WhatsApp" : "SMS"}!`);
+      setSendChannel(data.channel || "whatsapp");
+      setCodeExpiresAt(new Date(Date.now() + (data.expires_in || 600) * 1000));
+      setResendCooldown(60); // 60 second cooldown
+      setStep("verify");
+    } catch (err: any) {
+      console.error("[PWA-REGISTER] Confirm error:", err);
+      toast.error(err.message || "Erro ao enviar código");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Reenviar código
+  const handleResendCode = async () => {
+    if (resendCooldown > 0) return;
+    await handleConfirm();
+  };
+
+  // ETAPA 2: Verificar código
+  const handleVerify = async () => {
+    if (verificationCode.length !== 6) {
+      toast.error("Digite o código de 6 dígitos");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      console.log("[PWA-REGISTER] Verifying code...");
+
+      const { data, error } = await supabase.rpc("complete_pwa_registration_with_code", {
         p_invitation_token: token,
         p_device_id: deviceId,
-        p_name: name.trim(),
-        p_email: email.trim().toLowerCase(),
-        p_phone: phone.trim() || null,
+        p_verification_code: verificationCode,
         p_user_agent: navigator.userAgent,
       });
 
       if (error) {
-        // Detailed error logging
-        console.error("[PWA-REGISTER] RPC Error Details:", {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-          timestamp: new Date().toISOString(),
-        });
-        
-        // Display detailed error to user
-        toast.error(`Erro: ${error.message}${error.hint ? ` (${error.hint})` : ""}`);
-        throw error;
+        console.error("[PWA-REGISTER] RPC Error:", error);
+        throw new Error(error.message || "Erro ao verificar código");
       }
 
       const result = data as any;
-      console.log("[PWA-REGISTER] RPC Response:", result);
+      console.log("[PWA-REGISTER] Verification result:", result);
 
       if (!result.success) {
-        console.error("[PWA-REGISTER] Registration failed:", result);
-        throw new Error(result.error || "Erro ao registrar");
+        throw new Error(result.error || "Código inválido");
       }
 
       // Salvar token de sessão
@@ -165,15 +211,18 @@ export default function PWARegister() {
       setTimeout(() => {
         navigate("/pwa");
       }, 1500);
-    } catch (error: any) {
-      console.error("[PWA-REGISTER] Final catch - Full error object:", error);
-      // Only show toast if we haven't already shown one
-      if (!error.code) {
-        toast.error(error.message || "Erro ao completar cadastro");
-      }
+    } catch (err: any) {
+      console.error("[PWA-REGISTER] Verify error:", err);
+      toast.error(err.message || "Código inválido ou expirado");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Voltar para etapa de confirmação
+  const handleBack = () => {
+    setStep("confirm");
+    setVerificationCode("");
   };
 
   // Loading state
@@ -210,7 +259,108 @@ export default function PWARegister() {
     );
   }
 
-  // Valid invitation - show registration form
+  // STEP 2: Verification code screen
+  if (step === "verify") {
+    const timeRemaining = codeExpiresAt ? Math.max(0, Math.floor((codeExpiresAt.getTime() - Date.now()) / 1000)) : 0;
+    const minutes = Math.floor(timeRemaining / 60);
+    const seconds = timeRemaining % 60;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <img src={knowriskLogo} alt="KnowYOU" className="h-16 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-foreground">Verificação</h1>
+            <p className="text-muted-foreground mt-2">
+              Digite o código de 6 dígitos enviado via {sendChannel === "whatsapp" ? "WhatsApp" : "SMS"}
+            </p>
+          </div>
+
+          <div className="bg-card rounded-2xl p-6 shadow-xl border border-border space-y-6">
+            {/* Phone info */}
+            <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
+              <Phone className="h-5 w-5 text-primary flex-shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium text-foreground">Código enviado para</p>
+                <p className="text-muted-foreground">{phone || invitation.phone}</p>
+              </div>
+            </div>
+
+            {/* Code input */}
+            <div className="flex justify-center">
+              <InputOTP
+                maxLength={6}
+                value={verificationCode}
+                onChange={(value) => setVerificationCode(value)}
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+
+            {/* Timer */}
+            {timeRemaining > 0 && (
+              <p className="text-center text-sm text-muted-foreground">
+                Código expira em <span className="font-medium text-foreground">{minutes}:{seconds.toString().padStart(2, "0")}</span>
+              </p>
+            )}
+            {timeRemaining === 0 && codeExpiresAt && (
+              <p className="text-center text-sm text-destructive">
+                Código expirado. Solicite um novo.
+              </p>
+            )}
+
+            {/* Resend button */}
+            <div className="text-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResendCode}
+                disabled={resendCooldown > 0 || submitting}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : "Reenviar código"}
+              </Button>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={handleBack} disabled={submitting} className="flex-1">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+              <Button 
+                onClick={handleVerify} 
+                disabled={submitting || verificationCode.length !== 6}
+                className="flex-1"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Verificando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Verificar
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // STEP 1: Confirmation screen
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
@@ -218,12 +368,11 @@ export default function PWARegister() {
         <div className="text-center mb-8">
           <img src={knowriskLogo} alt="KnowYOU" className="h-16 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-foreground">Bem-vindo ao KnowYOU!</h1>
-          <p className="text-muted-foreground mt-2">Complete seu cadastro para acessar os PWAs</p>
+          <p className="text-muted-foreground mt-2">Confirme seus dados para continuar</p>
         </div>
 
-
-        {/* Registration Form */}
-        <form onSubmit={handleSubmit} className="bg-card rounded-2xl p-6 shadow-xl border border-border space-y-5">
+        {/* Confirmation Form */}
+        <div className="bg-card rounded-2xl p-6 shadow-xl border border-border space-y-5">
           <div className="space-y-2">
             <Label htmlFor="name" className="flex items-center gap-2">
               <User className="h-4 w-4" />
@@ -256,14 +405,18 @@ export default function PWARegister() {
           <div className="space-y-2">
             <Label htmlFor="phone" className="flex items-center gap-2">
               <Phone className="h-4 w-4" />
-              Telefone (opcional)
+              Telefone *
             </Label>
             <Input
               id="phone"
               value={phone}
               onChange={(e) => setPhone(formatPhone(e.target.value))}
               placeholder="(11) 99999-9999"
+              required
             />
+            <p className="text-xs text-muted-foreground">
+              Você receberá um código de verificação neste número
+            </p>
           </div>
 
           {/* Device binding notice */}
@@ -277,20 +430,25 @@ export default function PWARegister() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+          <Button 
+            onClick={handleConfirm} 
+            className="w-full" 
+            size="lg" 
+            disabled={submitting || !phone.trim()}
+          >
             {submitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Registrando...
+                Enviando código...
               </>
             ) : (
               <>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                Confirmar Cadastro
+                Confirmar e Receber Código
               </>
             )}
           </Button>
-        </form>
+        </div>
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground mt-6">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -45,6 +45,10 @@ const inviteSchema = z.object({
 ).refine(
   (data) => data.hasPlatformAccess || data.hasAppAccess,
   { message: "Selecione pelo menos um tipo de acesso", path: ["hasPlatformAccess"] }
+).refine(
+  // PWA-only requires phone
+  (data) => !(data.hasAppAccess && !data.hasPlatformAccess) || (data.phone && data.phone.length >= 10),
+  { message: "Telefone é obrigatório para convites de APP (envio via WhatsApp)", path: ["phone"] }
 );
 
 type InviteFormData = z.infer<typeof inviteSchema>;
@@ -96,6 +100,16 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
   const sendViaWhatsapp = watch("sendViaWhatsapp");
   const hasPlatformAccess = watch("hasPlatformAccess");
   const hasAppAccess = watch("hasAppAccess");
+
+  // REGRA: PWA-only = WhatsApp obrigatório, Email desabilitado
+  const isPWAOnly = hasAppAccess && !hasPlatformAccess;
+
+  useEffect(() => {
+    if (isPWAOnly) {
+      setValue("sendViaEmail", false);
+      setValue("sendViaWhatsapp", true);
+    }
+  }, [isPWAOnly, setValue]);
 
   const onSubmit = async (data: InviteFormData) => {
     setIsLoading(true);
@@ -317,24 +331,37 @@ export const InviteUserModalV2 = ({ open, onOpenChange, onSuccess }: InviteUserM
             <div className="space-y-3 pt-2">
               <Label>Enviar convite via *</Label>
               <div className="flex flex-col gap-3">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className={`flex items-center gap-2 ${isPWAOnly ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                   <Checkbox
                     checked={watch("sendViaEmail")}
                     onCheckedChange={(checked) => setValue("sendViaEmail", !!checked)}
+                    disabled={isPWAOnly}
                   />
                   <Mail className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Email</span>
+                  {isPWAOnly && (
+                    <span className="text-xs text-muted-foreground ml-1">(Desabilitado para APP)</span>
+                  )}
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
                     checked={watch("sendViaWhatsapp")}
                     onCheckedChange={(checked) => setValue("sendViaWhatsapp", !!checked)}
+                    disabled={isPWAOnly}
                   />
                   <Phone className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">WhatsApp</span>
+                  {isPWAOnly && (
+                    <span className="text-xs text-emerald-600 ml-1">(Obrigatório para APP)</span>
+                  )}
                 </label>
               </div>
-              {watch("sendViaWhatsapp") && !watch("phone") && (
+              {isPWAOnly && !watch("phone") && (
+                <p className="text-xs text-destructive ml-6">
+                  ⚠️ Telefone é obrigatório para convites de APP
+                </p>
+              )}
+              {watch("sendViaWhatsapp") && !watch("phone") && !isPWAOnly && (
                 <p className="text-xs text-destructive ml-6">
                   ⚠️ Preencha o telefone para enviar via WhatsApp
                 </p>
