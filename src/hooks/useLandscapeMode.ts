@@ -1,72 +1,99 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
-interface OrientationLockResult {
+interface LandscapeModeState {
   isLandscape: boolean;
+  isMobile: boolean;
   lockSupported: boolean;
   showRotateMessage: boolean;
 }
 
-export function useLandscapeMode(enabled: boolean): OrientationLockResult {
-  const [isLandscape, setIsLandscape] = useState(false);
-  const [lockSupported, setLockSupported] = useState(true);
-  const [showRotateMessage, setShowRotateMessage] = useState(false);
+interface UseLandscapeModeReturn extends LandscapeModeState {
+  requestLandscape: () => void;
+}
+
+export function useLandscapeMode(enabled?: boolean): UseLandscapeModeReturn {
+  const [state, setState] = useState<LandscapeModeState>({
+    isLandscape: typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : false,
+    isMobile: typeof window !== 'undefined' ? window.innerWidth < 768 || 'ontouchstart' in window : false,
+    lockSupported: true,
+    showRotateMessage: false,
+  });
+
+  const checkOrientation = useCallback(() => {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const landscape = width > height;
+    const mobile = width < 768 || 'ontouchstart' in window;
+
+    setState(prev => ({
+      ...prev,
+      isLandscape: landscape,
+      isMobile: mobile,
+      showRotateMessage: mobile && !landscape && !prev.lockSupported,
+    }));
+  }, []);
+
+  const requestLandscape = useCallback(() => {
+    if (screen.orientation && 'lock' in screen.orientation) {
+      (screen.orientation as any).lock('landscape').then(() => {
+        setState(prev => ({
+          ...prev,
+          isLandscape: true,
+          lockSupported: true,
+          showRotateMessage: false,
+        }));
+      }).catch(() => {
+        setState(prev => ({
+          ...prev,
+          lockSupported: false,
+          showRotateMessage: prev.isMobile && !prev.isLandscape,
+        }));
+      });
+    } else {
+      setState(prev => ({
+        ...prev,
+        lockSupported: false,
+        showRotateMessage: prev.isMobile && !prev.isLandscape,
+      }));
+    }
+  }, []);
 
   useEffect(() => {
-    if (!enabled) {
-      setShowRotateMessage(false);
-      return;
-    }
+    checkOrientation();
+    if (enabled) requestLandscape();
 
-    const checkOrientation = () => {
-      const landscape = window.matchMedia('(orientation: landscape)').matches;
-      setIsLandscape(landscape);
-      setShowRotateMessage(!landscape && !lockSupported);
-    };
-
-    const lockLandscape = async () => {
-      try {
-        // Check if orientation lock is supported
-        if (screen.orientation && 'lock' in screen.orientation) {
-          await (screen.orientation as any).lock('landscape');
-          setLockSupported(true);
-          setIsLandscape(true);
-          setShowRotateMessage(false);
-        } else {
-          setLockSupported(false);
-          checkOrientation();
-        }
-      } catch (err) {
-        console.log('Landscape lock not supported:', err);
-        setLockSupported(false);
-        checkOrientation();
-      }
-    };
-
-    lockLandscape();
-
-    // Listen for orientation changes
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    
     const mediaQuery = window.matchMedia('(orientation: landscape)');
     const handleChange = (e: MediaQueryListEvent) => {
-      setIsLandscape(e.matches);
-      if (e.matches) {
-        setShowRotateMessage(false);
-      }
+      setState(prev => ({
+        ...prev,
+        isLandscape: e.matches,
+        showRotateMessage: prev.isMobile && !e.matches && !prev.lockSupported,
+      }));
     };
-
     mediaQuery.addEventListener('change', handleChange);
 
-    // Cleanup: unlock orientation when leaving
     return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
       mediaQuery.removeEventListener('change', handleChange);
-      if (screen.orientation && 'unlock' in screen.orientation) {
+      
+      if (enabled && screen.orientation && 'unlock' in screen.orientation) {
         try {
           (screen.orientation as any).unlock();
         } catch {
-          // Ignore unlock errors
+          // Ignore
         }
       }
     };
-  }, [enabled, lockSupported]);
+  }, [enabled, checkOrientation, requestLandscape]);
 
-  return { isLandscape, lockSupported, showRotateMessage };
+  return {
+    ...state,
+    requestLandscape,
+  };
 }
+
+export default useLandscapeMode;
