@@ -13,6 +13,7 @@ export { ModuleSelector } from './voice/ModuleSelector';
 export { MicrophoneButton } from './voice/MicrophoneButton';
 export { CometBorder } from './voice/CometBorder';
 export { StatusIndicator } from './voice/StatusIndicator';
+export { WaveformVisualizer } from './voice/WaveformVisualizer';
 
 // Module components
 export { HelpModule } from './modules/HelpModule';
