@@ -481,7 +481,7 @@ All colors MUST be HSL.
   -webkit-overflow-scrolling: auto;
 }
 
-/* Prevenir scroll e pull-to-refresh quando PWA está ativo */
+/* Prevenir scroll e pull-to-refresh quando PWA está ativo (legado com :has) */
 html:has(.pwa-fullscreen),
 body:has(.pwa-fullscreen) {
   overflow: hidden !important;
@@ -489,6 +489,28 @@ body:has(.pwa-fullscreen) {
   width: 100%;
   height: 100%;
   overscroll-behavior: none;
+}
+
+/* Lock de scroll via JavaScript (mais confiável que :has) */
+html.pwa-scroll-lock,
+body.pwa-scroll-lock {
+  overflow: hidden !important;
+  height: 100% !important;
+  width: 100% !important;
+  position: fixed !important;
+  overscroll-behavior: none !important;
+  touch-action: none;
+  -webkit-overflow-scrolling: auto;
+}
+
+/* Permitir scroll em áreas internas específicas do PWA */
+html.pwa-scroll-lock .pwa-scrollable-area,
+body.pwa-scroll-lock .pwa-scrollable-area,
+.pwa-fullscreen .pwa-scrollable-area {
+  overflow-y: auto !important;
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
