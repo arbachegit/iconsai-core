@@ -17,7 +17,16 @@ const CRITICAL_SCHEMA = {
   functions: ['register_pwa_user', 'verify_pwa_invitation', 'get_pwa_devices_schema'],
   critical_references: [
     { function: 'register_pwa_user', must_contain: 'user_invitations', must_not_contain: 'pwa_invitations' },
+    { function: 'register_pwa_user', must_contain: 'extensions.gen_random_bytes', must_not_contain: 'gen_random_bytes(32)' },
   ],
+  // RLS Policy requirements
+  requiredPolicies: {
+    'pwa_sessions': { minPolicies: 2, requiredOperations: ['SELECT', 'INSERT'] },
+    'pwa_devices': { minPolicies: 2, requiredOperations: ['SELECT', 'INSERT'] },
+    'user_invitations': { minPolicies: 2, requiredOperations: ['SELECT', 'INSERT'] },
+    'user_registrations': { minPolicies: 3, requiredOperations: ['SELECT', 'INSERT', 'UPDATE'] },
+    'schema_audit_log': { minPolicies: 2, requiredOperations: ['SELECT', 'INSERT'] },
+  },
 };
 
 interface DivergenceRecord {
@@ -45,10 +54,27 @@ interface ReferenceResult {
   contains_forbidden?: boolean;
 }
 
+interface RLSResult {
+  status: string;
+  has_rls: boolean;
+  policy_count: number;
+  operations_covered: string[];
+  missing_operations: string[];
+}
+
+interface FKResult {
+  status: string;
+  constraint_name: string;
+  target_table: string;
+  target_column: string;
+}
+
 interface Results {
   tables: Record<string, TableResult>;
   functions: Record<string, FunctionResult>;
   references: Record<string, ReferenceResult>;
+  rls_policies: Record<string, RLSResult>;
+  foreign_keys: Record<string, FKResult[]>;
 }
 
 Deno.serve(async (req) => {
@@ -65,16 +91,17 @@ Deno.serve(async (req) => {
     tables: {},
     functions: {},
     references: {},
+    rls_policies: {},
+    foreign_keys: {},
   };
 
-  console.log('[schema-monitor] Starting schema verification...');
+  console.log('[schema-monitor] Starting comprehensive schema verification...');
 
   try {
     // 1. Check all critical tables and their columns
     for (const [tableName, requiredColumns] of Object.entries(CRITICAL_SCHEMA.tables)) {
       console.log(`[schema-monitor] Checking table: ${tableName}`);
       
-      // Check if table exists
       const { data: tableExists } = await supabase.rpc('table_exists', { p_table_name: tableName });
       
       if (!tableExists) {
@@ -90,7 +117,6 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Get table columns
       const { data: columns, error: colError } = await supabase.rpc('get_table_columns', { p_table_name: tableName });
       
       if (colError) {
@@ -141,20 +167,22 @@ Deno.serve(async (req) => {
       results.functions[funcName] = { status: 'ok' };
     }
 
-    // 3. Check function references (e.g., register_pwa_user should NOT reference pwa_invitations)
+    // 3. Check function references
     for (const check of CRITICAL_SCHEMA.critical_references) {
       console.log(`[schema-monitor] Checking function references: ${check.function}`);
       
       const { data: funcDef } = await supabase.rpc('get_function_definition', { p_function_name: check.function });
       
       if (!funcDef) {
-        results.references[check.function] = { status: 'function_not_found' };
+        results.references[`${check.function}:${check.must_contain}`] = { status: 'function_not_found' };
         continue;
       }
 
       const funcDefStr = String(funcDef);
       const containsRequired = funcDefStr.toLowerCase().includes(check.must_contain.toLowerCase());
-      const containsForbidden = funcDefStr.toLowerCase().includes(check.must_not_contain.toLowerCase());
+      const containsForbidden = check.must_not_contain ? 
+        funcDefStr.includes(check.must_not_contain) && !funcDefStr.includes('extensions.' + check.must_not_contain.split('(')[0]) : 
+        false;
 
       if (!containsRequired) {
         divergences.push({
@@ -178,14 +206,111 @@ Deno.serve(async (req) => {
         });
       }
 
-      results.references[check.function] = {
+      results.references[`${check.function}:${check.must_contain}`] = {
         status: containsRequired && !containsForbidden ? 'ok' : 'issue',
         contains_required: containsRequired,
         contains_forbidden: containsForbidden,
       };
     }
 
-    // 4. Log divergences to schema_audit_log
+    // 4. Check RLS Policies
+    console.log('[schema-monitor] Checking RLS policies...');
+    const { data: rlsPolicies, error: rlsError } = await supabase.rpc('get_rls_policies');
+    const { data: tablesRls, error: tablesRlsError } = await supabase.rpc('get_tables_without_rls');
+
+    if (!rlsError && rlsPolicies && !tablesRlsError && tablesRls) {
+      // Check each table for RLS status
+      for (const table of tablesRls) {
+        const tableName = table.table_name;
+        const tablePolicies = rlsPolicies.filter((p: { tablename: string }) => p.tablename === tableName);
+        const policyCount = tablePolicies.length;
+        const operationsCovered: string[] = [...new Set(tablePolicies.map((p: { cmd: string }) => p.cmd))] as string[];
+        
+        // Check if RLS is enabled
+        if (!table.has_rls) {
+          divergences.push({
+            check_type: 'rls_status',
+            entity_name: tableName,
+            expected_state: { rls_enabled: true },
+            actual_state: { rls_enabled: false },
+            divergence_type: 'rls_disabled',
+            severity: 'critical',
+          });
+        }
+
+        // Check policy requirements for critical tables
+        const requirement = CRITICAL_SCHEMA.requiredPolicies[tableName as keyof typeof CRITICAL_SCHEMA.requiredPolicies];
+        if (requirement) {
+          const missingOps = requirement.requiredOperations.filter(
+            op => !operationsCovered.includes(op) && !operationsCovered.includes('ALL')
+          );
+
+          if (policyCount < requirement.minPolicies) {
+            divergences.push({
+              check_type: 'rls_policy_count',
+              entity_name: tableName,
+              expected_state: { min_policies: requirement.minPolicies },
+              actual_state: { policy_count: policyCount },
+              divergence_type: 'insufficient_policies',
+              severity: 'warning',
+            });
+          }
+
+          if (missingOps.length > 0) {
+            divergences.push({
+              check_type: 'rls_policy_operations',
+              entity_name: tableName,
+              expected_state: { required_operations: requirement.requiredOperations },
+              actual_state: { covered_operations: operationsCovered, missing: missingOps },
+              divergence_type: 'missing_policy_operations',
+              severity: 'warning',
+            });
+          }
+
+          results.rls_policies[tableName] = {
+            status: !table.has_rls ? 'rls_disabled' : 
+                    policyCount < requirement.minPolicies ? 'insufficient' : 
+                    missingOps.length > 0 ? 'incomplete' : 'ok',
+            has_rls: table.has_rls,
+            policy_count: policyCount,
+            operations_covered: operationsCovered,
+            missing_operations: missingOps,
+          };
+        } else {
+          results.rls_policies[tableName] = {
+            status: table.has_rls ? (policyCount > 0 ? 'ok' : 'no_policies') : 'rls_disabled',
+            has_rls: table.has_rls,
+            policy_count: policyCount,
+            operations_covered: operationsCovered,
+            missing_operations: [],
+          };
+        }
+      }
+    }
+
+    // 5. Check Foreign Key Integrity
+    console.log('[schema-monitor] Checking foreign key integrity...');
+    const { data: fkData, error: fkError } = await supabase.rpc('get_foreign_key_integrity');
+
+    if (!fkError && fkData) {
+      const fkByTable: Record<string, FKResult[]> = {};
+      
+      for (const fk of fkData) {
+        if (!fkByTable[fk.source_table]) {
+          fkByTable[fk.source_table] = [];
+        }
+        fkByTable[fk.source_table].push({
+          status: fk.is_valid ? 'ok' : 'invalid',
+          constraint_name: fk.constraint_name,
+          target_table: fk.target_table,
+          target_column: fk.target_column,
+        });
+      }
+
+      results.foreign_keys = fkByTable;
+    }
+
+    // 6. Log divergences to schema_audit_log
     if (divergences.length > 0) {
       console.log(`[schema-monitor] Found ${divergences.length} divergences, logging...`);
       
@@ -206,7 +331,7 @@ Deno.serve(async (req) => {
         await supabase.from('admin_notifications').insert({
           type: 'schema_divergence_critical',
           title: `Schema Monitor: ${criticalCount} problema(s) crítico(s) detectado(s)`,
-          message: `Divergências encontradas: ${divergences.map(d => d.entity_name).join(', ')}`,
+          message: `Divergências encontradas: ${divergences.map(d => `${d.entity_name} (${d.divergence_type})`).join(', ')}`,
         });
       }
     }
@@ -218,6 +343,8 @@ Deno.serve(async (req) => {
       warnings: divergences.filter(d => d.severity === 'warning').length,
       tables_checked: Object.keys(CRITICAL_SCHEMA.tables).length,
       functions_checked: CRITICAL_SCHEMA.functions.length,
+      rls_tables_checked: Object.keys(results.rls_policies).length,
+      fk_tables_checked: Object.keys(results.foreign_keys).length,
       all_ok: divergences.length === 0,
     };
 

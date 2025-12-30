@@ -5404,6 +5404,17 @@ export type Database = {
           text_preview: string
         }[]
       }
+      get_foreign_key_integrity: {
+        Args: never
+        Returns: {
+          constraint_name: string
+          is_valid: boolean
+          source_column: string
+          source_table: string
+          target_column: string
+          target_table: string
+        }[]
+      }
       get_function_definition: {
         Args: { p_function_name: string }
         Returns: string
@@ -5464,6 +5475,19 @@ export type Database = {
           function_name: string
         }[]
       }
+      get_rls_policies: {
+        Args: never
+        Returns: {
+          cmd: string
+          permissive: string
+          policyname: string
+          qual: string
+          roles: string[]
+          schemaname: string
+          tablename: string
+          with_check: string
+        }[]
+      }
       get_schema_info: { Args: never; Returns: Json }
       get_table_columns: {
         Args: { p_table_name: string }
@@ -5472,6 +5496,14 @@ export type Database = {
           column_name: string
           data_type: string
           is_nullable: boolean
+        }[]
+      }
+      get_tables_without_rls: {
+        Args: never
+        Returns: {
+          has_rls: boolean
+          policy_count: number
+          table_name: string
         }[]
       }
       get_taxonomy_analytics_report: {
