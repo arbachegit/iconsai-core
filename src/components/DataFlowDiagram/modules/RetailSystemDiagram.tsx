@@ -76,52 +76,52 @@ const NODE_HEIGHT = 32;
 const SERVER_WIDTH = 120;
 const SERVER_HEIGHT = 80;
 
-// Nodes data
+// Nodes data - Optimized for viewBox 900x680
 const nodes: DiagramNode[] = [
-  // Column 1 - FONTES (sources)
-  { id: "src-1", label: "Dados abertos", type: "source", icon: Database, x: 30, y: 40, column: 1, description: "Dados públicos governamentais disponíveis para acesso" },
-  { id: "src-2", label: "Info públicas", type: "source", icon: Globe, x: 30, y: 85, column: 1, description: "Informações de domínio público" },
-  { id: "src-3", label: "Dados científicos", type: "source", icon: FlaskConical, x: 30, y: 130, column: 1, description: "Pesquisas e estudos acadêmicos" },
-  { id: "src-4", label: "Aplicativos", type: "source", icon: Smartphone, x: 30, y: 200, column: 1, description: "Dados de aplicações móveis e web" },
-  { id: "src-5", label: "Serviços", type: "source", icon: ShoppingCart, x: 30, y: 245, column: 1, description: "Informações de serviços prestados" },
-  { id: "src-6", label: "Transações", type: "source", icon: ArrowRightLeft, x: 30, y: 290, column: 1, description: "Dados transacionais do varejo" },
-  { id: "src-7", label: "Info públicas", type: "source", icon: Globe, x: 30, y: 360, column: 1, description: "Informações públicas de mercado" },
-  { id: "src-8", label: "Dados mercado", type: "source", icon: TrendingUp, x: 30, y: 405, column: 1, description: "Indicadores e tendências de mercado" },
-  { id: "src-9", label: "Pessoas", type: "source", icon: Users, x: 30, y: 500, column: 1, description: "Dados demográficos e comportamentais" },
-  { id: "src-10", label: "Internet", type: "source", icon: Wifi, x: 30, y: 545, column: 1, description: "Dados de navegação e comportamento online" },
-  { id: "src-11", label: "Mundo conectado", type: "source", icon: Globe, x: 30, y: 590, column: 1, description: "IoT e dispositivos conectados" },
+  // Column 1 - FONTES (sources) - x: 20
+  { id: "src-1", label: "Dados abertos", type: "source", icon: Database, x: 20, y: 45, column: 1, description: "Dados públicos governamentais disponíveis para acesso" },
+  { id: "src-2", label: "Info públicas", type: "source", icon: Globe, x: 20, y: 85, column: 1, description: "Informações de domínio público" },
+  { id: "src-3", label: "Dados científicos", type: "source", icon: FlaskConical, x: 20, y: 125, column: 1, description: "Pesquisas e estudos acadêmicos" },
+  { id: "src-4", label: "Aplicativos", type: "source", icon: Smartphone, x: 20, y: 180, column: 1, description: "Dados de aplicações móveis e web" },
+  { id: "src-5", label: "Serviços", type: "source", icon: ShoppingCart, x: 20, y: 220, column: 1, description: "Informações de serviços prestados" },
+  { id: "src-6", label: "Transações", type: "source", icon: ArrowRightLeft, x: 20, y: 260, column: 1, description: "Dados transacionais do varejo" },
+  { id: "src-7", label: "Info públicas", type: "source", icon: Globe, x: 20, y: 330, column: 1, description: "Informações públicas de mercado" },
+  { id: "src-8", label: "Dados mercado", type: "source", icon: TrendingUp, x: 20, y: 375, column: 1, description: "Indicadores e tendências de mercado" },
+  { id: "src-9", label: "Pessoas", type: "source", icon: Users, x: 20, y: 470, column: 1, description: "Dados demográficos e comportamentais" },
+  { id: "src-10", label: "Internet", type: "source", icon: Wifi, x: 20, y: 515, column: 1, description: "Dados de navegação e comportamento online" },
+  { id: "src-11", label: "Mundo conectado", type: "source", icon: Globe, x: 20, y: 560, column: 1, description: "IoT e dispositivos conectados" },
 
-  // Column 2 - AGREGADORES
-  { id: "agg-1", label: "Governo", type: "aggregator", icon: Building2, x: 180, y: 85, column: 2, description: "Agregador de dados governamentais (IBGE, BCB, IPEA)" },
-  { id: "agg-2", label: "Varejo", type: "aggregator", icon: Store, x: 180, y: 245, column: 2, description: "Agregador de dados do setor varejista" },
-  { id: "agg-3", label: "Mercado Aberto", type: "aggregator", icon: TrendingUp, x: 180, y: 380, column: 2, description: "Agregador de dados de mercado financeiro" },
-  { id: "agg-4", label: "Redes Sociais", type: "aggregator", icon: Share2, x: 180, y: 545, column: 2, description: "Agregador de dados de mídias sociais" },
+  // Column 2 - AGREGADORES - x: 165
+  { id: "agg-1", label: "Governo", type: "aggregator", icon: Building2, x: 165, y: 85, column: 2, description: "Agregador de dados governamentais (IBGE, BCB, IPEA)" },
+  { id: "agg-2", label: "Varejo", type: "aggregator", icon: Store, x: 165, y: 220, column: 2, description: "Agregador de dados do setor varejista" },
+  { id: "agg-3", label: "Mercado Aberto", type: "aggregator", icon: TrendingUp, x: 165, y: 352, column: 2, description: "Agregador de dados de mercado financeiro" },
+  { id: "agg-4", label: "Redes Sociais", type: "aggregator", icon: Share2, x: 165, y: 515, column: 2, description: "Agregador de dados de mídias sociais" },
 
-  // Column 3 - PROCESSOS (upper)
-  { id: "proc-1", label: "Recebe dados", type: "process", icon: Database, x: 340, y: 120, column: 3, description: "Recepção e validação de dados brutos" },
-  { id: "proc-2", label: "Processa info", type: "process", icon: Zap, x: 340, y: 175, column: 3, description: "Processamento e transformação de informações" },
-  { id: "proc-3", label: "Aplica IA", type: "process", icon: Brain, x: 340, y: 230, column: 3, description: "Aplicação de modelos de inteligência artificial" },
-  { id: "proc-4", label: "Gera insights", type: "process", icon: Lightbulb, x: 340, y: 285, column: 3, description: "Geração de insights estratégicos" },
+  // Column 3 - PROCESSOS (upper) - x: 320
+  { id: "proc-1", label: "Recebe dados", type: "process", icon: Database, x: 320, y: 110, column: 3, description: "Recepção e validação de dados brutos" },
+  { id: "proc-2", label: "Processa info", type: "process", icon: Zap, x: 320, y: 160, column: 3, description: "Processamento e transformação de informações" },
+  { id: "proc-3", label: "Aplica IA", type: "process", icon: Brain, x: 320, y: 210, column: 3, description: "Aplicação de modelos de inteligência artificial" },
+  { id: "proc-4", label: "Gera insights", type: "process", icon: Lightbulb, x: 320, y: 260, column: 3, description: "Geração de insights estratégicos" },
 
-  // Column 3 - ROBÔS (lower)
-  { id: "robot-1", label: "Coleta auto", type: "robot", icon: Bot, x: 340, y: 420, column: 3, description: "Coleta automatizada de dados via bots" },
-  { id: "robot-2", label: "Agregação", type: "robot", icon: Database, x: 340, y: 475, column: 3, description: "Agregação e consolidação de dados" },
-  { id: "robot-3", label: "Robô Coletor", type: "robot", icon: Bot, x: 340, y: 530, column: 3, description: "Bot especializado em web scraping" },
-  { id: "robot-4", label: "Transferência", type: "robot", icon: ArrowRightLeft, x: 340, y: 585, column: 3, description: "Transferência segura de dados" },
+  // Column 3 - ROBÔS (lower) - x: 320
+  { id: "robot-1", label: "Coleta auto", type: "robot", icon: Bot, x: 320, y: 390, column: 3, description: "Coleta automatizada de dados via bots" },
+  { id: "robot-2", label: "Agregação", type: "robot", icon: Database, x: 320, y: 440, column: 3, description: "Agregação e consolidação de dados" },
+  { id: "robot-3", label: "Robô Coletor", type: "robot", icon: Bot, x: 320, y: 490, column: 3, description: "Bot especializado em web scraping" },
+  { id: "robot-4", label: "Transferência", type: "robot", icon: ArrowRightLeft, x: 320, y: 540, column: 3, description: "Transferência segura de dados" },
 
-  // Column 4 - SERVIDOR
-  { id: "server-1", label: "Servidor KnowYOU AI", type: "server", icon: Server, x: 500, y: 300, column: 4, description: "Servidor central de processamento com IA avançada" },
+  // Column 4 - SERVIDOR - x: 480
+  { id: "server-1", label: "Servidor KnowYOU AI", type: "server", icon: Server, x: 480, y: 290, column: 4, description: "Servidor central de processamento com IA avançada" },
 
-  // Column 5 - OUTPUTS
-  { id: "out-1", label: "Informação", type: "output", icon: BookOpen, x: 680, y: 150, column: 5, description: "Informações estruturadas e validadas" },
-  { id: "out-2", label: "Conhecimento", type: "output", icon: Brain, x: 680, y: 220, column: 5, description: "Conhecimento contextualizado" },
-  { id: "out-3", label: "Riqueza", type: "output", icon: DollarSign, x: 680, y: 290, column: 5, description: "Valor econômico gerado" },
-  { id: "out-4", label: "Inteligência", type: "output", icon: Zap, x: 680, y: 360, column: 5, description: "Inteligência estratégica" },
-  { id: "out-5", label: "Precisão", type: "output", icon: Target, x: 680, y: 430, column: 5, description: "Dados com alta precisão" },
-  { id: "out-6", label: "Valor", type: "output", icon: Gem, x: 680, y: 500, column: 5, description: "Valor agregado para decisões" },
+  // Column 5 - OUTPUTS - x: 640
+  { id: "out-1", label: "Informação", type: "output", icon: BookOpen, x: 640, y: 130, column: 5, description: "Informações estruturadas e validadas" },
+  { id: "out-2", label: "Conhecimento", type: "output", icon: Brain, x: 640, y: 200, column: 5, description: "Conhecimento contextualizado" },
+  { id: "out-3", label: "Riqueza", type: "output", icon: DollarSign, x: 640, y: 270, column: 5, description: "Valor econômico gerado" },
+  { id: "out-4", label: "Inteligência", type: "output", icon: Zap, x: 640, y: 340, column: 5, description: "Inteligência estratégica" },
+  { id: "out-5", label: "Precisão", type: "output", icon: Target, x: 640, y: 410, column: 5, description: "Dados com alta precisão" },
+  { id: "out-6", label: "Valor", type: "output", icon: Gem, x: 640, y: 480, column: 5, description: "Valor agregado para decisões" },
 
-  // Column 6 - DESTINO
-  { id: "dest-1", label: "Brasil", type: "destination", icon: MapPin, x: 820, y: 320, column: 6, description: "Entrega de valor para o mercado brasileiro" },
+  // Column 6 - DESTINO - x: 780
+  { id: "dest-1", label: "Brasil", type: "destination", icon: MapPin, x: 780, y: 300, column: 6, description: "Entrega de valor para o mercado brasileiro" },
 ];
 
 // Connections data
@@ -347,12 +347,12 @@ export const RetailSystemDiagram: React.FC = () => {
             {/* Column Labels */}
             <g className="column-labels">
               {[
-                { x: 80, label: "FONTES", color: "#F59E0B" },
-                { x: 230, label: "AGREGADORES", color: "#10B981" },
-                { x: 390, label: "PROCESSOS", color: "#10B981" },
-                { x: 560, label: "SERVIDOR", color: "#10B981" },
-                { x: 730, label: "OUTPUTS", color: "#F43F5E" },
-                { x: 870, label: "DESTINO", color: "#10B981" },
+                { x: 70, label: "FONTES", color: "#F59E0B" },
+                { x: 215, label: "AGREGADORES", color: "#10B981" },
+                { x: 370, label: "PROCESSOS", color: "#10B981" },
+                { x: 540, label: "SERVIDOR", color: "#10B981" },
+                { x: 690, label: "OUTPUTS", color: "#F43F5E" },
+                { x: 830, label: "DESTINO", color: "#10B981" },
               ].map((col, i) => (
                 <text
                   key={i}
