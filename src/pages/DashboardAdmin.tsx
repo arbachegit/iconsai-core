@@ -19,6 +19,8 @@ const AIChat = lazy(() => import("@/components/dashboard/AIChat").then(m => ({ d
 const DataAnalyticsUF = lazy(() => import("@/components/dashboard/DataAnalyticsUF").then(m => ({ default: m.DataAnalyticsUF })));
 const IndicatorAPITable = lazy(() => import("@/components/dashboard/IndicatorAPITable"));
 const DataFlowDiagram = lazy(() => import("@/components/DataFlowDiagram").then(m => ({ default: m.DataFlowDiagram })));
+const InfrastructureArchitectureTab = lazy(() => import("@/components/admin/InfrastructureArchitectureTab").then(m => ({ default: m.InfrastructureArchitectureTab })));
+
 // Loading fallback
 const TabLoader = () => (
   <div className="flex-1 flex items-center justify-center">
@@ -113,11 +115,8 @@ const DashboardAdmin = () => {
         );
       case "dataflow-architecture":
         return (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
-            <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
-              Architecture
-            </h1>
-            <p className="text-muted-foreground">Coming soon...</p>
+          <div className="p-6">
+            <InfrastructureArchitectureTab />
           </div>
         );
       case "dataflow-new-domain":

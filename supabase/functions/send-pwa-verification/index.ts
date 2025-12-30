@@ -98,6 +98,7 @@ serve(async (req) => {
     console.log("🔐 Generated verification code (expires in 10 min)");
 
     // 4. Save code to invitation
+    console.log("💾 Saving verification code to invitation...");
     const { error: updateError } = await supabase
       .from("user_invitations")
       .update({
@@ -105,17 +106,24 @@ serve(async (req) => {
         verification_code_expires_at: expiresAt.toISOString(),
         verification_attempts: 0,
         status: "verification_sent",
-        phone: phoneToUse, // Ensure phone is saved
+        phone: phoneToUse,
+        verification_sent_at: new Date().toISOString(),
+        verification_method: "whatsapp", // Will be updated if SMS fallback is used
       })
       .eq("id", invitation.id);
 
     if (updateError) {
       console.error("❌ Error saving verification code:", updateError);
+      console.error("❌ Error details:", JSON.stringify(updateError, null, 2));
       return new Response(
-        JSON.stringify({ success: false, error: "Erro ao salvar código de verificação" }),
+        JSON.stringify({ 
+          success: false, 
+          error: "Sistema temporariamente indisponível. Tente novamente em alguns instantes." 
+        }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    console.log("✅ Verification code saved successfully");
 
     // 5. Send code via WhatsApp (with SMS fallback)
     const message = `*KnowYOU APP*
@@ -183,6 +191,12 @@ _Não compartilhe este código._`;
         } else {
           console.log("✅ Code sent via SMS");
           sendSuccess = true;
+          
+          // Update verification_method to sms
+          await supabase
+            .from("user_invitations")
+            .update({ verification_method: "sms" })
+            .eq("id", invitation.id);
         }
       } catch (smsCatch: any) {
         console.error("❌ SMS exception:", smsCatch.message);
