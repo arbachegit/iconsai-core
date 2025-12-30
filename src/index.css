@@ -738,3 +738,9 @@ All colors MUST be HSL.
 .pwa-animate-morph-out {
   animation: pwa-morph-out 0.3s ease-in forwards;
 }
+
+/* Splash Screen - Gradient shift for text */
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
