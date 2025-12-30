@@ -491,7 +491,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
     },
     {
       id: "messages-notifications",
-      label: "MENSAGEM E NOTIFICAÇÃO",
+      label: "MENSAGEM & NOTIFICAÇÃO",
       icon: Bell,
       items: [
         { id: "contact-messages" as TabType, label: "Mensagens de Contato", icon: MessageSquare },
