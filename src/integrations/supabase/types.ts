@@ -2501,6 +2501,7 @@ export type Database = {
           event_type: string
           fallback_used: boolean | null
           id: string
+          is_read: boolean | null
           message_body: string
           message_sid: string | null
           metadata: Json | null
@@ -2515,6 +2516,7 @@ export type Database = {
           event_type: string
           fallback_used?: boolean | null
           id?: string
+          is_read?: boolean | null
           message_body: string
           message_sid?: string | null
           metadata?: Json | null
@@ -2529,6 +2531,7 @@ export type Database = {
           event_type?: string
           fallback_used?: boolean | null
           id?: string
+          is_read?: boolean | null
           message_body?: string
           message_sid?: string | null
           metadata?: Json | null

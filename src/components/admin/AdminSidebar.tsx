@@ -100,6 +100,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
   const { t } = useTranslation();
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [pendingMessagesCount, setPendingMessagesCount] = useState(0);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const previousCountRef = useRef(0);
   const navRef = useRef<HTMLElement>(null);
@@ -136,6 +137,16 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
     
     previousCountRef.current = newCount;
     setPendingMessagesCount(newCount);
+  }, []);
+
+  // Fetch unread notifications count
+  const fetchUnreadNotifications = useCallback(async () => {
+    const { count } = await supabase
+      .from("notification_logs")
+      .select("*", { count: "exact", head: true })
+      .eq("is_read", false);
+    
+    setUnreadNotificationsCount(count || 0);
   }, []);
 
   useEffect(() => {
@@ -176,6 +187,30 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       supabase.removeChannel(channel);
     };
   }, [fetchPendingMessages]);
+
+  // Fetch and subscribe to notifications
+  useEffect(() => {
+    fetchUnreadNotifications();
+    
+    const channel = supabase
+      .channel('notifications-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notification_logs'
+        },
+        () => {
+          fetchUnreadNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchUnreadNotifications]);
 
   const handleLogout = () => {
     localStorage.removeItem("admin_authenticated");
@@ -255,7 +290,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "youtube" as TabType, label: "Inserir Vídeos", icon: Youtube },
       ]
     },
-    // ========== NOVA CATEGORIA: SEGURANÇA ==========
+    // ========== SEGURANÇA ==========
     {
       id: "security",
       label: "Segurança",
@@ -267,7 +302,17 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "security-shield-config" as TabType, label: "Config. Security Shield", icon: Shield },
       ]
     },
-    // ========== AUDITORIA (SEM ITENS DE SEGURANÇA) ==========
+    // ========== MENSAGENS & NOTIFICAÇÕES (NOVA CATEGORIA) ==========
+    {
+      id: "messages-notifications",
+      label: "Mensagens & Notificações",
+      icon: Bell,
+      items: [
+        { id: "contact-messages" as TabType, label: "Mensagens de Contato", icon: MessageSquare },
+        { id: "notification-logs" as TabType, label: "Notificações", icon: Bell },
+      ]
+    },
+    // ========== AUDITORIA (SEM MENSAGENS/NOTIFICAÇÕES) ==========
     {
       id: "audit",
       label: "Auditoria",
@@ -276,14 +321,12 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "api-audit-logs" as TabType, label: "Log de APIs", icon: Webhook },
         { id: "activity-logs" as TabType, label: "Log de Atividades (admin)", icon: History },
         { id: "user-usage-logs" as TabType, label: "Log de Uso (Usuários)", icon: Users },
-        { id: "notification-logs" as TabType, label: "Logs de Notificações", icon: ScrollText },
         { id: "document-routing-logs" as TabType, label: "Logs de Roteamento", icon: Route },
         { id: "tag-modification-logs" as TabType, label: "Logs de Mescla Tags", icon: Tags },
         { id: "suggestion-audit" as TabType, label: "Auditoria Sugestões", icon: Sparkles },
         { id: "ml-dashboard" as TabType, label: "Machine Learning ML", icon: Brain },
         { id: "taxonomy-ml-audit" as TabType, label: "Taxonomy ML", icon: Target },
         { id: "version-control" as TabType, label: "Versionamento", icon: GitBranch },
-        { id: "contact-messages" as TabType, label: "Mensagens Contato", icon: MessageSquare },
         { id: "documentation-sync" as TabType, label: "Sincronizar Docs", icon: RefreshCw },
       ]
     },
@@ -309,19 +352,18 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       items: [
         { id: "dashboard-external" as TabType, label: "Dashboard", icon: LayoutDashboard },
         { id: "data-analysis" as TabType, label: "Data Analysis", icon: TrendingUp },
-        { id: "data-flow" as TabType, label: "Data Flow", icon: Route },
         { id: "chart-database" as TabType, label: "Chart DataSet", icon: Database },
         { id: "table-database" as TabType, label: "Table DataSet", icon: Database },
       ]
     },
-    // ========== CONFIGURAÇÕES (RENOMEADO DE SISTEMA) ==========
+    // ========== CONFIGURAÇÕES ==========
     {
       id: "settings",
       label: "Configurações",
       icon: Settings,
       items: [
         { id: "app-config" as TabType, label: "Config. de Sistemas", icon: Settings },
-        { id: "notification-settings" as TabType, label: "Notificação", icon: Bell },
+        { id: "notification-settings" as TabType, label: "Config. Notificações", icon: Bell },
         { id: "architecture" as TabType, label: "Arquitetura", icon: Cpu },
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
       ]
@@ -494,7 +536,9 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                     {category.items.map((item) => {
                       const Icon = item.icon;
                       const isActive = activeTab === item.id;
-                      const showBadge = item.id === "contact-messages" && pendingMessagesCount > 0;
+                      const showContactBadge = item.id === "contact-messages" && pendingMessagesCount > 0;
+                      const showNotificationBadge = item.id === "notification-logs" && unreadNotificationsCount > 0;
+                      const badgeCount = showContactBadge ? pendingMessagesCount : (showNotificationBadge ? unreadNotificationsCount : 0);
 
                       return (
                         <Button
@@ -512,9 +556,9 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                         >
                           <Icon className="w-4 h-4 shrink-0 group-hover:text-black" />
                           <span className="truncate">{item.label}</span>
-                          {showBadge && (
+                          {(showContactBadge || showNotificationBadge) && (
                             <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
-                              {pendingMessagesCount}
+                              {badgeCount}
                             </Badge>
                           )}
                         </Button>
