@@ -157,14 +157,14 @@ const App = () => (
                       </DeviceGate>
                     } />
                     <Route path="/app" element={
-                      <DeviceGate allowMobile={false}>
+                      <DeviceGate mobileShowChat={true}>
                         <ProtectedRoute>
                           <AppPage />
                         </ProtectedRoute>
                       </DeviceGate>
                     } />
                     <Route path="/dashboard" element={
-                      <DeviceGate allowMobile={false}>
+                      <DeviceGate mobileShowChat={true}>
                         <ProtectedRoute requiredRole="admin">
                           <DashboardAdmin />
                         </ProtectedRoute>
