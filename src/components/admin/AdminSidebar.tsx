@@ -455,7 +455,6 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                 </TooltipTrigger>
                 <TooltipContent side="right">Buscar</TooltipContent>
               </Tooltip>
-              <NotificationBell onNavigate={onTabChange} />
             </div>
           ) : (
             <div className="relative flex-1 flex items-center gap-2 transition-all duration-500 ease-in-out">
@@ -469,7 +468,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   className="pl-9 h-10 text-sm bg-muted/30 border-border rounded-full focus:border-primary/50 w-full"
                 />
               </div>
-              <NotificationBell onNavigate={onTabChange} />
+              
             </div>
           )}
         </div>
@@ -534,6 +533,11 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                         <div className="flex items-center gap-2">
                           <category.icon className={`w-3.5 h-3.5 ${hasActiveChild ? 'text-white/90' : openSections.includes(category.id) ? 'text-white/80' : 'group-hover:text-foreground'}`} />
                           {category.label}
+                          {category.id === "messages-notifications" && (pendingMessagesCount + unreadNotificationsCount) > 0 && !openSections.includes(category.id) && (
+                            <Badge variant="destructive" className="ml-1 h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
+                              {pendingMessagesCount + unreadNotificationsCount}
+                            </Badge>
+                          )}
                         </div>
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openSections.includes(category.id) ? 'rotate-180 text-white/80' : 'group-hover:text-foreground'}`} />
                       </CollapsibleTrigger>
