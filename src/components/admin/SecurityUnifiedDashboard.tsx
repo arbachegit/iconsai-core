@@ -120,10 +120,14 @@ export function SecurityUnifiedDashboard() {
     
     setIsPerformingAction(true);
     try {
-      const newStatus = actionType === 'block' ? 'blocked' : 'verified';
+      // Use correct column names: is_blocked and is_verified
+      const updatePayload = actionType === 'block' 
+        ? { is_blocked: true, is_verified: false, updated_at: new Date().toISOString() }
+        : { is_blocked: false, is_verified: true, updated_at: new Date().toISOString() };
+      
       const { error } = await supabase
         .from('pwa_devices')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq('id', selectedDevice);
       
       if (error) throw error;
