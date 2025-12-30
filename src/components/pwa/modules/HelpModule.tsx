@@ -1,142 +1,205 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { HelpCircle, Play, ChevronRight, Volume2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { HelpCircle, ChevronRight, Volume2 } from "lucide-react";
+import { VoicePlayerBox } from "../voice/VoicePlayerBox";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { usePWAStore } from "@/stores/pwaStore";
 
-const helpTopics = [
+interface HelpStep {
+  id: string;
+  title: string;
+  description: string;
+  audioText: string;
+}
+
+const helpSteps: HelpStep[] = [
   {
-    id: "getting-started",
-    title: "Começando",
-    description: "Aprenda o básico do assistente",
-    steps: [
-      "Toque no microfone para falar",
-      "Fale sua pergunta ou comando",
-      "Aguarde a resposta em áudio",
-    ],
+    id: "welcome",
+    title: "Bem-vindo ao KnowYOU",
+    description: "Seu assistente de voz pessoal",
+    audioText: "Olá! Eu sou o KnowYOU, seu assistente de voz pessoal. Vou te guiar pelas funcionalidades disponíveis.",
   },
   {
     id: "modules",
-    title: "Módulos disponíveis",
-    description: "Conheça as áreas de atuação",
-    steps: [
-      "Mundo: perguntas gerais e conhecimento",
-      "Saúde: triagem de sintomas",
-      "Ideias: validação de ideias de negócio",
-    ],
+    title: "Módulos Disponíveis",
+    description: "4 módulos para diferentes necessidades",
+    audioText: "Você tem acesso a 4 módulos: Ajuda, para aprender a usar o aplicativo. Mundo, para perguntas gerais sobre qualquer assunto. Saúde, para triagem de sintomas. E Ideias, para validar e refinar suas ideias de negócio.",
   },
   {
-    id: "tips",
-    title: "Dicas de uso",
-    description: "Melhore sua experiência",
-    steps: [
-      "Fale de forma clara e pausada",
-      "Aguarde o fim do áudio antes de falar",
-      "Use frases curtas e diretas",
-    ],
+    id: "voice",
+    title: "Interação por Voz",
+    description: "Fale naturalmente comigo",
+    audioText: "Para interagir comigo, basta tocar no botão do microfone e falar naturalmente. Eu vou te ouvir, processar sua fala e responder em áudio.",
+  },
+  {
+    id: "confirmation",
+    title: "Confirmações por Voz",
+    description: "Diga SIM ou NÃO para confirmar",
+    audioText: "Quando eu fizer uma pergunta de confirmação, basta dizer SIM ou NÃO. Isso torna a experiência mais fluida e natural.",
+  },
+  {
+    id: "complete",
+    title: "Pronto para Começar!",
+    description: "Você já sabe o básico",
+    audioText: "Perfeito! Agora você já sabe o básico. Volte para a tela inicial e escolha um módulo para começar. Estou aqui para ajudar!",
   },
 ];
 
 export const HelpModule: React.FC = () => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+  const { speak, isPlaying, isLoading } = useTextToSpeech();
   const { setPlayerState } = usePWAStore();
-  const [expandedTopic, setExpandedTopic] = React.useState<string | null>(null);
 
-  const playTopicAudio = (topicId: string) => {
-    setPlayerState("loading");
-    // Simulate audio playback
-    setTimeout(() => {
+  const currentHelpStep = helpSteps[currentStep];
+
+  // Atualizar estado do player
+  useEffect(() => {
+    if (isLoading) {
+      setPlayerState("loading");
+    } else if (isPlaying) {
       setPlayerState("playing");
-      setTimeout(() => setPlayerState("idle"), 3000);
-    }, 500);
+    } else {
+      setPlayerState("idle");
+    }
+  }, [isLoading, isPlaying, setPlayerState]);
+
+  const playCurrentStep = async () => {
+    await speak(currentHelpStep.audioText);
+    setCompletedSteps(prev => 
+      prev.includes(currentHelpStep.id) ? prev : [...prev, currentHelpStep.id]
+    );
+  };
+
+  const nextStep = () => {
+    if (currentStep < helpSteps.length - 1) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
+    }
+  };
+
+  const getPlayerState = () => {
+    if (isLoading) return "loading";
+    if (isPlaying) return "playing";
+    return "idle";
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex flex-col gap-4 p-4"
-    >
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-          <HelpCircle className="w-6 h-6 text-blue-500" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-foreground">Ajuda</h2>
-          <p className="text-sm text-muted-foreground">Como usar o assistente</p>
-        </div>
-      </div>
-
-      {/* Topics list */}
-      <div className="flex flex-col gap-3">
-        {helpTopics.map((topic, index) => (
+    <div className="flex flex-col h-full p-4">
+      {/* Progress indicator */}
+      <div className="flex justify-center gap-2 mb-6">
+        {helpSteps.map((step, index) => (
           <motion.div
-            key={topic.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden"
-          >
-            {/* Topic header */}
-            <button
-              onClick={() => setExpandedTopic(
-                expandedTopic === topic.id ? null : topic.id
-              )}
-              className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <span className="text-sm font-bold text-primary">{index + 1}</span>
-                </div>
-                <div className="text-left">
-                  <h3 className="font-medium text-foreground">{topic.title}</h3>
-                  <p className="text-xs text-muted-foreground">{topic.description}</p>
-                </div>
-              </div>
-              <motion.div
-                animate={{ rotate: expandedTopic === topic.id ? 90 : 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              </motion.div>
-            </button>
-
-            {/* Expanded content */}
-            <motion.div
-              initial={false}
-              animate={{
-                height: expandedTopic === topic.id ? "auto" : 0,
-                opacity: expandedTopic === topic.id ? 1 : 0,
-              }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden"
-            >
-              <div className="px-4 pb-4 space-y-3">
-                {/* Steps */}
-                <ul className="space-y-2">
-                  {topic.steps.map((step, stepIndex) => (
-                    <li key={stepIndex} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-xs text-primary">{stepIndex + 1}</span>
-                      </span>
-                      {step}
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Play button */}
-                <button
-                  onClick={() => playTopicAudio(topic.id)}
-                  className="w-full mt-3 py-2 px-4 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Volume2 className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium text-primary">Ouvir explicação</span>
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+            key={step.id}
+            className={`w-3 h-3 rounded-full transition-all duration-300 ${
+              index === currentStep
+                ? "bg-blue-500 scale-125"
+                : completedSteps.includes(step.id)
+                ? "bg-emerald-500"
+                : "bg-white/20"
+            }`}
+            animate={index === currentStep ? { scale: [1, 1.2, 1] } : {}}
+            transition={{ duration: 1, repeat: Infinity }}
+          />
         ))}
       </div>
-    </motion.div>
+
+      {/* Conteúdo do passo atual */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentStep}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          className="flex-1 flex flex-col"
+        >
+          {/* Ícone e título */}
+          <div className="text-center mb-6">
+            <motion.div
+              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-500/20 mb-4"
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <HelpCircle className="w-8 h-8 text-blue-400" />
+            </motion.div>
+            <h2 className="text-xl font-bold text-white mb-2">
+              {currentHelpStep.title}
+            </h2>
+            <p className="text-slate-400">
+              {currentHelpStep.description}
+            </p>
+          </div>
+
+          {/* Voice Player */}
+          <div className="flex-1 flex items-center justify-center">
+            <VoicePlayerBox 
+              state={getPlayerState()} 
+              onMicClick={() => {}} 
+              showMic={false}
+            />
+          </div>
+
+          {/* Botão de play */}
+          <motion.button
+            onClick={playCurrentStep}
+            disabled={isPlaying || isLoading}
+            className={`
+              w-full py-4 rounded-2xl font-semibold
+              flex items-center justify-center gap-3
+              transition-all duration-300
+              ${isPlaying || isLoading
+                ? "bg-blue-500/50 text-white/70"
+                : "bg-blue-500 text-white hover:bg-blue-600"
+              }
+            `}
+            whileHover={{ scale: isPlaying || isLoading ? 1 : 1.02 }}
+            whileTap={{ scale: isPlaying || isLoading ? 1 : 0.98 }}
+          >
+            <Volume2 className="w-5 h-5" />
+            {isPlaying ? "Reproduzindo..." : isLoading ? "Carregando..." : "Ouvir explicação"}
+          </motion.button>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Navegação */}
+      <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
+        <motion.button
+          onClick={prevStep}
+          disabled={currentStep === 0}
+          className={`px-4 py-2 rounded-xl transition-all ${
+            currentStep === 0
+              ? "text-slate-600 cursor-not-allowed"
+              : "text-slate-400 hover:text-white hover:bg-white/10"
+          }`}
+          whileTap={{ scale: currentStep === 0 ? 1 : 0.95 }}
+        >
+          Anterior
+        </motion.button>
+
+        <span className="text-slate-500 text-sm">
+          {currentStep + 1} de {helpSteps.length}
+        </span>
+
+        <motion.button
+          onClick={nextStep}
+          disabled={currentStep === helpSteps.length - 1}
+          className={`px-4 py-2 rounded-xl flex items-center gap-1 transition-all ${
+            currentStep === helpSteps.length - 1
+              ? "text-slate-600 cursor-not-allowed"
+              : "text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+          }`}
+          whileTap={{ scale: currentStep === helpSteps.length - 1 ? 1 : 0.95 }}
+        >
+          Próximo
+          <ChevronRight className="w-4 h-4" />
+        </motion.button>
+      </div>
+    </div>
   );
 };
 
