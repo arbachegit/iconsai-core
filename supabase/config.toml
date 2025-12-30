@@ -264,3 +264,9 @@ verify_jwt = false
 [functions.schema-monitor]
 verify_jwt = true
 
+# ============================================
+# PWA VERIFICATION - Public (for invitees)
+# ============================================
+[functions.send-pwa-verification]
+verify_jwt = false
+

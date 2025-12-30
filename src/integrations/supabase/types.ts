@@ -5294,6 +5294,15 @@ export type Database = {
         }
         Returns: Json
       }
+      complete_pwa_registration_with_code: {
+        Args: {
+          p_device_id: string
+          p_invitation_token: string
+          p_user_agent?: string
+          p_verification_code: string
+        }
+        Returns: Json
+      }
       convert_pmc_to_reais: {
         Args: {
           p_pmc_indicator_code: string
