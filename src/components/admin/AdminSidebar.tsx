@@ -9,6 +9,23 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
 import {
   LayoutDashboard,
@@ -63,6 +80,7 @@ import {
   Network,
   Layers,
   Star,
+  GripVertical,
 } from "lucide-react";
 import { NotificationBell } from './NotificationBell';
 
@@ -95,6 +113,100 @@ const playNotificationSound = () => {
   oscillator.stop(audioContext.currentTime + 0.3);
 };
 
+// Sortable Favorite Item Component for drag-and-drop
+interface SortableFavoriteItemProps {
+  id: string;
+  item: { id: TabType; label: string; icon: any };
+  isActive: boolean;
+  pendingMessagesCount: number;
+  unreadNotificationsCount: number;
+  onTabChange: (tab: TabType) => void;
+  onRemove: (id: string) => void;
+  navigate: (path: string) => void;
+}
+
+function SortableFavoriteItem({ 
+  id, 
+  item, 
+  isActive, 
+  pendingMessagesCount, 
+  unreadNotificationsCount, 
+  onTabChange, 
+  onRemove,
+  navigate 
+}: SortableFavoriteItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 1,
+  };
+
+  const Icon = item.icon;
+  const showContactBadge = item.id === "contact-messages" && pendingMessagesCount > 0;
+  const showNotificationBadge = item.id === "notification-logs" && unreadNotificationsCount > 0;
+  const badgeCount = showContactBadge ? pendingMessagesCount : (showNotificationBadge ? unreadNotificationsCount : 0);
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={`flex items-center gap-1 ${isDragging ? 'bg-muted/50 rounded-lg' : ''}`}
+    >
+      {/* Drag Handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="h-7 w-5 flex items-center justify-center cursor-grab active:cursor-grabbing opacity-40 hover:opacity-100 transition-opacity"
+      >
+        <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+      </button>
+      
+      <Button
+        variant={isActive ? "default" : "ghost"}
+        className={`group flex-1 justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted hover:text-foreground"} transition-all duration-200`}
+        onClick={() => {
+          if (item.id === "dashboard-external") {
+            navigate("/dashboard");
+          } else {
+            onTabChange(item.id);
+          }
+        }}
+      >
+        <Icon className="w-4 h-4 shrink-0 group-hover:text-black" />
+        <span className="truncate">{item.label}</span>
+        {(showContactBadge || showNotificationBadge) && (
+          <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
+            {badgeCount}
+          </Badge>
+        )}
+      </Button>
+      
+      {/* Remove from favorites */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7 shrink-0 opacity-40 hover:opacity-100 transition-opacity"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(item.id);
+        }}
+      >
+        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+      </Button>
+    </div>
+  );
+}
+
 export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleCollapse }: AdminSidebarProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -108,22 +220,97 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
   const [canScrollDown, setCanScrollDown] = useState(false);
   const [isControlCenterCollapsed, setIsControlCenterCollapsed] = useState(false);
   
-  // Favorites state with localStorage persistence
+  // Favorites state with localStorage + database persistence
   const [favorites, setFavorites] = useState<string[]>(() => {
     const saved = localStorage.getItem('admin-sidebar-favorites');
     return saved ? JSON.parse(saved) : ['dashboard'];
   });
 
+  // DnD sensors for drag-and-drop reordering
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Save favorites to database
+  const saveFavoritesToDb = useCallback(async (newFavorites: string[]) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('user_preferences')
+          .upsert({
+            user_id: user.id,
+            sidebar_favorites: newFavorites,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id'
+          });
+      }
+    } catch (error) {
+      console.error('[AdminSidebar] Error saving favorites to DB:', error);
+    }
+  }, []);
+
+  // Load favorites from database on mount
+  useEffect(() => {
+    const loadFavoritesFromDb = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data } = await supabase
+            .from('user_preferences')
+            .select('sidebar_favorites')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (data?.sidebar_favorites && Array.isArray(data.sidebar_favorites)) {
+            setFavorites(data.sidebar_favorites as string[]);
+            localStorage.setItem('admin-sidebar-favorites', JSON.stringify(data.sidebar_favorites));
+          }
+        }
+      } catch (error) {
+        console.error('[AdminSidebar] Error loading favorites from DB:', error);
+      }
+    };
+    loadFavoritesFromDb();
+  }, []);
+
+  // Handle drag end for reordering favorites
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      setFavorites((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        
+        localStorage.setItem('admin-sidebar-favorites', JSON.stringify(newItems));
+        saveFavoritesToDb(newItems);
+        
+        return newItems;
+      });
+    }
+  }, [saveFavoritesToDb]);
+
   // Toggle favorite function
-  const toggleFavorite = (tabId: string) => {
+  const toggleFavorite = useCallback((tabId: string) => {
     setFavorites(prev => {
       const newFavorites = prev.includes(tabId)
         ? prev.filter(id => id !== tabId)
         : [...prev, tabId];
       localStorage.setItem('admin-sidebar-favorites', JSON.stringify(newFavorites));
+      saveFavoritesToDb(newFavorites);
       return newFavorites;
     });
-  };
+  }, [saveFavoritesToDb]);
 
   // Check scroll position to show/hide fade indicators
   const handleNavScroll = useCallback(() => {
@@ -567,36 +754,63 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                   })()}
                   
                   <CollapsibleContent className="space-y-0.5 mt-1">
-                    {category.items.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = activeTab === item.id;
-                      const showContactBadge = item.id === "contact-messages" && pendingMessagesCount > 0;
-                      const showNotificationBadge = item.id === "notification-logs" && unreadNotificationsCount > 0;
-                      const badgeCount = showContactBadge ? pendingMessagesCount : (showNotificationBadge ? unreadNotificationsCount : 0);
+                    {category.id === "quick-access" ? (
+                      // Quick Access with drag-and-drop
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={favorites}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {category.items.map((item) => (
+                            <SortableFavoriteItem
+                              key={item.id}
+                              id={item.id}
+                              item={item}
+                              isActive={activeTab === item.id}
+                              pendingMessagesCount={pendingMessagesCount}
+                              unreadNotificationsCount={unreadNotificationsCount}
+                              onTabChange={onTabChange}
+                              onRemove={toggleFavorite}
+                              navigate={navigate}
+                            />
+                          ))}
+                        </SortableContext>
+                      </DndContext>
+                    ) : (
+                      // Regular categories
+                      category.items.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = activeTab === item.id;
+                        const showContactBadge = item.id === "contact-messages" && pendingMessagesCount > 0;
+                        const showNotificationBadge = item.id === "notification-logs" && unreadNotificationsCount > 0;
+                        const badgeCount = showContactBadge ? pendingMessagesCount : (showNotificationBadge ? unreadNotificationsCount : 0);
 
-                      return (
-                        <div key={item.id} className="flex items-center gap-1">
-                          <Button
-                            variant={isActive ? "default" : "ghost"}
-                            className={`group flex-1 justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted hover:text-foreground"} transition-all duration-200`}
-                            onClick={() => {
-                              // Navigate to external dashboard page
-                              if (item.id === "dashboard-external") {
-                                navigate("/dashboard");
-                              } else {
-                                onTabChange(item.id);
-                              }
-                            }}
-                          >
-                            <Icon className="w-4 h-4 shrink-0 group-hover:text-black" />
-                            <span className="truncate">{item.label}</span>
-                            {(showContactBadge || showNotificationBadge) && (
-                              <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
-                                {badgeCount}
-                              </Badge>
-                            )}
-                          </Button>
-                          {category.id !== "quick-access" && (
+                        return (
+                          <div key={item.id} className="flex items-center gap-1">
+                            <Button
+                              variant={isActive ? "default" : "ghost"}
+                              className={`group flex-1 justify-start gap-3 h-9 rounded-lg ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted hover:text-foreground"} transition-all duration-200`}
+                              onClick={() => {
+                                // Navigate to external dashboard page
+                                if (item.id === "dashboard-external") {
+                                  navigate("/dashboard");
+                                } else {
+                                  onTabChange(item.id);
+                                }
+                              }}
+                            >
+                              <Icon className="w-4 h-4 shrink-0 group-hover:text-black" />
+                              <span className="truncate">{item.label}</span>
+                              {(showContactBadge || showNotificationBadge) && (
+                                <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs px-1.5">
+                                  {badgeCount}
+                                </Badge>
+                              )}
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -614,10 +828,10 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
                                 }`} 
                               />
                             </Button>
-                          )}
-                        </div>
-                      );
-                    })}
+                          </div>
+                        );
+                      })
+                    )}
                   </CollapsibleContent>
                 </Collapsible>
               )}
