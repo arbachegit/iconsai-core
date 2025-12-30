@@ -1,408 +1,309 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, ChevronRight, Send, Loader2, Check, MessageSquare } from "lucide-react";
-import { usePWAStore } from "@/stores/pwaStore";
+import { Heart, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { MicrophoneButton } from "../voice/MicrophoneButton";
 import { useVoiceRecognition } from "@/hooks/useVoiceRecognition";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
-import { MicrophoneButton } from "../voice/MicrophoneButton";
+import { usePWAStore } from "@/stores/pwaStore";
 
-type HealthStage = "greeting" | "chief_complaint" | "oldcarts" | "summary";
+interface OldcartsQuestion {
+  key: string;
+  question: string;
+  audioQuestion: string;
+  followUp?: string;
+}
 
-const oldcartsQuestions = [
-  { 
-    key: "onset", 
-    question: "Quando isso começou?", 
-    followUp: "Foi de repente ou foi gradual?",
-    icon: "O"
+const oldcartsQuestions: OldcartsQuestion[] = [
+  {
+    key: "onset",
+    question: "Início",
+    audioQuestion: "Quando isso começou? Foi de repente ou gradual?",
+    followUp: "Há quanto tempo você está sentindo isso?",
   },
-  { 
-    key: "location", 
-    question: "Onde exatamente você sente?", 
-    followUp: "A dor se espalha para algum lugar?",
-    icon: "L"
+  {
+    key: "location",
+    question: "Localização",
+    audioQuestion: "Onde exatamente você sente? A sensação se espalha para algum outro lugar?",
   },
-  { 
-    key: "duration", 
-    question: "Quanto tempo dura?", 
-    followUp: "É constante ou vai e volta?",
-    icon: "D"
+  {
+    key: "duration",
+    question: "Duração",
+    audioQuestion: "Quanto tempo dura cada episódio? É constante ou vai e volta?",
   },
-  { 
-    key: "character", 
-    question: "Como você descreveria essa sensação?", 
-    followUp: "É uma dor aguda, queimação, pressão?",
-    icon: "C"
+  {
+    key: "character",
+    question: "Característica",
+    audioQuestion: "Como você descreveria essa sensação? É uma dor aguda, queimação, pressão, ou algo diferente?",
   },
-  { 
-    key: "aggravating", 
-    question: "O que piora?", 
-    followUp: "Movimento, comida, estresse?",
-    icon: "A"
+  {
+    key: "aggravating",
+    question: "Agravantes",
+    audioQuestion: "O que piora? Movimento, comida, estresse, ou alguma outra coisa?",
   },
-  { 
-    key: "relieving", 
-    question: "O que melhora?", 
-    followUp: "Descanso, medicação, posição específica?",
-    icon: "R"
+  {
+    key: "relieving",
+    question: "Alívio",
+    audioQuestion: "O que melhora? Descanso, medicação, alguma posição específica?",
   },
-  { 
-    key: "timing", 
-    question: "Em que momento do dia é pior?", 
-    followUp: "Manhã, noite, após refeições?",
-    icon: "T"
+  {
+    key: "timing",
+    question: "Temporalidade",
+    audioQuestion: "Em que momento do dia é pior? Manhã, tarde, noite, ou após alguma atividade?",
   },
-  { 
-    key: "severity", 
-    question: "De 0 a 10, qual a intensidade?", 
-    followUp: "Sendo 10 a pior dor imaginável.",
-    icon: "S"
+  {
+    key: "severity",
+    question: "Intensidade",
+    audioQuestion: "De zero a dez, qual a intensidade? Sendo dez a pior sensação imaginável.",
   },
 ];
 
+type HealthStage = "greeting" | "chief_complaint" | "oldcarts" | "summary" | "export";
+
+interface HealthAnswer {
+  question: string;
+  answer: string;
+}
+
 export const HealthModule: React.FC = () => {
-  const { 
-    healthAnswers, 
-    setHealthAnswer, 
-    clearHealthAnswers,
-    setPlayerState 
-  } = usePWAStore();
+  const [stage, setStage] = useState<HealthStage>("greeting");
+  const [chiefComplaint, setChiefComplaint] = useState("");
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<HealthAnswer[]>([]);
   
   const { 
     isListening, 
     transcript, 
-    interimTranscript,
     startListening, 
     stopListening,
-    resetTranscript 
+    resetTranscript,
   } = useVoiceRecognition();
   
-  const { speak, isPlaying, isLoading: ttsLoading } = useTextToSpeech();
+  const { speak, isPlaying, isLoading } = useTextToSpeech();
+  const { setPlayerState } = usePWAStore();
 
-  const [stage, setStage] = useState<HealthStage>("greeting");
-  const [chiefComplaint, setChiefComplaint] = useState("");
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  // Reset on mount
+  // Mensagem de boas-vindas
   useEffect(() => {
-    clearHealthAnswers();
-    setStage("greeting");
-    setCurrentQuestion(0);
+    const greeting = "Olá! Sou seu assistente de triagem de saúde. Vou fazer algumas perguntas para entender melhor o que você está sentindo. Lembre-se: isso não substitui uma consulta médica. Quando estiver pronto, me diga: o que está te incomodando hoje?";
+    speak(greeting);
   }, []);
 
-  const handleStartTriage = () => {
-    setStage("chief_complaint");
-    speak("Olá! Vou te ajudar a descrever seus sintomas. Primeiro, me conte: qual é sua queixa principal hoje?");
+  // Atualizar estado do player
+  useEffect(() => {
+    if (isLoading) {
+      setPlayerState("loading");
+    } else if (isPlaying) {
+      setPlayerState("playing");
+    } else if (isListening) {
+      setPlayerState("listening");
+    } else {
+      setPlayerState("idle");
+    }
+  }, [isLoading, isPlaying, isListening, setPlayerState]);
+
+  // Processar resposta de voz
+  useEffect(() => {
+    if (!isListening && transcript) {
+      handleVoiceResponse(transcript);
+      resetTranscript();
+    }
+  }, [isListening, transcript]);
+
+  const handleVoiceResponse = async (response: string) => {
+    if (stage === "greeting") {
+      setChiefComplaint(response);
+      setStage("chief_complaint");
+      
+      const confirmation = `Entendi. Você está sentindo: ${response}. Vou fazer algumas perguntas para entender melhor. Pronto para começar?`;
+      await speak(confirmation);
+      
+      // Pequeno delay e começa as perguntas
+      setTimeout(() => {
+        setStage("oldcarts");
+        askCurrentQuestion();
+      }, 2000);
+      
+    } else if (stage === "oldcarts") {
+      // Salvar resposta
+      const currentQuestion = oldcartsQuestions[currentQuestionIndex];
+      setAnswers(prev => [...prev, {
+        question: currentQuestion.question,
+        answer: response,
+      }]);
+
+      // Próxima pergunta ou finalizar
+      if (currentQuestionIndex < oldcartsQuestions.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
+        setTimeout(() => askCurrentQuestion(), 500);
+      } else {
+        setStage("summary");
+        generateSummary();
+      }
+    }
+  };
+
+  const askCurrentQuestion = async () => {
+    const question = oldcartsQuestions[currentQuestionIndex];
+    await speak(question.audioQuestion);
+  };
+
+  const generateSummary = async () => {
+    const summary = `
+      Perfeito! Aqui está o resumo da nossa conversa:
+      
+      Queixa principal: ${chiefComplaint}.
+      
+      ${answers.map(a => `${a.question}: ${a.answer}`).join(". ")}
+      
+      Deseja enviar este resumo para seu médico via WhatsApp?
+    `;
+    await speak(summary);
+    setStage("export");
   };
 
   const handleMicClick = () => {
     if (isListening) {
       stopListening();
-      if (transcript.trim()) {
-        handleResponse(transcript);
-      }
     } else {
-      resetTranscript();
       startListening();
-      setPlayerState("listening");
     }
   };
 
-  const handleResponse = (response: string) => {
-    if (stage === "chief_complaint") {
-      setChiefComplaint(response);
-      setStage("oldcarts");
-      // Ask first OLDCARTS question
-      const q = oldcartsQuestions[0];
-      speak(`Entendi. Agora vou fazer algumas perguntas para entender melhor. ${q.question} ${q.followUp}`);
-    } else if (stage === "oldcarts") {
-      // Save answer
-      setHealthAnswer(oldcartsQuestions[currentQuestion].key, response);
-      
-      if (currentQuestion < oldcartsQuestions.length - 1) {
-        // Move to next question
-        const nextQ = oldcartsQuestions[currentQuestion + 1];
-        setCurrentQuestion(prev => prev + 1);
-        speak(`${nextQ.question} ${nextQ.followUp}`);
-      } else {
-        // All questions answered, show summary
-        setStage("summary");
-        speak("Obrigado por responder todas as perguntas. Preparei um resumo dos seus sintomas que você pode compartilhar com seu médico.");
-      }
-    }
-    resetTranscript();
-  };
-
-  const generateSummary = () => {
-    let summary = `QUEIXA PRINCIPAL: ${chiefComplaint}\n\n`;
-    summary += "AVALIAÇÃO OLDCARTS:\n";
+  const handleExportWhatsApp = async () => {
+    const message = `*Triagem de Saúde - KnowYOU*\n\n*Queixa:* ${chiefComplaint}\n\n${answers.map(a => `*${a.question}:* ${a.answer}`).join("\n")}`;
     
-    oldcartsQuestions.forEach((q) => {
-      const answer = healthAnswers[q.key] || "Não informado";
-      summary += `- ${q.key.toUpperCase()}: ${answer}\n`;
-    });
-    
-    return summary;
-  };
-
-  const handleShareWhatsApp = () => {
-    const summary = generateSummary();
-    const encoded = encodeURIComponent(summary);
+    const encoded = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encoded}`, "_blank");
+    
+    await speak("O resumo está pronto para ser compartilhado. Escolha o contato do seu médico no WhatsApp.");
   };
+
+  const progress = stage === "oldcarts" 
+    ? ((currentQuestionIndex + 1) / oldcartsQuestions.length) * 100
+    : stage === "summary" || stage === "export" ? 100 : 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex flex-col h-full"
-    >
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-border/50">
-        <div className="w-12 h-12 rounded-xl bg-rose-500/20 flex items-center justify-center">
-          <Heart className="w-6 h-6 text-rose-500" />
+      <div className="p-4 border-b border-white/10">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-full bg-rose-500/20 flex items-center justify-center">
+            <Heart className="w-6 h-6 text-rose-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Triagem de Saúde</h2>
+            <p className="text-sm text-slate-400">Protocolo OLDCARTS</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-bold text-foreground">Saúde</h2>
-          <p className="text-sm text-muted-foreground">Triagem de sintomas OLDCARTS</p>
+        
+        {/* Progress bar */}
+        <div className="space-y-2">
+          <div className="w-full bg-slate-700/50 rounded-full h-2 overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-rose-500 to-rose-400"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.3 }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-slate-400">
+            <span>
+              {stage === "oldcarts" 
+                ? `Pergunta ${currentQuestionIndex + 1} de ${oldcartsQuestions.length}`
+                : stage === "summary" || stage === "export"
+                  ? "Resumo completo"
+                  : "Iniciando..."
+              }
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Progress bar for OLDCARTS */}
-      {stage === "oldcarts" && (
-        <div className="px-4 py-2">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs text-muted-foreground">Progresso</span>
-            <span className="text-xs font-medium text-primary">
-              {currentQuestion + 1} de {oldcartsQuestions.length}
-            </span>
-          </div>
-          <div className="flex gap-1">
-            {oldcartsQuestions.map((q, i) => (
-              <div
-                key={q.key}
-                className={`flex-1 h-2 rounded-full transition-colors ${
-                  i < currentQuestion
-                    ? "bg-green-500"
-                    : i === currentQuestion
-                    ? "bg-primary"
-                    : "bg-muted"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Aviso importante */}
+      <div className="mx-4 mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-start gap-2">
+        <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-200">
+          Esta triagem é informativa e não substitui uma consulta médica profissional.
+        </p>
+      </div>
 
-      {/* Content area */}
+      {/* Área principal */}
       <div className="flex-1 overflow-y-auto p-4">
-        {/* Greeting stage */}
-        {stage === "greeting" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center h-full text-center gap-6"
-          >
+        <AnimatePresence mode="wait">
+          {/* Etapa de perguntas */}
+          {stage === "oldcarts" && (
             <motion.div
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="w-24 h-24 rounded-full bg-rose-500/10 flex items-center justify-center"
+              key="oldcarts"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-4"
             >
-              <Heart className="w-12 h-12 text-rose-500/60" />
-            </motion.div>
-            
-            <div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                Triagem de Sintomas
-              </h3>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                Vou te guiar por um questionário estruturado para entender melhor seus sintomas.
-                O resultado pode ser enviado ao seu médico.
-              </p>
-            </div>
-
-            <button
-              onClick={handleStartTriage}
-              className="px-6 py-3 rounded-xl bg-rose-500 text-white font-medium flex items-center gap-2 hover:bg-rose-600 transition-colors"
-            >
-              Iniciar Triagem
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </motion.div>
-        )}
-
-        {/* Chief complaint stage */}
-        {stage === "chief_complaint" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-4"
-          >
-            <div className="bg-muted/30 rounded-xl p-4">
-              <p className="text-foreground">
-                Qual é sua queixa principal hoje?
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Descreva o que está sentindo
-              </p>
-            </div>
-
-            {/* Show transcript while listening */}
-            <AnimatePresence>
-              {(isListening || transcript) && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="bg-primary/10 rounded-xl p-4"
-                >
-                  <p className="text-sm text-foreground italic">
-                    {interimTranscript || transcript || "Ouvindo..."}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-
-        {/* OLDCARTS questions stage */}
-        {stage === "oldcarts" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-4"
-          >
-            {/* Current question */}
-            <motion.div
-              key={currentQuestion}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-muted/30 rounded-xl p-4"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-lg bg-rose-500/20 flex items-center justify-center">
-                  <span className="text-lg font-bold text-rose-500">
-                    {oldcartsQuestions[currentQuestion].icon}
-                  </span>
-                </div>
-                <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                  {oldcartsQuestions[currentQuestion].key}
+              <div className="text-center">
+                <span className="inline-block px-3 py-1 bg-rose-500/20 text-rose-300 text-sm rounded-full mb-2">
+                  {oldcartsQuestions[currentQuestionIndex].question}
                 </span>
               </div>
-              <p className="text-foreground text-lg">
-                {oldcartsQuestions[currentQuestion].question}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {oldcartsQuestions[currentQuestion].followUp}
+              <p className="text-lg text-white text-center">
+                {oldcartsQuestions[currentQuestionIndex].audioQuestion}
               </p>
             </motion.div>
+          )}
 
-            {/* Show transcript while listening */}
-            <AnimatePresence>
-              {(isListening || transcript) && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="bg-primary/10 rounded-xl p-4"
-                >
-                  <p className="text-sm text-foreground italic">
-                    {interimTranscript || transcript || "Ouvindo..."}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Previous answers */}
-            {Object.keys(healthAnswers).length > 0 && (
-              <div className="space-y-2 mt-6">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                  Respostas anteriores
-                </p>
-                {oldcartsQuestions.slice(0, currentQuestion).map((q) => (
-                  <div key={q.key} className="flex items-start gap-2 text-sm">
-                    <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">
-                      <span className="font-medium text-foreground">{q.key}:</span>{" "}
-                      {healthAnswers[q.key]}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* Summary stage */}
-        {stage === "summary" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-4"
-          >
-            <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Check className="w-5 h-5 text-green-500" />
-                <span className="font-medium text-green-500">Triagem Completa</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Abaixo está o resumo dos seus sintomas que pode ser compartilhado com seu médico.
-              </p>
-            </div>
-
-            {/* Summary card */}
-            <div className="bg-muted/30 rounded-xl p-4 space-y-4">
-              <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                  Queixa Principal
-                </p>
-                <p className="text-foreground">{chiefComplaint}</p>
-              </div>
-
-              <div className="border-t border-border/50 pt-4">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
-                  Avaliação OLDCARTS
+          {/* Resumo */}
+          {(stage === "summary" || stage === "export") && (
+            <motion.div
+              key="summary"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-4"
+            >
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  <span className="text-white font-medium">Resumo da Triagem</span>
+                </div>
+                <p className="text-sm text-slate-300 mb-4">
+                  <span className="text-slate-400">Queixa:</span> {chiefComplaint}
                 </p>
                 <div className="space-y-2">
-                  {oldcartsQuestions.map((q) => (
-                    <div key={q.key} className="flex items-start gap-2 text-sm">
-                      <span className="w-8 h-6 rounded bg-rose-500/20 text-rose-500 text-xs font-bold flex items-center justify-center flex-shrink-0">
-                        {q.icon}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {healthAnswers[q.key] || "Não informado"}
-                      </span>
+                  {answers.map((a, i) => (
+                    <div 
+                      key={i}
+                      className="flex items-start gap-2 p-2 bg-slate-700/30 rounded-lg"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-slate-300">
+                        <span className="text-slate-400">{a.question}:</span> {a.answer}
+                      </p>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
-
-            {/* Share button */}
-            <button
-              onClick={handleShareWhatsApp}
-              className="w-full py-3 px-4 rounded-xl bg-green-500 text-white font-medium flex items-center justify-center gap-2 hover:bg-green-600 transition-colors"
-            >
-              <MessageSquare className="w-5 h-5" />
-              Enviar para meu médico via WhatsApp
-            </button>
-          </motion.div>
-        )}
+              
+              <button
+                onClick={handleExportWhatsApp}
+                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-5 h-5" />
+                Enviar para meu médico
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Mic button (hidden in greeting and summary) */}
-      {(stage === "chief_complaint" || stage === "oldcarts") && (
-        <div className="p-4 border-t border-border/50 flex justify-center">
+      {/* Microfone */}
+      {stage !== "export" && (
+        <div className="p-4 flex justify-center">
           <MicrophoneButton
             isListening={isListening}
-            isProcessing={isProcessing}
+            isProcessing={isLoading}
             onClick={handleMicClick}
-            disabled={isPlaying || ttsLoading}
-            size="lg"
           />
         </div>
       )}
-    </motion.div>
+    </div>
   );
 };
 
