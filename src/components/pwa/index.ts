@@ -14,6 +14,7 @@ export { MicrophoneButton } from './voice/MicrophoneButton';
 export { CometBorder } from './voice/CometBorder';
 export { StatusIndicator } from './voice/StatusIndicator';
 export { WaveformVisualizer } from './voice/WaveformVisualizer';
+export { ModuleHeader } from './voice/ModuleHeader';
 
 // Module components
 export { HelpModule } from './modules/HelpModule';
