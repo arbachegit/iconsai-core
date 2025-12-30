@@ -10,8 +10,11 @@ interface PWASimulatorProps {
 
 export const PWASimulator: React.FC<PWASimulatorProps> = ({ 
   showFrame = true,
-  scale = 0.65 
+  scale = 0.9 
 }) => {
+  // iPhone 14/15 dimensions for better visibility
+  const phoneWidth = 390;
+  const phoneHeight = 844;
   if (!showFrame) {
     return (
       <div className="w-full h-full overflow-hidden">
@@ -34,8 +37,8 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
         animate={{ opacity: 1, y: 0 }}
         className="relative"
         style={{ 
-          width: 320 * scale, 
-          height: 640 * scale,
+          width: phoneWidth * scale, 
+          height: phoneHeight * scale,
         }}
       >
         {/* Outer frame with gradient */}
@@ -87,15 +90,7 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
             </div>
 
             {/* Screen content - PWA App */}
-            <div 
-              className="absolute inset-0 pt-8 pb-1 overflow-hidden"
-              style={{ 
-                transform: `scale(${scale})`,
-                transformOrigin: "top left",
-                width: `${100 / scale}%`,
-                height: `${100 / scale}%`,
-              }}
-            >
+            <div className="absolute inset-0 pt-8 pb-4 overflow-hidden">
               <div className="w-full h-full overflow-auto">
                 <PWAVoiceAssistant />
               </div>

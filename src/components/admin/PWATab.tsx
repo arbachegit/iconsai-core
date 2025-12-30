@@ -335,7 +335,7 @@ export default function PWATab() {
         <CardContent>
           {showSimulator ? (
             <div className="flex justify-center py-4">
-              <PWASimulator showFrame={true} scale={0.55} />
+              <PWASimulator showFrame={true} />
             </div>
           ) : (
             <>
