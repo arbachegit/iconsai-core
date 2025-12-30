@@ -5398,6 +5398,22 @@ export type Database = {
         Returns: Json
       }
       get_pwa_device_stats: { Args: never; Returns: Json }
+      get_pwa_devices_schema: {
+        Args: never
+        Returns: {
+          column_default: string
+          column_name: string
+          data_type: string
+          is_nullable: string
+        }[]
+      }
+      get_register_pwa_user_definition: {
+        Args: never
+        Returns: {
+          function_definition: string
+          function_name: string
+        }[]
+      }
       get_schema_info: { Args: never; Returns: Json }
       get_taxonomy_analytics_report: {
         Args: { p_days?: number }
