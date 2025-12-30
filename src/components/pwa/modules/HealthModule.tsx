@@ -394,9 +394,10 @@ export const HealthModule: React.FC = () => {
       {(stage === "chief_complaint" || stage === "oldcarts") && (
         <div className="p-4 border-t border-border/50 flex justify-center">
           <MicrophoneButton
-            isRecording={isListening}
+            isListening={isListening}
+            isProcessing={isProcessing}
             onClick={handleMicClick}
-            disabled={isProcessing || isPlaying || ttsLoading}
+            disabled={isPlaying || ttsLoading}
             size="lg"
           />
         </div>

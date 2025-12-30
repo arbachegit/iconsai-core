@@ -187,9 +187,10 @@ export const WorldModule: React.FC = () => {
         {/* Voice button */}
         <div className="flex justify-center">
           <MicrophoneButton
-            isRecording={isListening}
+            isListening={isListening}
+            isProcessing={isProcessing}
             onClick={handleMicClick}
-            disabled={isProcessing || isPlaying || ttsLoading}
+            disabled={isPlaying || ttsLoading}
             size="lg"
           />
         </div>

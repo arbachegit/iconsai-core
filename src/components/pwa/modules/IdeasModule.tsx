@@ -388,9 +388,10 @@ export const IdeasModule: React.FC = () => {
           {/* Voice button */}
           <div className="flex justify-center">
             <MicrophoneButton
-              isRecording={isListening}
+              isListening={isListening}
+              isProcessing={isProcessing}
               onClick={handleMicClick}
-              disabled={isProcessing || isPlaying}
+              disabled={isPlaying}
               size="lg"
             />
           </div>
