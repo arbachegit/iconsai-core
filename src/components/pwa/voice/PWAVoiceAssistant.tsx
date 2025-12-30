@@ -9,6 +9,7 @@ import { ModuleHeader } from "./ModuleHeader";
 import { HeaderActions } from "./HeaderActions";
 import { FooterModules } from "./FooterModules";
 import { TranscriptArea } from "./TranscriptArea";
+import { ConversationModal } from "./ConversationModal";
 import { HelpModule } from "../modules/HelpModule";
 import { WorldModule } from "../modules/WorldModule";
 import { HealthModule } from "../modules/HealthModule";
@@ -26,6 +27,7 @@ export const PWAVoiceAssistant: React.FC = () => {
     setPlayerState,
     setAuthenticated,
     resetSession,
+    conversations,
   } = usePWAVoiceStore();
   
   const { speak, isPlaying, isLoading } = useTextToSpeech();
@@ -35,6 +37,8 @@ export const PWAVoiceAssistant: React.FC = () => {
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [interimTranscript, setInterimTranscript] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [isConversationsOpen, setIsConversationsOpen] = useState(false);
+  const [playingConversationId, setPlayingConversationId] = useState<string | null>(null);
 
   // Check if mobile device
   useEffect(() => {
@@ -88,8 +92,22 @@ export const PWAVoiceAssistant: React.FC = () => {
   };
 
   const handleOpenConversations = () => {
-    // TODO: Open conversations modal
-    console.log("Open conversations");
+    setIsConversationsOpen(true);
+  };
+
+  const handlePlayConversation = (id: string) => {
+    if (playingConversationId === id) {
+      setPlayingConversationId(null);
+      // TODO: Stop audio playback
+    } else {
+      setPlayingConversationId(id);
+      // TODO: Play audio for this conversation
+    }
+  };
+
+  const handleTranscribe = (id: string) => {
+    // The modal handles transcript display via expandedId state
+    console.log("Transcribe conversation:", id);
   };
 
   const renderModule = () => {
@@ -188,7 +206,7 @@ export const PWAVoiceAssistant: React.FC = () => {
                   <HeaderActions
                     onSummarize={handleSummarize}
                     onOpenChat={handleOpenConversations}
-                    hasConversations={messages.length > 0}
+                    hasConversations={messages.length > 0 || conversations.length > 0}
                     isSummarizing={isSummarizing}
                   />
                 </div>
@@ -249,7 +267,7 @@ export const PWAVoiceAssistant: React.FC = () => {
                 <HeaderActions
                   onSummarize={handleSummarize}
                   onOpenChat={handleOpenConversations}
-                  hasConversations={messages.length > 0}
+                  hasConversations={messages.length > 0 || conversations.length > 0}
                   isSummarizing={isSummarizing}
                 />
               </div>
@@ -275,6 +293,16 @@ export const PWAVoiceAssistant: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Conversations Modal */}
+        <ConversationModal
+          isOpen={isConversationsOpen}
+          onClose={() => setIsConversationsOpen(false)}
+          conversations={conversations}
+          onPlayAudio={handlePlayConversation}
+          onTranscribe={handleTranscribe}
+          playingId={playingConversationId}
+        />
       </div>
     );
   };
