@@ -2,12 +2,13 @@ import React, { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Loader2, Volume2, RotateCcw } from "lucide-react";
 
-export type PlayerState = "idle" | "loading" | "playing" | "waiting" | "processing";
+export type PlayerState = "idle" | "loading" | "playing" | "waiting" | "processing" | "listening";
 
 interface VoicePlayerBoxProps {
   state: PlayerState;
   onPlay?: () => void;
   onPause?: () => void;
+  onPlayPause?: () => void;
   onReset?: () => void;
   onMicClick?: () => void;
   audioProgress?: number;
