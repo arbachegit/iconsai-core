@@ -1,4 +1,5 @@
 export { CometBorder } from "./CometBorder";
+export { ConversationModal } from "./ConversationModal";
 export { FooterModules } from "./FooterModules";
 export { HeaderActions } from "./HeaderActions";
 export { MicrophoneButton } from "./MicrophoneButton";
