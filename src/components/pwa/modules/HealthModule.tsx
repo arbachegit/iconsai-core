@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { MicrophoneButton } from "../voice/MicrophoneButton";
-import { useVoiceRecognition } from "@/hooks/useVoiceRecognition";
+import { MicrophoneOrb } from "../voice/MicrophoneOrb";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
-import { usePWAStore } from "@/stores/pwaStore";
+import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 
 interface OldcartsQuestion {
   key: string;
@@ -69,46 +68,31 @@ export const HealthModule: React.FC = () => {
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<HealthAnswer[]>([]);
+  const [showMic, setShowMic] = useState(false);
   
-  const { 
-    isListening, 
-    transcript, 
-    startListening, 
-    stopListening,
-    resetTranscript,
-  } = useVoiceRecognition();
-  
-  const { speak, isPlaying, isLoading } = useTextToSpeech();
-  const { setPlayerState } = usePWAStore();
+  const { speak, isPlaying, isLoading, progress } = useTextToSpeech();
+  const { setPlayerState, userName } = usePWAVoiceStore();
 
   // Mensagem de boas-vindas
   useEffect(() => {
-    const greeting = "Olá! Sou seu assistente de triagem de saúde. Vou fazer algumas perguntas para entender melhor o que você está sentindo. Lembre-se: isso não substitui uma consulta médica. Quando estiver pronto, me diga: o que está te incomodando hoje?";
-    speak(greeting);
+    const greeting = `Olá${userName ? ` ${userName}` : ""}! Sou seu assistente de triagem de saúde. Vou fazer algumas perguntas para entender melhor o que você está sentindo. Lembre-se: isso não substitui uma consulta médica. Quando estiver pronto, me diga: o que está te incomodando hoje?`;
+    speak(greeting).then(() => setShowMic(true));
   }, []);
 
   // Atualizar estado do player
   useEffect(() => {
     if (isLoading) {
-      setPlayerState("loading");
+      setPlayerState("processing");
     } else if (isPlaying) {
       setPlayerState("playing");
-    } else if (isListening) {
-      setPlayerState("listening");
     } else {
-      setPlayerState("idle");
+      setPlayerState("waiting");
     }
-  }, [isLoading, isPlaying, isListening, setPlayerState]);
+  }, [isLoading, isPlaying, setPlayerState]);
 
-  // Processar resposta de voz
-  useEffect(() => {
-    if (!isListening && transcript) {
-      handleVoiceResponse(transcript);
-      resetTranscript();
-    }
-  }, [isListening, transcript]);
-
-  const handleVoiceResponse = async (response: string) => {
+  const handleVoiceCapture = async (response: string) => {
+    setShowMic(false);
+    
     if (stage === "greeting") {
       setChiefComplaint(response);
       setStage("chief_complaint");
@@ -144,6 +128,7 @@ export const HealthModule: React.FC = () => {
   const askCurrentQuestion = async () => {
     const question = oldcartsQuestions[currentQuestionIndex];
     await speak(question.audioQuestion);
+    setShowMic(true);
   };
 
   const generateSummary = async () => {
@@ -160,12 +145,9 @@ export const HealthModule: React.FC = () => {
     setStage("export");
   };
 
-  const handleMicClick = () => {
-    if (isListening) {
-      stopListening();
-    } else {
-      startListening();
-    }
+  const handleTimeout = async () => {
+    await speak("Não ouvi sua resposta. Pode repetir, por favor?");
+    setShowMic(true);
   };
 
   const handleExportWhatsApp = async () => {
@@ -177,7 +159,7 @@ export const HealthModule: React.FC = () => {
     await speak("O resumo está pronto para ser compartilhado. Escolha o contato do seu médico no WhatsApp.");
   };
 
-  const progress = stage === "oldcarts" 
+  const stageProgress = stage === "oldcarts" 
     ? ((currentQuestionIndex + 1) / oldcartsQuestions.length) * 100
     : stage === "summary" || stage === "export" ? 100 : 0;
 
@@ -201,7 +183,7 @@ export const HealthModule: React.FC = () => {
             <motion.div
               className="h-full bg-gradient-to-r from-rose-500 to-rose-400"
               initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
+              animate={{ width: `${stageProgress}%` }}
               transition={{ duration: 0.3 }}
             />
           </div>
@@ -294,12 +276,12 @@ export const HealthModule: React.FC = () => {
       </div>
 
       {/* Microfone */}
-      {stage !== "export" && (
+      {stage !== "export" && showMic && !isPlaying && (
         <div className="p-4 flex justify-center">
-          <MicrophoneButton
-            isListening={isListening}
-            isProcessing={isLoading}
-            onClick={handleMicClick}
+          <MicrophoneOrb
+            isVisible={true}
+            onCapture={handleVoiceCapture}
+            onTimeout={handleTimeout}
           />
         </div>
       )}

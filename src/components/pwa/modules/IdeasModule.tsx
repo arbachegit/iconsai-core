@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lightbulb, AlertTriangle, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
-import { MicrophoneButton } from "../voice/MicrophoneButton";
-import { useVoiceRecognition } from "@/hooks/useVoiceRecognition";
+import { MicrophoneOrb } from "../voice/MicrophoneOrb";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
-import { usePWAStore } from "@/stores/pwaStore";
+import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 
 type IdeaStage = "capture" | "critique" | "summary";
 
@@ -27,46 +26,31 @@ export const IdeasModule: React.FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
   const [critiquePoints, setCritiquePoints] = useState<CritiquePoint[]>([]);
+  const [showMic, setShowMic] = useState(false);
   
-  const { 
-    isListening, 
-    transcript, 
-    startListening, 
-    stopListening,
-    resetTranscript,
-  } = useVoiceRecognition();
-  
-  const { speak, isPlaying, isLoading } = useTextToSpeech();
-  const { setPlayerState } = usePWAStore();
+  const { speak, isPlaying, isLoading, progress } = useTextToSpeech();
+  const { setPlayerState, userName } = usePWAVoiceStore();
 
   // Mensagem de boas-vindas
   useEffect(() => {
-    const greeting = "Olá! Sou seu advogado do diabo construtivo. Meu trabalho é questionar sua ideia para fortalecê-la. Não vou aceitar nada sem escrutínio. Pronto para o desafio? Me conte sua ideia de negócio.";
-    speak(greeting);
+    const greeting = `Olá${userName ? ` ${userName}` : ""}! Sou seu advogado do diabo construtivo. Meu trabalho é questionar sua ideia para fortalecê-la. Não vou aceitar nada sem escrutínio. Pronto para o desafio? Me conte sua ideia de negócio.`;
+    speak(greeting).then(() => setShowMic(true));
   }, []);
 
   // Atualizar estado do player
   useEffect(() => {
     if (isLoading) {
-      setPlayerState("loading");
+      setPlayerState("processing");
     } else if (isPlaying) {
       setPlayerState("playing");
-    } else if (isListening) {
-      setPlayerState("listening");
     } else {
-      setPlayerState("idle");
+      setPlayerState("waiting");
     }
-  }, [isLoading, isPlaying, isListening, setPlayerState]);
+  }, [isLoading, isPlaying, setPlayerState]);
 
-  // Processar resposta de voz
-  useEffect(() => {
-    if (!isListening && transcript) {
-      handleVoiceResponse(transcript);
-      resetTranscript();
-    }
-  }, [isListening, transcript]);
-
-  const handleVoiceResponse = async (response: string) => {
+  const handleVoiceCapture = async (response: string) => {
+    setShowMic(false);
+    
     if (stage === "capture") {
       setOriginalIdea(response);
       
@@ -75,6 +59,7 @@ export const IdeasModule: React.FC = () => {
       await speak(firstCritique);
       
       setStage("critique");
+      setShowMic(true);
       
     } else if (stage === "critique") {
       setAnswers(prev => [...prev, response]);
@@ -93,6 +78,7 @@ export const IdeasModule: React.FC = () => {
         // Transição crítica entre perguntas
         const transition = `Entendi. Mas ainda tenho dúvidas. ${critiqueQuestions[currentQuestionIndex + 1]}`;
         await speak(transition);
+        setShowMic(true);
       } else {
         setStage("summary");
         generateSummary();
@@ -119,21 +105,19 @@ export const IdeasModule: React.FC = () => {
     await speak(summary);
   };
 
-  const handleMicClick = () => {
-    if (isListening) {
-      stopListening();
-    } else {
-      startListening();
-    }
+  const handleTimeout = async () => {
+    await speak("Não ouvi sua resposta. Pode repetir?");
+    setShowMic(true);
   };
 
-  const restartSession = () => {
+  const restartSession = async () => {
     setStage("capture");
     setOriginalIdea("");
     setCurrentQuestionIndex(0);
     setAnswers([]);
     setCritiquePoints([]);
-    speak("Vamos recomeçar. Me conte sua nova ideia.");
+    await speak("Vamos recomeçar. Me conte sua nova ideia.");
+    setShowMic(true);
   };
 
   return (
@@ -278,12 +262,12 @@ export const IdeasModule: React.FC = () => {
       </div>
 
       {/* Microfone */}
-      {stage !== "summary" && (
+      {stage !== "summary" && showMic && !isPlaying && (
         <div className="p-4 flex justify-center">
-          <MicrophoneButton
-            isListening={isListening}
-            isProcessing={isLoading}
-            onClick={handleMicClick}
+          <MicrophoneOrb
+            isVisible={true}
+            onCapture={handleVoiceCapture}
+            onTimeout={handleTimeout}
           />
         </div>
       )}
