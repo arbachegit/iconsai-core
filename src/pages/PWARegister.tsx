@@ -114,6 +114,14 @@ export default function PWARegister() {
     setSubmitting(true);
 
     try {
+      // Log payload for debugging (without sensitive data)
+      console.log(`[PWA-REGISTER] ${new Date().toISOString()} - Calling register_pwa_user`, {
+        p_device_id: deviceId,
+        p_name: name.trim().substring(0, 3) + "***",
+        p_email: email.trim().toLowerCase().substring(0, 3) + "***",
+        p_phone: phone.trim() ? "provided" : "not provided",
+      });
+
       const { data, error } = await supabase.rpc("register_pwa_user", {
         p_invitation_token: token,
         p_device_id: deviceId,
@@ -123,11 +131,26 @@ export default function PWARegister() {
         p_user_agent: navigator.userAgent,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Detailed error logging
+        console.error("[PWA-REGISTER] RPC Error Details:", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          timestamp: new Date().toISOString(),
+        });
+        
+        // Display detailed error to user
+        toast.error(`Erro: ${error.message}${error.hint ? ` (${error.hint})` : ""}`);
+        throw error;
+      }
 
       const result = data as any;
+      console.log("[PWA-REGISTER] RPC Response:", result);
 
       if (!result.success) {
+        console.error("[PWA-REGISTER] Registration failed:", result);
         throw new Error(result.error || "Erro ao registrar");
       }
 
@@ -143,8 +166,11 @@ export default function PWARegister() {
         navigate("/pwa");
       }, 1500);
     } catch (error: any) {
-      console.error("Error registering:", error);
-      toast.error(error.message || "Erro ao completar cadastro");
+      console.error("[PWA-REGISTER] Final catch - Full error object:", error);
+      // Only show toast if we haven't already shown one
+      if (!error.code) {
+        toast.error(error.message || "Erro ao completar cadastro");
+      }
     } finally {
       setSubmitting(false);
     }

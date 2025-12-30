@@ -177,17 +177,18 @@ Deno.serve(async (req) => {
     });
 
     // 6. NEW: Check PWA device security
+    // Using correct column names: is_blocked, is_verified, last_seen_at
     console.log('[SECURITY-SCAN] Checking PWA device security...');
     const { data: pwaDevices } = await supabase
       .from('pwa_devices')
-      .select('status, created_at, last_access_at')
+      .select('is_blocked, is_verified, created_at, last_seen_at')
       .order('created_at', { ascending: false })
       .limit(100);
 
     if (pwaDevices && pwaDevices.length > 0) {
-      const blockedCount = pwaDevices.filter(d => d.status === 'blocked').length;
-      const pendingCount = pwaDevices.filter(d => d.status === 'pending').length;
-      const verifiedCount = pwaDevices.filter(d => d.status === 'verified').length;
+      const blockedCount = pwaDevices.filter(d => d.is_blocked === true).length;
+      const pendingCount = pwaDevices.filter(d => !d.is_verified && !d.is_blocked).length;
+      const verifiedCount = pwaDevices.filter(d => d.is_verified === true).length;
 
       findings.push({
         id: 'pwa_devices_overview',
@@ -198,10 +199,10 @@ Deno.serve(async (req) => {
         location: 'pwa_devices'
       });
 
-      // Check for devices without recent access
+      // Check for devices without recent access (using last_seen_at column)
       const inactiveDevices = pwaDevices.filter(d => {
-        if (!d.last_access_at) return true;
-        const lastAccess = new Date(d.last_access_at);
+        if (!d.last_seen_at) return true;
+        const lastAccess = new Date(d.last_seen_at);
         const daysSinceAccess = (Date.now() - lastAccess.getTime()) / (1000 * 60 * 60 * 24);
         return daysSinceAccess > 30;
       });
