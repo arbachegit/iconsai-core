@@ -5344,15 +5344,26 @@ export type Database = {
         }
         Returns: Json
       }
-      complete_pwa_registration_with_code: {
-        Args: {
-          p_device_id: string
-          p_invitation_token: string
-          p_user_agent?: string
-          p_verification_code: string
-        }
-        Returns: Json
-      }
+      complete_pwa_registration_with_code:
+        | {
+            Args: {
+              p_device_id: string
+              p_email: string
+              p_name: string
+              p_phone?: string
+              p_verification_code?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_device_id: string
+              p_invitation_token: string
+              p_user_agent?: string
+              p_verification_code: string
+            }
+            Returns: Json
+          }
       convert_pmc_to_reais: {
         Args: {
           p_pmc_indicator_code: string
@@ -5749,17 +5760,27 @@ export type Database = {
         }
         Returns: Json
       }
-      register_pwa_user: {
-        Args: {
-          p_device_id: string
-          p_email: string
-          p_invitation_token: string
-          p_name: string
-          p_phone?: string
-          p_user_agent?: string
-        }
-        Returns: Json
-      }
+      register_pwa_user:
+        | {
+            Args: {
+              p_device_id: string
+              p_email: string
+              p_name: string
+              p_phone?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_device_id: string
+              p_email: string
+              p_invitation_token: string
+              p_name: string
+              p_phone?: string
+              p_user_agent?: string
+            }
+            Returns: Json
+          }
       reject_tag_suggestion: {
         Args: {
           p_notes?: string
