@@ -65,6 +65,7 @@ import {
   Network,
   Layers,
 } from "lucide-react";
+import { NotificationBell } from './NotificationBell';
 
 
 type TabType = "dashboard" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "dashboard-external" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding" | "taxonomy-analytics" | "maieutic-effectiveness" | "lexicon-phonetics" | "ontology-concepts" | "content-profiles" | "data-flow";
@@ -433,35 +434,41 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
 
           {/* 2. Search Component - Adapts to sidebar state */}
           {isCollapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="group h-10 w-10 rounded-full hover:bg-[#00D4FF]/10 hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-500 ease-in-out animate-pulse"
-                  onClick={() => {
-                    onToggleCollapse();
-                    setTimeout(() => {
-                      const searchInput = document.querySelector('input[placeholder="Buscar..."]') as HTMLInputElement;
-                      searchInput?.focus();
-                    }, 350);
-                  }}
-                >
-                  <Search className="w-4 h-4 group-hover:text-[#00D4FF] transition-colors duration-300" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Buscar</TooltipContent>
-            </Tooltip>
+            <div className="flex flex-col items-center gap-3">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="group h-10 w-10 rounded-full hover:bg-[#00D4FF]/10 hover:shadow-[0_0_15px_rgba(0,212,255,0.5)] transition-all duration-500 ease-in-out"
+                    onClick={() => {
+                      onToggleCollapse();
+                      setTimeout(() => {
+                        const searchInput = document.querySelector('input[placeholder="Buscar..."]') as HTMLInputElement;
+                        searchInput?.focus();
+                      }, 350);
+                    }}
+                  >
+                    <Search className="w-4 h-4 group-hover:text-[#00D4FF] transition-colors duration-300" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Buscar</TooltipContent>
+              </Tooltip>
+              <NotificationBell onNavigate={onTabChange} />
+            </div>
           ) : (
-            <div className="relative flex-1 transition-all duration-500 ease-in-out">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Buscar..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-10 text-sm bg-muted/30 border-border rounded-full focus:border-primary/50 w-full"
-              />
+            <div className="relative flex-1 flex items-center gap-2 transition-all duration-500 ease-in-out">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Buscar..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-10 text-sm bg-muted/30 border-border rounded-full focus:border-primary/50 w-full"
+                />
+              </div>
+              <NotificationBell onNavigate={onTabChange} />
             </div>
           )}
         </div>

@@ -57,6 +57,7 @@ interface NotificationLog {
   error_message: string | null;
   metadata: Record<string, any>;
   created_at: string;
+  is_read: boolean;
 }
 
 // Event type labels in Portuguese
@@ -77,13 +78,14 @@ export const NotificationLogsTab = () => {
   const queryClient = useQueryClient();
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [readFilter, setReadFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [selectedLog, setSelectedLog] = useState<NotificationLog | null>(null);
 
   // Fetch notification logs
   const { data: logs, isLoading, refetch } = useQuery({
-    queryKey: ["notification-logs", channelFilter, statusFilter, dateFrom, dateTo],
+    queryKey: ["notification-logs", channelFilter, statusFilter, readFilter, dateFrom, dateTo],
     queryFn: async () => {
       let query = supabase
         .from("notification_logs")
@@ -97,6 +99,11 @@ export const NotificationLogsTab = () => {
       if (statusFilter !== "all") {
         query = query.eq("status", statusFilter);
       }
+      if (readFilter === "unread") {
+        query = query.eq("is_read", false);
+      } else if (readFilter === "read") {
+        query = query.eq("is_read", true);
+      }
       if (dateFrom) {
         query = query.gte("created_at", `${dateFrom}T00:00:00`);
       }
@@ -109,6 +116,33 @@ export const NotificationLogsTab = () => {
       return data as NotificationLog[];
     },
   });
+
+  // Mark notification as read
+  const markAsRead = async (id: string) => {
+    const { error } = await supabase
+      .from('notification_logs')
+      .update({ is_read: true })
+      .eq('id', id);
+
+    if (!error) {
+      refetch();
+    }
+  };
+
+  // Mark all as read
+  const markAllAsRead = async () => {
+    const unreadIds = logs?.filter(l => !l.is_read).map(l => l.id) || [];
+    if (unreadIds.length === 0) return;
+
+    const { error } = await supabase
+      .from('notification_logs')
+      .update({ is_read: true })
+      .in('id', unreadIds);
+
+    if (!error) {
+      refetch();
+    }
+  };
 
   // Real-time subscription for new logs
   useEffect(() => {
@@ -171,9 +205,12 @@ export const NotificationLogsTab = () => {
   const clearFilters = () => {
     setChannelFilter("all");
     setStatusFilter("all");
+    setReadFilter("all");
     setDateFrom("");
     setDateTo("");
   };
+
+  const unreadCount = logs?.filter(l => !l.is_read).length || 0;
 
   return (
     <div className="space-y-6">
@@ -185,10 +222,18 @@ export const NotificationLogsTab = () => {
             Histórico de todas as notificações enviadas pelo sistema
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <Button variant="outline" size="sm" onClick={markAllAsRead} className="gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              Marcar todas como lidas ({unreadCount})
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* Filters Toolbar */}
@@ -228,6 +273,20 @@ export const NotificationLogsTab = () => {
         </div>
 
         <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Leitura</Label>
+          <Select value={readFilter} onValueChange={setReadFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="unread">Não lidas</SelectItem>
+              <SelectItem value="read">Lidas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">De</Label>
           <Input
             type="date"
@@ -257,27 +316,34 @@ export const NotificationLogsTab = () => {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead className="w-[40px]"></TableHead>
               <TableHead className="w-[160px]">Data/Hora</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead className="w-[100px] text-center">Canal</TableHead>
               <TableHead className="w-[120px]">Status</TableHead>
-              <TableHead className="w-[80px] text-center">Ações</TableHead>
+              <TableHead className="w-[100px] text-center">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-6 w-36" /></TableCell>
                   <TableCell><Skeleton className="h-6 w-8 mx-auto" /></TableCell>
                   <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-8 mx-auto" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-16 mx-auto" /></TableCell>
                 </TableRow>
               ))
             ) : logs && logs.length > 0 ? (
               logs.map((log) => (
-                <TableRow key={log.id} className="hover:bg-muted/30">
+                <TableRow key={log.id} className={`hover:bg-muted/30 ${!log.is_read ? 'bg-primary/5' : ''}`}>
+                  <TableCell>
+                    {!log.is_read && (
+                      <div className="h-2 w-2 rounded-full bg-primary" />
+                    )}
+                  </TableCell>
                   <TableCell className="font-mono text-sm">
                     {formatDateTime(log.created_at)}
                   </TableCell>
@@ -305,20 +371,39 @@ export const NotificationLogsTab = () => {
                   </TableCell>
                   <TableCell>{getStatusBadge(log.status)}</TableCell>
                   <TableCell className="text-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setSelectedLog(log)}
-                      className="h-8 w-8"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-center gap-1">
+                      {!log.is_read && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => markAsRead(log.id)}
+                                className="h-8 w-8"
+                              >
+                                <CheckCircle2 className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Marcar como lida</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setSelectedLog(log)}
+                        className="h-8 w-8"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                   Nenhum log de notificação encontrado.
                 </TableCell>
               </TableRow>
