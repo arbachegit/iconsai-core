@@ -4992,6 +4992,7 @@ export type Database = {
           email_notifications: boolean | null
           id: string
           language: string | null
+          sidebar_favorites: Json | null
           theme: string | null
           updated_at: string | null
           user_id: string
@@ -5002,6 +5003,7 @@ export type Database = {
           email_notifications?: boolean | null
           id?: string
           language?: string | null
+          sidebar_favorites?: Json | null
           theme?: string | null
           updated_at?: string | null
           user_id: string
@@ -5012,6 +5014,7 @@ export type Database = {
           email_notifications?: boolean | null
           id?: string
           language?: string | null
+          sidebar_favorites?: Json | null
           theme?: string | null
           updated_at?: string | null
           user_id?: string

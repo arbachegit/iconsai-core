@@ -238,6 +238,12 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
 
   const handleNotificationClick = (notification: Notification) => {
     const config = EVENT_CONFIG[notification.event_type] || DEFAULT_CONFIG;
+    
+    // Marcar como lida automaticamente ao clicar
+    if (!notification.is_read) {
+      markAsRead(notification.id);
+    }
+    
     onNavigate(config.tab);
     setIsOpen(false);
   };
