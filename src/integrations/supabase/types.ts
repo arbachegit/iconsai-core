@@ -3089,6 +3089,39 @@ export type Database = {
         }
         Relationships: []
       }
+      pwa_config: {
+        Row: {
+          config_key: string
+          config_type: string | null
+          config_value: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          config_key: string
+          config_type?: string | null
+          config_value?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          config_key?: string
+          config_type?: string | null
+          config_value?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       pwa_devices: {
         Row: {
           block_reason: string | null
