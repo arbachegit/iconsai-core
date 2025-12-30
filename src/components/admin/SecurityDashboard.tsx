@@ -26,7 +26,8 @@ import {
   XCircle,
   ChevronDown,
   ChevronRight,
-  Unlock
+  Unlock,
+  Loader2
 } from "lucide-react";
 import {
   PieChart,
@@ -74,6 +75,9 @@ const COLORS = ['#e94560', '#0f3460', '#16213e', '#1a1a2e', '#533483', '#f39c12'
 export function SecurityDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+  // ✅ NOVO: Estado para rastrear dispositivos desbanidos nesta sessão
+  const [unbannedDevices, setUnbannedDevices] = useState<Set<string>>(new Set());
+  const [unbanningDevice, setUnbanningDevice] = useState<string | null>(null);
 
   // Fetch audit logs
   const { data: auditLogs, isLoading: logsLoading, refetch } = useQuery({
@@ -87,6 +91,20 @@ export function SecurityDashboard() {
       
       if (error) throw error;
       return data as AuditLog[];
+    },
+  });
+
+  // ✅ NOVO: Fetch dispositivos atualmente banidos
+  const { data: currentlyBannedDevices } = useQuery({
+    queryKey: ["currently-banned-devices"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("banned_devices")
+        .select("device_fingerprint")
+        .eq("is_active", true);
+      
+      if (error) throw error;
+      return new Set(data?.map(d => d.device_fingerprint) || []);
     },
   });
 
@@ -384,20 +402,41 @@ export function SecurityDashboard() {
                 const hasViolationDetails = log.violation_details && Object.keys(log.violation_details).length > 0;
                 
                 const handleUnban = async () => {
+                  // Prevenir duplo clique
+                  if (unbanningDevice === log.device_fingerprint) return;
+                  
+                  setUnbanningDevice(log.device_fingerprint);
+                  
                   try {
                     // Remover da tabela banned_devices
                     const { error } = await supabase
                       .from('banned_devices')
-                      .update({ is_active: false, unbanned_at: new Date().toISOString() })
+                      .update({ 
+                        is_active: false, 
+                        unbanned_at: new Date().toISOString(),
+                        unban_reason: 'Removido manualmente pelo administrador via Dashboard'
+                      })
                       .eq('device_fingerprint', log.device_fingerprint);
                     
                     if (error) throw error;
                     
-                    toast.success('Banimento removido com sucesso!');
-                    refetch();
+                    // ✅ Marcar como desbanido localmente
+                    setUnbannedDevices(prev => new Set(prev).add(log.device_fingerprint));
+                    
+                    toast.success('Banimento removido com sucesso!', {
+                      description: `Dispositivo ${log.device_fingerprint.substring(0, 12)}... foi liberado.`
+                    });
+                    
+                    // Atualizar dados após pequeno delay
+                    setTimeout(() => refetch(), 500);
+                    
                   } catch (error) {
                     console.error('Erro ao remover banimento:', error);
-                    toast.error('Erro ao remover banimento');
+                    toast.error('Erro ao remover banimento', {
+                      description: 'Tente novamente ou verifique os logs.'
+                    });
+                  } finally {
+                    setUnbanningDevice(null);
                   }
                 };
                 
@@ -521,20 +560,42 @@ export function SecurityDashboard() {
                             </div>
                           )}
                           
-                          {/* Botão para Desbanir */}
+                          {/* Botão para Desbanir - com estado visual */}
                           {log.ban_applied && !log.was_whitelisted && (
                             <div className="flex items-center gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={handleUnban}
-                                className="text-green-600 border-green-600 hover:bg-green-600/10"
-                              >
-                                <Unlock className="h-3 w-3 mr-1" />
-                                Remover Banimento
-                              </Button>
+                              {unbannedDevices.has(log.device_fingerprint) || 
+                               !currentlyBannedDevices?.has(log.device_fingerprint) ? (
+                                // ✅ ESTADO: Já desbanido
+                                <div className="flex items-center gap-2 text-green-600">
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  <span className="text-sm font-medium">
+                                    {unbannedDevices.has(log.device_fingerprint) ? 'Banimento Removido' : 'Já desbanido'}
+                                  </span>
+                                </div>
+                              ) : (
+                                // Botão para desbanir
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={handleUnban}
+                                  disabled={unbanningDevice === log.device_fingerprint}
+                                  className="text-green-600 border-green-600 hover:bg-green-600/10 disabled:opacity-50"
+                                >
+                                  {unbanningDevice === log.device_fingerprint ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                      Removendo...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Unlock className="h-3 w-3 mr-1" />
+                                      Remover Banimento
+                                    </>
+                                  )}
+                                </Button>
+                              )}
                               <span className="text-xs text-muted-foreground">
-                                Fingerprint: {log.device_fingerprint}
+                                Fingerprint: {log.device_fingerprint.substring(0, 16)}...
                               </span>
                             </div>
                           )}

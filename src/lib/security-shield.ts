@@ -545,11 +545,29 @@ async function notifyAdminWarning(
       // Ignore auth errors
     }
     
-    // Chamar edge function para notificar via WhatsApp
-    await supabase.functions.invoke('send-whatsapp', {
-      body: {
-        to: 'admin', // O edge function deve buscar o número do admin_settings
-        message: `⚠️ *AVISO DE SEGURANÇA KnowYOU*
+    // ✅ FIX: Buscar configurações do admin para WhatsApp
+    const { data: settings, error: settingsError } = await supabase
+      .from('admin_settings')
+      .select('whatsapp_target_phone, whatsapp_global_enabled')
+      .single();
+    
+    if (settingsError || !settings) {
+      console.warn('🛡️ Security Shield v4: Não foi possível buscar admin_settings para WhatsApp');
+      return;
+    }
+    
+    // Só enviar se WhatsApp estiver habilitado globalmente e número configurado
+    if (!settings.whatsapp_global_enabled) {
+      console.log('🛡️ Security Shield v4: WhatsApp desabilitado globalmente');
+      return;
+    }
+    
+    if (!settings.whatsapp_target_phone) {
+      console.log('🛡️ Security Shield v4: Número de WhatsApp do admin não configurado');
+      return;
+    }
+    
+    const message = `⚠️ *AVISO DE SEGURANÇA KnowYOU*
 
 📛 *Tipo:* ${type}
 🔢 *Tentativa:* ${attemptNumber}/${maxAttempts}
@@ -561,11 +579,21 @@ async function notifyAdminWarning(
 ${Object.keys(details).length > 0 ? `📋 *Detalhes:* ${JSON.stringify(details)}` : ''}
 
 _Usuário recebeu aviso. Não foi banido ainda._
-⏰ ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+⏰ ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
+
+    // ✅ FIX: Enviar para o número correto do admin
+    const { error } = await supabase.functions.invoke('send-whatsapp', {
+      body: {
+        to: settings.whatsapp_target_phone,
+        message: message
       }
     });
     
-    console.log('🛡️ Security Shield v4: Admin notificado sobre aviso');
+    if (error) {
+      console.error('🛡️ Security Shield v4: Erro ao enviar WhatsApp de aviso:', error);
+    } else {
+      console.log('🛡️ Security Shield v4: Admin notificado via WhatsApp sobre aviso');
+    }
   } catch (error) {
     console.warn('🛡️ Security Shield v4: Erro ao notificar admin sobre aviso', error);
   }
@@ -991,6 +1019,19 @@ function startMonitoring(): void {
   
   if (!shieldConfig?.shield_enabled) {
     console.log('🛡️ Security Shield v4: DISABLED (shield_enabled = false)');
+    return;
+  }
+  
+  // ✅ FIX: Não monitorar se whitelist não foi verificada ainda
+  if (!whitelistCheckComplete) {
+    console.log('🛡️ Security Shield v4: Aguardando whitelist check antes de monitorar...');
+    setTimeout(startMonitoring, 500);
+    return;
+  }
+  
+  // ✅ FIX: Se usuário é whitelisted, não monitorar
+  if (isUserWhitelisted) {
+    console.log('🛡️ Security Shield v4: Usuário WHITELISTED, monitoramento desativado');
     return;
   }
   
