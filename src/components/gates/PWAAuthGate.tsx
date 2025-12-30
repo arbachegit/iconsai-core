@@ -122,8 +122,8 @@ function RegisterScreen({
           </Button>
         </form>
 
-        <p className="text-xs text-muted-foreground text-center mt-6">
-          Device ID: {fingerprint.substring(0, 16)}...
+        <p className="text-xs text-muted-foreground text-center mt-6 break-all">
+          Device ID: {fingerprint}
         </p>
       </div>
     </div>
@@ -292,8 +292,8 @@ function BlockedScreen({
         <p className="text-muted-foreground mb-4">
           {reason || "Este dispositivo foi bloqueado por motivos de seguranca."}
         </p>
-        <p className="text-xs text-muted-foreground">
-          Device ID: {fingerprint.substring(0, 16)}...
+        <p className="text-xs text-muted-foreground break-all">
+          Device ID: {fingerprint}
         </p>
       </div>
     </div>
