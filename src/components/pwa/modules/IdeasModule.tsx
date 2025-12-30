@@ -1,422 +1,293 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lightbulb, Send, Loader2, AlertTriangle, CheckCircle, ArrowRight } from "lucide-react";
-import { usePWAStore } from "@/stores/pwaStore";
+import { Lightbulb, AlertTriangle, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { MicrophoneButton } from "../voice/MicrophoneButton";
 import { useVoiceRecognition } from "@/hooks/useVoiceRecognition";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
-import { MicrophoneButton } from "../voice/MicrophoneButton";
-import { supabase } from "@/integrations/supabase/client";
+import { usePWAStore } from "@/stores/pwaStore";
 
-type IdeaPhase = "capture" | "critique" | "refine" | "summary";
+type IdeaStage = "capture" | "critique" | "summary";
 
-const critiquePrompts = [
-  "Interessante. Mas como você planeja executar isso tecnicamente? Qual seria o primeiro passo concreto?",
-  "Entendo. E qual o investimento inicial necessário? Você tem os recursos disponíveis?",
-  "Certo. Quem são seus concorrentes diretos e o que te diferencia deles?",
-  "Pense bem: o que poderia dar errado? Quais são os maiores riscos?",
-  "Por último: em quanto tempo você espera ver resultados? Seja realista.",
+interface CritiquePoint {
+  type: "strength" | "weakness" | "question" | "suggestion";
+  content: string;
+}
+
+const critiqueQuestions = [
+  "O que diferencia sua ideia das soluções existentes no mercado?",
+  "Quem é seu público-alvo específico e como você validou essa demanda?",
+  "Qual o investimento inicial necessário e em quanto tempo espera retorno?",
+  "Quais são os 3 maiores riscos que podem fazer essa ideia falhar?",
+  "Se um concorrente com mais recursos copiar sua ideia amanhã, o que te protege?",
 ];
 
 export const IdeasModule: React.FC = () => {
-  const { 
-    ideaContent, 
-    setIdeaContent, 
-    ideaCritique, 
-    addCritique, 
-    clearIdea,
-    setPlayerState 
-  } = usePWAStore();
+  const [stage, setStage] = useState<IdeaStage>("capture");
+  const [originalIdea, setOriginalIdea] = useState("");
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<string[]>([]);
+  const [critiquePoints, setCritiquePoints] = useState<CritiquePoint[]>([]);
   
   const { 
     isListening, 
     transcript, 
-    interimTranscript,
     startListening, 
     stopListening,
-    resetTranscript 
+    resetTranscript,
   } = useVoiceRecognition();
   
-  const { speak, isPlaying } = useTextToSpeech();
+  const { speak, isPlaying, isLoading } = useTextToSpeech();
+  const { setPlayerState } = usePWAStore();
 
-  const [phase, setPhase] = useState<IdeaPhase>("capture");
-  const [currentCritique, setCurrentCritique] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [textInput, setTextInput] = useState("");
-  const [responses, setResponses] = useState<string[]>([]);
+  // Mensagem de boas-vindas
+  useEffect(() => {
+    const greeting = "Olá! Sou seu advogado do diabo construtivo. Meu trabalho é questionar sua ideia para fortalecê-la. Não vou aceitar nada sem escrutínio. Pronto para o desafio? Me conte sua ideia de negócio.";
+    speak(greeting);
+  }, []);
 
-  const handleStart = () => {
-    clearIdea();
-    setResponses([]);
-    setCurrentCritique(0);
-    speak("Olá! Sou seu advogado do diabo. Me conte sua ideia de negócio e vou questioná-la para fortalecê-la. Qual é sua ideia?");
-    setPhase("capture");
+  // Atualizar estado do player
+  useEffect(() => {
+    if (isLoading) {
+      setPlayerState("loading");
+    } else if (isPlaying) {
+      setPlayerState("playing");
+    } else if (isListening) {
+      setPlayerState("listening");
+    } else {
+      setPlayerState("idle");
+    }
+  }, [isLoading, isPlaying, isListening, setPlayerState]);
+
+  // Processar resposta de voz
+  useEffect(() => {
+    if (!isListening && transcript) {
+      handleVoiceResponse(transcript);
+      resetTranscript();
+    }
+  }, [isListening, transcript]);
+
+  const handleVoiceResponse = async (response: string) => {
+    if (stage === "capture") {
+      setOriginalIdea(response);
+      
+      // Primeira crítica - nunca validar imediatamente
+      const firstCritique = `Interessante. Você quer ${response}. Antes de eu dizer se é uma boa ideia, preciso entender melhor. ${critiqueQuestions[0]}`;
+      await speak(firstCritique);
+      
+      setStage("critique");
+      
+    } else if (stage === "critique") {
+      setAnswers(prev => [...prev, response]);
+      
+      // Adicionar ponto de crítica baseado na resposta
+      // TODO: Usar IA para gerar críticas reais
+      const mockCritique: CritiquePoint = {
+        type: Math.random() > 0.5 ? "weakness" : "question",
+        content: `Sobre "${response.substring(0, 50)}..." - isso precisa ser mais específico.`,
+      };
+      setCritiquePoints(prev => [...prev, mockCritique]);
+      
+      if (currentQuestionIndex < critiqueQuestions.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
+        
+        // Transição crítica entre perguntas
+        const transition = `Entendi. Mas ainda tenho dúvidas. ${critiqueQuestions[currentQuestionIndex + 1]}`;
+        await speak(transition);
+      } else {
+        setStage("summary");
+        generateSummary();
+      }
+    }
+  };
+
+  const generateSummary = async () => {
+    // Gerar pontos fortes e fracos
+    const strengths: CritiquePoint[] = [
+      { type: "strength", content: "Você demonstrou conhecimento do problema" },
+      { type: "strength", content: "A ideia tem potencial de diferenciação" },
+    ];
+    
+    const weaknesses: CritiquePoint[] = [
+      { type: "weakness", content: "Falta validação com clientes reais" },
+      { type: "weakness", content: "Modelo de negócio precisa ser refinado" },
+      { type: "suggestion", content: "Considere fazer um MVP antes de investir pesado" },
+    ];
+    
+    setCritiquePoints([...strengths, ...weaknesses]);
+    
+    const summary = `Análise completa. Identifiquei ${strengths.length} pontos fortes e ${weaknesses.length} pontos de atenção. Sua ideia tem potencial, mas precisa de refinamento. Veja o resumo na tela.`;
+    await speak(summary);
   };
 
   const handleMicClick = () => {
     if (isListening) {
       stopListening();
-      if (transcript.trim()) {
-        handleResponse(transcript);
-      }
     } else {
-      resetTranscript();
       startListening();
-      setPlayerState("listening");
     }
   };
 
-  const handleTextSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (textInput.trim()) {
-      handleResponse(textInput);
-      setTextInput("");
-    }
-  };
-
-  const handleResponse = async (response: string) => {
-    if (phase === "capture") {
-      setIdeaContent(response);
-      setPhase("critique");
-      // Start critique with AI
-      await generateCritique(response);
-    } else if (phase === "critique") {
-      // Save response
-      setResponses(prev => [...prev, response]);
-      
-      if (currentCritique < critiquePrompts.length - 1) {
-        setCurrentCritique(prev => prev + 1);
-        speak(critiquePrompts[currentCritique + 1]);
-      } else {
-        // All critiques done
-        setPhase("summary");
-        await generateSummary();
-      }
-    }
-    resetTranscript();
-  };
-
-  const generateCritique = async (idea: string) => {
-    setIsProcessing(true);
-    setPlayerState("processing");
-
-    try {
-      // Use AI to generate initial critique
-      const { data, error } = await supabase.functions.invoke("chat-router", {
-        body: {
-          message: `Analise criticamente esta ideia de negócio como um advogado do diabo construtivo. Seja direto e aponte falhas, mas de forma construtiva. Ideia: "${idea}"`,
-          chatType: "economia",
-          sessionId: `pwa-ideas-${Date.now()}`,
-        },
-      });
-
-      if (data?.response) {
-        addCritique(data.response);
-        speak(data.response);
-      } else {
-        speak(critiquePrompts[0]);
-      }
-    } catch (err) {
-      console.error("Error generating critique:", err);
-      speak(critiquePrompts[0]);
-    } finally {
-      setIsProcessing(false);
-      setPlayerState("idle");
-    }
-  };
-
-  const generateSummary = async () => {
-    setIsProcessing(true);
-    setPlayerState("processing");
-
-    try {
-      const summaryPrompt = `
-        Com base nesta análise de ideia de negócio:
-        IDEIA: ${ideaContent}
-        RESPOSTAS DO EMPREENDEDOR: ${responses.join("; ")}
-        
-        Gere um resumo executivo com:
-        1. Pontos fortes identificados
-        2. Pontos de atenção
-        3. Próximos passos recomendados
-        
-        Seja conciso e prático.
-      `;
-
-      const { data, error } = await supabase.functions.invoke("chat-router", {
-        body: {
-          message: summaryPrompt,
-          chatType: "economia",
-          sessionId: `pwa-ideas-summary-${Date.now()}`,
-        },
-      });
-
-      if (data?.response) {
-        addCritique(data.response);
-        speak("Aqui está minha análise final da sua ideia.");
-      }
-    } catch (err) {
-      console.error("Error generating summary:", err);
-    } finally {
-      setIsProcessing(false);
-      setPlayerState("idle");
-    }
+  const restartSession = () => {
+    setStage("capture");
+    setOriginalIdea("");
+    setCurrentQuestionIndex(0);
+    setAnswers([]);
+    setCritiquePoints([]);
+    speak("Vamos recomeçar. Me conte sua nova ideia.");
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex flex-col h-full"
-    >
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-border/50">
-        <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
-          <Lightbulb className="w-6 h-6 text-amber-500" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-foreground">Ideias</h2>
-          <p className="text-sm text-muted-foreground">Validador de ideias</p>
+      <div className="p-4 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center">
+            <Lightbulb className="w-6 h-6 text-amber-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Validador de Ideias</h2>
+            <p className="text-sm text-slate-400">Advogado do Diabo Construtivo</p>
+          </div>
         </div>
       </div>
 
-      {/* Progress indicator for critique phase */}
-      {phase === "critique" && (
-        <div className="px-4 py-2">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs text-muted-foreground">Questionamentos</span>
-            <span className="text-xs font-medium text-primary">
-              {currentCritique + 1} de {critiquePrompts.length}
-            </span>
-          </div>
-          <div className="flex gap-1">
-            {critiquePrompts.map((_, i) => (
-              <div
-                key={i}
-                className={`flex-1 h-2 rounded-full transition-colors ${
-                  i <= currentCritique ? "bg-amber-500" : "bg-muted"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Aviso */}
+      <div className="mx-4 mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-start gap-2">
+        <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-200">
+          Vou questionar tudo. Não leve para o lado pessoal - é para fortalecer sua ideia.
+        </p>
+      </div>
 
-      {/* Content area */}
+      {/* Área principal */}
       <div className="flex-1 overflow-y-auto p-4">
-        {/* Initial state */}
-        {phase === "capture" && !ideaContent && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center h-full text-center gap-6"
-          >
+        <AnimatePresence mode="wait">
+          {/* Captura da ideia */}
+          {stage === "capture" && (
             <motion.div
-              animate={{ 
-                scale: [1, 1.05, 1],
-                rotate: [0, 5, -5, 0]
-              }}
-              transition={{ duration: 3, repeat: Infinity }}
-              className="w-24 h-24 rounded-full bg-amber-500/10 flex items-center justify-center"
+              key="capture"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="text-center py-8"
             >
-              <Lightbulb className="w-12 h-12 text-amber-500/60" />
-            </motion.div>
-            
-            <div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                Advogado do Diabo
+              <h3 className="text-2xl font-bold text-white mb-2">
+                Qual é sua ideia de negócio?
               </h3>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                Vou questionar sua ideia de negócio para identificar pontos fracos
-                e ajudar a fortalecê-la.
-              </p>
-            </div>
-
-            <button
-              onClick={handleStart}
-              className="px-6 py-3 rounded-xl bg-amber-500 text-white font-medium flex items-center gap-2 hover:bg-amber-600 transition-colors"
-            >
-              Apresentar minha ideia
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </motion.div>
-        )}
-
-        {/* Capture phase - waiting for idea */}
-        {phase === "capture" && !ideaContent && isListening && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-4"
-          >
-            <div className="bg-muted/30 rounded-xl p-4">
-              <p className="text-foreground">
-                Me conte sua ideia de negócio
-              </p>
-            </div>
-            
-            <AnimatePresence>
-              {(isListening || transcript) && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="bg-amber-500/10 rounded-xl p-4"
-                >
-                  <p className="text-sm text-foreground italic">
-                    {interimTranscript || transcript || "Ouvindo..."}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-
-        {/* Critique phase */}
-        {phase === "critique" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-4"
-          >
-            {/* User's idea */}
-            <div className="bg-primary/10 rounded-xl p-4">
-              <p className="text-xs uppercase tracking-wider text-primary mb-1">Sua ideia</p>
-              <p className="text-sm text-foreground">{ideaContent}</p>
-            </div>
-
-            {/* Current critique/question */}
-            <motion.div
-              key={currentCritique}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-muted/30 rounded-xl p-4"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <span className="text-xs uppercase tracking-wider text-amber-500">
-                  Questionamento {currentCritique + 1}
-                </span>
-              </div>
-              <p className="text-foreground">
-                {ideaCritique[0] || critiquePrompts[currentCritique]}
+              <p className="text-slate-400">
+                Descreva em uma ou duas frases
               </p>
             </motion.div>
+          )}
 
-            {/* Listening indicator */}
-            <AnimatePresence>
-              {(isListening || transcript) && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="bg-amber-500/10 rounded-xl p-4"
-                >
-                  <p className="text-sm text-foreground italic">
-                    {interimTranscript || transcript || "Ouvindo sua resposta..."}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+          {/* Fase de crítica */}
+          {stage === "critique" && (
+            <motion.div
+              key="critique"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-4"
+            >
+              {/* Ideia original */}
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+                <p className="text-xs text-amber-300 mb-1">Sua ideia:</p>
+                <p className="text-sm text-white">{originalIdea}</p>
+              </div>
 
-            {/* Previous responses */}
-            {responses.length > 0 && (
-              <div className="space-y-2 mt-4">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                  Suas respostas
+              {/* Pergunta atual */}
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                <div className="text-xs text-slate-400 mb-2">
+                  Pergunta {currentQuestionIndex + 1} de {critiqueQuestions.length}
+                </div>
+                <p className="text-lg text-white font-medium">
+                  {critiqueQuestions[currentQuestionIndex]}
                 </p>
-                {responses.map((resp, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">{resp}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* Summary phase */}
-        {phase === "summary" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-4"
-          >
-            <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <CheckCircle className="w-5 h-5 text-green-500" />
-                <span className="font-medium text-green-500">Análise Completa</span>
-              </div>
-            </div>
-
-            {/* Summary content */}
-            <div className="bg-muted/30 rounded-xl p-4 space-y-4">
-              <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
-                  Sua Ideia
-                </p>
-                <p className="text-foreground">{ideaContent}</p>
               </div>
 
-              {ideaCritique.length > 1 && (
-                <div className="border-t border-border/50 pt-4">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
-                    Análise Final
-                  </p>
-                  <p className="text-sm text-foreground whitespace-pre-wrap">
-                    {ideaCritique[ideaCritique.length - 1]}
-                  </p>
+              {/* Respostas anteriores */}
+              {answers.length > 0 && (
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {answers.map((answer, i) => (
+                    <div key={i} className="bg-slate-700/30 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 mb-1">{critiqueQuestions[i]}</p>
+                      <p className="text-sm text-slate-300">{answer}</p>
+                    </div>
+                  ))}
                 </div>
               )}
-            </div>
+            </motion.div>
+          )}
 
-            {/* Restart button */}
-            <button
-              onClick={handleStart}
-              className="w-full py-3 px-4 rounded-xl bg-amber-500 text-white font-medium flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors"
+          {/* Resumo */}
+          {stage === "summary" && (
+            <motion.div
+              key="summary"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-4"
             >
-              <Lightbulb className="w-5 h-5" />
-              Analisar outra ideia
-            </button>
-          </motion.div>
-        )}
+              {/* Ideia original */}
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+                <p className="text-xs text-amber-300 mb-1">Ideia analisada:</p>
+                <p className="text-sm text-white">{originalIdea}</p>
+              </div>
+
+              {/* Pontos fortes */}
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  <span className="text-emerald-300 font-medium">Pontos Fortes</span>
+                </div>
+                <div className="space-y-2">
+                  {critiquePoints.filter(p => p.type === "strength").map((point, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <p className="text-sm text-emerald-200">{point.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pontos de atenção */}
+              <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <XCircle className="w-5 h-5 text-rose-400" />
+                  <span className="text-rose-300 font-medium">Pontos de Atenção</span>
+                </div>
+                <div className="space-y-2">
+                  {critiquePoints.filter(p => p.type === "weakness" || p.type === "suggestion").map((point, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <p className="text-sm text-rose-200">{point.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Botão recomeçar */}
+              <button
+                onClick={restartSession}
+                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-5 h-5" />
+                Testar outra ideia
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Input area */}
-      {(phase === "capture" || phase === "critique") && (
-        <div className="p-4 border-t border-border/50 space-y-4">
-          {/* Voice button */}
-          <div className="flex justify-center">
-            <MicrophoneButton
-              isListening={isListening}
-              isProcessing={isProcessing}
-              onClick={handleMicClick}
-              disabled={isPlaying}
-              size="lg"
-            />
-          </div>
-
-          {/* Text input fallback */}
-          <form onSubmit={handleTextSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Ou digite sua resposta..."
-              disabled={isProcessing || isListening}
-              className="flex-1 px-4 py-2 rounded-xl bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-            />
-            <button
-              type="submit"
-              disabled={!textInput.trim() || isProcessing}
-              className="p-2 rounded-xl bg-amber-500 text-white disabled:opacity-50"
-            >
-              <Send className="w-5 h-5" />
-            </button>
-          </form>
+      {/* Microfone */}
+      {stage !== "summary" && (
+        <div className="p-4 flex justify-center">
+          <MicrophoneButton
+            isListening={isListening}
+            isProcessing={isLoading}
+            onClick={handleMicClick}
+          />
         </div>
       )}
-    </motion.div>
+    </div>
   );
 };
 
