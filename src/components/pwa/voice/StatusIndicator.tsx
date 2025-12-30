@@ -2,67 +2,73 @@ import React from "react";
 import { motion } from "framer-motion";
 
 interface StatusIndicatorProps {
-  isActive: boolean;
+  isActive?: boolean;
+  color?: string;
   size?: "sm" | "md" | "lg";
-  color?: "green" | "cyan" | "amber" | "red";
 }
 
-const sizeClasses = {
+const sizeMap = {
   sm: "w-2 h-2",
   md: "w-3 h-3",
-  lg: "w-4 h-4"
-};
-
-const colorClasses = {
-  green: {
-    bg: "bg-green-500",
-    ping: "bg-green-400"
-  },
-  cyan: {
-    bg: "bg-primary",
-    ping: "bg-primary/60"
-  },
-  amber: {
-    bg: "bg-amber-500",
-    ping: "bg-amber-400"
-  },
-  red: {
-    bg: "bg-red-500",
-    ping: "bg-red-400"
-  }
+  lg: "w-4 h-4",
 };
 
 export const StatusIndicator: React.FC<StatusIndicatorProps> = ({ 
-  isActive, 
-  size = "md",
-  color = "green"
+  isActive = true, 
+  color = "#22C55E",
+  size = "md" 
 }) => {
-  const sizeClass = sizeClasses[size];
-  const colors = colorClasses[color];
-
   return (
     <div className="relative flex items-center justify-center">
-      {/* Base dot */}
+      {/* Círculo principal */}
       <motion.div
-        className={`${sizeClass} rounded-full ${colors.bg}`}
-        animate={isActive ? { scale: [1, 1.1, 1] } : {}}
-        transition={isActive ? {
+        className={`${sizeMap[size]} rounded-full`}
+        style={{ backgroundColor: color }}
+        animate={isActive ? {
+          scale: [1, 1.2, 1],
+          opacity: [1, 0.8, 1],
+        } : {
+          scale: 1,
+          opacity: 0.5,
+        }}
+        transition={{
           duration: 1.5,
-          repeat: Infinity,
-          ease: "easeInOut"
-        } : {}}
+          repeat: isActive ? Infinity : 0,
+          ease: "easeInOut",
+        }}
       />
       
-      {/* Ping effect when active */}
+      {/* Primeira onda (glow) */}
       {isActive && (
         <motion.div
-          className={`absolute ${sizeClass} rounded-full ${colors.ping}`}
-          initial={{ scale: 1, opacity: 0.75 }}
-          animate={{ scale: 2.5, opacity: 0 }}
+          className={`absolute ${sizeMap[size]} rounded-full`}
+          style={{ backgroundColor: color }}
+          animate={{
+            scale: [1, 2.5],
+            opacity: [0.6, 0],
+          }}
           transition={{
             duration: 1.5,
             repeat: Infinity,
-            ease: "easeOut"
+            ease: "easeOut",
+          }}
+        />
+      )}
+      
+      {/* Segunda onda com delay */}
+      {isActive && (
+        <motion.div
+          className={`absolute ${sizeMap[size]} rounded-full`}
+          style={{ backgroundColor: color }}
+          animate={{
+            scale: [1, 2.5],
+            opacity: [0.4, 0],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            ease: "easeOut",
+            delay: 0.75,
           }}
         />
       )}

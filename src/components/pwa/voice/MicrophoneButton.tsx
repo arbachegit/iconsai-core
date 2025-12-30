@@ -1,105 +1,102 @@
 import React from "react";
-import { motion } from "framer-motion";
-import { Mic, MicOff } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Mic, MicOff, Loader2 } from "lucide-react";
 
 interface MicrophoneButtonProps {
-  isRecording: boolean;
-  onClick: () => void;
+  isListening: boolean;
+  isProcessing?: boolean;
   disabled?: boolean;
+  onClick: () => void;
   size?: "sm" | "md" | "lg";
 }
 
-const sizeClasses = {
-  sm: "w-12 h-12",
-  md: "w-16 h-16",
-  lg: "w-20 h-20"
-};
-
-const iconSizes = {
-  sm: "h-5 w-5",
-  md: "h-6 w-6",
-  lg: "h-8 w-8"
+const sizeMap = {
+  sm: { button: "w-12 h-12", icon: "w-5 h-5" },
+  md: { button: "w-14 h-14", icon: "w-6 h-6" },
+  lg: { button: "w-16 h-16", icon: "w-8 h-8" },
 };
 
 export const MicrophoneButton: React.FC<MicrophoneButtonProps> = ({
-  isRecording,
-  onClick,
+  isListening,
+  isProcessing = false,
   disabled = false,
-  size = "md"
+  onClick,
+  size = "lg",
 }) => {
   return (
-    <motion.button
-      onClick={onClick}
-      disabled={disabled}
-      className={`
-        ${sizeClasses[size]} 
-        rounded-full 
-        flex items-center justify-center
-        transition-all duration-300
-        ${isRecording 
-          ? "bg-red-500 shadow-[0_0_30px_rgba(239,68,68,0.5)]" 
-          : "bg-gradient-to-br from-primary to-secondary shadow-[0_0_20px_rgba(0,212,255,0.3)]"
-        }
-        ${disabled ? "opacity-50 cursor-not-allowed" : "active:scale-95"}
-      `}
-      whileTap={!disabled ? { scale: 0.95 } : {}}
-      animate={isRecording ? {
-        scale: [1, 1.05, 1],
-        boxShadow: [
-          "0 0 30px rgba(239,68,68,0.5)",
-          "0 0 50px rgba(239,68,68,0.7)",
-          "0 0 30px rgba(239,68,68,0.5)"
-        ]
-      } : {}}
-      transition={isRecording ? {
-        duration: 1,
-        repeat: Infinity,
-        ease: "easeInOut"
-      } : {}}
-    >
-      {/* Ripple effect on recording */}
-      {isRecording && (
-        <>
-          <motion.div
-            className="absolute inset-0 rounded-full bg-red-500"
-            initial={{ scale: 1, opacity: 0.5 }}
-            animate={{ scale: 1.5, opacity: 0 }}
-            transition={{
-              duration: 1,
-              repeat: Infinity,
-              ease: "easeOut"
-            }}
-          />
-          <motion.div
-            className="absolute inset-0 rounded-full bg-red-500"
-            initial={{ scale: 1, opacity: 0.5 }}
-            animate={{ scale: 1.5, opacity: 0 }}
-            transition={{
-              duration: 1,
-              repeat: Infinity,
-              ease: "easeOut",
-              delay: 0.5
-            }}
-          />
-        </>
-      )}
-      
-      {/* Icon */}
-      <motion.div
-        animate={isRecording ? { scale: [1, 1.1, 1] } : {}}
-        transition={isRecording ? {
-          duration: 0.5,
-          repeat: Infinity,
-          ease: "easeInOut"
-        } : {}}
-      >
-        {disabled ? (
-          <MicOff className={`${iconSizes[size]} text-white`} />
-        ) : (
-          <Mic className={`${iconSizes[size]} text-white`} />
+    <div className="relative">
+      {/* Ondas de áudio quando listening */}
+      <AnimatePresence>
+        {isListening && (
+          <>
+            {[1, 2, 3].map((i) => (
+              <motion.div
+                key={i}
+                className="absolute inset-0 rounded-full border-2 border-cyan-400"
+                initial={{ scale: 1, opacity: 0.6 }}
+                animate={{ scale: 1.5 + i * 0.3, opacity: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  delay: i * 0.3,
+                  ease: "easeOut",
+                }}
+              />
+            ))}
+          </>
         )}
-      </motion.div>
-    </motion.button>
+      </AnimatePresence>
+
+      {/* Botão principal */}
+      <motion.button
+        onClick={onClick}
+        disabled={disabled || isProcessing}
+        className={`
+          ${sizeMap[size].button}
+          rounded-full
+          flex items-center justify-center
+          transition-colors
+          ${isListening 
+            ? "bg-red-500 shadow-lg shadow-red-500/40" 
+            : "bg-cyan-500 shadow-lg shadow-cyan-500/30"
+          }
+          ${disabled || isProcessing ? "opacity-50 cursor-not-allowed" : "active:scale-95"}
+        `}
+        whileHover={!disabled && !isProcessing ? { scale: 1.05 } : {}}
+        whileTap={!disabled && !isProcessing ? { scale: 0.95 } : {}}
+        animate={isListening ? {
+          scale: [1, 1.05, 1],
+        } : {}}
+        transition={{
+          duration: 0.5,
+          repeat: isListening ? Infinity : 0,
+        }}
+      >
+        {isProcessing ? (
+          <Loader2 className={`${sizeMap[size].icon} text-white animate-spin`} />
+        ) : isListening ? (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+          >
+            <Mic className={`${sizeMap[size].icon} text-white`} />
+          </motion.div>
+        ) : (
+          <Mic className={`${sizeMap[size].icon} text-white`} />
+        )}
+      </motion.button>
+
+      {/* Label de status */}
+      <motion.p
+        className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-slate-400 whitespace-nowrap"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        {isProcessing ? "Processando..." : isListening ? "Ouvindo..." : "Toque para falar"}
+      </motion.p>
+    </div>
   );
 };
 
