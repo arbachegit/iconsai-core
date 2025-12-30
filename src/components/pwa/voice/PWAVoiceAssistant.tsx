@@ -28,9 +28,12 @@ export const PWAVoiceAssistant: React.FC = () => {
     setAuthenticated,
     resetSession,
     conversations,
+    userName,
+    isFirstVisit,
+    setFirstVisit,
   } = usePWAVoiceStore();
   
-  const { speak, isPlaying, isLoading } = useTextToSpeech();
+  const { speak, isPlaying, isLoading, progress, stop } = useTextToSpeech();
   const [isMobile, setIsMobile] = useState(true);
   const [showDesktopWarning, setShowDesktopWarning] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -59,16 +62,21 @@ export const PWAVoiceAssistant: React.FC = () => {
       setPlayerState("loading");
     } else if (isPlaying) {
       setPlayerState("playing");
+    } else {
+      setPlayerState("waiting");
     }
   }, [isLoading, isPlaying, setPlayerState]);
 
-  // Welcome message when entering home
+  // Welcome message when entering home (only on first visit)
   useEffect(() => {
-    if (appState === "idle") {
-      const welcome = "Bem-vindo ao KnowYOU! Escolha um módulo para começar nossa conversa.";
-      speak(welcome);
+    if (appState === "idle" && isFirstVisit) {
+      const greeting = userName 
+        ? `Olá ${userName}! Bem-vindo ao KnowYOU. Escolha um módulo para começar.`
+        : "Bem-vindo ao KnowYOU! Escolha um módulo para começar nossa conversa.";
+      speak(greeting);
+      setFirstVisit(false);
     }
-  }, [appState]);
+  }, [appState, isFirstVisit, userName, speak, setFirstVisit]);
 
   const handleSplashComplete = () => {
     setAppState("idle");
@@ -85,10 +93,16 @@ export const PWAVoiceAssistant: React.FC = () => {
   };
 
   const handleSummarize = async () => {
-    if (messages.length === 0) return;
+    if (conversations.length === 0 && messages.length === 0) return;
     setIsSummarizing(true);
-    // TODO: Implement summarize logic - send to WhatsApp
-    setTimeout(() => setIsSummarizing(false), 2000);
+    try {
+      const summaryText = conversations.length > 0
+        ? `Você teve ${conversations.length} conversas. ${conversations.map(c => c.summary || "").filter(Boolean).join(". ")}`
+        : "Resumo da sua sessão. Você pode enviar para o WhatsApp quando quiser.";
+      await speak(summaryText);
+    } finally {
+      setIsSummarizing(false);
+    }
   };
 
   const handleOpenConversations = () => {
@@ -225,11 +239,9 @@ export const PWAVoiceAssistant: React.FC = () => {
               <div className="px-4 mb-8">
                 <VoicePlayerBox
                   state={playerState}
-                  onMicClick={() => {}}
-                  onPlayPause={() => {}}
-                  showMic={false}
-                  title="Olá!"
-                  subtitle="Escolha um módulo abaixo"
+                  onPlay={() => {}}
+                  onPause={stop}
+                  audioProgress={progress}
                 />
               </div>
 
