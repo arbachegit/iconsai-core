@@ -8,7 +8,10 @@ export type PWAAuthStatus =
   | 'blocked' 
   | 'needs_registration' 
   | 'needs_verification'
+  | 'sending_code'
   | 'error';
+
+export type CodeSentChannel = 'whatsapp' | 'sms' | null;
 
 interface PWAAuthState {
   status: PWAAuthStatus;
@@ -20,6 +23,10 @@ interface PWAAuthState {
   blockReason: string | null;
   verificationCode: string | null; // Para teste - em produção o código vai por SMS
   errorMessage: string | null;
+  // Estados de feedback para envio de código
+  codeSentVia: CodeSentChannel;
+  codeSentError: string | null;
+  resendingCode: boolean;
 }
 
 interface RegisterParams {
@@ -43,6 +50,9 @@ export function usePWAAuth() {
     blockReason: null,
     verificationCode: null,
     errorMessage: null,
+    codeSentVia: null,
+    codeSentError: null,
+    resendingCode: false,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -180,11 +190,25 @@ export function usePWAAuth() {
         return { success: false, error: result.error || 'Erro ao registrar' };
       }
 
+      // Atualizar para estado de envio de código
+      setState(prev => ({
+        ...prev,
+        status: 'sending_code',
+        userPhone: params.phone,
+        userName: params.name || null,
+        userEmail: params.email || null,
+        codeSentVia: null,
+        codeSentError: null,
+      }));
+
       // Enviar código via WhatsApp/SMS
+      let sentChannel: CodeSentChannel = null;
+      let sendError: string | null = null;
+
       if (result.verification_code) {
         try {
           console.log('[PWA Auth] Sending verification code via WhatsApp/SMS...');
-          const { data: sendResult, error: sendError } = await supabase.functions.invoke('send-pwa-verification-direct', {
+          const { data: sendResult, error: funcError } = await supabase.functions.invoke('send-pwa-verification-direct', {
             body: {
               phone: params.phone,
               code: result.verification_code,
@@ -192,24 +216,28 @@ export function usePWAAuth() {
             }
           });
           
-          if (sendError) {
-            console.warn('[PWA Auth] Failed to send code:', sendError);
+          if (funcError) {
+            console.warn('[PWA Auth] Failed to send code:', funcError);
+            sendError = 'Não foi possível enviar o código. Tente reenviar.';
+          } else if (sendResult?.success) {
+            sentChannel = sendResult?.channel === 'sms' ? 'sms' : 'whatsapp';
+            console.log('[PWA Auth] Code sent via:', sentChannel);
           } else {
-            console.log('[PWA Auth] Code sent via:', sendResult?.channel || 'unknown');
+            sendError = sendResult?.error || 'Falha no envio do código.';
           }
         } catch (err) {
           console.warn('[PWA Auth] Error sending code:', err);
+          sendError = 'Erro ao enviar código. Tente reenviar.';
         }
       }
 
-      // Atualizar estado
+      // Atualizar estado final
       setState(prev => ({
         ...prev,
         status: 'needs_verification',
-        userPhone: params.phone,
-        userName: params.name || null,
-        userEmail: params.email || null,
-        verificationCode: result.verification_code || null, // Mantido para debug
+        verificationCode: result.verification_code || null,
+        codeSentVia: sentChannel,
+        codeSentError: sendError,
       }));
 
       return { success: true };
@@ -275,10 +303,10 @@ export function usePWAAuth() {
   /**
    * Reenviar código de verificação
    */
-  const resendCode = useCallback(async (): Promise<{ success: boolean; code?: string; error?: string }> => {
-    if (isSubmitting) return { success: false, error: 'Operação em andamento' };
+  const resendCode = useCallback(async (): Promise<{ success: boolean; code?: string; channel?: CodeSentChannel; error?: string }> => {
+    if (state.resendingCode) return { success: false, error: 'Operação em andamento' };
     
-    setIsSubmitting(true);
+    setState(prev => ({ ...prev, resendingCode: true, codeSentError: null }));
     
     try {
       const fingerprint = getDeviceFingerprint();
@@ -292,6 +320,7 @@ export function usePWAAuth() {
       });
 
       if (error) {
+        setState(prev => ({ ...prev, resendingCode: false, codeSentError: error.message }));
         return { success: false, error: error.message };
       }
 
@@ -302,20 +331,36 @@ export function usePWAAuth() {
       };
 
       if (!result.success) {
+        setState(prev => ({ ...prev, resendingCode: false, codeSentError: result.error || 'Erro ao reenviar' }));
         return { success: false, error: result.error || 'Erro ao reenviar código' };
       }
 
       // Enviar código via WhatsApp/SMS
+      let sentChannel: CodeSentChannel = null;
+      
       if (result.verification_code) {
         try {
           console.log('[PWA Auth] Resending verification code via WhatsApp/SMS...');
-          await supabase.functions.invoke('send-pwa-verification-direct', {
+          const { data: sendResult, error: funcError } = await supabase.functions.invoke('send-pwa-verification-direct', {
             body: {
               phone: state.userPhone,
               code: result.verification_code,
               name: state.userName || ''
             }
           });
+          
+          if (funcError) {
+            console.warn('[PWA Auth] Failed to resend code:', funcError);
+            setState(prev => ({ 
+              ...prev, 
+              resendingCode: false, 
+              codeSentError: 'Não foi possível reenviar o código.',
+              verificationCode: result.verification_code || null,
+            }));
+            return { success: false, error: 'Falha ao reenviar código' };
+          } else if (sendResult?.success) {
+            sentChannel = sendResult?.channel === 'sms' ? 'sms' : 'whatsapp';
+          }
         } catch (err) {
           console.warn('[PWA Auth] Error resending code:', err);
         }
@@ -325,16 +370,18 @@ export function usePWAAuth() {
       setState(prev => ({
         ...prev,
         verificationCode: result.verification_code || null,
+        resendingCode: false,
+        codeSentVia: sentChannel,
+        codeSentError: null,
       }));
 
-      return { success: true, code: result.verification_code };
+      return { success: true, code: result.verification_code, channel: sentChannel };
 
     } catch (err) {
+      setState(prev => ({ ...prev, resendingCode: false, codeSentError: 'Erro inesperado' }));
       return { success: false, error: 'Erro inesperado' };
-    } finally {
-      setIsSubmitting(false);
     }
-  }, [isSubmitting, state.userPhone, state.userName, state.userEmail]);
+  }, [state.resendingCode, state.userPhone, state.userName, state.userEmail]);
 
   /**
    * Voltar para tela de registro
@@ -370,6 +417,10 @@ export function usePWAAuth() {
     verificationCode: state.verificationCode,
     errorMessage: state.errorMessage,
     isSubmitting,
+    // Estados de feedback de envio de código
+    codeSentVia: state.codeSentVia,
+    codeSentError: state.codeSentError,
+    resendingCode: state.resendingCode,
     
     // Ações
     register,

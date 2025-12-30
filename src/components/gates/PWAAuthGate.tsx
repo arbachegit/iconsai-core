@@ -1,12 +1,53 @@
-import { ReactNode, useState } from "react";
-import { Loader2, RefreshCw, Shield, Phone, KeyRound, ArrowLeft } from "lucide-react";
-import { usePWAAuth } from "@/hooks/usePWAAuth";
+import { ReactNode, useState, useEffect } from "react";
+import { Loader2, RefreshCw, Shield, Phone, KeyRound, ArrowLeft, MessageCircle, MessageSquare, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { usePWAAuth, CodeSentChannel } from "@/hooks/usePWAAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { toast } from "@/hooks/use-toast";
 
 interface PWAAuthGateProps {
   children: ReactNode | ((data: { fingerprint: string; pwaAccess: string[] }) => ReactNode);
+}
+
+// Componente de feedback de envio
+function CodeSentFeedback({ 
+  channel, 
+  error 
+}: { 
+  channel: CodeSentChannel; 
+  error: string | null;
+}) {
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 bg-yellow-500/10 text-yellow-500 p-3 rounded-lg mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+        <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+        <span className="text-sm">{error}</span>
+      </div>
+    );
+  }
+
+  if (channel === 'whatsapp') {
+    return (
+      <div className="flex items-center gap-2 bg-green-500/10 text-green-500 p-3 rounded-lg mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+        <MessageCircle className="h-5 w-5 flex-shrink-0" />
+        <span className="text-sm">Código enviado via WhatsApp</span>
+        <CheckCircle2 className="h-4 w-4 ml-auto" />
+      </div>
+    );
+  }
+
+  if (channel === 'sms') {
+    return (
+      <div className="flex items-center gap-2 bg-blue-500/10 text-blue-500 p-3 rounded-lg mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+        <MessageSquare className="h-5 w-5 flex-shrink-0" />
+        <span className="text-sm">Código enviado via SMS</span>
+        <CheckCircle2 className="h-4 w-4 ml-auto" />
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // Inline Registration Screen
@@ -73,7 +114,7 @@ function RegisterScreen({
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Enviando...
+                Registrando...
               </>
             ) : (
               "Continuar"
@@ -89,10 +130,35 @@ function RegisterScreen({
   );
 }
 
+// Tela de envio de código (transição)
+function SendingCodeScreen({ phone }: { phone: string }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col items-center justify-center p-4">
+      <div className="max-w-md w-full bg-card rounded-2xl p-8 shadow-xl border border-border text-center">
+        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+          <MessageCircle className="h-10 w-10 text-primary animate-pulse" />
+          <div className="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping" />
+        </div>
+        <h1 className="text-xl font-bold text-foreground mb-2">Enviando código...</h1>
+        <p className="text-muted-foreground text-sm mb-4">
+          Estamos enviando um código de verificação para
+        </p>
+        <p className="text-foreground font-medium">{phone}</p>
+        <div className="mt-6 flex justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Inline Verification Screen
 function VerifyScreen({
   phone,
   verificationCode,
+  codeSentVia,
+  codeSentError,
+  resendingCode,
   onVerify,
   onResendCode,
   onBack,
@@ -100,8 +166,11 @@ function VerifyScreen({
 }: {
   phone: string;
   verificationCode: string;
+  codeSentVia: CodeSentChannel;
+  codeSentError: string | null;
+  resendingCode: boolean;
   onVerify: (params: { code: string }) => Promise<{ success: boolean; error?: string }>;
-  onResendCode: () => Promise<{ success: boolean; code?: string; error?: string }>;
+  onResendCode: () => Promise<{ success: boolean; code?: string; channel?: CodeSentChannel; error?: string }>;
   onBack: () => void;
   isSubmitting: boolean;
 }) {
@@ -110,6 +179,22 @@ function VerifyScreen({
   const handleVerify = async () => {
     if (code.length === 6) {
       await onVerify({ code });
+    }
+  };
+
+  const handleResend = async () => {
+    const result = await onResendCode();
+    if (result.success && result.channel) {
+      toast({
+        title: "Código reenviado!",
+        description: `Enviamos um novo código via ${result.channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}`,
+      });
+    } else if (result.error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao reenviar",
+        description: result.error,
+      });
     }
   };
 
@@ -124,15 +209,18 @@ function VerifyScreen({
           Voltar
         </button>
 
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <KeyRound className="h-8 w-8 text-primary" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Verificar Telefone</h1>
           <p className="text-muted-foreground text-sm">
-            Digite o codigo enviado para {phone}
+            Digite o código enviado para {phone}
           </p>
         </div>
+
+        {/* Feedback de envio de código */}
+        <CodeSentFeedback channel={codeSentVia} error={codeSentError} />
 
         <div className="flex justify-center mb-6">
           <InputOTP
@@ -168,11 +256,18 @@ function VerifyScreen({
         </Button>
 
         <button
-          onClick={onResendCode}
-          disabled={isSubmitting}
-          className="w-full text-sm text-primary hover:underline disabled:opacity-50"
+          onClick={handleResend}
+          disabled={isSubmitting || resendingCode}
+          className="w-full text-sm text-primary hover:underline disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          Reenviar codigo
+          {resendingCode ? (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Reenviando...
+            </>
+          ) : (
+            "Reenviar código"
+          )}
         </button>
       </div>
     </div>
@@ -215,6 +310,9 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
     verificationCode,
     errorMessage,
     isSubmitting,
+    codeSentVia,
+    codeSentError,
+    resendingCode,
     register,
     verify,
     resendCode,
@@ -244,6 +342,11 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
     );
   }
 
+  // Sending code state (transição)
+  if (status === "sending_code") {
+    return <SendingCodeScreen phone={userPhone || ""} />;
+  }
+
   // Registration state
   if (status === "needs_registration") {
     return (
@@ -259,8 +362,11 @@ export function PWAAuthGate({ children }: PWAAuthGateProps) {
   if (status === "needs_verification") {
     return (
       <VerifyScreen
-        phone={userPhone}
-        verificationCode={verificationCode}
+        phone={userPhone || ""}
+        verificationCode={verificationCode || ""}
+        codeSentVia={codeSentVia}
+        codeSentError={codeSentError}
+        resendingCode={resendingCode}
         onVerify={verify}
         onResendCode={resendCode}
         onBack={backToRegister}
