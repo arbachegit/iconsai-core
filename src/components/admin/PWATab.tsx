@@ -33,6 +33,8 @@ const VOICE_OPTIONS = [
   { value: "shimmer", label: "Shimmer (Suave)", provider: "OpenAI" },
 ];
 
+const ZOOM_STORAGE_KEY = 'pwaSimulatorZoomLevel';
+
 export default function PWATab() {
   const [copied, setCopied] = useState(false);
   const [agent, setAgent] = useState<AgentInfo | null>(null);
@@ -40,14 +42,29 @@ export default function PWATab() {
   const [showSimulator, setShowSimulator] = useState(false);
   const [testingVoice, setTestingVoice] = useState(false);
   
-  // Fullscreen and zoom states
-  const [simulatorScale, setSimulatorScale] = useState(0.9);
+  // Fullscreen, zoom and landscape states
+  const [simulatorScale, setSimulatorScale] = useState(() => {
+    const saved = localStorage.getItem(ZOOM_STORAGE_KEY);
+    if (saved) {
+      const parsed = parseFloat(saved);
+      if (!isNaN(parsed) && parsed >= 0.5 && parsed <= 1.5) {
+        return parsed;
+      }
+    }
+    return 0.9;
+  });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
   const fullscreenRef = useRef<HTMLDivElement>(null);
   
   const { config, isLoading: configLoading, isSaving, updateConfig, saveConfig, resetToDefaults } = useConfigPWA();
   
   const pwaUrl = `${window.location.origin}/pwa`;
+
+  // Persist zoom level to localStorage
+  useEffect(() => {
+    localStorage.setItem(ZOOM_STORAGE_KEY, simulatorScale.toString());
+  }, [simulatorScale]);
 
   // Handle fullscreen change events
   const handleFullscreenChange = useCallback(() => {
@@ -73,6 +90,64 @@ export default function PWATab() {
       toast.error('Não foi possível alternar para tela cheia');
     }
   }, []);
+
+  const toggleLandscape = useCallback(() => {
+    setIsLandscape(prev => !prev);
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    setSimulatorScale(prev => Math.min(prev + 0.1, 1.5));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setSimulatorScale(prev => Math.max(prev - 0.1, 0.5));
+  }, []);
+
+  const handleResetZoom = useCallback(() => {
+    setSimulatorScale(0.9);
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!showSimulator) return;
+      
+      // Avoid conflict when typing in inputs
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key) {
+        case '+':
+        case '=':
+          e.preventDefault();
+          handleZoomIn();
+          break;
+        case '-':
+          e.preventDefault();
+          handleZoomOut();
+          break;
+        case 'f':
+        case 'F':
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        case 'r':
+        case 'R':
+          e.preventDefault();
+          handleResetZoom();
+          break;
+        case 'l':
+        case 'L':
+          e.preventDefault();
+          toggleLandscape();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSimulator, handleZoomIn, handleZoomOut, handleResetZoom, toggleFullscreen, toggleLandscape]);
   useEffect(() => {
     const fetchAgent = async () => {
       const { data } = await supabase
@@ -388,6 +463,8 @@ export default function PWATab() {
                 isFullscreen={isFullscreen}
                 onToggleFullscreen={toggleFullscreen}
                 showControls={true}
+                isLandscape={isLandscape}
+                onToggleLandscape={toggleLandscape}
               />
             </div>
           ) : (
