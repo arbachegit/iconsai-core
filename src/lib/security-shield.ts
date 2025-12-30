@@ -84,6 +84,38 @@ let configLoaded = false;
 let whitelistCheckComplete = false; // ✅ BUG FIX: Flag para evitar race condition
 
 // ============================================
+// DETECÇÃO DE DISPOSITIVO MOBILE (FIX PWA/MOBILE)
+// ============================================
+/**
+ * Detecta se o dispositivo é mobile/PWA para evitar falsos positivos de DevTools
+ * Mobile browsers têm barras de UI que causam heightDiff de até 300px
+ */
+function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  const userAgent = navigator.userAgent.toLowerCase();
+  
+  // Verificar por User Agent
+  const mobileKeywords = [
+    'android', 'webos', 'iphone', 'ipad', 'ipod', 
+    'blackberry', 'windows phone', 'opera mini', 'mobile'
+  ];
+  const isMobileUA = mobileKeywords.some(keyword => userAgent.includes(keyword));
+  
+  // Verificar por touch capability
+  const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  
+  // Verificar por tamanho de tela (< 768px)
+  const isSmallScreen = window.innerWidth < 768;
+  
+  // Verificar se é PWA (standalone mode)
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                (window.navigator as any).standalone === true;
+  
+  return isMobileUA || (hasTouch && isSmallScreen) || isPWA;
+}
+
+// ============================================
 // WHITELIST DE DOMÍNIOS - CARREGADA DO BANCO
 // ============================================
 let cachedWhitelistedDomains: string[] | null = null;
@@ -611,6 +643,16 @@ function handleViolation(type: ViolationType, details: Record<string, unknown> =
     return;
   }
   
+  // ✅ FIX MOBILE/PWA: Verificar se é falso positivo de mobile
+  if (type === 'devtools_open' && details.method === 'size_detection' && isMobileDevice()) {
+    const heightDiff = details.heightDiff as number;
+    const widthDiff = details.widthDiff as number;
+    if (heightDiff && heightDiff <= 300 && (!widthDiff || widthDiff <= 160)) {
+      console.log(`🛡️ Security Shield v4: Ignorando falso positivo de mobile - heightDiff: ${heightDiff}`);
+      return;
+    }
+  }
+  
   // Verificar se o shield está habilitado
   if (!shieldConfig?.shield_enabled) {
     console.log(`🛡️ Security Shield v4: Shield desabilitado, ignorando violação ${type}`);
@@ -718,6 +760,7 @@ interface DevToolsDetectionResult {
 
 /**
  * Check if DevTools are open using multiple methods - returns detailed info
+ * ✅ FIX: Em mobile/PWA, ignora heightDiff (barras de UI causam falsos positivos)
  */
 function detectDevTools(): DevToolsDetectionResult {
   const result: DevToolsDetectionResult = {
@@ -732,8 +775,22 @@ function detectDevTools(): DevToolsDetectionResult {
   // Check 1: Window size difference (Chrome, Firefox, Edge DevTools)
   const widthDiff = window.outerWidth - window.innerWidth;
   const heightDiff = window.outerHeight - window.innerHeight;
+  const isMobile = isMobileDevice();
   
-  if (widthDiff > 160 || heightDiff > 160) {
+  // ✅ CORREÇÃO CRÍTICA: Em mobile, ignorar heightDiff
+  // Mobile browsers têm barras de UI que causam até 300px de diferença
+  let shouldDetectBySize = false;
+  
+  if (isMobile) {
+    // Mobile: Só detectar DevTools se aberto lateralmente (widthDiff > 160)
+    // Ignorar heightDiff completamente (barras de UI causam falso positivo)
+    shouldDetectBySize = widthDiff > 160;
+  } else {
+    // Desktop: Usar lógica original
+    shouldDetectBySize = widthDiff > 160 || heightDiff > 160;
+  }
+  
+  if (shouldDetectBySize) {
     result.detected = true;
     result.method = 'size_detection';
     result.details = {
@@ -743,7 +800,9 @@ function detectDevTools(): DevToolsDetectionResult {
       innerHeight: window.innerHeight,
       widthDiff,
       heightDiff,
-      dockPosition: widthDiff > heightDiff ? 'side' : 'bottom'
+      dockPosition: widthDiff > heightDiff ? 'side' : 'bottom',
+      isMobile,
+      detectionReason: isMobile ? 'width_threshold_mobile' : 'size_threshold_desktop'
     };
     return result;
   }
@@ -759,7 +818,8 @@ function detectDevTools(): DevToolsDetectionResult {
         result.method = 'react_devtools';
         result.details = {
           supportsFiber: hook.supportsFiber,
-          renderers: hook.renderers ? Object.keys(hook.renderers).length : 0
+          renderers: hook.renderers ? Object.keys(hook.renderers).length : 0,
+          isMobile
         };
         return result;
       }
