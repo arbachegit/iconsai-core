@@ -2024,6 +2024,53 @@ export type Database = {
         }
         Relationships: []
       }
+      invitation_channel_audit: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          computed_policy: Json | null
+          created_at: string | null
+          id: string
+          invitation_id: string | null
+          invitation_token: string | null
+          new_values: Json | null
+          notes: string | null
+          old_values: Json | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          computed_policy?: Json | null
+          created_at?: string | null
+          id?: string
+          invitation_id?: string | null
+          invitation_token?: string | null
+          new_values?: Json | null
+          notes?: string | null
+          old_values?: Json | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          computed_policy?: Json | null
+          created_at?: string | null
+          id?: string
+          invitation_id?: string | null
+          invitation_token?: string | null
+          new_values?: Json | null
+          notes?: string | null
+          old_values?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitation_channel_audit_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "user_invitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lexicon_terms: {
         Row: {
           antonyms: string[] | null

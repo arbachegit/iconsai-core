@@ -338,7 +338,17 @@ export const NotificationLogsTab = () => {
               ))
             ) : logs && logs.length > 0 ? (
               logs.map((log) => (
-                <TableRow key={log.id} className={`hover:bg-muted/30 ${!log.is_read ? 'bg-primary/5' : ''}`}>
+                <TableRow 
+                  key={log.id} 
+                  className={`hover:bg-muted/30 cursor-pointer ${!log.is_read ? 'bg-primary/5' : ''}`}
+                  onClick={() => {
+                    // Auto-mark as read when clicking the row
+                    if (!log.is_read) {
+                      markAsRead(log.id);
+                    }
+                    setSelectedLog(log);
+                  }}
+                >
                   <TableCell>
                     {!log.is_read && (
                       <div className="h-2 w-2 rounded-full bg-primary" />
@@ -372,27 +382,17 @@ export const NotificationLogsTab = () => {
                   <TableCell>{getStatusBadge(log.status)}</TableCell>
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-1">
-                      {!log.is_read && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => markAsRead(log.id)}
-                                className="h-8 w-8"
-                              >
-                                <CheckCircle2 className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Marcar como lida</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setSelectedLog(log)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Auto-mark as read when opening details
+                          if (!log.is_read) {
+                            markAsRead(log.id);
+                          }
+                          setSelectedLog(log);
+                        }}
                         className="h-8 w-8"
                       >
                         <Eye className="h-4 w-4" />

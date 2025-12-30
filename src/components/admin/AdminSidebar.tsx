@@ -563,9 +563,9 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       cat.items.forEach(item => items.push(item));
     });
     return items;
-  }, []);
+  }, [baseMenuCategories]);
 
-  // Build dynamic quick-access category from favorites
+  // Build dynamic quick-access category from favorites - FIXED: include favorites in deps
   const quickAccessCategory = useMemo(() => ({
     id: "quick-access",
     label: "Acesso Rápido",
@@ -575,13 +575,13 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       .filter((item): item is { id: TabType; label: string; icon: any } => item !== undefined)
   }), [favorites, allItems]);
 
-  // Combine quick-access with base categories
+  // Combine quick-access with base categories - FIXED: include baseMenuCategories in deps
   const menuCategories = useMemo(() => [
     quickAccessCategory,
     ...baseMenuCategories
-  ], [quickAccessCategory]);
+  ], [quickAccessCategory, baseMenuCategories]);
 
-  // Filter menu categories based on search query
+  // Filter menu categories based on search query - FIXED: include menuCategories in deps
   const filteredCategories = useMemo(() => {
     if (!searchQuery.trim()) return menuCategories;
     
@@ -596,7 +596,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         )
       }))
       .filter(category => category.items.length > 0);
-  }, [searchQuery]);
+  }, [searchQuery, menuCategories]);
 
   // Initial check and resize observer for scroll indicators
   useEffect(() => {
