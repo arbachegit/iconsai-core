@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Smartphone } from "lucide-react";
-import { usePWAStore } from "@/stores/pwaStore";
+import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { SplashScreen } from "./SplashScreen";
 import { VoicePlayerBox } from "./VoicePlayerBox";
 import { ModuleSelector } from "./ModuleSelector";
@@ -11,6 +11,7 @@ import { WorldModule } from "../modules/WorldModule";
 import { HealthModule } from "../modules/HealthModule";
 import { IdeasModule } from "../modules/IdeasModule";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import { PWAAuthGate } from "@/components/gates/PWAAuthGate";
 
 type ModuleId = "help" | "world" | "health" | "ideas";
 
@@ -22,8 +23,9 @@ export const PWAVoiceAssistant: React.FC = () => {
     setActiveModule, 
     playerState,
     setPlayerState,
-    clearHistory
-  } = usePWAStore();
+    setAuthenticated,
+    resetSession,
+  } = usePWAVoiceStore();
   
   const { speak, isPlaying, isLoading } = useTextToSpeech();
   const [isMobile, setIsMobile] = useState(true);
@@ -53,27 +55,24 @@ export const PWAVoiceAssistant: React.FC = () => {
 
   // Welcome message when entering home
   useEffect(() => {
-    if (appState === "home") {
+    if (appState === "idle") {
       const welcome = "Bem-vindo ao KnowYOU! Escolha um módulo para começar nossa conversa.";
       speak(welcome);
     }
   }, [appState]);
 
   const handleSplashComplete = () => {
-    setAppState("home");
+    setAppState("idle");
   };
 
   const handleModuleSelect = (moduleId: ModuleId) => {
     setActiveModule(moduleId);
-    setAppState("module");
-    clearHistory();
   };
 
   const handleBackToHome = () => {
     setActiveModule(null);
-    setAppState("home");
+    setAppState("idle");
     setPlayerState("idle");
-    clearHistory();
   };
 
   const renderModule = () => {
@@ -116,7 +115,6 @@ export const PWAVoiceAssistant: React.FC = () => {
             <p className="text-sm text-muted-foreground">
               Escaneie o QR Code ou digite o endereço no navegador do seu celular
             </p>
-            {/* TODO: Add QR Code */}
           </div>
           
           {/* Debug button to bypass warning */}
@@ -131,91 +129,108 @@ export const PWAVoiceAssistant: React.FC = () => {
     );
   }
 
+  // Main PWA content wrapped with Auth Gate
+  const renderContent = ({ fingerprint, pwaAccess }: { fingerprint: string; pwaAccess: string[] }) => {
+    // Sync auth state with store when authenticated
+    useEffect(() => {
+      if (fingerprint) {
+        setAuthenticated(true, fingerprint);
+      }
+    }, [fingerprint]);
+
+    return (
+      <div className="min-h-screen bg-background flex flex-col pwa-no-select">
+        <AnimatePresence mode="wait">
+          {/* Splash Screen */}
+          {appState === "splash" && (
+            <SplashScreen key="splash" onComplete={handleSplashComplete} />
+          )}
+
+          {/* Home - Module Selection */}
+          {(appState === "idle" || appState === "welcome") && (
+            <motion.div
+              key="home"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 flex flex-col safe-area-inset"
+            >
+              {/* Header */}
+              <div className="text-center py-8 px-4">
+                <motion.h1
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent"
+                >
+                  KnowYOU
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-muted-foreground mt-1"
+                >
+                  Seu assistente de voz inteligente
+                </motion.p>
+              </div>
+
+              {/* Voice Player Box */}
+              <div className="px-4 mb-8">
+                <VoicePlayerBox
+                  state={playerState}
+                  onMicClick={() => {}}
+                  onPlayPause={() => {}}
+                  showMic={false}
+                  title="Olá!"
+                  subtitle="Escolha um módulo abaixo"
+                />
+              </div>
+
+              {/* Module Selection */}
+              <div className="flex-1">
+                <p className="text-center text-sm text-muted-foreground mb-2">
+                  Escolha um módulo
+                </p>
+                <ModuleSelector onSelect={handleModuleSelect} />
+              </div>
+
+              {/* Footer */}
+              <div className="py-4 text-center">
+                <p className="text-xs text-muted-foreground">
+                  KnowYOU © 2025 • hmv.knowyou.app
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Active Module */}
+          {appState === "module" && activeModule && (
+            <motion.div
+              key="module"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex-1 flex flex-col"
+            >
+              {/* Module Header */}
+              <ModuleHeader moduleId={activeModule} onBack={handleBackToHome} />
+
+              {/* Module content */}
+              <div className="flex-1 overflow-hidden pwa-scrollbar">
+                {renderModule()}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  // Wrap everything in PWAAuthGate
   return (
-    <div className="min-h-screen bg-background flex flex-col pwa-no-select">
-      <AnimatePresence mode="wait">
-        {/* Splash Screen */}
-        {appState === "splash" && (
-          <SplashScreen key="splash" onComplete={handleSplashComplete} />
-        )}
-
-        {/* Home - Module Selection */}
-        {appState === "home" && (
-          <motion.div
-            key="home"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex-1 flex flex-col safe-area-inset"
-          >
-            {/* Header */}
-            <div className="text-center py-8 px-4">
-              <motion.h1
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent"
-              >
-                KnowYOU
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="text-muted-foreground mt-1"
-              >
-                Seu assistente de voz inteligente
-              </motion.p>
-            </div>
-
-            {/* Voice Player Box */}
-            <div className="px-4 mb-8">
-              <VoicePlayerBox
-                state={playerState}
-                onMicClick={() => {}}
-                onPlayPause={() => {}}
-                showMic={false}
-                title="Olá!"
-                subtitle="Escolha um módulo abaixo"
-              />
-            </div>
-
-            {/* Module Selection */}
-            <div className="flex-1">
-              <p className="text-center text-sm text-muted-foreground mb-2">
-                Escolha um módulo
-              </p>
-              <ModuleSelector onSelect={handleModuleSelect} />
-            </div>
-
-            {/* Footer */}
-            <div className="py-4 text-center">
-              <p className="text-xs text-muted-foreground">
-                KnowYOU © 2025 • hmv.knowyou.app
-              </p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Active Module */}
-        {appState === "module" && activeModule && (
-          <motion.div
-            key="module"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex-1 flex flex-col"
-          >
-            {/* Module Header */}
-            <ModuleHeader moduleId={activeModule} onBack={handleBackToHome} />
-
-            {/* Module content */}
-            <div className="flex-1 overflow-hidden pwa-scrollbar">
-              {renderModule()}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+    <PWAAuthGate>
+      {(data) => renderContent(data)}
+    </PWAAuthGate>
   );
 };
 
