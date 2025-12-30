@@ -9,6 +9,7 @@ interface UseTextToSpeechReturn {
   isPlaying: boolean;
   isPaused: boolean;
   isLoading: boolean;
+  progress: number;
   error: string | null;
 }
 
@@ -16,6 +17,7 @@ export const useTextToSpeech = (): UseTextToSpeechReturn => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -63,11 +65,20 @@ export const useTextToSpeech = (): UseTextToSpeechReturn => {
           }
         };
 
+        audio.ontimeupdate = () => {
+          if (audio.duration > 0) {
+            const currentProgress = (audio.currentTime / audio.duration) * 100;
+            setProgress(currentProgress);
+          }
+        };
+
         audio.onended = () => {
           setIsPlaying(false);
           setIsPaused(false);
+          setProgress(100);
           URL.revokeObjectURL(audioUrl);
           audioRef.current = null;
+          setTimeout(() => setProgress(0), 500);
         };
 
         audio.onerror = () => {
@@ -95,6 +106,7 @@ export const useTextToSpeech = (): UseTextToSpeechReturn => {
     }
     setIsPlaying(false);
     setIsPaused(false);
+    setProgress(0);
   }, []);
 
   const pause = useCallback(() => {
@@ -111,7 +123,7 @@ export const useTextToSpeech = (): UseTextToSpeechReturn => {
     }
   }, [isPaused]);
 
-  return { speak, stop, pause, resume, isPlaying, isPaused, isLoading, error };
+  return { speak, stop, pause, resume, isPlaying, isPaused, isLoading, progress, error };
 };
 
 // Helper function to convert base64 to blob
