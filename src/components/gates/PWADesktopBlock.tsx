@@ -1,35 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Smartphone, Mic, Zap, Shield, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 const PWADesktopBlock = () => {
   const [copied, setCopied] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   // Get clean URL for the PWA (without slugs)
   const baseUrl = window.location.origin;
   const pwaUrl = `${baseUrl}/pwa-register`;
-
-  // Generate QR Code
-  useEffect(() => {
-    const generateQR = async () => {
-      try {
-        const QRCode = await import('qrcode');
-        const url = await QRCode.toDataURL(pwaUrl, {
-          width: 200,
-          margin: 2,
-          color: {
-            dark: '#1e293b',
-            light: '#ffffff',
-          },
-        });
-        setQrDataUrl(url);
-      } catch (err) {
-        console.error('Failed to generate QR code:', err);
-      }
-    };
-    generateQR();
-  }, [pwaUrl]);
 
   const copyLink = async () => {
     try {
@@ -97,29 +75,6 @@ const PWADesktopBlock = () => {
           </div>
         </div>
 
-        {/* QR Code real */}
-        <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-2xl p-6 border border-blue-500/20 text-center space-y-4">
-          {qrDataUrl ? (
-            <div className="w-48 h-48 mx-auto rounded-xl overflow-hidden bg-white p-2">
-              <img 
-                src={qrDataUrl} 
-                alt="QR Code para acessar o app" 
-                className="w-full h-full object-contain"
-              />
-            </div>
-          ) : (
-            <div className="w-48 h-48 mx-auto rounded-xl bg-white/10 flex items-center justify-center border border-white/20 animate-pulse">
-              <Smartphone className="w-12 h-12 text-white/40" />
-            </div>
-          )}
-          <div className="space-y-2">
-            <p className="text-white font-medium">Escaneie com seu celular</p>
-            <p className="text-slate-400 text-sm">
-              Ou acesse este link no navegador do seu celular
-            </p>
-          </div>
-        </div>
-
         {/* Link copiável */}
         <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
           <div className="flex items-center gap-3">
@@ -145,7 +100,7 @@ const PWADesktopBlock = () => {
         <div className="text-center">
           <p className="text-slate-500 text-sm flex items-center justify-center gap-2">
             <Smartphone className="w-4 h-4" />
-            Abra a câmera do celular e aponte para o QR Code
+            Acesse este link no navegador do seu celular
           </p>
         </div>
       </div>
