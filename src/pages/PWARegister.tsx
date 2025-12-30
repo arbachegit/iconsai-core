@@ -20,6 +20,9 @@ interface InvitationData {
   role?: string;
   pwa_access?: string[];
   expires_at?: string;
+  status?: string;
+  verification_code_expires_at?: string;
+  verification_method?: string;
 }
 
 type Step = "confirm" | "verify";
@@ -87,6 +90,16 @@ export default function PWARegister() {
           setName(result.name || "");
           setEmail(result.email || "");
           setPhone(result.phone || "");
+          
+          // If already in verification_sent status, go directly to verify step
+          if (result.status === "verification_sent") {
+            console.log("[PWA-REGISTER] Invitation already in verification_sent status, resuming verification");
+            setStep("verify");
+            setSendChannel(result.verification_method || "whatsapp");
+            if (result.verification_code_expires_at) {
+              setCodeExpiresAt(new Date(result.verification_code_expires_at));
+            }
+          }
           
           // Track invitation open (notifies admin on first open)
           try {
