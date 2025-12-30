@@ -83,7 +83,7 @@ export function DashboardSidebar({
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isControlCenterCollapsed, setIsControlCenterCollapsed] = useState(false);
-  const [isDataFlowExpanded, setIsDataFlowExpanded] = useState(false);
+  const [isDataFlowExpanded, setIsDataFlowExpanded] = useState(() => activeTab.startsWith("dataflow-"));
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -136,13 +136,8 @@ export function DashboardSidebar({
     );
   }, [searchQuery]);
 
-  // Auto-expand DataFlow section when a sub-tab is active
-  useEffect(() => {
-    const isDataFlowTab = activeTab.startsWith("dataflow-");
-    if (isDataFlowTab && !isDataFlowExpanded) {
-      setIsDataFlowExpanded(true);
-    }
-  }, [activeTab, isDataFlowExpanded]);
+  // No auto-expand effect - let user control collapse/expand manually
+  // Initial state is set based on activeTab in useState initialization
 
   // Resize observer for scroll indicators
   useEffect(() => {

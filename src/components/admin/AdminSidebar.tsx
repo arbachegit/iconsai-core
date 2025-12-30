@@ -98,7 +98,7 @@ const playNotificationSound = () => {
 export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleCollapse }: AdminSidebarProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [openSections, setOpenSections] = useState<string[]>([]);
+  const [openSections, setOpenSections] = useState<string[]>(["quick-access"]);
   const [pendingMessagesCount, setPendingMessagesCount] = useState(0);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -243,7 +243,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
   };
 
   // Base menu categories (excluding quick-access which will be dynamic)
-  const baseMenuCategories = [
+  const baseMenuCategories = useMemo(() => [
     {
       id: "chat",
       label: "Chat & Conversas",
@@ -365,7 +365,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
       ]
     }
-  ];
+  ], []);
 
   // Get all items from all categories for favorite lookup
   const allItems = useMemo(() => {
