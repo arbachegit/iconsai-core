@@ -40,11 +40,12 @@ interface FunctionInfo {
 export function PWADiagnosticsModal() {
   const [open, setOpen] = useState(false);
 
-  // Query pwa_devices schema
+  // Query pwa_devices schema using raw SQL via postgREST
   const { data: schemaData, isLoading: schemaLoading, refetch: refetchSchema } = useQuery({
     queryKey: ["pwa-diagnostics-schema"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_pwa_devices_schema");
+      // Use the RPC function we created (cast to any to bypass type checking until types regenerate)
+      const { data, error } = await (supabase.rpc as any)("get_pwa_devices_schema");
       if (error) throw error;
       return data as ColumnInfo[];
     },
@@ -55,9 +56,12 @@ export function PWADiagnosticsModal() {
   const { data: functionData, isLoading: functionLoading, refetch: refetchFunction } = useQuery({
     queryKey: ["pwa-diagnostics-function"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_register_pwa_user_definition");
+      // Use the RPC function we created (cast to any to bypass type checking until types regenerate)
+      const { data, error } = await (supabase.rpc as any)("get_register_pwa_user_definition");
       if (error) throw error;
-      return data as FunctionInfo | null;
+      // The function returns a table, so we get the first row
+      const rows = data as FunctionInfo[];
+      return rows && rows.length > 0 ? rows[0] : null;
     },
     enabled: open,
   });

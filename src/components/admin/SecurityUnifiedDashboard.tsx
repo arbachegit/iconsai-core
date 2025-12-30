@@ -49,6 +49,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PWADiagnosticsModal } from "./PWADiagnosticsModal";
 
 function getRiskColor(riskLevel: string) {
   switch (riskLevel) {
@@ -193,10 +194,13 @@ export function SecurityUnifiedDashboard() {
             </p>
           </div>
         </div>
-        <Button onClick={handleRunScan} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Executar Scan
-        </Button>
+        <div className="flex items-center gap-2">
+          <PWADiagnosticsModal />
+          <Button onClick={handleRunScan} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Executar Scan
+          </Button>
+        </div>
       </div>
 
       {/* Security Score Card */}
