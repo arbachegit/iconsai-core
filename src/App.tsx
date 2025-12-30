@@ -31,6 +31,7 @@ const PWAMultiAgent = lazy(() => import("./pages/PWAMultiAgent"));
 const PWARegister = lazy(() => import("./pages/PWARegister"));
 const InvitePage = lazy(() => import("./pages/InvitePage"));
 const Contact = lazy(() => import("./pages/Contact"));
+const TestRetailDiagram = lazy(() => import("./pages/TestRetailDiagram"));
 
 // Simple loading fallback
 const PageLoader = () => (
@@ -208,6 +209,9 @@ const App = () => (
                     } />
                     
                     <Route path="/invite/:token" element={<InvitePage />} />
+                    
+                    {/* Temporary test route */}
+                    <Route path="/test/retail-diagram" element={<TestRetailDiagram />} />
                     
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
