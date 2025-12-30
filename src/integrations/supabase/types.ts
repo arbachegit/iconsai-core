@@ -3530,6 +3530,51 @@ export type Database = {
         }
         Relationships: []
       }
+      schema_audit_log: {
+        Row: {
+          actual_state: Json | null
+          check_type: string
+          created_at: string | null
+          divergence_type: string
+          entity_name: string
+          expected_state: Json | null
+          id: string
+          is_resolved: boolean | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+        }
+        Insert: {
+          actual_state?: Json | null
+          check_type: string
+          created_at?: string | null
+          divergence_type: string
+          entity_name: string
+          expected_state?: Json | null
+          id?: string
+          is_resolved?: boolean | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+        }
+        Update: {
+          actual_state?: Json | null
+          check_type?: string
+          created_at?: string | null
+          divergence_type?: string
+          entity_name?: string
+          expected_state?: Json | null
+          id?: string
+          is_resolved?: boolean | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+        }
+        Relationships: []
+      }
       section_audio: {
         Row: {
           audio_url: string
@@ -5326,6 +5371,7 @@ export type Database = {
         Args: { p_limit?: number; p_text: string }
         Returns: string[]
       }
+      function_exists: { Args: { p_function_name: string }; Returns: boolean }
       get_agent_excluded_taxonomy_codes: {
         Args: { agent_slug: string }
         Returns: string[]
@@ -5357,6 +5403,10 @@ export type Database = {
           target_chat: string
           text_preview: string
         }[]
+      }
+      get_function_definition: {
+        Args: { p_function_name: string }
+        Returns: string
       }
       get_learned_patterns: {
         Args: { p_keywords: string[] }
@@ -5415,6 +5465,15 @@ export type Database = {
         }[]
       }
       get_schema_info: { Args: never; Returns: Json }
+      get_table_columns: {
+        Args: { p_table_name: string }
+        Returns: {
+          column_default: string
+          column_name: string
+          data_type: string
+          is_nullable: boolean
+        }[]
+      }
       get_taxonomy_analytics_report: {
         Args: { p_days?: number }
         Returns: Json
@@ -5696,6 +5755,7 @@ export type Database = {
           similarity: number
         }[]
       }
+      table_exists: { Args: { p_table_name: string }; Returns: boolean }
       unblock_pwa_device: { Args: { p_device_id: string }; Returns: Json }
       update_device_activity: {
         Args: {

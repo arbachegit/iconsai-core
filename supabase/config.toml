@@ -255,3 +255,9 @@ verify_jwt = false
 [functions.generate-document-title]
 verify_jwt = false
 
+# ============================================
+# SCHEMA MONITORING - Admin access
+# ============================================
+[functions.schema-monitor]
+verify_jwt = true
+
