@@ -189,7 +189,7 @@ export const PWAVoiceAssistant: React.FC = () => {
     }, [fingerprint]);
 
     return (
-      <div className="min-h-screen bg-background flex flex-col pwa-no-select">
+      <div className="fixed inset-0 bg-background flex flex-col pwa-no-select pwa-fullscreen overflow-hidden touch-none">
         <AnimatePresence mode="wait">
           {/* Splash Screen */}
           {appState === "splash" && (
