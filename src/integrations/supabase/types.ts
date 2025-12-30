@@ -3066,6 +3066,7 @@ export type Database = {
           ip_isp: string | null
           ip_region: string | null
           is_blocked: boolean | null
+          is_trusted: boolean | null
           is_verified: boolean | null
           last_active_at: string | null
           last_seen_at: string | null
@@ -3088,6 +3089,7 @@ export type Database = {
           user_email: string | null
           user_id: string | null
           user_name: string | null
+          user_registration_id: string | null
           verification_code: string | null
           verification_expires_at: string | null
           verified_at: string | null
@@ -3115,6 +3117,7 @@ export type Database = {
           ip_isp?: string | null
           ip_region?: string | null
           is_blocked?: boolean | null
+          is_trusted?: boolean | null
           is_verified?: boolean | null
           last_active_at?: string | null
           last_seen_at?: string | null
@@ -3137,6 +3140,7 @@ export type Database = {
           user_email?: string | null
           user_id?: string | null
           user_name?: string | null
+          user_registration_id?: string | null
           verification_code?: string | null
           verification_expires_at?: string | null
           verified_at?: string | null
@@ -3164,6 +3168,7 @@ export type Database = {
           ip_isp?: string | null
           ip_region?: string | null
           is_blocked?: boolean | null
+          is_trusted?: boolean | null
           is_verified?: boolean | null
           last_active_at?: string | null
           last_seen_at?: string | null
@@ -3186,11 +3191,20 @@ export type Database = {
           user_email?: string | null
           user_id?: string | null
           user_name?: string | null
+          user_registration_id?: string | null
           verification_code?: string | null
           verification_expires_at?: string | null
           verified_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pwa_devices_user_registration_id_fkey"
+            columns: ["user_registration_id"]
+            isOneToOne: false
+            referencedRelation: "user_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pwa_messages: {
         Row: {
