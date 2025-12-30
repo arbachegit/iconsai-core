@@ -26,9 +26,6 @@ const Arquitetura = lazy(() => import("./pages/Arquitetura"));
 const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
 const AppPage = lazy(() => import("./pages/AppPage"));
 const Hub = lazy(() => import("./pages/Hub"));
-const PWA = lazy(() => import("./pages/PWA"));
-const PWAMultiAgent = lazy(() => import("./pages/PWAMultiAgent"));
-const PWARegister = lazy(() => import("./pages/PWARegister"));
 const PWAVoiceAssistant = lazy(() => import("./components/pwa/voice/PWAVoiceAssistant"));
 const InvitePage = lazy(() => import("./pages/InvitePage"));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -192,23 +189,8 @@ const App = () => (
                     <Route path="/arquitetura" element={<Arquitetura />} />
                     <Route path="/contact" element={<Contact />} />
                     
-                    {/* PWA Routes - Mobile Only */}
+                    {/* PWA Route - Mobile Only */}
                     <Route path="/pwa" element={
-                      <DeviceGate allowDesktop={false}>
-                        <PWAMultiAgent />
-                      </DeviceGate>
-                    } />
-                    <Route path="/pwa-legacy" element={
-                      <DeviceGate allowDesktop={false}>
-                        <PWA />
-                      </DeviceGate>
-                    } />
-                    <Route path="/pwa-register" element={
-                      <DeviceGate allowDesktop={false}>
-                        <PWARegister />
-                      </DeviceGate>
-                    } />
-                    <Route path="/pwa-knowyou" element={
                       <DeviceGate allowDesktop={false}>
                         <PWAVoiceAssistant />
                       </DeviceGate>

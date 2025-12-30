@@ -1,10 +1,3 @@
-// Legacy PWA components
-export { PWARegisterScreen } from './PWARegisterScreen';
-export { PWAVerifyScreen } from './PWAVerifyScreen';
-export { PWABlockedScreen } from './PWABlockedScreen';
-export { PWABottomBar } from './PWABottomBar';
-export { PWAHelpModal } from './PWAHelpModal';
-
 // KnowYOU Voice Assistant components
 export { default as PWAVoiceAssistant } from './voice/PWAVoiceAssistant';
 export { SplashScreen } from './voice/SplashScreen';
