@@ -135,12 +135,18 @@ export default function PWA() {
   }, []);
 
   useEffect(() => {
-    let id = localStorage.getItem('pwa-device-id');
-    if (!id) {
-      id = `device-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      localStorage.setItem('pwa-device-id', id);
-    }
-    setDeviceId(id);
+    const initDeviceId = async () => {
+      // Use consistent device fingerprint - check for session device first (set by PWARegister)
+      let id = localStorage.getItem('pwa-session-device');
+      if (!id) {
+        // Fallback: try to get from device-fingerprint module
+        const { getDeviceFingerprint } = await import('@/lib/device-fingerprint');
+        id = getDeviceFingerprint();
+        localStorage.setItem('pwa-session-device', id);
+      }
+      setDeviceId(id);
+    };
+    initDeviceId();
   }, []);
 
   useEffect(() => {

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Loader2, Smartphone, CheckCircle, AlertCircle, User, Mail, Phone, ArrowLeft, RefreshCw } from "lucide-react";
 import knowriskLogo from "@/assets/knowrisk-pwa-logo.png";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { getDeviceFingerprint } from "@/lib/device-fingerprint";
 
 
 interface InvitationData {
@@ -49,14 +50,13 @@ export default function PWARegister() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [sendChannel, setSendChannel] = useState<string>("whatsapp");
 
-  // Gerar ou recuperar device ID
+  // Use device fingerprint instead of random ID for consistency
   useEffect(() => {
-    let id = localStorage.getItem("pwa-device-id");
-    if (!id) {
-      id = `device-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      localStorage.setItem("pwa-device-id", id);
-    }
-    setDeviceId(id);
+    const fingerprint = getDeviceFingerprint();
+    setDeviceId(fingerprint);
+    
+    // Also store in pwa-session-device for PWA.tsx consistency
+    localStorage.setItem("pwa-session-device", fingerprint);
   }, []);
 
   // Cooldown timer
