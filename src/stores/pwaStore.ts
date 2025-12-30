@@ -16,6 +16,22 @@ interface UserPreferences {
   healthProfile: Record<string, string>;
 }
 
+// Estado inicial para reset
+const initialState = {
+  appState: "splash" as AppState,
+  activeModule: null as ModuleId,
+  playerState: "idle" as PlayerState,
+  conversationHistory: [] as ConversationMessage[],
+  userPreferences: {
+    interests: [] as string[],
+    communicationStyle: "neutral" as const,
+    healthProfile: {} as Record<string, string>,
+  },
+  healthAnswers: {} as Record<string, string>,
+  ideaContent: "",
+  ideaCritique: [] as string[],
+};
+
 interface PWAStore {
   // Estado da aplicação
   appState: AppState;
@@ -49,6 +65,9 @@ interface PWAStore {
   ideaCritique: string[];
   addCritique: (critique: string) => void;
   clearIdea: () => void;
+  
+  // Reset completo
+  reset: () => void;
 }
 
 export const usePWAStore = create<PWAStore>((set) => ({
@@ -89,4 +108,7 @@ export const usePWAStore = create<PWAStore>((set) => ({
     ideaCritique: [...state.ideaCritique, critique]
   })),
   clearIdea: () => set({ ideaContent: "", ideaCritique: [] }),
+  
+  // Reset completo para estado inicial
+  reset: () => set(initialState),
 }));

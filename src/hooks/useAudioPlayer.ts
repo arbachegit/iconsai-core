@@ -8,6 +8,7 @@ interface UseAudioPlayerReturn {
   duration: number;
   currentTime: number;
   play: (url: string) => Promise<void>;
+  playBlob: (blob: Blob) => Promise<void>;
   pause: () => void;
   resume: () => void;
   stop: () => void;
@@ -97,6 +98,16 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
     }
   }, [updateProgress]);
 
+  const playBlob = useCallback(async (blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    try {
+      await play(url);
+    } catch (err) {
+      URL.revokeObjectURL(url);
+      throw err;
+    }
+  }, [play]);
+
   const pause = useCallback(() => {
     if (audioRef.current && isPlaying) {
       audioRef.current.pause();
@@ -154,6 +165,7 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
     duration,
     currentTime,
     play,
+    playBlob,
     pause,
     resume,
     stop,
