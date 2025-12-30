@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { InviteTrackingTimeline } from "./InviteTrackingTimeline";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ResendInvitationModal } from "./ResendInvitationModal";
+import { EditInvitationModal } from "./EditInvitationModal";
 import {
   Search,
   ChevronDown,
@@ -33,7 +34,8 @@ import {
   Trash2,
   AlertCircle,
   Monitor,
-  Smartphone
+  Smartphone,
+  Pencil
 } from "lucide-react";
 
 type AppRole = "user" | "admin" | "superadmin";
@@ -91,6 +93,7 @@ export const InvitesTab = () => {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; invite: UserInvitation | null }>({ open: false, invite: null });
   const [resendModal, setResendModal] = useState<{ open: boolean; invite: UserInvitation | null }>({ open: false, invite: null });
+  const [editModal, setEditModal] = useState<{ open: boolean; invite: UserInvitation | null }>({ open: false, invite: null });
   
   // Sorting state
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -426,6 +429,23 @@ export const InvitesTab = () => {
                                   <Button
                                     variant="ghost"
                                     size="icon"
+                                    className="text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
+                                    onClick={() => setEditModal({ open: true, invite })}
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Editar convite</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
                                     className="text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
                                     onClick={() => setResendModal({ open: true, invite })}
                                   >
@@ -563,6 +583,14 @@ export const InvitesTab = () => {
         open={resendModal.open}
         onClose={() => setResendModal({ open: false, invite: null })}
         invitation={resendModal.invite}
+        onSuccess={handleResendSuccess}
+      />
+
+      {/* Edit Modal */}
+      <EditInvitationModal
+        open={editModal.open}
+        onClose={() => setEditModal({ open: false, invite: null })}
+        invitation={editModal.invite}
         onSuccess={handleResendSuccess}
       />
     </Card>
