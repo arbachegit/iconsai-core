@@ -1,10 +1,11 @@
-import { ReactNode, useState, useEffect } from "react";
-import { Loader2, RefreshCw, Shield, Phone, KeyRound, ArrowLeft, MessageCircle, MessageSquare, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ReactNode, useState } from "react";
+import { Loader2, RefreshCw, Shield, Phone, KeyRound, ArrowLeft, MessageCircle, MessageSquare, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { usePWAAuth, CodeSentChannel } from "@/hooks/usePWAAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "@/hooks/use-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface PWAAuthGateProps {
   children: ReactNode | ((data: { fingerprint: string; pwaAccess: string[] }) => ReactNode);
@@ -122,9 +123,34 @@ function RegisterScreen({
           </Button>
         </form>
 
-        <p className="text-xs text-muted-foreground text-center mt-6 break-all">
-          Device ID: {fingerprint}
-        </p>
+        <div className="mt-6 flex flex-col items-center gap-1">
+          <p className="text-xs text-muted-foreground text-center font-mono whitespace-nowrap overflow-x-auto max-w-full">
+            Device ID: {fingerprint}
+          </p>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors">
+                <Info className="h-3 w-3" />
+                <span>O que é isso?</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 text-sm" side="top">
+              <p className="font-medium mb-2">Impressão digital do dispositivo</p>
+              <p className="text-muted-foreground text-xs mb-2">
+                Identificador único gerado combinando características do navegador/dispositivo:
+              </p>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>• User-Agent (navegador, versão, SO)</li>
+                <li>• Resolução de tela e pixel ratio</li>
+                <li>• Fuso horário e idioma</li>
+                <li>• Fontes instaladas e plugins</li>
+                <li>• Canvas fingerprint (renderização)</li>
+                <li>• WebGL renderer</li>
+                <li>• Capacidades de áudio/touch</li>
+              </ul>
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
     </div>
   );
