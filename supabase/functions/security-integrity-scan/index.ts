@@ -296,11 +296,65 @@ Deno.serve(async (req) => {
       details: 'All views converted to SECURITY INVOKER'
     });
 
-    integrityFindings.push({
-      check: 'Function Search Path',
-      status: 'passed',
-      details: 'Custom functions have search_path set to public'
-    });
+    // 9. NEW: Audit SECURITY DEFINER functions using dedicated RPC
+    console.log('[SECURITY-SCAN] Auditing SECURITY DEFINER functions...');
+    try {
+      const { data: definerAudit, error: definerError } = await supabase.rpc('get_security_definer_functions_audit');
+      
+      if (definerError) {
+        console.warn('[SECURITY-SCAN] Could not audit SECURITY DEFINER functions:', definerError.message);
+        integrityFindings.push({
+          check: 'Function Search Path',
+          status: 'info',
+          details: 'SECURITY DEFINER audit RPC not available - using static check'
+        });
+      } else if (definerAudit) {
+        const totalCount = definerAudit.count || 0;
+        const missingCount = definerAudit.missing_search_path_count || 0;
+        
+        if (missingCount > 0) {
+          findings.push({
+            id: 'security_definer_missing_search_path',
+            category: 'Function Security',
+            severity: 'warning',
+            title: `${missingCount} SECURITY DEFINER functions missing search_path`,
+            description: `${missingCount} of ${totalCount} SECURITY DEFINER functions do not have explicit search_path configuration, which could allow search_path injection attacks.`,
+            location: 'pg_proc',
+            remediation: 'Add SET search_path = public to each function definition.'
+          });
+          
+          integrityFindings.push({
+            check: 'Function Search Path',
+            status: 'warning',
+            details: `${missingCount} of ${totalCount} SECURITY DEFINER functions missing search_path`
+          });
+        } else {
+          findings.push({
+            id: 'security_definer_audit_passed',
+            category: 'Function Security',
+            severity: 'passed',
+            title: `All ${totalCount} SECURITY DEFINER functions have search_path configured`,
+            description: `Automated audit verified all ${totalCount} SECURITY DEFINER functions have explicit search_path configuration.`,
+            location: 'pg_proc'
+          });
+          
+          integrityFindings.push({
+            check: 'Function Search Path',
+            status: 'passed',
+            details: `All ${totalCount} SECURITY DEFINER functions have search_path set`
+          });
+        }
+        
+        console.log(`[SECURITY-SCAN] SECURITY DEFINER audit: ${totalCount} total, ${missingCount} missing search_path`);
+      }
+    } catch (auditErr) {
+      console.warn('[SECURITY-SCAN] SECURITY DEFINER audit error:', auditErr);
+      integrityFindings.push({
+        check: 'Function Search Path',
+        status: 'info',
+        details: 'SECURITY DEFINER audit could not be completed'
+      });
+    }
 
     // Store integrity check
     await supabase.from('integrity_check_log').insert({
