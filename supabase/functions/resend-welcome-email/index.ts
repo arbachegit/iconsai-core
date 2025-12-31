@@ -13,6 +13,13 @@ interface ResendWelcomeRequest {
 }
 
 serve(async (req) => {
+  // VERSÃO 2.1 - FORÇA REDEPLOY
+  console.log("[resend-welcome-email] ===== VERSÃO 2.1 =====");
+  
+  if (req.method === "OPTIONS") {
+
+
+serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
