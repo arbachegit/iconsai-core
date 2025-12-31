@@ -8,19 +8,6 @@ import { Lock, ArrowLeft, Zap, KeyRound, Loader2, Eye, EyeOff, Check, X, AlertCi
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
-const logPasswordRecoveryAttempt = async (email: string, action: string, success: boolean) => {
-  try {
-    await supabase.from("user_activity_logs").insert({
-      user_email: email,
-      action,
-      action_category: "PASSWORD_RECOVERY",
-      details: { success, timestamp: new Date().toISOString() },
-      user_agent: navigator.userAgent,
-    });
-  } catch (error) {
-    console.error("Failed to log password recovery attempt:", error);
-  }
-};
 
 const validateEmailFormat = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
