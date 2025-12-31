@@ -1,3 +1,4 @@
+// Force redeploy - v2.0.1
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -8,7 +9,7 @@ const corsHeaders = {
 
 interface ResendWelcomeRequest {
   registrationId: string;
-  channel?: "email" | "whatsapp" | "both";
+  channel?: "email" | "whatsapp" | "both"; // Ignorado - usamos regra por produto
 }
 
 serve(async (req) => {
@@ -21,7 +22,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verificar autorização
+    // Get authorization header to verify admin
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "No authorization header" }), {
@@ -30,6 +31,7 @@ serve(async (req) => {
       });
     }
 
+    // Verify admin user
     const {
       data: { user: adminUser },
       error: authError,
@@ -42,7 +44,7 @@ serve(async (req) => {
       });
     }
 
-    // Verificar role admin
+    // Check admin role
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
@@ -57,10 +59,7 @@ serve(async (req) => {
       });
     }
 
-    // Extrair parâmetros - CRÍTICO: channel com default 'both'
-    const { registrationId, channel = "both" }: ResendWelcomeRequest = await req.json();
-
-    console.log("[resend-welcome-email] Request received:", { registrationId, channel });
+    const { registrationId }: ResendWelcomeRequest = await req.json();
 
     if (!registrationId) {
       return new Response(JSON.stringify({ error: "Registration ID is required" }), {
@@ -69,7 +68,7 @@ serve(async (req) => {
       });
     }
 
-    // Buscar registro
+    // Get registration
     const { data: registration, error: regError } = await supabase
       .from("user_registrations")
       .select("*")
@@ -84,7 +83,7 @@ serve(async (req) => {
       });
     }
 
-    // Validações
+    // Verify user is approved
     if (registration.status !== "approved") {
       return new Response(JSON.stringify({ error: "Only approved users can receive welcome emails" }), {
         status: 400,
@@ -92,6 +91,7 @@ serve(async (req) => {
       });
     }
 
+    // Check if user is banned
     if (registration.is_banned) {
       return new Response(JSON.stringify({ error: "Cannot resend email to banned users" }), {
         status: 400,
@@ -99,102 +99,202 @@ serve(async (req) => {
       });
     }
 
-    // =====================================================
-    // CONFIGURAÇÃO DE CANAIS - RESPEITA ESCOLHA DO ADMIN
-    // =====================================================
-    const shouldSendEmail = channel === "email" || channel === "both";
-    const shouldSendWhatsApp = channel === "whatsapp" || channel === "both";
-
-    console.log("[resend-welcome-email] Channel config:", {
-      channel,
-      shouldSendEmail,
-      shouldSendWhatsApp,
-      hasPlatformAccess: registration.has_platform_access,
-      hasAppAccess: registration.has_app_access,
-      hasPhone: !!registration.phone,
-    });
+    console.log("[resend-welcome-email] Resending to:", registration.email);
 
     const userName = `${registration.first_name} ${registration.last_name}`;
     const results: { email?: boolean; whatsapp?: boolean } = {};
+
+    // =====================================================
+    // REGRA DE CANAL POR PRODUTO:
+    // - PLATAFORMA → EMAIL (plataforma não abre no celular)
+    // - APP → WHATSAPP (app é para mobile)
+    // - Se só tem Plataforma + tem telefone → WhatsApp informativo
+    // =====================================================
+
+    const hasPlatformAccess = registration.has_platform_access;
+    const hasAppAccess = registration.has_app_access;
     const siteUrl = "https://fia.iconsai.ai";
     const appUrl = `${siteUrl}/pwa-register`;
 
-    // =====================================================
-    // 1. EMAIL - Só se shouldSendEmail = true
-    // =====================================================
-    if (shouldSendEmail && registration.has_platform_access) {
-      console.log("[resend-welcome-email] Sending EMAIL...");
-
-      // Gerar link de recuperação
+    // Generate new password recovery link para Plataforma
+    let recoveryLink = "";
+    if (hasPlatformAccess) {
       const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
         type: "recovery",
         email: registration.email,
       });
 
       if (linkError) {
-        console.error("[resend-welcome-email] Recovery link error:", linkError);
-        // Não falha completamente, apenas não envia email
-        results.email = false;
-      } else {
-        const recoveryLink = linkData?.properties?.action_link || `${siteUrl}/admin/reset-password`;
+        console.error("[resend-welcome-email] Recovery link generation error:", linkError);
+        return new Response(
+          JSON.stringify({ error: "Failed to generate recovery link. User may not exist in auth system." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
 
-        // Buscar template ou usar padrão
-        const { data: template } = await supabase
-          .from("notification_templates")
-          .select("email_subject, email_body")
-          .eq("event_type", "user_registration_approved")
-          .single();
+      recoveryLink =
+        linkData?.properties?.action_link || `${supabaseUrl.replace(".supabase.co", "")}/admin/reset-password`;
+      console.log("[resend-welcome-email] Recovery link generated");
+    }
 
-        const emailHtml = template?.email_body
-          ? replaceVariables(template.email_body, {
-              user_name: userName,
-              recovery_link: recoveryLink,
-              user_email: registration.email,
-            })
-          : getDefaultEmailHtml(userName, recoveryLink);
+    // EMAIL para PLATAFORMA (obrigatório se tem acesso)
+    if (hasPlatformAccess) {
+      // Get template
+      const { data: template } = await supabase
+        .from("notification_templates")
+        .select("email_subject, email_body")
+        .eq("event_type", "user_registration_approved")
+        .single();
 
-        const emailSubject = template?.email_subject
-          ? replaceVariables(template.email_subject, { user_name: userName })
-          : "🖥️ Bem-vindo à Plataforma KnowYOU!";
+      let emailSent = false;
+
+      if (!template) {
+        // Use default template if none exists
+        const defaultHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+              .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
+              .button { display: inline-block; background: #6366f1; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+              .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+              .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6366f1; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1 style="margin:0;">🖥️ Bem-vindo à Plataforma!</h1>
+              </div>
+              <div class="content">
+                <p>Olá <strong>${userName}</strong>,</p>
+                <p>Seu cadastro foi aprovado! Para acessar a plataforma, clique no botão abaixo para definir sua senha:</p>
+                
+                <div class="info">
+                  <p style="margin:0;">💻 Acesse pelo <strong>computador ou tablet</strong> para aproveitar todos os recursos.</p>
+                </div>
+                
+                <p style="text-align: center;">
+                  <a href="${recoveryLink}" class="button" style="color: white;">Definir Minha Senha</a>
+                </p>
+                <p style="font-size: 12px; color: #666;">Este link é válido por 24 horas.</p>
+              </div>
+              <div class="footer">
+                <p>Plataforma KnowYOU &copy; ${new Date().getFullYear()}</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
 
         try {
           await supabase.functions.invoke("send-email", {
-            body: { to: registration.email, subject: emailSubject, body: emailHtml },
+            body: {
+              to: registration.email,
+              subject: "🖥️ Bem-vindo à Plataforma KnowYOU!",
+              body: defaultHtml,
+            },
           });
-          console.log("[resend-welcome-email] Email SENT to:", registration.email);
-          results.email = true;
+          console.log("[resend-welcome-email] Default welcome email sent to:", registration.email);
+          emailSent = true;
+        } catch (emailError) {
+          console.error("[resend-welcome-email] Email send error:", emailError);
+        }
+      } else {
+        // Use custom template
+        let emailBody = template.email_body || "";
+        let emailSubject = template.email_subject || "Bem-vindo à Plataforma KnowYOU!";
 
-          // Log
-          await logNotification(supabase, {
+        const variables: Record<string, string> = {
+          user_name: userName,
+          user_email: registration.email,
+          recovery_link: recoveryLink,
+          timestamp: new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+          platform_name: "Plataforma KnowYOU",
+        };
+
+        for (const [key, value] of Object.entries(variables)) {
+          emailBody = emailBody.replace(new RegExp(`\\{${key}\\}`, "g"), value);
+          emailSubject = emailSubject.replace(new RegExp(`\\{${key}\\}`, "g"), value);
+        }
+
+        try {
+          await supabase.functions.invoke("send-email", {
+            body: {
+              to: registration.email,
+              subject: emailSubject,
+              body: emailBody,
+            },
+          });
+          console.log("[resend-welcome-email] Welcome email sent to:", registration.email);
+          emailSent = true;
+        } catch (emailError) {
+          console.error("[resend-welcome-email] Email send error:", emailError);
+        }
+      }
+
+      results.email = emailSent;
+
+      // Log email notification
+      if (emailSent) {
+        await supabase.from("notification_logs").insert({
+          event_type: "user_registration_resend_welcome",
+          channel: "email",
+          recipient: registration.email,
+          subject: "Reenvio de email de boas-vindas (Plataforma)",
+          message_body: `Email de boas-vindas reenviado para ${userName} com novo link de recuperação.`,
+          status: "success",
+          metadata: { registration_id: registrationId, triggered_by: adminUser.email },
+        });
+      }
+
+      // WhatsApp INFORMATIVO (só se NÃO tem APP)
+      // Apenas avisa que enviamos email - NÃO envia link!
+      if (registration.phone && !hasAppAccess) {
+        try {
+          const infoMessage = `*KnowYOU*
+
+Olá ${userName},
+
+Reenviamos um email com as instruções para acessar a Plataforma KnowYOU.
+
+Acesse pelo computador ou tablet para definir sua senha e começar.
+
+_Verifique também sua pasta de spam_`;
+
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phoneNumber: registration.phone,
+              message: infoMessage,
+            },
+          });
+
+          console.log("[resend-welcome-email] WhatsApp info sent to:", registration.phone);
+          results.whatsapp = true;
+
+          await supabase.from("notification_logs").insert({
             event_type: "user_registration_resend_welcome",
-            channel: "email",
-            recipient: registration.email,
-            subject: "Reenvio de boas-vindas (Email)",
-            message_body: `Email enviado para ${userName}`,
+            channel: "whatsapp",
+            recipient: registration.phone,
+            subject: "WhatsApp informativo (Plataforma)",
+            message_body: infoMessage,
             status: "success",
             metadata: { registration_id: registrationId, triggered_by: adminUser.email },
           });
-        } catch (e) {
-          console.error("[resend-welcome-email] Email error:", e);
-          results.email = false;
+        } catch (whatsappError) {
+          console.error("[resend-welcome-email] WhatsApp info error:", whatsappError);
         }
       }
-    } else if (shouldSendEmail) {
-      console.log("[resend-welcome-email] Email requested but user has no platform access");
     }
 
-    // =====================================================
-    // 2. WHATSAPP - Só se shouldSendWhatsApp = true
-    // =====================================================
-    if (shouldSendWhatsApp && registration.phone) {
-      console.log("[resend-welcome-email] Sending WHATSAPP...");
-
-      let whatsappMessage = "";
-      let whatsappSubject = "";
-
-      // Escolher mensagem baseado no tipo de acesso
-      if (registration.has_app_access) {
-        whatsappMessage = `*KnowYOU APP*
+    // WhatsApp para APP (com link)
+    if (hasAppAccess && registration.phone) {
+      try {
+        const appMessage = `*KnowYOU APP*
 
 Olá ${userName}, seu cadastro foi aprovado!
 
@@ -203,77 +303,66 @@ Acesse pelo celular para ter seu assistente sempre com você.
 Link: ${appUrl}
 
 _Lembre-se: o APP funciona apenas no celular_`;
-        whatsappSubject = "WhatsApp APP com link";
-      } else if (registration.has_platform_access) {
-        whatsappMessage = `*KnowYOU*
 
-Olá ${userName},
+        await supabase.functions.invoke("send-whatsapp", {
+          body: {
+            phoneNumber: registration.phone,
+            message: appMessage,
+          },
+        });
 
-Reenviamos um email com as instruções para acessar a Plataforma KnowYOU.
+        console.log("[resend-welcome-email] WhatsApp APP sent to:", registration.phone);
+        results.whatsapp = true;
 
-Acesse pelo computador ou tablet para definir sua senha.
-
-_Verifique também sua pasta de spam_`;
-        whatsappSubject = "WhatsApp informativo (Plataforma)";
+        await supabase.from("notification_logs").insert({
+          event_type: "user_registration_resend_welcome",
+          channel: "whatsapp",
+          recipient: registration.phone,
+          subject: "WhatsApp APP com link",
+          message_body: appMessage,
+          status: "success",
+          metadata: { registration_id: registrationId, triggered_by: adminUser.email },
+        });
+      } catch (whatsappError) {
+        console.error("[resend-welcome-email] WhatsApp APP error:", whatsappError);
+        results.whatsapp = false;
       }
-
-      if (whatsappMessage) {
-        try {
-          await supabase.functions.invoke("send-whatsapp", {
-            body: { phoneNumber: registration.phone, message: whatsappMessage },
-          });
-          console.log("[resend-welcome-email] WhatsApp SENT to:", registration.phone);
-          results.whatsapp = true;
-
-          // Log
-          await logNotification(supabase, {
-            event_type: "user_registration_resend_welcome",
-            channel: "whatsapp",
-            recipient: registration.phone,
-            subject: whatsappSubject,
-            message_body: whatsappMessage,
-            status: "success",
-            metadata: { registration_id: registrationId, triggered_by: adminUser.email },
-          });
-        } catch (e) {
-          console.error("[resend-welcome-email] WhatsApp error:", e);
-          results.whatsapp = false;
-        }
-      }
-    } else if (shouldSendWhatsApp) {
-      console.log("[resend-welcome-email] WhatsApp requested but user has no phone");
     }
 
-    // Log de atividade
+    // Log the action
     await supabase.from("user_activity_logs").insert({
       user_email: adminUser.email,
       user_id: adminUser.id,
       action_category: "USER_REGISTRATION_RESEND_WELCOME",
       action: `Reenviou boas-vindas para ${userName} (${registration.email})`,
-      details: { registration_id: registrationId, channel, results },
+      details: {
+        registration_id: registrationId,
+        user_email: registration.email,
+        user_name: userName,
+        has_platform_access: hasPlatformAccess,
+        has_app_access: hasAppAccess,
+        results,
+      },
     });
 
-    // Resposta
+    // Determine success message
     const successChannels: string[] = [];
     if (results.email) successChannels.push("email");
     if (results.whatsapp) successChannels.push("WhatsApp");
 
     if (successChannels.length === 0) {
-      return new Response(
-        JSON.stringify({
-          error: "Nenhuma mensagem foi enviada",
-          channel_requested: channel,
-          details: results,
-        }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ error: "Failed to send message via any channel" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Mensagem enviada via ${successChannels.join(" e ")}`,
-        channel_requested: channel,
+        message: `Welcome message resent successfully via ${successChannels.join(" and ")}`,
+        email: registration.email,
+        phone: registration.phone,
         channels: successChannels,
         results,
       }),
@@ -287,62 +376,3 @@ _Verifique também sua pasta de spam_`;
     });
   }
 });
-
-// =====================================================
-// FUNÇÕES AUXILIARES
-// =====================================================
-
-function replaceVariables(text: string, vars: Record<string, string>): string {
-  let result = text;
-  for (const [key, value] of Object.entries(vars)) {
-    result = result.replace(new RegExp(`\\{${key}\\}`, "g"), value);
-  }
-  return result;
-}
-
-async function logNotification(supabase: any, data: any): Promise<void> {
-  try {
-    await supabase.from("notification_logs").insert(data);
-  } catch (e) {
-    console.error("[resend-welcome-email] Log error:", e);
-  }
-}
-
-function getDefaultEmailHtml(userName: string, recoveryLink: string): string {
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-    .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
-    .button { display: inline-block; background: #6366f1; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
-    .info { background: #fff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6366f1; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1 style="margin:0;">🖥️ Bem-vindo à Plataforma!</h1>
-    </div>
-    <div class="content">
-      <p>Olá <strong>${userName}</strong>,</p>
-      <p>Seu cadastro foi aprovado! Para acessar a plataforma, clique no botão abaixo para definir sua senha:</p>
-      <div class="info">
-        <p style="margin:0;">💻 Acesse pelo <strong>computador ou tablet</strong> para aproveitar todos os recursos.</p>
-      </div>
-      <p style="text-align: center;">
-        <a href="${recoveryLink}" class="button" style="color: white;">Definir Minha Senha</a>
-      </p>
-      <p style="font-size: 12px; color: #666;">Este link é válido por 24 horas.</p>
-    </div>
-    <div class="footer">
-      <p>Plataforma KnowYOU &copy; ${new Date().getFullYear()}</p>
-    </div>
-  </div>
-</body>
-</html>`;
-}
