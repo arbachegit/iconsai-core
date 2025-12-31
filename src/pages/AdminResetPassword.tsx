@@ -9,19 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 const CODE_EXPIRY_MINUTES = 15;
 
-const logPasswordRecoveryEvent = async (email: string, action: string, success: boolean, details?: Record<string, any>) => {
-  try {
-    await supabase.from("user_activity_logs").insert({
-      user_email: email,
-      action,
-      action_category: "PASSWORD_RECOVERY",
-      details: { success, timestamp: new Date().toISOString(), ...details },
-      user_agent: navigator.userAgent,
-    });
-  } catch (error) {
-    console.error("Failed to log password recovery event:", error);
-  }
-};
 
 const AdminResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -205,7 +192,7 @@ const AdminResetPassword = () => {
         return;
       }
 
-      await logPasswordRecoveryEvent(email, 'Senha redefinida com sucesso', true);
+      
 
       toast({
         title: "Senha redefinida",
@@ -216,7 +203,7 @@ const AdminResetPassword = () => {
 
     } catch (err: any) {
       // [SECURITY] Error details not logged to prevent sensitive data exposure
-      await logPasswordRecoveryEvent(email, 'Falha ao redefinir senha', false, { error: 'Password reset failed' });
+      
       toast({
         title: "Erro",
         description: err.message || "Erro ao redefinir senha",
