@@ -6,8 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Template SID para código de verificação (aprovado pelo WhatsApp)
+const VERIFICATION_TEMPLATE_SID = "HXbae35890eb0b8d445b84ea133f034d93";
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -23,24 +25,19 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[send-pwa-verification-direct] Sending code to ${phone}`);
+    console.log(`[send-pwa-verification-direct] Sending code to ${phone.slice(0, 5)}***`);
 
-    // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Build message
-    const greeting = name ? `Olá ${name}!` : "Olá!";
-    const message = `${greeting}\n\nSeu código de verificação KnowYOU é:\n\n*${code}*\n\nEsse código expira em 10 minutos.`;
 
     let sendSuccess = false;
     let sendChannel = "whatsapp";
     let sendError = null;
 
-    // Try WhatsApp first
+    // Tentar WhatsApp com Template (funciona fora da janela de 24h)
     try {
-      console.log("[send-pwa-verification-direct] Attempting WhatsApp...");
+      console.log("[send-pwa-verification-direct] Attempting WhatsApp with template...");
       
       const whatsappResponse = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
         method: "POST",
@@ -50,7 +47,8 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           to: phone,
-          message: message,
+          contentSid: VERIFICATION_TEMPLATE_SID,
+          contentVariables: { "1": code },
         }),
       });
 
@@ -58,7 +56,7 @@ serve(async (req) => {
       
       if (whatsappResponse.ok && whatsappResult.success) {
         sendSuccess = true;
-        console.log("[send-pwa-verification-direct] WhatsApp sent successfully");
+        console.log("[send-pwa-verification-direct] WhatsApp template sent successfully");
       } else {
         console.warn("[send-pwa-verification-direct] WhatsApp failed:", whatsappResult);
         sendError = whatsappResult.error || "WhatsApp send failed";
@@ -68,7 +66,7 @@ serve(async (req) => {
       sendError = String(waError);
     }
 
-    // Fallback to SMS if WhatsApp failed
+    // Fallback para SMS se WhatsApp falhar
     if (!sendSuccess) {
       try {
         console.log("[send-pwa-verification-direct] Falling back to SMS...");
@@ -110,11 +108,15 @@ serve(async (req) => {
         channel: sendChannel,
         recipient: phone,
         subject: "Código de Verificação PWA",
-        message_body: message,
+        message_body: `Código: ${code}`,
         status: sendSuccess ? "sent" : "failed",
         error_message: sendSuccess ? null : sendError,
         fallback_used: sendChannel === "sms",
-        metadata: { name, code_sent: true },
+        metadata: { 
+          name, 
+          code_sent: true, 
+          template_used: sendChannel === "whatsapp" ? VERIFICATION_TEMPLATE_SID : null 
+        },
       });
     } catch (logError) {
       console.warn("[send-pwa-verification-direct] Failed to log notification:", logError);
