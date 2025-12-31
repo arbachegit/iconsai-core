@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface ResendWelcomeRequest {
   registrationId: string;
-  channel?: 'email' | 'whatsapp' | 'both'; // Ignorado - usamos regra por produto
+  channel?: "email" | "whatsapp" | "both";
 }
 
 serve(async (req) => {
@@ -24,22 +24,23 @@ serve(async (req) => {
     // Get authorization header to verify admin
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "No authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "No authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Verify admin user
-    const { data: { user: adminUser }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace("Bearer ", "")
-    );
+    const {
+      data: { user: adminUser },
+      error: authError,
+    } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
 
     if (authError || !adminUser) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Check admin role
@@ -51,19 +52,19 @@ serve(async (req) => {
       .single();
 
     if (!roleData) {
-      return new Response(
-        JSON.stringify({ error: "Admin access required" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Admin access required" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const { registrationId }: ResendWelcomeRequest = await req.json();
+    const { registrationId, channel = "both" }: ResendWelcomeRequest = await req.json();
 
     if (!registrationId) {
-      return new Response(
-        JSON.stringify({ error: "Registration ID is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Registration ID is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Get registration
@@ -75,38 +76,38 @@ serve(async (req) => {
 
     if (regError || !registration) {
       console.error("[resend-welcome-email] Registration fetch error:", regError);
-      return new Response(
-        JSON.stringify({ error: "Registration not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Registration not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Verify user is approved
     if (registration.status !== "approved") {
-      return new Response(
-        JSON.stringify({ error: "Only approved users can receive welcome emails" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Only approved users can receive welcome emails" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Check if user is banned
     if (registration.is_banned) {
-      return new Response(
-        JSON.stringify({ error: "Cannot resend email to banned users" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Cannot resend email to banned users" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    console.log("[resend-welcome-email] Resending to:", registration.email);
+    console.log("[resend-welcome-email] Resending to:", registration.email, "via channel:", channel);
 
     const userName = `${registration.first_name} ${registration.last_name}`;
     const results: { email?: boolean; whatsapp?: boolean } = {};
 
     // =====================================================
-    // REGRA DE CANAL POR PRODUTO:
-    // - PLATAFORMA → EMAIL (plataforma não abre no celular)
-    // - APP → WHATSAPP (app é para mobile)
-    // - Se só tem Plataforma + tem telefone → WhatsApp informativo
+    // REGRA DE CANAL RESPEITANDO ESCOLHA DO ADMIN:
+    // - channel = 'email' → Só email
+    // - channel = 'whatsapp' → Só WhatsApp
+    // - channel = 'both' → Ambos (quando aplicável)
     // =====================================================
 
     const hasPlatformAccess = registration.has_platform_access;
@@ -114,9 +115,14 @@ serve(async (req) => {
     const siteUrl = "https://fia.iconsai.ai";
     const appUrl = `${siteUrl}/pwa-register`;
 
-    // Generate new password recovery link para Plataforma
+    // Verificar se deve enviar email
+    const shouldSendEmail = channel === "email" || channel === "both";
+    // Verificar se deve enviar WhatsApp
+    const shouldSendWhatsApp = channel === "whatsapp" || channel === "both";
+
+    // Generate new password recovery link para Plataforma (só se vai enviar email)
     let recoveryLink = "";
-    if (hasPlatformAccess) {
+    if (hasPlatformAccess && shouldSendEmail) {
       const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
         type: "recovery",
         email: registration.email,
@@ -126,16 +132,19 @@ serve(async (req) => {
         console.error("[resend-welcome-email] Recovery link generation error:", linkError);
         return new Response(
           JSON.stringify({ error: "Failed to generate recovery link. User may not exist in auth system." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
-      recoveryLink = linkData?.properties?.action_link || `${supabaseUrl.replace('.supabase.co', '')}/admin/reset-password`;
+      recoveryLink =
+        linkData?.properties?.action_link || `${supabaseUrl.replace(".supabase.co", "")}/admin/reset-password`;
       console.log("[resend-welcome-email] Recovery link generated");
     }
 
-    // EMAIL para PLATAFORMA (obrigatório se tem acesso)
-    if (hasPlatformAccess) {
+    // =====================================================
+    // 1. EMAIL para PLATAFORMA
+    // =====================================================
+    if (hasPlatformAccess && shouldSendEmail) {
       // Get template
       const { data: template } = await supabase
         .from("notification_templates")
@@ -205,7 +214,7 @@ serve(async (req) => {
         // Use custom template
         let emailBody = template.email_body || "";
         let emailSubject = template.email_subject || "Bem-vindo à Plataforma KnowYOU!";
-        
+
         const variables: Record<string, string> = {
           user_name: userName,
           user_email: registration.email,
@@ -248,12 +257,15 @@ serve(async (req) => {
           metadata: { registration_id: registrationId, triggered_by: adminUser.email },
         });
       }
+    }
 
-      // WhatsApp INFORMATIVO (só se NÃO tem APP)
-      // Apenas avisa que enviamos email - NÃO envia link!
-      if (registration.phone && !hasAppAccess) {
-        try {
-          const infoMessage = `*KnowYOU*
+    // =====================================================
+    // 2. WhatsApp INFORMATIVO (Plataforma sem APP)
+    //    Apenas avisa que enviamos email - NÃO envia link!
+    // =====================================================
+    if (hasPlatformAccess && !hasAppAccess && registration.phone && shouldSendWhatsApp) {
+      try {
+        const infoMessage = `*KnowYOU*
 
 Olá ${userName},
 
@@ -263,33 +275,34 @@ Acesse pelo computador ou tablet para definir sua senha e começar.
 
 _Verifique também sua pasta de spam_`;
 
-          await supabase.functions.invoke("send-whatsapp", {
-            body: {
-              phoneNumber: registration.phone,
-              message: infoMessage,
-            },
-          });
+        await supabase.functions.invoke("send-whatsapp", {
+          body: {
+            phoneNumber: registration.phone,
+            message: infoMessage,
+          },
+        });
 
-          console.log("[resend-welcome-email] WhatsApp info sent to:", registration.phone);
-          results.whatsapp = true;
+        console.log("[resend-welcome-email] WhatsApp info sent to:", registration.phone);
+        results.whatsapp = true;
 
-          await supabase.from("notification_logs").insert({
-            event_type: "user_registration_resend_welcome",
-            channel: "whatsapp",
-            recipient: registration.phone,
-            subject: "WhatsApp informativo (Plataforma)",
-            message_body: infoMessage,
-            status: "success",
-            metadata: { registration_id: registrationId, triggered_by: adminUser.email },
-          });
-        } catch (whatsappError) {
-          console.error("[resend-welcome-email] WhatsApp info error:", whatsappError);
-        }
+        await supabase.from("notification_logs").insert({
+          event_type: "user_registration_resend_welcome",
+          channel: "whatsapp",
+          recipient: registration.phone,
+          subject: "WhatsApp informativo (Plataforma)",
+          message_body: infoMessage,
+          status: "success",
+          metadata: { registration_id: registrationId, triggered_by: adminUser.email },
+        });
+      } catch (whatsappError) {
+        console.error("[resend-welcome-email] WhatsApp info error:", whatsappError);
       }
     }
 
-    // WhatsApp para APP (com link)
-    if (hasAppAccess && registration.phone) {
+    // =====================================================
+    // 3. WhatsApp para APP (com link)
+    // =====================================================
+    if (hasAppAccess && registration.phone && shouldSendWhatsApp) {
       try {
         const appMessage = `*KnowYOU APP*
 
@@ -338,39 +351,40 @@ _Lembre-se: o APP funciona apenas no celular_`;
         user_name: userName,
         has_platform_access: hasPlatformAccess,
         has_app_access: hasAppAccess,
+        channel_requested: channel,
         results,
       },
     });
 
     // Determine success message
     const successChannels: string[] = [];
-    if (results.email) successChannels.push('email');
-    if (results.whatsapp) successChannels.push('WhatsApp');
+    if (results.email) successChannels.push("email");
+    if (results.whatsapp) successChannels.push("WhatsApp");
 
     if (successChannels.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Failed to send message via any channel" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Failed to send message via any channel" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: `Welcome message resent successfully via ${successChannels.join(' and ')}`,
+      JSON.stringify({
+        success: true,
+        message: `Welcome message resent successfully via ${successChannels.join(" and ")}`,
         email: registration.email,
         phone: registration.phone,
         channels: successChannels,
+        channel_requested: channel,
         results,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
-
   } catch (error: any) {
     console.error("[resend-welcome-email] Error:", error);
-    return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error.message || "Internal server error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
