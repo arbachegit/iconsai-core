@@ -260,19 +260,7 @@ export default function ApiManagementTab() {
 
       if (error) throw error;
 
-      // Log to user_activity_logs for audit trail
-      await supabase.from('user_activity_logs').insert({
-        action_category: 'API_CONFIGURATION',
-        action: 'CRON_CONFIG_UPDATE',
-        user_email: 'admin',
-        details: {
-          api_sync_enabled: globalAutoSyncEnabled,
-          cron_hour: cronHour,
-          cron_minute: cronMinute,
-          default_frequency: defaultFrequency,
-          timestamp: new Date().toISOString()
-        }
-      });
+
 
       toast.success('Configuração de sincronização salva com sucesso');
       setIsEditingCron(false);

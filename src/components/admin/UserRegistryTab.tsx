@@ -787,13 +787,8 @@ export const UserRegistryTab = () => {
       setExistingEmails([]);
       queryClient.invalidateQueries({ queryKey: ["user-registrations"] });
       
-      // Log audit
-      supabase.from("user_activity_logs").insert({
-        user_email: "system",
-        action_category: "USER_REGISTRATION_CSV_IMPORT",
-        action: `Importação em massa de ${count} usuários via CSV`,
-        details: { count, status: csvImportStatus }
-      });
+
+
     },
     onError: (error: Error) => {
       toast.error(`Erro ao importar: ${error.message}`);

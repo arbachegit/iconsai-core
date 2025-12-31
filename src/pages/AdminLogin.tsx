@@ -147,7 +147,7 @@ const AdminLogin = () => {
         return;
       }
 
-      await logPasswordRecoveryAttempt(resetEmail, 'Código de recuperação solicitado', true);
+      // (audit logging handled server-side)
 
       toast({
         title: "Código enviado",
@@ -159,7 +159,7 @@ const AdminLogin = () => {
 
     } catch (err: any) {
       console.error("Error requesting recovery code:", err);
-      await logPasswordRecoveryAttempt(resetEmail, 'Falha ao solicitar código', false);
+      // (audit logging handled server-side)
       toast({
         title: "Erro",
         description: err.message || "Erro ao solicitar código de recuperação",

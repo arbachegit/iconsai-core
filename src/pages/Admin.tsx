@@ -194,33 +194,11 @@ const Admin = () => {
 
   const currentLanguage = languages.find((l) => l.code === i18n.language) || languages[0];
 
-  // Função para logar navegação
-  const logNavigation = async (fromTab: TabType, toTab: TabType, email: string) => {
-    try {
-      await supabase.from("user_activity_logs").insert({
-        user_email: email,
-        action_category: "NAVIGATION",
-        action: `Navegou de "${TAB_LABELS[fromTab]}" para "${TAB_LABELS[toTab]}"`,
-        details: {
-          from_tab: fromTab,
-          to_tab: toTab,
-          from_label: TAB_LABELS[fromTab],
-          to_label: TAB_LABELS[toTab],
-        },
-        user_agent: navigator.userAgent,
-      });
-    } catch (error) {
-      console.error("Error logging navigation:", error);
-    }
-  };
-
-  // Handler de mudança de tab com logging
+  // Handler de mudança de tab
   const handleTabChange = (newTab: TabType) => {
-    if (newTab !== activeTab && userEmail) {
-      logNavigation(activeTab, newTab, userEmail);
-    }
     setActiveTab(newTab);
   };
+
 
   // Persistir estado do sidebar no localStorage
   useEffect(() => {
