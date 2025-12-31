@@ -5607,6 +5607,7 @@ export type Database = {
         }[]
       }
       get_schema_info: { Args: never; Returns: Json }
+      get_security_definer_functions_audit: { Args: never; Returns: Json }
       get_table_columns: {
         Args: { p_table_name: string }
         Returns: {
