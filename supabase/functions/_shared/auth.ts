@@ -1,3 +1,8 @@
+// ============================================
+// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
+// AUDITORIA: Forcado redeploy - Lovable Cloud
+// ============================================
+
 /**
  * Módulo centralizado de autenticação para Edge Functions
  * Valida tokens JWT e gerencia contexto de usuário

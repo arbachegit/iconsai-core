@@ -1,15 +1,16 @@
+// ============================================
+// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
+// AUDITORIA: Forcado redeploy - Lovable Cloud
+// ============================================
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  // Handle CORS preflight
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
   try {
     const { audio } = await req.json();
@@ -42,8 +43,8 @@ serve(async (req) => {
       throw new Error('Audio data is empty or too short. Please record for longer.');
     }
     
-    console.log('Audio mime type:', mimeType);
-    console.log('Base64 data length:', base64Data.length);
+    console.log('[VOICE-TO-TEXT] Audio mime type:', mimeType);
+    console.log('[VOICE-TO-TEXT] Base64 data length:', base64Data.length);
 
     // Decode base64 directly (Deno handles large strings well)
     const binaryString = atob(base64Data);
@@ -52,7 +53,7 @@ serve(async (req) => {
       bytes[i] = binaryString.charCodeAt(i);
     }
     
-    console.log('Decoded audio bytes:', bytes.length);
+    console.log('[VOICE-TO-TEXT] Decoded audio bytes:', bytes.length);
     
     if (bytes.length < 1000) {
       throw new Error('Audio file too small. Please record for longer.');
@@ -77,7 +78,7 @@ serve(async (req) => {
     formData.append('model', 'whisper-1');
     formData.append('language', 'pt');
 
-    console.log('Sending audio to OpenAI Whisper API, file:', `audio.${extension}`);
+    console.log('[VOICE-TO-TEXT] Sending audio to OpenAI Whisper API, file:', `audio.${extension}`);
 
     // Send to OpenAI
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -90,26 +91,23 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', errorText);
+      console.error('[VOICE-TO-TEXT] OpenAI API error:', errorText);
       throw new Error(`OpenAI API error: ${errorText}`);
     }
 
     const result = await response.json();
-    console.log('Transcription successful:', result.text);
+    console.log('[VOICE-TO-TEXT] Transcription successful:', result.text?.substring(0, 50) + '...');
 
     return new Response(
       JSON.stringify({ text: result.text }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
-    console.error('Error in voice-to-text function:', error);
+  } catch (error: any) {
+    console.error('[VOICE-TO-TEXT] Error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

@@ -1,3 +1,8 @@
+// ============================================
+// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
+// AUDITORIA: Forcado redeploy - Lovable Cloud
+// ============================================
+
 /**
  * Módulo centralizado de respostas HTTP para Edge Functions
  * Padroniza formato de respostas JSON e tratamento de erros
