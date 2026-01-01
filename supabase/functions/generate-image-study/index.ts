@@ -1,14 +1,14 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// ============================================
+// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
+// AUDITORIA: Forcado redeploy - Lovable Cloud
+// ============================================
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
   try {
     const { prompt } = await req.json();

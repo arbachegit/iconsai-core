@@ -1,10 +1,11 @@
+// ============================================
+// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
+// AUDITORIA: Forcado redeploy - Lovable Cloud
+// ============================================
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 const ANALYSIS_PROMPT = `# Role (Papel)
 Você é um Especialista em Lógica Semântica e Engenharia de Prompt. Sua função é analisar perguntas feitas por humanos e classificá-las rigorosamente entre "Determinísticas" e "Não-Determinísticas".
