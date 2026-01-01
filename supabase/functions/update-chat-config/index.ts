@@ -1,9 +1,11 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+// ============================================
+// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
+// AUDITORIA: Forcado redeploy - Lovable Cloud
+// ============================================
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 interface ChatConfigUpdate {
   chatType: "study" | "health";
@@ -14,10 +16,10 @@ interface ChatConfigUpdate {
   systemPromptBase?: string;
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+serve(async (req) => {
+  // Handle CORS preflight
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
