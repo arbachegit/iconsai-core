@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Smartphone, Volume2, Wifi, ZoomIn, ZoomOut, Maximize2, Minimize2, RotateCcw, RotateCw,
-  HelpCircle, X, MonitorSmartphone
+  HelpCircle, X, MonitorSmartphone, RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PWAVoiceAssistant } from "@/components/pwa/voice/PWAVoiceAssistant";
@@ -22,6 +22,7 @@ interface PWASimulatorProps {
   showControls?: boolean;
   isLandscape?: boolean;
   onToggleLandscape?: () => void;
+  onReset?: () => void;
 }
 
 const MIN_SCALE = 0.5;
@@ -38,7 +39,8 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
   onToggleFullscreen,
   showControls = false,
   isLandscape = false,
-  onToggleLandscape
+  onToggleLandscape,
+  onReset
 }) => {
   // Se frameless, renderizar PWA diretamente sem nenhum wrapper de frame
   if (frameless) {
@@ -154,6 +156,23 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
               )}
             </Button>
 
+            {/* Separador e Botão Reset */}
+            {onReset && (
+              <>
+                <div className="w-px h-6 bg-border" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onReset}
+                  className="h-8 px-2 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
+                  title="Reiniciar PWA (0)"
+                >
+                  <RefreshCw className="w-4 h-4 mr-1" />
+                  Reset
+                </Button>
+              </>
+            )}
+
             <div className="w-px h-6 bg-border" />
 
             {/* Orientation Indicator */}
@@ -232,6 +251,11 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Sair tela cheia</span>
                     <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">ESC</kbd>
+                  </div>
+                  <div className="h-px bg-border my-2" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Reiniciar PWA</span>
+                    <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">0</kbd>
                   </div>
                 </div>
               </PopoverContent>

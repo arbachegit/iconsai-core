@@ -215,7 +215,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
         <AnimatePresence mode="wait">
           {/* Splash Screen */}
           {appState === "splash" && (
-            <SplashScreen key="splash" onComplete={handleSplashComplete} />
+            <SplashScreen key="splash" onComplete={handleSplashComplete} embedded={embedded} />
           )}
 
           {/* Home - Module Selection */}

@@ -8,7 +8,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 // Template SID para código de verificação (aprovado pelo WhatsApp)
-const VERIFICATION_TEMPLATE_SID = "HXbae35890eb0b8d445b84ea133f034d93";
+const VERIFICATION_TEMPLATE_SID = "HX15dbff375b023b2d1514038027db6ad0"; // knowyou_otp APROVADO
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

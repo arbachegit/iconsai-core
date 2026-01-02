@@ -180,28 +180,35 @@ export default function PWAInvitesManager() {
     try {
       const user = invite.pwa_users;
       if (!user) throw new Error("Usuário não encontrado");
-
-      const pwaUrl = `${window.location.origin}/pwa`;
-      const message = `Olá ${user.name}!\n\nVocê foi convidado para usar o KnowYOU Voice Assistant.\n\nSeu código de acesso: ${invite.access_code}\n\nAcesse: ${pwaUrl}`;
-
-      if (invite.channel === "whatsapp" && user.phone) {
-        // Abrir WhatsApp
-        const phone = user.phone.replace(/\D/g, "");
-        const encoded = encodeURIComponent(message);
-        window.open(`https://wa.me/${phone}?text=${encoded}`, "_blank");
-        toast.success("WhatsApp aberto com a mensagem");
-      } else if (invite.channel === "email" && user.email) {
-        // Abrir cliente de email
-        const subject = encodeURIComponent("Seu acesso ao KnowYOU Voice Assistant");
-        const body = encodeURIComponent(message);
-        window.open(`mailto:${user.email}?subject=${subject}&body=${body}`, "_blank");
-        toast.success("Email aberto com a mensagem");
-      } else if (invite.channel === "sms" && user.phone) {
-        // Copiar para clipboard e notificar
-        await navigator.clipboard.writeText(message);
-        toast.success("Mensagem copiada! Cole no seu app de SMS");
+      if (!user.phone) {
+        toast.error("Usuário não possui telefone cadastrado");
+        return;
       }
 
+      const pwaUrl = `${window.location.origin}/pwa`;
+      const variables: Record<string, string> = {
+        "1": user.name,
+        "2": invite.access_code,
+        "3": pwaUrl,
+      };
+
+      const { data, error } = await supabase.functions.invoke("send-pwa-notification", {
+        body: {
+          to: user.phone,
+          template: "invitation",
+          variables: variables,
+          channel: invite.channel === "email" ? "sms" : invite.channel,
+          userId: user.id,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success(`Convite enviado via ${data.channel === "whatsapp" ? "WhatsApp" : "SMS"}!`);
+      } else {
+        toast.error(`Falha ao enviar: ${data?.error || "Erro desconhecido"}`);
+      }
     } catch (err) {
       console.error("Erro ao enviar convite:", err);
       toast.error("Erro ao enviar convite");
