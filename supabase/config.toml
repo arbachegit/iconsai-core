@@ -7,6 +7,12 @@ project_id = "gmflpmcepempcygdrayv"
 verify_jwt = false
 
 # ============================================
+# DEEP SEARCH - Knowledge retrieval (Public)
+# ============================================
+[functions.deep-search]
+verify_jwt = false
+
+# ============================================
 # IMAGE GENERATION - Public access
 # ============================================
 [functions.generate-image]
