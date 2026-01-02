@@ -64,8 +64,15 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     };
   }, [embedded]);
 
-  // Check if mobile device
+  // Check if mobile device - bypass for embedded (simulator)
   useEffect(() => {
+    // Se está embedded (simulador), NUNCA mostrar aviso de desktop
+    if (embedded) {
+      setIsMobile(true);
+      setShowDesktopWarning(false);
+      return;
+    }
+
     const checkMobile = () => {
       const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
       setIsMobile(mobile);
@@ -75,7 +82,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+  }, [embedded]);
 
   // Update player state based on TTS
   useEffect(() => {
@@ -335,7 +342,15 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     );
   };
 
-  // Wrap everything in PWAAuthGate
+  // Se embedded (simulador), bypass auth completamente
+  if (embedded) {
+    return renderContent({ 
+      fingerprint: "simulator-embedded", 
+      pwaAccess: ["pwa", "help", "health", "world", "ideas"] 
+    });
+  }
+
+  // Wrap everything in PWAAuthGate for real PWA
   return (
     <PWAAuthGate>
       {(data) => renderContent(data)}
