@@ -26,6 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Calendar, 
   CalendarDays, 
@@ -37,7 +43,8 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  MoreHorizontal
 } from "lucide-react";
 import { format, startOfDay, startOfMonth, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -300,6 +307,7 @@ export function CRMTab() {
             <TableRow>
               <TableHead>Data</TableHead>
               <TableHead>Lead</TableHead>
+              <TableHead>Email</TableHead>
               <TableHead>Tópico</TableHead>
               <TableHead>Duração</TableHead>
               <TableHead>Status</TableHead>
@@ -309,13 +317,13 @@ export function CRMTab() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                 </TableCell>
               </TableRow>
             ) : paginatedVisits.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Nenhuma visita encontrada
                 </TableCell>
               </TableRow>
@@ -328,14 +336,12 @@ export function CRMTab() {
                       {format(new Date(visit.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{visit.lead_name}</p>
-                        {visit.lead_email && (
-                          <p className="text-xs text-muted-foreground truncate max-w-[150px]">
-                            {visit.lead_email}
-                          </p>
-                        )}
-                      </div>
+                      <p className="font-medium">{visit.lead_name}</p>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground truncate max-w-[180px] block">
+                        {visit.lead_email || '-'}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <Badge className={topicColors[visit.presentation_topic] || ''}>
@@ -349,13 +355,33 @@ export function CRMTab() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => setSelectedVisit(visit)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setSelectedVisit(visit)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            Ver Detalhes
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => updateStatusMutation.mutate({ id: visit.id, status: 'converted' })}
+                            disabled={visit.status === 'converted'}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                            Marcar Convertido
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => updateStatusMutation.mutate({ id: visit.id, status: 'lost' })}
+                            disabled={visit.status === 'lost'}
+                          >
+                            <XCircle className="w-4 h-4 mr-2 text-red-600" />
+                            Marcar Perdido
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );
