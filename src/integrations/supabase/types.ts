@@ -3463,6 +3463,47 @@ export type Database = {
           },
         ]
       }
+      pwa_invites: {
+        Row: {
+          access_code: string
+          channel: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_used: boolean | null
+          used_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          access_code: string
+          channel?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_used?: boolean | null
+          used_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          access_code?: string
+          channel?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_used?: boolean | null
+          used_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pwa_invites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "pwa_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pwa_messages: {
         Row: {
           audio_url: string | null
@@ -3588,6 +3629,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pwa_users: {
+        Row: {
+          access_codes: string[] | null
+          created_at: string | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          access_codes?: string[] | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          access_codes?: string[] | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+        }
+        Relationships: []
       }
       rag_analytics: {
         Row: {

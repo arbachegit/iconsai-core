@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -94,7 +94,8 @@ export default function PWAInvitesManager() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Using type assertion since types may not be synced yet
+      const { data, error } = await (supabase as any)
         .from("pwa_invites")
         .select("*, pwa_users(*)")
         .order("created_at", { ascending: false });
@@ -128,7 +129,7 @@ export default function PWAInvitesManager() {
     setCreating(true);
     try {
       // 1. Criar usuário
-      const { data: user, error: userError } = await supabase
+      const { data: user, error: userError } = await (supabase as any)
         .from("pwa_users")
         .insert({
           name: newUserName.trim(),
@@ -144,7 +145,7 @@ export default function PWAInvitesManager() {
       const accessCode = generateAccessCode();
 
       // 3. Criar convite
-      const { error: inviteError } = await supabase
+      const { error: inviteError } = await (supabase as any)
         .from("pwa_invites")
         .insert({
           user_id: user.id,
@@ -216,7 +217,7 @@ export default function PWAInvitesManager() {
 
   const deleteInvite = async (id: string) => {
     try {
-      await supabase.from("pwa_invites").delete().eq("id", id);
+      await (supabase as any).from("pwa_invites").delete().eq("id", id);
       toast.success("Convite removido");
       fetchData();
     } catch (err) {
