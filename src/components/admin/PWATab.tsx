@@ -43,6 +43,7 @@ export default function PWATab() {
   const [loading, setLoading] = useState(true);
   const [showSimulator, setShowSimulator] = useState(false);
   const [testingVoice, setTestingVoice] = useState(false);
+  const [pwaKey, setPwaKey] = useState(0);
   
   // Fullscreen, zoom and landscape states
   const [simulatorScale, setSimulatorScale] = useState(() => {
@@ -88,6 +89,11 @@ export default function PWATab() {
 
   const toggleLandscape = useCallback(() => {
     setIsLandscape(prev => !prev);
+  }, []);
+
+  const handleResetPWA = useCallback(() => {
+    setPwaKey(prev => prev + 1);
+    toast.info("PWA reiniciado");
   }, []);
 
   const handleZoomIn = useCallback(() => {
@@ -144,12 +150,16 @@ export default function PWATab() {
           e.preventDefault();
           toggleLandscape();
           break;
+        case '0':
+          e.preventDefault();
+          handleResetPWA();
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSimulator, isFullscreen, handleZoomIn, handleZoomOut, handleResetZoom, toggleFullscreen, toggleLandscape]);
+  }, [showSimulator, isFullscreen, handleZoomIn, handleZoomOut, handleResetZoom, toggleFullscreen, toggleLandscape, handleResetPWA]);
   useEffect(() => {
     const fetchAgent = async () => {
       const { data } = await supabase
@@ -258,10 +268,12 @@ export default function PWATab() {
               transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }}
             >
               <PWASimulator 
+                key={pwaKey}
                 showFrame={false}
                 frameless={true}
                 isFullscreen={true}
                 onToggleFullscreen={toggleFullscreen}
+                onReset={handleResetPWA}
               />
             </motion.div>
           </motion.div>
@@ -514,6 +526,7 @@ export default function PWATab() {
           {showSimulator ? (
             <div className="flex flex-col items-center justify-center py-4">
               <PWASimulator 
+                key={pwaKey}
                 showFrame={true}
                 scale={simulatorScale}
                 onScaleChange={setSimulatorScale}
@@ -522,6 +535,7 @@ export default function PWATab() {
                 showControls={true}
                 isLandscape={isLandscape}
                 onToggleLandscape={toggleLandscape}
+                onReset={handleResetPWA}
               />
             </div>
           ) : (

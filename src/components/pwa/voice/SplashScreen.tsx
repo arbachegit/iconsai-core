@@ -13,6 +13,7 @@ interface Star {
 interface SplashScreenProps {
   onComplete: () => void;
   duration?: number;
+  embedded?: boolean;
 }
 
 type SplashStage = "stars" | "growing" | "morphing" | "complete";
@@ -20,6 +21,7 @@ type SplashStage = "stars" | "growing" | "morphing" | "complete";
 export const SplashScreen: React.FC<SplashScreenProps> = ({
   onComplete,
   duration = 4500,
+  embedded = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
@@ -175,7 +177,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-hidden"
+      className={`${embedded ? 'absolute' : 'fixed'} inset-0 z-50 overflow-hidden`}
       style={{ background: "#020617" }}
     >
       {/* Starfield Canvas */}
