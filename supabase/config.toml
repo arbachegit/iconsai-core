@@ -279,3 +279,12 @@ verify_jwt = false
 [functions.twilio-status-callback]
 verify_jwt = false
 
+# ============================================
+# DATAFLOW PRESENTATION - Public (lead capture)
+# ============================================
+[functions.get-presentation-script]
+verify_jwt = false
+
+[functions.capture-dataflow-lead]
+verify_jwt = false
+
