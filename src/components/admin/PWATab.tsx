@@ -216,7 +216,7 @@ export default function PWATab() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed inset-0 z-[9999] bg-black"
+            className="fixed inset-0 z-[9999] bg-black overflow-hidden"
           >
             {/* Área de drag para swipe down */}
             <motion.div

@@ -4,6 +4,7 @@ import { Lightbulb, AlertTriangle, CheckCircle2, XCircle, RefreshCw } from "luci
 import { MicrophoneOrb } from "../voice/MicrophoneOrb";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
+import { useConfigPWA } from "@/hooks/useConfigPWA";
 
 type IdeaStage = "capture" | "critique" | "summary";
 
@@ -30,6 +31,7 @@ export const IdeasModule: React.FC = () => {
   
   const { speak, isPlaying, isLoading, progress } = useTextToSpeech();
   const { setPlayerState, userName } = usePWAVoiceStore();
+  const { config } = useConfigPWA();
 
   // Mensagem de boas-vindas
   useEffect(() => {
@@ -268,6 +270,8 @@ export const IdeasModule: React.FC = () => {
             isVisible={true}
             onCapture={handleVoiceCapture}
             onTimeout={handleTimeout}
+            maxDuration={config.micTimeoutSeconds || 10}
+            hideCountdown={!config.enableCountdown}
           />
         </div>
       )}
