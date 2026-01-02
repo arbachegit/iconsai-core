@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PWASimulator } from "./PWASimulator";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
+import PWAInvitesManager from "./PWAInvitesManager";
 
 interface AgentInfo {
   name: string;
@@ -609,6 +610,17 @@ export default function PWATab() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Seção de Convites PWA */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Convites PWA</CardTitle>
+          <CardDescription>Gerencie acessos ao aplicativo móvel</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PWAInvitesManager />
         </CardContent>
       </Card>
       </div>
