@@ -4,6 +4,7 @@ import { Heart, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { MicrophoneOrb } from "../voice/MicrophoneOrb";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
+import { useConfigPWA } from "@/hooks/useConfigPWA";
 
 interface OldcartsQuestion {
   key: string;
@@ -72,6 +73,7 @@ export const HealthModule: React.FC = () => {
   
   const { speak, isPlaying, isLoading, progress } = useTextToSpeech();
   const { setPlayerState, userName } = usePWAVoiceStore();
+  const { config } = useConfigPWA();
 
   // Mensagem de boas-vindas
   useEffect(() => {
@@ -282,6 +284,8 @@ export const HealthModule: React.FC = () => {
             isVisible={true}
             onCapture={handleVoiceCapture}
             onTimeout={handleTimeout}
+            maxDuration={config.micTimeoutSeconds || 10}
+            hideCountdown={!config.enableCountdown}
           />
         </div>
       )}

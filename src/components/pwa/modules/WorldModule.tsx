@@ -8,6 +8,7 @@ import { useVoiceRecognition } from "@/hooks/useVoiceRecognition";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { usePWAVoiceStore, ConversationMessage } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
+import { useConfigPWA } from "@/hooks/useConfigPWA";
 
 interface Message {
   role: "user" | "assistant";
@@ -33,6 +34,7 @@ export const WorldModule: React.FC = () => {
   
   const { speak, isPlaying, isLoading, progress } = useTextToSpeech();
   const { setPlayerState, addMessageToCurrentConversation, userName } = usePWAVoiceStore();
+  const { config } = useConfigPWA();
 
   // Scroll para última mensagem
   useEffect(() => {
@@ -265,6 +267,8 @@ export const WorldModule: React.FC = () => {
             onCapture={(capturedTranscript) => handleUserInput(capturedTranscript)}
             onTimeout={handleMicTimeout}
             autoStart={false}
+            maxDuration={config.micTimeoutSeconds || 10}
+            hideCountdown={!config.enableCountdown}
           />
           
           <TranscriptArea

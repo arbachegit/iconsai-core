@@ -11,6 +11,7 @@ interface MicrophoneOrbProps {
   onStateChange?: (state: MicState) => void;
   autoStart?: boolean;
   maxDuration?: number;
+  hideCountdown?: boolean;
 }
 
 interface BitParticle {
@@ -27,6 +28,7 @@ export const MicrophoneOrb: React.FC<MicrophoneOrbProps> = ({
   onStateChange,
   autoStart = true,
   maxDuration = 10,
+  hideCountdown = false,
 }) => {
   const [state, setState] = useState<MicState>("hidden");
   const [timeRemaining, setTimeRemaining] = useState(maxDuration);
@@ -231,7 +233,7 @@ export const MicrophoneOrb: React.FC<MicrophoneOrbProps> = ({
 
           {/* Countdown display (last 5 seconds) */}
           <AnimatePresence>
-            {state === "listening" && timeRemaining <= 5 && timeRemaining > 0 && (
+            {!hideCountdown && state === "listening" && timeRemaining <= 5 && timeRemaining > 0 && (
               <motion.div
                 className="absolute -top-10 flex items-center justify-center"
                 initial={{ opacity: 0, y: 10 }}
