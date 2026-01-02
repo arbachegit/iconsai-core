@@ -1127,13 +1127,17 @@ export type Database = {
       }
       crm_visits: {
         Row: {
+          audio_transcript: string | null
           created_at: string | null
           duration_seconds: number | null
           ended_at: string | null
           id: string
+          interactions_count: number | null
           lead_email: string | null
           lead_name: string
           lead_phone: string | null
+          metadata: Json | null
+          notes: string | null
           presentation_topic: string
           salesman_id: string | null
           session_id: string | null
@@ -1145,13 +1149,17 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          audio_transcript?: string | null
           created_at?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
+          interactions_count?: number | null
           lead_email?: string | null
           lead_name: string
           lead_phone?: string | null
+          metadata?: Json | null
+          notes?: string | null
           presentation_topic: string
           salesman_id?: string | null
           session_id?: string | null
@@ -1163,13 +1171,17 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          audio_transcript?: string | null
           created_at?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
+          interactions_count?: number | null
           lead_email?: string | null
           lead_name?: string
           lead_phone?: string | null
+          metadata?: Json | null
+          notes?: string | null
           presentation_topic?: string
           salesman_id?: string | null
           session_id?: string | null
@@ -1224,6 +1236,57 @@ export type Database = {
           user_agent?: string | null
           viewport_height?: number | null
           viewport_width?: number | null
+        }
+        Relationships: []
+      }
+      deep_search_knowledge: {
+        Row: {
+          answer: string
+          auto_tags: string[] | null
+          confidence: number | null
+          created_at: string | null
+          embedding: string | null
+          id: string
+          last_used_at: string | null
+          primary_slug: string | null
+          query: string
+          source_name: string | null
+          source_type: string | null
+          source_url: string | null
+          usage_count: number | null
+          verified: boolean | null
+        }
+        Insert: {
+          answer: string
+          auto_tags?: string[] | null
+          confidence?: number | null
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          last_used_at?: string | null
+          primary_slug?: string | null
+          query: string
+          source_name?: string | null
+          source_type?: string | null
+          source_url?: string | null
+          usage_count?: number | null
+          verified?: boolean | null
+        }
+        Update: {
+          answer?: string
+          auto_tags?: string[] | null
+          confidence?: number | null
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          last_used_at?: string | null
+          primary_slug?: string | null
+          query?: string
+          source_name?: string | null
+          source_type?: string | null
+          source_url?: string | null
+          usage_count?: number | null
+          verified?: boolean | null
         }
         Relationships: []
       }
@@ -5383,6 +5446,18 @@ export type Database = {
       }
     }
     Views: {
+      crm_metrics: {
+        Row: {
+          avg_duration_seconds: number | null
+          conversion_rate: number | null
+          converted_count: number | null
+          salesman_id: string | null
+          total_visits: number | null
+          visits_this_month: number | null
+          visits_today: number | null
+        }
+        Relationships: []
+      }
       indicator_stats_summary: {
         Row: {
           indicator_id: string | null
@@ -5403,6 +5478,21 @@ export type Database = {
           confirmed_understanding: number | null
           date: string | null
           total_interactions: number | null
+        }
+        Relationships: []
+      }
+      top_knowledge: {
+        Row: {
+          answer_preview: string | null
+          auto_tags: string[] | null
+          confidence: number | null
+          id: string | null
+          last_used_at: string | null
+          query: string | null
+          source_name: string | null
+          source_type: string | null
+          usage_count: number | null
+          verified: boolean | null
         }
         Relationships: []
       }
@@ -5773,6 +5863,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      increment_knowledge_usage: {
+        Args: { knowledge_id: string }
+        Returns: undefined
+      }
       increment_merge_rule_count: {
         Args: { p_chat_type: string; p_source_tag: string }
         Returns: undefined
@@ -5963,6 +6057,22 @@ export type Database = {
           search_source: string
           similarity: number
           taxonomy_code: string
+        }[]
+      }
+      search_deep_knowledge: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          answer: string
+          confidence: number
+          id: string
+          query: string
+          similarity: number
+          source_name: string
+          source_type: string
         }[]
       }
       search_documents: {
