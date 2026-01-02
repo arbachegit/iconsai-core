@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback, useRef } from "react";
+import { Volume2, VolumeX, Loader2 } from "lucide-react";
 import { SourceNode } from "./elements/SourceNode";
 import { IndicatorNode } from "./elements/IndicatorNode";
 import { KnowledgeNode } from "./elements/KnowledgeNode";
@@ -10,6 +11,9 @@ import { StepByStepControl } from "./controls/StepByStepControl";
 import { useDiagramState, DiagramElement } from "./hooks/useDiagramState";
 import { DomainType } from "./data/diagramData";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { useVoiceNarration } from "@/hooks/useVoiceNarration";
 export const DataFlowDiagram: React.FC = () => {
   const {
     state,
@@ -29,6 +33,9 @@ export const DataFlowDiagram: React.FC = () => {
     deliveryPanels,
     mainConnections
   } = useDiagramState();
+  
+  // Voice narration hook
+  const { isLoading: isNarrationLoading, isPlaying: isNarrationPlaying, play: playNarration, stop: stopNarration } = useVoiceNarration("govsystem");
   const containerRef = useRef<HTMLDivElement>(null);
   const svgDimensions = {
     width: 1600,
@@ -85,7 +92,8 @@ export const DataFlowDiagram: React.FC = () => {
       return fromSource || isLaterStage;
     });
   }, [filteredSources, mainConnections]);
-  return <div ref={containerRef} className="w-full space-y-4">
+  return <TooltipProvider>
+    <div ref={containerRef} className="w-full space-y-4">
       {/* Header with Schedule */}
       <div className="bg-card border border-border rounded-xl p-4">
         <div className="flex items-center justify-between">
@@ -94,6 +102,30 @@ export const DataFlowDiagram: React.FC = () => {
             <p className="text-sm text-muted-foreground">Data Flow Visualization</p>
           </div>
           <div className="flex items-center gap-4">
+            {/* Voice Narration Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => isNarrationPlaying ? stopNarration() : playNarration()}
+                  disabled={isNarrationLoading}
+                  className="h-8 w-8"
+                >
+                  {isNarrationLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isNarrationPlaying ? (
+                    <VolumeX className="h-4 w-4" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isNarrationLoading ? "Carregando..." : isNarrationPlaying ? "Parar narração" : "Ouvir narração"}
+              </TooltipContent>
+            </Tooltip>
+            
             <span className="text-sm text-muted-foreground">Schedule: January 23, 2026</span>
             <div className="flex items-center gap-2">
               <Progress value={40} className="w-24 h-2" />
@@ -193,6 +225,7 @@ export const DataFlowDiagram: React.FC = () => {
           Click on sources or indicators to explore by city.
         </p>
       </div>
-    </div>;
+    </div>
+  </TooltipProvider>;
 };
 export default DataFlowDiagram;
