@@ -184,14 +184,6 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
               Escaneie o QR Code ou digite o endereço no navegador do seu celular
             </p>
           </div>
-          
-          {/* Debug button to bypass warning */}
-          <button
-            onClick={() => setShowDesktopWarning(false)}
-            className="mt-6 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Continuar mesmo assim (debug)
-          </button>
         </motion.div>
       </div>
     );

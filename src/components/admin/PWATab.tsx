@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +56,18 @@ export default function PWATab() {
   });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
+  
+  // Motion values para swipe gesture
+  const dragY = useMotionValue(0);
+  const dragOpacity = useTransform(dragY, [0, 100], [1, 0.5]);
+
+  // Handler para swipe down
+  const handleDragEnd = useCallback((event: any, info: any) => {
+    if (info.offset.y > 100) {
+      // Swipe down > 100px = sair do fullscreen
+      setIsFullscreen(false);
+    }
+  }, []);
   
   const { config, isLoading: configLoading, isSaving, updateConfig, saveConfig, resetToDefaults } = useConfigPWA();
   
@@ -194,36 +207,63 @@ export default function PWATab() {
 
   return (
     <>
-      {/* === FULLSCREEN OVERLAY - Primeiro nível, fora de todos os cards === */}
-      {isFullscreen && (
-        <div className="fixed inset-0 z-[9999] bg-black">
-          {/* Hint para sair */}
-          <div className="absolute top-4 right-4 z-10 text-white/50 text-sm flex items-center gap-2">
-            <kbd className="px-2 py-1 bg-white/10 rounded text-xs">ESC</kbd>
-            <span>para sair</span>
-          </div>
-          
-          {/* Botão X para sair (alternativa ao ESC) */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 left-4 z-10 text-white/50 hover:text-white hover:bg-white/10"
-            onClick={toggleFullscreen}
+      {/* === FULLSCREEN OVERLAY COM ANIMAÇÃO === */}
+      <AnimatePresence mode="wait">
+        {isFullscreen && (
+          <motion.div
+            key="fullscreen-overlay"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="fixed inset-0 z-[9999] bg-black"
           >
-            <X className="h-5 w-5" />
-          </Button>
-          
-          {/* PWA ocupando tudo - sem frame */}
-          <div className="w-full h-full">
-            <PWASimulator 
-              showFrame={false}
-              frameless={true}
-              isFullscreen={true}
-              onToggleFullscreen={toggleFullscreen}
-            />
-          </div>
-        </div>
-      )}
+            {/* Área de drag para swipe down */}
+            <motion.div
+              className="absolute top-0 left-0 right-0 h-16 z-20 flex items-center justify-center cursor-grab active:cursor-grabbing"
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={0.2}
+              onDragEnd={handleDragEnd}
+              style={{ y: dragY, opacity: dragOpacity }}
+            >
+              {/* Indicador visual de swipe */}
+              <div className="w-12 h-1 bg-white/30 rounded-full mt-3" />
+            </motion.div>
+            
+            {/* Hint atualizado */}
+            <div className="absolute top-4 right-4 z-10 text-white/40 text-xs flex items-center gap-2">
+              <kbd className="px-2 py-1 bg-white/10 rounded text-xs">ESC</kbd>
+              <span>ou arraste para baixo</span>
+            </div>
+            
+            {/* Botão X para sair */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 left-4 z-10 text-white/50 hover:text-white hover:bg-white/10"
+              onClick={toggleFullscreen}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+            
+            {/* PWA com animação de entrada */}
+            <motion.div 
+              className="w-full h-full"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }}
+            >
+              <PWASimulator 
+                showFrame={false}
+                frameless={true}
+                isFullscreen={true}
+                onToggleFullscreen={toggleFullscreen}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* === CONTEÚDO NORMAL === */}
       <div className="space-y-6 p-6">
