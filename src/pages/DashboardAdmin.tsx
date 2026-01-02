@@ -6,6 +6,8 @@ import { Loader2 } from "lucide-react";
 import knowyouAdminLogo from "@/assets/knowyou-admin-logo.png";
 import { DashboardSidebar, type DashboardTabType } from "@/components/dashboard/DashboardSidebar";
 import { FloatingChatButton } from "@/components/FloatingChatButton";
+import { FloatingAgentButton } from "@/components/dataflow/FloatingAgentButton";
+import { VoiceAgentModal } from "@/components/dataflow/VoiceAgentModal";
 import { UserBadge } from "@/components/UserBadge";
 import { DashboardAnalyticsProvider } from "@/contexts/DashboardAnalyticsContext";
 import { useAgentByLocation } from "@/hooks/useAgentByLocation";
@@ -39,6 +41,8 @@ const DashboardAdmin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   
   // Fetch agent dynamically by location
   const { agentSlug: dashboardFloatAgent } = useAgentByLocation("/dashboard (Float Button)");
@@ -231,6 +235,23 @@ const DashboardAdmin = () => {
 
         {/* Floating Chat Button - Dynamic agent from database */}
         {dashboardFloatAgent && <FloatingChatButton agentSlug={dashboardFloatAgent} />}
+        
+        {/* DataFlow Voice Agent Button */}
+        <FloatingAgentButton 
+          selectedTopic={selectedTopic}
+          onClick={() => setIsVoiceModalOpen(true)} 
+        />
+        
+        {/* Voice Agent Modal */}
+        <VoiceAgentModal
+          isOpen={isVoiceModalOpen}
+          onClose={() => {
+            setIsVoiceModalOpen(false);
+            setSelectedTopic(null);
+          }}
+          selectedTopic={selectedTopic}
+          onTopicSelect={setSelectedTopic}
+        />
       </div>
     </DashboardAnalyticsProvider>
   );
