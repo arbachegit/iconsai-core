@@ -1250,6 +1250,7 @@ export type Database = {
           last_used_at: string | null
           primary_slug: string | null
           query: string
+          query_hash: string | null
           source_name: string | null
           source_type: string | null
           source_url: string | null
@@ -1266,6 +1267,7 @@ export type Database = {
           last_used_at?: string | null
           primary_slug?: string | null
           query: string
+          query_hash?: string | null
           source_name?: string | null
           source_type?: string | null
           source_url?: string | null
@@ -1282,6 +1284,7 @@ export type Database = {
           last_used_at?: string | null
           primary_slug?: string | null
           query?: string
+          query_hash?: string | null
           source_name?: string | null
           source_type?: string | null
           source_url?: string | null
@@ -6134,6 +6137,20 @@ export type Database = {
           p_new_session?: boolean
         }
         Returns: Json
+      }
+      upsert_deep_knowledge: {
+        Args: {
+          p_answer: string
+          p_auto_tags?: string[]
+          p_confidence?: number
+          p_embedding?: string
+          p_primary_slug?: string
+          p_query: string
+          p_source_name?: string
+          p_source_type?: string
+          p_source_url?: string
+        }
+        Returns: string
       }
       verify_pwa_device: { Args: { p_fingerprint: string }; Returns: Json }
       verify_pwa_device_code: {
