@@ -1125,6 +1125,63 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_visits: {
+        Row: {
+          created_at: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          lead_email: string | null
+          lead_name: string
+          lead_phone: string | null
+          presentation_topic: string
+          salesman_id: string | null
+          session_id: string | null
+          started_at: string | null
+          status: string | null
+          summary: string | null
+          summary_sent_email: boolean | null
+          summary_sent_whatsapp: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          lead_email?: string | null
+          lead_name: string
+          lead_phone?: string | null
+          presentation_topic: string
+          salesman_id?: string | null
+          session_id?: string | null
+          started_at?: string | null
+          status?: string | null
+          summary?: string | null
+          summary_sent_email?: boolean | null
+          summary_sent_whatsapp?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          lead_email?: string | null
+          lead_name?: string
+          lead_phone?: string | null
+          presentation_topic?: string
+          salesman_id?: string | null
+          session_id?: string | null
+          started_at?: string | null
+          status?: string | null
+          summary?: string | null
+          summary_sent_email?: boolean | null
+          summary_sent_whatsapp?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       debug_logs: {
         Row: {
           component: string | null
@@ -2980,6 +3037,45 @@ export type Database = {
           is_active?: boolean | null
           spotify_episode_id?: string
           title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      presentation_scripts: {
+        Row: {
+          audio_script: string
+          created_at: string | null
+          description: string | null
+          duration_seconds: number | null
+          icon: string
+          id: string
+          is_active: boolean | null
+          title: string
+          topic: string
+          updated_at: string | null
+        }
+        Insert: {
+          audio_script: string
+          created_at?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          icon: string
+          id?: string
+          is_active?: boolean | null
+          title: string
+          topic: string
+          updated_at?: string | null
+        }
+        Update: {
+          audio_script?: string
+          created_at?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          icon?: string
+          id?: string
+          is_active?: boolean | null
+          title?: string
+          topic?: string
           updated_at?: string | null
         }
         Relationships: []
