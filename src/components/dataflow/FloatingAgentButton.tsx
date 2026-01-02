@@ -9,11 +9,12 @@ import {
   MessageSquare,
   LucideIcon
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export interface FloatingAgentButtonProps {
-  selectedTopic?: string | null;
-  onClick: () => void;
+  selectedTopic: string | null;
+  onOpenAgent: () => void;
 }
 
 const topicIconMap: Record<string, LucideIcon> = {
@@ -26,14 +27,14 @@ const topicIconMap: Record<string, LucideIcon> = {
   talkapp: MessageSquare,
 };
 
-export function FloatingAgentButton({ selectedTopic, onClick }: FloatingAgentButtonProps) {
+export function FloatingAgentButton({ selectedTopic, onOpenAgent }: FloatingAgentButtonProps) {
   const IconComponent = selectedTopic && topicIconMap[selectedTopic] 
     ? topicIconMap[selectedTopic] 
     : MessageCircle;
 
   return (
     <button
-      onClick={onClick}
+      onClick={onOpenAgent}
       aria-label="Abrir agente de voz"
       role="button"
       className={cn(
@@ -47,12 +48,17 @@ export function FloatingAgentButton({ selectedTopic, onClick }: FloatingAgentBut
         selectedTopic && "animate-pulse"
       )}
     >
-      <IconComponent 
-        className={cn(
-          "w-6 h-6 text-white",
-          "transition-transform duration-300"
-        )} 
-      />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={selectedTopic || 'default'}
+          initial={{ scale: 0.95, opacity: 0.8 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0.8 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+        >
+          <IconComponent className="w-6 h-6 text-white" />
+        </motion.div>
+      </AnimatePresence>
     </button>
   );
 }

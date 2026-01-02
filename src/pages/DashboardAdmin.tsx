@@ -239,7 +239,7 @@ const DashboardAdmin = () => {
         {/* DataFlow Voice Agent Button */}
         <FloatingAgentButton 
           selectedTopic={selectedTopic}
-          onClick={() => setIsVoiceModalOpen(true)} 
+          onOpenAgent={() => setIsVoiceModalOpen(true)} 
         />
         
         {/* Voice Agent Modal */}
