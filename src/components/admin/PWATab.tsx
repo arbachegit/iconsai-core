@@ -67,7 +67,9 @@ export default function PWATab() {
       // Swipe down > 100px = sair do fullscreen
       setIsFullscreen(false);
     }
-  }, []);
+    // Sempre resetar posição do drag
+    dragY.set(0);
+  }, [dragY]);
   
   const { config, isLoading: configLoading, isSaving, updateConfig, saveConfig, resetToDefaults } = useConfigPWA();
   
