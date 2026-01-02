@@ -85,9 +85,10 @@ async function sendTwilioTemplate(
       console.error(`[${channel.toUpperCase()}] Failed: ${data.message}`);
       return { success: false, channel, error: data.message || "Unknown error" };
     }
-  } catch (error) {
-    console.error(`[${channel.toUpperCase()}] Exception: ${error.message}`);
-    return { success: false, channel, error: error.message };
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[${channel.toUpperCase()}] Exception: ${errMsg}`);
+    return { success: false, channel, error: errMsg };
   }
 }
 
@@ -122,9 +123,10 @@ async function sendPlainSMS(to: string, message: string): Promise<SendResult> {
       console.error(`[SMS-PLAIN] Failed: ${data.message}`);
       return { success: false, channel: "sms", error: data.message };
     }
-  } catch (error) {
-    console.error(`[SMS-PLAIN] Exception: ${error.message}`);
-    return { success: false, channel: "sms", error: error.message };
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[SMS-PLAIN] Exception: ${errMsg}`);
+    return { success: false, channel: "sms", error: errMsg };
   }
 }
 
@@ -249,10 +251,11 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
-  } catch (error) {
-    console.error("[ERROR]", error);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("[ERROR]", errMsg);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: errMsg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
