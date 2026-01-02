@@ -242,16 +242,17 @@ const DashboardAdmin = () => {
           onOpenAgent={() => setIsVoiceModalOpen(true)} 
         />
         
-        {/* Voice Agent Modal */}
-        <VoiceAgentModal
-          isOpen={isVoiceModalOpen}
-          onClose={() => {
-            setIsVoiceModalOpen(false);
-            setSelectedTopic(null);
-          }}
-          selectedTopic={selectedTopic}
-          onTopicSelect={setSelectedTopic}
-        />
+        {/* Voice Agent Modal - só abre quando topic está selecionado */}
+        {selectedTopic && (
+          <VoiceAgentModal
+            isOpen={isVoiceModalOpen}
+            onClose={() => {
+              setIsVoiceModalOpen(false);
+              setSelectedTopic(null);
+            }}
+            topic={selectedTopic}
+          />
+        )}
       </div>
     </DashboardAnalyticsProvider>
   );

@@ -32,8 +32,7 @@ import { cn } from "@/lib/utils";
 export interface VoiceAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedTopic: string | null;
-  onTopicSelect: (topic: string) => void;
+  topic: string;
   salesmanId?: string;
 }
 
@@ -62,10 +61,17 @@ const formatPhone = (value: string) => {
   return `(${numbers.slice(0,2)}) ${numbers.slice(2,7)}-${numbers.slice(7,11)}`;
 };
 
-export function VoiceAgentModal({ isOpen, onClose, selectedTopic, onTopicSelect, salesmanId }: VoiceAgentModalProps) {
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+export function VoiceAgentModal({ isOpen, onClose, topic, salesmanId }: VoiceAgentModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [script, setScript] = useState<PresentationScript | null>(null);
@@ -74,62 +80,39 @@ export function VoiceAgentModal({ isOpen, onClose, selectedTopic, onTopicSelect,
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [audioDuration, setAudioDuration] = useState(0);
-  const [topics, setTopics] = useState<Array<{ topic: string; title: string; icon: string; description?: string }>>([]);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  const IconComponent = selectedTopic && topicIconMap[selectedTopic] ? topicIconMap[selectedTopic] : Mic;
+  const IconComponent = topic && topicIconMap[topic] ? topicIconMap[topic] : Mic;
 
-  // Load available topics when modal opens
+  // Load script when modal opens with topic
   useEffect(() => {
-    if (isOpen && !selectedTopic) {
-      loadTopics();
-    }
-  }, [isOpen, selectedTopic]);
-
-  // Load script when topic is selected
-  useEffect(() => {
-    if (isOpen && selectedTopic) {
+    if (isOpen && topic) {
       loadScriptAndAudio();
     } else {
-      // Reset state when closed or topic deselected
+      // Reset state when closed
       setScript(null);
       setAudioUrl(null);
       setProgress(0);
+      setCurrentTime(0);
       setShowLeadForm(false);
       setIsPlaying(false);
       setLeadData({ name: '', email: '', phone: '' });
       setSendEmail(false);
       setSendWhatsApp(false);
     }
-  }, [isOpen, selectedTopic]);
-
-  const loadTopics = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('presentation_scripts')
-        .select('topic, title, icon, description')
-        .eq('is_active', true)
-        .order('sort_order');
-
-      if (!error && data) {
-        setTopics(data);
-      }
-    } catch (error) {
-      console.error('Error loading topics:', error);
-    }
-  };
+  }, [isOpen, topic]);
 
   const loadScriptAndAudio = async () => {
-    if (!selectedTopic) return;
+    if (!topic) return;
     
     setIsLoading(true);
     try {
-      // Buscar script
+      // Buscar script via edge function
       const { data: scriptResponse, error: scriptError } = await supabase.functions.invoke(
         'get-presentation-script',
-        { body: { topic: selectedTopic } }
+        { body: { topic } }
       );
 
       if (scriptError || !scriptResponse?.success) {
@@ -139,25 +122,34 @@ export function VoiceAgentModal({ isOpen, onClose, selectedTopic, onTopicSelect,
       setScript(scriptResponse.data);
       startTimeRef.current = Date.now();
 
-      // Gerar áudio via TTS
-      const { data: audioData, error: audioError } = await supabase.functions.invoke(
-        'text-to-speech',
-        { 
-          body: { 
-            text: scriptResponse.data.audio_script,
-            voice: 'nova' // Voz feminina amigável
-          } 
-        }
-      );
+      // Gerar áudio via TTS usando fetch direto para receber bytes corretamente
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              text: scriptResponse.data.audio_script,
+              voice: 'nova'
+            }),
+          }
+        );
 
-      if (audioError) {
+        if (!response.ok) {
+          throw new Error(`TTS error: ${response.status}`);
+        }
+
+        const audioBlob = await response.blob();
+        const url = URL.createObjectURL(audioBlob);
+        setAudioUrl(url);
+      } catch (audioError) {
         console.error('Erro ao gerar áudio:', audioError);
         // Continua sem áudio - mostra apenas texto
-      } else if (audioData) {
-        // Criar blob URL do áudio
-        const blob = new Blob([audioData], { type: 'audio/mpeg' });
-        const url = URL.createObjectURL(blob);
-        setAudioUrl(url);
       }
     } catch (error) {
       console.error('Erro ao carregar apresentação:', error);
@@ -180,9 +172,10 @@ export function VoiceAgentModal({ isOpen, onClose, selectedTopic, onTopicSelect,
 
   const handleTimeUpdate = () => {
     if (!audioRef.current) return;
-    const { currentTime, duration } = audioRef.current;
+    const { currentTime: time, duration } = audioRef.current;
+    setCurrentTime(time);
     if (duration > 0) {
-      setProgress((currentTime / duration) * 100);
+      setProgress((time / duration) * 100);
       setAudioDuration(Math.floor(duration));
     }
   };
@@ -235,7 +228,7 @@ export function VoiceAgentModal({ isOpen, onClose, selectedTopic, onTopicSelect,
           leadName: leadData.name.trim(),
           leadEmail: leadData.email.trim() || null,
           leadPhone: leadData.phone.replace(/\D/g, '') || null,
-          presentationTopic: selectedTopic,
+          presentationTopic: topic,
           durationSeconds,
           sendSummaryEmail: sendEmail && !!leadData.email,
           sendSummaryWhatsApp: sendWhatsApp && !!leadData.phone,
@@ -282,40 +275,14 @@ export function VoiceAgentModal({ isOpen, onClose, selectedTopic, onTopicSelect,
                 🎤 Alex - Seu Guia KnowYOU
               </DialogTitle>
               <p className="text-sm text-muted-foreground">
-                {!selectedTopic ? 'Escolha um módulo' : isLoading ? 'Carregando...' : script?.title || 'Apresentação'}
+                {isLoading ? 'Carregando...' : script?.title || 'Apresentação'}
               </p>
             </div>
           </div>
         </DialogHeader>
 
         <div className="mt-4 space-y-4">
-          {!selectedTopic ? (
-            // Topic Selection Grid
-            <div className="space-y-3">
-              <h3 className="text-center text-muted-foreground">
-                Sobre qual módulo você quer saber mais?
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                {topics.map((t) => {
-                  const TopicIcon = topicIconMap[t.topic] || Mic;
-                  return (
-                    <button
-                      key={t.topic}
-                      onClick={() => onTopicSelect(t.topic)}
-                      className={cn(
-                        "flex flex-col items-center gap-2 p-4 rounded-lg border",
-                        "hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20",
-                        "transition-all duration-200"
-                      )}
-                    >
-                      <TopicIcon className="w-8 h-8 text-red-500" />
-                      <span className="text-sm font-medium text-center">{t.title}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : isLoading ? (
+          {isLoading ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="w-10 h-10 animate-spin text-red-500" />
               <p className="mt-4 text-muted-foreground">Preparando apresentação...</p>
@@ -412,6 +379,11 @@ export function VoiceAgentModal({ isOpen, onClose, selectedTopic, onTopicSelect,
               
               {/* Barra de progresso */}
               <Progress value={progress} className="h-2" />
+              
+              {/* Tempo atual / total */}
+              <p className="text-sm text-muted-foreground text-center">
+                {formatTime(currentTime)} / {formatTime(audioDuration)}
+              </p>
               
               {/* Controles */}
               <div className="flex items-center justify-center gap-4">
