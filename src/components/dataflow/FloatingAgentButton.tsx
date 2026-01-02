@@ -11,9 +11,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface FloatingAgentButtonProps {
-  selectedTopic: string | null;
-  onOpenAgent: () => void;
+export interface FloatingAgentButtonProps {
+  selectedTopic?: string | null;
+  onClick: () => void;
 }
 
 const topicIconMap: Record<string, LucideIcon> = {
@@ -26,14 +26,14 @@ const topicIconMap: Record<string, LucideIcon> = {
   talkapp: MessageSquare,
 };
 
-export function FloatingAgentButton({ selectedTopic, onOpenAgent }: FloatingAgentButtonProps) {
+export function FloatingAgentButton({ selectedTopic, onClick }: FloatingAgentButtonProps) {
   const IconComponent = selectedTopic && topicIconMap[selectedTopic] 
     ? topicIconMap[selectedTopic] 
     : MessageCircle;
 
   return (
     <button
-      onClick={onOpenAgent}
+      onClick={onClick}
       aria-label="Abrir agente de voz"
       role="button"
       className={cn(
