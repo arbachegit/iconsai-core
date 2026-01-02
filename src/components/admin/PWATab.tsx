@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { 
   Smartphone, Copy, ExternalLink, CheckCircle, Mic, Loader2, Wifi, Battery,
-  Settings, Volume2, RotateCcw, Save, Play, Maximize2
+  Settings, Volume2, RotateCcw, Save, Play, Maximize2, X
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,7 +55,6 @@ export default function PWATab() {
   });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
-  const fullscreenRef = useRef<HTMLDivElement>(null);
   
   const { config, isLoading: configLoading, isSaving, updateConfig, saveConfig, resetToDefaults } = useConfigPWA();
   
@@ -66,29 +65,9 @@ export default function PWATab() {
     localStorage.setItem(ZOOM_STORAGE_KEY, simulatorScale.toString());
   }, [simulatorScale]);
 
-  // Handle fullscreen change events
-  const handleFullscreenChange = useCallback(() => {
-    setIsFullscreen(!!document.fullscreenElement);
-  }, []);
-
-  useEffect(() => {
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
-  }, [handleFullscreenChange]);
-
-  const toggleFullscreen = useCallback(async () => {
-    try {
-      if (!document.fullscreenElement && fullscreenRef.current) {
-        await fullscreenRef.current.requestFullscreen();
-      } else if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      }
-    } catch (err) {
-      console.error('Error toggling fullscreen:', err);
-      toast.error('Não foi possível alternar para tela cheia');
-    }
+  // Toggle fullscreen mode (internal overlay, not browser fullscreen)
+  const toggleFullscreen = useCallback(() => {
+    setIsFullscreen(prev => !prev);
   }, []);
 
   const toggleLandscape = useCallback(() => {
@@ -110,6 +89,13 @@ export default function PWATab() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // ESC sempre sai do fullscreen
+      if (e.key === 'Escape' && isFullscreen) {
+        e.preventDefault();
+        setIsFullscreen(false);
+        return;
+      }
+      
       if (!showSimulator) return;
       
       // Avoid conflict when typing in inputs
@@ -147,7 +133,7 @@ export default function PWATab() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSimulator, handleZoomIn, handleZoomOut, handleResetZoom, toggleFullscreen, toggleLandscape]);
+  }, [showSimulator, isFullscreen, handleZoomIn, handleZoomOut, handleResetZoom, toggleFullscreen, toggleLandscape]);
   useEffect(() => {
     const fetchAgent = async () => {
       const { data } = await supabase
@@ -207,19 +193,52 @@ export default function PWATab() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30">
-          <Smartphone className="w-8 h-8 text-blue-400" />
+    <>
+      {/* === FULLSCREEN OVERLAY - Primeiro nível, fora de todos os cards === */}
+      {isFullscreen && (
+        <div className="fixed inset-0 z-[9999] bg-black">
+          {/* Hint para sair */}
+          <div className="absolute top-4 right-4 z-10 text-white/50 text-sm flex items-center gap-2">
+            <kbd className="px-2 py-1 bg-white/10 rounded text-xs">ESC</kbd>
+            <span>para sair</span>
+          </div>
+          
+          {/* Botão X para sair (alternativa ao ESC) */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 left-4 z-10 text-white/50 hover:text-white hover:bg-white/10"
+            onClick={toggleFullscreen}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+          
+          {/* PWA ocupando tudo - sem frame */}
+          <div className="w-full h-full">
+            <PWASimulator 
+              showFrame={false}
+              frameless={true}
+              isFullscreen={true}
+              onToggleFullscreen={toggleFullscreen}
+            />
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">PWA de Voz - KnowYOU</h2>
-          <p className="text-muted-foreground">
-            Aplicativo de voz para assistência inteligente
-          </p>
+      )}
+
+      {/* === CONTEÚDO NORMAL === */}
+      <div className="space-y-6 p-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30">
+            <Smartphone className="w-8 h-8 text-blue-400" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">PWA de Voz - KnowYOU</h2>
+            <p className="text-muted-foreground">
+              Aplicativo de voz para assistência inteligente
+            </p>
+          </div>
         </div>
-      </div>
 
       {/* Link do PWA */}
       <Card>
@@ -450,12 +469,7 @@ export default function PWATab() {
         </CardHeader>
         <CardContent>
           {showSimulator ? (
-            <div 
-              ref={fullscreenRef}
-              className={`flex flex-col items-center justify-center py-4 ${
-                isFullscreen ? 'fixed inset-0 z-50 bg-background/95 backdrop-blur-sm' : ''
-              }`}
-            >
+            <div className="flex flex-col items-center justify-center py-4">
               <PWASimulator 
                 showFrame={true}
                 scale={simulatorScale}
@@ -555,6 +569,7 @@ export default function PWATab() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </>
   );
 }

@@ -14,6 +14,7 @@ import {
 
 interface PWASimulatorProps {
   showFrame?: boolean;
+  frameless?: boolean;
   scale?: number;
   onScaleChange?: (scale: number) => void;
   isFullscreen?: boolean;
@@ -30,6 +31,7 @@ const DEFAULT_SCALE = 0.9;
 
 export const PWASimulator: React.FC<PWASimulatorProps> = ({ 
   showFrame = true,
+  frameless = false,
   scale = DEFAULT_SCALE,
   onScaleChange,
   isFullscreen = false,
@@ -38,6 +40,14 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
   isLandscape = false,
   onToggleLandscape
 }) => {
+  // Se frameless, renderizar PWA diretamente sem nenhum wrapper de frame
+  if (frameless) {
+    return (
+      <div className="w-full h-full bg-black">
+        <PWAVoiceAssistant embedded />
+      </div>
+    );
+  }
   // iPhone 14/15 dimensions - swap for landscape
   const baseWidth = 390;
   const baseHeight = 844;
