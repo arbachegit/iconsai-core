@@ -100,6 +100,9 @@ serve(async (req) => {
 
   console.log("=== DEEP-SEARCH START ===");
 
+  // Cache do embedding para reutilização no auto-index
+  let cachedEmbedding: number[] | null = null;
+
   try {
     // Parse request
     const {
@@ -167,6 +170,11 @@ serve(async (req) => {
         } else {
           const embeddingData = await embeddingResponse.json();
           const queryEmbedding = embeddingData.data?.[0]?.embedding;
+
+          // Guardar embedding para reutilização no auto-index
+          if (queryEmbedding) {
+            cachedEmbedding = queryEmbedding;
+          }
 
           if (queryEmbedding) {
             // Buscar conhecimento similar no cache
@@ -299,47 +307,57 @@ ${context ? `CONTEXTO ADICIONAL: ${context}` : ""}`
       console.log("📥 Auto-indexando conhecimento...");
       
       try {
-        // Gerar embedding da resposta completa
-        const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${openaiKey}`
-          },
-          body: JSON.stringify({
-            model: "text-embedding-3-small",
-            input: `${query}\n\n${answer}`
-          })
-        });
+        // Reutilizar embedding cacheado ou gerar novo
+        let embedding = cachedEmbedding;
 
-        if (embeddingResponse.ok) {
-          const embeddingData = await embeddingResponse.json();
-          const embedding = embeddingData.data?.[0]?.embedding;
+        if (!embedding) {
+          console.log("⚠️ Gerando novo embedding (cache miss)...");
+          const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${openaiKey}`
+            },
+            body: JSON.stringify({
+              model: "text-embedding-3-small",
+              input: query
+            })
+          });
 
+          if (embeddingResponse.ok) {
+            const embeddingData = await embeddingResponse.json();
+            embedding = embeddingData.data?.[0]?.embedding;
+          }
+        } else {
+          console.log("✅ Reutilizando embedding cacheado");
+        }
+
+        if (embedding) {
           // Gerar tags e slug
           const autoTags = generateAutoTags(query, answer);
           const primarySlug = generateSlug(query, autoTags);
 
-          // Salvar no banco
-          const { error: insertError } = await supabase
-            .from("deep_search_knowledge")
-            .insert({
-              query,
-              answer,
-              source_url: source.url,
-              source_name: source.name,
-              source_type: source.type,
-              embedding,
-              auto_tags: autoTags,
-              primary_slug: primarySlug,
-              confidence
-            });
+          // Usar RPC que trata duplicatas automaticamente
+          const { data: insertedId, error: insertError } = await supabase.rpc(
+            "upsert_deep_knowledge",
+            {
+              p_query: query,
+              p_answer: answer,
+              p_source_url: source.url,
+              p_source_name: source.name,
+              p_source_type: source.type,
+              p_embedding: embedding,
+              p_auto_tags: autoTags,
+              p_primary_slug: primarySlug,
+              p_confidence: confidence
+            }
+          );
 
           if (!insertError) {
             autoIndexed = true;
-            console.log(`✅ Conhecimento indexado: tags=[${autoTags.join(", ")}], slug=${primarySlug}`);
+            console.log(`✅ Conhecimento indexado via RPC: id=${insertedId}, tags=[${autoTags.join(", ")}]`);
           } else {
-            console.warn("⚠️ Erro ao indexar:", insertError.message);
+            console.warn("⚠️ Erro ao indexar via RPC:", insertError.message);
           }
         }
       } catch (indexError) {
