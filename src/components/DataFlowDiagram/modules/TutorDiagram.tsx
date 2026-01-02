@@ -17,7 +17,9 @@ import {
   Clock,
   CheckCircle2,
   X,
+  Loader2,
 } from "lucide-react";
+import { useVoiceNarration } from "@/hooks/useVoiceNarration";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -528,8 +530,10 @@ const RegionLegend: React.FC<{
 // ============== MAIN COMPONENT ==============
 export const TutorDiagram: React.FC = () => {
   const [selectedRegion, setSelectedRegion] = useState<BrainRegion | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
   const [habits] = useState<Habit[]>(initialHabits);
+  
+  // Voice narration hook
+  const { isLoading: isNarrationLoading, isPlaying: isNarrationPlaying, play: playNarration, stop: stopNarration } = useVoiceNarration("tutor");
 
   // Today's focus: region with lowest progress
   const todayFocus = useMemo(() => {
@@ -554,12 +558,21 @@ export const TutorDiagram: React.FC = () => {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-gray-400 hover:text-white"
-                  onClick={() => setIsMuted(!isMuted)}
+                  onClick={() => isNarrationPlaying ? stopNarration() : playNarration()}
+                  disabled={isNarrationLoading}
                 >
-                  {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  {isNarrationLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : isNarrationPlaying ? (
+                    <VolumeX className="w-4 h-4" />
+                  ) : (
+                    <Volume2 className="w-4 h-4" />
+                  )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{isMuted ? "Ativar Áudio" : "Silenciar"}</TooltipContent>
+              <TooltipContent>
+                {isNarrationLoading ? "Carregando..." : isNarrationPlaying ? "Parar narração" : "Ouvir narração"}
+              </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>

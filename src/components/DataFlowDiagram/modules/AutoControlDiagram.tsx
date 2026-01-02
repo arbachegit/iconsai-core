@@ -4,8 +4,9 @@ import {
   Bot, Cpu, RefreshCw, Shield, Activity, 
   CheckCircle2, AlertTriangle, XCircle, 
   Volume2, VolumeX, MessageCircle, Eye, Wrench, 
-  Database, Clock, TrendingUp, Info, X
+  Database, Clock, TrendingUp, Info, X, Loader2
 } from "lucide-react";
+import { useVoiceNarration } from "@/hooks/useVoiceNarration";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -407,7 +408,9 @@ export const AutoControlDiagram: React.FC = () => {
   const [events, setEvents] = useState<LogEvent[]>([]);
   const [selectedRobot, setSelectedRobot] = useState<Robot | null>(null);
   const [autoRepair, setAutoRepair] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
+  
+  // Voice narration hook
+  const { isLoading: isNarrationLoading, isPlaying: isNarrationPlaying, play: playNarration, stop: stopNarration } = useVoiceNarration("autocontrol");
 
   const addEvent = useCallback((type: EventType, robotId: string, message: string) => {
     const newEvent: LogEvent = {
@@ -504,11 +507,25 @@ export const AutoControlDiagram: React.FC = () => {
             {/* Audio toggle */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => setIsMuted(!isMuted)} className="h-8 w-8">
-                  {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => isNarrationPlaying ? stopNarration() : playNarration()} 
+                  className="h-8 w-8"
+                  disabled={isNarrationLoading}
+                >
+                  {isNarrationLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : isNarrationPlaying ? (
+                    <VolumeX className="w-4 h-4" />
+                  ) : (
+                    <Volume2 className="w-4 h-4" />
+                  )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Alertas sonoros</TooltipContent>
+              <TooltipContent>
+                {isNarrationLoading ? "Carregando..." : isNarrationPlaying ? "Parar narração" : "Ouvir narração"}
+              </TooltipContent>
             </Tooltip>
 
             {/* WhatsApp */}

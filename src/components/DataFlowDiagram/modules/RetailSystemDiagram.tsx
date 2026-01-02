@@ -31,7 +31,9 @@ import {
   X,
   MapPin,
   LucideIcon,
+  Loader2,
 } from "lucide-react";
+import { useVoiceNarration } from "@/hooks/useVoiceNarration";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -194,8 +196,10 @@ export const RetailSystemDiagram: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedNode, setSelectedNode] = useState<DiagramNode | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  
+  // Voice narration hook
+  const { isLoading: isNarrationLoading, isPlaying: isNarrationPlaying, play: playNarration, stop: stopNarration } = useVoiceNarration("retail");
 
   const totalSteps = 6;
 
@@ -285,12 +289,21 @@ export const RetailSystemDiagram: React.FC = () => {
                   size="icon"
                   variant="ghost"
                   className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
-                  onClick={() => setIsMuted(!isMuted)}
+                  onClick={() => isNarrationPlaying ? stopNarration() : playNarration()}
+                  disabled={isNarrationLoading}
                 >
-                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                  {isNarrationLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isNarrationPlaying ? (
+                    <VolumeX className="h-4 w-4" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{isMuted ? "Ativar áudio" : "Desativar áudio"}</TooltipContent>
+              <TooltipContent>
+                {isNarrationLoading ? "Carregando..." : isNarrationPlaying ? "Parar narração" : "Ouvir narração"}
+              </TooltipContent>
             </Tooltip>
 
             <Tooltip>

@@ -4,8 +4,9 @@ import {
   Heart, Stethoscope, MapPin, Hospital,
   Volume2, VolumeX, MessageCircle, ChevronRight, ChevronDown,
   Clock, Star, CheckCircle2, AlertCircle, Mic, MicOff,
-  Send, Copy, Phone, Navigation
+  Send, Copy, Phone, Navigation, Loader2
 } from "lucide-react";
+import { useVoiceNarration } from "@/hooks/useVoiceNarration";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -549,7 +550,9 @@ const HospitalFinder: React.FC = () => {
 // Main Component
 export const HealthCareDiagram: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>("symptoms");
-  const [isMuted, setIsMuted] = useState(true);
+  
+  // Voice narration hook
+  const { isLoading: isNarrationLoading, isPlaying: isNarrationPlaying, play: playNarration, stop: stopNarration } = useVoiceNarration("healthcare");
 
   return (
     <TooltipProvider>
@@ -575,13 +578,22 @@ export const HealthCareDiagram: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setIsMuted(!isMuted)}
+                  onClick={() => isNarrationPlaying ? stopNarration() : playNarration()}
                   className="text-gray-400 hover:text-white"
+                  disabled={isNarrationLoading}
                 >
-                  {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                  {isNarrationLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : isNarrationPlaying ? (
+                    <VolumeX className="h-5 w-5" />
+                  ) : (
+                    <Volume2 className="h-5 w-5" />
+                  )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{isMuted ? "Ativar áudio" : "Silenciar"}</TooltipContent>
+              <TooltipContent>
+                {isNarrationLoading ? "Carregando..." : isNarrationPlaying ? "Parar narração" : "Ouvir narração"}
+              </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
