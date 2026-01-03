@@ -63,7 +63,7 @@ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({
   activeModule,
 }) => {
   return (
-    <div className="p-4">
+    <div className="p-4 overflow-hidden">
       {/* Título da seção */}
       <motion.div
         className="mb-4 text-center"
@@ -75,7 +75,7 @@ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({
       </motion.div>
 
       {/* Grid de módulos */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 overflow-hidden">
         {modules.map((module, index) => {
           const Icon = module.icon;
           const isActive = activeModule === module.id;

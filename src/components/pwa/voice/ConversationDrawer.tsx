@@ -19,12 +19,14 @@ interface ConversationDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   conversations: Conversation[];
+  embedded?: boolean;
 }
 
 export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   isOpen,
   onClose,
   conversations,
+  embedded = false,
 }) => {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -94,7 +96,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            className={`${embedded ? 'absolute' : 'fixed'} inset-0 bg-black/60 backdrop-blur-sm z-50`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -103,7 +105,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
 
           {/* Drawer - slides from top */}
           <motion.div
-            className="fixed inset-x-0 top-0 z-50 bg-background rounded-b-2xl shadow-2xl max-h-[80vh] flex flex-col"
+            className={`${embedded ? 'absolute' : 'fixed'} inset-x-0 top-0 z-50 bg-background rounded-b-2xl shadow-2xl max-h-[80vh] flex flex-col`}
             initial={{ y: "-100%" }}
             animate={{ y: 0 }}
             exit={{ y: "-100%" }}

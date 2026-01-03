@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Smartphone } from "lucide-react";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
@@ -50,6 +50,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   const [isListening, setIsListening] = useState(false);
   const [isConversationsOpen, setIsConversationsOpen] = useState(false);
   const [playingConversationId, setPlayingConversationId] = useState<string | null>(null);
+  const [lastSpokenText, setLastSpokenText] = useState<string | null>(null);
 
   // Lock scroll on html/body only for real PWA (not embedded)
   useEffect(() => {
@@ -99,10 +100,18 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   useEffect(() => {
     if (appState === "idle" && isFirstVisit && config.welcomeText) {
       const greeting = config.welcomeText.replace("[name]", userName || "");
+      setLastSpokenText(greeting);
       speak(greeting);
       setFirstVisit(false);
     }
   }, [appState, isFirstVisit, userName, speak, setFirstVisit, config.welcomeText]);
+
+  // Handle replay of last spoken text
+  const handleReplay = useCallback(() => {
+    if (lastSpokenText) {
+      speak(lastSpokenText);
+    }
+  }, [lastSpokenText, speak]);
 
   const handleSplashComplete = () => {
     setAppState("idle");
@@ -225,7 +234,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col safe-area-inset"
+              className="flex-1 flex flex-col safe-area-inset overflow-hidden"
             >
               {/* Header with actions */}
               <div className="flex items-center justify-between py-4 px-4">
@@ -259,17 +268,17 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
               </motion.p>
 
               {/* Voice Player Box */}
-              <div className="px-4 mb-8">
+              <div className="px-4 mb-6">
                 <VoicePlayerBox
                   state={playerState}
-                  onPlay={() => {}}
+                  onPlay={handleReplay}
                   onPause={stop}
                   audioProgress={progress}
                 />
               </div>
 
               {/* Module Selection */}
-              <div className="flex-1">
+              <div className="flex-1 overflow-y-auto">
                 <p className="text-center text-sm text-muted-foreground mb-2">
                   Escolha um módulo
                 </p>
@@ -334,6 +343,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
           isOpen={isConversationsOpen}
           onClose={() => setIsConversationsOpen(false)}
           conversations={conversations}
+          embedded={embedded}
         />
       </div>
     );
