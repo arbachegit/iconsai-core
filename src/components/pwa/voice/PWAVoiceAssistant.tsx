@@ -4,6 +4,7 @@ import { Smartphone } from "lucide-react";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
 import { SplashScreen } from "./SplashScreen";
 import { VoicePlayerBox } from "./VoicePlayerBox";
+import { MicrophoneOrb } from "./MicrophoneOrb";
 import { ModuleSelector } from "./ModuleSelector";
 import { ModuleHeader } from "./ModuleHeader";
 import { HeaderActions } from "./HeaderActions";
@@ -268,7 +269,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
               </motion.p>
 
               {/* Voice Player Box */}
-              <div className="px-4 mb-6">
+              <div className="px-4 mb-4">
                 <VoicePlayerBox
                   state={playerState}
                   onPlay={handleReplay}
@@ -276,6 +277,26 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
                   audioProgress={progress}
                 />
               </div>
+
+              {/* Microfone na Home */}
+              {playerState !== "playing" && playerState !== "loading" && (
+                <div className="flex justify-center mb-4">
+                  <MicrophoneOrb
+                    isVisible={true}
+                    onCapture={(transcript) => {
+                      setMessages(prev => [...prev, { role: "user", content: transcript }]);
+                      setActiveModule("world");
+                      setAppState("module");
+                    }}
+                    onTimeout={() => {
+                      speak("Não ouvi nada. Selecione um módulo abaixo ou toque no microfone novamente.");
+                    }}
+                    autoStart={false}
+                    maxDuration={config.micTimeoutSeconds || 10}
+                    hideCountdown={!config.enableCountdown}
+                  />
+                </div>
+              )}
 
               {/* Module Selection */}
               <div className="flex-1 overflow-y-auto">
