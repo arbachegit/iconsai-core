@@ -1,115 +1,125 @@
 // ============================================
-// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
-// AUDITORIA: Forcado redeploy - Lovable Cloud
+// VERSAO: 4.0.0 | DEPLOY: 2026-01-03
+// MIGRACAO: Twilio -> Infobip para SMS
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
 const sanitizePhoneNumber = (phone: string): string => {
-  // Manter apenas + e dígitos
   let cleaned = phone.replace(/[^\d+]/g, '');
-  
-  // Se não começar com +, assumir Brasil
   if (!cleaned.startsWith('+')) {
-    // Remover 0 inicial se houver
     cleaned = cleaned.replace(/^0+/, '');
-    // Adicionar código do Brasil
     if (!cleaned.startsWith('55')) {
       cleaned = '55' + cleaned;
     }
-    cleaned = '+' + cleaned;
   }
-  
-  return cleaned;
+  // Infobip não usa + no número
+  return cleaned.replace('+', '');
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  console.log("\n=== SEND-SMS v4.0 (INFOBIP) START ===");
+  console.log(`[TIMESTAMP] ${new Date().toISOString()}`);
+
   try {
-    const { phoneNumber: rawPhoneNumber, message, eventType } = await req.json();
+    const { phoneNumber: rawPhone, message, eventType } = await req.json();
     
-    // Validar inputs
-    if (!rawPhoneNumber || !message) {
-      console.error('[SMS] Missing required fields: phoneNumber or message');
+    if (!rawPhone || !message) {
+      console.error("❌ Campos obrigatórios faltando");
       throw new Error('phoneNumber and message are required');
     }
 
-    const phoneNumber = sanitizePhoneNumber(rawPhoneNumber);
-    
-    // Validar formato E.164
-    if (!phoneNumber.match(/^\+[1-9]\d{7,14}$/)) {
-      console.error('[SMS] Invalid phone number format');
-      throw new Error('Invalid phone number format. Must include country code (e.g., +5511999999999)');
+    const phoneNumber = sanitizePhoneNumber(rawPhone);
+    console.log(`📱 [TELEFONE] Original: ${rawPhone}`);
+    console.log(`📱 [TELEFONE] Formatado: ${phoneNumber.slice(0, 6)}***`);
+    console.log(`📝 [EVENTO] ${eventType || 'manual'}`);
+
+    // Credenciais Infobip
+    const apiKey = Deno.env.get('INFOBIP_API_KEY');
+    const baseUrl = Deno.env.get('INFOBIP_BASE_URL') || '5589kd.api.infobip.com';
+    const sender = Deno.env.get('INFOBIP_SENDER') || 'KnowYOU';
+
+    if (!apiKey) {
+      console.error("❌ INFOBIP_API_KEY não configurada");
+      throw new Error('INFOBIP_API_KEY não configurada');
     }
 
-    // Obter credenciais Twilio
-    const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
-    const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-    const fromNumber = Deno.env.get('TWILIO_SMS_NUMBER');
+    console.log(`\n📤 [INFOBIP] ========================================`);
+    console.log(`📤 [INFOBIP] Base URL: ${baseUrl}`);
+    console.log(`📤 [INFOBIP] From: ${sender}`);
+    console.log(`📤 [INFOBIP] To: ${phoneNumber}`);
+    console.log(`📤 [INFOBIP] Message: ${message.slice(0, 50)}...`);
+    console.log(`📤 [INFOBIP] ========================================\n`);
 
-    if (!accountSid || !authToken || !fromNumber) {
-      console.error('[SMS] Twilio SMS credentials not configured');
-      throw new Error('Twilio SMS credentials not configured. Please check TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_SMS_NUMBER secrets.');
-    }
-
-    console.log(`[SMS] Sending message for event: ${eventType || 'manual_test'}`);
-
-    // Chamar API Twilio para SMS (sem prefixo whatsapp:)
-    const twilioApiUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-    
-    const formData = new URLSearchParams();
-    formData.append('Body', message);
-    formData.append('From', fromNumber);
-    formData.append('To', phoneNumber);
-
-    const response = await fetch(twilioApiUrl, {
+    const response = await fetch(`https://${baseUrl}/sms/2/text/advanced`, {
       method: 'POST',
       headers: {
-        'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `App ${apiKey}`,
+        'Content-Type': 'application/json',
       },
-      body: formData.toString(),
+      body: JSON.stringify({
+        messages: [{
+          destinations: [{ to: phoneNumber }],
+          from: sender,
+          text: message
+        }]
+      }),
     });
 
-    const responseData = await response.json();
+    const data = await response.json();
+    console.log(`📩 [INFOBIP] Response Status: ${response.status}`);
+    console.log(`📩 [INFOBIP] Response:`, JSON.stringify(data));
 
-    if (!response.ok) {
-      console.error('[SMS] Twilio API error:', responseData);
-      throw new Error(responseData.message || `Twilio API error: ${response.status}`);
+    const messageStatus = data.messages?.[0];
+    
+    if (!messageStatus) {
+      throw new Error('Resposta inválida da Infobip');
     }
 
-    console.log(`[SMS] Message sent successfully: ${responseData.sid}`);
+    // Verificar status
+    const groupName = messageStatus.status?.groupName;
+    
+    if (groupName === 'REJECTED') {
+      console.error(`❌ [INFOBIP] SMS REJEITADO: ${messageStatus.status.description}`);
+      throw new Error(`SMS rejeitado: ${messageStatus.status.description}`);
+    }
+
+    if (groupName === 'PENDING' || groupName === 'PENDING_ACCEPTED') {
+      console.log(`✅ [SUCESSO] SMS aceito para envio`);
+    }
+
+    console.log(`✅ [SUCESSO] Message ID: ${messageStatus.messageId}`);
+    console.log(`✅ [SUCESSO] Status: ${messageStatus.status?.name}`);
+    console.log("=== SEND-SMS v4.0 (INFOBIP) END ===\n");
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        sid: responseData.sid,
-        status: responseData.status,
-        channel: 'sms'
+        messageId: messageStatus.messageId,
+        status: messageStatus.status?.name,
+        statusGroup: messageStatus.status?.groupName,
+        channel: 'sms',
+        provider: 'infobip'
       }),
-      { 
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
-    console.error('[SMS] Error:', error.message);
+    console.error('❌ [ERRO]', error.message);
+    console.log("=== SEND-SMS v4.0 (INFOBIP) END (ERROR) ===\n");
     
     return new Response(
       JSON.stringify({ 
-        success: false,
-        error: error.message,
-        channel: 'sms'
+        success: false, 
+        error: error.message, 
+        channel: 'sms',
+        provider: 'infobip'
       }),
-      { 
-        status: 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
