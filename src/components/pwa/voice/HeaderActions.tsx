@@ -59,11 +59,15 @@ export const HeaderActions: React.FC<HeaderActionsProps> = ({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          {/* Indicador de conversas */}
+          {/* Indicador vermelho pulsante */}
           {hasConversations && (
-            <div className="absolute -top-1 -right-1">
-              <StatusIndicator isActive size="sm" />
-            </div>
+            <motion.div 
+              className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500"
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75" />
+            </motion.div>
           )}
 
           {/* Dois balões sobrepostos */}

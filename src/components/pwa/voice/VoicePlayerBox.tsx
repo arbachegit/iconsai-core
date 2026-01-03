@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Loader2, Volume2 } from "lucide-react";
+import { Play, Pause, Loader2, Volume2, RotateCcw } from "lucide-react";
 
 export type PlayerState = "idle" | "loading" | "playing" | "waiting" | "processing" | "listening";
 
@@ -172,6 +172,10 @@ export const VoicePlayerBox: React.FC<VoicePlayerBoxProps> = ({
               ) : state === "playing" ? (
                 <motion.div key="pause" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}>
                   <Pause className="w-8 h-8" style={{ color: "hsl(225, 71%, 8%)" }} />
+                </motion.div>
+              ) : canReplay ? (
+                <motion.div key="replay" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}>
+                  <RotateCcw className="w-8 h-8" style={{ color: "hsl(225, 71%, 8%)" }} />
                 </motion.div>
               ) : (
                 <motion.div key="play" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}>

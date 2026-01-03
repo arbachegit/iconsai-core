@@ -14,6 +14,7 @@ interface ConversationModalProps {
   onPlayAudio: (id: string) => void;
   onTranscribe: (id: string) => void;
   playingId?: string | null;
+  embedded?: boolean;
 }
 
 const moduleConfig: Record<Exclude<ModuleId, null>, { icon: typeof Globe; color: string; label: string }> = {
@@ -30,6 +31,7 @@ export const ConversationModal: React.FC<ConversationModalProps> = ({
   onPlayAudio,
   onTranscribe,
   playingId,
+  embedded = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllTranscripts, setShowAllTranscripts] = useState(false);
@@ -77,7 +79,7 @@ export const ConversationModal: React.FC<ConversationModalProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50">
+        <div className={`${embedded ? 'absolute' : 'fixed'} inset-0 z-50`}>
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
