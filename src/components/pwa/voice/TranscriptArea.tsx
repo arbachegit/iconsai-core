@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Bot } from "lucide-react";
+import { Mic } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -18,17 +18,19 @@ export const TranscriptArea: React.FC<TranscriptAreaProps> = ({
   messages,
   interimTranscript = "",
   isListening = false,
-  maxHeight = "30vh",
+  maxHeight = "40vh",
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastMessage = messages[messages.length - 1];
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, interimTranscript]);
 
+  // Don't render if no messages and not listening
   if (messages.length === 0 && !interimTranscript) {
     return null;
   }
@@ -41,64 +43,52 @@ export const TranscriptArea: React.FC<TranscriptAreaProps> = ({
         style={{ maxHeight }}
       >
         <AnimatePresence mode="popLayout">
-          {messages.map((message, index) => (
-            <motion.div
-              key={`message-${index}`}
-              className={`flex items-start gap-3 mb-3 last:mb-0 ${
-                message.role === "user" ? "flex-row-reverse" : ""
-              }`}
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
+          {/* Show only the last assistant message */}
+          {lastMessage && lastMessage.role === "assistant" && (
+            <motion.p
+              key="assistant-msg"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="text-sm text-foreground leading-relaxed"
             >
-              {/* Avatar */}
-              <div
-                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                  message.role === "user"
-                    ? "bg-primary/20"
-                    : "bg-secondary/40"
-                }`}
-              >
-                {message.role === "user" ? (
-                  <User className="w-4 h-4 text-primary" />
-                ) : (
-                  <Bot className="w-4 h-4 text-secondary-foreground" />
-                )}
-              </div>
+              {lastMessage.content}
+            </motion.p>
+          )}
 
-              {/* Mensagem */}
-              <div
-                className={`flex-1 rounded-lg px-3 py-2 text-sm ${
-                  message.role === "user"
-                    ? "bg-primary/10 text-foreground ml-8"
-                    : "bg-muted/50 text-foreground mr-8"
-                }`}
-              >
-                {message.content}
-              </div>
-            </motion.div>
-          ))}
+          {/* Show last user message if it's the most recent */}
+          {lastMessage && lastMessage.role === "user" && (
+            <motion.p
+              key="user-msg"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="text-sm text-primary/80 italic"
+            >
+              "{lastMessage.content}"
+            </motion.p>
+          )}
         </AnimatePresence>
 
-        {/* Transcrição em tempo real */}
+        {/* Real-time transcription */}
         <AnimatePresence>
           {isListening && interimTranscript && (
             <motion.div
-              className="flex items-start gap-3 mt-3"
+              className="flex items-center gap-2 mt-3 pt-3 border-t border-border/20"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <User className="w-4 h-4 text-primary" />
-              </div>
-
-              <div className="flex-1 rounded-lg px-3 py-2 bg-primary/5 border border-primary/20 ml-8">
-                <p className="text-sm text-muted-foreground italic">
-                  {interimTranscript}...
-                </p>
-              </div>
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+                className="text-primary"
+              >
+                <Mic className="w-4 h-4" />
+              </motion.div>
+              <p className="text-sm text-muted-foreground italic flex-1">
+                {interimTranscript}
+              </p>
             </motion.div>
           )}
         </AnimatePresence>
