@@ -281,7 +281,7 @@ serve(async (req) => {
 
   const startTime = Date.now();
   console.log(`\n${"=".repeat(60)}`);
-  console.log(`[SEND-PWA-NOTIFICATION v4.1] INICIANDO - ${new Date().toISOString()}`);
+  console.log(`[SEND-PWA-NOTIFICATION v4.2] INICIANDO - ${new Date().toISOString()}`);
   console.log(`${"=".repeat(60)}\n`);
 
   try {
@@ -344,6 +344,35 @@ serve(async (req) => {
     console.log(`[TEMPLATE] Descrição: ${templateConfig.description}`);
     console.log(`[TEMPLATE] Tipo: ${templateConfig.type}`);
     console.log(`[TEMPLATE] Variáveis esperadas: ${templateConfig.variables}`);
+
+    // ===========================================
+    // VALIDAÇÃO PREVENTIVA: Contagem de variáveis
+    // Evita erro 63028 do Twilio
+    // ===========================================
+    const providedVarKeys = Object.keys(variables).filter(k => 
+      variables[k] !== undefined && variables[k] !== null && variables[k] !== ''
+    );
+    const providedCount = providedVarKeys.length;
+    const expectedCount = templateConfig.variables;
+
+    console.log(`[VARIÁVEIS ESPERADAS] ${expectedCount}`);
+    console.log(`[VARIÁVEIS RECEBIDAS] ${providedCount} (${providedVarKeys.join(', ')})`);
+
+    if (templateConfig.type === "utility" && providedCount !== expectedCount) {
+      const errorMsg = `Template '${template}' espera ${expectedCount} variável(is) mas recebeu ${providedCount}. Chaves: [${providedVarKeys.join(', ')}]`;
+      console.error(`[ERRO VALIDAÇÃO] ${errorMsg}`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: errorMsg,
+          expected: expectedCount,
+          received: providedCount,
+          template,
+          variablesKeys: providedVarKeys
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Normalizar telefone
     const phone = normalizePhone(to);
