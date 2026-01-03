@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
-// AUDITORIA: Forcado redeploy - Lovable Cloud
+// VERSAO: 3.0.0 | DEPLOY: 2026-01-03
+// FIX: Templates Twilio - Substituir freeform por templates
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -255,76 +255,66 @@ serve(async (req) => {
         });
       }
 
-      // WhatsApp INFORMATIVO (só se NÃO tem APP)
-      // Apenas avisa que enviamos email - NÃO envia link!
+      // SMS INFORMATIVO (só se NÃO tem APP)
+      // Apenas avisa que enviamos email - via SMS (não WhatsApp freeform)
       if (registration.phone && !hasAppAccess) {
         try {
-          const infoMessage = `*KnowYOU*
+          const smsMsg = "KnowYOU: Reenviamos email com instrucoes para a Plataforma. Acesse pelo computador.";
 
-Olá ${userName},
-
-Reenviamos um email com as instruções para acessar a Plataforma KnowYOU.
-
-Acesse pelo computador ou tablet para definir sua senha e começar.
-
-_Verifique também sua pasta de spam_`;
-
-          await supabase.functions.invoke("send-whatsapp", {
+          await supabase.functions.invoke("send-sms", {
             body: {
               phoneNumber: registration.phone,
-              message: infoMessage,
+              message: smsMsg,
             },
           });
 
-          console.log("[resend-welcome-email] WhatsApp info sent to:", registration.phone);
-          results.whatsapp = true;
+          console.log("[resend-welcome-email] SMS info sent to:", registration.phone);
 
           await supabase.from("notification_logs").insert({
             event_type: "user_registration_resend_welcome",
-            channel: "whatsapp",
+            channel: "sms",
             recipient: registration.phone,
-            subject: "WhatsApp informativo (Plataforma)",
-            message_body: infoMessage,
+            subject: "SMS informativo (Plataforma)",
+            message_body: smsMsg,
             status: "success",
             metadata: { registration_id: registrationId, triggered_by: adminUser.email },
           });
-        } catch (whatsappError) {
-          console.error("[resend-welcome-email] WhatsApp info error:", whatsappError);
+        } catch (smsError) {
+          console.warn("[resend-welcome-email] SMS info error:", smsError);
         }
       }
     }
 
-    // WhatsApp para APP (com link)
+    // WhatsApp para APP (via template resend_welcome)
     if (hasAppAccess && registration.phone) {
       try {
-        const appMessage = `*KnowYOU APP*
-
-Olá ${userName}, seu cadastro foi aprovado!
-
-Acesse pelo celular para ter seu assistente sempre com você.
-
-Link: ${appUrl}
-
-_Lembre-se: o APP funciona apenas no celular_`;
-
-        await supabase.functions.invoke("send-whatsapp", {
+        // Usar send-pwa-notification com template resend_welcome
+        const { data: notifResult, error: notifError } = await supabase.functions.invoke("send-pwa-notification", {
           body: {
-            phoneNumber: registration.phone,
-            message: appMessage,
-          },
+            to: registration.phone,
+            template: "resend_welcome",
+            variables: { "1": userName },
+            channel: "whatsapp"
+          }
         });
 
-        console.log("[resend-welcome-email] WhatsApp APP sent to:", registration.phone);
-        results.whatsapp = true;
+        if (notifError || !notifResult?.success) {
+          console.error("[resend-welcome-email] WhatsApp APP error:", notifError || notifResult?.error);
+          results.whatsapp = false;
+        } else {
+          console.log("[resend-welcome-email] WhatsApp APP sent via", notifResult?.channel);
+          results.whatsapp = true;
+        }
 
         await supabase.from("notification_logs").insert({
           event_type: "user_registration_resend_welcome",
-          channel: "whatsapp",
+          channel: notifResult?.channel || "whatsapp",
           recipient: registration.phone,
-          subject: "WhatsApp APP com link",
-          message_body: appMessage,
-          status: "success",
-          metadata: { registration_id: registrationId, triggered_by: adminUser.email },
+          subject: "WhatsApp APP com template",
+          message_body: `Reenvio boas-vindas via template resend_welcome`,
+          status: notifResult?.success ? "success" : "failed",
+          error_message: notifError?.message || notifResult?.error || null,
+          metadata: { registration_id: registrationId, triggered_by: adminUser.email, template: "resend_welcome" },
         });
       } catch (whatsappError) {
         console.error("[resend-welcome-email] WhatsApp APP error:", whatsappError);

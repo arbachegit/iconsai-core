@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 3.0.0 | DEPLOY: 2026-01-03
-// MIGRACAO: Templates Twilio - Corrige erro 63016
+// VERSAO: 3.1.0 | DEPLOY: 2026-01-03
+// FIX: Variavel {{2}} = "Equipe KnowYOU" (era appUrl)
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -333,7 +333,7 @@ serve(async (req) => {
                 template: "invitation",
                 variables: { 
                   "1": name || "Usuário",
-                  "2": appUrl
+                  "2": "Equipe KnowYOU"  // Template espera nome de quem convidou, não URL
                 },
                 channel: "whatsapp"
               }
