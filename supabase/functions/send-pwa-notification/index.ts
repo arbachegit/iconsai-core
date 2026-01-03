@@ -1,6 +1,7 @@
 // ============================================
-// VERSAO: 4.2.0 | DEPLOY: 2026-01-03
-// FIX: Template invitation com 3 variáveis
+// VERSAO: 4.3.0 | DEPLOY: 2026-01-03
+// FIX: Alinhamento de templates com Twilio Console
+// welcome=2 vars, resend_welcome=2 vars, invitation=3 vars
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -43,7 +44,7 @@ const TEMPLATES: Record<string, TemplateConfig> = {
     sid: "HX35461ac69adc68257f54eb030fafe4b1",
     description: "Boas-vindas após verificação",
     type: "utility",
-    variables: 1, // {{1}} = nome
+    variables: 2, // {{1}} = nome, {{2}} = path do botão
   },
   resend_code: {
     sid: "HX026907ac8e769389acfda75829c5d543",
@@ -61,7 +62,7 @@ const TEMPLATES: Record<string, TemplateConfig> = {
     sid: "HX9ccbe49ea4063c9155c3ebd67738556e",
     description: "Reenvio de boas-vindas",
     type: "utility",
-    variables: 1, // {{1}} = nome
+    variables: 2, // {{1}} = nome, {{2}} = path do botão
   },
 };
 
@@ -144,8 +145,10 @@ async function sendSmsViaInfobip(
       smsText = `KnowYOU: Seu codigo de verificacao e ${variables["1"]}. Valido por 10 minutos.`;
       break;
     case "welcome":
+      smsText = `KnowYOU: Olá ${variables["1"] || "Usuário"}! Bem-vindo ao KnowYOU. Acesse: https://hmv.knowyou.app/${variables["2"] || "login"}`;
+      break;
     case "resend_welcome":
-      smsText = `KnowYOU: Bem-vindo! Seu cadastro foi confirmado com sucesso.`;
+      smsText = `KnowYOU: Olá ${variables["1"] || "Usuário"}! Notamos que você ainda não acessou. Entre em: https://hmv.knowyou.app/${variables["2"] || "login"}`;
       break;
     case "invitation":
       smsText = `KnowYOU: ${variables["1"] || "Você"} foi convidado por ${variables["2"] || "Equipe KnowYOU"}! Acesse: https://hmv.knowyou.app/${variables["3"] || ""}`;
