@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 4.0.0 | DEPLOY: 2026-01-03
-// CORRECAO: WhatsApp +16039454873, SMS via Infobip
+// VERSAO: 4.1.0 | DEPLOY: 2026-01-03
+// FIX: Templates Authentication forcam SMS
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -17,29 +17,51 @@ const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN")!;
 const TWILIO_WHATSAPP_NUMBER = "+16039454873"; // ✅ CORRIGIDO!
 
 // ===========================================
+// INTERFACE PARA CONFIGURAÇÃO DE TEMPLATES
+// ===========================================
+interface TemplateConfig {
+  sid: string;
+  description: string;
+  type: "authentication" | "utility";
+  variables: number;
+}
+
+// ===========================================
 // TEMPLATES APROVADOS NO TWILIO CONSOLE
 // TODOS DEVEM ESTAR COM STATUS "APPROVED"
+// Authentication = não aceita variáveis customizadas
+// Utility = aceita variáveis {{1}}, {{2}}, etc
 // ===========================================
-const TEMPLATES: Record<string, { sid: string; description: string }> = {
+const TEMPLATES: Record<string, TemplateConfig> = {
   otp: {
     sid: "HX15dbff375b023b2d1514038027db6ad0",
     description: "Código de verificação OTP",
+    type: "authentication",
+    variables: 0, // Authentication NÃO aceita variáveis
   },
   welcome: {
     sid: "HX35461ac69adc68257f54eb030fafe4b1",
     description: "Boas-vindas após verificação",
+    type: "utility",
+    variables: 1, // {{1}} = nome
   },
   resend_code: {
     sid: "HX026907ac8e769389acfda75829c5d543",
     description: "Reenvio de código OTP",
+    type: "authentication",
+    variables: 0, // Authentication NÃO aceita variáveis
   },
   invitation: {
     sid: "HX56dca3b12701c186f1f3daa58f5785c3",
     description: "Convite de acesso ao PWA",
+    type: "utility",
+    variables: 2, // {{1}} = nome, {{2}} = quem convidou
   },
   resend_welcome: {
     sid: "HX9ccbe49ea4063c9155c3ebd67738556e",
     description: "Reenvio de boas-vindas",
+    type: "utility",
+    variables: 1, // {{1}} = nome
   },
 };
 
@@ -86,6 +108,7 @@ const TWILIO_ERROR_MESSAGES: Record<number, string> = {
   63024: "Número não está habilitado para WhatsApp Business.",
   63025: "Taxa de envio excedida. Aguarde alguns minutos.",
   63026: "Conta não está conectada ao WhatsApp Business.",
+  63028: "Número de parâmetros não corresponde ao template.",
   21408: "Número não está no sandbox do Twilio.",
   21608: "Número não registrado no WhatsApp.",
   21610: "Número bloqueado ou não pode receber mensagens.",
@@ -258,7 +281,7 @@ serve(async (req) => {
 
   const startTime = Date.now();
   console.log(`\n${"=".repeat(60)}`);
-  console.log(`[SEND-PWA-NOTIFICATION v4.0] INICIANDO - ${new Date().toISOString()}`);
+  console.log(`[SEND-PWA-NOTIFICATION v4.1] INICIANDO - ${new Date().toISOString()}`);
   console.log(`${"=".repeat(60)}\n`);
 
   try {
@@ -319,6 +342,8 @@ serve(async (req) => {
     console.log(`[TEMPLATE] Nome: ${template}`);
     console.log(`[TEMPLATE] SID: ${templateSid}`);
     console.log(`[TEMPLATE] Descrição: ${templateConfig.description}`);
+    console.log(`[TEMPLATE] Tipo: ${templateConfig.type}`);
+    console.log(`[TEMPLATE] Variáveis esperadas: ${templateConfig.variables}`);
 
     // Normalizar telefone
     const phone = normalizePhone(to);
@@ -335,7 +360,7 @@ serve(async (req) => {
     }
 
     // Verificar credenciais Twilio (apenas para WhatsApp)
-    if (channel === "whatsapp" && (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN)) {
+    if (channel === "whatsapp" && templateConfig.type === "utility" && (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN)) {
       console.error("[ERRO] Credenciais Twilio não configuradas");
       return new Response(JSON.stringify({ success: false, error: "Credenciais Twilio não configuradas" }), {
         status: 500,
@@ -344,23 +369,38 @@ serve(async (req) => {
     }
 
     // ===========================================
-    // ENVIO COM FALLBACK
-    // WhatsApp = Twilio (templates)
-    // SMS = Infobip (texto simples)
+    // ESTRATÉGIA DE ENVIO
+    // Authentication (otp, resend_code) → SMS Infobip (não suportam variáveis no WhatsApp)
+    // Utility (welcome, invitation, etc) → WhatsApp Twilio com fallback SMS
     // ===========================================
 
     let result: SendResult;
     const attempts: SendResult[] = [];
 
-    if (channel === "sms") {
-      // CANAL SMS: Enviar via Infobip
-      console.log("\n[ESTRATÉGIA] Canal SMS solicitado - enviando via Infobip");
+    // Verificar se é template Authentication (não aceita variáveis no WhatsApp)
+    const isAuthenticationTemplate = templateConfig.type === "authentication";
+
+    if (isAuthenticationTemplate) {
+      // FORÇAR SMS para templates de código
+      console.log("\n[ESTRATÉGIA] Template AUTHENTICATION detectado - FORÇANDO SMS via Infobip");
+      console.log("[MOTIVO] WhatsApp Authentication templates não aceitam variáveis customizadas");
+      console.log(`[TEMPLATE] ${template} (${templateConfig.description})`);
 
       result = await sendSmsViaInfobip(phone, template, variables);
       attempts.push(result);
+
+    } else if (channel === "sms") {
+      // Canal SMS explicitamente solicitado
+      console.log("\n[ESTRATÉGIA] Canal SMS solicitado explicitamente");
+
+      result = await sendSmsViaInfobip(phone, template, variables);
+      attempts.push(result);
+
     } else {
-      // CANAL WHATSAPP: Tentar WhatsApp primeiro, fallback para SMS
-      console.log("\n[ESTRATÉGIA] Canal WhatsApp - Twilio primeiro, fallback Infobip SMS");
+      // Templates UTILITY: WhatsApp primeiro, fallback SMS
+      console.log("\n[ESTRATÉGIA] Template UTILITY - WhatsApp Twilio primeiro, fallback SMS Infobip");
+      console.log(`[TEMPLATE] ${template} (${templateConfig.description})`);
+      console.log(`[VARIÁVEIS ESPERADAS] ${templateConfig.variables}`);
 
       // Tentativa 1: WhatsApp via Twilio
       console.log("\n[TENTATIVA 1] WhatsApp via Twilio");
@@ -370,8 +410,6 @@ serve(async (req) => {
       // Se WhatsApp falhar, tentar SMS via Infobip
       if (!result.success) {
         console.log("\n[FALLBACK] WhatsApp falhou, tentando SMS via Infobip...");
-
-        // Tentativa 2: SMS via Infobip
         console.log("\n[TENTATIVA 2] SMS via Infobip");
         result = await sendSmsViaInfobip(phone, template, variables);
         attempts.push(result);
@@ -403,9 +441,11 @@ serve(async (req) => {
           })),
           variables,
           templateSid,
+          templateType: templateConfig.type,
           requestedChannel: channel,
+          forcedSms: isAuthenticationTemplate,
           processingTimeMs: Date.now() - startTime,
-          version: "4.0.0",
+          version: "4.1.0",
           providers: {
             whatsapp: "twilio",
             sms: "infobip",
@@ -429,6 +469,8 @@ serve(async (req) => {
     console.log(`Sucesso: ${result.success ? "✅ SIM" : "❌ NÃO"}`);
     console.log(`Canal usado: ${result.channel}`);
     console.log(`Provider: ${result.channel === "whatsapp" ? "Twilio" : "Infobip"}`);
+    console.log(`Template Type: ${templateConfig.type}`);
+    console.log(`Forçado SMS: ${isAuthenticationTemplate ? "SIM (Authentication)" : "NÃO"}`);
     console.log(`Message ID: ${result.messageId || "N/A"}`);
     console.log(`Erro: ${result.error || "Nenhum"}`);
     console.log(`Total de tentativas: ${attempts.length}`);
@@ -446,6 +488,8 @@ serve(async (req) => {
         success: result.success,
         channel: result.channel,
         provider: result.channel === "whatsapp" ? "twilio" : "infobip",
+        templateType: templateConfig.type,
+        forcedSms: isAuthenticationTemplate,
         messageId: result.messageId || null,
         error: result.error || null,
         attempts: attempts.length,
