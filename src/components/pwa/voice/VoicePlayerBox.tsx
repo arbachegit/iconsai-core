@@ -61,18 +61,6 @@ export const VoicePlayerBox: React.FC<VoicePlayerBoxProps> = ({
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - arcProgress / 100);
   
-  const getStatusText = () => {
-    if (canReplay) return "Toque para repetir";
-    switch (state) {
-      case "idle": return "Toque para ouvir";
-      case "waiting": return "Pronto para começar";
-      case "loading": return "Carregando...";
-      case "playing": return "Reproduzindo...";
-      case "processing": return "Processando...";
-      case "listening": return "Ouvindo...";
-      default: return "";
-    }
-  };
 
   const handleClick = () => {
     if (state === "playing" && onPause) {
@@ -263,10 +251,6 @@ export const VoicePlayerBox: React.FC<VoicePlayerBoxProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Status text */}
-      <p className="text-sm text-center mt-4" style={{ color: "hsl(215, 20%, 65%)" }}>
-        {getStatusText()}
-      </p>
     </div>
   );
 };
