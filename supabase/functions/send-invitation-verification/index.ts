@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
-// AUDITORIA: Forcado redeploy - Lovable Cloud
+// VERSAO: 3.0.0 | DEPLOY: 2026-01-03
+// MIGRACAO: Templates Twilio - Corrige erro 63016
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -301,46 +301,39 @@ serve(async (req) => {
         sendResult = { success: false, error: smsCatch.message || "Exceção ao enviar SMS", method: "sms" };
       }
     } else if (verificationMethod === "whatsapp") {
-      console.log("💬 Sending verification code via WHATSAPP to:", phone.substring(0, 6) + "****");
+      console.log("💬 [v3.0] Sending verification code via send-pwa-notification with OTP template...");
       
-      // Mensagem formatada para ser copiável no WhatsApp
-      const whatsappMessage = `🔐 *Código de Verificação KnowYOU*
-
-Seu código:
-
-\`\`\`${verificationCode}\`\`\`
-
-📋 _Toque no código acima para copiar_
-
-⏰ Expira em 2 minutos.`;
-
       try {
-        const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
+        // Use send-pwa-notification with OTP template
+        const { data: notifData, error: notifError } = await supabase.functions.invoke("send-pwa-notification", {
           body: {
-            phoneNumber: phone,
-            message: whatsappMessage,
-            eventType: "verification_code"
+            to: phone,
+            template: "otp",
+            variables: { "1": verificationCode },
+            channel: "whatsapp"
           }
         });
 
-        if (whatsappError) {
-          console.log("⚠️ WhatsApp function returned error:", whatsappError);
-          sendResult = { success: false, error: whatsappError.message || "Erro na função de WhatsApp", method: "whatsapp" };
-        } else if (whatsappData?.error) {
-          console.log("⚠️ WhatsApp API returned error:", whatsappData.error);
-          sendResult = { success: false, error: whatsappData.error, method: "whatsapp" };
+        console.log("📨 send-pwa-notification response:", JSON.stringify(notifData));
+
+        if (notifError) {
+          console.log("⚠️ send-pwa-notification error:", notifError);
+          sendResult = { success: false, error: notifError.message || "Erro na função de notificação", method: "whatsapp" };
+        } else if (!notifData?.success) {
+          console.log("⚠️ send-pwa-notification failed:", notifData?.error);
+          sendResult = { success: false, error: notifData?.error || "Erro desconhecido", method: notifData?.channel || "whatsapp" };
         } else {
-          console.log("✅ WhatsApp sent successfully, SID:", whatsappData?.sid);
-          sendResult = { success: true, error: "", method: "whatsapp" };
+          console.log("✅ Notification sent successfully via", notifData?.channel);
+          sendResult = { success: true, error: "", method: notifData?.channel || "whatsapp" };
         }
-      } catch (whatsappCatch: any) {
-        console.log("⚠️ Exception sending WhatsApp:", whatsappCatch.message);
-        sendResult = { success: false, error: whatsappCatch.message || "Exceção ao enviar WhatsApp", method: "whatsapp" };
+      } catch (notifCatch: any) {
+        console.log("⚠️ Exception sending notification:", notifCatch.message);
+        sendResult = { success: false, error: notifCatch.message || "Exceção ao enviar notificação", method: "whatsapp" };
       }
 
-      // Fallback para SMS se WhatsApp falhou
+      // Fallback para SMS direto se send-pwa-notification falhou
       if (!sendResult.success) {
-        console.log("🔄 WhatsApp failed, trying SMS fallback...");
+        console.log("🔄 Notification failed, trying direct SMS fallback...");
         try {
           const smsMessage = `KnowYOU - Código: ${verificationCode}. Expira em 2 min.`;
 
@@ -386,7 +379,7 @@ Seu código:
       );
     }
 
-    // Step 12: Notify Super Admin
+    // Step 12: Notify Super Admin (via SMS, not WhatsApp)
     try {
       const { data: settings } = await supabase
         .from("admin_settings")
@@ -394,16 +387,16 @@ Seu código:
         .single();
 
       if (settings?.whatsapp_global_enabled && settings?.whatsapp_target_phone) {
-        const address = `${addressStreet}, ${addressNumber}${addressComplement ? ` - ${addressComplement}` : ''}, ${addressNeighborhood}, ${addressCity}/${addressState}`;
-        const adminMessage = `📝 *Formulário Preenchido*\n\n👤 ${invitation.name}\n📧 ${invitation.email}\n📱 ${phone}\n📍 ${address}\n\n🔐 Verificação via: ${sendResult.method === 'email' ? 'Email' : sendResult.method === 'sms_fallback' ? 'SMS (fallback)' : verificationMethod.toUpperCase()}`;
+        // Use SMS for admin notification (freeform allowed)
+        const adminSms = `KnowYOU: Formulário preenchido - ${invitation.name}. Verificação via ${sendResult.method}.`;
 
-        await supabase.functions.invoke("send-whatsapp", {
+        await supabase.functions.invoke("send-sms", {
           body: {
             phoneNumber: settings.whatsapp_target_phone,
-            message: adminMessage
+            message: adminSms
           }
         });
-        console.log("✅ Admin notified via WhatsApp");
+        console.log("✅ Admin notified via SMS");
       }
     } catch (notifyError) {
       console.log("⚠️ Error notifying admin (non-critical):", notifyError);

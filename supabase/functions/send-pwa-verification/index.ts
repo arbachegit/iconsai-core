@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
-// AUDITORIA: Forcado redeploy - Lovable Cloud
+// VERSAO: 3.0.0 | DEPLOY: 2026-01-03
+// MIGRACAO: Templates Twilio - Corrige erro 63016
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -17,7 +17,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log("=== SEND-PWA-VERIFICATION START ===");
+  console.log("=== [SEND-PWA-VERIFICATION v3.0] START ===");
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -126,51 +126,45 @@ serve(async (req) => {
     }
     console.log("✅ Verification code saved successfully");
 
-    // 5. Send code via WhatsApp (with SMS fallback)
-    const message = `*KnowYOU APP*
-
-Olá ${invitation.name || ""}!
-
-Seu código de verificação é:
-
-*${verificationCode}*
-
-⏰ Válido por 10 minutos.
-
-_Não compartilhe este código._`;
-
+    // 5. Send code via send-pwa-notification (using templates)
     let sendSuccess = false;
     let sendChannel = "whatsapp";
     let sendError = null;
 
-    // Try WhatsApp first
-    console.log("💬 Attempting to send via WhatsApp...");
+    // Try WhatsApp with template via send-pwa-notification
+    console.log("💬 [v3.0] Sending via send-pwa-notification with OTP template...");
     try {
-      const { data: whatsappResult, error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
+      const { data: notifResult, error: notifError } = await supabase.functions.invoke("send-pwa-notification", {
         body: {
-          phoneNumber: phoneToUse,
-          message: message
+          to: phoneToUse,
+          template: "otp",
+          variables: { "1": verificationCode },
+          channel: "whatsapp"
         }
       });
 
-      if (whatsappError) {
-        console.warn("⚠️ WhatsApp failed:", whatsappError.message);
-        sendError = whatsappError.message;
-      } else if (whatsappResult?.error) {
-        console.warn("⚠️ WhatsApp API error:", whatsappResult.error);
-        sendError = whatsappResult.error;
+      console.log("📨 send-pwa-notification response:", JSON.stringify(notifResult));
+
+      if (notifError) {
+        console.warn("⚠️ send-pwa-notification error:", notifError.message);
+        sendError = notifError.message;
+      } else if (!notifResult?.success) {
+        console.warn("⚠️ send-pwa-notification failed:", notifResult?.error);
+        sendError = notifResult?.error || "Unknown error";
+        sendChannel = notifResult?.channel || "whatsapp";
       } else {
-        console.log("✅ Code sent via WhatsApp");
+        console.log("✅ Code sent via", notifResult?.channel || "whatsapp");
         sendSuccess = true;
+        sendChannel = notifResult?.channel || "whatsapp";
       }
-    } catch (whatsappCatch: any) {
-      console.warn("⚠️ WhatsApp exception:", whatsappCatch.message);
-      sendError = whatsappCatch.message;
+    } catch (notifCatch: any) {
+      console.warn("⚠️ send-pwa-notification exception:", notifCatch.message);
+      sendError = notifCatch.message;
     }
 
-    // Fallback to SMS if WhatsApp failed
+    // If send-pwa-notification failed, try direct SMS fallback
     if (!sendSuccess) {
-      console.log("📱 Falling back to SMS...");
+      console.log("📱 Falling back to direct SMS...");
       sendChannel = "sms";
       
       const smsMessage = `KnowYOU: Seu código de verificação é ${verificationCode}. Válido por 10 minutos.`;
@@ -211,13 +205,15 @@ _Não compartilhe este código._`;
       channel: sendChannel,
       recipient: phoneToUse,
       subject: "Código de verificação PWA",
-      message_body: `Código enviado para registro PWA`,
+      message_body: `Código enviado para registro PWA via template OTP`,
       status: sendSuccess ? "success" : "failed",
       error_message: sendError,
       metadata: { 
         invitation_id: invitation.id, 
         name: invitation.name,
-        expires_in_seconds: 600 
+        expires_in_seconds: 600,
+        version: "3.0.0",
+        template_used: "otp"
       }
     });
 
@@ -232,14 +228,15 @@ _Não compartilhe este código._`;
       );
     }
 
-    console.log("=== SEND-PWA-VERIFICATION END ===");
+    console.log("=== [SEND-PWA-VERIFICATION v3.0] END ===");
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         channel: sendChannel,
         expires_in: 600, // 10 minutes in seconds
-        message: `Código enviado via ${sendChannel === "whatsapp" ? "WhatsApp" : "SMS"}` 
+        message: `Código enviado via ${sendChannel === "whatsapp" ? "WhatsApp" : "SMS"}`,
+        version: "3.0.0"
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
