@@ -1,7 +1,6 @@
 // ============================================
-// VERSAO: 3.0.0 | DEPLOY: 2026-01-02
-// CORRECAO CRITICA: Erro 63016 - Templates obrigatórios
-// REGRA: NUNCA enviar freeform, SEMPRE usar templates
+// VERSAO: 4.0.0 | DEPLOY: 2026-01-03
+// CORRECAO: WhatsApp +16039454873, SMS via Infobip
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -12,11 +11,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Twilio Config
+// Twilio Config (apenas para WhatsApp)
 const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID")!;
 const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN")!;
-const TWILIO_WHATSAPP_NUMBER = "+17727323860";
-const TWILIO_SMS_NUMBER = "+17727323860";
+const TWILIO_WHATSAPP_NUMBER = "+16039454873"; // ✅ CORRIGIDO!
 
 // ===========================================
 // TEMPLATES APROVADOS NO TWILIO CONSOLE
@@ -101,17 +99,87 @@ const TWILIO_ERROR_MESSAGES: Record<number, string> = {
 };
 
 // ===========================================
-// ENVIO VIA TWILIO COM TEMPLATE (OBRIGATÓRIO)
+// ENVIO SMS VIA INFOBIP (não Twilio!)
 // ===========================================
-async function sendWithTemplate(
+async function sendSmsViaInfobip(
   to: string,
-  channel: "whatsapp" | "sms",
+  templateName: string,
+  variables: Record<string, string>,
+): Promise<SendResult> {
+  console.log("\n[SMS-INFOBIP] ========================================");
+  console.log("[SMS-INFOBIP] Redirecionando SMS para Infobip...");
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  // Montar mensagem baseada no template
+  let smsText = "";
+
+  switch (templateName) {
+    case "otp":
+    case "resend_code":
+      smsText = `KnowYOU: Seu codigo de verificacao e ${variables["1"]}. Valido por 10 minutos.`;
+      break;
+    case "welcome":
+    case "resend_welcome":
+      smsText = `KnowYOU: Bem-vindo! Seu cadastro foi confirmado com sucesso.`;
+      break;
+    case "invitation":
+      smsText = `KnowYOU: ${variables["1"] || "Voce"} foi convidado! Acesse: ${variables["2"] || ""}`;
+      break;
+    default:
+      smsText = `KnowYOU: ${Object.values(variables).join(" ")}`;
+  }
+
+  console.log(`[SMS-INFOBIP] To: ${to.slice(0, 5)}***`);
+  console.log(`[SMS-INFOBIP] Template: ${templateName}`);
+  console.log(`[SMS-INFOBIP] Texto: ${smsText.slice(0, 50)}...`);
+  console.log("[SMS-INFOBIP] ========================================\n");
+
+  try {
+    const smsResponse = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({
+        phoneNumber: to,
+        message: smsText,
+        eventType: "notification_fallback",
+      }),
+    });
+
+    const smsData = await smsResponse.json();
+    console.log(`[SMS-INFOBIP] Response:`, JSON.stringify(smsData));
+
+    return {
+      success: smsData.success,
+      channel: "sms",
+      messageId: smsData.messageId,
+      error: smsData.error,
+    };
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[SMS-INFOBIP] 💥 EXCEÇÃO: ${errMsg}`);
+    return {
+      success: false,
+      channel: "sms",
+      error: errMsg,
+    };
+  }
+}
+
+// ===========================================
+// ENVIO WHATSAPP VIA TWILIO (com templates)
+// ===========================================
+async function sendWhatsAppViaTwilio(
+  to: string,
   templateSid: string,
   variables: Record<string, string>,
 ): Promise<SendResult> {
-  const isWhatsApp = channel === "whatsapp";
-  const fromNumber = isWhatsApp ? `whatsapp:${TWILIO_WHATSAPP_NUMBER}` : TWILIO_SMS_NUMBER;
-  const toNumber = isWhatsApp ? `whatsapp:${to}` : to;
+  const fromNumber = `whatsapp:${TWILIO_WHATSAPP_NUMBER}`;
+  const toNumber = `whatsapp:${to}`;
 
   const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
 
@@ -123,12 +191,12 @@ async function sendWithTemplate(
     ContentVariables: JSON.stringify(variables),
   });
 
-  console.log(`\n[${channel.toUpperCase()}] ========================================`);
-  console.log(`[${channel.toUpperCase()}] From: ${fromNumber}`);
-  console.log(`[${channel.toUpperCase()}] To: ${toNumber}`);
-  console.log(`[${channel.toUpperCase()}] ContentSid: ${templateSid}`);
-  console.log(`[${channel.toUpperCase()}] ContentVariables: ${JSON.stringify(variables)}`);
-  console.log(`[${channel.toUpperCase()}] ========================================\n`);
+  console.log(`\n[WHATSAPP] ========================================`);
+  console.log(`[WHATSAPP] From: ${fromNumber}`);
+  console.log(`[WHATSAPP] To: ${toNumber}`);
+  console.log(`[WHATSAPP] ContentSid: ${templateSid}`);
+  console.log(`[WHATSAPP] ContentVariables: ${JSON.stringify(variables)}`);
+  console.log(`[WHATSAPP] ========================================\n`);
 
   try {
     const response = await fetch(url, {
@@ -143,37 +211,37 @@ async function sendWithTemplate(
     const data = await response.json();
 
     if (response.ok && data.sid) {
-      console.log(`[${channel.toUpperCase()}] ✅ SUCESSO`);
-      console.log(`[${channel.toUpperCase()}] Message SID: ${data.sid}`);
-      console.log(`[${channel.toUpperCase()}] Status: ${data.status}`);
+      console.log(`[WHATSAPP] ✅ SUCESSO`);
+      console.log(`[WHATSAPP] Message SID: ${data.sid}`);
+      console.log(`[WHATSAPP] Status: ${data.status}`);
       return {
         success: true,
-        channel,
+        channel: "whatsapp",
         messageId: data.sid,
       };
     } else {
       const errorCode = data.code || 0;
       const friendlyError = TWILIO_ERROR_MESSAGES[errorCode] || data.message || "Erro desconhecido";
 
-      console.error(`[${channel.toUpperCase()}] ❌ FALHA`);
-      console.error(`[${channel.toUpperCase()}] HTTP Status: ${response.status}`);
-      console.error(`[${channel.toUpperCase()}] Error Code: ${errorCode}`);
-      console.error(`[${channel.toUpperCase()}] Error Message: ${data.message}`);
-      console.error(`[${channel.toUpperCase()}] More Info: ${data.more_info || "N/A"}`);
+      console.error(`[WHATSAPP] ❌ FALHA`);
+      console.error(`[WHATSAPP] HTTP Status: ${response.status}`);
+      console.error(`[WHATSAPP] Error Code: ${errorCode}`);
+      console.error(`[WHATSAPP] Error Message: ${data.message}`);
+      console.error(`[WHATSAPP] More Info: ${data.more_info || "N/A"}`);
 
       return {
         success: false,
-        channel,
+        channel: "whatsapp",
         error: `[${errorCode}] ${friendlyError}`,
         errorCode,
       };
     }
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[${channel.toUpperCase()}] 💥 EXCEÇÃO: ${errMsg}`);
+    console.error(`[WHATSAPP] 💥 EXCEÇÃO: ${errMsg}`);
     return {
       success: false,
-      channel,
+      channel: "whatsapp",
       error: errMsg,
     };
   }
@@ -190,7 +258,7 @@ serve(async (req) => {
 
   const startTime = Date.now();
   console.log(`\n${"=".repeat(60)}`);
-  console.log(`[SEND-PWA-NOTIFICATION] INICIANDO - ${new Date().toISOString()}`);
+  console.log(`[SEND-PWA-NOTIFICATION v4.0] INICIANDO - ${new Date().toISOString()}`);
   console.log(`${"=".repeat(60)}\n`);
 
   try {
@@ -266,8 +334,8 @@ serve(async (req) => {
       );
     }
 
-    // Verificar credenciais Twilio
-    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
+    // Verificar credenciais Twilio (apenas para WhatsApp)
+    if (channel === "whatsapp" && (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN)) {
       console.error("[ERRO] Credenciais Twilio não configuradas");
       return new Response(JSON.stringify({ success: false, error: "Credenciais Twilio não configuradas" }), {
         status: 500,
@@ -276,34 +344,36 @@ serve(async (req) => {
     }
 
     // ===========================================
-    // ENVIO COM FALLBACK (SEMPRE TEMPLATE!)
+    // ENVIO COM FALLBACK
+    // WhatsApp = Twilio (templates)
+    // SMS = Infobip (texto simples)
     // ===========================================
 
     let result: SendResult;
     const attempts: SendResult[] = [];
 
     if (channel === "sms") {
-      // CANAL SMS: Enviar apenas por SMS com template
-      console.log("\n[ESTRATÉGIA] Canal SMS solicitado - enviando SMS com template");
+      // CANAL SMS: Enviar via Infobip
+      console.log("\n[ESTRATÉGIA] Canal SMS solicitado - enviando via Infobip");
 
-      result = await sendWithTemplate(phone, "sms", templateSid, variables);
+      result = await sendSmsViaInfobip(phone, template, variables);
       attempts.push(result);
     } else {
       // CANAL WHATSAPP: Tentar WhatsApp primeiro, fallback para SMS
-      console.log("\n[ESTRATÉGIA] Canal WhatsApp - WhatsApp primeiro, fallback SMS");
+      console.log("\n[ESTRATÉGIA] Canal WhatsApp - Twilio primeiro, fallback Infobip SMS");
 
-      // Tentativa 1: WhatsApp com template
-      console.log("\n[TENTATIVA 1] WhatsApp com template");
-      result = await sendWithTemplate(phone, "whatsapp", templateSid, variables);
+      // Tentativa 1: WhatsApp via Twilio
+      console.log("\n[TENTATIVA 1] WhatsApp via Twilio");
+      result = await sendWhatsAppViaTwilio(phone, templateSid, variables);
       attempts.push(result);
 
-      // Se WhatsApp falhar, tentar SMS com template
+      // Se WhatsApp falhar, tentar SMS via Infobip
       if (!result.success) {
-        console.log("\n[FALLBACK] WhatsApp falhou, tentando SMS com template...");
+        console.log("\n[FALLBACK] WhatsApp falhou, tentando SMS via Infobip...");
 
-        // Tentativa 2: SMS com template
-        console.log("\n[TENTATIVA 2] SMS com template");
-        result = await sendWithTemplate(phone, "sms", templateSid, variables);
+        // Tentativa 2: SMS via Infobip
+        console.log("\n[TENTATIVA 2] SMS via Infobip");
+        result = await sendSmsViaInfobip(phone, template, variables);
         attempts.push(result);
       }
     }
@@ -335,6 +405,11 @@ serve(async (req) => {
           templateSid,
           requestedChannel: channel,
           processingTimeMs: Date.now() - startTime,
+          version: "4.0.0",
+          providers: {
+            whatsapp: "twilio",
+            sms: "infobip",
+          },
         },
       });
       console.log("\n[LOG] Notificação registrada no banco de dados");
@@ -353,13 +428,15 @@ serve(async (req) => {
     console.log(`${"=".repeat(60)}`);
     console.log(`Sucesso: ${result.success ? "✅ SIM" : "❌ NÃO"}`);
     console.log(`Canal usado: ${result.channel}`);
+    console.log(`Provider: ${result.channel === "whatsapp" ? "Twilio" : "Infobip"}`);
     console.log(`Message ID: ${result.messageId || "N/A"}`);
     console.log(`Erro: ${result.error || "Nenhum"}`);
     console.log(`Total de tentativas: ${attempts.length}`);
     console.log(`Tempo de processamento: ${processingTime}ms`);
 
     attempts.forEach((a, i) => {
-      console.log(`  [Tentativa ${i + 1}] ${a.channel}: ${a.success ? "✅" : "❌"} ${a.error || ""}`);
+      const provider = a.channel === "whatsapp" ? "Twilio" : "Infobip";
+      console.log(`  [Tentativa ${i + 1}] ${a.channel} (${provider}): ${a.success ? "✅" : "❌"} ${a.error || ""}`);
     });
 
     console.log(`${"=".repeat(60)}\n`);
@@ -368,6 +445,7 @@ serve(async (req) => {
       JSON.stringify({
         success: result.success,
         channel: result.channel,
+        provider: result.channel === "whatsapp" ? "twilio" : "infobip",
         messageId: result.messageId || null,
         error: result.error || null,
         attempts: attempts.length,
