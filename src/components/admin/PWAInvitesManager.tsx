@@ -180,37 +180,53 @@ export default function PWAInvitesManager() {
     try {
       const user = invite.pwa_users;
       if (!user) throw new Error("Usuário não encontrado");
-      if (!user.phone) {
+      
+      // Validate phone for WhatsApp/SMS
+      if (!user.phone && invite.channel !== "email") {
         toast.error("Usuário não possui telefone cadastrado");
         return;
       }
 
+      // Warn if email selected (not implemented)
+      if (invite.channel === "email") {
+        toast.warning("Email não implementado. Enviando via SMS...");
+      }
+
       const pwaUrl = `${window.location.origin}/pwa`;
-      const variables: Record<string, string> = {
-        "1": user.name,
-        "2": invite.access_code,
-        "3": pwaUrl,
-      };
+      const effectiveChannel = invite.channel === "email" ? "sms" : invite.channel;
+
+      console.log(`[PWA Invites] Enviando via ${effectiveChannel} para ${user.phone?.slice(0, 5)}***`);
 
       const { data, error } = await supabase.functions.invoke("send-pwa-notification", {
         body: {
           to: user.phone,
           template: "invitation",
-          variables: variables,
-          channel: invite.channel === "email" ? "sms" : invite.channel,
+          variables: {
+            "1": user.name,
+            "2": invite.access_code,
+            "3": pwaUrl,
+          },
+          channel: effectiveChannel,
           userId: user.id,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[PWA Invites] Erro na função:", error);
+        throw error;
+      }
+
+      console.log("[PWA Invites] Resposta:", data);
 
       if (data?.success) {
-        toast.success(`Convite enviado via ${data.channel === "whatsapp" ? "WhatsApp" : "SMS"}!`);
+        const channelName = data.channel === "whatsapp" ? "WhatsApp" : "SMS";
+        const attemptsInfo = data.attempts > 1 ? ` (${data.attempts} tentativas)` : "";
+        toast.success(`Convite enviado via ${channelName}!${attemptsInfo}`);
       } else {
         toast.error(`Falha ao enviar: ${data?.error || "Erro desconhecido"}`);
       }
     } catch (err) {
-      console.error("Erro ao enviar convite:", err);
+      console.error("[PWA Invites] Exceção:", err);
       toast.error("Erro ao enviar convite");
     } finally {
       setSending(null);
@@ -355,19 +371,19 @@ export default function PWAInvitesManager() {
                     <SelectItem value="whatsapp">
                       <div className="flex items-center gap-2">
                         <MessageSquare className="w-4 h-4 text-green-500" />
-                        WhatsApp
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="email">
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-blue-500" />
-                        Email
+                        WhatsApp (preferencial)
                       </div>
                     </SelectItem>
                     <SelectItem value="sms">
                       <div className="flex items-center gap-2">
                         <Smartphone className="w-4 h-4 text-purple-500" />
-                        SMS (Fallback)
+                        SMS
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="email" disabled>
+                      <div className="flex items-center gap-2 opacity-50">
+                        <Mail className="w-4 h-4 text-blue-500" />
+                        Email (em breve)
                       </div>
                     </SelectItem>
                   </SelectContent>

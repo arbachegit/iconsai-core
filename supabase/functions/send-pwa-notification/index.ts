@@ -65,7 +65,12 @@ async function sendTwilioTemplate(
   });
 
   try {
-    console.log(`[${channel.toUpperCase()}] Sending to ${toNumber} with template ${templateSid}`);
+    console.log(`[${channel.toUpperCase()}] ===============================`);
+    console.log(`[${channel.toUpperCase()}] From: ${fromNumber}`);
+    console.log(`[${channel.toUpperCase()}] To: ${toNumber}`);
+    console.log(`[${channel.toUpperCase()}] Template SID: ${templateSid}`);
+    console.log(`[${channel.toUpperCase()}] Variables: ${JSON.stringify(variables)}`);
+    console.log(`[${channel.toUpperCase()}] ===============================`);
     
     const response = await fetch(url, {
       method: "POST",
@@ -79,15 +84,30 @@ async function sendTwilioTemplate(
     const data = await response.json();
 
     if (response.ok) {
-      console.log(`[${channel.toUpperCase()}] Success: ${data.sid}`);
+      console.log(`[${channel.toUpperCase()}] ✅ Success: ${data.sid}`);
       return { success: true, channel, messageId: data.sid };
     } else {
-      console.error(`[${channel.toUpperCase()}] Failed: ${data.message}`);
-      return { success: false, channel, error: data.message || "Unknown error" };
+      console.error(`[${channel.toUpperCase()}] ❌ Failed:`);
+      console.error(`[${channel.toUpperCase()}] Status: ${response.status}`);
+      console.error(`[${channel.toUpperCase()}] Code: ${data.code}`);
+      console.error(`[${channel.toUpperCase()}] Message: ${data.message}`);
+      console.error(`[${channel.toUpperCase()}] More Info: ${data.more_info || 'N/A'}`);
+      
+      // Map specific Twilio error codes
+      const errorMessages: Record<number, string> = {
+        63016: "Template não aprovado ou mensagem freeform fora da janela de 24h",
+        63024: "Número não habilitado para WhatsApp",
+        21608: "Número não registrado no WhatsApp",
+        21610: "Número bloqueado",
+      };
+      
+      const friendlyError = errorMessages[data.code] || data.message || "Erro desconhecido";
+      
+      return { success: false, channel, error: `[${data.code}] ${friendlyError}` };
     }
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[${channel.toUpperCase()}] Exception: ${errMsg}`);
+    console.error(`[${channel.toUpperCase()}] 💥 Exception: ${errMsg}`);
     return { success: false, channel, error: errMsg };
   }
 }
@@ -156,10 +176,16 @@ serve(async (req) => {
   try {
     const { to, template, variables, channel = "whatsapp", userId } = await req.json() as NotificationRequest;
 
-    console.log(`[REQUEST] template=${template}, channel=${channel}, to=${to}`);
+    console.log(`\n========== SEND-PWA-NOTIFICATION ==========`);
+    console.log(`[REQUEST] Template: ${template}`);
+    console.log(`[REQUEST] Channel: ${channel}`);
+    console.log(`[REQUEST] To: ${to?.slice(0, 5)}***`);
+    console.log(`[REQUEST] Variables: ${JSON.stringify(variables)}`);
+    console.log(`============================================\n`);
 
     // Validate required fields
     if (!to || !template || !variables) {
+      console.error("[ERROR] Missing required fields");
       return new Response(
         JSON.stringify({ success: false, error: "Campos obrigatórios: to, template, variables" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -168,11 +194,18 @@ serve(async (req) => {
 
     const templateSid = TEMPLATES[template];
     if (!templateSid) {
+      console.error(`[ERROR] Invalid template: ${template}`);
+      console.error(`[ERROR] Available templates: ${Object.keys(TEMPLATES).join(", ")}`);
       return new Response(
-        JSON.stringify({ success: false, error: `Template inválido: ${template}` }),
+        JSON.stringify({ 
+          success: false, 
+          error: `Template inválido: ${template}. Disponíveis: ${Object.keys(TEMPLATES).join(", ")}` 
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`[TEMPLATE] Using SID: ${templateSid}`);
 
     // Normalize phone
     const phone = normalizePhone(to);
@@ -238,7 +271,17 @@ serve(async (req) => {
       metadata: { attempts, variables },
     });
 
-    console.log(`[RESULT] success=${result.success}, channel=${result.channel}, attempts=${attempts.length}`);
+    // Detailed result logging
+    console.log(`\n========== RESULT ==========`);
+    console.log(`[RESULT] Success: ${result.success}`);
+    console.log(`[RESULT] Channel: ${result.channel}`);
+    console.log(`[RESULT] Message ID: ${result.messageId || 'N/A'}`);
+    console.log(`[RESULT] Error: ${result.error || 'None'}`);
+    console.log(`[RESULT] Total attempts: ${attempts.length}`);
+    attempts.forEach((a, i) => {
+      console.log(`[ATTEMPT ${i+1}] ${a.channel}: ${a.success ? '✅' : '❌'} ${a.error || ''}`);
+    });
+    console.log(`============================\n`);
 
     return new Response(
       JSON.stringify({
