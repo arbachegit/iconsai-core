@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
-// AUDITORIA: Forcado redeploy - Lovable Cloud
+// VERSAO: 3.0.0 | DEPLOY: 2026-01-03
+// MIGRACAO: Templates Twilio - Corrige erro 63016
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -24,7 +24,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log("=== RESEND-INVITATION-CODE START ===");
+  console.log("=== [RESEND-INVITATION-CODE v3.0] START ===");
   const results: SendResult[] = [];
 
   try {
@@ -78,30 +78,19 @@ serve(async (req) => {
     
     const { name, email, phone, has_platform_access, has_app_access, status } = invitation;
     
-    // =====================================================
-    // REGRA OBRIGATÓRIA DE CANAL:
-    // - PLATAFORMA → EMAIL + WHATSAPP (se tiver phone)
-    // - APP (PWA) → WHATSAPP ONLY (phone obrigatório)
-    // - AMBOS → EMAIL + WHATSAPP (plataforma) + WHATSAPP (app)
-    // =====================================================
-
     console.log("📋 Access check:", { has_platform_access, has_app_access, hasPhone: !!phone, product });
 
     // Determine what to send based on product selection and access
     const shouldSendPlatform = (product === "platform" || product === "both") && has_platform_access;
     const shouldSendApp = (product === "app" || product === "both") && has_app_access;
 
-    // Check Twilio credentials
-    const hasTwilioSid = !!Deno.env.get("TWILIO_ACCOUNT_SID");
-    const hasTwilioToken = !!Deno.env.get("TWILIO_AUTH_TOKEN");
-    const hasTwilioFrom = !!Deno.env.get("TWILIO_FROM_NUMBER");
-    const hasTwilioCredentials = hasTwilioSid && hasTwilioToken && hasTwilioFrom;
+    // Check credentials
     const hasResendKey = !!Deno.env.get("RESEND_API_KEY");
 
-    console.log("🔑 Credentials:", { hasResendKey, hasTwilioCredentials });
+    console.log("🔑 Credentials:", { hasResendKey });
 
     // =====================================================
-    // PLATAFORMA: Email obrigatório + WhatsApp informativo
+    // PLATAFORMA: Email obrigatório + SMS informativo
     // =====================================================
     if (shouldSendPlatform) {
       console.log("🖥️ Processing PLATFORM resend...");
@@ -179,7 +168,7 @@ serve(async (req) => {
             message_body: "Email de lembrete para plataforma",
             status: emailError || emailData?.error ? "failed" : "success",
             error_message: emailError?.message || emailData?.error || null,
-            metadata: { token, product: "platform", action: "resend", rule_version: "mandatory_v1" }
+            metadata: { token, product: "platform", action: "resend", rule_version: "v3.0" }
           });
         } catch (emailCatch: any) {
           console.error("❌ Platform email exception:", emailCatch);
@@ -187,104 +176,90 @@ serve(async (req) => {
         }
       }
 
-      // WHATSAPP para Plataforma (se tiver phone e não tem APP - informativo)
-      if (phone && hasTwilioCredentials && !has_app_access) {
+      // SMS for Platform (if has phone and no APP - informational via SMS)
+      if (phone && !has_app_access) {
+        console.log("📱 [v3.0] Sending platform info via SMS (not WhatsApp)...");
         try {
-          const msg = `*KnowYOU*
+          const smsMsg = `KnowYOU: Reenviamos email com convite para Plataforma. Acesse pelo computador.`;
 
-Olá ${name},
-
-Reenviamos um email com seu convite para a Plataforma KnowYOU.
-
-Acesse pelo computador ou tablet para completar seu cadastro.
-
-_Verifique também sua pasta de spam_`;
-
-          const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
-            body: { phoneNumber: phone, message: msg }
+          const { data: smsData, error: smsError } = await supabase.functions.invoke("send-sms", {
+            body: { phoneNumber: phone, message: smsMsg }
           });
 
-          if (whatsappError || whatsappData?.error) {
-            console.error("❌ Platform info WhatsApp error:", whatsappError || whatsappData?.error);
-            results.push({ channel: "whatsapp", product: "platform_info", success: false, error: whatsappError?.message || whatsappData?.error });
+          if (smsError || smsData?.error) {
+            console.error("❌ Platform info SMS error:", smsError || smsData?.error);
+            results.push({ channel: "sms", product: "platform_info", success: false, error: smsError?.message || smsData?.error });
           } else {
-            console.log("✅ Platform info WhatsApp sent");
-            results.push({ channel: "whatsapp", product: "platform_info", success: true });
+            console.log("✅ Platform info SMS sent");
+            results.push({ channel: "sms", product: "platform_info", success: true });
           }
 
-          // Log WhatsApp attempt
+          // Log SMS attempt
           await supabase.from("notification_logs").insert({
             event_type: "invitation_resend",
-            channel: "whatsapp",
+            channel: "sms",
             recipient: phone,
             subject: "Reenvio Plataforma Info",
-            message_body: msg,
-            status: whatsappError || whatsappData?.error ? "failed" : "success",
-            error_message: whatsappError?.message || whatsappData?.error || null,
-            metadata: { token, product: "platform_info", action: "resend", rule_version: "mandatory_v1" }
+            message_body: smsMsg,
+            status: smsError || smsData?.error ? "failed" : "success",
+            error_message: smsError?.message || smsData?.error || null,
+            metadata: { token, product: "platform_info", action: "resend", rule_version: "v3.0" }
           });
-        } catch (whatsappCatch: any) {
-          console.error("❌ Platform info WhatsApp exception:", whatsappCatch);
-          results.push({ channel: "whatsapp", product: "platform_info", success: false, error: whatsappCatch.message });
+        } catch (smsCatch: any) {
+          console.error("❌ Platform info SMS exception:", smsCatch);
+          results.push({ channel: "sms", product: "platform_info", success: false, error: smsCatch.message });
         }
       }
     }
 
     // =====================================================
-    // APP (PWA): WHATSAPP OBRIGATÓRIO (com link)
+    // APP (PWA): Template via send-pwa-notification
     // =====================================================
     if (shouldSendApp) {
-      console.log("📱 Processing APP resend...");
+      console.log("📱 [v3.0] Processing APP resend via template...");
       
       if (!phone) {
         console.error("❌ APP requires phone but none provided");
         results.push({ channel: "whatsapp", product: "app", success: false, error: "Telefone obrigatório para APP" });
-      } else if (!hasTwilioCredentials) {
-        const missing = [];
-        if (!hasTwilioSid) missing.push("TWILIO_ACCOUNT_SID");
-        if (!hasTwilioToken) missing.push("TWILIO_AUTH_TOKEN");
-        if (!hasTwilioFrom) missing.push("TWILIO_FROM_NUMBER");
-        const errorMsg = `Credenciais Twilio incompletas: ${missing.join(", ")}`;
-        console.error("❌ " + errorMsg);
-        results.push({ channel: "whatsapp", product: "app", success: false, error: errorMsg });
       } else {
         try {
-          const msg = `*KnowYOU APP*
-
-Olá ${name}, você foi convidado!
-
-Acesse pelo celular para ter seu assistente sempre com você.
-
-Link: ${appUrl}
-
-_Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-BR')}_`;
-
-          const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
-            body: { phoneNumber: phone, message: msg }
+          // Use send-pwa-notification with invitation template
+          const { data: notifData, error: notifError } = await supabase.functions.invoke("send-pwa-notification", {
+            body: {
+              to: phone,
+              template: "invitation",
+              variables: { 
+                "1": name || "Usuário",
+                "2": appUrl
+              },
+              channel: "whatsapp"
+            }
           });
 
-          if (whatsappError || whatsappData?.error) {
-            console.error("❌ APP WhatsApp error:", whatsappError || whatsappData?.error);
-            results.push({ channel: "whatsapp", product: "app", success: false, error: whatsappError?.message || whatsappData?.error });
+          console.log("📨 send-pwa-notification response:", JSON.stringify(notifData));
+
+          if (notifError || !notifData?.success) {
+            console.error("❌ APP notification error:", notifError || notifData?.error);
+            results.push({ channel: notifData?.channel || "whatsapp", product: "app", success: false, error: notifError?.message || notifData?.error });
           } else {
-            console.log("✅ APP WhatsApp sent");
-            results.push({ channel: "whatsapp", product: "app", success: true });
+            console.log("✅ APP notification sent via", notifData?.channel);
+            results.push({ channel: notifData?.channel || "whatsapp", product: "app", success: true });
           }
 
-          // Log WhatsApp attempt
+          // Log attempt
           await supabase.from("notification_logs").insert({
             event_type: "invitation_resend",
-            channel: "whatsapp",
+            channel: notifData?.channel || "whatsapp",
             recipient: phone,
             subject: "Reenvio APP",
-            message_body: msg,
-            status: whatsappError || whatsappData?.error ? "failed" : "success",
-            error_message: whatsappError?.message || whatsappData?.error || null,
-            metadata: { token, product: "app", action: "resend", rule_version: "mandatory_v1" }
+            message_body: `Convite APP via template invitation`,
+            status: notifError || !notifData?.success ? "failed" : "success",
+            error_message: notifError?.message || notifData?.error || null,
+            metadata: { token, product: "app", action: "resend", rule_version: "v3.0", template: "invitation" }
           });
-        } catch (whatsappCatch: any) {
-          console.error("❌ APP WhatsApp exception:", whatsappCatch);
-          results.push({ channel: "whatsapp", product: "app", success: false, error: whatsappCatch.message });
+        } catch (notifCatch: any) {
+          console.error("❌ APP notification exception:", notifCatch);
+          results.push({ channel: "whatsapp", product: "app", success: false, error: notifCatch.message });
         }
       }
     }
@@ -304,7 +279,7 @@ _Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-B
     const failCount = results.filter(r => !r.success).length;
     
     console.log(`📊 Results: ${successCount} success, ${failCount} failed`);
-    console.log("=== RESEND-INVITATION-CODE END ===");
+    console.log("=== [RESEND-INVITATION-CODE v3.0] END ===");
 
     // Log summary
     await supabase.from("notification_logs").insert({
@@ -314,7 +289,7 @@ _Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-B
       subject: `Reenvio: ${product}`,
       message_body: results.map(r => `${r.success ? '✅' : '❌'} ${r.channel}/${r.product}`).join(", "),
       status: successCount > 0 ? "success" : "failed",
-      metadata: { token, product, status: invitation.status, results, successCount, failCount, rule_version: "mandatory_v1" }
+      metadata: { token, product, status: invitation.status, results, successCount, failCount, rule_version: "v3.0" }
     });
 
     return new Response(
@@ -322,7 +297,8 @@ _Convite válido até ${new Date(invitation.expires_at).toLocaleDateString('pt-B
         success: successCount > 0,
         results: results.map(r => `${r.success ? '✅' : '❌'} ${r.channel}/${r.product}: ${r.error || 'OK'}`),
         remainingResends: 10 - ((invitation.resend_count || 0) + 1),
-        details: results
+        details: results,
+        version: "3.0.0"
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

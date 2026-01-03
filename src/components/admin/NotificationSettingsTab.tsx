@@ -932,21 +932,23 @@ export default function NotificationSettingsTab() {
 
     setTestingWhatsapp(true);
     try {
-      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+      // [v3.0] Use send-pwa-notification with OTP template for testing
+      const { data, error } = await supabase.functions.invoke('send-pwa-notification', {
         body: {
-          phoneNumber: targetPhone,
-          message: '✅ Teste de notificação KnowYOU - WhatsApp configurado corretamente!',
-          eventType: 'test'
+          to: targetPhone,
+          template: "otp",
+          variables: { "1": "123456" }, // Test code
+          channel: "whatsapp"
         }
       });
 
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Erro desconhecido');
       
-      toast.success('WhatsApp de teste enviado com sucesso!');
+      toast.success(`Teste enviado via ${data?.channel || 'WhatsApp'} com sucesso!`);
     } catch (error: any) {
       console.error('Error testing WhatsApp:', error);
-      toast.error(`Erro ao enviar WhatsApp: ${error.message}`);
+      toast.error(`Erro ao enviar teste: ${error.message}`);
     } finally {
       setTestingWhatsapp(false);
     }
