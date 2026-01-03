@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 4.1.0 | DEPLOY: 2026-01-03
-// FIX: Templates Authentication forcam SMS
+// VERSAO: 4.2.0 | DEPLOY: 2026-01-03
+// FIX: Template invitation com 3 variáveis
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -55,7 +55,7 @@ const TEMPLATES: Record<string, TemplateConfig> = {
     sid: "HX56dca3b12701c186f1f3daa58f5785c3",
     description: "Convite de acesso ao PWA",
     type: "utility",
-    variables: 2, // {{1}} = nome, {{2}} = quem convidou
+    variables: 3, // {{1}} = nome, {{2}} = quem convidou, {{3}} = caminho URL
   },
   resend_welcome: {
     sid: "HX9ccbe49ea4063c9155c3ebd67738556e",
@@ -148,7 +148,7 @@ async function sendSmsViaInfobip(
       smsText = `KnowYOU: Bem-vindo! Seu cadastro foi confirmado com sucesso.`;
       break;
     case "invitation":
-      smsText = `KnowYOU: ${variables["1"] || "Voce"} foi convidado! Acesse: ${variables["2"] || ""}`;
+      smsText = `KnowYOU: ${variables["1"] || "Você"} foi convidado por ${variables["2"] || "Equipe KnowYOU"}! Acesse: https://hmv.knowyou.app/${variables["3"] || ""}`;
       break;
     default:
       smsText = `KnowYOU: ${Object.values(variables).join(" ")}`;

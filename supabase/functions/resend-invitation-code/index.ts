@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 3.0.0 | DEPLOY: 2026-01-03
-// MIGRACAO: Templates Twilio - Corrige erro 63016
+// VERSAO: 3.1.0 | DEPLOY: 2026-01-03
+// FIX: Template invitation com 3 variáveis
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -228,10 +228,11 @@ serve(async (req) => {
             body: {
               to: phone,
               template: "invitation",
-              variables: { 
-                "1": name || "Usuário",
-                "2": appUrl
-              },
+        variables: { 
+          "1": name || "Usuário",
+          "2": "Equipe KnowYOU",
+          "3": `pwa-register?token=${token}`
+        },
               channel: "whatsapp"
             }
           });
