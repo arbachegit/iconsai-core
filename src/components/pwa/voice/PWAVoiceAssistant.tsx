@@ -1,10 +1,9 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Smartphone } from "lucide-react";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
 import { SplashScreen } from "./SplashScreen";
 import { VoicePlayerBox } from "./VoicePlayerBox";
-// CORREÇÃO 1: MicrophoneOrb NÃO é mais importado aqui - ele fica DENTRO dos módulos
 import { ModuleSelector } from "./ModuleSelector";
 import { ModuleHeader } from "./ModuleHeader";
 import { HeaderActions } from "./HeaderActions";
@@ -20,7 +19,6 @@ import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { PWAAuthGate } from "@/components/gates/PWAAuthGate";
 
 interface PWAVoiceAssistantProps {
-  /** When true, component is embedded (simulator) - no global scroll lock */
   embedded?: boolean;
 }
 
@@ -33,14 +31,11 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     playerState,
     setPlayerState,
     setAuthenticated,
-    resetSession,
     conversations,
     userName,
-    isFirstVisit,
-    setFirstVisit,
   } = usePWAVoiceStore();
 
-  const { config } = useConfigPWA();
+  const { config, isLoading: isConfigLoading } = useConfigPWA();
   const { speak, isPlaying, isLoading, progress, stop } = useTextToSpeech({ voice: config.ttsVoice });
 
   const [isMobile, setIsMobile] = useState(true);
@@ -50,43 +45,41 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   const [interimTranscript, setInterimTranscript] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [isConversationsOpen, setIsConversationsOpen] = useState(false);
-  const [playingConversationId, setPlayingConversationId] = useState<string | null>(null);
   const [lastSpokenText, setLastSpokenText] = useState<string | null>(null);
 
-  // Lock scroll on html/body only for real PWA (not embedded)
+  // Controle de autoplay - executa UMA vez por sessão
+  const hasPlayedWelcome = useRef(false);
+  const welcomeAttempted = useRef(false);
+
+  // Lock scroll
   useEffect(() => {
     if (embedded) return;
-
     document.documentElement.classList.add("pwa-scroll-lock");
     document.body.classList.add("pwa-scroll-lock");
-
     return () => {
       document.documentElement.classList.remove("pwa-scroll-lock");
       document.body.classList.remove("pwa-scroll-lock");
     };
   }, [embedded]);
 
-  // Check if mobile device - bypass for embedded (simulator)
+  // Check mobile
   useEffect(() => {
-    // Se está embedded (simulador), NUNCA mostrar aviso de desktop
     if (embedded) {
       setIsMobile(true);
       setShowDesktopWarning(false);
       return;
     }
-
     const checkMobile = () => {
       const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
       setIsMobile(mobile);
       setShowDesktopWarning(!mobile);
     };
-
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, [embedded]);
 
-  // Update player state based on TTS
+  // Update player state
   useEffect(() => {
     if (isLoading) {
       setPlayerState("loading");
@@ -97,17 +90,39 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     }
   }, [isLoading, isPlaying, setPlayerState]);
 
-  // Welcome message when entering home (only on first visit)
+  // ============================================================
+  // AUTOPLAY: Executa welcomeText da configuração ao entrar na HOME
+  // ============================================================
   useEffect(() => {
-    if (appState === "idle" && isFirstVisit && config.welcomeText) {
+    // Condições para executar autoplay:
+    // 1. Estamos na HOME (idle)
+    // 2. Config já carregou
+    // 3. Ainda não tentamos o autoplay nesta sessão
+    // 4. Temos texto de boas-vindas
+    if (appState === "idle" && !isConfigLoading && !welcomeAttempted.current && config.welcomeText) {
+      welcomeAttempted.current = true;
+
+      // Substituir [name] pelo nome do usuário se disponível
       const greeting = config.welcomeText.replace("[name]", userName || "");
       setLastSpokenText(greeting);
-      speak(greeting);
-      setFirstVisit(false);
-    }
-  }, [appState, isFirstVisit, userName, speak, setFirstVisit, config.welcomeText]);
 
-  // Handle replay of last spoken text
+      // Pequeno delay para garantir que a UI está pronta
+      const timer = setTimeout(() => {
+        speak(greeting)
+          .then(() => {
+            hasPlayedWelcome.current = true;
+          })
+          .catch((err) => {
+            console.warn("Autoplay bloqueado pelo navegador:", err);
+            // Se autoplay falhar, o usuário pode clicar no botão play
+          });
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }
+  }, [appState, isConfigLoading, config.welcomeText, userName, speak]);
+
+  // Replay do último texto falado
   const handleReplay = useCallback(() => {
     if (lastSpokenText) {
       speak(lastSpokenText);
@@ -138,7 +153,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
               .map((c) => c.summary || "")
               .filter(Boolean)
               .join(". ")}`
-          : "Resumo da sua sessão. Você pode enviar para o WhatsApp quando quiser.";
+          : "Resumo da sua sessão.";
       await speak(summaryText);
     } finally {
       setIsSummarizing(false);
@@ -147,21 +162,6 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
 
   const handleOpenConversations = () => {
     setIsConversationsOpen(true);
-  };
-
-  const handlePlayConversation = (id: string) => {
-    if (playingConversationId === id) {
-      setPlayingConversationId(null);
-      // TODO: Stop audio playback
-    } else {
-      setPlayingConversationId(id);
-      // TODO: Play audio for this conversation
-    }
-  };
-
-  const handleTranscribe = (id: string) => {
-    // The modal handles transcript display via expandedId state
-    console.log("Transcribe conversation:", id);
   };
 
   const renderModule = () => {
@@ -179,7 +179,10 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     }
   };
 
-  // Desktop warning screen
+  // Filtrar conversas por módulo ativo
+  const filteredConversations = activeModule ? conversations.filter((c) => c.module === activeModule) : conversations;
+
+  // Desktop warning
   if (showDesktopWarning) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -195,35 +198,24 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
           >
             <Smartphone className="w-12 h-12 text-primary" />
           </motion.div>
-
           <h1 className="text-2xl font-bold text-foreground mb-4">Acesse pelo celular</h1>
-
           <p className="text-muted-foreground mb-6">
             O KnowYOU Voice Assistant foi projetado para dispositivos móveis. Acesse{" "}
-            <span className="text-primary font-medium">hmv.knowyou.app</span> pelo seu celular para a melhor
-            experiência.
+            <span className="text-primary font-medium">hmv.knowyou.app</span> pelo seu celular.
           </p>
-
-          <div className="p-4 bg-card rounded-xl border border-border">
-            <p className="text-sm text-muted-foreground">
-              Escaneie o QR Code ou digite o endereço no navegador do seu celular
-            </p>
-          </div>
         </motion.div>
       </div>
     );
   }
 
-  // Main PWA content wrapped with Auth Gate
+  // Main content
   const renderContent = ({ fingerprint, pwaAccess }: { fingerprint: string; pwaAccess: string[] }) => {
-    // Sync auth state with store when authenticated
     useEffect(() => {
       if (fingerprint) {
         setAuthenticated(true, fingerprint);
       }
     }, [fingerprint]);
 
-    // Use absolute positioning for embedded mode, fixed for real PWA
     const wrapperClass = embedded
       ? "absolute inset-0 bg-background flex flex-col pwa-no-select overflow-hidden"
       : "fixed inset-0 bg-background flex flex-col pwa-no-select pwa-fullscreen overflow-hidden touch-none";
@@ -232,112 +224,105 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
       <div className={wrapperClass}>
         <AnimatePresence mode="wait">
           {/* Splash Screen */}
-          {appState === "splash" && <SplashScreen key="splash" onComplete={handleSplashComplete} embedded={embedded} />}
+          {appState === "splash" && (
+            <SplashScreen
+              key="splash"
+              onComplete={handleSplashComplete}
+              embedded={embedded}
+              duration={config.splashDurationMs || 3000}
+            />
+          )}
 
-          {/* Home - Module Selection */}
+          {/* ============================================================
+              HOME - MINIMALISTA
+              - Logo + subtítulo
+              - VoicePlayerBox (autoplay + replay)
+              - Grid de 4 módulos (compacto)
+              - SEM textos extras
+              - SEM HeaderActions (botão histórico)
+              ============================================================ */}
           {(appState === "idle" || appState === "welcome") && (
             <motion.div
               key="home"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col safe-area-inset overflow-hidden"
+              className="flex-1 flex flex-col overflow-hidden"
             >
-              {/* ========================================================
-                  CORREÇÃO 1: Header SEM HeaderActions na HOME
-                  A página inicial é APENAS apresentação.
-                  O botão de histórico NÃO deve aparecer aqui.
-                  ======================================================== */}
-              <div className="flex items-center justify-center py-4 px-4">
-                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
+              {/* Header - Apenas logo centralizado */}
+              <div className="pt-4 pb-2 px-4">
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center">
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                     KnowYOU
                   </h1>
+                  <p className="text-xs text-muted-foreground mt-1">Seu assistente de voz inteligente</p>
                 </motion.div>
-                {/* REMOVIDO: HeaderActions não aparece na HOME */}
               </div>
 
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="text-muted-foreground text-center -mt-2 mb-4"
-              >
-                Seu assistente de voz inteligente
-              </motion.p>
-
-              {/* Voice Player Box */}
-              <div className="px-4 mb-4">
+              {/* VoicePlayerBox - Compacto */}
+              <div className="px-6 py-2">
                 <VoicePlayerBox state={playerState} onPlay={handleReplay} onPause={stop} audioProgress={progress} />
               </div>
 
-              {/* ========================================================
-                  CORREÇÃO 1: MICROFONE REMOVIDO DA HOME!
-                  O microfone é PROIBIDO na página inicial.
-                  A página inicial é só de apresentação.
-                  O microfone aparece DENTRO de cada módulo.
-                  ======================================================== */}
-
-              {/* Module Selection */}
-              <div className="flex-1 overflow-y-auto">
-                <p className="text-center text-sm text-muted-foreground mb-2">Escolha um módulo</p>
+              {/* Grid de Módulos - Ocupa o espaço restante */}
+              <div className="flex-1 px-4 pb-2 overflow-hidden">
                 <ModuleSelector onSelect={handleModuleSelect} />
               </div>
 
-              {/* Footer */}
-              <div className="py-4 text-center">
-                <p className="text-xs text-muted-foreground">KnowYOU © 2025 • hmv.knowyou.app</p>
+              {/* Footer mínimo */}
+              <div className="py-2 text-center">
+                <p className="text-[10px] text-muted-foreground/60">KnowYOU © 2025</p>
               </div>
             </motion.div>
           )}
 
-          {/* Active Module */}
+          {/* ============================================================
+              MÓDULO ATIVO
+              - Header com botão voltar + HeaderActions (histórico)
+              - Conteúdo do módulo (com microfone interno)
+              - Footer de navegação
+              ============================================================ */}
           {appState === "module" && activeModule && (
             <motion.div
               key="module"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="flex-1 flex flex-col"
+              className="flex-1 flex flex-col overflow-hidden"
             >
-              {/* Module Header with actions - AQUI SIM TEM HeaderActions */}
-              <div className="flex items-center justify-between px-4">
+              {/* Header do módulo COM HeaderActions */}
+              <div className="flex items-center justify-between px-4 py-2">
                 <div className="flex-1">
                   <ModuleHeader moduleId={activeModule} onBack={handleBackToHome} />
                 </div>
-                {/* HeaderActions SÓ aparece nos MÓDULOS, não na HOME */}
                 <HeaderActions
                   onSummarize={handleSummarize}
                   onOpenChat={handleOpenConversations}
-                  hasConversations={messages.length > 0 || conversations.length > 0}
+                  hasConversations={filteredConversations.length > 0 || messages.length > 0}
                   isSummarizing={isSummarizing}
                 />
               </div>
 
-              {/* Transcript Area */}
-              <TranscriptArea messages={messages} interimTranscript={interimTranscript} isListening={isListening} />
+              {/* Conteúdo do módulo */}
+              <div className="flex-1 overflow-hidden">{renderModule()}</div>
 
-              {/* Module content - O MICROFONE ESTÁ DENTRO DE CADA MÓDULO */}
-              <div className="flex-1 overflow-hidden pwa-scrollbar">{renderModule()}</div>
-
-              {/* Footer Modules for quick navigation */}
+              {/* Footer de navegação entre módulos */}
               <FooterModules activeModule={activeModule} onSelectModule={handleModuleSelect} showIndicators={true} />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Conversation Drawer (slides from top) */}
+        {/* Drawer de conversas */}
         <ConversationDrawer
           isOpen={isConversationsOpen}
           onClose={() => setIsConversationsOpen(false)}
-          conversations={conversations}
+          conversations={filteredConversations}
           embedded={embedded}
         />
       </div>
     );
   };
 
-  // Se embedded (simulador), bypass auth completamente
   if (embedded) {
     return renderContent({
       fingerprint: "simulator-embedded",
@@ -345,7 +330,6 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     });
   }
 
-  // Wrap everything in PWAAuthGate for real PWA
   return <PWAAuthGate>{(data) => renderContent(data)}</PWAAuthGate>;
 };
 
