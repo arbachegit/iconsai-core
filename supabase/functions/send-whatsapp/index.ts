@@ -1,198 +1,253 @@
 // ============================================
-// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
-// AUDITORIA: Forcado redeploy - Lovable Cloud
+// VERSAO: 3.0.0 | DEPLOY: 2026-01-02
+// CORRECAO CRITICA: Erro 63016 - Templates obrigatórios
+// REGRA: PROIBIDO enviar freeform (message/Body)
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
-// Sanitize phone number: remove spaces, parentheses, hyphens
-const sanitizePhoneNumber = (phone: string): string => {
-  let numbers = phone.replace(/\D/g, '');
-  
-  // Add Brazil country code if needed
-  if (numbers.length === 11) {
-    numbers = '55' + numbers;
-  } else if (numbers.length === 10) {
-    numbers = '55' + numbers;
-  }
-  
-  return '+' + numbers;
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Map common Twilio error codes to user-friendly messages
-const twilioErrorMessages: Record<string, string> = {
-  '21608': 'Número não registrado no WhatsApp',
-  '21614': 'Número de destino inválido',
-  '21211': 'Número de origem inválido - verifique TWILIO_FROM_NUMBER',
-  '21408': 'Número não está no sandbox do Twilio',
-  '21610': 'Número bloqueado ou não pode receber mensagens',
-  '20003': 'Autenticação falhou - verifique Account SID e Auth Token',
-  '20404': 'Recurso não encontrado - verifique TWILIO_FROM_NUMBER',
-  '63015': 'Número não está no sandbox - use WhatsApp Business',
-  '63016': 'Template não aprovado pelo WhatsApp',
-  '63024': 'Destinatário inválido - número não habilitado para WhatsApp ou não aceitou os Termos de Serviço',
+// ===========================================
+// NORMALIZAÇÃO DE TELEFONE (E.164)
+// ===========================================
+function sanitizePhoneNumber(phone: string): string {
+  let numbers = phone.replace(/\D/g, "");
+
+  // Adicionar código do Brasil se necessário
+  if (numbers.length === 11 || numbers.length === 10) {
+    numbers = "55" + numbers;
+  }
+
+  return "+" + numbers;
+}
+
+// ===========================================
+// MAPEAMENTO DE ERROS TWILIO
+// ===========================================
+const TWILIO_ERROR_MESSAGES: Record<string, string> = {
+  "21608": "Número não registrado no WhatsApp",
+  "21614": "Número de destino inválido",
+  "21211": "Número de origem inválido - verifique TWILIO_FROM_NUMBER",
+  "21408": "Número não está no sandbox do Twilio",
+  "21610": "Número bloqueado ou não pode receber mensagens",
+  "20003": "Autenticação falhou - verifique Account SID e Auth Token",
+  "20404": "Recurso não encontrado - verifique TWILIO_FROM_NUMBER",
+  "63015": "Número não está no sandbox - use WhatsApp Business",
+  "63016": "Template não aprovado ou mensagem freeform fora da janela de 24h",
+  "63024": "Número não habilitado para WhatsApp Business",
+  "63025": "Taxa de envio excedida",
 };
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
-  console.log("=== SEND-WHATSAPP START ===");
+  console.log("\n=== SEND-WHATSAPP v3.0 START ===");
+  console.log(`[TIMESTAMP] ${new Date().toISOString()}`);
 
   try {
     const body = await req.json();
-    
-    // Retrocompatibility: accept both 'phoneNumber' and 'to'
+
+    // Aceitar tanto 'phoneNumber' quanto 'to' para retrocompatibilidade
     const rawPhoneNumber = body.phoneNumber || body.to;
     const { message, eventType, contentSid, contentVariables } = body;
-    
-    console.log('📥 Request body keys:', Object.keys(body));
-    
-    // Validações
+
+    console.log("[REQUEST] Keys recebidas:", Object.keys(body));
+    console.log("[REQUEST] contentSid:", contentSid || "NÃO INFORMADO");
+    console.log("[REQUEST] message:", message ? `"${message.slice(0, 30)}..."` : "NÃO INFORMADO");
+
+    // ===========================================
+    // VALIDAÇÃO: TELEFONE OBRIGATÓRIO
+    // ===========================================
     if (!rawPhoneNumber) {
-      console.error('❌ Missing phoneNumber/to');
-      return new Response(
-        JSON.stringify({ success: false, error: 'phoneNumber ou to é obrigatório' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error("❌ [ERRO] Campo phoneNumber/to é obrigatório");
+      return new Response(JSON.stringify({ success: false, error: "phoneNumber ou to é obrigatório" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
-    
-    if (!message && !contentSid) {
-      console.error('❌ Missing message or contentSid');
+
+    // ===========================================
+    // VALIDAÇÃO CRÍTICA: PROIBIR FREEFORM!
+    // ===========================================
+    if (!contentSid) {
+      console.error("❌ [ERRO CRÍTICO] contentSid é OBRIGATÓRIO!");
+      console.error("❌ [ERRO] Envio de mensagem freeform (message/Body) é PROIBIDO!");
+      console.error("❌ [ERRO] Use send-pwa-notification com template ou forneça contentSid");
+
+      // Se tentou enviar message sem contentSid, rejeitar
+      if (message) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "ERRO 63016: Envio de mensagem freeform é PROIBIDO. Use templates aprovados via contentSid.",
+            code: 63016,
+            help: "Use a edge function send-pwa-notification com um template válido (otp, welcome, invitation, resend_code, resend_welcome)",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
       return new Response(
-        JSON.stringify({ success: false, error: 'message ou contentSid é obrigatório' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: "contentSid é obrigatório. Forneça um template SID aprovado.",
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     // Sanitizar telefone
     const phoneNumber = sanitizePhoneNumber(rawPhoneNumber);
-    console.log(`📱 Phone: ${phoneNumber.slice(0, 5)}***${phoneNumber.slice(-2)}`);
+    console.log(`📱 [TELEFONE] Original: ${rawPhoneNumber}`);
+    console.log(`📱 [TELEFONE] Normalizado: ${phoneNumber}`);
 
-    // Validar formato
+    // Validar formato E.164
     if (!phoneNumber.match(/^\+[1-9]\d{10,14}$/)) {
-      console.error('❌ Invalid phone format:', phoneNumber);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Formato de telefone inválido' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error("❌ [ERRO] Formato de telefone inválido:", phoneNumber);
+      return new Response(JSON.stringify({ success: false, error: "Formato de telefone inválido" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Verificar credenciais
-    const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
-    const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-    const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER');
+    // ===========================================
+    // VERIFICAR CREDENCIAIS TWILIO
+    // ===========================================
+    const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+    const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+    const fromNumber = Deno.env.get("TWILIO_FROM_NUMBER");
 
-    console.log('🔑 Credentials check:', {
+    console.log("🔑 [CREDENCIAIS]", {
       hasAccountSid: !!accountSid,
       hasAuthToken: !!authToken,
       hasFromNumber: !!fromNumber,
-      fromNumberPrefix: fromNumber?.slice(0, 5) || 'N/A'
+      fromNumberPrefix: fromNumber?.slice(0, 10) || "N/A",
     });
 
     if (!accountSid || !authToken || !fromNumber) {
       const missing = [];
-      if (!accountSid) missing.push('TWILIO_ACCOUNT_SID');
-      if (!authToken) missing.push('TWILIO_AUTH_TOKEN');
-      if (!fromNumber) missing.push('TWILIO_FROM_NUMBER');
-      
-      console.error('❌ Missing credentials:', missing);
+      if (!accountSid) missing.push("TWILIO_ACCOUNT_SID");
+      if (!authToken) missing.push("TWILIO_AUTH_TOKEN");
+      if (!fromNumber) missing.push("TWILIO_FROM_NUMBER");
+
+      console.error("❌ [ERRO] Credenciais faltando:", missing);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `Credenciais não configuradas: ${missing.join(', ')}` 
+        JSON.stringify({
+          success: false,
+          error: `Credenciais não configuradas: ${missing.join(", ")}`,
         }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     // Validar fromNumber
-    if (!fromNumber.startsWith('+')) {
-      console.error('❌ TWILIO_FROM_NUMBER must start with +');
-      return new Response(
-        JSON.stringify({ success: false, error: 'TWILIO_FROM_NUMBER deve começar com +' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!fromNumber.startsWith("+")) {
+      console.error("❌ [ERRO] TWILIO_FROM_NUMBER deve começar com +");
+      return new Response(JSON.stringify({ success: false, error: "TWILIO_FROM_NUMBER deve começar com +" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    console.log(`📤 Sending: From whatsapp:${fromNumber} To whatsapp:${phoneNumber}`);
+    // ===========================================
+    // PREPARAR E ENVIAR MENSAGEM COM TEMPLATE
+    // ===========================================
+    console.log(`\n📤 [ENVIO] ========================================`);
+    console.log(`📤 [ENVIO] From: whatsapp:${fromNumber}`);
+    console.log(`📤 [ENVIO] To: whatsapp:${phoneNumber}`);
+    console.log(`📤 [ENVIO] ContentSid: ${contentSid}`);
+    console.log(`📤 [ENVIO] ContentVariables: ${JSON.stringify(contentVariables || {})}`);
     if (eventType) {
-      console.log(`📋 Event type: ${eventType}`);
+      console.log(`📤 [ENVIO] Event type: ${eventType}`);
     }
+    console.log(`📤 [ENVIO] ========================================\n`);
 
-    // Preparar request
     const twilioApiUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-    
-    // Build status callback URL
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const statusCallbackUrl = supabaseUrl ? 
-      `${supabaseUrl}/functions/v1/twilio-status-callback` : null;
-    
+
+    // Status callback URL para rastreamento de entrega
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const statusCallbackUrl = supabaseUrl ? `${supabaseUrl}/functions/v1/twilio-status-callback` : null;
+
+    // Construir form data - SEMPRE com ContentSid (template)
     const formData = new URLSearchParams();
-    formData.append('From', `whatsapp:${fromNumber}`);
-    formData.append('To', `whatsapp:${phoneNumber}`);
-    
-    // Add status callback for delivery tracking
-    if (statusCallbackUrl) {
-      formData.append('StatusCallback', statusCallbackUrl);
-      console.log(`📡 StatusCallback: ${statusCallbackUrl}`);
-    }
-    
-    if (contentSid) {
-      formData.append('ContentSid', contentSid);
-      if (contentVariables) {
-        formData.append('ContentVariables', JSON.stringify(contentVariables));
-      }
-      console.log(`📋 Using template: ${contentSid}`);
-    } else {
-      formData.append('Body', message);
-      console.log(`📝 Message length: ${message.length} chars`);
+    formData.append("From", `whatsapp:${fromNumber}`);
+    formData.append("To", `whatsapp:${phoneNumber}`);
+    formData.append("ContentSid", contentSid);
+
+    if (contentVariables) {
+      formData.append("ContentVariables", JSON.stringify(contentVariables));
     }
 
-    // Enviar
+    if (statusCallbackUrl) {
+      formData.append("StatusCallback", statusCallbackUrl);
+      console.log(`📡 [CALLBACK] StatusCallback: ${statusCallbackUrl}`);
+    }
+
+    // Enviar para Twilio
     const response = await fetch(twilioApiUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
-        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: "Basic " + btoa(`${accountSid}:${authToken}`),
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: formData.toString(),
     });
 
     const responseData = await response.json();
 
+    // ===========================================
+    // PROCESSAR RESPOSTA
+    // ===========================================
     if (!response.ok) {
-      console.error('❌ Twilio API error:', {
+      const errorCode = responseData.code?.toString() || "UNKNOWN";
+      const friendlyError =
+        TWILIO_ERROR_MESSAGES[errorCode] || responseData.message || `Erro Twilio: ${response.status}`;
+
+      console.error("❌ [TWILIO] API Error:", {
         status: response.status,
         code: responseData.code,
         message: responseData.message,
-        moreInfo: responseData.more_info
+        moreInfo: responseData.more_info,
       });
-      
-      // Get friendly error message
-      const friendlyError = twilioErrorMessages[responseData.code?.toString()] || responseData.message || `Erro Twilio: ${response.status}`;
-      
+
+      console.log("=== SEND-WHATSAPP END (FALHA) ===\n");
+
       return new Response(
-        JSON.stringify({ success: false, error: friendlyError, code: responseData.code }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: friendlyError,
+          code: responseData.code,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    console.log(`✅ Message sent: ${responseData.sid}`);
-    console.log("=== SEND-WHATSAPP END ===");
+    console.log(`✅ [SUCESSO] Message SID: ${responseData.sid}`);
+    console.log(`✅ [SUCESSO] Status: ${responseData.status}`);
+    console.log("=== SEND-WHATSAPP END (SUCESSO) ===\n");
 
     return new Response(
-      JSON.stringify({ success: true, sid: responseData.sid, status: responseData.status }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        success: true,
+        sid: responseData.sid,
+        status: responseData.status,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("=== SEND-WHATSAPP FATAL ERROR ===", errorMessage);
+    console.error(error);
 
-  } catch (error: any) {
-    console.error('=== SEND-WHATSAPP FATAL ERROR ===', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ success: false, error: errorMessage }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
