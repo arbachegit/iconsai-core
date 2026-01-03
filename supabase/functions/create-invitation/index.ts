@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 3.1.0 | DEPLOY: 2026-01-03
-// FIX: Variavel {{2}} = "Equipe KnowYOU" (era appUrl)
+// VERSAO: 3.2.0 | DEPLOY: 2026-01-03
+// FIX: Template invitation com 3 variáveis
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -333,7 +333,8 @@ serve(async (req) => {
                 template: "invitation",
                 variables: { 
                   "1": name || "Usuário",
-                  "2": "Equipe KnowYOU"  // Template espera nome de quem convidou, não URL
+                  "2": "Equipe KnowYOU",
+                  "3": `pwa-register?token=${token}`
                 },
                 channel: "whatsapp"
               }
