@@ -217,6 +217,41 @@ export default function PWAInvitesManager() {
     }
   };
 
+  const resendWelcome = async (invite: PWAInvite) => {
+    setSending(invite.id);
+    try {
+      const user = invite.pwa_users;
+      if (!user?.phone) throw new Error("Telefone não encontrado");
+
+      const pwaUrl = `${window.location.origin}/pwa`;
+
+      const { data, error } = await supabase.functions.invoke("send-pwa-notification", {
+        body: {
+          to: user.phone,
+          template: "resend_welcome",
+          variables: { 
+            "1": user.name || "Usuário", 
+            "2": pwaUrl 
+          },
+          channel: "whatsapp",
+          userId: user.id,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success("Boas-vindas reenviadas!");
+      } else {
+        toast.error(data?.error || "Falha ao reenviar");
+      }
+    } catch (err) {
+      toast.error("Erro ao reenviar boas-vindas");
+    } finally {
+      setSending(null);
+    }
+  };
+
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     toast.success("Código copiado!");
@@ -463,11 +498,28 @@ export default function PWAInvitesManager() {
                           className="h-8 w-8"
                           onClick={() => sendInvite(invite)}
                           disabled={sending === invite.id}
+                          title="Enviar convite"
                         >
                           {sending === invite.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
                             <Send className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
+                      {invite.is_used && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-blue-500 hover:text-blue-400"
+                          onClick={() => resendWelcome(invite)}
+                          disabled={sending === invite.id}
+                          title="Reenviar boas-vindas"
+                        >
+                          {sending === invite.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
                           )}
                         </Button>
                       )}

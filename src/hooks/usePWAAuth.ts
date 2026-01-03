@@ -208,11 +208,13 @@ export function usePWAAuth() {
       if (result.verification_code) {
         try {
           console.log('[PWA Auth] Sending verification code via WhatsApp/SMS...');
-          const { data: sendResult, error: funcError } = await supabase.functions.invoke('send-pwa-verification-direct', {
+          const { data: sendResult, error: funcError } = await supabase.functions.invoke('send-pwa-notification', {
             body: {
-              phone: params.phone,
-              code: result.verification_code,
-              name: params.name || ''
+              to: params.phone,
+              template: "otp",
+              variables: { "1": result.verification_code },
+              channel: "whatsapp",
+              userId: null,
             }
           });
           
@@ -282,6 +284,27 @@ export function usePWAAuth() {
         return { success: false, error: result.error || 'Código inválido' };
       }
 
+      // Enviar mensagem de boas-vindas
+      try {
+        const pwaUrl = `${window.location.origin}/pwa`;
+        await supabase.functions.invoke('send-pwa-notification', {
+          body: {
+            to: state.userPhone,
+            template: "welcome",
+            variables: { 
+              "1": state.userName || "Usuário", 
+              "2": pwaUrl 
+            },
+            channel: "whatsapp",
+            userId: null,
+          }
+        });
+        console.log('[PWA Auth] Welcome message sent');
+      } catch (welcomeErr) {
+        console.warn('[PWA Auth] Failed to send welcome message:', welcomeErr);
+        // Não bloquear o fluxo se falhar
+      }
+
       // Verificação bem sucedida
       setState(prev => ({
         ...prev,
@@ -341,11 +364,13 @@ export function usePWAAuth() {
       if (result.verification_code) {
         try {
           console.log('[PWA Auth] Resending verification code via WhatsApp/SMS...');
-          const { data: sendResult, error: funcError } = await supabase.functions.invoke('send-pwa-verification-direct', {
+          const { data: sendResult, error: funcError } = await supabase.functions.invoke('send-pwa-notification', {
             body: {
-              phone: state.userPhone,
-              code: result.verification_code,
-              name: state.userName || ''
+              to: state.userPhone,
+              template: "resend_code",
+              variables: { "1": result.verification_code },
+              channel: "whatsapp",
+              userId: null,
             }
           });
           
