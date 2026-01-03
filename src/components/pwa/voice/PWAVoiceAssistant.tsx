@@ -9,7 +9,7 @@ import { ModuleHeader } from "./ModuleHeader";
 import { HeaderActions } from "./HeaderActions";
 import { FooterModules } from "./FooterModules";
 import { TranscriptArea } from "./TranscriptArea";
-import { ConversationModal } from "./ConversationModal";
+import { ConversationDrawer } from "./ConversationDrawer";
 import { HelpModule } from "../modules/HelpModule";
 import { WorldModule } from "../modules/WorldModule";
 import { HealthModule } from "../modules/HealthModule";
@@ -329,14 +329,11 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
           )}
         </AnimatePresence>
 
-        {/* Conversations Modal */}
-        <ConversationModal
+        {/* Conversation Drawer (slides from top) */}
+        <ConversationDrawer
           isOpen={isConversationsOpen}
           onClose={() => setIsConversationsOpen(false)}
           conversations={conversations}
-          onPlayAudio={handlePlayConversation}
-          onTranscribe={handleTranscribe}
-          playingId={playingConversationId}
         />
       </div>
     );
