@@ -1,8 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { HelpCircle, Globe, Heart, Lightbulb, ChevronRight, LucideIcon } from "lucide-react";
-import { StatusIndicator } from "./StatusIndicator";
-import type { ModuleId } from "@/stores/pwaStore";
+import { HelpCircle, Globe, Heart, Lightbulb, LucideIcon } from "lucide-react";
+import type { ModuleId } from "@/stores/pwaVoiceStore";
 
 interface Module {
   id: ModuleId;
@@ -18,7 +17,7 @@ const modules: Module[] = [
   {
     id: "help",
     name: "Ajuda",
-    description: "Como usar o assistente",
+    description: "Como usar",
     icon: HelpCircle,
     color: "#3B82F6",
     gradient: "from-blue-500/20 to-cyan-500/20",
@@ -54,28 +53,15 @@ const modules: Module[] = [
 ];
 
 interface ModuleSelectorProps {
-  onSelect: (moduleId: ModuleId) => void;
+  onSelect: (moduleId: Exclude<ModuleId, null>) => void;
   activeModule?: ModuleId | null;
 }
 
-export const ModuleSelector: React.FC<ModuleSelectorProps> = ({ 
-  onSelect,
-  activeModule,
-}) => {
+export const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect, activeModule }) => {
   return (
-    <div className="p-4 overflow-hidden">
-      {/* Título da seção */}
-      <motion.div
-        className="mb-4 text-center"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <h2 className="text-lg font-semibold text-white">Como posso ajudar?</h2>
-        <p className="text-sm text-slate-400">Escolha um módulo para começar</p>
-      </motion.div>
-
-      {/* Grid de módulos */}
-      <div className="grid grid-cols-2 gap-3 overflow-hidden">
+    <div className="h-full flex flex-col justify-center px-2">
+      {/* Grid de módulos - COMPACTO, SEM TEXTOS EXTRAS */}
+      <div className="grid grid-cols-2 gap-3">
         {modules.map((module, index) => {
           const Icon = module.icon;
           const isActive = activeModule === module.id;
@@ -84,80 +70,48 @@ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({
             <motion.button
               key={module.id}
               onClick={() => onSelect(module.id)}
-              initial={{ opacity: 0, y: 20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ 
-                delay: index * 0.1,
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{
+                delay: index * 0.08,
                 type: "spring",
                 stiffness: 200,
               }}
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
               className={`
                 relative p-4 rounded-2xl
                 bg-gradient-to-br ${module.gradient}
                 border ${module.borderColor}
                 backdrop-blur-sm
-                flex flex-col items-center gap-3
-                transition-all duration-300
+                flex flex-col items-center justify-center gap-2
+                transition-all duration-200
+                min-h-[100px]
                 ${isActive ? "ring-2 ring-white/30" : ""}
               `}
             >
-              {/* Indicador de disponível */}
-              <div className="absolute top-3 right-3">
-                <StatusIndicator isActive size="sm" color={module.color} />
-              </div>
-
-              {/* Ícone com efeito de blink */}
+              {/* Ícone */}
               <motion.div
-                animate={{ opacity: [1, 0.6, 1] }}
+                animate={{ opacity: [0.8, 1, 0.8] }}
                 transition={{
                   duration: 3,
                   repeat: Infinity,
-                  delay: index * 0.5,
+                  delay: index * 0.3,
                 }}
                 className="relative"
               >
-                {/* Glow atrás do ícone */}
-                <div 
-                  className="absolute inset-0 blur-xl opacity-50"
-                  style={{ backgroundColor: module.color }}
-                />
-                <Icon className="relative w-10 h-10" color={module.color} />
+                <Icon className="w-8 h-8" style={{ color: module.color }} />
               </motion.div>
-              
-              {/* Texto */}
-              <div className="text-center">
-                <h3 className="text-white font-semibold text-base">
-                  {module.name}
-                </h3>
-                <p className="text-xs text-slate-400 mt-1 line-clamp-2">
-                  {module.description}
-                </p>
-              </div>
 
-              {/* Seta indicando ação */}
-              <motion.div
-                className="absolute bottom-3 right-3 opacity-0"
-                initial={{ opacity: 0, x: -5 }}
-                whileHover={{ opacity: 1, x: 0 }}
-              >
-                <ChevronRight className="w-4 h-4" color={module.color} />
-              </motion.div>
+              {/* Nome do módulo */}
+              <h3 className="text-white font-semibold text-sm">{module.name}</h3>
+
+              {/* Descrição curta */}
+              <p className="text-[10px] text-slate-400 text-center leading-tight">{module.description}</p>
             </motion.button>
           );
         })}
       </div>
-
-      {/* Dica de navegação */}
-      <motion.p
-        className="text-center text-xs text-slate-500 mt-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-      >
-        Toque em um módulo para começar a conversa
-      </motion.p>
     </div>
   );
 };
