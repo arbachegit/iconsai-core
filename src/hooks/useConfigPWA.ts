@@ -3,19 +3,45 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export interface PWAConfig {
+  // Configurações gerais
   welcomeText: string;
   ttsVoice: string;
   micTimeoutSeconds: number;
   enableCountdown: boolean;
   splashDurationMs: number;
+
+  // Textos de apresentação de cada módulo (NOVOS)
+  helpWelcomeText: string;
+  worldWelcomeText: string;
+  healthWelcomeText: string;
+  ideasWelcomeText: string;
 }
 
 const DEFAULT_CONFIG: PWAConfig = {
-  welcomeText: "Olá [name]! Bem-vindo ao KnowYOU, seu assistente de voz inteligente. Escolha um dos módulos abaixo para começarmos.",
+  // Texto principal - home
+  welcomeText: `Olá! Eu sou o KnowYOU, seu assistente de voz. Pode tocar no play quantas vezes quiser para ouvir novamente. 
+
+Você tem quatro botões abaixo: Ajuda ensina como usar o aplicativo. Mundo responde perguntas sobre qualquer assunto. Saúde faz triagem dos seus sintomas. E Ideias ajuda a desenvolver e validar suas ideias de negócio.
+
+Quando estiver dentro de um módulo, toque no ícone de histórico para ver suas conversas anteriores. Escolha um botão para começar!`,
+
   ttsVoice: "fernando",
   micTimeoutSeconds: 10,
   enableCountdown: true,
   splashDurationMs: 3000,
+
+  // Textos de boas-vindas de cada módulo
+  helpWelcomeText:
+    "Bem-vindo ao módulo de Ajuda! Aqui você aprende a usar todas as funcionalidades do KnowYOU. Siga os passos e toque em ouvir explicação para entender cada função.",
+
+  worldWelcomeText:
+    "Olá! Eu sou seu assistente de conhecimento geral. Pode me perguntar sobre qualquer assunto: ciência, história, tecnologia, cultura, ou curiosidades. Toque no microfone e faça sua pergunta!",
+
+  healthWelcomeText:
+    "Olá! Sou sua assistente de saúde. Vou te ajudar a entender melhor seus sintomas usando o protocolo OLDCARTS. Lembre-se: não substituo uma consulta médica. Toque no microfone para começar.",
+
+  ideasWelcomeText:
+    "Olá! Sou seu consultor de ideias. Vou te ajudar a desenvolver e validar sua ideia de negócio usando a técnica do Advogado do Diabo. Vou fazer perguntas desafiadoras para fortalecer seu projeto. Toque no microfone e me conte sua ideia!",
 };
 
 const CONFIG_KEY_MAP: Record<keyof PWAConfig, string> = {
@@ -24,6 +50,11 @@ const CONFIG_KEY_MAP: Record<keyof PWAConfig, string> = {
   micTimeoutSeconds: "mic_timeout_seconds",
   enableCountdown: "enable_countdown",
   splashDurationMs: "splash_duration_ms",
+  // Novos campos
+  helpWelcomeText: "help_welcome_text",
+  worldWelcomeText: "world_welcome_text",
+  healthWelcomeText: "health_welcome_text",
+  ideasWelcomeText: "ideas_welcome_text",
 };
 
 interface UseConfigPWAReturn {
@@ -46,7 +77,7 @@ export function useConfigPWA(): UseConfigPWAReturn {
   const fetchConfig = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const { data, error: fetchError } = await supabase
         .from("pwa_config")
@@ -56,11 +87,11 @@ export function useConfigPWA(): UseConfigPWAReturn {
 
       if (data && data.length > 0) {
         const newConfig = { ...DEFAULT_CONFIG };
-        
+
         data.forEach((row) => {
-          const key = Object.entries(CONFIG_KEY_MAP).find(
-            ([, dbKey]) => dbKey === row.config_key
-          )?.[0] as keyof PWAConfig | undefined;
+          const key = Object.entries(CONFIG_KEY_MAP).find(([, dbKey]) => dbKey === row.config_key)?.[0] as
+            | keyof PWAConfig
+            | undefined;
 
           if (key && row.config_value !== null) {
             if (row.config_type === "number") {
@@ -101,22 +132,27 @@ export function useConfigPWA(): UseConfigPWAReturn {
     try {
       const updates = Object.entries(config).map(([key, value]) => {
         const dbKey = CONFIG_KEY_MAP[key as keyof PWAConfig];
+        const configType = typeof value === "number" ? "number" : typeof value === "boolean" ? "boolean" : "string";
         return {
           config_key: dbKey,
           config_value: String(value),
+          config_type: configType,
         };
       });
 
+      // Usar UPSERT para criar ou atualizar
       for (const update of updates) {
-        const { error: updateError } = await supabase
-          .from("pwa_config")
-          .update({
+        const { error: upsertError } = await supabase.from("pwa_config").upsert(
+          {
+            config_key: update.config_key,
             config_value: update.config_value,
+            config_type: update.config_type,
             updated_at: new Date().toISOString(),
-          })
-          .eq("config_key", update.config_key);
+          },
+          { onConflict: "config_key" },
+        );
 
-        if (updateError) throw updateError;
+        if (upsertError) throw upsertError;
       }
 
       toast.success("Configurações salvas com sucesso!");
