@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lightbulb, AlertTriangle, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { MicrophoneOrb } from "../voice/MicrophoneOrb";
@@ -28,16 +28,38 @@ export const IdeasModule: React.FC = () => {
   const [answers, setAnswers] = useState<string[]>([]);
   const [critiquePoints, setCritiquePoints] = useState<CritiquePoint[]>([]);
   const [showMic, setShowMic] = useState(false);
-  
+
+  // Controle de autoplay - executa UMA vez por sessão do módulo
+  const hasSpokenWelcome = useRef(false);
+
   const { speak, isPlaying, isLoading, progress } = useTextToSpeech();
   const { setPlayerState, userName } = usePWAVoiceStore();
   const { config } = useConfigPWA();
 
-  // Mensagem de boas-vindas
+  // ============================================================
+  // AUTOPLAY: Executa texto de boas-vindas do módulo
+  // ============================================================
   useEffect(() => {
-    const greeting = `Olá${userName ? ` ${userName}` : ""}! Sou seu advogado do diabo construtivo. Meu trabalho é questionar sua ideia para fortalecê-la. Não vou aceitar nada sem escrutínio. Pronto para o desafio? Me conte sua ideia de negócio.`;
-    speak(greeting).then(() => setShowMic(true));
-  }, []);
+    if (hasSpokenWelcome.current) return;
+    hasSpokenWelcome.current = true;
+
+    // Usa o texto configurado no admin ou um padrão
+    const greeting =
+      config.ideasWelcomeText ||
+      `Olá${userName ? ` ${userName}` : ""}! Sou seu advogado do diabo construtivo. Meu trabalho é questionar sua ideia para fortalecê-la. Não vou aceitar nada sem escrutínio. Pronto para o desafio? Me conte sua ideia de negócio.`;
+
+    // Pequeno delay para garantir que a UI está pronta
+    const timer = setTimeout(() => {
+      speak(greeting)
+        .then(() => setShowMic(true))
+        .catch((err) => {
+          console.warn("Autoplay bloqueado pelo navegador:", err);
+          setShowMic(true);
+        });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [speak, userName, config.ideasWelcomeText]);
 
   // Atualizar estado do player
   useEffect(() => {
@@ -52,31 +74,29 @@ export const IdeasModule: React.FC = () => {
 
   const handleVoiceCapture = async (response: string) => {
     setShowMic(false);
-    
+
     if (stage === "capture") {
       setOriginalIdea(response);
-      
+
       // Primeira crítica - nunca validar imediatamente
       const firstCritique = `Interessante. Você quer ${response}. Antes de eu dizer se é uma boa ideia, preciso entender melhor. ${critiqueQuestions[0]}`;
       await speak(firstCritique);
-      
+
       setStage("critique");
       setShowMic(true);
-      
     } else if (stage === "critique") {
-      setAnswers(prev => [...prev, response]);
-      
+      setAnswers((prev) => [...prev, response]);
+
       // Adicionar ponto de crítica baseado na resposta
-      // TODO: Usar IA para gerar críticas reais
       const mockCritique: CritiquePoint = {
         type: Math.random() > 0.5 ? "weakness" : "question",
         content: `Sobre "${response.substring(0, 50)}..." - isso precisa ser mais específico.`,
       };
-      setCritiquePoints(prev => [...prev, mockCritique]);
-      
+      setCritiquePoints((prev) => [...prev, mockCritique]);
+
       if (currentQuestionIndex < critiqueQuestions.length - 1) {
-        setCurrentQuestionIndex(prev => prev + 1);
-        
+        setCurrentQuestionIndex((prev) => prev + 1);
+
         // Transição crítica entre perguntas
         const transition = `Entendi. Mas ainda tenho dúvidas. ${critiqueQuestions[currentQuestionIndex + 1]}`;
         await speak(transition);
@@ -94,15 +114,15 @@ export const IdeasModule: React.FC = () => {
       { type: "strength", content: "Você demonstrou conhecimento do problema" },
       { type: "strength", content: "A ideia tem potencial de diferenciação" },
     ];
-    
+
     const weaknesses: CritiquePoint[] = [
       { type: "weakness", content: "Falta validação com clientes reais" },
       { type: "weakness", content: "Modelo de negócio precisa ser refinado" },
       { type: "suggestion", content: "Considere fazer um MVP antes de investir pesado" },
     ];
-    
+
     setCritiquePoints([...strengths, ...weaknesses]);
-    
+
     const summary = `Análise completa. Identifiquei ${strengths.length} pontos fortes e ${weaknesses.length} pontos de atenção. Sua ideia tem potencial, mas precisa de refinamento. Veja o resumo na tela.`;
     await speak(summary);
   };
@@ -118,7 +138,10 @@ export const IdeasModule: React.FC = () => {
     setCurrentQuestionIndex(0);
     setAnswers([]);
     setCritiquePoints([]);
-    await speak("Vamos recomeçar. Me conte sua nova ideia.");
+    hasSpokenWelcome.current = false; // Permitir novo greeting
+
+    const greeting = config.ideasWelcomeText || "Vamos recomeçar. Me conte sua nova ideia.";
+    await speak(greeting);
     setShowMic(true);
   };
 
@@ -157,12 +180,8 @@ export const IdeasModule: React.FC = () => {
               exit={{ opacity: 0, y: -20 }}
               className="text-center py-8"
             >
-              <h3 className="text-2xl font-bold text-white mb-2">
-                Qual é sua ideia de negócio?
-              </h3>
-              <p className="text-slate-400">
-                Descreva em uma ou duas frases
-              </p>
+              <h3 className="text-2xl font-bold text-white mb-2">Qual é sua ideia de negócio?</h3>
+              <p className="text-slate-400">Descreva em uma ou duas frases</p>
             </motion.div>
           )}
 
@@ -186,9 +205,7 @@ export const IdeasModule: React.FC = () => {
                 <div className="text-xs text-slate-400 mb-2">
                   Pergunta {currentQuestionIndex + 1} de {critiqueQuestions.length}
                 </div>
-                <p className="text-lg text-white font-medium">
-                  {critiqueQuestions[currentQuestionIndex]}
-                </p>
+                <p className="text-lg text-white font-medium">{critiqueQuestions[currentQuestionIndex]}</p>
               </div>
 
               {/* Respostas anteriores */}
@@ -227,11 +244,13 @@ export const IdeasModule: React.FC = () => {
                   <span className="text-emerald-300 font-medium">Pontos Fortes</span>
                 </div>
                 <div className="space-y-2">
-                  {critiquePoints.filter(p => p.type === "strength").map((point, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <p className="text-sm text-emerald-200">{point.content}</p>
-                    </div>
-                  ))}
+                  {critiquePoints
+                    .filter((p) => p.type === "strength")
+                    .map((point, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <p className="text-sm text-emerald-200">{point.content}</p>
+                      </div>
+                    ))}
                 </div>
               </div>
 
@@ -242,11 +261,13 @@ export const IdeasModule: React.FC = () => {
                   <span className="text-rose-300 font-medium">Pontos de Atenção</span>
                 </div>
                 <div className="space-y-2">
-                  {critiquePoints.filter(p => p.type === "weakness" || p.type === "suggestion").map((point, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <p className="text-sm text-rose-200">{point.content}</p>
-                    </div>
-                  ))}
+                  {critiquePoints
+                    .filter((p) => p.type === "weakness" || p.type === "suggestion")
+                    .map((point, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <p className="text-sm text-rose-200">{point.content}</p>
+                      </div>
+                    ))}
                 </div>
               </div>
 
