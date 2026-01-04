@@ -55,11 +55,29 @@ const modules: Module[] = [
 interface ModuleSelectorProps {
   onSelect: (moduleId: Exclude<ModuleId, null>) => void;
   activeModule?: ModuleId | null;
+  isPlaying?: boolean; // NOVA PROP: controla se o áudio está tocando
 }
 
-export const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect, activeModule }) => {
+export const ModuleSelector: React.FC<ModuleSelectorProps> = ({
+  onSelect,
+  activeModule,
+  isPlaying = false, // Default false
+}) => {
   return (
-    <div className="h-full flex flex-col justify-center px-2">
+    <motion.div
+      className="h-full flex flex-col justify-center px-2"
+      // ANIMAÇÃO DE DESCIDA quando isPlaying
+      animate={{
+        y: isPlaying ? 48 : 0, // Desce 48px quando está tocando (espaço para spectrum)
+        opacity: isPlaying ? 0.85 : 1, // Levemente mais transparente quando tocando
+      }}
+      transition={{
+        type: "spring",
+        stiffness: 300,
+        damping: 30,
+        duration: 0.4,
+      }}
+    >
       {/* Grid de módulos - COMPACTO, SEM TEXTOS EXTRAS */}
       <div className="grid grid-cols-2 gap-3">
         {modules.map((module, index) => {
@@ -112,7 +130,7 @@ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect, active
           );
         })}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
