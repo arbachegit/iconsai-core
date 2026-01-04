@@ -1,7 +1,7 @@
 // ============================================
-// VERSAO: 4.3.0 | DEPLOY: 2026-01-03
-// FIX: Alinhamento de templates com Twilio Console
-// welcome=2 vars, resend_welcome=2 vars, invitation=3 vars
+// VERSAO: 4.4.0 | DEPLOY: 2026-01-04
+// FIX: Separação de variáveis body/button para templates com URL dinâmica
+// Templates com botão dinâmico têm numeração separada no Twilio
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -15,7 +15,7 @@ const corsHeaders = {
 // Twilio Config (apenas para WhatsApp)
 const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID")!;
 const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN")!;
-const TWILIO_WHATSAPP_NUMBER = "+16039454873"; // ✅ CORRIGIDO!
+const TWILIO_WHATSAPP_NUMBER = "+16039454873";
 
 // ===========================================
 // INTERFACE PARA CONFIGURAÇÃO DE TEMPLATES
@@ -24,45 +24,56 @@ interface TemplateConfig {
   sid: string;
   description: string;
   type: "authentication" | "utility";
-  variables: number;
+  bodyVariables: number;      // Variáveis no corpo da mensagem
+  buttonVariables: number;    // Variáveis no botão (URL dinâmica)
+  totalVariables: number;     // Total para validação de entrada
 }
 
 // ===========================================
 // TEMPLATES APROVADOS NO TWILIO CONSOLE
-// TODOS DEVEM ESTAR COM STATUS "APPROVED"
-// Authentication = não aceita variáveis customizadas
-// Utility = aceita variáveis {{1}}, {{2}}, etc
+// IMPORTANTE: Botões com URL dinâmica têm numeração SEPARADA!
+// Body: {{1}}, {{2}}, etc. | Button: {{1}} (começa de novo)
 // ===========================================
 const TEMPLATES: Record<string, TemplateConfig> = {
   otp: {
     sid: "HX15dbff375b023b2d1514038027db6ad0",
     description: "Código de verificação OTP",
     type: "authentication",
-    variables: 0, // Authentication NÃO aceita variáveis
+    bodyVariables: 0,
+    buttonVariables: 0,
+    totalVariables: 0,
   },
   welcome: {
     sid: "HX35461ac69adc68257f54eb030fafe4b1",
     description: "Boas-vindas após verificação",
     type: "utility",
-    variables: 2, // {{1}} = nome, {{2}} = path do botão
+    bodyVariables: 1,      // {{1}} = nome
+    buttonVariables: 1,    // {{1}} = path do botão (numeração separada!)
+    totalVariables: 2,     // Total que recebemos: nome + path
   },
   resend_code: {
     sid: "HX026907ac8e769389acfda75829c5d543",
     description: "Reenvio de código OTP",
     type: "authentication",
-    variables: 0, // Authentication NÃO aceita variáveis
+    bodyVariables: 0,
+    buttonVariables: 0,
+    totalVariables: 0,
   },
   invitation: {
     sid: "HX56dca3b12701c186f1f3daa58f5785c3",
     description: "Convite de acesso ao PWA",
     type: "utility",
-    variables: 3, // {{1}} = nome, {{2}} = quem convidou, {{3}} = caminho URL
+    bodyVariables: 2,      // {{1}} = nome, {{2}} = quem convidou
+    buttonVariables: 1,    // {{1}} = path (numeração separada!)
+    totalVariables: 3,     // Total que recebemos: nome + quemConvidou + path
   },
   resend_welcome: {
     sid: "HX9ccbe49ea4063c9155c3ebd67738556e",
     description: "Reenvio de boas-vindas",
     type: "utility",
-    variables: 2, // {{1}} = nome, {{2}} = path do botão
+    bodyVariables: 1,      // {{1}} = nome
+    buttonVariables: 1,    // {{1}} = path do botão (numeração separada!)
+    totalVariables: 2,     // Total que recebemos: nome + path
   },
 };
 
@@ -198,11 +209,13 @@ async function sendSmsViaInfobip(
 
 // ===========================================
 // ENVIO WHATSAPP VIA TWILIO (com templates)
+// Suporta separação de variáveis body/button para templates com URL dinâmica
 // ===========================================
 async function sendWhatsAppViaTwilio(
   to: string,
   templateSid: string,
-  variables: Record<string, string>,
+  bodyVariables: Record<string, string>,
+  buttonVariables: Record<string, string>,
   templateName?: string,
 ): Promise<SendResult> {
   const fromNumber = `whatsapp:${TWILIO_WHATSAPP_NUMBER}`;
@@ -214,13 +227,36 @@ async function sendWhatsAppViaTwilio(
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-status-callback`;
 
-  // IMPORTANTE: Usar ContentSid e ContentVariables para templates
-  // Incluir StatusCallback para rastrear entrega final
+  // ===========================================
+  // FORMATO TWILIO CONTENT API:
+  // - ContentVariables: apenas variáveis do BODY
+  // - Para botões com URL dinâmica, o Twilio espera que o path
+  //   seja passado como variável separada no formato do template
+  // ===========================================
+  
+  // Combinar bodyVariables com buttonVariables se houver
+  // O Twilio aceita todas as variáveis em ContentVariables, 
+  // mas a numeração do botão é separada no template
+  const hasButtonVars = Object.keys(buttonVariables).length > 0;
+  
+  // Se o template tem botão dinâmico, precisamos passar as variáveis
+  // no formato que o Twilio espera: body vars + button vars sequenciais
+  const allVariables: Record<string, string> = { ...bodyVariables };
+  
+  // Para templates com botão, adicionar as variáveis do botão
+  // após as variáveis do body
+  if (hasButtonVars) {
+    const bodyCount = Object.keys(bodyVariables).length;
+    Object.entries(buttonVariables).forEach(([key, value], index) => {
+      allVariables[String(bodyCount + index + 1)] = value;
+    });
+  }
+
   const body = new URLSearchParams({
     From: fromNumber,
     To: toNumber,
     ContentSid: templateSid,
-    ContentVariables: JSON.stringify(variables),
+    ContentVariables: JSON.stringify(allVariables),
     StatusCallback: statusCallbackUrl,
   });
 
@@ -228,7 +264,9 @@ async function sendWhatsAppViaTwilio(
   console.log(`[WHATSAPP] From: ${fromNumber}`);
   console.log(`[WHATSAPP] To: ${toNumber}`);
   console.log(`[WHATSAPP] ContentSid: ${templateSid}`);
-  console.log(`[WHATSAPP] ContentVariables: ${JSON.stringify(variables)}`);
+  console.log(`[WHATSAPP] Body Variables: ${JSON.stringify(bodyVariables)}`);
+  console.log(`[WHATSAPP] Button Variables: ${JSON.stringify(buttonVariables)}`);
+  console.log(`[WHATSAPP] Combined Variables: ${JSON.stringify(allVariables)}`);
   console.log(`[WHATSAPP] StatusCallback: ${statusCallbackUrl}`);
   console.log(`[WHATSAPP] ========================================\n`);
 
@@ -354,7 +392,8 @@ serve(async (req) => {
     console.log(`[TEMPLATE] SID: ${templateSid}`);
     console.log(`[TEMPLATE] Descrição: ${templateConfig.description}`);
     console.log(`[TEMPLATE] Tipo: ${templateConfig.type}`);
-    console.log(`[TEMPLATE] Variáveis esperadas: ${templateConfig.variables}`);
+    console.log(`[TEMPLATE] Body vars: ${templateConfig.bodyVariables}, Button vars: ${templateConfig.buttonVariables}`);
+    console.log(`[TEMPLATE] Total esperado: ${templateConfig.totalVariables}`);
 
     // ===========================================
     // VALIDAÇÃO PREVENTIVA: Contagem de variáveis
@@ -364,7 +403,7 @@ serve(async (req) => {
       variables[k] !== undefined && variables[k] !== null && variables[k] !== ''
     );
     const providedCount = providedVarKeys.length;
-    const expectedCount = templateConfig.variables;
+    const expectedCount = templateConfig.totalVariables;
 
     console.log(`[VARIÁVEIS ESPERADAS] ${expectedCount}`);
     console.log(`[VARIÁVEIS RECEBIDAS] ${providedCount} (${providedVarKeys.join(', ')})`);
@@ -440,11 +479,33 @@ serve(async (req) => {
       // Templates UTILITY: WhatsApp primeiro, fallback SMS
       console.log("\n[ESTRATÉGIA] Template UTILITY - WhatsApp Twilio primeiro, fallback SMS Infobip");
       console.log(`[TEMPLATE] ${template} (${templateConfig.description})`);
-      console.log(`[VARIÁVEIS ESPERADAS] ${templateConfig.variables}`);
+      console.log(`[VARIÁVEIS] Body: ${templateConfig.bodyVariables}, Button: ${templateConfig.buttonVariables}`);
+
+      // ===========================================
+      // SEPARAÇÃO DE VARIÁVEIS BODY vs BUTTON
+      // Twilio Content API: botões com URL dinâmica têm numeração separada
+      // Body: {{1}}, {{2}} | Button: {{1}} (recomeça)
+      // ===========================================
+      const bodyVars: Record<string, string> = {};
+      const buttonVars: Record<string, string> = {};
+      
+      // Preencher variáveis do body (1 até bodyVariables)
+      for (let i = 1; i <= templateConfig.bodyVariables; i++) {
+        bodyVars[String(i)] = variables[String(i)] || "";
+      }
+      
+      // Preencher variáveis do botão (começa em 1, pega a partir de bodyVariables + 1 do input)
+      for (let i = 1; i <= templateConfig.buttonVariables; i++) {
+        const sourceKey = String(templateConfig.bodyVariables + i);
+        buttonVars[String(i)] = variables[sourceKey] || "";
+      }
+
+      console.log(`[BODY VARS] ${JSON.stringify(bodyVars)}`);
+      console.log(`[BUTTON VARS] ${JSON.stringify(buttonVars)}`);
 
       // Tentativa 1: WhatsApp via Twilio
       console.log("\n[TENTATIVA 1] WhatsApp via Twilio");
-      result = await sendWhatsAppViaTwilio(phone, templateSid, variables);
+      result = await sendWhatsAppViaTwilio(phone, templateSid, bodyVars, buttonVars, template);
       attempts.push(result);
 
       // Se WhatsApp falhar, tentar SMS via Infobip
