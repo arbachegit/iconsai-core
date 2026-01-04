@@ -300,3 +300,11 @@ verify_jwt = false
 [functions.capture-dataflow-lead]
 verify_jwt = false
 
+# ============================================
+# WHATSAPP TIER MONITORING - Admin only
+# ============================================
+[functions.update-whatsapp-metrics]
+verify_jwt = true
+
+[functions.check-tier-eligibility]
+verify_jwt = true
