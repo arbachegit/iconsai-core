@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HelpCircle, ChevronRight, Volume2, CheckCircle } from "lucide-react";
 import { VoicePlayerBox } from "../voice/VoicePlayerBox";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
+import { useConfigPWA } from "@/hooks/useConfigPWA";
 
 interface HelpStep {
   id: string;
@@ -23,35 +24,68 @@ const helpSteps: HelpStep[] = [
     id: "modules",
     title: "Módulos Disponíveis",
     description: "4 módulos para diferentes necessidades",
-    audioText: "Você tem acesso a 4 módulos: Ajuda, para aprender a usar o aplicativo. Mundo, para perguntas gerais sobre qualquer assunto. Saúde, para triagem de sintomas. E Ideias, para validar e refinar suas ideias de negócio.",
+    audioText:
+      "Você tem acesso a 4 módulos: Ajuda, para aprender a usar o aplicativo. Mundo, para perguntas gerais sobre qualquer assunto. Saúde, para triagem de sintomas. E Ideias, para validar e refinar suas ideias de negócio.",
   },
   {
     id: "voice",
     title: "Interação por Voz",
     description: "Fale naturalmente comigo",
-    audioText: "Para interagir comigo, basta tocar no botão do microfone e falar naturalmente. Eu vou te ouvir, processar sua fala e responder em áudio.",
+    audioText:
+      "Para interagir comigo, basta tocar no botão do microfone e falar naturalmente. Eu vou te ouvir, processar sua fala e responder em áudio.",
   },
   {
     id: "confirmation",
     title: "Confirmações por Voz",
     description: "Diga SIM ou NÃO para confirmar",
-    audioText: "Quando eu fizer uma pergunta de confirmação, basta dizer SIM ou NÃO. Isso torna a experiência mais fluida e natural.",
+    audioText:
+      "Quando eu fizer uma pergunta de confirmação, basta dizer SIM ou NÃO. Isso torna a experiência mais fluida e natural.",
   },
   {
     id: "complete",
     title: "Pronto para Começar!",
     description: "Você já sabe o básico",
-    audioText: "Perfeito! Agora você já sabe o básico. Volte para a tela inicial e escolha um módulo para começar. Estou aqui para ajudar!",
+    audioText:
+      "Perfeito! Agora você já sabe o básico. Volte para a tela inicial e escolha um módulo para começar. Estou aqui para ajudar!",
   },
 ];
 
 export const HelpModule: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+
+  // Controle de autoplay - executa UMA vez por sessão do módulo
+  const hasSpokenWelcome = useRef(false);
+
   const { speak, isPlaying, isLoading, progress } = useTextToSpeech();
-  const { setPlayerState } = usePWAVoiceStore();
+  const { setPlayerState, userName } = usePWAVoiceStore();
+  const { config } = useConfigPWA();
 
   const currentHelpStep = helpSteps[currentStep];
+
+  // ============================================================
+  // AUTOPLAY: Executa texto de boas-vindas do módulo
+  // ============================================================
+  useEffect(() => {
+    if (hasSpokenWelcome.current) return;
+    hasSpokenWelcome.current = true;
+
+    // Usa o texto configurado no admin ou o texto do primeiro step
+    const greeting = config.helpWelcomeText || helpSteps[0].audioText;
+
+    // Pequeno delay para garantir que a UI está pronta
+    const timer = setTimeout(() => {
+      speak(greeting)
+        .then(() => {
+          setCompletedSteps((prev) => (prev.includes(helpSteps[0].id) ? prev : [...prev, helpSteps[0].id]));
+        })
+        .catch((err) => {
+          console.warn("Autoplay bloqueado pelo navegador:", err);
+        });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [speak, config.helpWelcomeText]);
 
   // Atualizar estado do player
   useEffect(() => {
@@ -66,20 +100,18 @@ export const HelpModule: React.FC = () => {
 
   const playCurrentStep = async () => {
     await speak(currentHelpStep.audioText);
-    setCompletedSteps(prev => 
-      prev.includes(currentHelpStep.id) ? prev : [...prev, currentHelpStep.id]
-    );
+    setCompletedSteps((prev) => (prev.includes(currentHelpStep.id) ? prev : [...prev, currentHelpStep.id]));
   };
 
   const nextStep = () => {
     if (currentStep < helpSteps.length - 1) {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((prev) => prev + 1);
     }
   };
 
   const prevStep = () => {
     if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
+      setCurrentStep((prev) => prev - 1);
     }
   };
 
@@ -100,8 +132,8 @@ export const HelpModule: React.FC = () => {
               index === currentStep
                 ? "bg-blue-500 scale-125"
                 : completedSteps.includes(step.id)
-                ? "bg-emerald-500"
-                : "bg-white/20"
+                  ? "bg-emerald-500"
+                  : "bg-white/20"
             }`}
             animate={index === currentStep ? { scale: [1, 1.2, 1] } : {}}
             transition={{ duration: 1, repeat: Infinity }}
@@ -131,22 +163,13 @@ export const HelpModule: React.FC = () => {
                 <HelpCircle className="w-8 h-8 text-blue-400" />
               )}
             </motion.div>
-            <h2 className="text-xl font-bold text-white mb-2">
-              {currentHelpStep.title}
-            </h2>
-            <p className="text-slate-400">
-              {currentHelpStep.description}
-            </p>
+            <h2 className="text-xl font-bold text-white mb-2">{currentHelpStep.title}</h2>
+            <p className="text-slate-400">{currentHelpStep.description}</p>
           </div>
 
           {/* Voice Player */}
           <div className="flex-1 flex items-center justify-center">
-            <VoicePlayerBox 
-              state={getPlayerState()} 
-              onMicClick={() => {}} 
-              showMic={false}
-              audioProgress={progress}
-            />
+            <VoicePlayerBox state={getPlayerState()} onMicClick={() => {}} showMic={false} audioProgress={progress} />
           </div>
 
           {/* Botão de play */}
@@ -157,10 +180,7 @@ export const HelpModule: React.FC = () => {
               w-full py-4 rounded-2xl font-semibold
               flex items-center justify-center gap-3
               transition-all duration-300
-              ${isPlaying || isLoading
-                ? "bg-blue-500/50 text-white/70"
-                : "bg-blue-500 text-white hover:bg-blue-600"
-              }
+              ${isPlaying || isLoading ? "bg-blue-500/50 text-white/70" : "bg-blue-500 text-white hover:bg-blue-600"}
             `}
             whileHover={{ scale: isPlaying || isLoading ? 1 : 1.02 }}
             whileTap={{ scale: isPlaying || isLoading ? 1 : 0.98 }}
