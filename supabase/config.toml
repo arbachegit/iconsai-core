@@ -199,6 +199,12 @@ verify_jwt = true
 verify_jwt = false
 
 # ============================================
+# TWILIO CONTENT INSPECTOR - Diagnóstico de templates
+# ============================================
+[functions.twilio-content-inspector]
+verify_jwt = true
+
+# ============================================
 # DATA/SYNC FUNCTIONS - Internal/Admin
 # ============================================
 [functions.check-existing-emails]

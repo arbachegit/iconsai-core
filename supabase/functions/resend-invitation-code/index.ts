@@ -1,7 +1,9 @@
 // ============================================
-// VERSAO: 3.1.0 | DEPLOY: 2026-01-03
-// FIX: Template invitation com 3 variáveis
+// VERSAO: 3.2.0 | DEPLOY: 2026-01-04
+// FIX: Normalização de versões em logs/metadata
 // ============================================
+
+const FUNCTION_VERSION = "3.2.0";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -24,7 +26,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log("=== [RESEND-INVITATION-CODE v3.0] START ===");
+  console.log(`=== [RESEND-INVITATION-CODE v${FUNCTION_VERSION}] START ===`);
   const results: SendResult[] = [];
 
   try {
@@ -168,7 +170,7 @@ serve(async (req) => {
             message_body: "Email de lembrete para plataforma",
             status: emailError || emailData?.error ? "failed" : "success",
             error_message: emailError?.message || emailData?.error || null,
-            metadata: { token, product: "platform", action: "resend", rule_version: "v3.0" }
+            metadata: { token, product: "platform", action: "resend", rule_version: `v${FUNCTION_VERSION}` }
           });
         } catch (emailCatch: any) {
           console.error("❌ Platform email exception:", emailCatch);
@@ -178,7 +180,7 @@ serve(async (req) => {
 
       // SMS for Platform (if has phone and no APP - informational via SMS)
       if (phone && !has_app_access) {
-        console.log("📱 [v3.0] Sending platform info via SMS (not WhatsApp)...");
+        console.log(`📱 [v${FUNCTION_VERSION}] Sending platform info via SMS (not WhatsApp)...`);
         try {
           const smsMsg = `KnowYOU: Reenviamos email com convite para Plataforma. Acesse pelo computador.`;
 
@@ -203,7 +205,7 @@ serve(async (req) => {
             message_body: smsMsg,
             status: smsError || smsData?.error ? "failed" : "success",
             error_message: smsError?.message || smsData?.error || null,
-            metadata: { token, product: "platform_info", action: "resend", rule_version: "v3.0" }
+            metadata: { token, product: "platform_info", action: "resend", rule_version: `v${FUNCTION_VERSION}` }
           });
         } catch (smsCatch: any) {
           console.error("❌ Platform info SMS exception:", smsCatch);
@@ -216,7 +218,7 @@ serve(async (req) => {
     // APP (PWA): Template via send-pwa-notification
     // =====================================================
     if (shouldSendApp) {
-      console.log("📱 [v3.0] Processing APP resend via template...");
+      console.log(`📱 [v${FUNCTION_VERSION}] Processing APP resend via template...`);
       
       if (!phone) {
         console.error("❌ APP requires phone but none provided");
@@ -256,7 +258,7 @@ serve(async (req) => {
             message_body: `Convite APP via template invitation`,
             status: notifError || !notifData?.success ? "failed" : "success",
             error_message: notifError?.message || notifData?.error || null,
-            metadata: { token, product: "app", action: "resend", rule_version: "v3.0", template: "invitation" }
+            metadata: { token, product: "app", action: "resend", rule_version: `v${FUNCTION_VERSION}`, template: "invitation" }
           });
         } catch (notifCatch: any) {
           console.error("❌ APP notification exception:", notifCatch);
@@ -280,7 +282,7 @@ serve(async (req) => {
     const failCount = results.filter(r => !r.success).length;
     
     console.log(`📊 Results: ${successCount} success, ${failCount} failed`);
-    console.log("=== [RESEND-INVITATION-CODE v3.0] END ===");
+    console.log(`=== [RESEND-INVITATION-CODE v${FUNCTION_VERSION}] END ===`);
 
     // Log summary
     await supabase.from("notification_logs").insert({
@@ -290,7 +292,7 @@ serve(async (req) => {
       subject: `Reenvio: ${product}`,
       message_body: results.map(r => `${r.success ? '✅' : '❌'} ${r.channel}/${r.product}`).join(", "),
       status: successCount > 0 ? "success" : "failed",
-      metadata: { token, product, status: invitation.status, results, successCount, failCount, rule_version: "v3.0" }
+      metadata: { token, product, status: invitation.status, results, successCount, failCount, rule_version: `v${FUNCTION_VERSION}` }
     });
 
     return new Response(
@@ -299,7 +301,7 @@ serve(async (req) => {
         results: results.map(r => `${r.success ? '✅' : '❌'} ${r.channel}/${r.product}: ${r.error || 'OK'}`),
         remainingResends: 10 - ((invitation.resend_count || 0) + 1),
         details: results,
-        version: "3.0.0"
+        version: FUNCTION_VERSION
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

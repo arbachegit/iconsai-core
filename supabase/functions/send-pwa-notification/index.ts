@@ -1,8 +1,10 @@
 // ============================================
-// VERSAO: 4.5.0 | DEPLOY: 2026-01-04
-// FIX: Corrigido insert para usar 'recipient' em vez de 'phone_number'
-// FIX: Adicionado salvamento de 'template' no metadata
+// VERSAO: 4.6.0 | DEPLOY: 2026-01-04
+// FIX: Normalização de versões em logs/metadata
+// FIX: Adicionado payload debug para resolver 63028
 // ============================================
+
+const FUNCTION_VERSION = "4.6.0";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -268,6 +270,10 @@ async function sendWhatsAppViaTwilio(
   console.log(`[WHATSAPP] Button Variables: ${JSON.stringify(buttonVariables)}`);
   console.log(`[WHATSAPP] Combined Variables: ${JSON.stringify(allVariables)}`);
   console.log(`[WHATSAPP] StatusCallback: ${statusCallbackUrl}`);
+  console.log(`[WHATSAPP] ========================================`);
+  
+  // DEBUG: Log do payload completo enviado ao Twilio (Fase D - Observabilidade)
+  console.log(`[WHATSAPP DEBUG PAYLOAD] ${body.toString()}`);
   console.log(`[WHATSAPP] ========================================\n`);
 
   try {
@@ -330,7 +336,7 @@ serve(async (req) => {
 
   const startTime = Date.now();
   console.log(`\n${"=".repeat(60)}`);
-  console.log(`[SEND-PWA-NOTIFICATION v4.3] INICIANDO - ${new Date().toISOString()}`);
+  console.log(`[SEND-PWA-NOTIFICATION v${FUNCTION_VERSION}] INICIANDO - ${new Date().toISOString()}`);
   console.log(`${"=".repeat(60)}\n`);
 
   try {
@@ -557,7 +563,7 @@ serve(async (req) => {
           requestedChannel: channel,
           forcedSms: isAuthenticationTemplate,
           processingTimeMs: Date.now() - startTime,
-          version: "4.5.0",
+          version: FUNCTION_VERSION,
           providers: {
             whatsapp: "twilio",
             sms: "infobip",
