@@ -2639,6 +2639,77 @@ export type Database = {
           },
         ]
       }
+      notification_fallback_config: {
+        Row: {
+          alert_email: string | null
+          alert_on_fallback: boolean
+          created_at: string | null
+          enabled: boolean
+          id: string
+          sms_provider: string
+          threshold_percent: number
+          updated_at: string | null
+        }
+        Insert: {
+          alert_email?: string | null
+          alert_on_fallback?: boolean
+          created_at?: string | null
+          enabled?: boolean
+          id?: string
+          sms_provider?: string
+          threshold_percent?: number
+          updated_at?: string | null
+        }
+        Update: {
+          alert_email?: string | null
+          alert_on_fallback?: boolean
+          created_at?: string | null
+          enabled?: boolean
+          id?: string
+          sms_provider?: string
+          threshold_percent?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      notification_fallback_logs: {
+        Row: {
+          created_at: string | null
+          fallback_channel: string
+          id: string
+          notification_id: string | null
+          original_channel: string
+          reason: string
+          recipient: string
+        }
+        Insert: {
+          created_at?: string | null
+          fallback_channel: string
+          id?: string
+          notification_id?: string | null
+          original_channel: string
+          reason: string
+          recipient: string
+        }
+        Update: {
+          created_at?: string | null
+          fallback_channel?: string
+          id?: string
+          notification_id?: string | null
+          original_channel?: string
+          reason?: string
+          recipient?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_fallback_logs_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notification_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_logic_config: {
         Row: {
           config: Json
