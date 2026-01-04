@@ -1,7 +1,9 @@
 // ============================================
-// VERSAO: 3.2.0 | DEPLOY: 2026-01-03
-// FIX: Template invitation com 3 variáveis
+// VERSAO: 3.3.0 | DEPLOY: 2026-01-04
+// FIX: Normalização de versões em logs/metadata
 // ============================================
+
+const FUNCTION_VERSION = "3.3.0";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -296,7 +298,7 @@ serve(async (req) => {
             message_body: "Email de convite para plataforma",
             status: emailSuccess ? "success" : "failed",
             error_message: emailError?.message || emailData?.error || null,
-            metadata: { token, product: "platform", action: "create", rule_version: "mandatory_v1" }
+            metadata: { token, product: "platform", action: "create", rule_version: `v${FUNCTION_VERSION}` }
           });
         } catch (emailCatch: any) {
           console.error("❌ Platform email exception:", emailCatch);
@@ -324,7 +326,7 @@ serve(async (req) => {
       } else {
         // WhatsApp para APP - Usar template via send-pwa-notification
         if (hasAppAccess) {
-          console.log("💬 [v3.0] Sending app invitation via template...");
+          console.log(`💬 [v${FUNCTION_VERSION}] Sending app invitation via template...`);
           try {
             // Use send-pwa-notification with invitation template
             const { data: notifResult, error: notifError } = await supabase.functions.invoke("send-pwa-notification", {
@@ -360,7 +362,7 @@ serve(async (req) => {
               message_body: `Convite APP via template invitation`,
               status: appNotifSuccess ? "success" : "failed",
               error_message: notifError?.message || notifResult?.error || null,
-              metadata: { token, product: "app", action: "create", rule_version: "v3.0", template: "invitation" }
+              metadata: { token, product: "app", action: "create", rule_version: `v${FUNCTION_VERSION}`, template: "invitation" }
             });
           } catch (notifCatch: any) {
             console.error("❌ App notification exception:", notifCatch);
@@ -371,7 +373,7 @@ serve(async (req) => {
         // SMS INFORMATIVO para Plataforma (só se NÃO tem APP)
         // Apenas avisa que enviamos um email - via SMS (não WhatsApp)
         if (hasPlatformAccess && !hasAppAccess) {
-          console.log("📱 [v3.0] Sending platform info via SMS (not WhatsApp)...");
+          console.log(`📱 [v${FUNCTION_VERSION}] Sending platform info via SMS (not WhatsApp)...`);
           try {
             const smsMsg = `KnowYOU: Enviamos email com convite para Plataforma. Acesse pelo computador.`;
 
@@ -400,7 +402,7 @@ serve(async (req) => {
               message_body: smsMsg,
               status: platformSmsSuccess ? "success" : "failed",
               error_message: smsError?.message || smsResult?.error || null,
-              metadata: { token, product: "platform_info", action: "create", rule_version: "v3.0" }
+              metadata: { token, product: "platform_info", action: "create", rule_version: `v${FUNCTION_VERSION}` }
             });
           } catch (smsCatch: any) {
             console.error("❌ Platform info SMS exception:", smsCatch);

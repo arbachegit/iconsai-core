@@ -1,7 +1,9 @@
 // ============================================
-// VERSAO: 3.1.0 | DEPLOY: 2026-01-04
-// FIX: Corrigido para usar 'recipient' e buscar 'template' do metadata
+// VERSAO: 3.2.0 | DEPLOY: 2026-01-04
+// FIX: Normalização de versões em logs
 // ============================================
+
+const FUNCTION_VERSION = "3.2.0";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -28,7 +30,7 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  console.log("=== TWILIO STATUS CALLBACK v3.0 START ===");
+  console.log(`=== TWILIO STATUS CALLBACK v${FUNCTION_VERSION} START ===`);
 
   try {
     // Twilio sends data as application/x-www-form-urlencoded
@@ -262,7 +264,7 @@ serve(async (req) => {
       }
     }
 
-    console.log("=== TWILIO STATUS CALLBACK v3.0 END ===");
+    console.log(`=== TWILIO STATUS CALLBACK v${FUNCTION_VERSION} END ===`);
 
     // Twilio expects 200 OK
     return new Response('OK', { 
