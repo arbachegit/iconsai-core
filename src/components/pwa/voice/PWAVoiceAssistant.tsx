@@ -235,11 +235,9 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
 
           {/* ============================================================
               HOME - MINIMALISTA
-              - Logo + subtítulo
+              - Logo centralizado (com padding para evitar notch)
               - VoicePlayerBox (autoplay + replay)
-              - Grid de 4 módulos (compacto)
-              - SEM textos extras
-              - SEM HeaderActions (botão histórico)
+              - Grid de 4 módulos (com animação de descida quando playing)
               ============================================================ */}
           {(appState === "idle" || appState === "welcome") && (
             <motion.div
@@ -249,24 +247,24 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
               exit={{ opacity: 0 }}
               className="flex-1 flex flex-col overflow-hidden"
             >
-              {/* Header - Apenas logo centralizado */}
-              <div className="pt-4 pb-2 px-4">
+              {/* Header - Logo centralizado com MAIS padding para evitar notch */}
+              <div className="pt-12 pb-2 px-4">
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center">
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                     KnowYOU
                   </h1>
-                  <p className="text-xs text-muted-foreground mt-1">Seu assistente de voz inteligente</p>
+                  {/* REMOVIDO: Frase "Seu assistente de voz inteligente" */}
                 </motion.div>
               </div>
 
-              {/* VoicePlayerBox - Compacto */}
-              <div className="px-6 py-2">
+              {/* VoicePlayerBox - Compacto, desceu alguns pixels */}
+              <div className="px-6 py-4">
                 <VoicePlayerBox state={playerState} onPlay={handleReplay} onPause={stop} audioProgress={progress} />
               </div>
 
-              {/* Grid de Módulos - Ocupa o espaço restante */}
+              {/* Grid de Módulos - Com animação de descida quando isPlaying */}
               <div className="flex-1 px-4 pb-2 overflow-hidden">
-                <ModuleSelector onSelect={handleModuleSelect} />
+                <ModuleSelector onSelect={handleModuleSelect} isPlaying={isPlaying} />
               </div>
 
               {/* Footer mínimo */}
