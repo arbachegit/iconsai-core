@@ -90,13 +90,14 @@ const OntologyConceptsTab = lazy(() => import("@/components/admin/OntologyConcep
 const SchemaMonitorTab = lazy(() => import("@/components/admin/SchemaMonitorTab"));
 const CRMTab = lazy(() => import("@/components/admin/CRMTab").then(m => ({ default: m.CRMTab })));
 const WhatsAppTierDashboard = lazy(() => import("@/components/admin/WhatsAppTierDashboard"));
+const FallbackConfigTab = lazy(() => import("@/components/admin/FallbackConfigTab"));
 const TabLoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
   </div>
 );
 
-type TabType = "dashboard" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding" | "taxonomy-analytics" | "maieutic-effectiveness" | "lexicon-phonetics" | "ontology-concepts" | "content-profiles" | "schema-monitor" | "crm" | "whatsapp-tier";
+type TabType = "dashboard" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "notification-logs" | "user-registry" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "dashboard-external" | "data-registry" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding" | "taxonomy-analytics" | "maieutic-effectiveness" | "lexicon-phonetics" | "ontology-concepts" | "content-profiles" | "schema-monitor" | "crm" | "whatsapp-tier" | "fallback-config";
 
 // Mapping de tab para nome legível
 const TAB_LABELS: Record<TabType, string> = {
@@ -164,6 +165,7 @@ const TAB_LABELS: Record<TabType, string> = {
   "schema-monitor": "Monitor de Schema",
   "crm": "CRM Leads",
   "whatsapp-tier": "WhatsApp Tier",
+  "fallback-config": "Fallback SMS",
 };
 const Admin = () => {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -325,6 +327,7 @@ const Admin = () => {
         case "schema-monitor": return <SchemaMonitorTab />;
         case "crm": return <CRMTab />;
         case "whatsapp-tier": return <WhatsAppTierDashboard />;
+        case "fallback-config": return <FallbackConfigTab />;
         default: return <DashboardTab />;
       }
     })();

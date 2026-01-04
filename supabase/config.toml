@@ -308,3 +308,6 @@ verify_jwt = true
 
 [functions.check-tier-eligibility]
 verify_jwt = true
+
+[functions.sync-meta-tier]
+verify_jwt = true

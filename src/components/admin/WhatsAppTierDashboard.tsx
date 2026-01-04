@@ -18,7 +18,10 @@ import {
   CheckCircle2,
   Info,
   ArrowRight,
+  ArrowRightLeft,
   Clock,
+  Zap,
+  CloudDownload,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -78,6 +81,19 @@ interface EligibilityData {
   }>;
 }
 
+// Helper to get color based on usage percentage
+const getColorByPercent = (percent: number): string => {
+  if (percent >= 80) return "hsl(0, 84%, 60%)"; // red-500
+  if (percent >= 60) return "hsl(38, 92%, 50%)"; // amber-500
+  return "hsl(142, 71%, 45%)"; // green-500
+};
+
+const getColorClass = (percent: number): string => {
+  if (percent >= 80) return "text-red-500";
+  if (percent >= 60) return "text-amber-500";
+  return "text-green-500";
+};
+
 export default function WhatsAppTierDashboard() {
   const queryClient = useQueryClient();
 
@@ -102,6 +118,46 @@ export default function WhatsAppTierDashboard() {
     retry: 2,
   });
 
+  // Real-time today's count
+  const { data: todayCount = 0 } = useQuery({
+    queryKey: ["whatsapp-today-count"],
+    queryFn: async () => {
+      const today = format(new Date(), "yyyy-MM-dd");
+      const { count, error } = await supabase
+        .from("notification_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("channel", "whatsapp")
+        .gte("created_at", `${today}T00:00:00`)
+        .lte("created_at", `${today}T23:59:59`);
+      
+      if (error) {
+        console.error("[WhatsAppTierDashboard] Error fetching today count:", error);
+        return 0;
+      }
+      return count || 0;
+    },
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+  });
+
+  // Fallbacks today count
+  const { data: fallbacksToday } = useQuery({
+    queryKey: ["fallbacks-today"],
+    queryFn: async () => {
+      const today = format(new Date(), "yyyy-MM-dd");
+      const { count, error } = await supabase
+        .from("notification_fallback_logs")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", `${today}T00:00:00`);
+      
+      if (error) {
+        console.error("[WhatsAppTierDashboard] Error fetching fallbacks:", error);
+        return 0;
+      }
+      return count || 0;
+    },
+    refetchInterval: 30000,
+  });
+
   // Mutation to update metrics
   const updateMetricsMutation = useMutation({
     mutationFn: async () => {
@@ -118,9 +174,33 @@ export default function WhatsAppTierDashboard() {
     onSuccess: () => {
       toast.success("Métricas atualizadas com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["whatsapp-tier-eligibility"] });
+      queryClient.invalidateQueries({ queryKey: ["whatsapp-today-count"] });
     },
     onError: (error: Error) => {
       toast.error("Erro ao atualizar métricas", {
+        description: error.message,
+      });
+    },
+  });
+
+  // Mutation to sync with Meta
+  const syncMetaMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("sync-meta-tier");
+      
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || "Falha ao sincronizar com Meta");
+      
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success("Sincronizado com Meta!", {
+        description: `Tier: ${TIER_NAMES[data.data?.current_tier] || 'N/A'}, Limite: ${data.data?.messaging_limit?.toLocaleString() || 'N/A'}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["whatsapp-tier-eligibility"] });
+    },
+    onError: (error: Error) => {
+      toast.error("Erro ao sincronizar com Meta", {
         description: error.message,
       });
     },
@@ -139,6 +219,7 @@ export default function WhatsAppTierDashboard() {
           <Skeleton className="h-8 w-64" />
           <Skeleton className="h-10 w-40" />
         </div>
+        <Skeleton className="h-40" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-32" />
@@ -193,8 +274,12 @@ export default function WhatsAppTierDashboard() {
     daily_metrics,
   } = eligibilityData;
 
+  // Calculate real-time usage percentage
+  const dailyLimit = current_limit || 1000;
+  const realTimeUsagePercent = (todayCount / dailyLimit) * 100;
+  const remaining = dailyLimit - todayCount;
+
   const progressUpgradePercent = (days_above_threshold / 7) * 100;
-  const usageProgressColor = percent_limit_used >= 95 ? "bg-red-500" : percent_limit_used >= 80 ? "bg-amber-500" : "";
 
   return (
     <div className="space-y-6 p-6">
@@ -209,21 +294,73 @@ export default function WhatsAppTierDashboard() {
             Monitoramento de limites, qualidade e elegibilidade para upgrade
           </p>
         </div>
-        <Button
-          onClick={() => updateMetricsMutation.mutate()}
-          disabled={updateMetricsMutation.isPending}
-        >
-          {updateMetricsMutation.isPending ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4 mr-2" />
-          )}
-          Atualizar Métricas
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => syncMetaMutation.mutate()}
+            disabled={syncMetaMutation.isPending}
+          >
+            {syncMetaMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <CloudDownload className="h-4 w-4 mr-2" />
+            )}
+            Sincronizar Meta
+          </Button>
+          <Button
+            onClick={() => updateMetricsMutation.mutate()}
+            disabled={updateMetricsMutation.isPending}
+          >
+            {updateMetricsMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Atualizar Métricas
+          </Button>
+        </div>
       </div>
 
-      {/* 4 Main Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Real-time Counter Card - PROMINENT */}
+      <Card 
+        className="border-2 transition-colors"
+        style={{ borderColor: getColorByPercent(realTimeUsagePercent) }}
+      >
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            Envios Hoje (Tempo Real)
+          </CardTitle>
+          <CardDescription>
+            Atualiza automaticamente a cada 30 segundos
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-baseline gap-2">
+            <span className={`text-5xl font-bold ${getColorClass(realTimeUsagePercent)}`}>
+              {todayCount.toLocaleString()}
+            </span>
+            <span className="text-2xl text-muted-foreground">
+              / {dailyLimit.toLocaleString()}
+            </span>
+          </div>
+          <Progress 
+            value={Math.min(realTimeUsagePercent, 100)} 
+            className="mt-4 h-4"
+          />
+          <div className="flex justify-between mt-3 text-sm">
+            <span className="text-muted-foreground">
+              Restante: <strong>{remaining.toLocaleString()}</strong> mensagens
+            </span>
+            <span className={getColorClass(realTimeUsagePercent)}>
+              <strong>{realTimeUsagePercent.toFixed(1)}%</strong> usado
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 5 Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Card 1: Tier Atual */}
         <Card>
           <CardHeader className="pb-2">
@@ -236,7 +373,7 @@ export default function WhatsAppTierDashboard() {
             <Badge className={`text-lg px-3 py-1 ${TIER_COLORS[current_tier]}`}>
               {TIER_NAMES[current_tier]}
             </Badge>
-            <p className="text-2xl font-bold mt-2">
+            <p className="text-xl font-bold mt-2">
               {formatNumber(current_limit)}
               <span className="text-sm text-muted-foreground font-normal"> msgs/dia</span>
             </p>
@@ -255,14 +392,14 @@ export default function WhatsAppTierDashboard() {
             <Badge className={`capitalize ${QUALITY_COLORS[quality_rating] || QUALITY_COLORS.unknown}`}>
               {quality_rating === "unknown" ? "Não avaliado" : quality_rating}
             </Badge>
-            <div className="flex gap-4 mt-2 text-sm">
+            <div className="flex gap-3 mt-2 text-xs">
               <span className="flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3 text-amber-500" />
-                {blocks_7days} bloqueios
+                {blocks_7days} bloq.
               </span>
               <span className="flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3 text-red-500" />
-                {reports_7days} denúncias
+                {reports_7days} den.
               </span>
             </div>
           </CardContent>
@@ -278,9 +415,9 @@ export default function WhatsAppTierDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{percent_limit_used.toFixed(1)}%</p>
-            <Progress value={Math.min(percent_limit_used, 100)} className={`h-2 mt-2 ${usageProgressColor}`} />
-            <p className="text-sm text-muted-foreground mt-2">
-              Média: {avg_daily_users.toFixed(0)} usuários/dia
+            <Progress value={Math.min(percent_limit_used, 100)} className="h-2 mt-2" />
+            <p className="text-xs text-muted-foreground mt-2">
+              Média: {avg_daily_users.toFixed(0)} users/dia
             </p>
           </CardContent>
         </Card>
@@ -296,17 +433,35 @@ export default function WhatsAppTierDashboard() {
           <CardContent>
             <div className="flex items-center gap-2">
               <p className="text-2xl font-bold">{days_above_threshold}/7</p>
-              <span className="text-muted-foreground">dias</span>
+              <span className="text-muted-foreground text-sm">dias</span>
               {eligible_for_upgrade && (
-                <Badge className="bg-green-500/20 text-green-500 border-green-500/30 ml-auto">
+                <Badge className="bg-green-500/20 text-green-500 border-green-500/30 ml-auto text-xs">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   Elegível!
                 </Badge>
               )}
             </div>
             <Progress value={progressUpgradePercent} className="h-2 mt-2" />
-            <p className="text-sm text-muted-foreground mt-2">
-              Meta: {formatNumber(threshold_required)}+ usuários/dia
+            <p className="text-xs text-muted-foreground mt-2">
+              Meta: {formatNumber(threshold_required)}+ users/dia
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Card 5: Fallbacks Hoje */}
+        <Card className={fallbacksToday && fallbacksToday > 0 ? "border-orange-500/50" : ""}>
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1">
+              <ArrowRightLeft className="h-4 w-4" />
+              Fallbacks Hoje
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className={`text-2xl font-bold ${fallbacksToday && fallbacksToday > 0 ? "text-orange-500" : ""}`}>
+              {fallbacksToday || 0}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Mensagens redirecionadas para SMS
             </p>
           </CardContent>
         </Card>
@@ -469,12 +624,12 @@ export default function WhatsAppTierDashboard() {
                 )}
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full ${current_tier >= 4 ? "bg-purple-500/20" : "bg-purple-500/20"}`}>
-                <span className="text-purple-500 font-medium">∞</span>
+              <div className={`flex items-center justify-center w-10 h-10 rounded-full ${current_tier >= 4 ? "bg-green-500/20" : "bg-purple-500/20"}`}>
+                <span className={current_tier >= 4 ? "text-green-500 font-medium" : "text-purple-500 font-medium"}>∞</span>
               </div>
               <div className="flex-1">
                 <p className="font-medium">50.000+ msgs/dia por 7 dias</p>
-                <p className="text-sm text-muted-foreground">Tier Ilimitado</p>
+                <p className="text-sm text-muted-foreground">Tier ilimitado para grandes operações</p>
               </div>
               {current_tier === 3 && (
                 <Badge variant="outline">{days_above_threshold}/7 dias</Badge>
@@ -488,19 +643,31 @@ export default function WhatsAppTierDashboard() {
       </Card>
 
       {/* Status Info */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <span>Status do telefone:</span>
-          <Badge variant="outline" className={phone_status === "connected" ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}>
-            {phone_status === "connected" ? "Conectado" : phone_status}
-          </Badge>
-        </div>
-        {next_tier !== null && next_limit !== null && (
-          <div>
-            Próximo tier: <span className="font-medium">{TIER_NAMES[next_tier]}</span> ({formatNumber(next_limit)} msgs/dia)
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Informações do Telefone</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Status</p>
+              <p className="font-medium capitalize">{phone_status}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Negócio Verificado</p>
+              <p className="font-medium">{business_verified ? "Sim" : "Não"}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Próximo Tier</p>
+              <p className="font-medium">{next_tier !== null ? TIER_NAMES[next_tier] : "Máximo"}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Próximo Limite</p>
+              <p className="font-medium">{next_limit ? formatNumber(next_limit) + " msgs/dia" : "N/A"}</p>
+            </div>
           </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
