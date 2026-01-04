@@ -1,10 +1,10 @@
 // ============================================
-// VERSAO: 4.6.0 | DEPLOY: 2026-01-04
-// FIX: Normalização de versões em logs/metadata
-// FIX: Adicionado payload debug para resolver 63028
+// VERSAO: 4.7.0 | DEPLOY: 2026-01-04
+// FIX: Corrigido mapeamento de variáveis para Twilio Content API
+// FIX: Template knowyou_invitation_v2 usa {{1}}, {{2}}, {{3}} sequencial
 // ============================================
 
-const FUNCTION_VERSION = "4.6.0";
+const FUNCTION_VERSION = "4.7.0";
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -33,8 +33,8 @@ interface TemplateConfig {
 
 // ===========================================
 // TEMPLATES APROVADOS NO TWILIO CONSOLE
-// IMPORTANTE: Botões com URL dinâmica têm numeração SEPARADA!
-// Body: {{1}}, {{2}}, etc. | Button: {{1}} (começa de novo)
+// IMPORTANTE: Variáveis são SEQUENCIAIS (body + button = 1, 2, 3...)
+// Confirmado via twilio-content-inspector em 2026-01-04
 // ===========================================
 const TEMPLATES: Record<string, TemplateConfig> = {
   otp: {
@@ -231,28 +231,21 @@ async function sendWhatsAppViaTwilio(
 
   // ===========================================
   // FORMATO TWILIO CONTENT API:
-  // - ContentVariables: apenas variáveis do BODY
-  // - Para botões com URL dinâmica, o Twilio espera que o path
-  //   seja passado como variável separada no formato do template
+  // As variáveis são SEQUENCIAIS: {{1}}, {{2}}, {{3}}, etc.
+  // Tanto para body quanto para button URL.
+  // Confirmado via twilio-content-inspector em 2026-01-04
   // ===========================================
   
-  // Combinar bodyVariables com buttonVariables se houver
-  // O Twilio aceita todas as variáveis em ContentVariables, 
-  // mas a numeração do botão é separada no template
-  const hasButtonVars = Object.keys(buttonVariables).length > 0;
-  
-  // Se o template tem botão dinâmico, precisamos passar as variáveis
-  // no formato que o Twilio espera: body vars + button vars sequenciais
+  // Combinar bodyVariables com buttonVariables de forma sequencial
+  // Body vars mantém sua numeração original (1, 2, ...)
+  // Button vars continuam a sequência (3, 4, ...)
   const allVariables: Record<string, string> = { ...bodyVariables };
   
-  // Para templates com botão, adicionar as variáveis do botão
-  // após as variáveis do body
-  if (hasButtonVars) {
-    const bodyCount = Object.keys(bodyVariables).length;
-    Object.entries(buttonVariables).forEach(([key, value], index) => {
-      allVariables[String(bodyCount + index + 1)] = value;
-    });
-  }
+  // Adicionar variáveis do botão mantendo a numeração sequencial
+  const bodyCount = Object.keys(bodyVariables).length;
+  Object.entries(buttonVariables).forEach(([key, value], index) => {
+    allVariables[String(bodyCount + index + 1)] = value;
+  });
 
   const body = new URLSearchParams({
     From: fromNumber,
