@@ -74,11 +74,21 @@ const generateAccessCode = (): string => {
   return code;
 };
 
+// Rate limiting config (proteção local para conta Trial)
+const RATE_LIMIT = {
+  maxSendsPerMinute: 3,
+  cooldownMs: 60000, // 1 minuto
+};
+
 export default function PWAInvitesManager() {
   const [invites, setInvites] = useState<PWAInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
+  
+  // Rate limiting state
+  const [sendTimestamps, setSendTimestamps] = useState<number[]>([]);
+  const [rateLimitCooldown, setRateLimitCooldown] = useState<number>(0);
 
   // Form state
   const [newUserName, setNewUserName] = useState("");
@@ -86,6 +96,41 @@ export default function PWAInvitesManager() {
   const [newUserPhone, setNewUserPhone] = useState("");
   const [selectedChannel, setSelectedChannel] = useState<InviteChannel>("whatsapp");
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Cooldown timer effect
+  useEffect(() => {
+    if (rateLimitCooldown <= 0) return;
+    
+    const timer = setInterval(() => {
+      setRateLimitCooldown((prev) => Math.max(0, prev - 1000));
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [rateLimitCooldown > 0]);
+
+  // Check rate limit before sending
+  const checkRateLimit = (): boolean => {
+    const now = Date.now();
+    const recentSends = sendTimestamps.filter(
+      (ts) => now - ts < RATE_LIMIT.cooldownMs
+    );
+    
+    if (recentSends.length >= RATE_LIMIT.maxSendsPerMinute) {
+      const oldestSend = Math.min(...recentSends);
+      const remainingMs = RATE_LIMIT.cooldownMs - (now - oldestSend);
+      setRateLimitCooldown(remainingMs);
+      toast.warning(
+        `Limite de ${RATE_LIMIT.maxSendsPerMinute} envios/min atingido. Aguarde ${Math.ceil(remainingMs / 1000)}s.`
+      );
+      return false;
+    }
+    return true;
+  };
+
+  // Record send timestamp
+  const recordSend = () => {
+    setSendTimestamps((prev) => [...prev, Date.now()].slice(-10)); // Keep last 10
+  };
 
   useEffect(() => {
     fetchData();
@@ -176,6 +221,11 @@ export default function PWAInvitesManager() {
   };
 
   const sendInvite = async (invite: PWAInvite) => {
+    // Rate limit check
+    if (!checkRateLimit()) {
+      return;
+    }
+    
     setSending(invite.id);
     try {
       const user = invite.pwa_users;
@@ -219,6 +269,7 @@ export default function PWAInvitesManager() {
       console.log("[PWA Invites] Resposta:", data);
 
       if (data?.success) {
+        recordSend(); // Record successful send for rate limiting
         const channelName = data.channel === "whatsapp" ? "WhatsApp" : "SMS";
         const attemptsInfo = data.attempts > 1 ? ` (${data.attempts} tentativas)` : "";
         toast.success(`Convite enviado via ${channelName}!${attemptsInfo}`);
@@ -234,6 +285,11 @@ export default function PWAInvitesManager() {
   };
 
   const resendWelcome = async (invite: PWAInvite) => {
+    // Rate limit check
+    if (!checkRateLimit()) {
+      return;
+    }
+    
     setSending(invite.id);
     try {
       const user = invite.pwa_users;
@@ -257,6 +313,7 @@ export default function PWAInvitesManager() {
       if (error) throw error;
 
       if (data?.success) {
+        recordSend(); // Record successful send for rate limiting
         toast.success("Boas-vindas reenviadas!");
       } else {
         toast.error(data?.error || "Falha ao reenviar");
