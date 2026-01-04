@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 2.0.0 | DEPLOY: 2026-01-01
-// AUDITORIA: Forcado redeploy - Lovable Cloud
+// VERSAO: 3.0.0 | DEPLOY: 2026-01-04
+// FIX: Parsing robusto + Fallback SMS automatico
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -12,6 +12,7 @@ import { corsHeaders, handleCors } from "../_shared/cors.ts";
  * 
  * Receives delivery status updates from Twilio for WhatsApp/SMS messages.
  * Updates the notification_logs table with the final delivery status.
+ * Triggers SMS fallback when WhatsApp delivery fails.
  * 
  * Twilio sends these statuses in order:
  * - queued: Message is queued to be sent
@@ -27,19 +28,21 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  console.log("=== TWILIO STATUS CALLBACK START ===");
+  console.log("=== TWILIO STATUS CALLBACK v3.0 START ===");
 
   try {
     // Twilio sends data as application/x-www-form-urlencoded
-    const formData = await req.formData();
+    // Use text() + URLSearchParams for robust parsing
+    const bodyText = await req.text();
+    const formData = new URLSearchParams(bodyText);
     
     // Extract Twilio status data
-    const messageSid = formData.get('MessageSid') as string;
-    const messageStatus = formData.get('MessageStatus') as string;
-    const errorCode = formData.get('ErrorCode') as string | null;
-    const errorMessage = formData.get('ErrorMessage') as string | null;
-    const to = formData.get('To') as string;
-    const from = formData.get('From') as string;
+    const messageSid = formData.get('MessageSid');
+    const messageStatus = formData.get('MessageStatus');
+    const errorCode = formData.get('ErrorCode');
+    const errorMessage = formData.get('ErrorMessage');
+    const to = formData.get('To');
+    const from = formData.get('From');
 
     console.log('📬 Status callback received:', {
       messageSid,
@@ -63,9 +66,10 @@ serve(async (req) => {
 
     // Map Twilio status to our final_status
     let finalStatus: string | null = null;
-    if (['delivered', 'read'].includes(messageStatus)) {
-      finalStatus = messageStatus;
-    } else if (['undelivered', 'failed'].includes(messageStatus)) {
+    const isSuccess = ['delivered', 'read'].includes(messageStatus);
+    const isFailed = ['undelivered', 'failed'].includes(messageStatus);
+    
+    if (isSuccess || isFailed) {
       finalStatus = messageStatus;
     }
     // For 'queued', 'sent', 'sending' we update provider_status but not final_status
@@ -73,7 +77,7 @@ serve(async (req) => {
     // Find and update the notification log by message_sid
     const { data: existingLog, error: findError } = await supabase
       .from('notification_logs')
-      .select('id, delivery_attempts')
+      .select('id, delivery_attempts, metadata, phone_number, template, channel')
       .eq('message_sid', messageSid)
       .maybeSingle();
 
@@ -83,6 +87,8 @@ serve(async (req) => {
     }
 
     if (existingLog) {
+      console.log(`✅ Found notification log: ${existingLog.id}`);
+      
       // Prepare update data
       const updateData: Record<string, unknown> = {
         provider_status: messageStatus,
@@ -99,9 +105,12 @@ serve(async (req) => {
       if (errorCode) {
         updateData.provider_error_code = errorCode;
       }
-      if (errorMessage && finalStatus && ['undelivered', 'failed'].includes(finalStatus)) {
+      if (errorMessage && isFailed) {
         updateData.error_message = errorMessage;
         updateData.status = 'failed';
+      }
+      if (isSuccess) {
+        updateData.status = 'success';
       }
 
       const { error: updateError } = await supabase
@@ -113,6 +122,114 @@ serve(async (req) => {
         console.error('❌ Error updating log:', updateError);
       } else {
         console.log(`✅ Updated notification log: ${existingLog.id} -> ${messageStatus}`);
+      }
+
+      // =====================================================
+      // FALLBACK SMS: Se WhatsApp falhou, tentar SMS via Infobip
+      // =====================================================
+      if (isFailed && existingLog.channel === 'whatsapp') {
+        const metadata = existingLog.metadata as Record<string, unknown> | null;
+        const alreadyUsedFallback = metadata?.fallback_used === true;
+        
+        if (!alreadyUsedFallback && existingLog.phone_number && existingLog.template) {
+          console.log(`\n🔄 [FALLBACK] WhatsApp falhou, tentando SMS...`);
+          console.log(`[FALLBACK] Phone: ${existingLog.phone_number?.slice(0, 5)}***`);
+          console.log(`[FALLBACK] Template: ${existingLog.template}`);
+          
+          try {
+            // Recuperar variaveis do metadata
+            const variables = (metadata?.variables as Record<string, string>) || {};
+            
+            // Montar mensagem SMS baseada no template
+            let smsText = "";
+            switch (existingLog.template) {
+              case "otp":
+              case "resend_code":
+                smsText = `KnowYOU: Seu codigo de verificacao e ${variables["1"]}. Valido por 10 minutos.`;
+                break;
+              case "welcome":
+                smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Bem-vindo ao KnowYOU. Acesse: https://hmv.knowyou.app/${variables["2"] || "login"}`;
+                break;
+              case "resend_welcome":
+                smsText = `KnowYOU: Ola ${variables["1"] || "Usuario"}! Notamos que voce ainda nao acessou. Entre em: https://hmv.knowyou.app/${variables["2"] || "login"}`;
+                break;
+              case "invitation":
+                smsText = `KnowYOU: ${variables["1"] || "Voce"} foi convidado por ${variables["2"] || "Equipe KnowYOU"}! Acesse: https://hmv.knowyou.app/${variables["3"] || ""}`;
+                break;
+              default:
+                smsText = `KnowYOU: ${Object.values(variables).join(" ")}`;
+            }
+
+            // Enviar SMS via Infobip
+            const smsResponse = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${supabaseServiceKey}`,
+              },
+              body: JSON.stringify({
+                phoneNumber: existingLog.phone_number,
+                message: smsText,
+                eventType: "whatsapp_fallback",
+              }),
+            });
+
+            const smsResult = await smsResponse.json();
+            console.log(`[FALLBACK] SMS result:`, JSON.stringify(smsResult));
+
+            // Atualizar log com fallback
+            await supabase
+              .from('notification_logs')
+              .update({
+                metadata: {
+                  ...metadata,
+                  fallback_used: true,
+                  fallback_channel: 'sms',
+                  fallback_result: smsResult,
+                  fallback_at: new Date().toISOString(),
+                }
+              })
+              .eq('id', existingLog.id);
+
+            // Criar novo log para o SMS fallback
+            await supabase.from('notification_logs').insert({
+              event_type: 'whatsapp_fallback',
+              channel: 'sms',
+              phone_number: existingLog.phone_number,
+              template: existingLog.template,
+              recipient: existingLog.phone_number,
+              subject: `SMS Fallback (WhatsApp ${messageStatus})`,
+              message_body: smsText,
+              status: smsResult.success ? 'success' : 'failed',
+              error_message: smsResult.error || null,
+              metadata: {
+                original_message_sid: messageSid,
+                original_error_code: errorCode,
+                original_error_message: errorMessage,
+                variables,
+              },
+            });
+
+            console.log(`✅ [FALLBACK] SMS enviado com sucesso`);
+          } catch (fallbackError) {
+            console.error(`❌ [FALLBACK] Erro ao enviar SMS:`, fallbackError);
+            
+            // Registrar falha do fallback
+            await supabase
+              .from('notification_logs')
+              .update({
+                metadata: {
+                  ...metadata,
+                  fallback_used: true,
+                  fallback_failed: true,
+                  fallback_error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+                }
+              })
+              .eq('id', existingLog.id);
+          }
+        } else if (alreadyUsedFallback) {
+          console.log(`⚠️ [FALLBACK] Já foi usado anteriormente, não reenviar`);
+        }
       }
     } else {
       console.log(`⚠️ No notification log found for SID: ${messageSid}`);
@@ -126,8 +243,7 @@ serve(async (req) => {
           recipient: to?.replace('whatsapp:', '') || 'unknown',
           subject: 'Status callback (orphan)',
           message_body: `Twilio status update received for unknown message`,
-          status: finalStatus === 'delivered' || finalStatus === 'read' ? 'success' : 
-                  finalStatus === 'failed' || finalStatus === 'undelivered' ? 'failed' : 'pending',
+          status: isSuccess ? 'success' : (isFailed ? 'failed' : 'pending'),
           message_sid: messageSid,
           provider_status: messageStatus,
           final_status: finalStatus,
@@ -144,7 +260,7 @@ serve(async (req) => {
       }
     }
 
-    console.log("=== TWILIO STATUS CALLBACK END ===");
+    console.log("=== TWILIO STATUS CALLBACK v3.0 END ===");
 
     // Twilio expects 200 OK
     return new Response('OK', { 

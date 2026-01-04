@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 3.0.0 | DEPLOY: 2026-01-03
-// FIX: Templates Twilio - Substituir freeform por templates
+// VERSAO: 3.1.0 | DEPLOY: 2026-01-04
+// FIX: resend_welcome agora envia 2 variaveis
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -289,11 +289,15 @@ serve(async (req) => {
     if (hasAppAccess && registration.phone) {
       try {
         // Usar send-pwa-notification com template resend_welcome
+        // Template espera 2 variaveis: {{1}} = nome, {{2}} = path do botao
         const { data: notifResult, error: notifError } = await supabase.functions.invoke("send-pwa-notification", {
           body: {
             to: registration.phone,
             template: "resend_welcome",
-            variables: { "1": userName },
+            variables: { 
+              "1": userName,
+              "2": "login"  // Path do botao no template
+            },
             channel: "whatsapp"
           }
         });

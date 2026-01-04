@@ -285,15 +285,15 @@ export function usePWAAuth() {
       }
 
       // Enviar mensagem de boas-vindas
+      // Template welcome espera: {{1}} = nome, {{2}} = path (não URL completa)
       try {
-        const pwaUrl = `${window.location.origin}/pwa`;
         await supabase.functions.invoke('send-pwa-notification', {
           body: {
             to: state.userPhone,
             template: "welcome",
             variables: { 
               "1": state.userName || "Usuário", 
-              "2": pwaUrl 
+              "2": "pwa"  // Apenas o path, não URL completa
             },
             channel: "whatsapp",
             userId: null,
