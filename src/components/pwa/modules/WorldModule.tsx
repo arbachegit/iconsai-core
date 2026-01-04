@@ -21,17 +21,13 @@ export const WorldModule: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [textInput, setTextInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Controle de autoplay - executa UMA vez por sessão do módulo
   const hasSpokenWelcome = useRef(false);
-  
-  const { 
-    isListening, 
-    transcript, 
-    startListening, 
-    stopListening,
-    resetTranscript,
-    isSupported,
-  } = useVoiceRecognition();
-  
+
+  const { isListening, transcript, startListening, stopListening, resetTranscript, isSupported } =
+    useVoiceRecognition();
+
   const { speak, isPlaying, isLoading, progress } = useTextToSpeech();
   const { setPlayerState, addMessageToCurrentConversation, userName } = usePWAVoiceStore();
   const { config } = useConfigPWA();
@@ -41,19 +37,36 @@ export const WorldModule: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Mensagem de boas-vindas
+  // ============================================================
+  // AUTOPLAY: Executa texto de boas-vindas do módulo
+  // ============================================================
   useEffect(() => {
     if (hasSpokenWelcome.current) return;
     hasSpokenWelcome.current = true;
-    
-    const welcomeMessage = `Olá${userName ? ` ${userName}` : ""}! Sou seu assistente de conhecimento geral. Pergunte-me sobre qualquer assunto: ciência, história, tecnologia, cultura, ou o que você quiser saber. Toque no microfone para começar.`;
-    speak(welcomeMessage);
-    setMessages([{
-      role: "assistant",
-      content: welcomeMessage,
-      timestamp: new Date(),
-    }]);
-  }, [speak, userName]);
+
+    // Usa o texto configurado no admin ou um padrão
+    const welcomeMessage =
+      config.worldWelcomeText ||
+      `Olá${userName ? ` ${userName}` : ""}! Sou seu assistente de conhecimento geral. Pergunte-me sobre qualquer assunto: ciência, história, tecnologia, cultura, ou o que você quiser saber. Toque no microfone para começar.`;
+
+    // Pequeno delay para garantir que a UI está pronta
+    const timer = setTimeout(() => {
+      speak(welcomeMessage).catch((err) => {
+        console.warn("Autoplay bloqueado pelo navegador:", err);
+      });
+
+      // Adiciona como primeira mensagem do chat
+      setMessages([
+        {
+          role: "assistant",
+          content: welcomeMessage,
+          timestamp: new Date(),
+        },
+      ]);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [speak, userName, config.worldWelcomeText]);
 
   // Atualizar estado do player
   useEffect(() => {
@@ -85,7 +98,7 @@ export const WorldModule: React.FC = () => {
       content: input,
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     addMessageToCurrentConversation({ role: "user", content: input, timestamp: new Date() });
 
     setIsProcessing(true);
@@ -103,26 +116,28 @@ export const WorldModule: React.FC = () => {
       if (error) throw error;
 
       const aiResponse = data?.response || data?.message || "Desculpe, não consegui processar sua pergunta.";
-      
+
       const assistantMessage: Message = {
         role: "assistant",
         content: aiResponse,
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
       addMessageToCurrentConversation({ role: "assistant", content: aiResponse, timestamp: new Date() });
-      
+
       // Falar a resposta
       await speak(aiResponse);
-      
     } catch (error) {
       console.error("Erro ao processar:", error);
       const errorMessage = "Desculpe, ocorreu um erro ao processar sua pergunta. Por favor, tente novamente.";
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: errorMessage,
-        timestamp: new Date(),
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: errorMessage,
+          timestamp: new Date(),
+        },
+      ]);
       await speak(errorMessage);
     } finally {
       setIsProcessing(false);
@@ -162,12 +177,12 @@ export const WorldModule: React.FC = () => {
       <div className="flex items-center gap-3 p-4 border-b border-white/10">
         <motion.div
           className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-cyan-500/30 flex items-center justify-center"
-          animate={{ 
+          animate={{
             boxShadow: [
               "0 0 0 0 rgba(16, 185, 129, 0)",
               "0 0 20px 5px rgba(16, 185, 129, 0.3)",
               "0 0 0 0 rgba(16, 185, 129, 0)",
-            ]
+            ],
           }}
           transition={{ duration: 2, repeat: Infinity }}
         >
@@ -192,16 +207,14 @@ export const WorldModule: React.FC = () => {
             >
               <div
                 className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                  message.role === "user"
-                    ? "bg-emerald-500/20 text-white"
-                    : "bg-white/10 text-slate-200"
+                  message.role === "user" ? "bg-emerald-500/20 text-white" : "bg-white/10 text-slate-200"
                 }`}
               >
                 <p className="text-sm leading-relaxed">{message.content}</p>
                 <p className="text-xs text-slate-500 mt-2">
-                  {message.timestamp.toLocaleTimeString("pt-BR", { 
-                    hour: "2-digit", 
-                    minute: "2-digit" 
+                  {message.timestamp.toLocaleTimeString("pt-BR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </p>
               </div>
@@ -219,7 +232,7 @@ export const WorldModule: React.FC = () => {
               className="flex justify-start"
             >
               <div className="bg-white/10 rounded-2xl px-4 py-3 flex items-center gap-1">
-                {[0, 1, 2].map(i => (
+                {[0, 1, 2].map((i) => (
                   <motion.div
                     key={i}
                     className="w-2 h-2 bg-emerald-400 rounded-full"
@@ -238,11 +251,7 @@ export const WorldModule: React.FC = () => {
 
         {/* Transcript em tempo real */}
         {isListening && transcript && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex justify-end"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-end">
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3">
               <p className="text-sm text-emerald-300">{transcript}...</p>
             </div>
@@ -255,13 +264,13 @@ export const WorldModule: React.FC = () => {
       {/* Área de input por voz */}
       <div className="p-4 border-t border-white/10">
         <div className="flex flex-col items-center gap-4">
-          <VoicePlayerBox 
-            state={getPlayerState()} 
+          <VoicePlayerBox
+            state={getPlayerState()}
             onMicClick={handleMicClick}
             showMic={false}
             audioProgress={progress}
           />
-          
+
           <MicrophoneOrb
             isVisible={!isProcessing && !isPlaying}
             onCapture={(capturedTranscript) => handleUserInput(capturedTranscript)}
@@ -270,9 +279,9 @@ export const WorldModule: React.FC = () => {
             maxDuration={config.micTimeoutSeconds || 10}
             hideCountdown={!config.enableCountdown}
           />
-          
+
           <TranscriptArea
-            messages={messages.map(m => ({ role: m.role, content: m.content }))}
+            messages={messages.map((m) => ({ role: m.role, content: m.content }))}
             interimTranscript={transcript}
             isListening={isListening}
           />
