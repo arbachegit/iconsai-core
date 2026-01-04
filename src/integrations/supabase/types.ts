@@ -5515,6 +5515,108 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_daily_metrics: {
+        Row: {
+          created_at: string
+          id: string
+          messages_delivered: number
+          messages_failed: number
+          messages_queued: number
+          messages_sent: number
+          metric_date: string
+          template_breakdown: Json | null
+          unique_users: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          messages_delivered?: number
+          messages_failed?: number
+          messages_queued?: number
+          messages_sent?: number
+          metric_date: string
+          template_breakdown?: Json | null
+          unique_users?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          messages_delivered?: number
+          messages_failed?: number
+          messages_queued?: number
+          messages_sent?: number
+          metric_date?: string
+          template_breakdown?: Json | null
+          unique_users?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      whatsapp_quality_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_date: string
+          event_type: string
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
+      whatsapp_tier_status: {
+        Row: {
+          business_verified: boolean
+          created_at: string
+          current_tier: number
+          id: string
+          last_checked_at: string | null
+          messaging_limit: number
+          phone_status: string
+          quality_rating: string
+          updated_at: string
+        }
+        Insert: {
+          business_verified?: boolean
+          created_at?: string
+          current_tier?: number
+          id?: string
+          last_checked_at?: string | null
+          messaging_limit?: number
+          phone_status?: string
+          quality_rating?: string
+          updated_at?: string
+        }
+        Update: {
+          business_verified?: boolean
+          created_at?: string
+          current_tier?: number
+          id?: string
+          last_checked_at?: string | null
+          messaging_limit?: number
+          phone_status?: string
+          quality_rating?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       crm_metrics: {
