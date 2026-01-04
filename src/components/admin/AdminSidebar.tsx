@@ -85,7 +85,7 @@ import {
 import { NotificationBell } from './NotificationBell';
 
 
-type TabType = "dashboard" | "crm" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "dashboard-external" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding" | "taxonomy-analytics" | "maieutic-effectiveness" | "lexicon-phonetics" | "ontology-concepts" | "content-profiles" | "data-flow" | "schema-monitor";
+type TabType = "dashboard" | "crm" | "tooltips" | "gmail" | "analytics" | "conversations" | "images" | "youtube" | "documents" | "rag-metrics" | "version-control" | "tags" | "document-analysis" | "document-routing-logs" | "rag-diagnostics" | "content-management" | "podcasts" | "activity-logs" | "user-usage-logs" | "tag-modification-logs" | "deterministic-analysis" | "architecture" | "regional-config" | "suggestion-audit" | "contact-messages" | "documentation-sync" | "ml-dashboard" | "maieutic-training" | "taxonomy-ml-audit" | "taxonomy-manager" | "ml-review" | "security-integrity" | "security-dashboard" | "security-whitelist" | "security-shield-config" | "notification-settings" | "user-registry" | "data-registry" | "notification-logs" | "economic-indicators" | "market-news" | "api-management" | "json-data" | "data-analysis" | "chart-database" | "json-test" | "regional-indicators" | "dashboard-external" | "table-database" | "api-audit-logs" | "agent-management" | "pmc-conversion" | "pwa" | "app-config" | "doc-reclassification" | "taxonomy-suggestions" | "document-onboarding" | "taxonomy-analytics" | "maieutic-effectiveness" | "lexicon-phonetics" | "ontology-concepts" | "content-profiles" | "data-flow" | "schema-monitor" | "whatsapp-tier";
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -556,6 +556,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       items: [
         { id: "app-config" as TabType, label: "Config. de Sistemas", icon: Settings },
         { id: "notification-settings" as TabType, label: "Config. Notificações", icon: Bell },
+        { id: "whatsapp-tier" as TabType, label: "WhatsApp Tier", icon: MessageSquare },
         { id: "user-registry" as TabType, label: "Cadastro de Usuários", icon: Users },
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
       ]
