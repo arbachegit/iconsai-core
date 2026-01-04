@@ -203,18 +203,25 @@ async function sendWhatsAppViaTwilio(
   to: string,
   templateSid: string,
   variables: Record<string, string>,
+  templateName?: string,
 ): Promise<SendResult> {
   const fromNumber = `whatsapp:${TWILIO_WHATSAPP_NUMBER}`;
   const toNumber = `whatsapp:${to}`;
 
   const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
 
+  // Status Callback URL para rastrear entrega
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-status-callback`;
+
   // IMPORTANTE: Usar ContentSid e ContentVariables para templates
+  // Incluir StatusCallback para rastrear entrega final
   const body = new URLSearchParams({
     From: fromNumber,
     To: toNumber,
     ContentSid: templateSid,
     ContentVariables: JSON.stringify(variables),
+    StatusCallback: statusCallbackUrl,
   });
 
   console.log(`\n[WHATSAPP] ========================================`);
@@ -222,6 +229,7 @@ async function sendWhatsAppViaTwilio(
   console.log(`[WHATSAPP] To: ${toNumber}`);
   console.log(`[WHATSAPP] ContentSid: ${templateSid}`);
   console.log(`[WHATSAPP] ContentVariables: ${JSON.stringify(variables)}`);
+  console.log(`[WHATSAPP] StatusCallback: ${statusCallbackUrl}`);
   console.log(`[WHATSAPP] ========================================\n`);
 
   try {
@@ -237,7 +245,7 @@ async function sendWhatsAppViaTwilio(
     const data = await response.json();
 
     if (response.ok && data.sid) {
-      console.log(`[WHATSAPP] ✅ SUCESSO`);
+      console.log(`[WHATSAPP] ✅ ACEITO (aguardando entrega)`);
       console.log(`[WHATSAPP] Message SID: ${data.sid}`);
       console.log(`[WHATSAPP] Status: ${data.status}`);
       return {
@@ -284,7 +292,7 @@ serve(async (req) => {
 
   const startTime = Date.now();
   console.log(`\n${"=".repeat(60)}`);
-  console.log(`[SEND-PWA-NOTIFICATION v4.2] INICIANDO - ${new Date().toISOString()}`);
+  console.log(`[SEND-PWA-NOTIFICATION v4.3] INICIANDO - ${new Date().toISOString()}`);
   console.log(`${"=".repeat(60)}\n`);
 
   try {
@@ -455,13 +463,19 @@ serve(async (req) => {
     try {
       const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
+      // Status: pending se WhatsApp aceitou (aguardando callback), success/failed para resposta imediata
+      const logStatus = result.channel === "whatsapp" && result.success 
+        ? "pending"  // WhatsApp aceitou, aguardando callback de entrega
+        : (result.success ? "success" : "failed");
+
       await supabase.from("notification_logs").insert({
         user_id: userId || null,
         phone_number: phone,
         template: template,
         channel: result.channel,
-        status: result.success ? "delivered" : "failed",
-        twilio_sid: result.messageId || null,
+        status: logStatus,
+        message_sid: result.messageId || null,
+        provider_status: result.success ? "accepted" : "rejected",
         error_message: result.error || null,
         metadata: {
           attempts: attempts.map((a) => ({
@@ -473,15 +487,17 @@ serve(async (req) => {
           })),
           variables,
           templateSid,
+          templateName: template,
           templateType: templateConfig.type,
           requestedChannel: channel,
           forcedSms: isAuthenticationTemplate,
           processingTimeMs: Date.now() - startTime,
-          version: "4.1.0",
+          version: "4.3.0",
           providers: {
             whatsapp: "twilio",
             sms: "infobip",
           },
+          fallback_used: attempts.length > 1,
         },
       });
       console.log("\n[LOG] Notificação registrada no banco de dados");
