@@ -1,7 +1,7 @@
 // ============================================
-// VERSAO: 4.4.0 | DEPLOY: 2026-01-04
-// FIX: Separação de variáveis body/button para templates com URL dinâmica
-// Templates com botão dinâmico têm numeração separada no Twilio
+// VERSAO: 4.5.0 | DEPLOY: 2026-01-04
+// FIX: Corrigido insert para usar 'recipient' em vez de 'phone_number'
+// FIX: Adicionado salvamento de 'template' no metadata
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -530,15 +530,19 @@ serve(async (req) => {
         : (result.success ? "success" : "failed");
 
       await supabase.from("notification_logs").insert({
-        user_id: userId || null,
-        phone_number: phone,
-        template: template,
+        event_type: "pwa_notification",
+        recipient: phone,
         channel: result.channel,
+        subject: `${template} notification`,
+        message_body: `Template: ${template}`,
         status: logStatus,
         message_sid: result.messageId || null,
         provider_status: result.success ? "accepted" : "rejected",
         error_message: result.error || null,
         metadata: {
+          user_id: userId || null,
+          template: template,
+          phone: phone,
           attempts: attempts.map((a) => ({
             channel: a.channel,
             success: a.success,
@@ -553,7 +557,7 @@ serve(async (req) => {
           requestedChannel: channel,
           forcedSms: isAuthenticationTemplate,
           processingTimeMs: Date.now() - startTime,
-          version: "4.3.0",
+          version: "4.5.0",
           providers: {
             whatsapp: "twilio",
             sms: "infobip",
