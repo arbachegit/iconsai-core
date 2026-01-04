@@ -89,7 +89,7 @@ const LexiconPhoneticsTab = lazy(() => import("@/components/admin/LexiconPhoneti
 const OntologyConceptsTab = lazy(() => import("@/components/admin/OntologyConceptsTab"));
 const SchemaMonitorTab = lazy(() => import("@/components/admin/SchemaMonitorTab"));
 const CRMTab = lazy(() => import("@/components/admin/CRMTab").then(m => ({ default: m.CRMTab })));
-const WhatsAppTierMonitorTab = lazy(() => import("@/components/admin/WhatsAppTierMonitorTab"));
+const WhatsAppTierDashboard = lazy(() => import("@/components/admin/WhatsAppTierDashboard"));
 const TabLoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -324,7 +324,7 @@ const Admin = () => {
         case "ontology-concepts": return <OntologyConceptsTab />;
         case "schema-monitor": return <SchemaMonitorTab />;
         case "crm": return <CRMTab />;
-        case "whatsapp-tier": return <WhatsAppTierMonitorTab />;
+        case "whatsapp-tier": return <WhatsAppTierDashboard />;
         default: return <DashboardTab />;
       }
     })();
