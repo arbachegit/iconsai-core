@@ -556,7 +556,7 @@ export const AdminSidebar = ({ activeTab, onTabChange, isCollapsed, onToggleColl
       items: [
         { id: "app-config" as TabType, label: "Config. de Sistemas", icon: Settings },
         { id: "notification-settings" as TabType, label: "Config. Notificações", icon: Bell },
-        { id: "whatsapp-tier" as TabType, label: "WhatsApp Tier", icon: MessageSquare },
+        { id: "whatsapp-tier" as TabType, label: "WhatsApp Tier", icon: TrendingUp },
         { id: "user-registry" as TabType, label: "Cadastro de Usuários", icon: Users },
         { id: "analytics" as TabType, label: "Analytics", icon: BarChart3 },
       ]
