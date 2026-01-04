@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 3.0.0 | DEPLOY: 2026-01-04
-// FIX: Parsing robusto + Fallback SMS automatico
+// VERSAO: 3.1.0 | DEPLOY: 2026-01-04
+// FIX: Corrigido para usar 'recipient' e buscar 'template' do metadata
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -77,7 +77,7 @@ serve(async (req) => {
     // Find and update the notification log by message_sid
     const { data: existingLog, error: findError } = await supabase
       .from('notification_logs')
-      .select('id, delivery_attempts, metadata, phone_number, template, channel')
+      .select('id, delivery_attempts, metadata, recipient, channel')
       .eq('message_sid', messageSid)
       .maybeSingle();
 
@@ -130,11 +130,13 @@ serve(async (req) => {
       if (isFailed && existingLog.channel === 'whatsapp') {
         const metadata = existingLog.metadata as Record<string, unknown> | null;
         const alreadyUsedFallback = metadata?.fallback_used === true;
+        const phoneNumber = existingLog.recipient || (metadata?.phone as string);
+        const templateName = (metadata?.template as string) || (metadata?.templateName as string);
         
-        if (!alreadyUsedFallback && existingLog.phone_number && existingLog.template) {
+        if (!alreadyUsedFallback && phoneNumber && templateName) {
           console.log(`\n🔄 [FALLBACK] WhatsApp falhou, tentando SMS...`);
-          console.log(`[FALLBACK] Phone: ${existingLog.phone_number?.slice(0, 5)}***`);
-          console.log(`[FALLBACK] Template: ${existingLog.template}`);
+          console.log(`[FALLBACK] Phone: ${phoneNumber?.slice(0, 5)}***`);
+          console.log(`[FALLBACK] Template: ${templateName}`);
           
           try {
             // Recuperar variaveis do metadata
@@ -142,7 +144,7 @@ serve(async (req) => {
             
             // Montar mensagem SMS baseada no template
             let smsText = "";
-            switch (existingLog.template) {
+            switch (templateName) {
               case "otp":
               case "resend_code":
                 smsText = `KnowYOU: Seu codigo de verificacao e ${variables["1"]}. Valido por 10 minutos.`;
@@ -168,7 +170,7 @@ serve(async (req) => {
                 "Authorization": `Bearer ${supabaseServiceKey}`,
               },
               body: JSON.stringify({
-                phoneNumber: existingLog.phone_number,
+                phoneNumber: phoneNumber,
                 message: smsText,
                 eventType: "whatsapp_fallback",
               }),
@@ -195,14 +197,14 @@ serve(async (req) => {
             await supabase.from('notification_logs').insert({
               event_type: 'whatsapp_fallback',
               channel: 'sms',
-              phone_number: existingLog.phone_number,
-              template: existingLog.template,
-              recipient: existingLog.phone_number,
+              recipient: phoneNumber,
               subject: `SMS Fallback (WhatsApp ${messageStatus})`,
               message_body: smsText,
               status: smsResult.success ? 'success' : 'failed',
               error_message: smsResult.error || null,
               metadata: {
+                template: templateName,
+                phone: phoneNumber,
                 original_message_sid: messageSid,
                 original_error_code: errorCode,
                 original_error_message: errorMessage,
