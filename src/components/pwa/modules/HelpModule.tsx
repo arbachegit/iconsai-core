@@ -1,58 +1,75 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { HelpCircle, ChevronRight, Volume2, CheckCircle } from "lucide-react";
-import { VoicePlayerBox } from "../voice/VoicePlayerBox";
+import { Heart, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { MicrophoneOrb } from "../voice/MicrophoneOrb";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 
-interface HelpStep {
-  id: string;
-  title: string;
-  description: string;
-  audioText: string;
+interface OldcartsQuestion {
+  key: string;
+  question: string;
+  audioQuestion: string;
+  followUp?: string;
 }
 
-const helpSteps: HelpStep[] = [
+const oldcartsQuestions: OldcartsQuestion[] = [
   {
-    id: "welcome",
-    title: "Bem-vindo ao KnowYOU",
-    description: "Seu assistente de voz pessoal",
-    audioText: "Olá! Eu sou o KnowYOU, seu assistente de voz pessoal. Vou te guiar pelas funcionalidades disponíveis.",
+    key: "onset",
+    question: "Início",
+    audioQuestion: "Quando isso começou? Foi de repente ou gradual?",
+    followUp: "Há quanto tempo você está sentindo isso?",
   },
   {
-    id: "modules",
-    title: "Módulos Disponíveis",
-    description: "4 módulos para diferentes necessidades",
-    audioText:
-      "Você tem acesso a 4 módulos: Ajuda, para aprender a usar o aplicativo. Mundo, para perguntas gerais sobre qualquer assunto. Saúde, para triagem de sintomas. E Ideias, para validar e refinar suas ideias de negócio.",
+    key: "location",
+    question: "Localização",
+    audioQuestion: "Onde exatamente você sente? A sensação se espalha para algum outro lugar?",
   },
   {
-    id: "voice",
-    title: "Interação por Voz",
-    description: "Fale naturalmente comigo",
-    audioText:
-      "Para interagir comigo, basta tocar no botão do microfone e falar naturalmente. Eu vou te ouvir, processar sua fala e responder em áudio.",
+    key: "duration",
+    question: "Duração",
+    audioQuestion: "Quanto tempo dura cada episódio? É constante ou vai e volta?",
   },
   {
-    id: "confirmation",
-    title: "Confirmações por Voz",
-    description: "Diga SIM ou NÃO para confirmar",
-    audioText:
-      "Quando eu fizer uma pergunta de confirmação, basta dizer SIM ou NÃO. Isso torna a experiência mais fluida e natural.",
+    key: "character",
+    question: "Característica",
+    audioQuestion: "Como você descreveria essa sensação? É uma dor aguda, queimação, pressão, ou algo diferente?",
   },
   {
-    id: "complete",
-    title: "Pronto para Começar!",
-    description: "Você já sabe o básico",
-    audioText:
-      "Perfeito! Agora você já sabe o básico. Volte para a tela inicial e escolha um módulo para começar. Estou aqui para ajudar!",
+    key: "aggravating",
+    question: "Agravantes",
+    audioQuestion: "O que piora? Movimento, comida, estresse, ou alguma outra coisa?",
+  },
+  {
+    key: "relieving",
+    question: "Alívio",
+    audioQuestion: "O que melhora? Descanso, medicação, alguma posição específica?",
+  },
+  {
+    key: "timing",
+    question: "Temporalidade",
+    audioQuestion: "Em que momento do dia é pior? Manhã, tarde, noite, ou após alguma atividade?",
+  },
+  {
+    key: "severity",
+    question: "Intensidade",
+    audioQuestion: "De zero a dez, qual a intensidade? Sendo dez a pior sensação imaginável.",
   },
 ];
 
-export const HelpModule: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+type HealthStage = "greeting" | "chief_complaint" | "oldcarts" | "summary" | "export";
+
+interface HealthAnswer {
+  question: string;
+  answer: string;
+}
+
+export const HealthModule: React.FC = () => {
+  const [stage, setStage] = useState<HealthStage>("greeting");
+  const [chiefComplaint, setChiefComplaint] = useState("");
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<HealthAnswer[]>([]);
+  const [showMic, setShowMic] = useState(false);
 
   // Controle de autoplay - executa UMA vez por sessão do módulo
   const hasSpokenWelcome = useRef(false);
@@ -61,8 +78,6 @@ export const HelpModule: React.FC = () => {
   const { setPlayerState, userName } = usePWAVoiceStore();
   const { config } = useConfigPWA();
 
-  const currentHelpStep = helpSteps[currentStep];
-
   // ============================================================
   // AUTOPLAY: Executa texto de boas-vindas do módulo
   // ============================================================
@@ -70,162 +85,233 @@ export const HelpModule: React.FC = () => {
     if (hasSpokenWelcome.current) return;
     hasSpokenWelcome.current = true;
 
-    // Usa o texto configurado no admin ou o texto do primeiro step
-    const greeting = config.helpWelcomeText || helpSteps[0].audioText;
+    // Usa o texto configurado no admin ou um padrão
+    const greeting =
+      config.healthWelcomeText ||
+      `Olá${userName ? ` ${userName}` : ""}! Sou seu assistente de triagem de saúde. Vou fazer algumas perguntas para entender melhor o que você está sentindo. Lembre-se: isso não substitui uma consulta médica. Quando estiver pronto, me diga: o que está te incomodando hoje?`;
 
     // Pequeno delay para garantir que a UI está pronta
     const timer = setTimeout(() => {
       speak(greeting)
-        .then(() => {
-          setCompletedSteps((prev) => (prev.includes(helpSteps[0].id) ? prev : [...prev, helpSteps[0].id]));
-        })
+        .then(() => setShowMic(true))
         .catch((err) => {
           console.warn("Autoplay bloqueado pelo navegador:", err);
+          setShowMic(true);
         });
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [speak, config.helpWelcomeText]);
+  }, [speak, userName, config.healthWelcomeText]);
 
   // Atualizar estado do player
   useEffect(() => {
     if (isLoading) {
-      setPlayerState("loading");
+      setPlayerState("processing");
     } else if (isPlaying) {
       setPlayerState("playing");
     } else {
-      setPlayerState("idle");
+      setPlayerState("waiting");
     }
   }, [isLoading, isPlaying, setPlayerState]);
 
-  const playCurrentStep = async () => {
-    await speak(currentHelpStep.audioText);
-    setCompletedSteps((prev) => (prev.includes(currentHelpStep.id) ? prev : [...prev, currentHelpStep.id]));
-  };
+  const handleVoiceCapture = async (response: string) => {
+    setShowMic(false);
 
-  const nextStep = () => {
-    if (currentStep < helpSteps.length - 1) {
-      setCurrentStep((prev) => prev + 1);
+    if (stage === "greeting") {
+      setChiefComplaint(response);
+      setStage("chief_complaint");
+
+      const confirmation = `Entendi. Você está sentindo: ${response}. Vou fazer algumas perguntas para entender melhor. Pronto para começar?`;
+      await speak(confirmation);
+
+      // Pequeno delay e começa as perguntas
+      setTimeout(() => {
+        setStage("oldcarts");
+        askCurrentQuestion();
+      }, 2000);
+    } else if (stage === "oldcarts") {
+      // Salvar resposta
+      const currentQuestion = oldcartsQuestions[currentQuestionIndex];
+      setAnswers((prev) => [
+        ...prev,
+        {
+          question: currentQuestion.question,
+          answer: response,
+        },
+      ]);
+
+      // Próxima pergunta ou finalizar
+      if (currentQuestionIndex < oldcartsQuestions.length - 1) {
+        setCurrentQuestionIndex((prev) => prev + 1);
+        setTimeout(() => askCurrentQuestion(), 500);
+      } else {
+        setStage("summary");
+        generateSummary();
+      }
     }
   };
 
-  const prevStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep((prev) => prev - 1);
-    }
+  const askCurrentQuestion = async () => {
+    const question = oldcartsQuestions[currentQuestionIndex];
+    await speak(question.audioQuestion);
+    setShowMic(true);
   };
 
-  const getPlayerState = () => {
-    if (isLoading) return "loading";
-    if (isPlaying) return "playing";
-    return "idle";
+  const generateSummary = async () => {
+    const summary = `
+      Perfeito! Aqui está o resumo da nossa conversa:
+      
+      Queixa principal: ${chiefComplaint}.
+      
+      ${answers.map((a) => `${a.question}: ${a.answer}`).join(". ")}
+      
+      Deseja enviar este resumo para seu médico via WhatsApp?
+    `;
+    await speak(summary);
+    setStage("export");
   };
+
+  const handleTimeout = async () => {
+    await speak("Não ouvi sua resposta. Pode repetir, por favor?");
+    setShowMic(true);
+  };
+
+  const handleExportWhatsApp = async () => {
+    const message = `*Triagem de Saúde - KnowYOU*\n\n*Queixa:* ${chiefComplaint}\n\n${answers.map((a) => `*${a.question}:* ${a.answer}`).join("\n")}`;
+
+    const encoded = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encoded}`, "_blank");
+
+    await speak("O resumo está pronto para ser compartilhado. Escolha o contato do seu médico no WhatsApp.");
+  };
+
+  const stageProgress =
+    stage === "oldcarts"
+      ? ((currentQuestionIndex + 1) / oldcartsQuestions.length) * 100
+      : stage === "summary" || stage === "export"
+        ? 100
+        : 0;
 
   return (
-    <div className="flex flex-col h-full p-4">
-      {/* Progress indicator */}
-      <div className="flex justify-center gap-2 mb-6">
-        {helpSteps.map((step, index) => (
-          <motion.div
-            key={step.id}
-            className={`w-3 h-3 rounded-full transition-all duration-300 ${
-              index === currentStep
-                ? "bg-blue-500 scale-125"
-                : completedSteps.includes(step.id)
-                  ? "bg-emerald-500"
-                  : "bg-white/20"
-            }`}
-            animate={index === currentStep ? { scale: [1, 1.2, 1] } : {}}
-            transition={{ duration: 1, repeat: Infinity }}
-          />
-        ))}
-      </div>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="p-4 border-b border-white/10">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-full bg-rose-500/20 flex items-center justify-center">
+            <Heart className="w-6 h-6 text-rose-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Triagem de Saúde</h2>
+            <p className="text-sm text-slate-400">Protocolo OLDCARTS</p>
+          </div>
+        </div>
 
-      {/* Conteúdo do passo atual */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentStep}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          className="flex-1 flex flex-col"
-        >
-          {/* Ícone e título */}
-          <div className="text-center mb-6">
+        {/* Progress bar */}
+        <div className="space-y-2">
+          <div className="w-full bg-slate-700/50 rounded-full h-2 overflow-hidden">
             <motion.div
-              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-500/20 mb-4"
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              {completedSteps.includes(currentHelpStep.id) ? (
-                <CheckCircle className="w-8 h-8 text-emerald-400" />
-              ) : (
-                <HelpCircle className="w-8 h-8 text-blue-400" />
-              )}
-            </motion.div>
-            <h2 className="text-xl font-bold text-white mb-2">{currentHelpStep.title}</h2>
-            <p className="text-slate-400">{currentHelpStep.description}</p>
+              className="h-full bg-gradient-to-r from-rose-500 to-rose-400"
+              initial={{ width: 0 }}
+              animate={{ width: `${stageProgress}%` }}
+              transition={{ duration: 0.3 }}
+            />
           </div>
-
-          {/* Voice Player */}
-          <div className="flex-1 flex items-center justify-center">
-            <VoicePlayerBox state={getPlayerState()} onMicClick={() => {}} showMic={false} audioProgress={progress} />
+          <div className="flex justify-between text-xs text-slate-400">
+            <span>
+              {stage === "oldcarts"
+                ? `Pergunta ${currentQuestionIndex + 1} de ${oldcartsQuestions.length}`
+                : stage === "summary" || stage === "export"
+                  ? "Resumo completo"
+                  : "Iniciando..."}
+            </span>
           </div>
-
-          {/* Botão de play */}
-          <motion.button
-            onClick={playCurrentStep}
-            disabled={isPlaying || isLoading}
-            className={`
-              w-full py-4 rounded-2xl font-semibold
-              flex items-center justify-center gap-3
-              transition-all duration-300
-              ${isPlaying || isLoading ? "bg-blue-500/50 text-white/70" : "bg-blue-500 text-white hover:bg-blue-600"}
-            `}
-            whileHover={{ scale: isPlaying || isLoading ? 1 : 1.02 }}
-            whileTap={{ scale: isPlaying || isLoading ? 1 : 0.98 }}
-          >
-            <Volume2 className="w-5 h-5" />
-            {isPlaying ? "Reproduzindo..." : isLoading ? "Carregando..." : "Ouvir explicação"}
-          </motion.button>
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Navegação */}
-      <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
-        <motion.button
-          onClick={prevStep}
-          disabled={currentStep === 0}
-          className={`px-4 py-2 rounded-xl transition-all ${
-            currentStep === 0
-              ? "text-slate-600 cursor-not-allowed"
-              : "text-slate-400 hover:text-white hover:bg-white/10"
-          }`}
-          whileTap={{ scale: currentStep === 0 ? 1 : 0.95 }}
-        >
-          Anterior
-        </motion.button>
-
-        <span className="text-slate-500 text-sm">
-          {currentStep + 1} de {helpSteps.length}
-        </span>
-
-        <motion.button
-          onClick={nextStep}
-          disabled={currentStep === helpSteps.length - 1}
-          className={`px-4 py-2 rounded-xl flex items-center gap-1 transition-all ${
-            currentStep === helpSteps.length - 1
-              ? "text-slate-600 cursor-not-allowed"
-              : "text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
-          }`}
-          whileTap={{ scale: currentStep === helpSteps.length - 1 ? 1 : 0.95 }}
-        >
-          Próximo
-          <ChevronRight className="w-4 h-4" />
-        </motion.button>
+        </div>
       </div>
+
+      {/* Aviso importante */}
+      <div className="mx-4 mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-start gap-2">
+        <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-200">
+          Esta triagem é informativa e não substitui uma consulta médica profissional.
+        </p>
+      </div>
+
+      {/* Área principal */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <AnimatePresence mode="wait">
+          {/* Etapa de perguntas */}
+          {stage === "oldcarts" && (
+            <motion.div
+              key="oldcarts"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-4"
+            >
+              <div className="text-center">
+                <span className="inline-block px-3 py-1 bg-rose-500/20 text-rose-300 text-sm rounded-full mb-2">
+                  {oldcartsQuestions[currentQuestionIndex].question}
+                </span>
+              </div>
+              <p className="text-lg text-white text-center">{oldcartsQuestions[currentQuestionIndex].audioQuestion}</p>
+            </motion.div>
+          )}
+
+          {/* Resumo */}
+          {(stage === "summary" || stage === "export") && (
+            <motion.div
+              key="summary"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-4"
+            >
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  <span className="text-white font-medium">Resumo da Triagem</span>
+                </div>
+                <p className="text-sm text-slate-300 mb-4">
+                  <span className="text-slate-400">Queixa:</span> {chiefComplaint}
+                </p>
+                <div className="space-y-2">
+                  {answers.map((a, i) => (
+                    <div key={i} className="flex items-start gap-2 p-2 bg-slate-700/30 rounded-lg">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-slate-300">
+                        <span className="text-slate-400">{a.question}:</span> {a.answer}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={handleExportWhatsApp}
+                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-5 h-5" />
+                Enviar para meu médico
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Microfone */}
+      {stage !== "export" && showMic && !isPlaying && (
+        <div className="p-4 flex justify-center">
+          <MicrophoneOrb
+            isVisible={true}
+            onCapture={handleVoiceCapture}
+            onTimeout={handleTimeout}
+            maxDuration={config.micTimeoutSeconds || 10}
+            hideCountdown={!config.enableCountdown}
+          />
+        </div>
+      )}
     </div>
   );
 };
 
-export default HelpModule;
+export default HealthModule;
