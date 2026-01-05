@@ -95,7 +95,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const { stopAllAndCleanup } = useAudioManager();
   const { config: pwaConfig } = useConfigPWA();
-  const { userName } = usePWAVoiceStore();
+  const { userName, deviceFingerprint } = usePWAVoiceStore();
   
   const hasSpokenWelcome = useRef(false);
   
@@ -170,7 +170,9 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
           body: { 
             message: userText, 
             pwaMode: true, 
-            chatType: moduleType 
+            chatType: moduleType,
+            agentSlug: moduleType,
+            deviceId: deviceFingerprint || undefined
           } 
         }
       );
@@ -306,7 +308,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
         {/* Botão de Microfone */}
         <motion.button
           onClick={handleMicClick}
-          disabled={isProcessing || isPlaying}
+          disabled={isProcessing || isPlaying || isLoading}
           className="flex items-center gap-2 px-6 py-3 rounded-full transition-colors disabled:opacity-50"
           style={{ 
             backgroundColor: `${config.color}20`,
