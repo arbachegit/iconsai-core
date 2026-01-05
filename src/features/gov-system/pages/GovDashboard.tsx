@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
-import { ArrowLeft, MapPin, BarChart3, Target, Scale, Building2 } from 'lucide-react';
+import { ArrowLeft, MapPin, BarChart3, Target, Scale, Building2, Stethoscope, Calculator } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigationStore } from '../stores/navigationStore';
 import { BrazilMap } from '../components/maps/BrazilMap';
 import { ComparisonTable } from '../components/comparison/ComparisonTable';
+import { MunicipalityList } from '../components/municipalities/MunicipalityList';
+import { MunicipalDiagnosis } from '../components/diagnosis/MunicipalDiagnosis';
+import { InvestmentSimulator } from '../components/simulator/InvestmentSimulator';
 import { DADOS_ESTADOS } from '../data/estadosBrasil';
+import type { Municipio } from '../types';
 
 export const GovDashboard: React.FC = () => {
   const { 
@@ -16,10 +21,16 @@ export const GovDashboard: React.FC = () => {
     modoComparacao,
     toggleModoComparacao,
     estadosParaComparar, 
-    limparComparacao 
+    limparComparacao,
+    selecionarCidade
   } = useNavigationStore();
   
   const [showComparison, setShowComparison] = useState(false);
+  const [activeTab, setActiveTab] = useState<'diagnostico' | 'simulador'>('diagnostico');
+
+  const handleSelectMunicipio = (municipio: Municipio) => {
+    selecionarCidade(municipio);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -96,13 +107,11 @@ export const GovDashboard: React.FC = () => {
             
             {/* Sidebar */}
             <div className="space-y-4">
-              {/* Card de comparação */}
               <div className="bg-card rounded-xl shadow-lg p-5 border border-border">
                 <h3 className="font-bold flex items-center gap-2 mb-4 text-foreground">
                   <Scale className="w-5 h-5 text-purple-600" />
                   Comparar Estados
                 </h3>
-                
                 <button
                   onClick={toggleModoComparacao}
                   className={`w-full py-3 rounded-xl font-medium transition-all ${
@@ -113,70 +122,46 @@ export const GovDashboard: React.FC = () => {
                 >
                   {modoComparacao ? '✓ Modo Comparação Ativo' : 'Ativar Comparação'}
                 </button>
-                
                 {estadosParaComparar.length > 0 && (
                   <div className="mt-4 space-y-3">
-                    <div className="text-sm text-muted-foreground font-medium">Selecionados:</div>
                     <div className="flex flex-wrap gap-2">
                       {estadosParaComparar.map(sigla => (
-                        <span 
-                          key={sigla} 
-                          className="px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded-full text-sm font-semibold"
-                        >
+                        <span key={sigla} className="px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded-full text-sm font-semibold">
                           {sigla} - {DADOS_ESTADOS[sigla]?.nome}
                         </span>
                       ))}
                     </div>
-                    
                     {estadosParaComparar.length === 2 && (
-                      <button 
-                        onClick={() => setShowComparison(true)}
-                        className="w-full py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors shadow-lg"
-                      >
+                      <button onClick={() => setShowComparison(true)} className="w-full py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors shadow-lg">
                         Ver Comparação →
                       </button>
                     )}
-                    
-                    <button 
-                      onClick={limparComparacao} 
-                      className="w-full py-2 text-destructive text-sm hover:bg-destructive/10 rounded-lg transition-colors"
-                    >
+                    <button onClick={limparComparacao} className="w-full py-2 text-destructive text-sm hover:bg-destructive/10 rounded-lg transition-colors">
                       Limpar seleção
                     </button>
                   </div>
                 )}
               </div>
               
-              {/* Card de diagnóstico */}
               <div className="bg-card rounded-xl shadow-lg p-5 border border-border">
                 <h3 className="font-bold flex items-center gap-2 mb-3 text-foreground">
                   <Target className="w-5 h-5 text-orange-600" />
                   Diagnóstico Municipal
                 </h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Navegue até uma cidade para ver análise de gaps, comparação com municípios similares e simulação de custos de investimento.
+                  Navegue até uma cidade para ver análise de gaps com Z-Score, comparação com municípios similares e simulação de custos.
                 </p>
               </div>
 
-              {/* Card de estatísticas */}
               <div className="bg-card rounded-xl shadow-lg p-5 border border-border">
                 <h3 className="font-bold flex items-center gap-2 mb-3 text-foreground">
                   <BarChart3 className="w-5 h-5 text-primary" />
                   Estatísticas
                 </h3>
                 <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Estados</span>
-                    <span className="font-bold text-foreground">27</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Municípios</span>
-                    <span className="font-bold text-foreground">5.570</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">População</span>
-                    <span className="font-bold text-foreground">203 mi</span>
-                  </div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Estados</span><span className="font-bold text-foreground">27</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Municípios</span><span className="font-bold text-foreground">5.570</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">População</span><span className="font-bold text-foreground">203 mi</span></div>
                 </div>
               </div>
             </div>
@@ -200,30 +185,25 @@ export const GovDashboard: React.FC = () => {
               
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-5 text-center">
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                    {(estadoSelecionado.indicadores.populacao / 1000000).toFixed(1)}
-                  </div>
+                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{(estadoSelecionado.indicadores.populacao / 1000000).toFixed(1)}</div>
                   <div className="text-sm text-muted-foreground mt-1">Milhões de habitantes</div>
                 </div>
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-5 text-center">
-                  <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                    {estadoSelecionado.indicadores.idhm.toFixed(3)}
-                  </div>
+                  <div className="text-3xl font-bold text-green-600 dark:text-green-400">{estadoSelecionado.indicadores.idhm.toFixed(3)}</div>
                   <div className="text-sm text-muted-foreground mt-1">IDHM</div>
                 </div>
                 <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-5 text-center">
-                  <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                    {(estadoSelecionado.indicadores.pibTotal / 1000000000).toFixed(0)}
-                  </div>
+                  <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{(estadoSelecionado.indicadores.pibTotal / 1000000000).toFixed(0)}</div>
                   <div className="text-sm text-muted-foreground mt-1">PIB (R$ bi)</div>
                 </div>
               </div>
               
-              <div className="bg-muted rounded-xl p-6">
-                <h3 className="font-bold mb-4 text-foreground">Municípios do Estado</h3>
-                <p className="text-muted-foreground">
-                  Funcionalidade de listagem de municípios será implementada em breve...
-                </p>
+              <div className="bg-muted/50 rounded-xl p-6">
+                <h3 className="font-bold mb-4 text-foreground">Municípios de {estadoSelecionado.nome}</h3>
+                <MunicipalityList 
+                  ufSigla={estadoSelecionado.sigla} 
+                  onSelectMunicipio={handleSelectMunicipio}
+                />
               </div>
             </div>
           </div>
@@ -233,22 +213,51 @@ export const GovDashboard: React.FC = () => {
         {nivelAtual === 'cidade' && cidadeSelecionada && (
           <div className="space-y-6">
             <div className="bg-card rounded-2xl shadow-lg p-6 border border-border">
-              <h2 className="text-3xl font-bold text-foreground">{cidadeSelecionada.nome}</h2>
-              <p className="text-muted-foreground">
-                Diagnóstico e simulador serão implementados em breve...
-              </p>
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h2 className="text-3xl font-bold text-foreground">{cidadeSelecionada.nome}</h2>
+                  <p className="text-muted-foreground">{cidadeSelecionada.ufSigla} • {cidadeSelecionada.populacao.toLocaleString('pt-BR')} habitantes</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="px-4 py-2 bg-primary/10 text-primary rounded-full font-bold">
+                    IDHM {cidadeSelecionada.idhm.toFixed(3)}
+                  </span>
+                </div>
+              </div>
+
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'diagnostico' | 'simulador')}>
+                <TabsList className="mb-6">
+                  <TabsTrigger value="diagnostico" className="gap-2">
+                    <Stethoscope className="w-4 h-4" />
+                    Diagnóstico
+                  </TabsTrigger>
+                  <TabsTrigger value="simulador" className="gap-2">
+                    <Calculator className="w-4 h-4" />
+                    Simulador de Investimento
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="diagnostico">
+                  <MunicipalDiagnosis 
+                    municipio={cidadeSelecionada}
+                    onOpenSimulator={() => setActiveTab('simulador')}
+                  />
+                </TabsContent>
+
+                <TabsContent value="simulador">
+                  <InvestmentSimulator 
+                    municipio={cidadeSelecionada}
+                    onClose={() => setActiveTab('diagnostico')}
+                  />
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         )}
       </main>
 
-      {/* Modal de Comparação */}
       {showComparison && estadosParaComparar.length === 2 && (
-        <ComparisonTable
-          estadoA={estadosParaComparar[0]}
-          estadoB={estadosParaComparar[1]}
-          onClose={() => setShowComparison(false)}
-        />
+        <ComparisonTable estadoA={estadosParaComparar[0]} estadoB={estadosParaComparar[1]} onClose={() => setShowComparison(false)} />
       )}
     </div>
   );
