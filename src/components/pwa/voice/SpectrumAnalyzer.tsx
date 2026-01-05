@@ -62,13 +62,6 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
   const barWidth = Math.max(2, (width / barCount) - 2);
   const gap = 2;
 
-  // Gerar alturas aleatórias para simulação
-  const generateRandomHeights = () => {
-    return Array(barCount).fill(0).map(() => 
-      0.1 + Math.random() * 0.9
-    );
-  };
-
   // Gerar alturas para estado idle (barras baixas ondulando suavemente)
   const generateIdleHeights = (time: number) => {
     return Array(barCount).fill(0).map((_, i) => {
@@ -85,15 +78,43 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
     });
   };
 
-  // Animação baseada no estado
+  // Gerar alturas suaves para playing (interpola com valor anterior)
+  const generateSmoothPlayingHeights = (prevHeights: number[]) => {
+    return prevHeights.map((prev) => {
+      const target = 0.15 + Math.random() * 0.7;
+      // Interpolar 25% em direção ao target (movimento suave)
+      return prev + (target - prev) * 0.25;
+    });
+  };
+
+  // Gerar alturas suaves para recording
+  const generateSmoothRecordingHeights = (prevHeights: number[], elapsed: number) => {
+    const pulse = Math.sin(elapsed / 500) * 0.2 + 0.8;
+    return prevHeights.map((prev) => {
+      const target = 0.3 + Math.random() * 0.5 * pulse;
+      return prev + (target - prev) * 0.25;
+    });
+  };
+
+  // Animação baseada no estado com throttling para suavidade
   useEffect(() => {
     let startTime = Date.now();
+    let lastUpdate = 0;
     let isRunning = true;
+    const UPDATE_INTERVAL = 80; // ~12fps para animação suave
 
     const animate = () => {
       if (!isRunning) return;
 
-      const elapsed = Date.now() - startTime;
+      const now = Date.now();
+      const elapsed = now - startTime;
+      
+      // Throttle: limitar taxa de atualização
+      if (now - lastUpdate < UPDATE_INTERVAL) {
+        animationRef.current = requestAnimationFrame(animate);
+        return;
+      }
+      lastUpdate = now;
 
       switch (state) {
         case "idle":
@@ -117,22 +138,19 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
             });
             setBarHeights(heights);
           } else {
-            // Simulação de reprodução
-            setBarHeights(generateRandomHeights());
+            // Simulação suave de reprodução (interpola com valores anteriores)
+            setBarHeights(prev => generateSmoothPlayingHeights(prev));
           }
           break;
         
         case "paused":
           // Manter última altura mas reduzir gradualmente
-          setBarHeights(prev => prev.map(h => Math.max(0.05, h * 0.95)));
+          setBarHeights(prev => prev.map(h => Math.max(0.05, h * 0.98)));
           break;
         
         case "recording":
-          // Pulso mais intenso para gravação
-          setBarHeights(() => {
-            const pulse = Math.sin(elapsed / 100) * 0.3 + 0.7;
-            return Array(barCount).fill(0).map(() => 0.3 + Math.random() * 0.7 * pulse);
-          });
+          // Pulso suave para gravação
+          setBarHeights(prev => generateSmoothRecordingHeights(prev, elapsed));
           break;
       }
 
@@ -169,13 +187,13 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
     };
   }, [state, barCount, useRealAudio, audioRef]);
 
-  // Velocidade de transição baseada no estado
+  // Velocidade de transição baseada no estado (MAIS LENTO para suavidade)
   const transitionDuration = useMemo(() => {
     switch (state) {
       case "idle": return 0.8;
-      case "loading": return 0.15;
-      case "playing": return 0.05;
-      case "recording": return 0.03;
+      case "loading": return 0.3;
+      case "playing": return 0.25;
+      case "recording": return 0.15;
       case "paused": return 0.5;
       default: return 0.3;
     }
