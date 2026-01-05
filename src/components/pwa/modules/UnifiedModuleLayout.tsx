@@ -222,7 +222,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
   const buttonState = isProcessing ? "loading" : isLoading ? "loading" : isPlaying ? "playing" : "idle";
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background relative overflow-hidden">
       {/* HEADER */}
       <div className="flex items-center justify-between px-4 py-3 pt-12">
         {/* Botão Voltar */}

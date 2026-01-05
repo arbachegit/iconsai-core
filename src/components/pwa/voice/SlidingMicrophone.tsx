@@ -306,7 +306,7 @@ export const SlidingMicrophone: React.FC<SlidingMicrophoneProps> = ({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 300, opacity: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className={`fixed bottom-0 left-0 right-0 z-50 ${className}`}
+          className={`absolute bottom-0 left-0 right-0 z-50 ${className}`}
         >
           {/* Fundo com blur */}
           <div className="bg-slate-900/95 backdrop-blur-xl rounded-t-3xl border-t border-white/10 shadow-2xl">
