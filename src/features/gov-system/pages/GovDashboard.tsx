@@ -44,7 +44,7 @@ export const GovDashboard: React.FC = () => {
                 className="flex items-center gap-2 hover:text-primary transition-colors"
               >
                 <MapPin className="w-7 h-7 text-primary" />
-                <span className="text-2xl font-bold text-foreground">Gov System Fontes</span>
+                <span className="text-2xl font-bold text-foreground">Gov System AI</span>
               </button>
               
               {/* Breadcrumb */}
