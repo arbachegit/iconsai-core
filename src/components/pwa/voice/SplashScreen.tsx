@@ -24,7 +24,7 @@ const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({
   onComplete,
-  duration = 4500,
+  duration = 5500,
   embedded = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -53,11 +53,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     return arr;
   }, []);
 
-  // Timeline
+  // Timeline - adjusted for smoother transitions
   const TL = useMemo(() => {
-    const tStarsIn = 1100;
-    const tGrow = 1600;
-    const tWrite = 1400;
+    const tStarsIn = 1200;
+    const tGrow = 1800;
+    const tWrite = 1600;
     const tSuction = Math.max(600, duration - (tStarsIn + tGrow + tWrite));
     const t1 = tStarsIn;
     const t2 = t1 + tGrow;
@@ -183,7 +183,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     if (st === "done") {
       if (!fadeOut) {
         setFadeOut(true);
-        window.setTimeout(() => onComplete(), 220);
+        window.setTimeout(() => onComplete(), 1100);
       }
       return;
     }
@@ -221,7 +221,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       className={`${embedded ? "absolute" : "fixed"} inset-0 z-50 bg-black overflow-hidden`}
       style={{
         opacity: overlayOpacity,
-        transition: "opacity 0.22s ease-out",
+        transition: "opacity 1s ease-in-out",
       }}
     >
       {/* Canvas: estrelas */}
@@ -244,7 +244,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
       {/* Texto "KnowYOU AI" */}
       <div
-        className="absolute left-1/2 top-[58%] -translate-x-1/2 pointer-events-none"
+        className="absolute left-1/2 top-[65%] -translate-x-1/2 pointer-events-none"
         style={{
           opacity: writingActive ? textOpacity : 0,
           transition: "opacity 0.15s ease-out",
@@ -300,64 +300,116 @@ function CentralAIStar({ glow }: { glow: number }) {
   );
 }
 
-// Texto com efeito de escrita
+// Texto com efeito de escrita - ESPAÇAMENTO CORRIGIDO
 function HandwritingTitle({ active }: { active: boolean }) {
   const common: React.SVGProps<SVGPathElement> = {
     fill: "none",
     stroke: "rgba(255,255,255,0.92)",
-    strokeWidth: 4.5,
+    strokeWidth: 3.5,
     strokeLinecap: "round",
     strokeLinejoin: "round",
   };
 
-  const base = 0.06;
-  const step = 0.14;
+  const base = 0.1;
+  const step = 0.13;
 
   return (
     <svg
-      width="280"
-      height="80"
-      viewBox="0 0 280 80"
+      width="360"
+      height="95"
+      viewBox="0 0 360 95"
       className="block"
       style={{
-        filter: "drop-shadow(0 0 8px rgba(200,220,255,0.4))",
+        filter: "drop-shadow(0 0 12px rgba(200,220,255,0.5))",
       }}
     >
       <defs>
         <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="50%" stopColor="#f0f8ff" />
           <stop offset="100%" stopColor="#e0f0ff" />
         </linearGradient>
       </defs>
 
       <g stroke="url(#textGrad)">
-        {/* K */}
-        <WritePath d="M15 15 L15 45 M15 28 L32 15 M15 28 L32 45" style={common} active={active} delaySec={base + step * 0} />
-        {/* n */}
-        <WritePath d="M40 25 L40 45 M40 30 Q50 22 55 30 L55 45" style={common} active={active} delaySec={base + step * 1} />
-        {/* o */}
-        <WritePath d="M65 35 A10 10 0 1 1 65 34.9" style={common} active={active} delaySec={base + step * 2} />
-        {/* w */}
-        <WritePath d="M85 25 L90 45 L100 30 L110 45 L115 25" style={common} active={active} delaySec={base + step * 3} />
-        {/* Y */}
-        <WritePath d="M125 15 L137 30 L137 45 M150 15 L137 30" style={common} active={active} delaySec={base + step * 4} />
-        {/* O */}
-        <WritePath d="M165 30 A15 15 0 1 1 165 29.9" style={common} active={active} delaySec={base + step * 5} />
-        {/* U */}
-        <WritePath d="M195 15 L195 35 Q195 45 207 45 Q220 45 220 35 L220 15" style={common} active={active} delaySec={base + step * 6} />
+        {/* K - posição 15 */}
+        <WritePath 
+          d="M15 20 L15 55 M15 36 L38 20 M15 36 L38 55" 
+          style={common} 
+          active={active} 
+          delaySec={base + step * 0} 
+        />
+        
+        {/* n - posição 55 */}
+        <WritePath 
+          d="M55 35 L55 55 M55 42 C55 30 70 30 78 38 L78 55" 
+          style={common} 
+          active={active} 
+          delaySec={base + step * 1} 
+        />
+        
+        {/* o - posição 100 */}
+        <WritePath 
+          d="M115 45 A13 13 0 1 1 115 44.9" 
+          style={common} 
+          active={active} 
+          delaySec={base + step * 2} 
+        />
+        
+        {/* w - posição 150 */}
+        <WritePath 
+          d="M150 32 L160 55 L175 40 L190 55 L200 32" 
+          style={common} 
+          active={active} 
+          delaySec={base + step * 3} 
+        />
+        
+        {/* Y - posição 220 */}
+        <WritePath 
+          d="M220 20 L238 42 L238 55 M256 20 L238 42" 
+          style={common} 
+          active={active} 
+          delaySec={base + step * 4} 
+        />
+        
+        {/* O - posição 275 */}
+        <WritePath 
+          d="M292 37 A17 17 0 1 1 292 36.9" 
+          style={common} 
+          active={active} 
+          delaySec={base + step * 5} 
+        />
+        
+        {/* U - posição 325 */}
+        <WritePath 
+          d="M325 20 L325 45 C325 55 337 60 350 60 C363 60 375 55 375 45 L375 20" 
+          style={common} 
+          active={active} 
+          delaySec={base + step * 6} 
+        />
       </g>
 
-      {/* AI - menor, abaixo */}
-      <g stroke="url(#textGrad)" transform="translate(105, 52) scale(0.7)">
+      {/* AI - centralizado abaixo */}
+      <g stroke="url(#textGrad)" transform="translate(150, 62)">
         {/* A */}
-        <WritePath d="M10 30 L20 10 L30 30 M13 24 L27 24" style={common} active={active} delaySec={base + step * 7} />
+        <WritePath 
+          d="M0 30 L18 5 L36 30 M6 22 L30 22" 
+          style={{ ...common, strokeWidth: 3 }} 
+          active={active} 
+          delaySec={base + step * 7.5} 
+        />
         {/* I */}
-        <WritePath d="M45 10 L45 30 M40 10 L50 10 M40 30 L50 30" style={common} active={active} delaySec={base + step * 8} />
+        <WritePath 
+          d="M55 5 L55 30 M48 5 L62 5 M48 30 L62 30" 
+          style={{ ...common, strokeWidth: 3 }} 
+          active={active} 
+          delaySec={base + step * 8.5} 
+        />
       </g>
 
       <style>{`
         @keyframes writeStroke {
-          0%   { stroke-dashoffset: var(--dash); opacity: 1; }
+          0%   { stroke-dashoffset: var(--dash); opacity: 0.7; }
           100% { stroke-dashoffset: 0; opacity: 1; }
         }
       `}</style>
