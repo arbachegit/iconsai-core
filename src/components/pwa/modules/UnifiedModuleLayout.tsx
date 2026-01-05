@@ -131,14 +131,25 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
     };
   }, [stopAllAndCleanup]);
 
-  // Handler para captura de áudio (fluxo completo)
+  // Handler para captura de áudio (fluxo completo com logging detalhado)
   const handleAudioCapture = async (audioBlob: Blob) => {
     setIsRecording(false);
     setIsProcessing(true);
     setIsMicOpen(false);
     
     try {
-      // 1. Converter para base64
+      // 1. Validar blob
+      if (!audioBlob || audioBlob.size < 1000) {
+        throw new Error("AUDIO_TOO_SHORT: Gravação muito curta");
+      }
+      
+      console.log("[Voice] Blob recebido:", {
+        size: audioBlob.size,
+        type: audioBlob.type,
+        sizeKB: (audioBlob.size / 1024).toFixed(2) + "KB"
+      });
+      
+      // 2. Converter para base64
       const arrayBuffer = await audioBlob.arrayBuffer();
       const base64 = btoa(
         new Uint8Array(arrayBuffer).reduce(
@@ -146,26 +157,41 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
         )
       );
       
-      // Obter mimeType do Blob (crítico para iOS que usa audio/mp4)
-      const mimeType = audioBlob.type || "audio/webm";
-      console.log("[Voice] Enviando para transcrição...", { size: audioBlob.size, mimeType });
+      // 3. Detectar mimeType com fallback robusto
+      let mimeType = audioBlob.type;
+      if (!mimeType || mimeType === "") {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        mimeType = (isIOS || isSafari) ? "audio/mp4" : "audio/webm";
+        console.log("[Voice] mimeType detectado por fallback:", mimeType);
+      }
       
-      // 2. Transcrever com Whisper (edge function existente)
+      console.log("[Voice] Enviando para STT...", { 
+        base64Length: base64.length, 
+        mimeType 
+      });
+      
+      // 4. Transcrever com Whisper
       const { data: sttData, error: sttError } = await supabase.functions.invoke(
         "voice-to-text",
         { body: { audio: base64, mimeType } }
       );
       
-      if (sttError) throw sttError;
-      const userText = sttData?.text;
-      
-      if (!userText) {
-        throw new Error("Não foi possível transcrever o áudio");
+      if (sttError) {
+        console.error("[Voice] Erro STT:", sttError);
+        throw new Error(`STT_ERROR: ${sttError.message || "Falha na transcrição"}`);
       }
       
-      console.log("[Voice] Transcrição:", userText);
+      const userText = sttData?.text;
       
-      // 3. Enviar para ChatGPT via chat-router
+      if (!userText || userText.trim() === "") {
+        throw new Error("STT_EMPTY: Não foi possível entender o áudio");
+      }
+      
+      console.log("[Voice] Transcrição OK:", userText);
+      
+      // 5. Enviar para chat-router
+      console.log("[Voice] Enviando para chat-router...");
       const { data: chatData, error: chatError } = await supabase.functions.invoke(
         "chat-router",
         { 
@@ -179,21 +205,45 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
         }
       );
       
-      if (chatError) throw chatError;
+      if (chatError) {
+        console.error("[Voice] Erro Chat:", chatError);
+        throw new Error(`CHAT_ERROR: ${chatError.message || "Falha ao processar"}`);
+      }
+      
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
       
       if (!aiResponse) {
-        throw new Error("Não foi possível obter resposta");
+        throw new Error("CHAT_EMPTY: Resposta vazia da IA");
       }
       
-      console.log("[Voice] Resposta IA:", aiResponse);
+      console.log("[Voice] Resposta IA OK:", aiResponse.substring(0, 100) + "...");
       
-      // 4. Falar resposta com TTS
+      // 6. Falar resposta com TTS
+      console.log("[Voice] Enviando para TTS...");
       await speak(aiResponse, moduleType);
+      console.log("[Voice] Fluxo completo com sucesso!");
       
-    } catch (error) {
-      console.error("Erro no fluxo de voz:", error);
-      await speak("Desculpe, ocorreu um erro. Tente novamente.", moduleType);
+    } catch (error: any) {
+      console.error("[Voice] ERRO COMPLETO:", error);
+      
+      // Mensagens específicas por tipo de erro
+      let errorMessage = "Desculpe, ocorreu um erro. Tente novamente.";
+      
+      if (error.message?.includes("AUDIO_TOO_SHORT")) {
+        errorMessage = "A gravação foi muito curta. Fale um pouco mais.";
+      } else if (error.message?.includes("STT_ERROR")) {
+        errorMessage = "Não consegui processar o áudio. Verifique se o microfone está funcionando.";
+      } else if (error.message?.includes("STT_EMPTY")) {
+        errorMessage = "Não entendi o que você disse. Pode repetir?";
+      } else if (error.message?.includes("CHAT_ERROR")) {
+        errorMessage = "O serviço está temporariamente indisponível. Tente novamente.";
+      } else if (error.message?.includes("CHAT_EMPTY")) {
+        errorMessage = "Não consegui gerar uma resposta. Tente reformular sua pergunta.";
+      } else if (error.message?.includes("401") || error.message?.includes("Unauthorized")) {
+        errorMessage = "Erro de autenticação. Recarregue a página e tente novamente.";
+      }
+      
+      await speak(errorMessage, moduleType);
     } finally {
       setIsProcessing(false);
     }
