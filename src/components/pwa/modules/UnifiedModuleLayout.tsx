@@ -102,6 +102,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
   // Estado do microfone
   const [isMicOpen, setIsMicOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
 
   // AUTOPLAY ao entrar no módulo
   useEffect(() => {
@@ -132,6 +133,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
 
   // Handler para captura de áudio (fluxo completo)
   const handleAudioCapture = async (audioBlob: Blob) => {
+    setIsRecording(false);
     setIsProcessing(true);
     setIsMicOpen(false);
     
@@ -215,10 +217,19 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
   const handleMicClick = () => {
     stop(); // Parar áudio atual
     setIsMicOpen(true);
+    setIsRecording(true);
   };
 
   // Determinar estado do visualizador
-  const visualizerState = isProcessing ? "loading" : isLoading ? "loading" : isPlaying ? "playing" : "idle";
+  const visualizerState = isRecording 
+    ? "recording" 
+    : isProcessing 
+      ? "loading" 
+      : isLoading 
+        ? "loading" 
+        : isPlaying 
+          ? "playing" 
+          : "idle";
   const buttonState = isProcessing ? "loading" : isLoading ? "loading" : isPlaying ? "playing" : "idle";
 
   return (
@@ -283,22 +294,6 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
           width={280}
         />
 
-        {/* Label "Reproduzir" com ícone de som */}
-        <div className="flex items-center gap-2">
-          <motion.div
-            animate={{
-              scale: isPlaying ? [1, 1.1, 1] : 1,
-              opacity: isPlaying ? [1, 0.7, 1] : 0.6,
-            }}
-            transition={{ duration: 0.8, repeat: isPlaying ? Infinity : 0 }}
-          >
-            <Volume2 className="w-5 h-5" style={{ color: config.color }} />
-          </motion.div>
-          <span className="text-slate-400 text-sm">
-            {isProcessing ? "Processando..." : isPlaying ? "Reproduzindo..." : "Reproduzir"}
-          </span>
-        </div>
-
         {/* Botão Play */}
         <PlayButton
           state={buttonState}
@@ -335,7 +330,10 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
       <SlidingMicrophone
         isVisible={isMicOpen}
         onAudioCapture={handleAudioCapture}
-        onClose={() => setIsMicOpen(false)}
+        onClose={() => {
+          setIsMicOpen(false);
+          setIsRecording(false);
+        }}
         maxDuration={60}
         primaryColor={config.color}
         autoTranscribe={false}

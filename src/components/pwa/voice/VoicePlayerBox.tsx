@@ -236,20 +236,6 @@ export const VoicePlayerBox: React.FC<VoicePlayerBoxProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Playing indicator */}
-      <AnimatePresence>
-        {state === "playing" && (
-          <motion.div 
-            className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1" 
-            initial={{ opacity: 0, y: 10 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            exit={{ opacity: 0, y: 10 }}
-          >
-            <Volume2 className="w-4 h-4" style={{ color: "hsl(191, 100%, 50%)" }} />
-            <span className="text-xs" style={{ color: "hsl(191, 100%, 50%)" }}>Reproduzindo</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
     </div>
   );
