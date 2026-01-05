@@ -24,13 +24,13 @@ import {
   Home,
   Route,
   Network,
-  
   MessageSquare,
   ShoppingCart,
   Gauge,
   Building2,
   Brain,
-  Heart
+  Heart,
+  MapPinned
 } from "lucide-react";
 
 export type DashboardTabType =
@@ -46,6 +46,7 @@ export type DashboardTabType =
   | "dataflow-retail-system"
   | "dataflow-autocontrol"
   | "dataflow-gov-system-fontes"
+  | "dataflow-gov-city-ai"
   | "dataflow-tutor"
   | "dataflow-healthcare";
 
@@ -70,6 +71,7 @@ const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType 
 const dataFlowItems: { id: DashboardTabType; label: string; icon: React.ElementType }[] = [
   { id: "dataflow-architecture", label: "Architecture", icon: Network },
   { id: "dataflow-gov-system-fontes", label: "Gov System AI", icon: Building2 },
+  { id: "dataflow-gov-city-ai", label: "Gov City AI", icon: MapPinned },
   { id: "dataflow-retail-system", label: "Retail System", icon: ShoppingCart },
   { id: "dataflow-autocontrol", label: "AutoControl", icon: Gauge },
   { id: "dataflow-tutor", label: "Tutor", icon: Brain },
