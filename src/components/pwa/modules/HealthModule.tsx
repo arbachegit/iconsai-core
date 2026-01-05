@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Heart, AlertTriangle, Share2, CheckCircle2 } from "lucide-react";
 import { MicrophoneOrb } from "../voice/MicrophoneOrb";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
@@ -8,52 +8,59 @@ import { useConfigPWA } from "@/hooks/useConfigPWA";
 
 interface OldcartsQuestion {
   key: string;
+  label: string;
   question: string;
-  audioQuestion: string;
-  followUp?: string;
+  audioPrompt: string;
 }
 
 const oldcartsQuestions: OldcartsQuestion[] = [
-  {
-    key: "onset",
-    question: "Início",
-    audioQuestion: "Quando isso começou? Foi de repente ou gradual?",
-    followUp: "Há quanto tempo você está sentindo isso?",
+  { 
+    key: "onset", 
+    label: "Início (O)", 
+    question: "Quando isso começou?",
+    audioPrompt: "Quando isso começou? Foi de repente ou foi gradual?"
   },
-  {
-    key: "location",
-    question: "Localização",
-    audioQuestion: "Onde exatamente você sente? A sensação se espalha para algum outro lugar?",
+  { 
+    key: "location", 
+    label: "Local (L)", 
+    question: "Onde você sente?",
+    audioPrompt: "Onde exatamente você sente isso? Se espalha para algum lugar?"
   },
-  {
-    key: "duration",
-    question: "Duração",
-    audioQuestion: "Quanto tempo dura cada episódio? É constante ou vai e volta?",
+  { 
+    key: "duration", 
+    label: "Duração (D)", 
+    question: "Quanto tempo dura?",
+    audioPrompt: "Quanto tempo dura? É constante ou vai e volta?"
   },
-  {
-    key: "character",
-    question: "Característica",
-    audioQuestion: "Como você descreveria essa sensação? É uma dor aguda, queimação, pressão, ou algo diferente?",
+  { 
+    key: "character", 
+    label: "Característica (C)", 
+    question: "Como é a sensação?",
+    audioPrompt: "Como você descreveria essa sensação? É uma dor aguda, queimação, pressão?"
   },
-  {
-    key: "aggravating",
-    question: "Agravantes",
-    audioQuestion: "O que piora? Movimento, comida, estresse, ou alguma outra coisa?",
+  { 
+    key: "aggravating", 
+    label: "O que piora (A)", 
+    question: "O que piora?",
+    audioPrompt: "O que faz piorar? Movimento, comida, estresse?"
   },
-  {
-    key: "relieving",
-    question: "Alívio",
-    audioQuestion: "O que melhora? Descanso, medicação, alguma posição específica?",
+  { 
+    key: "relieving", 
+    label: "O que alivia (R)", 
+    question: "O que melhora?",
+    audioPrompt: "O que faz melhorar? Descanso, medicação, alguma posição específica?"
   },
-  {
-    key: "timing",
-    question: "Temporalidade",
-    audioQuestion: "Em que momento do dia é pior? Manhã, tarde, noite, ou após alguma atividade?",
+  { 
+    key: "timing", 
+    label: "Temporalidade (T)", 
+    question: "Em que momento do dia?",
+    audioPrompt: "Em que momento do dia é pior? De manhã, à noite, depois de comer?"
   },
-  {
-    key: "severity",
-    question: "Intensidade",
-    audioQuestion: "De zero a dez, qual a intensidade? Sendo dez a pior sensação imaginável.",
+  { 
+    key: "severity", 
+    label: "Intensidade (S)", 
+    question: "De 0 a 10, qual a intensidade?",
+    audioPrompt: "De zero a dez, sendo zero nenhuma dor e dez a pior dor possível, qual a intensidade?"
   },
 ];
 
@@ -71,15 +78,33 @@ export const HealthModule: React.FC = () => {
   const [answers, setAnswers] = useState<HealthAnswer[]>([]);
   const [showMic, setShowMic] = useState(false);
   
-  const { speak, isPlaying, isLoading, progress } = useTextToSpeech();
+  // Controle de autoplay - executa UMA vez por sessão
+  const hasSpokenWelcome = useRef(false);
+  
+  const { speak, isPlaying, isLoading } = useTextToSpeech();
   const { setPlayerState, userName } = usePWAVoiceStore();
   const { config } = useConfigPWA();
 
-  // Mensagem de boas-vindas
+  // AUTOPLAY: Executa texto de boas-vindas do módulo
   useEffect(() => {
-    const greeting = `Olá${userName ? ` ${userName}` : ""}! Sou seu assistente de triagem de saúde. Vou fazer algumas perguntas para entender melhor o que você está sentindo. Lembre-se: isso não substitui uma consulta médica. Quando estiver pronto, me diga: o que está te incomodando hoje?`;
-    speak(greeting).then(() => setShowMic(true));
-  }, []);
+    if (hasSpokenWelcome.current) return;
+    hasSpokenWelcome.current = true;
+    
+    // Usa o texto configurado no admin ou o padrão
+    const greeting = config.healthWelcomeText || 
+      `Olá${userName ? ` ${userName}` : ""}! Sou seu assistente de triagem de saúde. Vou fazer algumas perguntas para entender melhor o que você está sentindo. Lembre-se: isso não substitui uma consulta médica. Quando estiver pronto, me diga: o que está te incomodando hoje?`;
+    
+    const timer = setTimeout(() => {
+      speak(greeting)
+        .then(() => setShowMic(true))
+        .catch((err) => {
+          console.warn("Autoplay bloqueado pelo navegador:", err);
+          setShowMic(true);
+        });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [speak, userName, config.healthWelcomeText]);
 
   // Atualizar estado do player
   useEffect(() => {
@@ -129,7 +154,7 @@ export const HealthModule: React.FC = () => {
 
   const askCurrentQuestion = async () => {
     const question = oldcartsQuestions[currentQuestionIndex];
-    await speak(question.audioQuestion);
+    await speak(question.audioPrompt);
     setShowMic(true);
   };
 
@@ -228,7 +253,7 @@ export const HealthModule: React.FC = () => {
                 </span>
               </div>
               <p className="text-lg text-white text-center">
-                {oldcartsQuestions[currentQuestionIndex].audioQuestion}
+                {oldcartsQuestions[currentQuestionIndex].audioPrompt}
               </p>
             </motion.div>
           )}
