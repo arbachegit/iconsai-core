@@ -296,52 +296,10 @@ function normalizeTextForTTS(text: string, phoneticMap: Record<string, string>):
 }
 
 // ============================================
-// HUMANIZAÇÃO DO TEXTO PARA FALA NATURAL
+// FUNÇÃO HUMANIZAÇÃO REMOVIDA
+// A ElevenLabs com eleven_multilingual_v2 já produz fala natural
+// Pausas artificiais prejudicavam a qualidade
 // ============================================
-
-function humanizeTextForSpeech(text: string): string {
-  let result = text;
-  
-  // 1. Adicionar micro-pausas após vírgulas (respiração natural)
-  result = result.replace(/,\s*/g, ', ... ');
-  
-  // 2. Pausas mais longas após pontos
-  result = result.replace(/\.\s+/g, '. ... ');
-  
-  // 3. Adicionar hesitações naturais no início de algumas frases
-  const hesitations = ['Bom, ', 'Então, ', 'Olha, ', 'Veja, ', 'Ah, '];
-  const sentences = result.split('. ... ');
-  
-  if (sentences.length > 2) {
-    // Adicionar hesitação em uma frase do meio (não a primeira nem última)
-    const midIndex = Math.floor(sentences.length / 2);
-    const randomHesitation = hesitations[Math.floor(Math.random() * hesitations.length)];
-    
-    // Só adiciona se a frase não começar já com hesitação
-    if (sentences[midIndex] && !hesitations.some(h => sentences[midIndex].startsWith(h.trim()))) {
-      sentences[midIndex] = randomHesitation + sentences[midIndex].charAt(0).toLowerCase() + sentences[midIndex].slice(1);
-    }
-  }
-  
-  result = sentences.join('. ... ');
-  
-  // 4. Para textos longos (>200 chars), adicionar uma "respiração profunda"
-  if (text.length > 200) {
-    const midPoint = Math.floor(result.length / 2);
-    const insertPoint = result.indexOf('. ... ', midPoint);
-    if (insertPoint > 0) {
-      // Inserir pausa mais longa que simula respiração profunda
-      result = result.slice(0, insertPoint + 1) + ' ... ... ' + result.slice(insertPoint + 7);
-    }
-  }
-  
-  // 5. Adicionar interjeições empáticas ocasionais
-  result = result.replace(/Infelizmente/g, 'Infelizmente, ... puxa vida,');
-  result = result.replace(/Boa notícia/g, 'Boa notícia! ... Que bom,');
-  result = result.replace(/preocupante/gi, '... preocupante, né');
-  
-  return result;
-}
 
 
 // OpenAI TTS voices
@@ -418,11 +376,9 @@ serve(async (req) => {
     // 6. Aplicar mapa fonético
     normalizedText = normalizeTextForTTS(normalizedText, phoneticMap);
     
-    // 7. HUMANIZAR COM PAUSAS E RESPIRAÇÃO
-    normalizedText = humanizeTextForSpeech(normalizedText);
-
+    // 7. Log do texto normalizado (humanização removida - ElevenLabs já produz fala natural)
     console.log("Texto original:", sanitizedText.substring(0, 100));
-    console.log("Após humanização:", normalizedText.substring(0, 150));
+    console.log("Texto normalizado:", normalizedText.substring(0, 150));
     console.log("Voice selecionada:", voice);
 
     // Check if using OpenAI voice or ElevenLabs (fernando)
@@ -475,7 +431,54 @@ serve(async (req) => {
 
       console.log("Usando ElevenLabs TTS com voice_id:", VOICE_ID);
 
-      // Gerar áudio com ElevenLabs usando modelo Turbo v2.5 para baixa latência
+      // Carregar configurações de voz do banco de dados
+      let voiceSettings = {
+        stability: 0.50,
+        similarity_boost: 1.00,
+        style: 0.00,
+        speed: 1.15,
+        use_speaker_boost: true,
+      };
+
+      try {
+        const { data: voiceConfig } = await supabase
+          .from("pwa_config")
+          .select("config_key, config_value")
+          .in("config_key", [
+            "voice_stability",
+            "voice_similarity",
+            "voice_style",
+            "voice_speed",
+            "voice_speaker_boost"
+          ]);
+
+        if (voiceConfig && voiceConfig.length > 0) {
+          for (const row of voiceConfig) {
+            switch (row.config_key) {
+              case "voice_stability":
+                voiceSettings.stability = parseFloat(row.config_value);
+                break;
+              case "voice_similarity":
+                voiceSettings.similarity_boost = parseFloat(row.config_value);
+                break;
+              case "voice_style":
+                voiceSettings.style = parseFloat(row.config_value);
+                break;
+              case "voice_speed":
+                voiceSettings.speed = parseFloat(row.config_value);
+                break;
+              case "voice_speaker_boost":
+                voiceSettings.use_speaker_boost = row.config_value === "true";
+                break;
+            }
+          }
+          console.log("Voice settings carregadas do banco:", voiceSettings);
+        }
+      } catch (err) {
+        console.log("Usando voice settings padrão:", voiceSettings);
+      }
+
+      // Gerar áudio com ElevenLabs usando modelo Multilingual v2 (melhor para PT-BR)
       const response = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream`,
         {
@@ -486,12 +489,12 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             text: normalizedText,
-            model_id: "eleven_turbo_v2_5",
+            model_id: "eleven_multilingual_v2", // Melhor qualidade para PT-BR
             voice_settings: {
-              stability: 0.30,
-              similarity_boost: 0.65,
-              style: 0.45,
-              use_speaker_boost: true,
+              stability: voiceSettings.stability,
+              similarity_boost: voiceSettings.similarity_boost,
+              style: voiceSettings.style,
+              use_speaker_boost: voiceSettings.use_speaker_boost,
             },
           }),
         }
