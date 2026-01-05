@@ -2666,6 +2666,59 @@ export type Database = {
           },
         ]
       }
+      municipios: {
+        Row: {
+          capital: boolean | null
+          codigo_ibge: number
+          codigo_uf: number
+          ddd: number | null
+          fuso_horario: string | null
+          lat: number | null
+          lng: number | null
+          nome: string
+          pib_2021_milhoes: number | null
+          populacao_2022: number | null
+          regiao: string
+          uf: string
+        }
+        Insert: {
+          capital?: boolean | null
+          codigo_ibge: number
+          codigo_uf: number
+          ddd?: number | null
+          fuso_horario?: string | null
+          lat?: number | null
+          lng?: number | null
+          nome: string
+          pib_2021_milhoes?: number | null
+          populacao_2022?: number | null
+          regiao: string
+          uf: string
+        }
+        Update: {
+          capital?: boolean | null
+          codigo_ibge?: number
+          codigo_uf?: number
+          ddd?: number | null
+          fuso_horario?: string | null
+          lat?: number | null
+          lng?: number | null
+          nome?: string
+          pib_2021_milhoes?: number | null
+          populacao_2022?: number | null
+          regiao?: string
+          uf?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "municipios_uf_fkey"
+            columns: ["uf"]
+            isOneToOne: false
+            referencedRelation: "estados"
+            referencedColumns: ["uf"]
+          },
+        ]
+      }
       notification_fallback_config: {
         Row: {
           alert_email: string | null
