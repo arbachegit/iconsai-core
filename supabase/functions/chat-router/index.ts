@@ -26,6 +26,69 @@ function sanitizeBrandingResponse(text: string): string {
   return sanitized;
 }
 
+// ===================== CHATGPT HYBRID SEARCH FOR MUNDO =====================
+async function searchChatGPTForWorld(
+  query: string
+): Promise<{ response: string; success: boolean }> {
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+  
+  if (!OPENAI_API_KEY) {
+    console.warn("[ChatGPT-Mundo] OPENAI_API_KEY não configurada - pulando busca");
+    return { response: "", success: false };
+  }
+
+  try {
+    console.log("[ChatGPT-Mundo] Iniciando busca:", query.substring(0, 50) + "...");
+    
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4-turbo-preview",
+        messages: [
+          { 
+            role: "system", 
+            content: `Você é um assistente informativo e atualizado.
+
+REGRAS OBRIGATÓRIAS:
+1. Responda de forma CONCISA (máximo 3-4 frases)
+2. Priorize informações ATUAIS e verificáveis
+3. Se não souber algo recente, admita
+4. NUNCA mencione que você é ChatGPT, OpenAI ou qualquer IA
+5. Foque em fatos, não opiniões
+6. Cite fontes quando possível (ex: "segundo o IBGE", "de acordo com o Banco Central")` 
+          },
+          { role: "user", content: query }
+        ],
+        max_tokens: 400,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[ChatGPT-Mundo] API error:", response.status, errorText);
+      return { response: "", success: false };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || "";
+    
+    // Sanitizar branding na resposta do ChatGPT também
+    const sanitizedContent = sanitizeBrandingResponse(content);
+    
+    console.log("[ChatGPT-Mundo] Sucesso - tamanho:", sanitizedContent.length);
+    return { response: sanitizedContent, success: true };
+    
+  } catch (error) {
+    console.error("[ChatGPT-Mundo] Exceção:", error);
+    return { response: "", success: false };
+  }
+}
+
 const BRANDING_SYSTEM_INSTRUCTIONS = `
 REGRAS OBRIGATÓRIAS (NUNCA VIOLAR):
 1. Você é um assistente do KnowYOU, desenvolvido pela Arbache AI.
@@ -797,7 +860,43 @@ function buildSystemPrompt({
 ## ⛔ RESTRIÇÕES (NÃO FAÇA ISSO):
 ${antiprompt}` : "";
 
-  return `Você é um assistente de IA especializado em fornecer informações precisas e relevantes.
+  // Instruções específicas para módulo Mundo
+  const worldInstructions = isPwaMode && 
+    (chatType === "world" || chatType === "mundo" || chatType === "economia") 
+    ? `
+
+## 🌍 MÓDULO MUNDO - INSTRUÇÕES ESPECIAIS:
+
+Você é um assistente de CONHECIMENTO GERAL com ECONOMIA como motor principal.
+
+### ESTRATÉGIA DE RESPOSTA:
+1. Responda QUALQUER pergunta de forma direta
+2. SEMPRE conecte com contexto econômico quando relevante
+3. Use os dados atualizados fornecidos acima
+4. Enriqueça com dados econômicos do RAG
+5. Cite fontes e datas quando mencionar números
+
+### EXEMPLOS DE CONEXÃO ECONÔMICA:
+
+**Pergunta sobre esportes:**
+"A Argentina venceu a Copa de 2022. Megaeventos como esse movimentam bilhões - a Copa gerou mais de US$ 17 bilhões para a economia do Catar."
+
+**Pergunta sobre tecnologia:**
+"A inteligência artificial está revolucionando diversos setores. O mercado global de IA deve atingir US$ 1,8 trilhão até 2030."
+
+**Pergunta sobre clima:**
+"O El Niño tem causado secas no Norte e chuvas no Sul. Isso impacta diretamente a inflação de alimentos."
+
+### REGRAS:
+- NUNCA invente dados econômicos
+- Se não souber conectar com economia, responda normalmente
+- Respostas CURTAS para áudio (máximo 5 frases)
+- SEMPRE mencione fonte ao citar dados numéricos
+` : "";
+
+  return `${BRANDING_SYSTEM_INSTRUCTIONS}
+
+Você é um assistente de IA especializado em fornecer informações precisas e relevantes.
 
 ${customPrompt ? `## CONFIGURAÇÕES DO AGENTE:\n${customPrompt}\n` : ""}
 
@@ -818,6 +917,8 @@ ${getAdaptiveResponseProtocol()}
 ${maieuticPrompt || ""}
 
 ${antipromptSection}
+
+${worldInstructions}
 
 ${ragContext}
 
@@ -982,6 +1083,31 @@ serve(async (req) => {
         logger.info("Indicators fetched", { codes: Object.keys(indicatorData) });
       }
 
+      // ===== BUSCA HÍBRIDA PARA MÓDULO MUNDO =====
+      let chatGPTContext = "";
+      const isWorldModule = contextCode === "world" || 
+                            agentSlug === "world" || 
+                            agentSlug === "mundo" || 
+                            agentSlug === "economia";
+
+      if (isWorldModule) {
+        logger.info("Módulo MUNDO: Iniciando busca híbrida ChatGPT + RAG");
+        
+        const chatGPTResult = await searchChatGPTForWorld(pwaMessage);
+        
+        if (chatGPTResult.success && chatGPTResult.response) {
+          chatGPTContext = `
+## 📡 INFORMAÇÕES ATUALIZADAS:
+${chatGPTResult.response}
+
+---
+`;
+          logger.info("ChatGPT-Mundo: Resposta obtida com sucesso");
+        } else {
+          logger.warn("ChatGPT-Mundo: Falha na busca, usando apenas RAG");
+        }
+      }
+
       // RAG search usando taxonomias do orquestrador
       let ragContext = "";
       if (taxonomyCodes.length > 0 || contextCode) {
@@ -999,10 +1125,12 @@ serve(async (req) => {
           );
           
           if (context) {
-            ragContext = context;
+            // Combinar ChatGPT + RAG para módulo Mundo
+            ragContext = chatGPTContext + context;
             logger.info("RAG documents found via orchestrator", { 
               count: documentTitles.length,
-              taxonomies: taxonomyCodes
+              taxonomies: taxonomyCodes,
+              hasGPTContext: chatGPTContext.length > 0
             });
           }
         } catch (ragError) {
