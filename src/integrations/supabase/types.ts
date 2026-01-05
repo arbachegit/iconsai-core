@@ -3074,6 +3074,45 @@ export type Database = {
         }
         Relationships: []
       }
+      phonetic_rules: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          phonetic: string
+          priority: number | null
+          region: string | null
+          term: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          phonetic: string
+          priority?: number | null
+          region?: string | null
+          term: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          phonetic?: string
+          priority?: number | null
+          region?: string | null
+          term?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       pmc_valores_reais: {
         Row: {
           calculation_method: string | null

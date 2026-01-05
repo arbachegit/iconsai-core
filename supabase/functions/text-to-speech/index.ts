@@ -331,8 +331,27 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // 1. Carregar mapa fonético base (já inclui economia e todas as categorias)
+    // 1. Carregar mapa fonético base (hardcoded como fallback)
     let phoneticMap = { ...DEFAULT_PHONETIC_MAP };
+    
+    // 2. Carregar regras fonéticas do banco de dados (sobrescreve as padrão)
+    try {
+      const { data: phoneticRules } = await supabase
+        .from("phonetic_rules")
+        .select("term, phonetic")
+        .eq("is_active", true)
+        .is("region", null)  // Pega apenas as globais (sem região)
+        .order("priority", { ascending: false });
+      
+      if (phoneticRules && phoneticRules.length > 0) {
+        for (const rule of phoneticRules) {
+          phoneticMap[rule.term] = rule.phonetic;
+        }
+        console.log(`Carregadas ${phoneticRules.length} regras fonéticas do banco`);
+      }
+    } catch (err) {
+      console.log("Usando fonéticas padrão hardcoded:", err);
+    }
     
     // 3. Carregar pronúncias do chat_config (se existir)
     if (chatType) {
