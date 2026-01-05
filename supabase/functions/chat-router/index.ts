@@ -331,10 +331,9 @@ async function callChatGPTForModule(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-5-mini-2025-08-07",
         messages,
-        max_tokens: 500,
-        temperature: 0.8,
+        max_completion_tokens: 500,
       }),
     });
 
@@ -1237,10 +1236,9 @@ serve(async (req: Request) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "openai/gpt-5-mini",
           messages: chatMessages,
-          max_tokens: 400,
-          temperature: 0.8,
+          max_completion_tokens: 400,
         }),
       });
 
@@ -1369,10 +1367,9 @@ serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "openai/gpt-5-mini",
         messages: [{ role: "system", content: systemPrompt }, ...apiMessages],
         stream: true,
-        temperature: 0.8,
       }),
     });
 
