@@ -1025,7 +1025,9 @@ async function detectAndSaveName(
 serve(async (req: Request) => {
   const logger = createLogger("chat-router");
 
-  if (req.method === "OPTIONS") return handleCors();
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
 
   try {
     const body: ChatRequest = await req.json();
@@ -1315,8 +1317,8 @@ serve(async (req: Request) => {
       ragTargetChat,
       matchThreshold,
       matchCount,
-      agentConfig?.allowedTags,
-      agentConfig?.forbiddenTags,
+      agentConfig?.allowedTags ?? null,
+      agentConfig?.forbiddenTags ?? null,
       taxonomyCodes,
       [],
     );
