@@ -69,7 +69,7 @@ const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType 
 
 const dataFlowItems: { id: DashboardTabType; label: string; icon: React.ElementType }[] = [
   { id: "dataflow-architecture", label: "Architecture", icon: Network },
-  { id: "dataflow-gov-system-fontes", label: "Gov System Fontes", icon: Building2 },
+  { id: "dataflow-gov-system-fontes", label: "Gov System AI", icon: Building2 },
   { id: "dataflow-retail-system", label: "Retail System", icon: ShoppingCart },
   { id: "dataflow-autocontrol", label: "AutoControl", icon: Gauge },
   { id: "dataflow-tutor", label: "Tutor", icon: Brain },
