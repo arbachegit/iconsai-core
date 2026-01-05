@@ -280,16 +280,29 @@ const DEFAULT_PHONETIC_MAP: Record<string, string> = {
   "baixa": "baixa",
 };
 
+// Função para escapar caracteres especiais de regex
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Função para normalizar texto com pronúncias fonéticas
 function normalizeTextForTTS(text: string, phoneticMap: Record<string, string>): string {
   let normalizedText = text;
   
   // Ordenar por tamanho (maior primeiro) para evitar substituições parciais
-  const sortedTerms = Object.keys(phoneticMap).sort((a, b) => b.length - a.length);
+  const sortedTerms = Object.keys(phoneticMap)
+    .filter(term => term && term.trim().length > 0) // Ignorar termos vazios
+    .sort((a, b) => b.length - a.length);
   
   for (const term of sortedTerms) {
-    const regex = new RegExp(`\\b${term}\\b`, 'gi');
-    normalizedText = normalizedText.replace(regex, phoneticMap[term]);
+    try {
+      const escapedTerm = escapeRegex(term);
+      const regex = new RegExp(`\\b${escapedTerm}\\b`, 'gi');
+      normalizedText = normalizedText.replace(regex, phoneticMap[term]);
+    } catch (e) {
+      // Ignorar termos que causam regex inválido
+      console.warn(`Termo fonético inválido ignorado: "${term}"`);
+    }
   }
   
   return normalizedText;
