@@ -350,7 +350,7 @@ export const PWASimulator: React.FC<PWASimulatorProps> = ({
             <div className={`absolute inset-0 overflow-hidden ${
               isLandscape ? "pl-8 pr-4 py-4" : "pt-8 pb-4"
             }`}>
-              <div className="w-full h-full overflow-hidden">
+              <div className="w-full h-full overflow-hidden relative">
                 <PWAVoiceAssistant embedded />
               </div>
             </div>
