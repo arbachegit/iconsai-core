@@ -22,6 +22,11 @@ export { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 export { PlayButton } from "./PlayButton";
 export { ReproduceLabel } from "./ReproduceLabel";
 
+// Componentes de Microfone (FASE 1C)
+export { SlidingMicrophone } from "./SlidingMicrophone";
+export { MicrophoneOverlay } from "./MicrophoneOverlay";
+
 // Types
 export type { VisualizerState } from "./SpectrumAnalyzer";
 export type { PlayButtonState } from "./PlayButton";
+export type { MicrophoneState } from "./SlidingMicrophone";
