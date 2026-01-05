@@ -13,7 +13,8 @@ serve(async (req) => {
   if (corsResponse) return corsResponse;
 
   try {
-    const { audio } = await req.json();
+    // CORREÇÃO: Receber mimeType do body (crítico para iOS)
+    const { audio, mimeType: providedMimeType } = await req.json();
     
     if (!audio) {
       throw new Error('No audio data provided');
@@ -26,17 +27,20 @@ serve(async (req) => {
 
     // Strip data URL prefix if present
     let base64Data = audio;
-    let mimeType = 'audio/webm';
+    // Priorizar mimeType enviado pelo frontend (detectado pelo MediaRecorder)
+    let mimeType = providedMimeType || 'audio/webm';
     
     if (audio.includes(',')) {
       const parts = audio.split(',');
       base64Data = parts[1] || '';
-      // Extract mime type from data URL
+      // Extract mime type from data URL (fallback)
       const mimeMatch = parts[0].match(/data:([^;]+)/);
-      if (mimeMatch) {
+      if (mimeMatch && !providedMimeType) {
         mimeType = mimeMatch[1];
       }
     }
+    
+    console.log('[VOICE-TO-TEXT] Received mimeType from frontend:', providedMimeType);
     
     // Validate base64 data is not empty
     if (!base64Data || base64Data.length < 100) {
