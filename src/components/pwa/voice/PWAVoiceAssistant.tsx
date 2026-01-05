@@ -253,32 +253,68 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
               className="flex-1 flex flex-col overflow-hidden"
             >
-              {/* Header - Logo centralizado com MAIS padding para evitar notch */}
-              <div className="pt-12 pb-2 px-4">
-                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center">
+              {/* Header - Logo com animação suave */}
+              <motion.div 
+                className="pt-12 pb-2 px-4"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  duration: 0.7, 
+                  delay: 0.1,
+                  ease: [0.25, 0.46, 0.45, 0.94] 
+                }}
+              >
+                <div className="text-center">
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                     KnowYOU
                   </h1>
-                  {/* REMOVIDO: Frase "Seu assistente de voz inteligente" */}
-                </motion.div>
-              </div>
+                </div>
+              </motion.div>
 
-              {/* VoicePlayerBox - Compacto, desceu alguns pixels */}
-              <div className="px-6 py-4">
+              {/* VoicePlayerBox - Com scale e delay */}
+              <motion.div 
+                className="px-6 py-4"
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ 
+                  duration: 0.6, 
+                  delay: 0.25,
+                  ease: [0.25, 0.46, 0.45, 0.94]
+                }}
+              >
                 <VoicePlayerBox state={playerState} onPlay={handleReplay} onPause={stop} audioProgress={progress} />
-              </div>
+              </motion.div>
 
-              {/* Grid de Módulos - Com animação de descida quando isPlaying */}
-              <div className="flex-1 px-4 pb-2 overflow-hidden">
+              {/* Grid de Módulos - Com delay maior */}
+              <motion.div 
+                className="flex-1 px-4 pb-2 overflow-hidden"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  duration: 0.7, 
+                  delay: 0.4,
+                  ease: [0.25, 0.46, 0.45, 0.94]
+                }}
+              >
                 <ModuleSelector onSelect={handleModuleSelect} isPlaying={isPlaying} />
-              </div>
+              </motion.div>
 
-              {/* Footer mínimo */}
-              <div className="py-2 text-center">
+              {/* Footer - Último a aparecer */}
+              <motion.div 
+                className="py-2 text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ 
+                  duration: 0.5, 
+                  delay: 0.6,
+                  ease: "easeOut"
+                }}
+              >
                 <p className="text-[10px] text-muted-foreground/60">KnowYOU © 2025</p>
-              </div>
+              </motion.div>
             </motion.div>
           )}
 
