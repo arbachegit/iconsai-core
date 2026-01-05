@@ -297,13 +297,34 @@ function normalizeTextForTTS(text: string, phoneticMap: Record<string, string>):
   for (const term of sortedTerms) {
     try {
       const escapedTerm = escapeRegex(term);
-      const regex = new RegExp(`\\b${escapedTerm}\\b`, 'gi');
-      normalizedText = normalizedText.replace(regex, phoneticMap[term]);
+      
+      // Detectar se o termo é alfanumérico (word boundaries funcionam)
+      // ou contém caracteres especiais (precisa de abordagem diferente)
+      const isAlphanumeric = /^[\w\s]+$/i.test(term);
+      
+      if (isAlphanumeric) {
+        // Para termos alfanuméricos, usar word boundaries
+        const regex = new RegExp(`\\b${escapedTerm}\\b`, 'gi');
+        normalizedText = normalizedText.replace(regex, phoneticMap[term]);
+      } else {
+        // Para caracteres especiais, usar substituição literal com espaçamento
+        // Adiciona espaço antes da pronúncia para naturalidade
+        const replacement = ` ${phoneticMap[term]} `;
+        normalizedText = normalizedText.split(term).join(replacement);
+      }
     } catch (e) {
-      // Ignorar termos que causam regex inválido
-      console.warn(`Termo fonético inválido ignorado: "${term}"`);
+      // Fallback: substituição literal simples
+      console.warn(`Termo fonético com erro, usando fallback: "${term}"`);
+      try {
+        normalizedText = normalizedText.split(term).join(phoneticMap[term]);
+      } catch (fallbackError) {
+        console.error(`Não foi possível processar termo: "${term}"`);
+      }
     }
   }
+  
+  // Limpar espaços duplos que podem ter sido criados
+  normalizedText = normalizedText.replace(/\s+/g, ' ').trim();
   
   return normalizedText;
 }
