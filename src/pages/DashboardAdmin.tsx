@@ -24,6 +24,8 @@ const RetailSystemDiagram = lazy(() => import("@/components/DataFlowDiagram/modu
 const AutoControlDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/AutoControlDiagram").then(m => ({ default: m.AutoControlDiagram })));
 const TutorDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/TutorDiagram").then(m => ({ default: m.TutorDiagram })));
 const HealthCareDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/HealthCareDiagram").then(m => ({ default: m.HealthCareDiagram })));
+const GovSystemFontesDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/GovSystemFontesDiagram").then(m => ({ default: m.GovSystemFontesDiagram })));
+const GovResearchDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/GovResearchDiagram").then(m => ({ default: m.GovResearchDiagram })));
 const PWASimulator = lazy(() => import("@/components/admin/PWASimulator"));
 const GovDashboard = lazy(() => import("@/features/gov-system/pages/GovDashboard"));
 
@@ -170,8 +172,14 @@ const DashboardAdmin = () => {
         );
       case "dataflow-gov-system-fontes":
         return (
-          <div className="h-full overflow-auto">
-            <GovDashboard />
+          <div className="p-6 h-full">
+            <GovSystemFontesDiagram />
+          </div>
+        );
+      case "dataflow-gov-research":
+        return (
+          <div className="p-6 h-full">
+            <GovResearchDiagram />
           </div>
         );
       default:

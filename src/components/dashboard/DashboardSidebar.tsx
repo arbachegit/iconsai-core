@@ -46,6 +46,7 @@ export type DashboardTabType =
   | "dataflow-retail-system"
   | "dataflow-autocontrol"
   | "dataflow-gov-system-fontes"
+  | "dataflow-gov-research"
   | "dataflow-tutor"
   | "dataflow-healthcare";
 
@@ -69,7 +70,8 @@ const menuItems: { id: DashboardTabType; label: string; icon: React.ElementType 
 
 const dataFlowItems: { id: DashboardTabType; label: string; icon: React.ElementType }[] = [
   { id: "dataflow-architecture", label: "Architecture", icon: Network },
-  { id: "dataflow-gov-system-fontes", label: "Gov System AI", icon: Building2 },
+  { id: "dataflow-gov-system-fontes", label: "Gov System Fontes", icon: Building2 },
+  { id: "dataflow-gov-research", label: "Gov Research", icon: Search },
   { id: "dataflow-retail-system", label: "Retail System", icon: ShoppingCart },
   { id: "dataflow-autocontrol", label: "AutoControl", icon: Gauge },
   { id: "dataflow-tutor", label: "Tutor", icon: Brain },
