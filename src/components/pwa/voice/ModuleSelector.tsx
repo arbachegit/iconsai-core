@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { HelpCircle, Globe, Heart, Lightbulb, LucideIcon } from "lucide-react";
+import { HelpCircle, Globe, Heart, Lightbulb, LucideIcon, Loader2 } from "lucide-react";
 import type { ModuleId } from "@/stores/pwaVoiceStore";
 
 interface Module {
@@ -55,14 +55,19 @@ const modules: Module[] = [
 interface ModuleSelectorProps {
   onSelect: (moduleId: Exclude<ModuleId, null>) => void;
   activeModule?: ModuleId | null;
-  isPlaying?: boolean; // NOVA PROP: controla se o áudio está tocando
+  isPlaying?: boolean;
+  disabled?: boolean;
+  pendingModule?: ModuleId | null;
 }
 
 export const ModuleSelector: React.FC<ModuleSelectorProps> = ({
   onSelect,
   activeModule,
-  isPlaying = false, // Default false
+  isPlaying = false,
+  disabled = false,
+  pendingModule = null,
 }) => {
+  const isPending = pendingModule !== null;
   return (
     <motion.div
       className="h-full flex flex-col justify-center px-2"
@@ -83,20 +88,27 @@ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({
         {modules.map((module, index) => {
           const Icon = module.icon;
           const isActive = activeModule === module.id;
+          const isThisPending = pendingModule === module.id;
+          const isOtherPending = isPending && !isThisPending;
+          const isDisabled = disabled || isOtherPending;
 
           return (
             <motion.button
               key={module.id}
-              onClick={() => onSelect(module.id)}
+              onClick={() => !isDisabled && onSelect(module.id)}
+              disabled={isDisabled}
               initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              animate={{ 
+                opacity: isOtherPending ? 0.4 : 1, 
+                scale: isThisPending ? 1.05 : 1 
+              }}
               transition={{
                 delay: index * 0.08,
                 type: "spring",
                 stiffness: 200,
               }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={!isDisabled ? { scale: 1.02 } : {}}
+              whileTap={!isDisabled ? { scale: 0.97 } : {}}
               className={`
                 relative p-4 rounded-2xl
                 bg-gradient-to-br ${module.gradient}
@@ -106,26 +118,39 @@ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({
                 transition-all duration-200
                 min-h-[100px]
                 ${isActive ? "ring-2 ring-white/30" : ""}
+                ${isThisPending ? "ring-2 ring-white/50 shadow-lg" : ""}
+                ${isDisabled ? "cursor-not-allowed" : "cursor-pointer"}
               `}
             >
-              {/* Ícone */}
+              {/* Ícone ou Loader */}
               <motion.div
-                animate={{ opacity: [0.8, 1, 0.8] }}
+                animate={isThisPending ? { 
+                  scale: [1, 1.1, 1],
+                  opacity: [0.8, 1, 0.8] 
+                } : { 
+                  opacity: [0.8, 1, 0.8] 
+                }}
                 transition={{
-                  duration: 3,
+                  duration: isThisPending ? 1.5 : 3,
                   repeat: Infinity,
                   delay: index * 0.3,
                 }}
                 className="relative"
               >
-                <Icon className="w-8 h-8" style={{ color: module.color }} />
+                {isThisPending ? (
+                  <Loader2 className="w-8 h-8 animate-spin" style={{ color: module.color }} />
+                ) : (
+                  <Icon className="w-8 h-8" style={{ color: module.color }} />
+                )}
               </motion.div>
 
               {/* Nome do módulo */}
               <h3 className="text-white font-semibold text-sm">{module.name}</h3>
 
               {/* Descrição curta */}
-              <p className="text-[10px] text-slate-400 text-center leading-tight">{module.description}</p>
+              <p className="text-[10px] text-slate-400 text-center leading-tight">
+                {isThisPending ? "Carregando..." : module.description}
+              </p>
             </motion.button>
           );
         })}

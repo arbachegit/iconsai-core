@@ -49,6 +49,8 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   const [isListening, setIsListening] = useState(false);
   const [isConversationsOpen, setIsConversationsOpen] = useState(false);
   const [lastSpokenText, setLastSpokenText] = useState<string | null>(null);
+  const [pendingModule, setPendingModule] = useState<Exclude<ModuleId, null> | null>(null);
+  const [isExplaining, setIsExplaining] = useState(false);
 
   // Controle de autoplay - executa UMA vez por sessão
   const hasPlayedWelcome = useRef(false);
@@ -136,11 +138,48 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     setAppState("idle");
   };
 
-  const handleModuleSelect = (moduleId: Exclude<ModuleId, null>) => {
-    // CRÍTICO: Parar todo áudio antes de navegar
+  const handleModuleSelect = async (moduleId: Exclude<ModuleId, null>) => {
+    // Se já está explicando, ignorar
+    if (isExplaining) return;
+    
+    // Parar áudio atual
     stop();
-    setActiveModule(moduleId);
+    
+    // Marcar como explicando
+    setPendingModule(moduleId);
+    setIsExplaining(true);
+    
+    // Buscar texto de boas-vindas do módulo
+    const welcomeTexts: Record<string, string> = {
+      help: config.helpWelcomeText || "",
+      world: config.worldWelcomeText || "",
+      health: config.healthWelcomeText || "",
+      ideas: config.ideasWelcomeText || "",
+    };
+    
+    const welcomeText = welcomeTexts[moduleId] || "";
+    const greeting = welcomeText.replace("[name]", userName || "");
+    
+    if (greeting) {
+      setLastSpokenText(greeting);
+      await speak(greeting);
+    }
+    
+    // O useEffect abaixo vai navegar quando o áudio terminar
   };
+  
+  // Efeito para navegar quando a explicação terminar
+  useEffect(() => {
+    if (pendingModule && isExplaining && !isPlaying && !isLoading) {
+      // Marcar para pular welcome no módulo
+      usePWAVoiceStore.getState().setSkipWelcome(true);
+      
+      // Navegar para o módulo
+      setActiveModule(pendingModule);
+      setPendingModule(null);
+      setIsExplaining(false);
+    }
+  }, [pendingModule, isExplaining, isPlaying, isLoading, setActiveModule]);
 
   const handleBackToHome = () => {
     // CRÍTICO: Parar todo áudio antes de voltar
@@ -304,10 +343,13 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
                   ease: [0.25, 0.46, 0.45, 0.94]
                 }}
               >
-                <ModuleSelector onSelect={handleModuleSelect} isPlaying={isPlaying} />
+                <ModuleSelector 
+                  onSelect={handleModuleSelect} 
+                  isPlaying={isPlaying} 
+                  disabled={isExplaining}
+                  pendingModule={pendingModule}
+                />
               </motion.div>
-
-              {/* Footer - Último a aparecer */}
               <motion.div 
                 className="py-2 text-center"
                 initial={{ opacity: 0 }}
