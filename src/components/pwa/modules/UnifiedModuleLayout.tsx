@@ -146,12 +146,14 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
         )
       );
       
-      console.log("[Voice] Enviando para transcrição...");
+      // Obter mimeType do Blob (crítico para iOS que usa audio/mp4)
+      const mimeType = audioBlob.type || "audio/webm";
+      console.log("[Voice] Enviando para transcrição...", { size: audioBlob.size, mimeType });
       
       // 2. Transcrever com Whisper (edge function existente)
       const { data: sttData, error: sttError } = await supabase.functions.invoke(
         "voice-to-text",
-        { body: { audio: base64 } }
+        { body: { audio: base64, mimeType } }
       );
       
       if (sttError) throw sttError;
