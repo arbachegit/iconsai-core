@@ -1,0 +1,241 @@
+/**
+ * ============================================================
+ * UnifiedModuleLayout.tsx - Layout Padrão de Módulos
+ * ============================================================
+ * Versão: 1.0.0
+ * Data: 2026-01-04
+ * 
+ * Descrição: Layout padronizado para TODOS os módulos.
+ * Igual à Home: apenas Play + Spectrum + Nome do módulo.
+ * SEM TEXTO VISÍVEL.
+ * ============================================================
+ */
+
+import React, { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
+import { 
+  HelpCircle, 
+  Globe, 
+  Heart, 
+  Lightbulb,
+  ArrowLeft,
+  History,
+  Volume2
+} from "lucide-react";
+import { SpectrumAnalyzer } from "../voice/SpectrumAnalyzer";
+import { PlayButton } from "../voice/PlayButton";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import { useAudioManager } from "@/stores/audioManagerStore";
+import { useConfigPWA } from "@/hooks/useConfigPWA";
+import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
+
+// Tipos de módulo
+export type ModuleType = "help" | "world" | "health" | "ideas";
+
+// Configuração visual de cada módulo
+const MODULE_CONFIG: Record<ModuleType, {
+  name: string;
+  icon: typeof HelpCircle;
+  color: string;
+  bgColor: string;
+  welcomeKey: string;
+  defaultWelcome: string;
+}> = {
+  help: {
+    name: "Ajuda",
+    icon: HelpCircle,
+    color: "#3B82F6",
+    bgColor: "bg-blue-500/20",
+    welcomeKey: "helpWelcomeText",
+    defaultWelcome: "Bem-vindo ao módulo de Ajuda! Aqui você aprende a usar todas as funcionalidades do KnowYOU.",
+  },
+  world: {
+    name: "Mundo",
+    icon: Globe,
+    color: "#10B981",
+    bgColor: "bg-emerald-500/20",
+    welcomeKey: "worldWelcomeText",
+    defaultWelcome: "Olá! Eu sou seu assistente de conhecimento geral. Pergunte sobre qualquer assunto!",
+  },
+  health: {
+    name: "Saúde",
+    icon: Heart,
+    color: "#F43F5E",
+    bgColor: "bg-rose-500/20",
+    welcomeKey: "healthWelcomeText",
+    defaultWelcome: "Olá! Sou sua assistente de saúde. Vou te ajudar usando o protocolo OLDCARTS.",
+  },
+  ideas: {
+    name: "Ideias",
+    icon: Lightbulb,
+    color: "#F59E0B",
+    bgColor: "bg-amber-500/20",
+    welcomeKey: "ideasWelcomeText",
+    defaultWelcome: "Olá! Sou seu consultor de ideias. Vou usar a técnica do Advogado do Diabo.",
+  },
+};
+
+interface UnifiedModuleLayoutProps {
+  moduleType: ModuleType;
+  onBack: () => void;
+  onHistoryClick: () => void;
+}
+
+export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
+  moduleType,
+  onBack,
+  onHistoryClick,
+}) => {
+  const config = MODULE_CONFIG[moduleType];
+  const IconComponent = config.icon;
+  
+  const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
+  const { stopAllAndCleanup } = useAudioManager();
+  const { config: pwaConfig } = useConfigPWA();
+  const { userName } = usePWAVoiceStore();
+  
+  const hasSpokenWelcome = useRef(false);
+
+  // AUTOPLAY ao entrar no módulo
+  useEffect(() => {
+    if (hasSpokenWelcome.current) return;
+    hasSpokenWelcome.current = true;
+
+    const configRecord = pwaConfig as unknown as Record<string, string>;
+    const welcomeText = configRecord[config.welcomeKey] || config.defaultWelcome;
+    const greeting = welcomeText.replace("[name]", userName || "");
+
+    const timer = setTimeout(() => {
+      speak(greeting, moduleType).catch((err) => {
+        console.warn("Autoplay bloqueado:", err);
+      });
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [speak, moduleType, pwaConfig, config, userName]);
+
+  // Cleanup ao desmontar (voltar)
+  useEffect(() => {
+    return () => {
+      stopAllAndCleanup();
+    };
+  }, [stopAllAndCleanup]);
+
+  // Handler do botão play
+  const handlePlayClick = () => {
+    if (isPlaying) {
+      stop();
+    } else {
+      const configRecord = pwaConfig as unknown as Record<string, string>;
+      const welcomeText = configRecord[config.welcomeKey] || config.defaultWelcome;
+      const greeting = welcomeText.replace("[name]", userName || "");
+      speak(greeting, moduleType);
+    }
+  };
+
+  // Handler voltar
+  const handleBack = () => {
+    stopAllAndCleanup();
+    onBack();
+  };
+
+  // Determinar estado do visualizador
+  const visualizerState = isLoading ? "loading" : isPlaying ? "playing" : "idle";
+  const buttonState = isLoading ? "loading" : isPlaying ? "playing" : "idle";
+
+  return (
+    <div className="flex flex-col h-full bg-background">
+      {/* HEADER */}
+      <div className="flex items-center justify-between px-4 py-3 pt-12">
+        {/* Botão Voltar */}
+        <motion.button
+          onClick={handleBack}
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10"
+          whileTap={{ scale: 0.95 }}
+        >
+          <ArrowLeft className="w-5 h-5 text-white" />
+        </motion.button>
+
+        {/* Ícone + Nome */}
+        <div className="flex items-center gap-3">
+          <motion.div
+            className={`w-10 h-10 rounded-full ${config.bgColor} flex items-center justify-center`}
+            animate={{
+              boxShadow: isPlaying
+                ? [
+                    `0 0 0 0 ${config.color}00`,
+                    `0 0 20px 5px ${config.color}66`,
+                    `0 0 0 0 ${config.color}00`,
+                  ]
+                : "none",
+            }}
+            transition={{ duration: 1.5, repeat: isPlaying ? Infinity : 0 }}
+          >
+            <IconComponent className="w-5 h-5" style={{ color: config.color }} />
+          </motion.div>
+          <span className="text-lg font-semibold text-white">
+            {config.name}
+          </span>
+        </div>
+
+        {/* Botão Histórico */}
+        <motion.button
+          onClick={onHistoryClick}
+          className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/10"
+          whileTap={{ scale: 0.95 }}
+        >
+          <History className="w-5 h-5 text-white" />
+          {/* Bolinha VERMELHA pulsando */}
+          <motion.span
+            className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full"
+            animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          />
+        </motion.button>
+      </div>
+
+      {/* CONTEÚDO PRINCIPAL - IGUAL À HOME */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
+        {/* Spectrum Analyzer */}
+        <SpectrumAnalyzer
+          state={visualizerState}
+          primaryColor={config.color}
+          secondaryColor={config.color}
+          height={120}
+          width={280}
+        />
+
+        {/* Label "Reproduzir" com ícone de som */}
+        <div className="flex items-center gap-2">
+          <motion.div
+            animate={{
+              scale: isPlaying ? [1, 1.1, 1] : 1,
+              opacity: isPlaying ? [1, 0.7, 1] : 0.6,
+            }}
+            transition={{ duration: 0.8, repeat: isPlaying ? Infinity : 0 }}
+          >
+            <Volume2 className="w-5 h-5" style={{ color: config.color }} />
+          </motion.div>
+          <span className="text-slate-400 text-sm">
+            {isPlaying ? "Reproduzindo..." : "Reproduzir"}
+          </span>
+        </div>
+
+        {/* Botão Play */}
+        <PlayButton
+          state={buttonState}
+          onClick={handlePlayClick}
+          progress={progress}
+          size="lg"
+          primaryColor={config.color}
+        />
+      </div>
+
+      {/* Não há footer aqui - o footer fica no componente pai */}
+    </div>
+  );
+};
+
+export default UnifiedModuleLayout;

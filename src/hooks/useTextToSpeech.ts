@@ -1,11 +1,25 @@
+/**
+ * ============================================================
+ * useTextToSpeech.ts - Hook de Text-to-Speech
+ * ============================================================
+ * Versão: 2.0.0
+ * Data: 2026-01-04
+ * 
+ * Changelog:
+ * - v2.0.0: Integração com AudioManager global para evitar
+ *           sobreposição de áudio entre módulos
+ * ============================================================
+ */
+
 import { useState, useCallback, useRef } from "react";
+import { useAudioManager } from "@/stores/audioManagerStore";
 
 interface UseTextToSpeechOptions {
   voice?: string;
 }
 
 interface UseTextToSpeechReturn {
-  speak: (text: string) => Promise<void>;
+  speak: (text: string, source?: string) => Promise<void>;
   stop: () => void;
   pause: () => void;
   resume: () => void;
@@ -17,27 +31,25 @@ interface UseTextToSpeechReturn {
 }
 
 export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpeechReturn => {
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [localLoading, setLocalLoading] = useState(false);
   
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const idRef = useRef<string>("");
   const voice = options?.voice || "fernando";
+  
+  // Usar o AudioManager global
+  const audioManager = useAudioManager();
 
-  const speak = useCallback(async (text: string) => {
+  const speak = useCallback(async (text: string, source: string = "default") => {
     if (!text.trim()) return;
     
-    // Stop any currently playing audio
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-
-    setIsLoading(true);
+    // Gerar ID único para este áudio
+    idRef.current = `tts-${Date.now()}`;
+    
+    setLocalLoading(true);
     setError(null);
-    setProgress(0);
+    setIsPaused(false);
 
     try {
       // Use fetch directly because the edge function returns streaming audio
@@ -63,77 +75,44 @@ export const useTextToSpeech = (options?: UseTextToSpeechOptions): UseTextToSpee
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
+      setLocalLoading(false);
+      
+      // USAR AudioManager global (para que apenas este áudio toque)
+      await audioManager.playAudio(idRef.current, audioUrl, source);
 
-      audio.onplay = () => {
-        setIsPlaying(true);
-        setIsPaused(false);
-        setIsLoading(false);
-      };
-
-      audio.onpause = () => {
-        if (audioRef.current && audioRef.current.currentTime < audioRef.current.duration) {
-          setIsPaused(true);
-        }
-      };
-
-      audio.ontimeupdate = () => {
-        if (audio.duration > 0) {
-          const currentProgress = (audio.currentTime / audio.duration) * 100;
-          setProgress(currentProgress);
-        }
-      };
-
-      audio.onended = () => {
-        setIsPlaying(false);
-        setIsPaused(false);
-        setProgress(100);
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
-        setTimeout(() => setProgress(0), 500);
-      };
-
-      audio.onerror = () => {
-        setError("Falha ao reproduzir áudio");
-        setIsPlaying(false);
-        setIsLoading(false);
-      };
-
-      await audio.play();
     } catch (err) {
       console.error("TTS Error:", err);
       setError(err instanceof Error ? err.message : "Falha ao gerar fala");
-      setIsLoading(false);
+      setLocalLoading(false);
     }
-  }, [voice]);
+  }, [voice, audioManager]);
 
   const stop = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
-    }
-    setIsPlaying(false);
+    audioManager.stopAudio();
     setIsPaused(false);
-    setProgress(0);
-  }, []);
+  }, [audioManager]);
 
   const pause = useCallback(() => {
-    if (audioRef.current && isPlaying && !isPaused) {
-      audioRef.current.pause();
-      setIsPaused(true);
-    }
-  }, [isPlaying, isPaused]);
+    audioManager.pauseAudio();
+    setIsPaused(true);
+  }, [audioManager]);
 
   const resume = useCallback(() => {
-    if (audioRef.current && isPaused) {
-      audioRef.current.play();
-      setIsPaused(false);
-    }
-  }, [isPaused]);
+    audioManager.resumeAudio();
+    setIsPaused(false);
+  }, [audioManager]);
 
-  return { speak, stop, pause, resume, isPlaying, isPaused, isLoading, progress, error };
+  return {
+    speak,
+    stop,
+    pause,
+    resume,
+    isPlaying: audioManager.isPlaying,
+    isPaused,
+    isLoading: localLoading || audioManager.isLoading,
+    progress: audioManager.progress,
+    error,
+  };
 };
 
 export default useTextToSpeech;
