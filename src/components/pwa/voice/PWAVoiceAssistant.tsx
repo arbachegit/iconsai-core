@@ -9,7 +9,7 @@ import { ModuleHeader } from "./ModuleHeader";
 import { HeaderActions } from "./HeaderActions";
 import { FooterModules } from "./FooterModules";
 import { TranscriptArea } from "./TranscriptArea";
-import { ConversationDrawer } from "./ConversationDrawer";
+import { HistoryScreen } from "./HistoryScreen";
 import { HelpModule } from "../modules/HelpModule";
 import { WorldModule } from "../modules/WorldModule";
 import { HealthModule } from "../modules/HealthModule";
@@ -318,13 +318,13 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
           )}
         </AnimatePresence>
 
-        {/* Drawer de conversas */}
-        <ConversationDrawer
-          isOpen={isConversationsOpen}
-          onClose={() => setIsConversationsOpen(false)}
-          conversations={filteredConversations}
-          embedded={embedded}
-        />
+        {/* Tela de Histórico */}
+        {isConversationsOpen && (
+          <HistoryScreen
+            onBack={() => setIsConversationsOpen(false)}
+            filterModule={activeModule || undefined}
+          />
+        )}
       </div>
     );
   };
