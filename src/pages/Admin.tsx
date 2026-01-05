@@ -159,7 +159,7 @@ const TAB_LABELS: Record<TabType, string> = {
   "document-onboarding": "Onboarding Docs",
   "taxonomy-analytics": "Analytics Taxonomia",
   "maieutic-effectiveness": "Eficácia Maiêutica",
-  "lexicon-phonetics": "Léxico & Fonética TTS",
+  "lexicon-phonetics": "Fonética & TTS",
   "ontology-concepts": "Ontologia Conceitos",
   "content-profiles": "Perfis de Conteúdo",
   "schema-monitor": "Monitor de Schema",
