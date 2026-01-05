@@ -12,3 +12,7 @@ export { StatusIndicator } from "./StatusIndicator";
 export { TranscriptArea } from "./TranscriptArea";
 export { VoicePlayerBox } from "./VoicePlayerBox";
 export { WaveformVisualizer } from "./WaveformVisualizer";
+
+// Componentes Unificados (FASE 1A)
+export { UnifiedHeader } from "./UnifiedHeader";
+export { UnifiedFooter } from "./UnifiedFooter";
