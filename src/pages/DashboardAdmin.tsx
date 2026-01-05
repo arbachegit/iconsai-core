@@ -25,6 +25,7 @@ const AutoControlDiagram = lazy(() => import("@/components/DataFlowDiagram/modul
 const TutorDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/TutorDiagram").then(m => ({ default: m.TutorDiagram })));
 const HealthCareDiagram = lazy(() => import("@/components/DataFlowDiagram/modules/HealthCareDiagram").then(m => ({ default: m.HealthCareDiagram })));
 const PWASimulator = lazy(() => import("@/components/admin/PWASimulator"));
+const GovDashboard = lazy(() => import("@/features/gov-system/pages/GovDashboard"));
 
 // Loading fallback
 const TabLoader = () => (
@@ -167,10 +168,10 @@ const DashboardAdmin = () => {
             <HealthCareDiagram />
           </div>
         );
-      case "dataflow-gov-system":
+      case "dataflow-gov-system-fontes":
         return (
-          <div className="p-6">
-            <DataFlowDiagram />
+          <div className="h-full overflow-auto">
+            <GovDashboard />
           </div>
         );
       default:
