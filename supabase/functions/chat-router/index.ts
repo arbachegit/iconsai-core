@@ -423,9 +423,9 @@ async function callChatCompletionsFallback(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5-mini",
+        model: "gpt-4o-mini",
         messages,
-        max_completion_tokens: 500,
+        max_tokens: 500,
       }),
     });
 
@@ -440,6 +440,12 @@ async function callChatCompletionsFallback(
 
     // Sanitizar branding
     const sanitizedContent = sanitizeBrandingResponse(content);
+
+    // Validar que a resposta não está vazia
+    if (!sanitizedContent || sanitizedContent.length === 0) {
+      console.warn(`[ChatGPT-Fallback-${moduleSlug}] Resposta vazia após sanitização`);
+      return { response: "", success: false };
+    }
 
     console.log(`[ChatGPT-Fallback-${moduleSlug}] Sucesso - tamanho:`, sanitizedContent.length);
     return { response: sanitizedContent, success: true };
@@ -1329,7 +1335,7 @@ serve(async (req: Request) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "openai/gpt-5-mini",
+          model: "google/gemini-2.5-flash",
           messages: chatMessages,
           max_tokens: 400,
         }),
@@ -1337,6 +1343,9 @@ serve(async (req: Request) => {
 
       if (!chatResponse.ok) {
         const status = chatResponse.status;
+        const errorBody = await chatResponse.text();
+        console.error(`[Gemini-Fallback] Error ${status}:`, errorBody);
+        
         if (status === 429) {
           return new Response(JSON.stringify({ error: "Rate limit", response: "Aguarde um momento." }), {
             status: 429,
@@ -1349,7 +1358,7 @@ serve(async (req: Request) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        throw new Error(`AI Gateway error: ${status}`);
+        throw new Error(`AI Gateway error: ${status} - ${errorBody}`);
       }
 
       const chatData = await chatResponse.json();
