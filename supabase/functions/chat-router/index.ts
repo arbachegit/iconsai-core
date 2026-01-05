@@ -1083,8 +1083,9 @@ serve(async (req) => {
       const finalDeviceId = deviceId || `anonymous-${Date.now()}`;
       logger.info("PWA mode activated", { agentSlug, deviceId: finalDeviceId.substring(0, 15) });
 
-      // Check PWA access
-      if (!finalDeviceId.startsWith('anonymous-')) {
+      // Check PWA access - skip for anonymous and simulator (dev) prefixes
+      const isDevMode = finalDeviceId.startsWith('anonymous-') || finalDeviceId.startsWith('simulator-');
+      if (!isDevMode) {
         const { data: accessCheck } = await supabase.rpc("check_pwa_access", {
           p_device_id: finalDeviceId,
           p_agent_slug: agentSlug || 'economia'
