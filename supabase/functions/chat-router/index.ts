@@ -1,7 +1,7 @@
 // ============================================
-// VERSAO: 2.1.0 | DEPLOY: 2026-01-05
-// AUDITORIA: ChatGPT como fonte primária para todos os módulos
-// MUDANÇA: System prompts específicos por módulo (Mundo/Saúde/Ideias)
+// VERSAO: 2.3.0 | DEPLOY: 2026-01-05
+// AUDITORIA: GPT-5 com Web Search para dados em tempo real
+// MUDANÇA: Responses API com web_search tool + fallback Chat Completions
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -293,7 +293,7 @@ Explicar como usar o aplicativo e seus recursos.
 - Sempre seja prestativo`,
 };
 
-// ===================== CHATGPT UNIVERSAL CALL =====================
+// ===================== CHATGPT WITH WEB SEARCH (REAL-TIME DATA) =====================
 async function callChatGPTForModule(
   query: string,
   moduleSlug: string,
@@ -309,29 +309,121 @@ async function callChatGPTForModule(
   // Obter prompt específico do módulo
   const modulePrompt = CHATGPT_MODULE_PROMPTS[moduleSlug] || CHATGPT_MODULE_PROMPTS["help"];
 
+  // Construir mensagens com histórico
+  const messages: Array<{ role: string; content: string }> = [{ role: "system", content: modulePrompt }];
+
+  // Adicionar histórico (últimas 4 mensagens para contexto)
+  if (conversationHistory.length > 0) {
+    const recentHistory = conversationHistory.slice(-4);
+    messages.push(...recentHistory);
+  }
+
+  // Adicionar mensagem atual
+  messages.push({ role: "user", content: query });
+
+  // Tentar GPT-5 com web_search primeiro (dados em tempo real)
+  const webSearchResult = await callGPT5WithWebSearch(OPENAI_API_KEY, moduleSlug, messages);
+  if (webSearchResult.success) {
+    return webSearchResult;
+  }
+
+  // Fallback: Chat Completions sem web search
+  console.log(`[ChatGPT-${moduleSlug}] Web search falhou, tentando fallback...`);
+  return await callChatCompletionsFallback(OPENAI_API_KEY, moduleSlug, messages);
+}
+
+// GPT-5 com Responses API + web_search tool (DADOS EM TEMPO REAL)
+async function callGPT5WithWebSearch(
+  apiKey: string,
+  moduleSlug: string,
+  messages: Array<{ role: string; content: string }>,
+): Promise<{ response: string; success: boolean }> {
   try {
-    console.log(`[ChatGPT-${moduleSlug}] Iniciando chamada:`, query.substring(0, 50) + "...");
+    console.log(`[GPT5-WebSearch-${moduleSlug}] Buscando dados em tempo real...`);
 
-    // Construir mensagens com histórico
-    const messages: Array<{ role: string; content: string }> = [{ role: "system", content: modulePrompt }];
+    // Construir input para Responses API
+    const systemMessage = messages.find(m => m.role === "system")?.content || "";
+    const userMessages = messages.filter(m => m.role !== "system");
+    
+    // Formato para Responses API
+    const input = userMessages.length > 0 
+      ? userMessages.map(m => ({ role: m.role, content: m.content }))
+      : [{ role: "user", content: "Olá" }];
 
-    // Adicionar histórico (últimas 4 mensagens para contexto)
-    if (conversationHistory.length > 0) {
-      const recentHistory = conversationHistory.slice(-4);
-      messages.push(...recentHistory);
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-5",
+        instructions: systemMessage,
+        tools: [{ type: "web_search" }],
+        input: input,
+        max_output_tokens: 600,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[GPT5-WebSearch-${moduleSlug}] Responses API error:`, response.status, errorText);
+      return { response: "", success: false };
     }
 
-    // Adicionar mensagem atual
-    messages.push({ role: "user", content: query });
+    const data = await response.json();
+    
+    // Extrair resposta da Responses API
+    let content = "";
+    if (data.output_text) {
+      content = data.output_text;
+    } else if (data.output && Array.isArray(data.output)) {
+      // Procurar por message blocks
+      for (const block of data.output) {
+        if (block.type === "message" && block.content) {
+          for (const contentBlock of block.content) {
+            if (contentBlock.type === "output_text" || contentBlock.type === "text") {
+              content += contentBlock.text || "";
+            }
+          }
+        }
+      }
+    }
+
+    if (!content) {
+      console.warn(`[GPT5-WebSearch-${moduleSlug}] Resposta vazia`);
+      return { response: "", success: false };
+    }
+
+    // Sanitizar branding
+    const sanitizedContent = sanitizeBrandingResponse(content);
+
+    console.log(`[GPT5-WebSearch-${moduleSlug}] Sucesso com web search - tamanho:`, sanitizedContent.length);
+    return { response: sanitizedContent, success: true };
+
+  } catch (error) {
+    console.error(`[GPT5-WebSearch-${moduleSlug}] Exceção:`, error);
+    return { response: "", success: false };
+  }
+}
+
+// Fallback: Chat Completions API (sem web search, mas mais estável)
+async function callChatCompletionsFallback(
+  apiKey: string,
+  moduleSlug: string,
+  messages: Array<{ role: string; content: string }>,
+): Promise<{ response: string; success: boolean }> {
+  try {
+    console.log(`[ChatGPT-Fallback-${moduleSlug}] Usando Chat Completions...`);
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5-mini-2025-08-07",
+        model: "gpt-5-mini",
         messages,
         max_completion_tokens: 500,
       }),
@@ -339,7 +431,7 @@ async function callChatGPTForModule(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[ChatGPT-${moduleSlug}] API error:`, response.status, errorText);
+      console.error(`[ChatGPT-Fallback-${moduleSlug}] API error:`, response.status, errorText);
       return { response: "", success: false };
     }
 
@@ -349,10 +441,11 @@ async function callChatGPTForModule(
     // Sanitizar branding
     const sanitizedContent = sanitizeBrandingResponse(content);
 
-    console.log(`[ChatGPT-${moduleSlug}] Sucesso - tamanho:`, sanitizedContent.length);
+    console.log(`[ChatGPT-Fallback-${moduleSlug}] Sucesso - tamanho:`, sanitizedContent.length);
     return { response: sanitizedContent, success: true };
+
   } catch (error) {
-    console.error(`[ChatGPT-${moduleSlug}] Exceção:`, error);
+    console.error(`[ChatGPT-Fallback-${moduleSlug}] Exceção:`, error);
     return { response: "", success: false };
   }
 }
@@ -1238,7 +1331,7 @@ serve(async (req: Request) => {
         body: JSON.stringify({
           model: "openai/gpt-5-mini",
           messages: chatMessages,
-          max_completion_tokens: 400,
+          max_tokens: 400,
         }),
       });
 
