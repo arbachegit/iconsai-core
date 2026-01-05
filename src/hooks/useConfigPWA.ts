@@ -10,11 +10,18 @@ export interface PWAConfig {
   enableCountdown: boolean;
   splashDurationMs: number;
 
-  // Textos de apresentação de cada módulo (NOVOS)
+  // Textos de apresentação de cada módulo
   helpWelcomeText: string;
   worldWelcomeText: string;
   healthWelcomeText: string;
   ideasWelcomeText: string;
+
+  // Controles de voz ElevenLabs
+  voiceStability: number;      // 0.0 - 1.0
+  voiceSimilarity: number;     // 0.0 - 1.0
+  voiceStyle: number;          // 0.0 - 1.0
+  voiceSpeed: number;          // 0.5 - 2.0
+  voiceSpeakerBoost: boolean;
 }
 
 const DEFAULT_CONFIG: PWAConfig = {
@@ -42,6 +49,13 @@ Quando estiver dentro de um módulo, toque no ícone de histórico para ver suas
 
   ideasWelcomeText:
     "Olá! Sou seu consultor de ideias. Vou te ajudar a desenvolver e validar sua ideia de negócio usando a técnica do Advogado do Diabo. Vou fazer perguntas desafiadoras para fortalecer seu projeto. Toque no microfone e me conte sua ideia!",
+
+  // Controles de voz ElevenLabs
+  voiceStability: 0.50,
+  voiceSimilarity: 1.00,
+  voiceStyle: 0.00,
+  voiceSpeed: 1.15,
+  voiceSpeakerBoost: true,
 };
 
 const CONFIG_KEY_MAP: Record<keyof PWAConfig, string> = {
@@ -50,11 +64,17 @@ const CONFIG_KEY_MAP: Record<keyof PWAConfig, string> = {
   micTimeoutSeconds: "mic_timeout_seconds",
   enableCountdown: "enable_countdown",
   splashDurationMs: "splash_duration_ms",
-  // Novos campos
+  // Textos dos módulos
   helpWelcomeText: "help_welcome_text",
   worldWelcomeText: "world_welcome_text",
   healthWelcomeText: "health_welcome_text",
   ideasWelcomeText: "ideas_welcome_text",
+  // Voz ElevenLabs
+  voiceStability: "voice_stability",
+  voiceSimilarity: "voice_similarity",
+  voiceStyle: "voice_style",
+  voiceSpeed: "voice_speed",
+  voiceSpeakerBoost: "voice_speaker_boost",
 };
 
 interface UseConfigPWAReturn {

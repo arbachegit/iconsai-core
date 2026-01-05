@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { 
   Smartphone, Copy, ExternalLink, CheckCircle, Mic, Loader2, Wifi, Battery,
-  Settings, Volume2, RotateCcw, Save, Play, Maximize2, X
+  Settings, Volume2, RotateCcw, Save, Play, Maximize2, X, HelpCircle, Globe, 
+  Heart, Lightbulb, RotateCw
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -369,6 +370,88 @@ export default function PWATab() {
 
               <Separator />
 
+              {/* ============================================
+                  TEXTOS DE APRESENTAÇÃO DOS MÓDULOS
+                  ============================================ */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  🎙️ Textos de Apresentação dos Módulos
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Estes textos serão reproduzidos automaticamente quando o usuário entrar em cada módulo.
+                </p>
+
+                {/* Módulo Ajuda */}
+                <div className="space-y-2 p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                  <Label htmlFor="help-welcome" className="text-sm font-medium flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-blue-500" />
+                    Módulo Ajuda
+                  </Label>
+                  <Textarea
+                    id="help-welcome"
+                    value={config.helpWelcomeText}
+                    onChange={(e) => updateConfig("helpWelcomeText", e.target.value)}
+                    placeholder="Texto de apresentação do módulo Ajuda..."
+                    className="min-h-[80px] resize-none"
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">{config.helpWelcomeText.length}/500</p>
+                </div>
+
+                {/* Módulo Mundo */}
+                <div className="space-y-2 p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                  <Label htmlFor="world-welcome" className="text-sm font-medium flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-emerald-500" />
+                    Módulo Mundo
+                  </Label>
+                  <Textarea
+                    id="world-welcome"
+                    value={config.worldWelcomeText}
+                    onChange={(e) => updateConfig("worldWelcomeText", e.target.value)}
+                    placeholder="Texto de apresentação do módulo Mundo..."
+                    className="min-h-[80px] resize-none"
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">{config.worldWelcomeText.length}/500</p>
+                </div>
+
+                {/* Módulo Saúde */}
+                <div className="space-y-2 p-4 rounded-lg bg-rose-500/5 border border-rose-500/20">
+                  <Label htmlFor="health-welcome" className="text-sm font-medium flex items-center gap-2">
+                    <Heart className="w-4 h-4 text-rose-500" />
+                    Módulo Saúde
+                  </Label>
+                  <Textarea
+                    id="health-welcome"
+                    value={config.healthWelcomeText}
+                    onChange={(e) => updateConfig("healthWelcomeText", e.target.value)}
+                    placeholder="Texto de apresentação do módulo Saúde..."
+                    className="min-h-[80px] resize-none"
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">{config.healthWelcomeText.length}/500</p>
+                </div>
+
+                {/* Módulo Ideias */}
+                <div className="space-y-2 p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                  <Label htmlFor="ideas-welcome" className="text-sm font-medium flex items-center gap-2">
+                    <Lightbulb className="w-4 h-4 text-amber-500" />
+                    Módulo Ideias
+                  </Label>
+                  <Textarea
+                    id="ideas-welcome"
+                    value={config.ideasWelcomeText}
+                    onChange={(e) => updateConfig("ideasWelcomeText", e.target.value)}
+                    placeholder="Texto de apresentação do módulo Ideias..."
+                    className="min-h-[80px] resize-none"
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">{config.ideasWelcomeText.length}/500</p>
+                </div>
+              </div>
+
+              <Separator />
+
               {/* Voz TTS */}
               <div className="space-y-2">
                 <Label className="text-base font-medium">Voz TTS</Label>
@@ -406,6 +489,132 @@ export default function PWATab() {
                     )}
                     <span className="ml-2">Testar</span>
                   </Button>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* ============================================
+                  CONTROLES DE VOZ ELEVENLABS
+                  ============================================ */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="w-5 h-5 text-purple-500" />
+                  <h3 className="text-lg font-semibold">Controles de Voz ElevenLabs</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Ajuste os parâmetros da voz para obter a melhor qualidade de fala.
+                </p>
+
+                {/* Speed (Velocidade) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Velocidade (Speed)</Label>
+                    <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                      {config.voiceSpeed.toFixed(2)}x
+                    </span>
+                  </div>
+                  <Slider
+                    value={[config.voiceSpeed]}
+                    onValueChange={([value]) => updateConfig("voiceSpeed", value)}
+                    min={0.5}
+                    max={2.0}
+                    step={0.05}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Lento (0.5x)</span>
+                    <span>Normal (1.0x)</span>
+                    <span>Rápido (2.0x)</span>
+                  </div>
+                </div>
+
+                {/* Stability (Estabilidade) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Estabilidade (Stability)</Label>
+                    <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                      {Math.round(config.voiceStability * 100)}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[config.voiceStability]}
+                    onValueChange={([value]) => updateConfig("voiceStability", value)}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Mais variável</span>
+                    <span>Mais estável</span>
+                  </div>
+                </div>
+
+                {/* Similarity (Fidelidade) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Fidelidade (Similarity)</Label>
+                    <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                      {Math.round(config.voiceSimilarity * 100)}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[config.voiceSimilarity]}
+                    onValueChange={([value]) => updateConfig("voiceSimilarity", value)}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Baixa</span>
+                    <span>Alta (recomendado)</span>
+                  </div>
+                </div>
+
+                {/* Style Exaggeration */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Exagero de Estilo (Style)</Label>
+                    <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                      {Math.round(config.voiceStyle * 100)}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[config.voiceStyle]}
+                    onValueChange={([value]) => updateConfig("voiceStyle", value)}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Nenhum (natural)</span>
+                    <span>Exagerado</span>
+                  </div>
+                </div>
+
+                {/* Speaker Boost */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Amplificação do Falante</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Melhora a clareza da voz clonada
+                    </p>
+                  </div>
+                  <Switch
+                    checked={config.voiceSpeakerBoost}
+                    onCheckedChange={(checked) => updateConfig("voiceSpeakerBoost", checked)}
+                  />
+                </div>
+
+                {/* Dica */}
+                <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                  <p className="text-xs text-purple-300">
+                    💡 <strong>Dica:</strong> Para voz mais natural, mantenha Estabilidade em 50%, 
+                    Fidelidade em 100% e Exagero de Estilo em 0%.
+                  </p>
                 </div>
               </div>
 
@@ -503,6 +712,16 @@ export default function PWATab() {
             </CardDescription>
           </div>
           <div className="flex gap-2">
+            {showSimulator && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetPWA}
+              >
+                <RotateCw className="w-4 h-4 mr-2" />
+                Reset
+              </Button>
+            )}
             {showSimulator && (
               <Button
                 variant="outline"
