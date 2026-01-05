@@ -16,3 +16,12 @@ export { WaveformVisualizer } from "./WaveformVisualizer";
 // Componentes Unificados (FASE 1A)
 export { UnifiedHeader } from "./UnifiedHeader";
 export { UnifiedFooter } from "./UnifiedFooter";
+
+// Componentes Visuais (FASE 1B)
+export { SpectrumAnalyzer } from "./SpectrumAnalyzer";
+export { PlayButton } from "./PlayButton";
+export { ReproduceLabel } from "./ReproduceLabel";
+
+// Types
+export type { VisualizerState } from "./SpectrumAnalyzer";
+export type { PlayButtonState } from "./PlayButton";
