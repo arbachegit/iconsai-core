@@ -171,15 +171,36 @@ export const SlidingMicrophone: React.FC<SlidingMicrophoneProps> = ({
       analyzerRef.current.fftSize = 256;
       source.connect(analyzerRef.current);
 
-      // Configurar MediaRecorder
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : "audio/mp4";
+      // Detectar plataforma para escolher mimeType ideal
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      
+      let mimeType: string;
+      
+      if (isIOS || isSafari) {
+        // iOS/Safari preferem mp4
+        mimeType = MediaRecorder.isTypeSupported("audio/mp4") 
+          ? "audio/mp4" 
+          : MediaRecorder.isTypeSupported("audio/webm") 
+            ? "audio/webm" 
+            : "";
+      } else {
+        // Chrome/Firefox/Android preferem webm
+        mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : MediaRecorder.isTypeSupported("audio/webm")
+            ? "audio/webm"
+            : MediaRecorder.isTypeSupported("audio/mp4")
+              ? "audio/mp4"
+              : "";
+      }
+      
+      console.log("[SlidingMicrophone] Plataforma:", isIOS ? "iOS" : isSafari ? "Safari" : "Other");
+      console.log("[SlidingMicrophone] mimeType selecionado:", mimeType || "default");
 
-      mimeTypeRef.current = mimeType;
-      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
+      mimeTypeRef.current = mimeType || "audio/webm";
+      const recorderOptions: MediaRecorderOptions = mimeType ? { mimeType } : {};
+      mediaRecorderRef.current = new MediaRecorder(stream, recorderOptions);
       audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {

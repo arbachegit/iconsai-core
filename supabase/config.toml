@@ -28,10 +28,10 @@ verify_jwt = false
 verify_jwt = false
 
 # ============================================
-# TTS/STT - Requires auth
+# TTS/STT - Public (PWA uses anonymous access)
 # ============================================
 [functions.text-to-speech]
-verify_jwt = true
+verify_jwt = false
 
 [functions.voice-to-text]
 verify_jwt = false
