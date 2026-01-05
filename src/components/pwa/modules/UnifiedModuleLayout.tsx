@@ -2,16 +2,15 @@
  * ============================================================
  * UnifiedModuleLayout.tsx - Layout Padrão de Módulos
  * ============================================================
- * Versão: 1.0.0
+ * Versão: 2.0.0
  * Data: 2026-01-04
  * 
  * Descrição: Layout padronizado para TODOS os módulos.
- * Igual à Home: apenas Play + Spectrum + Nome do módulo.
- * SEM TEXTO VISÍVEL.
+ * Igual à Home: Play + Spectrum + Nome do módulo + Microfone.
  * ============================================================
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { 
   HelpCircle, 
@@ -20,14 +19,18 @@ import {
   Lightbulb,
   ArrowLeft,
   History,
-  Volume2
+  Volume2,
+  Mic,
+  Loader2
 } from "lucide-react";
 import { SpectrumAnalyzer } from "../voice/SpectrumAnalyzer";
 import { PlayButton } from "../voice/PlayButton";
+import { SlidingMicrophone } from "../voice/SlidingMicrophone";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
+import { supabase } from "@/integrations/supabase/client";
 
 // Tipos de módulo
 export type ModuleType = "help" | "world" | "health" | "ideas";
@@ -95,6 +98,10 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
   const { userName } = usePWAVoiceStore();
   
   const hasSpokenWelcome = useRef(false);
+  
+  // Estado do microfone
+  const [isMicOpen, setIsMicOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // AUTOPLAY ao entrar no módulo
   useEffect(() => {
@@ -123,6 +130,69 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
     };
   }, [stopAllAndCleanup]);
 
+  // Handler para captura de áudio (fluxo completo)
+  const handleAudioCapture = async (audioBlob: Blob) => {
+    setIsProcessing(true);
+    setIsMicOpen(false);
+    
+    try {
+      // 1. Converter para base64
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer).reduce(
+          (data, byte) => data + String.fromCharCode(byte), ""
+        )
+      );
+      
+      console.log("[Voice] Enviando para transcrição...");
+      
+      // 2. Transcrever com Whisper (edge function existente)
+      const { data: sttData, error: sttError } = await supabase.functions.invoke(
+        "voice-to-text",
+        { body: { audio: base64 } }
+      );
+      
+      if (sttError) throw sttError;
+      const userText = sttData?.text;
+      
+      if (!userText) {
+        throw new Error("Não foi possível transcrever o áudio");
+      }
+      
+      console.log("[Voice] Transcrição:", userText);
+      
+      // 3. Enviar para ChatGPT via chat-router
+      const { data: chatData, error: chatError } = await supabase.functions.invoke(
+        "chat-router",
+        { 
+          body: { 
+            message: userText, 
+            pwaMode: true, 
+            chatType: moduleType 
+          } 
+        }
+      );
+      
+      if (chatError) throw chatError;
+      const aiResponse = chatData?.response || chatData?.message || chatData?.text;
+      
+      if (!aiResponse) {
+        throw new Error("Não foi possível obter resposta");
+      }
+      
+      console.log("[Voice] Resposta IA:", aiResponse);
+      
+      // 4. Falar resposta com TTS
+      await speak(aiResponse, moduleType);
+      
+    } catch (error) {
+      console.error("Erro no fluxo de voz:", error);
+      await speak("Desculpe, ocorreu um erro. Tente novamente.", moduleType);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Handler do botão play
   const handlePlayClick = () => {
     if (isPlaying) {
@@ -140,10 +210,16 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
     stopAllAndCleanup();
     onBack();
   };
+  
+  // Handler abrir microfone
+  const handleMicClick = () => {
+    stop(); // Parar áudio atual
+    setIsMicOpen(true);
+  };
 
   // Determinar estado do visualizador
-  const visualizerState = isLoading ? "loading" : isPlaying ? "playing" : "idle";
-  const buttonState = isLoading ? "loading" : isPlaying ? "playing" : "idle";
+  const visualizerState = isProcessing ? "loading" : isLoading ? "loading" : isPlaying ? "playing" : "idle";
+  const buttonState = isProcessing ? "loading" : isLoading ? "loading" : isPlaying ? "playing" : "idle";
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -197,7 +273,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
       </div>
 
       {/* CONTEÚDO PRINCIPAL - IGUAL À HOME */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
         {/* Spectrum Analyzer */}
         <SpectrumAnalyzer
           state={visualizerState}
@@ -219,7 +295,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
             <Volume2 className="w-5 h-5" style={{ color: config.color }} />
           </motion.div>
           <span className="text-slate-400 text-sm">
-            {isPlaying ? "Reproduzindo..." : "Reproduzir"}
+            {isProcessing ? "Processando..." : isPlaying ? "Reproduzindo..." : "Reproduzir"}
           </span>
         </div>
 
@@ -231,9 +307,39 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
           size="lg"
           primaryColor={config.color}
         />
+        
+        {/* Botão de Microfone */}
+        <motion.button
+          onClick={handleMicClick}
+          disabled={isProcessing || isPlaying}
+          className="flex items-center gap-2 px-6 py-3 rounded-full transition-colors disabled:opacity-50"
+          style={{ 
+            backgroundColor: `${config.color}20`,
+            color: config.color
+          }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          {isProcessing ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Mic className="w-5 h-5" />
+          )}
+          <span className="font-medium">
+            {isProcessing ? "Processando..." : "Falar"}
+          </span>
+        </motion.button>
       </div>
 
-      {/* Não há footer aqui - o footer fica no componente pai */}
+      {/* Sliding Microphone */}
+      <SlidingMicrophone
+        isVisible={isMicOpen}
+        onAudioCapture={handleAudioCapture}
+        onClose={() => setIsMicOpen(false)}
+        maxDuration={60}
+        primaryColor={config.color}
+        autoTranscribe={false}
+      />
     </div>
   );
 };

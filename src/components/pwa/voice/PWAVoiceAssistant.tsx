@@ -296,18 +296,6 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
               exit={{ opacity: 0, x: -20 }}
               className="flex-1 flex flex-col overflow-hidden"
             >
-              {/* Header do módulo COM HeaderActions */}
-              <div className="flex items-center justify-between px-4 py-2">
-                <div className="flex-1">
-                  <ModuleHeader moduleId={activeModule} onBack={handleBackToHome} />
-                </div>
-                <HeaderActions
-                  onSummarize={handleSummarize}
-                  onOpenChat={handleOpenConversations}
-                  hasConversations={filteredConversations.length > 0 || messages.length > 0}
-                  isSummarizing={isSummarizing}
-                />
-              </div>
 
               {/* Conteúdo do módulo */}
               <div className="flex-1 overflow-hidden">{renderModule()}</div>
