@@ -95,7 +95,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const { stopAllAndCleanup } = useAudioManager();
   const { config: pwaConfig } = useConfigPWA();
-  const { userName, deviceFingerprint } = usePWAVoiceStore();
+  const { userName, deviceFingerprint, skipWelcome, setSkipWelcome } = usePWAVoiceStore();
   
   const hasSpokenWelcome = useRef(false);
   
@@ -104,10 +104,16 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
 
-  // AUTOPLAY ao entrar no módulo
+  // AUTOPLAY ao entrar no módulo (pula se já ouviu na HOME)
   useEffect(() => {
     if (hasSpokenWelcome.current) return;
     hasSpokenWelcome.current = true;
+
+    // Se foi marcado para pular (já ouviu explicação na HOME)
+    if (skipWelcome) {
+      setSkipWelcome(false); // Resetar para próxima vez
+      return; // Não tocar welcome
+    }
 
     const configRecord = pwaConfig as unknown as Record<string, string>;
     const welcomeText = configRecord[config.welcomeKey] || config.defaultWelcome;
@@ -122,7 +128,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
     return () => {
       clearTimeout(timer);
     };
-  }, [speak, moduleType, pwaConfig, config, userName]);
+  }, [speak, moduleType, pwaConfig, config, userName, skipWelcome, setSkipWelcome]);
 
   // Cleanup ao desmontar (voltar)
   useEffect(() => {

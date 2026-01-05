@@ -70,6 +70,7 @@ const initialState = {
   showIndicators: true,
   isFirstVisit: true,
   isSplashComplete: false,
+  skipWelcome: false,
   
   // Health module (OLDCARTS)
   healthAnswers: {} as Record<string, string>,
@@ -123,6 +124,7 @@ interface PWAVoiceStore {
   showIndicators: boolean;
   isFirstVisit: boolean;
   isSplashComplete: boolean;
+  skipWelcome: boolean;
   
   // Health module
   healthAnswers: Record<string, string>;
@@ -172,6 +174,7 @@ interface PWAVoiceStore {
   setShowIndicators: (show: boolean) => void;
   setFirstVisit: (first: boolean) => void;
   setSplashComplete: (complete: boolean) => void;
+  setSkipWelcome: (skip: boolean) => void;
   
   // Actions - Health
   setHealthAnswer: (key: string, value: string) => void;
@@ -294,6 +297,7 @@ export const usePWAVoiceStore = create<PWAVoiceStore>()(
       setShowIndicators: (show) => set({ showIndicators: show }),
       setFirstVisit: (first) => set({ isFirstVisit: first }),
       setSplashComplete: (complete) => set({ isSplashComplete: complete }),
+      setSkipWelcome: (skip) => set({ skipWelcome: skip }),
       
       // Health Actions
       setHealthAnswer: (key, value) =>
