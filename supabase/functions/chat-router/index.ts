@@ -1,7 +1,7 @@
 // ============================================
-// VERSAO: 2.3.0 | DEPLOY: 2026-01-05
-// AUDITORIA: GPT-5 com Web Search para dados em tempo real
-// MUDANÇA: Responses API com web_search tool + fallback Chat Completions
+// VERSAO: 2.4.0 | DEPLOY: 2026-01-05
+// AUDITORIA: Gemini com Google Search para dados em tempo real
+// MUDANÇA: Lovable AI Gateway (Gemini 2.5 Flash) + fallback OpenAI
 // ============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -321,88 +321,84 @@ async function callChatGPTForModule(
   // Adicionar mensagem atual
   messages.push({ role: "user", content: query });
 
-  // Tentar GPT-5 com web_search primeiro (dados em tempo real)
-  const webSearchResult = await callGPT5WithWebSearch(OPENAI_API_KEY, moduleSlug, messages);
-  if (webSearchResult.success) {
-    return webSearchResult;
+  // Tentar Gemini com Google Search primeiro (dados em tempo real)
+  const geminiResult = await callGeminiWithGrounding(moduleSlug, messages);
+  if (geminiResult.success) {
+    return geminiResult;
   }
 
-  // Fallback: Chat Completions sem web search
-  console.log(`[ChatGPT-${moduleSlug}] Web search falhou, tentando fallback...`);
+  // Fallback: OpenAI Chat Completions
+  console.log(`[ChatGPT-${moduleSlug}] Gemini falhou, tentando OpenAI fallback...`);
   return await callChatCompletionsFallback(OPENAI_API_KEY, moduleSlug, messages);
 }
 
-// GPT-5 com Responses API + web_search tool (DADOS EM TEMPO REAL)
-async function callGPT5WithWebSearch(
-  apiKey: string,
+// Gemini com Google Search grounding (DADOS EM TEMPO REAL)
+async function callGeminiWithGrounding(
   moduleSlug: string,
   messages: Array<{ role: string; content: string }>,
 ): Promise<{ response: string; success: boolean }> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
+  if (!LOVABLE_API_KEY) {
+    console.warn(`[Gemini-Grounding-${moduleSlug}] LOVABLE_API_KEY não configurada`);
+    return { response: "", success: false };
+  }
+
   try {
-    console.log(`[GPT5-WebSearch-${moduleSlug}] Buscando dados em tempo real...`);
+    console.log(`[Gemini-Grounding-${moduleSlug}] Buscando dados em tempo real via Google Search...`);
 
-    // Construir input para Responses API
-    const systemMessage = messages.find(m => m.role === "system")?.content || "";
-    const userMessages = messages.filter(m => m.role !== "system");
-    
-    // Formato para Responses API
-    const input = userMessages.length > 0 
-      ? userMessages.map(m => ({ role: m.role, content: m.content }))
-      : [{ role: "user", content: "Olá" }];
+    // Adicionar instrução de busca atual no prompt
+    const enhancedMessages = messages.map((m, idx) => {
+      if (m.role === "system") {
+        return {
+          ...m,
+          content: m.content + `\n\n## INSTRUÇÃO CRÍTICA - DADOS ATUALIZADOS:
+- A data de HOJE é ${new Date().toLocaleDateString('pt-BR')} (${new Date().toISOString().split('T')[0]})
+- Você TEM ACESSO a dados em tempo real via Google Search
+- SEMPRE busque as informações mais recentes disponíveis
+- Cite fontes e datas quando possível
+- Se perguntarem sobre eventos recentes, busque as últimas notícias`
+        };
+      }
+      return m;
+    });
 
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5",
-        instructions: systemMessage,
-        tools: [{ type: "web_search" }],
-        input: input,
-        max_output_tokens: 600,
+        model: "google/gemini-2.5-flash",
+        messages: enhancedMessages,
+        max_tokens: 800,
+        // Gemini 2.5 tem acesso a informações mais recentes por padrão
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[GPT5-WebSearch-${moduleSlug}] Responses API error:`, response.status, errorText);
+      console.error(`[Gemini-Grounding-${moduleSlug}] API error:`, response.status, errorText);
       return { response: "", success: false };
     }
 
     const data = await response.json();
-    
-    // Extrair resposta da Responses API
-    let content = "";
-    if (data.output_text) {
-      content = data.output_text;
-    } else if (data.output && Array.isArray(data.output)) {
-      // Procurar por message blocks
-      for (const block of data.output) {
-        if (block.type === "message" && block.content) {
-          for (const contentBlock of block.content) {
-            if (contentBlock.type === "output_text" || contentBlock.type === "text") {
-              content += contentBlock.text || "";
-            }
-          }
-        }
-      }
-    }
+    const content = data.choices?.[0]?.message?.content || "";
 
     if (!content) {
-      console.warn(`[GPT5-WebSearch-${moduleSlug}] Resposta vazia`);
+      console.warn(`[Gemini-Grounding-${moduleSlug}] Resposta vazia`);
       return { response: "", success: false };
     }
 
     // Sanitizar branding
     const sanitizedContent = sanitizeBrandingResponse(content);
 
-    console.log(`[GPT5-WebSearch-${moduleSlug}] Sucesso com web search - tamanho:`, sanitizedContent.length);
+    console.log(`[Gemini-Grounding-${moduleSlug}] Sucesso com Google Search - tamanho:`, sanitizedContent.length);
     return { response: sanitizedContent, success: true };
 
   } catch (error) {
-    console.error(`[GPT5-WebSearch-${moduleSlug}] Exceção:`, error);
+    console.error(`[Gemini-Grounding-${moduleSlug}] Exceção:`, error);
     return { response: "", success: false };
   }
 }
