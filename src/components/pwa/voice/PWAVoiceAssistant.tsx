@@ -134,13 +134,21 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   };
 
   const handleModuleSelect = (moduleId: Exclude<ModuleId, null>) => {
+    // CRÍTICO: Parar todo áudio antes de navegar
+    stop();
     setActiveModule(moduleId);
   };
 
   const handleBackToHome = () => {
+    // CRÍTICO: Parar todo áudio antes de voltar
+    stop();
     setActiveModule(null);
     setAppState("idle");
     setPlayerState("idle");
+  };
+  
+  const handleOpenHistoryFromModule = () => {
+    setIsConversationsOpen(true);
   };
 
   const handleSummarize = async () => {
@@ -167,13 +175,13 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   const renderModule = () => {
     switch (activeModule) {
       case "help":
-        return <HelpModule />;
+        return <HelpModule onBack={handleBackToHome} onHistoryClick={handleOpenHistoryFromModule} />;
       case "world":
-        return <WorldModule />;
+        return <WorldModule onBack={handleBackToHome} onHistoryClick={handleOpenHistoryFromModule} />;
       case "health":
-        return <HealthModule />;
+        return <HealthModule onBack={handleBackToHome} onHistoryClick={handleOpenHistoryFromModule} />;
       case "ideas":
-        return <IdeasModule />;
+        return <IdeasModule onBack={handleBackToHome} onHistoryClick={handleOpenHistoryFromModule} />;
       default:
         return null;
     }
