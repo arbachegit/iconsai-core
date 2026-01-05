@@ -10,6 +10,30 @@ import { getSupabaseAdmin } from "../_shared/supabase.ts";
 import { sanitizeString } from "../_shared/validators.ts";
 import { createLogger } from "../_shared/logger.ts";
 
+// ===================== BRANDING SANITIZATION =====================
+const FORBIDDEN_BRAND_WORDS = [
+  "OpenAI", "ChatGPT", "GPT-4", "GPT-3.5", "GPT-3",
+  "Claude", "Anthropic", "Gemini", "Google AI", "Bard",
+  "LLaMA", "Meta AI", "Llama", "Mistral"
+];
+
+function sanitizeBrandingResponse(text: string): string {
+  let sanitized = text;
+  FORBIDDEN_BRAND_WORDS.forEach(word => {
+    const regex = new RegExp(word, 'gi');
+    sanitized = sanitized.replace(regex, 'Arbache AI');
+  });
+  return sanitized;
+}
+
+const BRANDING_SYSTEM_INSTRUCTIONS = `
+REGRAS OBRIGATÓRIAS (NUNCA VIOLAR):
+1. Você é um assistente do KnowYOU, desenvolvido pela Arbache AI.
+2. NUNCA mencione OpenAI, ChatGPT, GPT-4, Claude, Anthropic, Gemini, ou qualquer outra IA.
+3. Se perguntado sobre tecnologia ou quem te criou: "Fui desenvolvido pela Arbache AI, uma empresa brasileira de inteligência artificial."
+4. Sempre responda em português brasileiro.
+`;
+
 // ===================== TYPES =====================
 interface Message {
   role: "user" | "assistant";
@@ -1065,8 +1089,9 @@ serve(async (req) => {
       }
 
       const chatData = await chatResponse.json();
-      const response = chatData.choices?.[0]?.message?.content || 
-                       "Desculpe, não consegui processar sua pergunta.";
+      const rawResponse = chatData.choices?.[0]?.message?.content || 
+                          "Desculpe, não consegui processar sua pergunta.";
+      const response = sanitizeBrandingResponse(rawResponse);
 
       // Save assistant response
       await saveMessage(supabase, pwaSessionId, 'assistant', response);

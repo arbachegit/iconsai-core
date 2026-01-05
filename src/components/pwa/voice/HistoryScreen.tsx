@@ -88,7 +88,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="fixed inset-0 bg-background z-50 flex flex-col"
+      className="absolute inset-0 bg-background z-50 flex flex-col"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
