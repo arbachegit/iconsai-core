@@ -1888,6 +1888,33 @@ export type Database = {
           },
         ]
       }
+      estados: {
+        Row: {
+          codigo_uf: number
+          lat: number | null
+          lng: number | null
+          nome: string
+          regiao: string
+          uf: string
+        }
+        Insert: {
+          codigo_uf: number
+          lat?: number | null
+          lng?: number | null
+          nome: string
+          regiao: string
+          uf: string
+        }
+        Update: {
+          codigo_uf?: number
+          lat?: number | null
+          lng?: number | null
+          nome?: string
+          regiao?: string
+          uf?: string
+        }
+        Relationships: []
+      }
       feature_flags: {
         Row: {
           created_at: string
