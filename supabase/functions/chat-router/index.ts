@@ -949,14 +949,16 @@ function processFileData(messages: Message[]): string {
 async function getRecentHistory(
   supabase: any,
   deviceId: string,
+  agentSlug?: string,
 ): Promise<{
   sessionId: string;
   userName: string | null;
   messages: Array<{ role: string; content: string }>;
 }> {
   try {
+    // Use existing pwa_sessions table
     const { data: session } = await supabase
-      .from("pwa_voice_sessions")
+      .from("pwa_sessions")
       .select("id, user_name")
       .eq("device_id", deviceId)
       .order("created_at", { ascending: false })
@@ -971,19 +973,26 @@ async function getRecentHistory(
       userName = session.user_name;
     } else {
       const { data: newSession } = await supabase
-        .from("pwa_voice_sessions")
+        .from("pwa_sessions")
         .insert({ device_id: deviceId })
         .select("id")
         .single();
       sessionId = newSession?.id || `temp-${Date.now()}`;
     }
 
-    const { data: messages } = await supabase
-      .from("pwa_voice_messages")
+    // Use existing pwa_messages table, filter by agent_slug if provided
+    let query = supabase
+      .from("pwa_messages")
       .select("role, content")
       .eq("session_id", sessionId)
       .order("created_at", { ascending: false })
       .limit(10);
+
+    if (agentSlug) {
+      query = query.eq("agent_slug", agentSlug);
+    }
+
+    const { data: messages } = await query;
 
     return { sessionId, userName, messages: (messages || []).reverse() };
   } catch {
@@ -991,10 +1000,21 @@ async function getRecentHistory(
   }
 }
 
-async function saveMessage(supabase: any, sessionId: string, role: string, content: string): Promise<void> {
+async function saveMessage(
+  supabase: any, 
+  sessionId: string, 
+  role: string, 
+  content: string,
+  agentSlug?: string
+): Promise<void> {
   if (sessionId.startsWith("temp-")) return;
   try {
-    await supabase.from("pwa_voice_messages").insert({ session_id: sessionId, role, content });
+    await supabase.from("pwa_messages").insert({ 
+      session_id: sessionId, 
+      role, 
+      content,
+      agent_slug: agentSlug || 'economia'
+    });
   } catch {}
 }
 
@@ -1013,7 +1033,8 @@ async function detectAndSaveName(
     if (match?.[1] && match[1].length >= 2 && match[1].length <= 20) {
       const name = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
       try {
-        await supabase.from("pwa_voice_sessions").update({ user_name: name }).eq("id", sessionId);
+        // Use existing pwa_sessions table
+        await supabase.from("pwa_sessions").update({ user_name: name }).eq("id", sessionId);
         return name;
       } catch {}
     }
