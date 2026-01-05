@@ -14,7 +14,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, Square, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-
+import { hapticMedium, hapticSuccess } from "@/utils/haptics";
 // Estados do microfone
 export type MicrophoneState = "hidden" | "ready" | "recording" | "processing" | "error";
 
@@ -67,6 +67,7 @@ export const SlidingMicrophone: React.FC<SlidingMicrophoneProps> = ({
   const audioContextRef = useRef<AudioContext | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const animationRef = useRef<number | null>(null);
+  const mimeTypeRef = useRef<string>("audio/webm");
 
   // Limpar recursos
   const cleanup = useCallback(() => {
@@ -136,7 +137,7 @@ export const SlidingMicrophone: React.FC<SlidingMicrophoneProps> = ({
     );
 
     const { data, error } = await supabase.functions.invoke("voice-to-text", {
-      body: { audio: base64 },
+      body: { audio: base64, mimeType: mimeTypeRef.current },
     });
 
     if (error) {
@@ -177,6 +178,7 @@ export const SlidingMicrophone: React.FC<SlidingMicrophoneProps> = ({
         ? "audio/webm"
         : "audio/mp4";
 
+      mimeTypeRef.current = mimeType;
       mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
       audioChunksRef.current = [];
 
@@ -210,6 +212,7 @@ export const SlidingMicrophone: React.FC<SlidingMicrophoneProps> = ({
       // Iniciar gravação
       mediaRecorderRef.current.start(100);
       setState("recording");
+      hapticMedium();
       onRecordingStart?.();
 
       // Iniciar análise de áudio
@@ -245,6 +248,7 @@ export const SlidingMicrophone: React.FC<SlidingMicrophoneProps> = ({
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
+      hapticSuccess();
       onRecordingStop?.();
     }
     
