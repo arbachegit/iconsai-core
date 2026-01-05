@@ -33,7 +33,9 @@ export interface AudioMessage {
   title: string;
   duration: number;
   timestamp: Date;
+  moduleType: ModuleType;
   transcription?: string;
+  isTranscribing?: boolean;
 }
 
 // Configuração do usuário

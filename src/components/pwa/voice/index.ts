@@ -26,6 +26,10 @@ export { ReproduceLabel } from "./ReproduceLabel";
 export { SlidingMicrophone } from "./SlidingMicrophone";
 export { MicrophoneOverlay } from "./MicrophoneOverlay";
 
+// Histórico (FASE 3)
+export { AudioMessageCard } from "./AudioMessageCard";
+export { HistoryScreen } from "./HistoryScreen";
+
 // Types
 export type { VisualizerState } from "./SpectrumAnalyzer";
 export type { PlayButtonState } from "./PlayButton";
