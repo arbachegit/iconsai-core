@@ -1,15 +1,14 @@
 /**
  * ============================================================
- * HistoryScreen.tsx - Tela de Histórico de Conversas
+ * HistoryScreen.tsx - Tela de Histórico de Conversas v2.0
  * ============================================================
- * Versão: 1.0.0
- * Data: 2026-01-04
+ * Com loading states, refresh e sincronização do banco
  * ============================================================
  */
 
-import React, { useMemo } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, Trash2, MessageSquare } from "lucide-react";
+import React, { useMemo, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Trash2, MessageSquare, RefreshCw, Loader2 } from "lucide-react";
 import { AudioMessageCard } from "./AudioMessageCard";
 import { useHistoryStore } from "@/stores/historyStore";
 import type { ModuleType, AudioMessage } from "@/components/pwa/types";
@@ -34,19 +33,32 @@ const MODULE_NAMES: Record<ModuleType, string> = {
 interface HistoryScreenProps {
   onBack: () => void;
   filterModule?: ModuleType;
+  deviceId?: string;
 }
 
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   onBack,
   filterModule,
+  deviceId,
 }) => {
   const { 
     getAllMessages, 
     getMessages, 
     clearHistory, 
     updateTranscription,
-    userInitials 
+    userInitials,
+    isLoading,
+    isInitialized,
+    initialize,
+    refreshHistory,
   } = useHistoryStore();
+
+  // Inicializar store com deviceId se fornecido
+  useEffect(() => {
+    if (deviceId && !isInitialized) {
+      initialize(deviceId);
+    }
+  }, [deviceId, isInitialized, initialize]);
 
   // Obter mensagens (todas ou filtradas)
   const messages = useMemo(() => {
@@ -54,7 +66,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
       return getMessages(filterModule);
     }
     return getAllMessages();
-  }, [filterModule, getAllMessages, getMessages]);
+  }, [filterModule, getAllMessages, getMessages, isInitialized]);
 
   // Agrupar mensagens por data
   const groupedMessages = useMemo(() => {
@@ -81,6 +93,11 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
     if (confirm("Tem certeza que deseja limpar o histórico?")) {
       clearHistory(filterModule);
     }
+  };
+
+  // Handler para refresh
+  const handleRefresh = async () => {
+    await refreshHistory();
   };
 
   return (
@@ -118,59 +135,92 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
           )}
         </div>
 
-        {/* Botão Limpar */}
-        <button
-          onClick={handleClearHistory}
-          className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center text-destructive"
-          disabled={messages.length === 0}
-        >
-          <Trash2 className="w-5 h-5" />
-        </button>
+        {/* Botões de ação */}
+        <div className="flex items-center gap-2">
+          {/* Botão Refresh */}
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center text-foreground disabled:opacity-50"
+          >
+            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+          
+          {/* Botão Limpar */}
+          <button
+            onClick={handleClearHistory}
+            className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center text-destructive"
+            disabled={messages.length === 0 || isLoading}
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
-      {/* Lista de mensagens */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-              <MessageSquare className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <p className="text-lg font-medium text-foreground mb-2">
-              Nenhuma conversa ainda
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Suas mensagens de voz aparecerão aqui
-            </p>
-          </div>
+      {/* Loading State */}
+      <AnimatePresence mode="wait">
+        {isLoading && !isInitialized ? (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col items-center justify-center"
+          >
+            <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
+            <p className="text-sm text-muted-foreground">Carregando histórico...</p>
+          </motion.div>
         ) : (
-          <div className="space-y-6">
-            {Object.entries(groupedMessages).map(([date, msgs]) => (
-              <div key={date}>
-                {/* Data */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="text-xs text-muted-foreground capitalize">
-                    {date}
-                  </span>
-                  <div className="h-px flex-1 bg-border" />
+          <motion.div
+            key="content"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex-1 overflow-y-auto px-4 py-4"
+          >
+            {/* Lista de mensagens */}
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                  <MessageSquare className="w-8 h-8 text-muted-foreground" />
                 </div>
-
-                {/* Mensagens do dia */}
-                <div className="space-y-4">
-                  {msgs.map((message) => (
-                    <AudioMessageCard
-                      key={message.id}
-                      message={message}
-                      userInitials={userInitials}
-                      onTranscriptionUpdate={updateTranscription}
-                    />
-                  ))}
-                </div>
+                <p className="text-lg font-medium text-foreground mb-2">
+                  Nenhuma conversa ainda
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Suas mensagens de voz aparecerão aqui
+                </p>
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="space-y-6">
+                {Object.entries(groupedMessages).map(([date, msgs]) => (
+                  <div key={date}>
+                    {/* Data */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-xs text-muted-foreground capitalize">
+                        {date}
+                      </span>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+
+                    {/* Mensagens do dia */}
+                    <div className="space-y-4">
+                      {msgs.map((message) => (
+                        <AudioMessageCard
+                          key={message.id}
+                          message={message}
+                          userInitials={userInitials}
+                          onTranscriptionUpdate={updateTranscription}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </motion.div>
   );
 };

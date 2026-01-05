@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Smartphone } from "lucide-react";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
+import { useHistoryStore } from "@/stores/historyStore";
 import { SplashScreen } from "./SplashScreen";
 import { VoicePlayerBox } from "./VoicePlayerBox";
 import { ModuleSelector } from "./ModuleSelector";
@@ -34,6 +35,8 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     conversations,
     userName,
   } = usePWAVoiceStore();
+  
+  const { initialize: initializeHistory } = useHistoryStore();
 
   const { config, isLoading: isConfigLoading } = useConfigPWA();
   const { speak, isPlaying, isLoading, progress, stop } = useTextToSpeech({ voice: config.ttsVoice });
@@ -221,6 +224,8 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     useEffect(() => {
       if (fingerprint) {
         setAuthenticated(true, fingerprint);
+        // Inicializa o histórico com o deviceId
+        initializeHistory(fingerprint);
       }
     }, [fingerprint]);
 
@@ -347,6 +352,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
           <HistoryScreen
             onBack={() => setIsConversationsOpen(false)}
             filterModule={activeModule || undefined}
+            deviceId={fingerprint}
           />
         )}
       </div>

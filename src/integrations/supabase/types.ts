@@ -3696,6 +3696,7 @@ export type Database = {
       }
       pwa_messages: {
         Row: {
+          agent_slug: string | null
           audio_url: string | null
           content: string
           created_at: string | null
@@ -3704,6 +3705,7 @@ export type Database = {
           session_id: string | null
         }
         Insert: {
+          agent_slug?: string | null
           audio_url?: string | null
           content: string
           created_at?: string | null
@@ -3712,6 +3714,7 @@ export type Database = {
           session_id?: string | null
         }
         Update: {
+          agent_slug?: string | null
           audio_url?: string | null
           content?: string
           created_at?: string | null
