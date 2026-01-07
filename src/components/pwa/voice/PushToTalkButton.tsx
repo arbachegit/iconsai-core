@@ -41,6 +41,10 @@ export const PushToTalkButton: React.FC<PushToTalkButtonProps> = ({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | null>(null);
   const isActiveRef = useRef(false);
+  const recordingStartMsRef = useRef<number | null>(null);
+
+  // Evita chamadas STT com arquivos quase vazios (OpenAI retorna audio_too_short < 0.1s)
+  const MIN_RECORDING_MS = 450;
 
   const stopFrequencyAnalysis = useCallback(() => {
     if (animationRef.current) {
@@ -89,13 +93,13 @@ export const PushToTalkButton: React.FC<PushToTalkButtonProps> = ({
           : MediaRecorder.isTypeSupported("audio/mp4")
             ? "audio/mp4"
             : "";
-      
+
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: preferredMimeType || undefined,
       });
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
-      
+
       // Store the actual mimeType being used
       const actualMimeType = mediaRecorder.mimeType || preferredMimeType || "audio/webm";
       console.log("[PushToTalk] Recording with mimeType:", actualMimeType);
@@ -107,19 +111,32 @@ export const PushToTalkButton: React.FC<PushToTalkButtonProps> = ({
       };
 
       mediaRecorder.onstop = () => {
+        const durationMs = recordingStartMsRef.current
+          ? Math.round(performance.now() - recordingStartMsRef.current)
+          : null;
+        recordingStartMsRef.current = null;
+
         // Use the actual mimeType from the recorder, not a hardcoded value
         const blob = new Blob(chunksRef.current, { type: actualMimeType });
-        console.log("[PushToTalk] Recording complete:", { 
-          size: blob.size, 
+        console.log("[PushToTalk] Recording complete:", {
+          size: blob.size,
           type: blob.type,
-          chunks: chunksRef.current.length 
+          chunks: chunksRef.current.length,
+          durationMs,
         });
-        
-        if (blob.size > 1000) {
+
+        const durationOk = durationMs === null ? true : durationMs >= MIN_RECORDING_MS;
+
+        if (blob.size > 1000 && durationOk) {
           onAudioCapture(blob);
         } else {
-          console.warn("[PushToTalk] Recording too short, discarding");
+          console.warn("[PushToTalk] Recording too short, discarding", {
+            size: blob.size,
+            durationMs,
+            minMs: MIN_RECORDING_MS,
+          });
         }
+
         // Cleanup stream
         streamRef.current?.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
@@ -127,14 +144,16 @@ export const PushToTalkButton: React.FC<PushToTalkButtonProps> = ({
 
       // Não usar timeslice: alguns navegadores geram chunks sem header EBML,
       // o que faz o Whisper rejeitar o arquivo como "Invalid file format".
+      recordingStartMsRef.current = performance.now();
       mediaRecorder.start();
       setIsRecording(true);
       onRecordingChange?.(true);
     } catch (error) {
       console.error("[PushToTalk] Error starting recording:", error);
       isActiveRef.current = false;
+      recordingStartMsRef.current = null;
     }
-  }, [disabled, onAudioCapture, onFrequencyData, onRecordingChange]);
+  }, [MIN_RECORDING_MS, disabled, onAudioCapture, onFrequencyData, onRecordingChange]);
 
   const stopRecording = useCallback(() => {
     if (!isActiveRef.current) return;
