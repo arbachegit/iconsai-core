@@ -311,9 +311,9 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
                   ease: [0.25, 0.46, 0.45, 0.94] 
                 }}
               >
-                <div className="text-center">
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    KnowYOU
+                <div className="text-center overflow-hidden">
+                  <h1 className="text-2xl font-bold whitespace-nowrap">
+                    <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">KnowYOU</span>
                   </h1>
                 </div>
               </motion.div>
@@ -346,7 +346,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
                 <ModuleSelector 
                   onSelect={handleModuleSelect} 
                   isPlaying={isPlaying} 
-                  disabled={isExplaining}
+                  disabled={isExplaining || isPlaying || isLoading}
                   pendingModule={pendingModule}
                 />
               </motion.div>
