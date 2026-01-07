@@ -81,14 +81,24 @@ export const PushToTalkButton: React.FC<PushToTalkButtonProps> = ({
       };
       updateFrequency();
 
-      // Setup MediaRecorder
+      // Setup MediaRecorder with proper mimeType
+      const preferredMimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : MediaRecorder.isTypeSupported("audio/mp4")
+            ? "audio/mp4"
+            : "";
+      
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : "audio/webm",
+        mimeType: preferredMimeType || undefined,
       });
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
+      
+      // Store the actual mimeType being used
+      const actualMimeType = mediaRecorder.mimeType || preferredMimeType || "audio/webm";
+      console.log("[PushToTalk] Recording with mimeType:", actualMimeType);
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
@@ -97,9 +107,18 @@ export const PushToTalkButton: React.FC<PushToTalkButtonProps> = ({
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        // Use the actual mimeType from the recorder, not a hardcoded value
+        const blob = new Blob(chunksRef.current, { type: actualMimeType });
+        console.log("[PushToTalk] Recording complete:", { 
+          size: blob.size, 
+          type: blob.type,
+          chunks: chunksRef.current.length 
+        });
+        
         if (blob.size > 1000) {
           onAudioCapture(blob);
+        } else {
+          console.warn("[PushToTalk] Recording too short, discarding");
         }
         // Cleanup stream
         streamRef.current?.getTracks().forEach((track) => track.stop());
