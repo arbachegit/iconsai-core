@@ -125,7 +125,9 @@ export const PushToTalkButton: React.FC<PushToTalkButtonProps> = ({
         streamRef.current = null;
       };
 
-      mediaRecorder.start(100); // Collect data every 100ms
+      // Não usar timeslice: alguns navegadores geram chunks sem header EBML,
+      // o que faz o Whisper rejeitar o arquivo como "Invalid file format".
+      mediaRecorder.start();
       setIsRecording(true);
       onRecordingChange?.(true);
     } catch (error) {
@@ -142,6 +144,12 @@ export const PushToTalkButton: React.FC<PushToTalkButtonProps> = ({
     onFrequencyData?.([]); // Clear frequency data
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      // Garante flush do buffer antes de parar
+      try {
+        mediaRecorderRef.current.requestData();
+      } catch {
+        // ignore
+      }
       mediaRecorderRef.current.stop();
     }
 
