@@ -132,20 +132,38 @@ export const AudioMessageCard: React.FC<AudioMessageCardProps> = ({
       const response = await fetch(message.audioUrl);
       const audioBlob = await response.blob();
       
-      // Converter blob para base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(",")[1];
-          resolve(base64);
-        };
+      // Converter blob para base64 sem data URL prefix
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const base64Audio = btoa(
+        new Uint8Array(arrayBuffer).reduce(
+          (data, byte) => data + String.fromCharCode(byte), ""
+        )
+      );
+      
+      // Detectar mimeType com fallback
+      let mimeType = audioBlob.type;
+      if (!mimeType || mimeType === "") {
+        // Tentar detectar pela URL
+        if (message.audioUrl.includes('.mp4') || message.audioUrl.includes('.m4a')) {
+          mimeType = "audio/mp4";
+        } else if (message.audioUrl.includes('.mp3')) {
+          mimeType = "audio/mpeg";
+        } else {
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+          mimeType = (isIOS || isSafari) ? "audio/mp4" : "audio/webm";
+        }
+      }
+      
+      console.log("[AudioMessageCard] Transcribing:", { 
+        size: audioBlob.size, 
+        mimeType,
+        url: message.audioUrl 
       });
-      reader.readAsDataURL(audioBlob);
-      const base64Audio = await base64Promise;
       
       // Chamar edge function
       const { data, error } = await supabase.functions.invoke("voice-to-text", {
-        body: { audio: base64Audio },
+        body: { audio: base64Audio, mimeType },
       });
       
       if (error) throw error;

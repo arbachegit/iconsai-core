@@ -681,18 +681,30 @@ export function useChat(config: UseChatConfig, options: UseChatOptions = {}) {
 
   const transcribeAudio = useCallback(async (audioBlob: Blob): Promise<string> => {
     try {
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(',')[1];
-          resolve(base64);
-        };
+      // Converter para base64 sem data URL prefix
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const base64Audio = btoa(
+        new Uint8Array(arrayBuffer).reduce(
+          (data, byte) => data + String.fromCharCode(byte), ""
+        )
+      );
+      
+      // Detectar mimeType com fallback
+      let mimeType = audioBlob.type;
+      if (!mimeType || mimeType === "") {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        mimeType = (isIOS || isSafari) ? "audio/mp4" : "audio/webm";
+      }
+      
+      console.log('[useChat] Transcribing audio:', { 
+        size: audioBlob.size, 
+        mimeType,
+        base64Length: base64Audio.length 
       });
-      reader.readAsDataURL(audioBlob);
-      const base64Audio = await base64Promise;
 
       const { data, error } = await supabase.functions.invoke('voice-to-text', {
-        body: { audio: base64Audio }
+        body: { audio: base64Audio, mimeType }
       });
 
       if (error) throw error;
