@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { SpectrumAnalyzer } from "../voice/SpectrumAnalyzer";
 import { PlayButton } from "../voice/PlayButton";
-import { PushToTalkButton } from "../voice/PushToTalkButton";
+import { ToggleMicrophoneButton } from "../voice/ToggleMicrophoneButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
@@ -382,8 +382,8 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
           primaryColor={config.color}
         />
         
-        {/* Push-to-Talk Button */}
-        <PushToTalkButton
+        {/* Toggle Microphone Button */}
+        <ToggleMicrophoneButton
           onAudioCapture={handleAudioCapture}
           disabled={isLoading}
           isPlaying={isPlaying}
@@ -391,6 +391,7 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
           primaryColor={config.color}
           onFrequencyData={setFrequencyData}
           onRecordingChange={setIsRecording}
+          maxDurationSeconds={60}
         />
       </div>
     </div>

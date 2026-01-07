@@ -21,6 +21,7 @@ export { PlayButton } from "./PlayButton";
 export { ReproduceLabel } from "./ReproduceLabel";
 
 // Microfone
+export { ToggleMicrophoneButton } from "./ToggleMicrophoneButton";
 export { SlidingMicrophone } from "./SlidingMicrophone";
 export { MicrophoneOverlay } from "./MicrophoneOverlay";
 
@@ -52,7 +53,8 @@ export { FooterModules } from "./FooterModules";
 // @deprecated - Use UnifiedHeader  
 export { HeaderActions } from "./HeaderActions";
 
-// @deprecated - Use SlidingMicrophone
+// @deprecated - Use ToggleMicrophoneButton
+export { PushToTalkButton } from "./PushToTalkButton";
 export { MicrophoneButton } from "./MicrophoneButton";
 export { MicrophoneOrb } from "./MicrophoneOrb";
 
