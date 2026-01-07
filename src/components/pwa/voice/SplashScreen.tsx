@@ -300,145 +300,52 @@ function CentralAIStar({ glow }: { glow: number }) {
   );
 }
 
-// Texto com efeito de escrita - ESPAÇAMENTO CORRIGIDO
+// Texto simples com animação CSS - SOLUÇÃO DEFINITIVA
 function HandwritingTitle({ active }: { active: boolean }) {
-  const common: React.SVGProps<SVGPathElement> = {
-    fill: "none",
-    stroke: "rgba(255,255,255,0.92)",
-    strokeWidth: 3.5,
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-  };
-
-  const base = 0.1;
-  const step = 0.13;
-
-  return (
-    <svg
-      width="340"
-      height="95"
-      viewBox="0 0 340 95"
-      className="block"
-      style={{
-        filter: "drop-shadow(0 0 12px rgba(200,220,255,0.5))",
-      }}
-    >
-      <defs>
-        <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="50%" stopColor="#f0f8ff" />
-          <stop offset="100%" stopColor="#e0f0ff" />
-        </linearGradient>
-      </defs>
-
-      <g stroke="url(#textGrad)">
-        {/* K - posição 8 */}
-        <WritePath 
-          d="M8 20 L8 55 M8 36 L28 20 M8 36 L28 55" 
-          style={common} 
-          active={active} 
-          delaySec={base + step * 0} 
-        />
-        
-        {/* n - posição 38 */}
-        <WritePath 
-          d="M38 35 L38 55 M38 42 C38 30 50 30 58 38 L58 55" 
-          style={common} 
-          active={active} 
-          delaySec={base + step * 1} 
-        />
-        
-        {/* o - posição 68 (centro 80) */}
-        <WritePath 
-          d="M80 45 A12 12 0 1 1 80 44.9" 
-          style={common} 
-          active={active} 
-          delaySec={base + step * 2} 
-        />
-        
-        {/* w - posição 100-145 */}
-        <WritePath 
-          d="M100 32 L110 55 L122 40 L134 55 L145 32" 
-          style={common} 
-          active={active} 
-          delaySec={base + step * 3} 
-        />
-        
-        {/* Y - posição 155-188 */}
-        <WritePath 
-          d="M155 20 L171 42 L171 55 M188 20 L171 42" 
-          style={common} 
-          active={active} 
-          delaySec={base + step * 4} 
-        />
-        
-        {/* O - posição 198 (centro 215) */}
-        <WritePath 
-          d="M215 37 A17 17 0 1 1 215 36.9" 
-          style={common} 
-          active={active} 
-          delaySec={base + step * 5} 
-        />
-        
-        {/* U - posição 245-290 */}
-        <WritePath 
-          d="M245 20 L245 45 C245 55 255 60 267 60 C279 60 290 55 290 45 L290 20" 
-          style={common} 
-          active={active} 
-          delaySec={base + step * 6} 
-        />
-      </g>
-
-      {/* AI - centralizado abaixo */}
-      <g stroke="url(#textGrad)" transform="translate(120, 62)">
-        {/* A */}
-        <WritePath 
-          d="M0 30 L18 5 L36 30 M6 22 L30 22" 
-          style={{ ...common, strokeWidth: 3 }} 
-          active={active} 
-          delaySec={base + step * 7.5} 
-        />
-        {/* I */}
-        <WritePath 
-          d="M55 5 L55 30 M48 5 L62 5 M48 30 L62 30" 
-          style={{ ...common, strokeWidth: 3 }} 
-          active={active} 
-          delaySec={base + step * 8.5} 
-        />
-      </g>
-
-      <style>{`
-        @keyframes writeStroke {
-          0%   { stroke-dashoffset: var(--dash); opacity: 0.7; }
-          100% { stroke-dashoffset: 0; opacity: 1; }
-        }
-      `}</style>
-    </svg>
-  );
-}
-
-interface WritePathProps {
-  d: string;
-  style: React.SVGProps<SVGPathElement>;
-  active: boolean;
-  delaySec: number;
-}
-
-function WritePath({ d, style, active, delaySec }: WritePathProps) {
-  const dash = 800;
+  const [visible, setVisible] = useState(false);
+  
+  useEffect(() => {
+    if (active) {
+      const timer = setTimeout(() => setVisible(true), 100);
+      return () => clearTimeout(timer);
+    } else {
+      setVisible(false);
+    }
+  }, [active]);
 
   return (
-    <path
-      d={d}
-      {...style}
-      style={{
-        strokeDasharray: dash,
-        strokeDashoffset: active ? dash : dash,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ["--dash" as any]: dash,
-        animation: active ? `writeStroke 0.8s ease forwards ${delaySec}s` : "none",
-      }}
-    />
+    <div className="flex flex-col items-center">
+      {/* KnowYOU - Texto único, sem separação de letras */}
+      <h1 
+        className={`
+          text-5xl font-bold text-white whitespace-nowrap
+          transition-all duration-1000 ease-out
+          ${visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}
+        `}
+        style={{
+          textShadow: '0 0 20px rgba(200,220,255,0.6), 0 0 40px rgba(150,180,255,0.3)',
+          letterSpacing: '-0.02em',
+          fontFamily: 'system-ui, -apple-system, sans-serif'
+        }}
+      >
+        KnowYOU
+      </h1>
+      
+      {/* AI - Subtítulo */}
+      <p 
+        className={`
+          text-xl font-semibold text-white/80 text-center mt-2
+          transition-all duration-700
+          ${visible ? 'opacity-100 translate-y-0 delay-500' : 'opacity-0 translate-y-2'}
+        `}
+        style={{
+          textShadow: '0 0 12px rgba(200,220,255,0.4)',
+          transitionDelay: visible ? '500ms' : '0ms'
+        }}
+      >
+        AI
+      </p>
+    </div>
   );
 }
 
