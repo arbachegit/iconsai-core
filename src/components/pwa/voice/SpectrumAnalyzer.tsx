@@ -29,9 +29,11 @@ interface SpectrumAnalyzerProps {
   height?: number;
   /** Largura do componente */
   width?: number;
-  /** Se deve usar dados reais de áudio (Web Audio API) */
+  /** Dados reais de frequência (0-255 por barra) */
+  frequencyData?: number[];
+  /** Se deve usar dados reais de áudio (Web Audio API) - DEPRECATED, use frequencyData */
   useRealAudio?: boolean;
-  /** Referência ao elemento de áudio para análise real */
+  /** Referência ao elemento de áudio para análise real - DEPRECATED */
   audioRef?: React.RefObject<HTMLAudioElement>;
   /** Classe CSS adicional */
   className?: string;
@@ -44,6 +46,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
   secondaryColor = "#8B5CF6",
   height = 120,
   width = 280,
+  frequencyData,
   useRealAudio = false,
   audioRef,
   className = "",
@@ -126,8 +129,16 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
           break;
         
         case "playing":
-          if (useRealAudio && analyzerRef.current) {
-            // Usar dados reais do áudio
+          // PRIORIDADE 1: Usar frequencyData externo se disponível
+          if (frequencyData && frequencyData.length > 0) {
+            const step = Math.max(1, Math.floor(frequencyData.length / barCount));
+            const heights = Array(barCount).fill(0).map((_, i) => {
+              const value = frequencyData[Math.min(i * step, frequencyData.length - 1)] / 255;
+              return Math.max(0.05, value);
+            });
+            setBarHeights(heights);
+          } else if (useRealAudio && analyzerRef.current) {
+            // PRIORIDADE 2: Usar Web Audio API local (deprecated)
             const dataArray = new Uint8Array(analyzerRef.current.frequencyBinCount);
             analyzerRef.current.getByteFrequencyData(dataArray);
             
@@ -138,7 +149,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
             });
             setBarHeights(heights);
           } else {
-            // Simulação suave de reprodução (interpola com valores anteriores)
+            // FALLBACK: Simulação suave de reprodução
             setBarHeights(prev => generateSmoothPlayingHeights(prev));
           }
           break;
@@ -149,8 +160,18 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
           break;
         
         case "recording":
-          // Pulso suave para gravação
-          setBarHeights(prev => generateSmoothRecordingHeights(prev, elapsed));
+          // PRIORIDADE 1: Usar frequencyData externo se disponível
+          if (frequencyData && frequencyData.length > 0) {
+            const step = Math.max(1, Math.floor(frequencyData.length / barCount));
+            const heights = Array(barCount).fill(0).map((_, i) => {
+              const value = frequencyData[Math.min(i * step, frequencyData.length - 1)] / 255;
+              return Math.max(0.08, value);
+            });
+            setBarHeights(heights);
+          } else {
+            // FALLBACK: Pulso suave para gravação
+            setBarHeights(prev => generateSmoothRecordingHeights(prev, elapsed));
+          }
           break;
       }
 
@@ -185,7 +206,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [state, barCount, useRealAudio, audioRef]);
+  }, [state, barCount, useRealAudio, audioRef, frequencyData]);
 
   // Velocidade de transição baseada no estado (MAIS LENTO para suavidade)
   const transitionDuration = useMemo(() => {

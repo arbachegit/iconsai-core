@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Smartphone } from "lucide-react";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
 import { useHistoryStore } from "@/stores/historyStore";
+import { useAudioManager } from "@/stores/audioManagerStore";
 import { SplashScreen } from "./SplashScreen";
 import { VoicePlayerBox } from "./VoicePlayerBox";
 import { ModuleSelector } from "./ModuleSelector";
@@ -37,6 +38,9 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   } = usePWAVoiceStore();
   
   const { initialize: initializeHistory } = useHistoryStore();
+  
+  // AudioManager para capturar frequências do TTS
+  const audioManager = useAudioManager();
 
   const { config, isLoading: isConfigLoading } = useConfigPWA();
   const { speak, isPlaying, isLoading, progress, stop } = useTextToSpeech({ voice: config.ttsVoice });
@@ -51,10 +55,12 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   const [lastSpokenText, setLastSpokenText] = useState<string | null>(null);
   const [pendingModule, setPendingModule] = useState<Exclude<ModuleId, null> | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
+  const [frequencyData, setFrequencyData] = useState<number[]>([]);
 
   // Controle de autoplay - executa UMA vez por sessão
   const hasPlayedWelcome = useRef(false);
   const welcomeAttempted = useRef(false);
+  const frequencyAnimationRef = useRef<number | null>(null);
 
   // Lock scroll
   useEffect(() => {
@@ -94,6 +100,37 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
       setPlayerState("waiting");
     }
   }, [isLoading, isPlaying, setPlayerState]);
+
+  // ============================================================
+  // CAPTURA DE FREQUÊNCIA DO TTS para SpectrumAnalyzer
+  // ============================================================
+  useEffect(() => {
+    if (!audioManager.isPlaying) {
+      setFrequencyData([]);
+      if (frequencyAnimationRef.current) {
+        cancelAnimationFrame(frequencyAnimationRef.current);
+        frequencyAnimationRef.current = null;
+      }
+      return;
+    }
+    
+    const updateFrequency = () => {
+      const data = audioManager.getFrequencyData();
+      if (data.length > 0) {
+        setFrequencyData(data);
+      }
+      frequencyAnimationRef.current = requestAnimationFrame(updateFrequency);
+    };
+    
+    updateFrequency();
+    
+    return () => {
+      if (frequencyAnimationRef.current) {
+        cancelAnimationFrame(frequencyAnimationRef.current);
+        frequencyAnimationRef.current = null;
+      }
+    };
+  }, [audioManager.isPlaying, audioManager]);
 
   // ============================================================
   // AUTOPLAY: Executa welcomeText da configuração ao entrar na HOME
@@ -329,7 +366,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
                   ease: [0.25, 0.46, 0.45, 0.94]
                 }}
               >
-                <VoicePlayerBox state={playerState} onPlay={handleReplay} onPause={stop} audioProgress={progress} />
+                <VoicePlayerBox state={playerState} onPlay={handleReplay} onPause={stop} audioProgress={progress} frequencyData={frequencyData} />
               </motion.div>
 
               {/* Grid de Módulos - Com delay maior */}

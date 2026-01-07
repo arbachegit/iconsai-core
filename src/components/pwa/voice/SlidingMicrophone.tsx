@@ -35,6 +35,8 @@ interface SlidingMicrophoneProps {
   onRecordingStart?: () => void;
   /** Callback quando para gravação */
   onRecordingStop?: () => void;
+  /** Callback com dados de frequência em tempo real para visualização */
+  onFrequencyData?: (data: number[]) => void;
   /** Duração máxima em segundos */
   maxDuration?: number;
   /** Se deve enviar para transcrição automaticamente */
@@ -52,6 +54,7 @@ export const SlidingMicrophone: React.FC<SlidingMicrophoneProps> = ({
   onClose,
   onRecordingStart,
   onRecordingStop,
+  onFrequencyData,
   maxDuration = 60,
   autoTranscribe = true,
   primaryColor = "#EF4444",
@@ -123,11 +126,16 @@ export const SlidingMicrophone: React.FC<SlidingMicrophoneProps> = ({
       const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
       setAudioLevel(average / 255);
       
+      // Enviar dados de frequência para o pai (para SpectrumAnalyzer)
+      if (onFrequencyData) {
+        onFrequencyData(Array.from(dataArray));
+      }
+      
       animationRef.current = requestAnimationFrame(analyze);
     };
 
     analyze();
-  }, []);
+  }, [onFrequencyData]);
 
   // Transcrever áudio usando edge function existente
   const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
