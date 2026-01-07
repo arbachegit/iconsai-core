@@ -18,14 +18,11 @@ import {
   Heart, 
   Lightbulb,
   ArrowLeft,
-  History,
-  Volume2,
-  Mic,
-  Loader2
+  History
 } from "lucide-react";
 import { SpectrumAnalyzer } from "../voice/SpectrumAnalyzer";
 import { PlayButton } from "../voice/PlayButton";
-import { SlidingMicrophone } from "../voice/SlidingMicrophone";
+import { PushToTalkButton } from "../voice/PushToTalkButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
@@ -93,16 +90,18 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
   const IconComponent = config.icon;
   
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
-  const { stopAllAndCleanup } = useAudioManager();
+  const audioManager = useAudioManager();
+  const { stopAllAndCleanup, getFrequencyData } = audioManager;
   const { config: pwaConfig } = useConfigPWA();
   const { userName, deviceFingerprint, skipWelcome, setSkipWelcome } = usePWAVoiceStore();
   
   const hasSpokenWelcome = useRef(false);
+  const animationRef = useRef<number | null>(null);
   
-  // Estado do microfone
-  const [isMicOpen, setIsMicOpen] = useState(false);
+  // Estado do microfone e frequência
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [frequencyData, setFrequencyData] = useState<number[]>([]);
 
   // AUTOPLAY ao entrar no módulo (pula se já ouviu na HOME)
   useEffect(() => {
@@ -134,14 +133,40 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
   useEffect(() => {
     return () => {
       stopAllAndCleanup();
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
     };
   }, [stopAllAndCleanup]);
 
+  // Capturar frequências do TTS quando estiver tocando
+  useEffect(() => {
+    if (!isPlaying) {
+      setFrequencyData([]);
+      return;
+    }
+
+    const updateFrequency = () => {
+      const data = getFrequencyData();
+      if (data.length > 0) {
+        setFrequencyData(data);
+      }
+      animationRef.current = requestAnimationFrame(updateFrequency);
+    };
+
+    updateFrequency();
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+    };
+  }, [isPlaying, getFrequencyData]);
+
   // Handler para captura de áudio (fluxo completo com logging detalhado)
   const handleAudioCapture = async (audioBlob: Blob) => {
-    setIsRecording(false);
     setIsProcessing(true);
-    setIsMicOpen(false);
     
     try {
       // 1. Validar blob
@@ -272,13 +297,6 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
     stopAllAndCleanup();
     onBack();
   };
-  
-  // Handler abrir microfone
-  const handleMicClick = () => {
-    stop(); // Parar áudio atual
-    setIsMicOpen(true);
-    setIsRecording(true);
-  };
 
   // Determinar estado do visualizador
   const visualizerState = isRecording 
@@ -344,17 +362,18 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
       </div>
 
       {/* CONTEÚDO PRINCIPAL - IGUAL À HOME */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
-        {/* Spectrum Analyzer */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
+        {/* Spectrum Analyzer com dados reais */}
         <SpectrumAnalyzer
           state={visualizerState}
+          frequencyData={frequencyData}
           primaryColor={config.color}
           secondaryColor={config.color}
           height={120}
           width={280}
         />
 
-        {/* Botão Play */}
+        {/* Botão Play para ouvir welcome */}
         <PlayButton
           state={buttonState}
           onClick={handlePlayClick}
@@ -363,41 +382,17 @@ export const UnifiedModuleLayout: React.FC<UnifiedModuleLayoutProps> = ({
           primaryColor={config.color}
         />
         
-        {/* Botão de Microfone */}
-        <motion.button
-          onClick={handleMicClick}
-          disabled={isProcessing || isPlaying || isLoading}
-          className="flex items-center gap-2 px-6 py-3 rounded-full transition-colors disabled:opacity-50"
-          style={{ 
-            backgroundColor: `${config.color}20`,
-            color: config.color
-          }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          {isProcessing ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <Mic className="w-5 h-5" />
-          )}
-          <span className="font-medium">
-            {isProcessing ? "Processando..." : "Falar"}
-          </span>
-        </motion.button>
+        {/* Push-to-Talk Button */}
+        <PushToTalkButton
+          onAudioCapture={handleAudioCapture}
+          disabled={isLoading}
+          isPlaying={isPlaying}
+          isProcessing={isProcessing}
+          primaryColor={config.color}
+          onFrequencyData={setFrequencyData}
+          onRecordingChange={setIsRecording}
+        />
       </div>
-
-      {/* Sliding Microphone */}
-      <SlidingMicrophone
-        isVisible={isMicOpen}
-        onAudioCapture={handleAudioCapture}
-        onClose={() => {
-          setIsMicOpen(false);
-          setIsRecording(false);
-        }}
-        maxDuration={60}
-        primaryColor={config.color}
-        autoTranscribe={false}
-      />
     </div>
   );
 };
