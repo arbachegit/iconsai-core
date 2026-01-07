@@ -214,35 +214,58 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
+
+      // Tentar extrair detalhes estruturados do erro da OpenAI (quando vier em JSON)
+      let openAiErrorCode: string | undefined;
+      let openAiErrorMessage: string | undefined;
+      try {
+        const parsed = JSON.parse(errorText);
+        openAiErrorCode = parsed?.error?.code;
+        openAiErrorMessage = parsed?.error?.message;
+      } catch {
+        // ignore (nem todo erro vem como JSON)
+      }
+
       console.error('[VOICE-TO-TEXT] ❌ Erro OpenAI:', response.status, errorText);
-      
+
       // Tratar erros específicos
       if (response.status === 400) {
+        // 400 "audio_too_short" não melhora com fallback de mimeType.
+        if (
+          openAiErrorCode === 'audio_too_short' ||
+          (openAiErrorMessage && openAiErrorMessage.toLowerCase().includes('too short'))
+        ) {
+          return new Response(
+            JSON.stringify({ error: 'Áudio muito curto. Grave por mais tempo.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         // Lista de formatos de fallback para tentar
         const fallbackFormats = [
           { mime: 'audio/ogg', ext: 'ogg' },
           { mime: 'audio/mp4', ext: 'm4a' },
           { mime: 'audio/mpeg', ext: 'mp3' },
         ];
-        
+
         for (const format of fallbackFormats) {
           if (format.mime === mimeType) continue; // Pular o formato atual
-          
+
           console.log(`[VOICE-TO-TEXT] Tentando fallback para ${format.ext}...`);
-          
+
           const fallbackFormData = new FormData();
           const fallbackBlob = new Blob([bytes.buffer as ArrayBuffer], { type: format.mime });
           fallbackFormData.append('file', fallbackBlob, `audio.${format.ext}`);
           fallbackFormData.append('model', 'whisper-1');
           fallbackFormData.append('language', 'pt');
           fallbackFormData.append('prompt', 'Transcrição em português brasileiro.');
-          
+
           const fallbackResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
             body: fallbackFormData,
           });
-          
+
           if (fallbackResponse.ok) {
             const fallbackResult = await fallbackResponse.json();
             console.log(`[VOICE-TO-TEXT] ✅ Fallback para ${format.ext} bem-sucedido!`);
@@ -254,7 +277,7 @@ serve(async (req) => {
             console.log(`[VOICE-TO-TEXT] Fallback ${format.ext} falhou:`, fallbackResponse.status);
           }
         }
-        
+
         return new Response(
           JSON.stringify({ error: 'Formato de áudio não suportado. Tente gravar novamente.' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
