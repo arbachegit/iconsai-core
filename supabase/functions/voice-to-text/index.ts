@@ -1,6 +1,6 @@
 // ============================================
-// VERSAO: 2.1.0 | DEPLOY: 2026-01-05
-// CORREÇÃO CRÍTICA: Validação robusta de mimeType
+// VERSAO: 2.2.0 | DEPLOY: 2026-01-07
+// CORREÇÃO: Melhor suporte a formatos de áudio
 // ============================================
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -46,6 +46,11 @@ function detectMimeTypeByMagicNumber(bytes: Uint8Array): string | null {
     return 'audio/ogg';
   }
   
+  // FLAC: fLaC
+  if (header.startsWith('664c6143')) {
+    return 'audio/flac';
+  }
+  
   return null;
 }
 
@@ -57,21 +62,30 @@ function validateAndNormalizeMimeType(
   bytes: Uint8Array
 ): { mimeType: string; extension: string } {
   
+  // Formatos suportados pelo Whisper: flac, m4a, mp3, mp4, mpeg, mpga, oga, ogg, wav, webm
   const VALID_TYPES: Record<string, string> = {
     'audio/webm': 'webm',
-    'audio/mp4': 'mp4',
-    'audio/m4a': 'mp4',
-    'audio/x-m4a': 'mp4',
+    'audio/mp4': 'm4a',
+    'audio/m4a': 'm4a',
+    'audio/x-m4a': 'm4a',
     'audio/wav': 'wav',
     'audio/wave': 'wav',
     'audio/x-wav': 'wav',
     'audio/mpeg': 'mp3',
     'audio/mp3': 'mp3',
     'audio/ogg': 'ogg',
-    'audio/opus': 'opus',
+    'audio/opus': 'ogg',
+    'audio/flac': 'flac',
   };
   
-  // 1. Tentar usar o mimeType fornecido
+  // 1. Detectar pelo magic number primeiro (mais confiável)
+  const detectedMime = detectMimeTypeByMagicNumber(bytes);
+  if (detectedMime && VALID_TYPES[detectedMime]) {
+    console.log('[VOICE-TO-TEXT] mimeType detectado por magic number:', detectedMime);
+    return { mimeType: detectedMime, extension: VALID_TYPES[detectedMime] };
+  }
+  
+  // 2. Tentar usar o mimeType fornecido
   if (providedMimeType) {
     // Remover codecs (ex: audio/webm;codecs=opus -> audio/webm)
     const baseMime = providedMimeType.split(';')[0].trim().toLowerCase();
@@ -82,24 +96,9 @@ function validateAndNormalizeMimeType(
     }
   }
   
-  // 2. Detectar pelo magic number
-  const detectedMime = detectMimeTypeByMagicNumber(bytes);
-  if (detectedMime && VALID_TYPES[detectedMime]) {
-    console.log('[VOICE-TO-TEXT] mimeType detectado por magic number:', detectedMime);
-    return { mimeType: detectedMime, extension: VALID_TYPES[detectedMime] };
-  }
-  
-  // 3. Heurística por tamanho (último recurso)
-  const sizeKB = bytes.length / 1024;
-  const fallbackMime = sizeKB < 100 ? 'audio/webm' : 'audio/mp4';
-  const fallbackExt = sizeKB < 100 ? 'webm' : 'mp4';
-  
-  console.log('[VOICE-TO-TEXT] ⚠️ Usando fallback por tamanho:', {
-    sizeKB: sizeKB.toFixed(2),
-    mimeType: fallbackMime
-  });
-  
-  return { mimeType: fallbackMime, extension: fallbackExt };
+  // 3. Fallback para webm (mais comum em browsers modernos)
+  console.log('[VOICE-TO-TEXT] ⚠️ Usando fallback: audio/webm');
+  return { mimeType: 'audio/webm', extension: 'webm' };
 }
 
 serve(async (req) => {
@@ -219,13 +218,21 @@ serve(async (req) => {
       
       // Tratar erros específicos
       if (response.status === 400) {
-        // Tentar com outro formato como fallback
-        if (mimeType === 'audio/webm') {
-          console.log('[VOICE-TO-TEXT] Tentando fallback para mp4...');
+        // Lista de formatos de fallback para tentar
+        const fallbackFormats = [
+          { mime: 'audio/ogg', ext: 'ogg' },
+          { mime: 'audio/mp4', ext: 'm4a' },
+          { mime: 'audio/mpeg', ext: 'mp3' },
+        ];
+        
+        for (const format of fallbackFormats) {
+          if (format.mime === mimeType) continue; // Pular o formato atual
+          
+          console.log(`[VOICE-TO-TEXT] Tentando fallback para ${format.ext}...`);
           
           const fallbackFormData = new FormData();
-          const fallbackBlob = new Blob([bytes.buffer as ArrayBuffer], { type: 'audio/mp4' });
-          fallbackFormData.append('file', fallbackBlob, 'audio.mp4');
+          const fallbackBlob = new Blob([bytes.buffer as ArrayBuffer], { type: format.mime });
+          fallbackFormData.append('file', fallbackBlob, `audio.${format.ext}`);
           fallbackFormData.append('model', 'whisper-1');
           fallbackFormData.append('language', 'pt');
           fallbackFormData.append('prompt', 'Transcrição em português brasileiro.');
@@ -238,11 +245,13 @@ serve(async (req) => {
           
           if (fallbackResponse.ok) {
             const fallbackResult = await fallbackResponse.json();
-            console.log('[VOICE-TO-TEXT] ✅ Fallback bem-sucedido!');
+            console.log(`[VOICE-TO-TEXT] ✅ Fallback para ${format.ext} bem-sucedido!`);
             return new Response(
               JSON.stringify({ text: fallbackResult.text }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
+          } else {
+            console.log(`[VOICE-TO-TEXT] Fallback ${format.ext} falhou:`, fallbackResponse.status);
           }
         }
         
