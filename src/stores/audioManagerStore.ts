@@ -22,6 +22,10 @@ interface AudioManagerState {
   // Áudio atualmente tocando
   currentAudio: AudioInstance | null;
   
+  // Web Audio API para análise de frequência
+  audioContext: AudioContext | null;
+  analyserNode: AnalyserNode | null;
+  
   // Estado
   isPlaying: boolean;
   isLoading: boolean;
@@ -34,12 +38,17 @@ interface AudioManagerState {
   resumeAudio: () => void;
   setProgress: (progress: number) => void;
   
+  // Obter dados de frequência para visualização
+  getFrequencyData: () => number[];
+  
   // Cleanup ao mudar de módulo
   stopAllAndCleanup: () => void;
 }
 
 export const useAudioManager = create<AudioManagerState>((set, get) => ({
   currentAudio: null,
+  audioContext: null,
+  analyserNode: null,
   isPlaying: false,
   isLoading: false,
   progress: 0,
@@ -53,11 +62,21 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       state.currentAudio.audio.currentTime = 0;
       state.currentAudio.audio.src = "";
     }
+    
+    // Fechar AudioContext anterior se existir
+    if (state.audioContext && state.audioContext.state !== "closed") {
+      try {
+        state.audioContext.close();
+      } catch (e) {
+        console.warn("[AudioManager] Erro ao fechar AudioContext:", e);
+      }
+    }
 
-    set({ isLoading: true, progress: 0 });
+    set({ isLoading: true, progress: 0, audioContext: null, analyserNode: null });
 
     try {
       const audio = new Audio(audioUrl);
+      audio.crossOrigin = "anonymous"; // Necessário para Web Audio API
       
       // Configurar eventos
       audio.onloadeddata = () => {
@@ -88,10 +107,26 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
         set({ isLoading: false, isPlaying: false });
       };
 
-      // Salvar referência e tocar
+      // Salvar referência
       set({
         currentAudio: { id, audio, source },
       });
+
+      // Configurar Web Audio API para análise de frequência
+      try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 64; // 32 barras de frequência
+        analyser.smoothingTimeConstant = 0.8;
+        
+        const sourceNode = audioContext.createMediaElementSource(audio);
+        sourceNode.connect(analyser);
+        analyser.connect(audioContext.destination);
+        
+        set({ audioContext, analyserNode: analyser });
+      } catch (audioApiError) {
+        console.warn("[AudioManager] Web Audio API não disponível:", audioApiError);
+      }
 
       await audio.play();
       set({ isPlaying: true, isLoading: false });
@@ -131,6 +166,17 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
     set({ progress });
   },
 
+  // Obter dados de frequência do áudio atual
+  getFrequencyData: () => {
+    const state = get();
+    if (!state.analyserNode) return [];
+    
+    const dataArray = new Uint8Array(state.analyserNode.frequencyBinCount);
+    state.analyserNode.getByteFrequencyData(dataArray);
+    
+    return Array.from(dataArray);
+  },
+
   // CRÍTICO: Chamado ao trocar de módulo
   stopAllAndCleanup: () => {
     const state = get();
@@ -139,8 +185,20 @@ export const useAudioManager = create<AudioManagerState>((set, get) => ({
       state.currentAudio.audio.currentTime = 0;
       state.currentAudio.audio.src = "";
     }
+    
+    // Fechar AudioContext
+    if (state.audioContext && state.audioContext.state !== "closed") {
+      try {
+        state.audioContext.close();
+      } catch (e) {
+        console.warn("[AudioManager] Erro ao fechar AudioContext:", e);
+      }
+    }
+    
     set({
       currentAudio: null,
+      audioContext: null,
+      analyserNode: null,
       isPlaying: false,
       isLoading: false,
       progress: 0,

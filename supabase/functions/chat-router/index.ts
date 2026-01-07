@@ -1080,7 +1080,7 @@ async function getRecentHistory(
       .select("role, content")
       .eq("session_id", sessionId)
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(50);
 
     if (agentSlug) {
       query = query.eq("agent_slug", agentSlug);

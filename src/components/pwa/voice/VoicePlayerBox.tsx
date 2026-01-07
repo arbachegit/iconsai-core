@@ -12,6 +12,7 @@ interface VoicePlayerBoxProps {
   onReset?: () => void;
   onMicClick?: () => void;
   audioProgress?: number;
+  frequencyData?: number[];
   showMic?: boolean;
   title?: string;
   subtitle?: string;
@@ -22,6 +23,7 @@ export const VoicePlayerBox: React.FC<VoicePlayerBoxProps> = ({
   onPlay,
   onPause,
   audioProgress = 0,
+  frequencyData = [],
 }) => {
   const [hasPlayed, setHasPlayed] = useState(false);
   const [canReplay, setCanReplay] = useState(false);
@@ -211,7 +213,7 @@ export const VoicePlayerBox: React.FC<VoicePlayerBoxProps> = ({
         </div>
       </div>
 
-      {/* Audio visualizer bars */}
+      {/* Audio visualizer bars - now uses real frequency data */}
       <AnimatePresence>
         {state === "playing" && (
           <motion.div 
@@ -221,8 +223,24 @@ export const VoicePlayerBox: React.FC<VoicePlayerBoxProps> = ({
             exit={{ opacity: 0, y: 10 }}
           >
             {[...Array(9)].map((_, i) => {
+              // Use real frequency data if available, otherwise fallback to animation
+              const hasRealData = frequencyData.length > 0;
+              const step = Math.max(1, Math.floor(frequencyData.length / 9));
+              const realHeight = hasRealData 
+                ? Math.max(8, (frequencyData[Math.min(i * step, frequencyData.length - 1)] / 255) * 32)
+                : 8;
+              
               const heights = [16, 24, 32, 20, 28, 18, 30, 22, 14];
-              return (
+              
+              return hasRealData ? (
+                <motion.div 
+                  key={i} 
+                  className="w-1 rounded-full" 
+                  style={{ background: "hsl(191, 100%, 50%)" }} 
+                  animate={{ height: realHeight }}
+                  transition={{ duration: 0.1, ease: "easeOut" }} 
+                />
+              ) : (
                 <motion.div 
                   key={i} 
                   className="w-1 rounded-full" 
