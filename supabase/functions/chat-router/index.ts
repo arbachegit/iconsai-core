@@ -1107,7 +1107,7 @@ async function saveMessage(
       session_id: sessionId, 
       role, 
       content,
-      agent_slug: agentSlug || 'economia'
+      agent_slug: agentSlug || null
     });
   } catch {}
 }
@@ -1198,7 +1198,7 @@ serve(async (req: Request) => {
         await updatePreviousMetricWithFeedback(supabase, pwaSessionId, feedbackType);
       }
 
-      await saveMessage(supabase, pwaSessionId, "user", pwaMessage);
+      await saveMessage(supabase, pwaSessionId, "user", pwaMessage, agentSlug);
 
       // ===== CHATGPT COMO FONTE PRIMÁRIA =====
       const moduleSlug = agentSlug || "economia";
@@ -1209,7 +1209,7 @@ serve(async (req: Request) => {
       if (chatGPTResult.success && chatGPTResult.response) {
         logger.info(`[ChatGPT-Primary] Sucesso para ${moduleSlug}`);
 
-        await saveMessage(supabase, pwaSessionId, "assistant", chatGPTResult.response);
+        await saveMessage(supabase, pwaSessionId, "assistant", chatGPTResult.response, agentSlug);
         await logMaieuticMetrics(
           supabase,
           pwaSessionId,
@@ -1361,7 +1361,7 @@ serve(async (req: Request) => {
       const rawResponse = chatData.choices?.[0]?.message?.content || "Erro ao processar.";
       const response = sanitizeBrandingResponse(rawResponse);
 
-      await saveMessage(supabase, pwaSessionId, "assistant", response);
+      await saveMessage(supabase, pwaSessionId, "assistant", response, agentSlug);
       await logMaieuticMetrics(
         supabase,
         pwaSessionId,
