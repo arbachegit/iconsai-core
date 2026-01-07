@@ -315,9 +315,9 @@ function HandwritingTitle({ active }: { active: boolean }) {
 
   return (
     <svg
-      width="360"
+      width="340"
       height="95"
-      viewBox="0 0 360 95"
+      viewBox="0 0 340 95"
       className="block"
       style={{
         filter: "drop-shadow(0 0 12px rgba(200,220,255,0.5))",
@@ -332,57 +332,57 @@ function HandwritingTitle({ active }: { active: boolean }) {
       </defs>
 
       <g stroke="url(#textGrad)">
-        {/* K - posição 15 */}
+        {/* K - posição 8 */}
         <WritePath 
-          d="M15 20 L15 55 M15 36 L38 20 M15 36 L38 55" 
+          d="M8 20 L8 55 M8 36 L28 20 M8 36 L28 55" 
           style={common} 
           active={active} 
           delaySec={base + step * 0} 
         />
         
-        {/* n - posição 55 */}
+        {/* n - posição 38 */}
         <WritePath 
-          d="M55 35 L55 55 M55 42 C55 30 70 30 78 38 L78 55" 
+          d="M38 35 L38 55 M38 42 C38 30 50 30 58 38 L58 55" 
           style={common} 
           active={active} 
           delaySec={base + step * 1} 
         />
         
-        {/* o - posição 100 */}
+        {/* o - posição 68 (centro 80) */}
         <WritePath 
-          d="M115 45 A13 13 0 1 1 115 44.9" 
+          d="M80 45 A12 12 0 1 1 80 44.9" 
           style={common} 
           active={active} 
           delaySec={base + step * 2} 
         />
         
-        {/* w - posição 150 */}
+        {/* w - posição 100-145 */}
         <WritePath 
-          d="M150 32 L160 55 L175 40 L190 55 L200 32" 
+          d="M100 32 L110 55 L122 40 L134 55 L145 32" 
           style={common} 
           active={active} 
           delaySec={base + step * 3} 
         />
         
-        {/* Y - posição 220 */}
+        {/* Y - posição 155-188 */}
         <WritePath 
-          d="M220 20 L238 42 L238 55 M256 20 L238 42" 
+          d="M155 20 L171 42 L171 55 M188 20 L171 42" 
           style={common} 
           active={active} 
           delaySec={base + step * 4} 
         />
         
-        {/* O - posição 275 */}
+        {/* O - posição 198 (centro 215) */}
         <WritePath 
-          d="M292 37 A17 17 0 1 1 292 36.9" 
+          d="M215 37 A17 17 0 1 1 215 36.9" 
           style={common} 
           active={active} 
           delaySec={base + step * 5} 
         />
         
-        {/* U - posição 325 */}
+        {/* U - posição 245-290 */}
         <WritePath 
-          d="M325 20 L325 45 C325 55 337 60 350 60 C363 60 375 55 375 45 L375 20" 
+          d="M245 20 L245 45 C245 55 255 60 267 60 C279 60 290 55 290 45 L290 20" 
           style={common} 
           active={active} 
           delaySec={base + step * 6} 
@@ -390,7 +390,7 @@ function HandwritingTitle({ active }: { active: boolean }) {
       </g>
 
       {/* AI - centralizado abaixo */}
-      <g stroke="url(#textGrad)" transform="translate(150, 62)">
+      <g stroke="url(#textGrad)" transform="translate(120, 62)">
         {/* A */}
         <WritePath 
           d="M0 30 L18 5 L36 30 M6 22 L30 22" 
