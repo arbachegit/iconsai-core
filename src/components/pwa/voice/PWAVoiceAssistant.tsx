@@ -197,6 +197,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
             <HomeContainer
               key="home"
               onModuleSelect={handleModuleSelect}
+              deviceId={currentFingerprint}
             />
           )}
 
