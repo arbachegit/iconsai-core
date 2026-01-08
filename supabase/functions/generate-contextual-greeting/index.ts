@@ -66,13 +66,28 @@ serve(async (req) => {
       throw new Error("Erro ao buscar contexto do usuário");
     }
 
-    // Se não existe contexto, é primeira interação
+    // Se não existe contexto, é primeira interação - usar welcome_text do pwa_config
     if (!userContext || userContext.interaction_count === 0) {
-      const neutralGreeting = userName 
-        ? `Olá, ${userName}! Seja bem-vindo ao KnowYOU. Estou aqui para te ajudar. Escolha um dos módulos abaixo para começarmos.`
-        : `Olá! Seja bem-vindo ao KnowYOU. Estou aqui para te ajudar. Escolha um dos módulos abaixo para começarmos.`;
+      // Buscar welcome_text completo do pwa_config
+      const { data: configData } = await supabase
+        .from("pwa_config")
+        .select("config_value")
+        .eq("config_key", "welcome_text")
+        .single();
+      
+      let neutralGreeting = configData?.config_value || 
+        "Olá, eu sou o KnowYOU, seu assistente de voz. Escolha um dos módulos abaixo para começarmos.";
+      
+      // Substituir [name] pelo nome do usuário se existir
+      const displayName = userName || userContext?.user_name;
+      if (displayName) {
+        neutralGreeting = neutralGreeting.replace("[name]", displayName);
+      } else {
+        // Remover placeholder [name] se não tiver nome
+        neutralGreeting = neutralGreeting.replace("[name]! ", "").replace("[name]", "");
+      }
 
-      logger.info("First interaction, returning neutral greeting", { deviceId });
+      logger.info("First interaction, returning full welcome text", { deviceId });
 
       return new Response(
         JSON.stringify({
