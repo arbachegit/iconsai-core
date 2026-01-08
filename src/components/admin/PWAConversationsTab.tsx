@@ -11,7 +11,7 @@ import { PWAConversationModal } from './pwa-conversations/PWAConversationModal';
 import { TaxonomyAutocomplete } from './pwa-conversations/TaxonomyAutocomplete';
 import { KeyTopicsAutocomplete } from './pwa-conversations/KeyTopicsAutocomplete';
 import { usePWAConversations } from '@/hooks/usePWAConversations';
-import type { PWAModuleType } from '@/types/pwa-conversations';
+import type { PWAModuleType, SortDirection } from '@/types/pwa-conversations';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -23,7 +23,11 @@ import {
   RefreshCw, 
   Search, 
   User, 
-  Building2 
+  Building2,
+  Calendar,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 
 interface ModalState {
@@ -32,6 +36,8 @@ interface ModalState {
   moduleType: PWAModuleType;
   userName?: string;
 }
+
+type SortColumn = 'user_name' | 'company' | 'last_activity';
 
 export const PWAConversationsTab = () => {
   const { 
@@ -43,6 +49,7 @@ export const PWAConversationsTab = () => {
     taxonomySuggestions, 
     keyTopicsSuggestions, 
     setFilters, 
+    setSortConfig,
     setCurrentPage, 
     setPageSize, 
     fetchTaxonomySuggestions, 
@@ -62,6 +69,12 @@ export const PWAConversationsTab = () => {
   const [searchCompany, setSearchCompany] = useState('');
   const [searchTaxonomy, setSearchTaxonomy] = useState<string[]>([]);
   const [searchKeyTopics, setSearchKeyTopics] = useState<string[]>([]);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  
+  // Sort states
+  const [sortColumn, setSortColumn] = useState<SortColumn>('last_activity');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const toggleRow = (id: string) => {
     setExpandedRows(prev => {
@@ -75,12 +88,28 @@ export const PWAConversationsTab = () => {
     });
   };
 
+  const handleSort = (column: SortColumn) => {
+    const newDirection: SortDirection = sortColumn === column && sortDirection === 'desc' ? 'asc' : 'desc';
+    setSortColumn(column);
+    setSortDirection(newDirection);
+    setSortConfig({ column, direction: newDirection });
+  };
+
+  const getSortIcon = (column: SortColumn) => {
+    if (sortColumn !== column) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-50" />;
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="w-3 h-3 ml-1" /> 
+      : <ArrowDown className="w-3 h-3 ml-1" />;
+  };
+
   const handleApplyFilters = () => {
     setFilters({ 
       search: searchName || undefined, 
       company: searchCompany || undefined,
       taxonomyTags: searchTaxonomy.length > 0 ? searchTaxonomy : undefined,
       keyTopics: searchKeyTopics.length > 0 ? searchKeyTopics : undefined,
+      dateFrom: dateFrom ? new Date(dateFrom).toISOString() : undefined,
+      dateTo: dateTo ? new Date(dateTo).toISOString() : undefined,
     });
   };
 
@@ -124,7 +153,7 @@ export const PWAConversationsTab = () => {
         
         <CardContent>
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-4">
             <div>
               <label className="text-sm font-medium mb-1.5 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5" />
@@ -147,6 +176,32 @@ export const PWAConversationsTab = () => {
                 placeholder="Buscar por empresa..."
                 value={searchCompany}
                 onChange={(e) => setSearchCompany(e.target.value)}
+                className="h-9"
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-1.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                Data Início
+              </label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-9"
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-1.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                Data Fim
+              </label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
                 className="h-9"
               />
             </div>
@@ -197,9 +252,35 @@ export const PWAConversationsTab = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[250px]">Nome do Usuário</TableHead>
-                    <TableHead className="w-[200px]">Empresa</TableHead>
-                    <TableHead className="w-[150px]">Última Atividade</TableHead>
+                    <TableHead 
+                      className="w-[200px] cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('user_name')}
+                    >
+                      <div className="flex items-center">
+                        Nome do Usuário
+                        {getSortIcon('user_name')}
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[200px]">Email</TableHead>
+                    <TableHead 
+                      className="w-[150px] cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('company')}
+                    >
+                      <div className="flex items-center">
+                        Empresa
+                        {getSortIcon('company')}
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[80px] text-center">Sessões</TableHead>
+                    <TableHead 
+                      className="w-[150px] cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('last_activity')}
+                    >
+                      <div className="flex items-center">
+                        Última Atividade
+                        {getSortIcon('last_activity')}
+                      </div>
+                    </TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -218,7 +299,15 @@ export const PWAConversationsTab = () => {
                               {user.user_name || 'Anônimo'}
                             </TableCell>
                             <TableCell className="text-muted-foreground">
+                              {user.user_email || '-'}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
                               {user.company || 'Não definida'}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                                {user.total_sessions}
+                              </span>
                             </TableCell>
                             <TableCell className="text-muted-foreground">
                               {format(new Date(user.last_activity), "dd/MM/yyyy HH:mm", { locale: ptBR })}
@@ -234,7 +323,7 @@ export const PWAConversationsTab = () => {
                         
                         <CollapsibleContent asChild>
                           <TableRow className="bg-muted/30">
-                            <TableCell colSpan={4} className="py-4">
+                            <TableCell colSpan={6} className="py-4">
                               <div className="pl-4">
                                 <p className="text-sm text-muted-foreground mb-2">
                                   Módulos utilizados:
