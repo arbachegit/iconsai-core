@@ -3489,6 +3489,42 @@ export type Database = {
         }
         Relationships: []
       }
+      pwa_conversation_summaries: {
+        Row: {
+          created_at: string | null
+          device_id: string
+          id: string
+          last_assistant_message: string | null
+          last_user_message: string | null
+          message_count: number | null
+          module_type: string
+          summary: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_id: string
+          id?: string
+          last_assistant_message?: string | null
+          last_user_message?: string | null
+          message_count?: number | null
+          module_type: string
+          summary: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_id?: string
+          id?: string
+          last_assistant_message?: string | null
+          last_user_message?: string | null
+          message_count?: number | null
+          module_type?: string
+          summary?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       pwa_devices: {
         Row: {
           block_reason: string | null

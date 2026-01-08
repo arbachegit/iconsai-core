@@ -1,33 +1,34 @@
 /**
- * PWAVoiceAssistant.tsx - v4.0.0 - 2026-01-08
- *
- * CORREÇÃO CRÍTICA v4.0.0:
- * - HOME é INDEPENDENTE dos módulos
- * - Navegação IMEDIATA ao clicar no módulo
- * - NÃO usa skipWelcome - cada container é independente
- * - HOME só fala boas-vindas genéricas
- * - Módulos falam suas próprias saudações
+ * ============================================================
+ * PWAVoiceAssistant.tsx - v5.0.0
+ * ============================================================
+ * ARQUITETURA DE CONTAINERS INDEPENDENTES
+ * - Cada container gerencia seu próprio autoplay
+ * - Sem race conditions
+ * - Sem refs compartilhadas
+ * ============================================================
  */
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Smartphone } from "lucide-react";
 import { usePWAVoiceStore, ModuleId } from "@/stores/pwaVoiceStore";
 import { useHistoryStore } from "@/stores/historyStore";
 import { useAudioManager } from "@/stores/audioManagerStore";
 import { SplashScreen } from "./SplashScreen";
-import { VoicePlayerBox } from "./VoicePlayerBox";
-import { ModuleSelector } from "./ModuleSelector";
 import { FooterModules } from "./FooterModules";
 import { HistoryScreen } from "./HistoryScreen";
-import { HelpModule } from "../modules/HelpModule";
-import { WorldModule } from "../modules/WorldModule";
-import { HealthModule } from "../modules/HealthModule";
-import { IdeasModule } from "../modules/IdeasModule";
-import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { PWAAuthGate } from "@/components/gates/PWAAuthGate";
-import { supabase } from "@/integrations/supabase/client";
+
+// Containers independentes
+import { 
+  HomeContainer, 
+  HealthModuleContainer, 
+  IdeasModuleContainer, 
+  WorldModuleContainer, 
+  HelpModuleContainer 
+} from "../containers";
 
 interface PWAVoiceAssistantProps {
   embedded?: boolean;
@@ -39,31 +40,19 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     setAppState,
     activeModule,
     setActiveModule,
-    playerState,
     setPlayerState,
     setAuthenticated,
     conversations,
-    userName,
-    deviceFingerprint,
   } = usePWAVoiceStore();
 
   const { initialize: initializeHistory } = useHistoryStore();
   const audioManager = useAudioManager();
-  const { config, isLoading: isConfigLoading } = useConfigPWA();
-  const { speak, isPlaying, isLoading, progress, stop } = useTextToSpeech({ voice: config.ttsVoice });
+  const { config } = useConfigPWA();
 
   const [isMobile, setIsMobile] = useState(true);
   const [showDesktopWarning, setShowDesktopWarning] = useState(false);
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [isConversationsOpen, setIsConversationsOpen] = useState(false);
-  const [lastSpokenText, setLastSpokenText] = useState<string | null>(null);
-  const [frequencyData, setFrequencyData] = useState<number[]>([]);
-
-  // Controle de autoplay da HOME
-  const homeWelcomeAttempted = useRef(false);
-  const isNavigatingToModule = useRef(false);
-  const frequencyAnimationRef = useRef<number | null>(null);
+  const [currentFingerprint, setCurrentFingerprint] = useState<string>("");
 
   // Lock scroll
   useEffect(() => {
@@ -93,217 +82,65 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     return () => window.removeEventListener("resize", checkMobile);
   }, [embedded]);
 
-  // Update player state
-  useEffect(() => {
-    if (isLoading) {
-      setPlayerState("loading");
-    } else if (isPlaying) {
-      setPlayerState("playing");
-    } else {
-      setPlayerState("waiting");
-    }
-  }, [isLoading, isPlaying, setPlayerState]);
-
-  // Captura de frequência do TTS
-  useEffect(() => {
-    if (!audioManager.isPlaying) {
-      setFrequencyData([]);
-      if (frequencyAnimationRef.current) {
-        cancelAnimationFrame(frequencyAnimationRef.current);
-        frequencyAnimationRef.current = null;
-      }
-      return;
-    }
-
-    const updateFrequency = () => {
-      const data = audioManager.getFrequencyData();
-      if (data.length > 0) {
-        setFrequencyData(data);
-      }
-      frequencyAnimationRef.current = requestAnimationFrame(updateFrequency);
-    };
-
-    updateFrequency();
-
-    return () => {
-      if (frequencyAnimationRef.current) {
-        cancelAnimationFrame(frequencyAnimationRef.current);
-        frequencyAnimationRef.current = null;
-      }
-    };
-  }, [audioManager.isPlaying, audioManager]);
-
-  // ============================================================
-  // AUTOPLAY HOME - INDEPENDENTE dos módulos
-  // Usa generate-contextual-greeting SEM moduleId
-  // ============================================================
-  useEffect(() => {
-    // NÃO executar se navegando para módulo ou se já tem módulo ativo
-    if (isNavigatingToModule.current || activeModule) {
-      return;
-    }
-
-    if (appState === "idle" && !isConfigLoading && !homeWelcomeAttempted.current && config.welcomeText) {
-      homeWelcomeAttempted.current = true;
-
-      const fetchHomeGreeting = async () => {
-        // Verificar novamente antes de executar
-        if (isNavigatingToModule.current || activeModule) {
-          console.log("[HOME] Autoplay cancelado - navegação em andamento");
-          return;
-        }
-
-        try {
-          // HOME usa generate-contextual-greeting SEM moduleId
-          const { data, error } = await supabase.functions.invoke("generate-contextual-greeting", {
-            body: {
-              deviceId: deviceFingerprint || `anonymous-${Date.now()}`,
-              userName: userName || undefined,
-              // NÃO passar moduleId - é HOME
-            },
-          });
-
-          // Verificar novamente após fetch
-          if (isNavigatingToModule.current || activeModule) {
-            console.log("[HOME] Autoplay cancelado após fetch");
-            return;
-          }
-
-          if (error) {
-            console.warn("[HOME] Erro ao buscar saudação:", error);
-            throw error;
-          }
-
-          const greeting = data?.greeting || config.welcomeText?.replace("[name]", userName || "") || "";
-
-          if (greeting) {
-            console.log("[HOME] Tocando saudação:", greeting.substring(0, 50) + "...");
-            setLastSpokenText(greeting);
-            await speak(greeting);
-          }
-        } catch (err) {
-          // Verificar novamente antes do fallback
-          if (isNavigatingToModule.current || activeModule) {
-            return;
-          }
-
-          console.warn("[HOME] Fallback para saudação padrão:", err);
-          const fallbackGreeting = config.welcomeText?.replace("[name]", userName || "") || "";
-          if (fallbackGreeting) {
-            setLastSpokenText(fallbackGreeting);
-            speak(fallbackGreeting).catch(() => {});
-          }
-        }
-      };
-
-      const timer = setTimeout(fetchHomeGreeting, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [appState, isConfigLoading, deviceFingerprint, userName, speak, config.welcomeText, activeModule]);
-
-  const handleReplay = useCallback(() => {
-    if (lastSpokenText) {
-      speak(lastSpokenText);
-    }
-  }, [lastSpokenText, speak]);
-
   const handleSplashComplete = () => {
     setAppState("idle");
   };
 
   // ============================================================
   // SELEÇÃO DE MÓDULO - Navegação IMEDIATA
-  // NÃO toca áudio na HOME - o módulo é responsável pela sua saudação
   // ============================================================
-  const handleModuleSelect = (moduleId: Exclude<ModuleId, null>) => {
-    // Evitar cliques duplos
-    if (isNavigatingToModule.current) {
-      console.log("[HOME] Navegação já em andamento, ignorando");
-      return;
-    }
-
-    console.log("[HOME] Navegando para módulo:", moduleId);
-
-    // Marcar navegação ANTES de qualquer ação
-    isNavigatingToModule.current = true;
-
-    // Parar QUALQUER áudio da HOME IMEDIATAMENTE
-    stop();
+  const handleModuleSelect = useCallback((moduleId: Exclude<ModuleId, null>) => {
+    console.log("[PWA] Navegando para módulo:", moduleId);
+    
+    // Parar áudio IMEDIATAMENTE
     audioManager.stopAllAndCleanup();
-
-    // CORREÇÃO v4.0.0: Navegar IMEDIATAMENTE
-    // NÃO tocar nenhum áudio na HOME
-    // NÃO setar skipWelcome - cada módulo é INDEPENDENTE
+    
+    // Navegar para o módulo
     setActiveModule(moduleId);
-
-    // Resetar flag após pequeno delay
-    setTimeout(() => {
-      isNavigatingToModule.current = false;
-    }, 300);
-  };
+  }, [audioManager, setActiveModule]);
 
   // ============================================================
-  // VOLTAR PARA HOME - Reset completo
+  // VOLTAR PARA HOME
   // ============================================================
-  const handleBackToHome = () => {
-    console.log("[HOME] Voltando para HOME");
-
-    // Parar TODO áudio
-    stop();
+  const handleBackToHome = useCallback(() => {
+    console.log("[PWA] Voltando para HOME");
+    
+    // Parar áudio
     audioManager.stopAllAndCleanup();
-
-    // Resetar flag de navegação
-    isNavigatingToModule.current = false;
-
+    
     // Resetar estados
     setActiveModule(null);
     setAppState("idle");
     setPlayerState("idle");
-
-    // NÃO resetar homeWelcomeAttempted - evita repetir o welcome da HOME
-  };
+  }, [audioManager, setActiveModule, setAppState, setPlayerState]);
 
   const handleOpenHistoryFromModule = () => {
     setIsConversationsOpen(true);
   };
 
-  const handleSummarize = async () => {
-    if (conversations.length === 0 && messages.length === 0) return;
-    setIsSummarizing(true);
-    try {
-      const summaryText =
-        conversations.length > 0
-          ? `Você teve ${conversations.length} conversas. ${conversations
-              .map((c) => c.summary || "")
-              .filter(Boolean)
-              .join(". ")}`
-          : "Resumo da sua sessão.";
-      await speak(summaryText);
-    } finally {
-      setIsSummarizing(false);
-    }
-  };
+  // ============================================================
+  // RENDERIZAR CONTAINER DO MÓDULO
+  // ============================================================
+  const renderModuleContainer = () => {
+    const commonProps = {
+      onBack: handleBackToHome,
+      onHistoryClick: handleOpenHistoryFromModule,
+      deviceId: currentFingerprint,
+    };
 
-  const handleOpenConversations = () => {
-    setIsConversationsOpen(true);
-  };
-
-  const renderModule = () => {
     switch (activeModule) {
-      case "help":
-        return <HelpModule onBack={handleBackToHome} onHistoryClick={handleOpenHistoryFromModule} />;
-      case "world":
-        return <WorldModule onBack={handleBackToHome} onHistoryClick={handleOpenHistoryFromModule} />;
       case "health":
-        return <HealthModule onBack={handleBackToHome} onHistoryClick={handleOpenHistoryFromModule} />;
+        return <HealthModuleContainer {...commonProps} />;
       case "ideas":
-        return <IdeasModule onBack={handleBackToHome} onHistoryClick={handleOpenHistoryFromModule} />;
+        return <IdeasModuleContainer {...commonProps} />;
+      case "world":
+        return <WorldModuleContainer {...commonProps} />;
+      case "help":
+        return <HelpModuleContainer {...commonProps} />;
       default:
         return null;
     }
   };
-
-  const filteredConversations = activeModule ? conversations.filter((c) => c.module === activeModule) : conversations;
 
   if (showDesktopWarning) {
     return (
@@ -333,6 +170,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   const renderContent = ({ fingerprint, pwaAccess }: { fingerprint: string; pwaAccess: string[] }) => {
     useEffect(() => {
       if (fingerprint) {
+        setCurrentFingerprint(fingerprint);
         setAuthenticated(true, fingerprint);
         initializeHistory(fingerprint);
       }
@@ -356,62 +194,11 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
 
           {/* HOME - Container INDEPENDENTE */}
           {(appState === "idle" || appState === "welcome") && !activeModule && (
-            <motion.div
+            <HomeContainer
               key="home"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="flex-1 flex flex-col overflow-hidden"
-            >
-              <motion.div
-                className="pt-12 pb-2 px-4"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-              >
-                <div className="text-center overflow-hidden">
-                  <h1 className="text-2xl font-bold whitespace-nowrap">
-                    <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                      KnowYOU
-                    </span>
-                  </h1>
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="px-6 py-4"
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                <VoicePlayerBox
-                  state={playerState}
-                  onPlay={handleReplay}
-                  onPause={stop}
-                  audioProgress={progress}
-                  frequencyData={frequencyData}
-                />
-              </motion.div>
-
-              <motion.div
-                className="flex-1 px-4 pb-2 overflow-hidden"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              >
-                <ModuleSelector onSelect={handleModuleSelect} isPlaying={isPlaying} disabled={isPlaying || isLoading} />
-              </motion.div>
-
-              <motion.div
-                className="py-2 text-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.4 }}
-              >
-                <p className="text-[10px] text-muted-foreground/60">KnowYOU © 2025</p>
-              </motion.div>
-            </motion.div>
+              onModuleSelect={handleModuleSelect}
+              fingerprint={fingerprint}
+            />
           )}
 
           {/* MÓDULO ATIVO - Container INDEPENDENTE */}
@@ -424,8 +211,14 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
               transition={{ duration: 0.3 }}
               className="flex-1 flex flex-col overflow-hidden"
             >
-              <div className="flex-1 overflow-hidden">{renderModule()}</div>
-              <FooterModules activeModule={activeModule} onSelectModule={handleModuleSelect} showIndicators={true} />
+              <div className="flex-1 overflow-hidden">
+                {renderModuleContainer()}
+              </div>
+              <FooterModules 
+                activeModule={activeModule} 
+                onSelectModule={handleModuleSelect} 
+                showIndicators={true} 
+              />
             </motion.div>
           )}
         </AnimatePresence>
