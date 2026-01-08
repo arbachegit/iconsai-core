@@ -2,8 +2,8 @@
  * ============================================================
  * WorldModuleContainer.tsx - Container INDEPENDENTE para Mundo
  * ============================================================
- * Versão: 5.2.0 - 2026-01-08
- * CORREÇÃO: deviceId agora é recebido via PROP (igual ao Health)
+ * Versão: 5.4.0 - 2026-01-08
+ * CORREÇÃO: Adiciona salvamento no historyStore (addMessage)
  * ============================================================
  */
 
@@ -15,6 +15,7 @@ import { PlayButton } from "../voice/PlayButton";
 import { ToggleMicrophoneButton } from "../voice/ToggleMicrophoneButton";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useAudioManager } from "@/stores/audioManagerStore";
+import { useHistoryStore } from "@/stores/historyStore"; // ✅ ADICIONADO
 import { usePWAVoiceStore } from "@/stores/pwaVoiceStore";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -30,16 +31,13 @@ const MODULE_CONFIG = {
 interface WorldModuleContainerProps {
   onBack: () => void;
   onHistoryClick: () => void;
-  deviceId: string; // ✅ AGORA RECEBE VIA PROP
+  deviceId: string;
 }
 
-export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({
-  onBack,
-  onHistoryClick,
-  deviceId, // ✅ USANDO PROP
-}) => {
+export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBack, onHistoryClick, deviceId }) => {
   const { speak, stop, isPlaying, isLoading, progress } = useTextToSpeech();
   const audioManager = useAudioManager();
+  const { addMessage } = useHistoryStore(); // ✅ ADICIONADO
   const { userName } = usePWAVoiceStore();
 
   const [greeting, setGreeting] = useState<string | null>(null);
@@ -64,7 +62,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({
 
         const { data, error } = await supabase.functions.invoke("pwa-contextual-memory", {
           body: {
-            deviceId, // ✅ USANDO PROP
+            deviceId,
             moduleType: MODULE_CONFIG.type,
             action: "getGreeting",
           },
@@ -104,7 +102,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({
     });
   }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
 
-  // ✅ Captura de frequência - SÓ audioManager.isPlaying
+  // Captura de frequência
   useEffect(() => {
     if (!audioManager.isPlaying) {
       setFrequencyData([]);
@@ -123,7 +121,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({
     };
   }, [audioManager.isPlaying]);
 
-  // ✅ Cleanup - array vazio
+  // Cleanup
   useEffect(() => {
     return () => {
       useAudioManager.getState().stopAllAndCleanup();
@@ -142,7 +140,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({
         console.log("[WorldContainer] Salvando resumo...");
         await supabase.functions.invoke("generate-conversation-summary", {
           body: {
-            deviceId, // ✅ USANDO PROP
+            deviceId,
             moduleType: MODULE_CONFIG.type,
             messages: messages.slice(-6),
           },
@@ -181,7 +179,17 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({
       const userText = sttData?.text;
       if (!userText?.trim()) throw new Error("STT_EMPTY");
 
+      // ✅ Salvar mensagem do usuário no estado local
       setMessages((prev) => [...prev, { role: "user", content: userText }]);
+
+      // ✅ NOVO: Salvar no historyStore para aparecer no histórico
+      addMessage(MODULE_CONFIG.type, {
+        role: "user",
+        title: userText,
+        audioUrl: "",
+        duration: 0,
+        transcription: userText,
+      });
 
       const { data: chatData, error: chatError } = await supabase.functions.invoke("chat-router", {
         body: {
@@ -189,7 +197,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({
           pwaMode: true,
           chatType: MODULE_CONFIG.type,
           agentSlug: MODULE_CONFIG.type,
-          deviceId, // ✅ USANDO PROP
+          deviceId,
         },
       });
 
@@ -198,7 +206,17 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({
       const aiResponse = chatData?.response || chatData?.message || chatData?.text;
       if (!aiResponse) throw new Error("CHAT_EMPTY");
 
+      // ✅ Salvar resposta do assistente no estado local
       setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
+
+      // ✅ NOVO: Salvar no historyStore para aparecer no histórico
+      addMessage(MODULE_CONFIG.type, {
+        role: "assistant",
+        title: aiResponse,
+        audioUrl: "",
+        duration: 0,
+        transcription: aiResponse,
+      });
 
       await speak(aiResponse, MODULE_CONFIG.type);
     } catch (error: any) {
