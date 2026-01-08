@@ -320,3 +320,9 @@ verify_jwt = false
 
 [functions.update-user-context]
 verify_jwt = false
+
+# ============================================
+# PWA CONTEXTUAL MEMORY - Module-isolated memory
+# ============================================
+[functions.pwa-contextual-memory]
+verify_jwt = false
