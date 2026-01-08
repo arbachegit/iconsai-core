@@ -7,7 +7,7 @@ import { PWAConversationBlocks } from './PWAConversationBlocks';
 import { usePWAConversations } from '@/hooks/usePWAConversations';
 import type { PWAConversationModalProps, PWAConversationSession, PWASummaryFilters } from '@/types/pwa-conversations';
 import { PWA_MODULES } from '@/types/pwa-conversations';
-import { Globe, Heart, Lightbulb, X, type LucideIcon } from 'lucide-react';
+import { Globe, Heart, Lightbulb, type LucideIcon } from 'lucide-react';
 
 const ICONS: Record<string, LucideIcon> = { Globe, Heart, Lightbulb };
 
@@ -85,14 +85,6 @@ export const PWAConversationModal = ({
               </div>
             </DialogTitle>
             
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={onClose}
-              className="h-8 w-8"
-            >
-              <X className="w-4 h-4" />
-            </Button>
           </div>
         </DialogHeader>
 
