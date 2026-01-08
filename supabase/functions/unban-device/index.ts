@@ -55,14 +55,15 @@ serve(async (req) => {
       );
     }
 
-    // Verificar se usuário é admin
-    const { data: userReg } = await supabase
-      .from("user_registrations")
-      .select("is_admin")
-      .eq("email", user.email)
+    // Verificar se usuário é admin via user_roles
+    const { data: userRole } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .in("role", ["admin", "superadmin"])
       .single();
 
-    if (!userReg?.is_admin) {
+    if (!userRole) {
       console.error("❌ Usuário não é admin:", user.email);
       return new Response(
         JSON.stringify({ success: false, error: "Acesso negado - apenas admins" }),
