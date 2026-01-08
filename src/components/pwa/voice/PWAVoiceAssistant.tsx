@@ -19,6 +19,7 @@ import { IdeasModule } from "../modules/IdeasModule";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useConfigPWA } from "@/hooks/useConfigPWA";
 import { PWAAuthGate } from "@/components/gates/PWAAuthGate";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PWAVoiceAssistantProps {
   embedded?: boolean;
@@ -35,6 +36,7 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
     setAuthenticated,
     conversations,
     userName,
+    deviceFingerprint,
   } = usePWAVoiceStore();
   
   const { initialize: initializeHistory } = useHistoryStore();
@@ -133,36 +135,56 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   }, [audioManager.isPlaying, audioManager]);
 
   // ============================================================
-  // AUTOPLAY: Executa welcomeText da configuração ao entrar na HOME
+  // AUTOPLAY: Executa saudação contextual ao entrar na HOME
+  // Busca memória persistente do usuário para gerar saudação personalizada
   // ============================================================
   useEffect(() => {
     // Condições para executar autoplay:
     // 1. Estamos na HOME (idle)
     // 2. Config já carregou
     // 3. Ainda não tentamos o autoplay nesta sessão
-    // 4. Temos texto de boas-vindas
-    if (appState === "idle" && !isConfigLoading && !welcomeAttempted.current && config.welcomeText) {
+    if (appState === "idle" && !isConfigLoading && !welcomeAttempted.current) {
       welcomeAttempted.current = true;
 
-      // Substituir [name] pelo nome do usuário se disponível
-      const greeting = config.welcomeText.replace("[name]", userName || "");
-      setLastSpokenText(greeting);
+      const fetchContextualGreeting = async () => {
+        try {
+          // Buscar saudação contextual da edge function
+          const { data, error } = await supabase.functions.invoke("generate-contextual-greeting", {
+            body: { 
+              deviceId: deviceFingerprint || `anonymous-${Date.now()}`,
+              userName: userName || undefined
+            }
+          });
+
+          if (error) {
+            console.warn("Erro ao buscar saudação contextual:", error);
+            throw error;
+          }
+
+          const greeting = data?.greeting || config.welcomeText?.replace("[name]", userName || "") || "";
+          
+          if (greeting) {
+            setLastSpokenText(greeting);
+            await speak(greeting);
+            hasPlayedWelcome.current = true;
+          }
+        } catch (err) {
+          console.warn("Fallback para saudação padrão:", err);
+          // Fallback para saudação padrão
+          const fallbackGreeting = config.welcomeText?.replace("[name]", userName || "") || "";
+          if (fallbackGreeting) {
+            setLastSpokenText(fallbackGreeting);
+            speak(fallbackGreeting).catch(() => {});
+          }
+        }
+      };
 
       // Pequeno delay para garantir que a UI está pronta
-      const timer = setTimeout(() => {
-        speak(greeting)
-          .then(() => {
-            hasPlayedWelcome.current = true;
-          })
-          .catch((err) => {
-            console.warn("Autoplay bloqueado pelo navegador:", err);
-            // Se autoplay falhar, o usuário pode clicar no botão play
-          });
-      }, 300);
+      const timer = setTimeout(fetchContextualGreeting, 300);
 
       return () => clearTimeout(timer);
     }
-  }, [appState, isConfigLoading, config.welcomeText, userName, speak]);
+  }, [appState, isConfigLoading, deviceFingerprint, userName, speak, config.welcomeText]);
 
   // Replay do último texto falado
   const handleReplay = useCallback(() => {

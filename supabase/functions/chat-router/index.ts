@@ -769,6 +769,101 @@ async function updatePreviousMetricWithFeedback(
   }
 }
 
+// ===================== USER CONTEXT UPDATE =====================
+// Atualiza memória persistente do usuário para saudações contextuais
+async function updateUserContextAfterInteraction(
+  supabase: any,
+  deviceId: string,
+  userName: string | null,
+  moduleId: string,
+  userMessage: string,
+  assistantResponse: string,
+): Promise<void> {
+  try {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) return;
+
+    // Gerar resumo do tópico via IA (máximo 15 palavras)
+    let topicSummary = userMessage.substring(0, 100);
+
+    try {
+      const summaryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [
+            {
+              role: "system",
+              content: "Resuma em NO MÁXIMO 15 palavras o tema principal da interação. Responda APENAS com o resumo, sem prefixos ou explicações.",
+            },
+            {
+              role: "user",
+              content: `Usuário: "${userMessage.substring(0, 300)}"\nResposta: "${assistantResponse.substring(0, 200)}"`,
+            },
+          ],
+          max_tokens: 50,
+        }),
+      });
+
+      if (summaryResponse.ok) {
+        const summaryData = await summaryResponse.json();
+        const generatedSummary = summaryData.choices?.[0]?.message?.content?.trim();
+        if (generatedSummary && generatedSummary.length > 5) {
+          topicSummary = generatedSummary.substring(0, 200);
+        }
+      }
+    } catch (summaryError) {
+      console.warn("[Context] Failed to generate topic summary:", summaryError);
+    }
+
+    // Verificar se existe registro para este device
+    const { data: existing } = await supabase
+      .from("pwa_user_context")
+      .select("id, interaction_count")
+      .eq("device_id", deviceId)
+      .maybeSingle();
+
+    if (existing) {
+      // Atualizar registro existente
+      await supabase
+        .from("pwa_user_context")
+        .update({
+          user_name: userName || null,
+          last_module: moduleId,
+          last_topic_summary: topicSummary,
+          last_user_message: userMessage.substring(0, 500),
+          interaction_count: existing.interaction_count + 1,
+          last_interaction_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("device_id", deviceId);
+
+      console.log(`[Context] Updated user context: ${deviceId.substring(0, 15)}... count=${existing.interaction_count + 1}`);
+    } else {
+      // Criar novo registro
+      await supabase
+        .from("pwa_user_context")
+        .insert({
+          device_id: deviceId,
+          user_name: userName || null,
+          interaction_count: 1,
+          last_module: moduleId,
+          last_topic_summary: topicSummary,
+          last_user_message: userMessage.substring(0, 500),
+          last_interaction_at: new Date().toISOString(),
+        });
+
+      console.log(`[Context] Created user context: ${deviceId.substring(0, 15)}...`);
+    }
+  } catch (err) {
+    console.error("[Context] Update failed:", err);
+  }
+}
+
 // ===================== ORCHESTRATOR =====================
 async function getOrchestratedContext(
   supabase: any,
@@ -1370,6 +1465,16 @@ serve(async (req: Request) => {
         response,
         contextCode,
       );
+
+      // ============ ATUALIZAÇÃO DO CONTEXTO DO USUÁRIO ============
+      // Atualizar memória persistente para saudações contextuais
+      if (finalDeviceId && agentSlug) {
+        try {
+          await updateUserContextAfterInteraction(supabase, finalDeviceId, currentUserName || null, agentSlug, pwaMessage, response);
+        } catch (ctxError) {
+          console.warn("[Context] Failed to update user context:", ctxError);
+        }
+      }
 
       return new Response(
         JSON.stringify({ response, sessionId: pwaSessionId, contextCode, source: "gemini-fallback" }),

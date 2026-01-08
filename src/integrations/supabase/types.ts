@@ -3785,6 +3785,45 @@ export type Database = {
           },
         ]
       }
+      pwa_user_context: {
+        Row: {
+          created_at: string | null
+          device_id: string
+          id: string
+          interaction_count: number | null
+          last_interaction_at: string | null
+          last_module: string | null
+          last_topic_summary: string | null
+          last_user_message: string | null
+          updated_at: string | null
+          user_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_id: string
+          id?: string
+          interaction_count?: number | null
+          last_interaction_at?: string | null
+          last_module?: string | null
+          last_topic_summary?: string | null
+          last_user_message?: string | null
+          updated_at?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_id?: string
+          id?: string
+          interaction_count?: number | null
+          last_interaction_at?: string | null
+          last_module?: string | null
+          last_topic_summary?: string | null
+          last_user_message?: string | null
+          updated_at?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       pwa_user_devices: {
         Row: {
           created_at: string | null
