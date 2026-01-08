@@ -109,15 +109,15 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
     });
   }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
 
-  // Captura de frequência
+  // Captura de frequência - usar apenas isPlaying como dependência
   useEffect(() => {
-    if (!isPlaying) {
+    if (!audioManager.isPlaying) {
       setFrequencyData([]);
       return;
     }
 
     const updateFrequency = () => {
-      const data = audioManager.getFrequencyData();
+      const data = useAudioManager.getState().getFrequencyData();
       if (data.length > 0) setFrequencyData(data);
       animationRef.current = requestAnimationFrame(updateFrequency);
     };
@@ -126,21 +126,21 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [isPlaying, audioManager]);
+  }, [audioManager.isPlaying]);
 
-  // Cleanup
+  // Cleanup - array vazio, usar getState()
   useEffect(() => {
     return () => {
-      audioManager.stopAllAndCleanup();
+      useAudioManager.getState().stopAllAndCleanup();
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [audioManager]);
+  }, []);
 
   // ============================================================
   // SALVAR RESUMO AO SAIR
   // ============================================================
   const handleBack = useCallback(async () => {
-    audioManager.stopAllAndCleanup();
+    useAudioManager.getState().stopAllAndCleanup();
     
     if (messages.length >= 2) {
       try {
@@ -158,7 +158,7 @@ export const HealthModuleContainer: React.FC<HealthModuleContainerProps> = ({
     }
     
     onBack();
-  }, [messages, deviceId, onBack, audioManager]);
+  }, [messages, deviceId, onBack]);
 
   // Handler de áudio
   const handleAudioCapture = async (audioBlob: Blob) => {

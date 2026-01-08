@@ -92,12 +92,12 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   const handleModuleSelect = useCallback((moduleId: Exclude<ModuleId, null>) => {
     console.log("[PWA] Navegando para módulo:", moduleId);
     
-    // Parar áudio IMEDIATAMENTE
-    audioManager.stopAllAndCleanup();
+    // Parar áudio IMEDIATAMENTE - usar getState() para evitar loop
+    useAudioManager.getState().stopAllAndCleanup();
     
     // Navegar para o módulo
     setActiveModule(moduleId);
-  }, [audioManager, setActiveModule]);
+  }, [setActiveModule]);
 
   // ============================================================
   // VOLTAR PARA HOME
@@ -105,14 +105,14 @@ export const PWAVoiceAssistant: React.FC<PWAVoiceAssistantProps> = ({ embedded =
   const handleBackToHome = useCallback(() => {
     console.log("[PWA] Voltando para HOME");
     
-    // Parar áudio
-    audioManager.stopAllAndCleanup();
+    // Parar áudio - usar getState() para evitar loop
+    useAudioManager.getState().stopAllAndCleanup();
     
     // Resetar estados
     setActiveModule(null);
     setAppState("idle");
     setPlayerState("idle");
-  }, [audioManager, setActiveModule, setAppState, setPlayerState]);
+  }, [setActiveModule, setAppState, setPlayerState]);
 
   const handleOpenHistoryFromModule = () => {
     setIsConversationsOpen(true);

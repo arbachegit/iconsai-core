@@ -110,23 +110,23 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
     return () => clearTimeout(timer);
   }, [isGreetingReady, hasPlayedAutoplay, greeting, speak]);
 
-  // CLEANUP
+  // CLEANUP - array vazio, usar getState()
   useEffect(() => {
     return () => {
-      audioManager.stopAllAndCleanup();
+      useAudioManager.getState().stopAllAndCleanup();
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [audioManager]);
+  }, []);
 
-  // FREQUÊNCIAS
+  // FREQUÊNCIAS - usar apenas isPlaying como dependência
   useEffect(() => {
-    if (!isPlaying) {
+    if (!audioManager.isPlaying) {
       setFrequencyData([]);
       return;
     }
 
     const updateFrequency = () => {
-      const data = audioManager.getFrequencyData();
+      const data = useAudioManager.getState().getFrequencyData();
       if (data.length > 0) setFrequencyData(data);
       animationRef.current = requestAnimationFrame(updateFrequency);
     };
@@ -135,7 +135,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [isPlaying, audioManager]);
+  }, [audioManager.isPlaying]);
 
   // ÁUDIO CAPTURE
   const handleAudioCapture = useCallback(
@@ -194,7 +194,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
   }, [isPlaying, stop, speak, greeting]);
 
   const handleBack = useCallback(async () => {
-    audioManager.stopAllAndCleanup();
+    useAudioManager.getState().stopAllAndCleanup();
     if (messages.length >= 2 && deviceFingerprint) {
       try {
         await supabase.functions.invoke("generate-conversation-summary", {
@@ -203,7 +203,7 @@ export const WorldModuleContainer: React.FC<WorldModuleContainerProps> = ({ onBa
       } catch {}
     }
     onBack();
-  }, [audioManager, messages, deviceFingerprint, onBack]);
+  }, [messages, deviceFingerprint, onBack]);
 
   const visualizerState = isRecording
     ? "recording"
