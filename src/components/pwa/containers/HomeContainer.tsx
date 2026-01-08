@@ -2,7 +2,11 @@
  * ============================================================
  * HomeContainer.tsx - Container INDEPENDENTE para HOME
  * ============================================================
- * Versão: 5.0.0 - 2026-01-08
+ * Versão: 5.1.0 - 2026-01-08
+ *
+ * CORREÇÃO v5.1.0:
+ * - Removido audioManager das dependências do useEffect (causava loop infinito)
+ * - useEffect de cleanup agora usa array vazio []
  *
  * PRINCÍPIOS:
  * - Container 100% INDEPENDENTE
@@ -147,7 +151,9 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect }) 
   // CAPTURAR FREQUÊNCIAS DO TTS
   // ============================================================
   useEffect(() => {
-    if (!audioManager.isPlaying) {
+    const isAudioPlaying = audioManager.isPlaying;
+
+    if (!isAudioPlaying) {
       setFrequencyData([]);
       if (frequencyAnimationRef.current) {
         cancelAnimationFrame(frequencyAnimationRef.current);
@@ -172,19 +178,20 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect }) 
         frequencyAnimationRef.current = null;
       }
     };
-  }, [audioManager.isPlaying, audioManager]);
+  }, [audioManager.isPlaying]); // ✅ CORREÇÃO: Usar apenas audioManager.isPlaying
 
   // ============================================================
   // CLEANUP AO DESMONTAR
   // ============================================================
   useEffect(() => {
     return () => {
-      audioManager.stopAllAndCleanup();
+      // ✅ CORREÇÃO: Chamar diretamente sem depender do audioManager na lista
+      useAudioManager.getState().stopAllAndCleanup();
       if (frequencyAnimationRef.current) {
         cancelAnimationFrame(frequencyAnimationRef.current);
       }
     };
-  }, [audioManager]);
+  }, []); // ✅ CORREÇÃO: Array vazio - executa apenas ao desmontar
 
   // ============================================================
   // HANDLERS
@@ -199,12 +206,12 @@ export const HomeContainer: React.FC<HomeContainerProps> = ({ onModuleSelect }) 
     (moduleId: Exclude<ModuleId, null>) => {
       // Parar áudio da HOME imediatamente
       stop();
-      audioManager.stopAllAndCleanup();
+      useAudioManager.getState().stopAllAndCleanup(); // ✅ CORREÇÃO: Usar getState()
 
       // Navegar para módulo
       onModuleSelect(moduleId);
     },
-    [stop, audioManager, onModuleSelect],
+    [stop, onModuleSelect], // ✅ CORREÇÃO: Removido audioManager das dependências
   );
 
   // ============================================================
