@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -34,13 +34,19 @@ import {
   Globe,
   User,
   Calendar,
-  Info
+  Info,
+  Fingerprint,
+  ShieldCheck,
+  Copy
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getDeviceFingerprint } from "@/lib/device-fingerprint";
 
 interface WhitelistEntry {
   id: string;
   ip_address: string;
+  device_fingerprint: string | null;
+  user_id: string | null;
   user_email: string | null;
   user_name: string | null;
   description: string | null;
@@ -52,13 +58,33 @@ interface WhitelistEntry {
 export function SecurityWhitelist() {
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [currentIP, setCurrentIP] = useState<string | null>(null);
+  const [currentFingerprint, setCurrentFingerprint] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     ip_address: "",
+    device_fingerprint: "",
     user_name: "",
     user_email: "",
     description: "",
     expires_at: "",
   });
+
+  // Get current device info on mount
+  useEffect(() => {
+    fetchCurrentIP();
+    const fingerprint = getDeviceFingerprint();
+    setCurrentFingerprint(fingerprint);
+  }, []);
+
+  const fetchCurrentIP = async () => {
+    try {
+      const response = await fetch("https://api.ipify.org?format=json");
+      const data = await response.json();
+      setCurrentIP(data.ip);
+    } catch {
+      console.error("Could not fetch current IP");
+    }
+  };
 
   // Fetch whitelist entries
   const { data: entries, isLoading, refetch } = useQuery({
@@ -74,28 +100,31 @@ export function SecurityWhitelist() {
     },
   });
 
-  // Add mutation
+  // Add mutation using edge function
   const addMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase
-        .from("security_whitelist")
-        .insert({
-          ip_address: data.ip_address,
-          user_name: data.user_name || null,
-          user_email: data.user_email || null,
-          description: data.description || null,
-          expires_at: data.expires_at || null,
-          is_active: true,
-        });
+      const { data: result, error } = await supabase.functions.invoke("add-to-whitelist", {
+        body: {
+          ipAddress: data.ip_address || undefined,
+          deviceFingerprint: data.device_fingerprint || undefined,
+          userName: data.user_name || undefined,
+          userEmail: data.user_email || undefined,
+          description: data.description || undefined,
+          expiresAt: data.expires_at || undefined,
+        },
+      });
       
       if (error) throw error;
+      if (!result?.success) throw new Error(result?.error || "Erro desconhecido");
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["security-whitelist"] });
-      toast.success("IP adicionado à whitelist");
+      toast.success("Adicionado à whitelist com sucesso");
       setIsAddDialogOpen(false);
       setFormData({
         ip_address: "",
+        device_fingerprint: "",
         user_name: "",
         user_email: "",
         description: "",
@@ -145,25 +174,45 @@ export function SecurityWhitelist() {
     },
   });
 
+  // Whitelist my device mutation
+  const whitelistMyDeviceMutation = useMutation({
+    mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data: result, error } = await supabase.functions.invoke("add-to-whitelist", {
+        body: {
+          ipAddress: currentIP,
+          deviceFingerprint: currentFingerprint,
+          userName: user?.user_metadata?.full_name || "Admin",
+          userEmail: user?.email,
+          description: "Auto-whitelist do dispositivo do administrador",
+        },
+      });
+      
+      if (error) throw error;
+      if (!result?.success) throw new Error(result?.error || "Erro desconhecido");
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["security-whitelist"] });
+      toast.success("Seu dispositivo foi adicionado à whitelist!");
+    },
+    onError: (error) => {
+      toast.error(`Erro: ${error.message}`);
+    },
+  });
+
   const handleAdd = () => {
-    if (!formData.ip_address) {
-      toast.error("Endereço IP é obrigatório");
+    if (!formData.ip_address && !formData.device_fingerprint) {
+      toast.error("IP ou Device Fingerprint é obrigatório");
       return;
     }
     addMutation.mutate(formData);
   };
 
-  // Fetch current IP
-  const [currentIP, setCurrentIP] = useState<string | null>(null);
-  
-  const fetchCurrentIP = async () => {
-    try {
-      const response = await fetch("https://api.ipify.org?format=json");
-      const data = await response.json();
-      setCurrentIP(data.ip);
-    } catch {
-      console.error("Could not fetch current IP");
-    }
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copiado!`);
   };
 
   if (isLoading) {
@@ -181,27 +230,37 @@ export function SecurityWhitelist() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Shield className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-bold">Whitelist de IPs</h2>
+          <h2 className="text-2xl font-bold">Whitelist de Segurança</h2>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Atualizar
           </Button>
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={() => whitelistMyDeviceMutation.mutate()}
+            disabled={whitelistMyDeviceMutation.isPending || (!currentIP && !currentFingerprint)}
+          >
+            <ShieldCheck className="h-4 w-4 mr-2" />
+            {whitelistMyDeviceMutation.isPending ? "Adicionando..." : "Whitelist Meu Dispositivo"}
+          </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
                 <Plus className="h-4 w-4 mr-2" />
-                Adicionar IP
+                Adicionar
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Adicionar IP à Whitelist</DialogTitle>
+                <DialogTitle>Adicionar à Whitelist</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                {/* IP Address */}
                 <div className="space-y-2">
-                  <Label htmlFor="ip_address">Endereço IP *</Label>
+                  <Label htmlFor="ip_address">Endereço IP</Label>
                   <div className="flex gap-2">
                     <Input
                       id="ip_address"
@@ -213,12 +272,12 @@ export function SecurityWhitelist() {
                       type="button" 
                       variant="outline" 
                       size="sm"
-                      onClick={async () => {
-                        await fetchCurrentIP();
+                      onClick={() => {
                         if (currentIP) {
                           setFormData({ ...formData, ip_address: currentIP });
                         }
                       }}
+                      disabled={!currentIP}
                     >
                       Meu IP
                     </Button>
@@ -226,6 +285,37 @@ export function SecurityWhitelist() {
                   {currentIP && (
                     <p className="text-xs text-muted-foreground">
                       Seu IP atual: {currentIP}
+                    </p>
+                  )}
+                </div>
+
+                {/* Device Fingerprint */}
+                <div className="space-y-2">
+                  <Label htmlFor="device_fingerprint">Device Fingerprint</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="device_fingerprint"
+                      placeholder="Ex: abc123xyz..."
+                      value={formData.device_fingerprint}
+                      onChange={(e) => setFormData({ ...formData, device_fingerprint: e.target.value })}
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        if (currentFingerprint) {
+                          setFormData({ ...formData, device_fingerprint: currentFingerprint });
+                        }
+                      }}
+                      disabled={!currentFingerprint}
+                    >
+                      Meu Device
+                    </Button>
+                  </div>
+                  {currentFingerprint && (
+                    <p className="text-xs text-muted-foreground">
+                      Seu fingerprint: {currentFingerprint.substring(0, 20)}...
                     </p>
                   )}
                 </div>
@@ -295,7 +385,7 @@ export function SecurityWhitelist() {
             <div>
               <p className="text-sm font-medium text-blue-500">O que é a Whitelist?</p>
               <p className="text-sm text-muted-foreground mt-1">
-                IPs na whitelist podem usar DevTools e outras ferramentas de desenvolvimento 
+                IPs e dispositivos na whitelist podem usar DevTools e outras ferramentas de desenvolvimento 
                 <strong className="text-foreground"> sem serem banidos</strong>. 
                 As ações ainda são registradas na auditoria (com flag "whitelisted"), 
                 mas nenhuma ação punitiva é tomada.
@@ -305,12 +395,58 @@ export function SecurityWhitelist() {
         </CardContent>
       </Card>
 
+      {/* Current Device Info */}
+      <Card className="border-green-500/30 bg-green-500/5">
+        <CardContent className="pt-4">
+          <div className="flex items-start gap-3">
+            <Fingerprint className="h-5 w-5 text-green-500 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-green-500">Seu Dispositivo Atual</p>
+              <div className="mt-2 space-y-1">
+                <div className="flex items-center gap-2 text-sm">
+                  <Globe className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-muted-foreground">IP:</span>
+                  <code className="bg-muted px-1 rounded">{currentIP || "Carregando..."}</code>
+                  {currentIP && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 w-6 p-0"
+                      onClick={() => copyToClipboard(currentIP, "IP")}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Fingerprint className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-muted-foreground">Fingerprint:</span>
+                  <code className="bg-muted px-1 rounded truncate max-w-[200px]">
+                    {currentFingerprint || "Carregando..."}
+                  </code>
+                  {currentFingerprint && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 w-6 p-0"
+                      onClick={() => copyToClipboard(currentFingerprint, "Fingerprint")}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">IPs Cadastrados</CardTitle>
+          <CardTitle className="text-sm">Entradas na Whitelist</CardTitle>
           <CardDescription>
-            {entries?.length || 0} entrada(s) na whitelist
+            {entries?.length || 0} entrada(s) cadastrada(s)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -318,7 +454,7 @@ export function SecurityWhitelist() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>IP</TableHead>
+                  <TableHead>IP / Device</TableHead>
                   <TableHead>Usuário</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead>Status</TableHead>
@@ -333,9 +469,27 @@ export function SecurityWhitelist() {
                   return (
                     <TableRow key={entry.id} className={isExpired ? "opacity-50" : ""}>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-4 w-4 text-muted-foreground" />
-                          <code className="text-sm">{entry.ip_address}</code>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Globe className="h-4 w-4 text-muted-foreground" />
+                            <code className="text-sm">{entry.ip_address}</code>
+                          </div>
+                          {entry.device_fingerprint && (
+                            <div className="flex items-center gap-2">
+                              <Fingerprint className="h-4 w-4 text-muted-foreground" />
+                              <code className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                {entry.device_fingerprint}
+                              </code>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-5 w-5 p-0"
+                                onClick={() => copyToClipboard(entry.device_fingerprint!, "Fingerprint")}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -407,8 +561,8 @@ export function SecurityWhitelist() {
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <Shield className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p>Nenhum IP na whitelist</p>
-              <p className="text-sm mt-1">Adicione IPs de administradores para permitir uso de DevTools</p>
+              <p>Nenhuma entrada na whitelist</p>
+              <p className="text-sm mt-1">Adicione IPs ou dispositivos para permitir uso de DevTools</p>
             </div>
           )}
         </CardContent>
