@@ -1,4 +1,4 @@
-// usePWAConversations Hook - v1.0.0
+// usePWAConversations Hook - v1.1.0
 // 
 // ===== TABELAS DO BANCO DE DADOS =====
 // - pwa_conversation_sessions   : Sessões de conversa
@@ -162,21 +162,23 @@ export function usePWAConversations() {
     }
   }, []);
 
+  // CORRIGIDO: Permite query vazia para pre-carregar + status = 'approved'
   const fetchTaxonomySuggestions = useCallback(async (query: string) => {
-    if (query.length < 1) {
-      setTaxonomySuggestions([]);
-      return;
-    }
-    
     try {
-      console.log('[usePWAConversations] Buscando taxonomias:', query);
+      console.log('[usePWAConversations] Buscando taxonomias:', query || '(todas)');
       
-      const { data, error } = await supabase
+      let dbQuery = supabase
         .from('global_taxonomy')
         .select('id, name, code')
-        .ilike('name', `${query}%`)
-        .eq('status', 'active')
-        .limit(10);
+        .eq('status', 'approved') // CORRIGIDO: era 'active', mas os dados tem 'approved'
+        .limit(20);
+      
+      // Filtrar por query se fornecida
+      if (query.length > 0) {
+        dbQuery = dbQuery.ilike('name', `%${query}%`);
+      }
+      
+      const { data, error } = await dbQuery;
       
       if (error) throw error;
       
@@ -194,14 +196,10 @@ export function usePWAConversations() {
     }
   }, []);
 
+  // CORRIGIDO: Permite query vazia para pre-carregar
   const fetchKeyTopicsSuggestions = useCallback(async (query: string) => {
-    if (query.length < 1) {
-      setKeyTopicsSuggestions([]);
-      return;
-    }
-    
     try {
-      console.log('[usePWAConversations] Buscando temas-chave:', query);
+      console.log('[usePWAConversations] Buscando temas-chave:', query || '(todos)');
       
       // Buscar mensagens com key_topics
       const { data, error } = await supabase
@@ -222,27 +220,27 @@ export function usePWAConversations() {
         
         // People
         kt.people?.forEach((p) => {
-          if (p.toLowerCase().startsWith(lowerQuery) && !topicsSet.has(p)) {
+          if ((lowerQuery === '' || p.toLowerCase().includes(lowerQuery)) && !topicsSet.has(p)) {
             topicsSet.set(p, { value: p, label: p, category: 'person' });
           }
         });
         
         // Countries
         kt.countries?.forEach((c) => {
-          if (c.toLowerCase().startsWith(lowerQuery) && !topicsSet.has(c)) {
+          if ((lowerQuery === '' || c.toLowerCase().includes(lowerQuery)) && !topicsSet.has(c)) {
             topicsSet.set(c, { value: c, label: c, category: 'country' });
           }
         });
         
         // Organizations
         kt.organizations?.forEach((o) => {
-          if (o.toLowerCase().startsWith(lowerQuery) && !topicsSet.has(o)) {
+          if ((lowerQuery === '' || o.toLowerCase().includes(lowerQuery)) && !topicsSet.has(o)) {
             topicsSet.set(o, { value: o, label: o, category: 'organization' });
           }
         });
       });
       
-      const suggestions = Array.from(topicsSet.values()).slice(0, 10);
+      const suggestions = Array.from(topicsSet.values()).slice(0, 20);
       setKeyTopicsSuggestions(suggestions);
       console.log('[usePWAConversations] Temas-chave encontrados:', suggestions.length);
     } catch (err) {
