@@ -347,17 +347,20 @@ async function callGeminiWithGrounding(
   try {
     console.log(`[Gemini-Grounding-${moduleSlug}] Buscando dados em tempo real via Google Search...`);
 
-    // Adicionar instrução de busca atual no prompt
+    // Adicionar instrução de busca atual no prompt com VERIFICAÇÃO TEMPORAL OBRIGATÓRIA
     const enhancedMessages = messages.map((m, idx) => {
       if (m.role === "system") {
         return {
           ...m,
-          content: m.content + `\n\n## INSTRUÇÃO CRÍTICA - DADOS ATUALIZADOS:
+          content: m.content + `\n\n## INSTRUÇÃO CRÍTICA - VERIFICAÇÃO TEMPORAL OBRIGATÓRIA:
 - A data de HOJE é ${new Date().toLocaleDateString('pt-BR')} (${new Date().toISOString().split('T')[0]})
 - Você TEM ACESSO a dados em tempo real via Google Search
-- SEMPRE busque as informações mais recentes disponíveis
-- Cite fontes e datas quando possível
-- Se perguntarem sobre eventos recentes, busque as últimas notícias`
+- OBRIGATÓRIO: Cite a DATA DE REFERÊNCIA de cada dado mencionado (ex: "segundo dados de janeiro/2026")
+- OBRIGATÓRIO: Cite a FONTE dos dados (IBGE, BCB, IPEA, portal de notícias)
+- Se não conseguir verificar a atualidade de uma informação, DECLARE EXPLICITAMENTE:
+  "Esta informação pode não estar atualizada. Recomendo verificar fontes oficiais para dados mais recentes."
+- PROIBIDO: Usar dados sem indicar período/fonte
+- PROIBIDO: Inferir valores atuais a partir de tendências históricas sem declarar`
         };
       }
       return m;
@@ -403,14 +406,31 @@ async function callGeminiWithGrounding(
   }
 }
 
-// Fallback: Chat Completions API (sem web search, mas mais estável)
+// Fallback: Chat Completions API (sem web search - SINALIZA LIMITAÇÃO)
 async function callChatCompletionsFallback(
   apiKey: string,
   moduleSlug: string,
   messages: Array<{ role: string; content: string }>,
-): Promise<{ response: string; success: boolean }> {
+): Promise<{ response: string; success: boolean; hasRealtimeAccess: boolean; disclaimer: string | null }> {
   try {
-    console.log(`[ChatGPT-Fallback-${moduleSlug}] Usando Chat Completions...`);
+    console.log(`[ChatGPT-Fallback-${moduleSlug}] Usando Chat Completions (SEM acesso a tempo real)...`);
+
+    // Adicionar disclaimer de limitação ao system prompt
+    const fallbackDisclaimer = `\n\n## LIMITAÇÃO IMPORTANTE - LEIA COM ATENÇÃO:
+Você NÃO tem acesso a informações em tempo real ou dados posteriores à sua data de treinamento.
+Ao responder sobre dados econômicos, notícias ou eventos recentes:
+1. DECLARE EXPLICITAMENTE: "Meus dados podem não refletir a situação atual."
+2. RECOMENDE ao usuário verificar fontes oficiais atualizadas (BCB, IBGE, portais de notícias).
+3. NÃO invente valores específicos para indicadores econômicos atuais.
+4. Se não souber um dado atual, diga: "Recomendo consultar [fonte oficial] para valores atualizados."`;
+
+    // Adicionar disclaimer ao primeiro message (system)
+    const messagesWithDisclaimer = messages.map((m, idx) => {
+      if (idx === 0 && m.role === "system") {
+        return { ...m, content: m.content + fallbackDisclaimer };
+      }
+      return m;
+    });
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -420,7 +440,7 @@ async function callChatCompletionsFallback(
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages,
+        messages: messagesWithDisclaimer,
         max_tokens: 500,
       }),
     });
@@ -428,7 +448,7 @@ async function callChatCompletionsFallback(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[ChatGPT-Fallback-${moduleSlug}] API error:`, response.status, errorText);
-      return { response: "", success: false };
+      return { response: "", success: false, hasRealtimeAccess: false, disclaimer: null };
     }
 
     const data = await response.json();
@@ -440,15 +460,20 @@ async function callChatCompletionsFallback(
     // Validar que a resposta não está vazia
     if (!sanitizedContent || sanitizedContent.length === 0) {
       console.warn(`[ChatGPT-Fallback-${moduleSlug}] Resposta vazia após sanitização`);
-      return { response: "", success: false };
+      return { response: "", success: false, hasRealtimeAccess: false, disclaimer: null };
     }
 
     console.log(`[ChatGPT-Fallback-${moduleSlug}] Sucesso - tamanho:`, sanitizedContent.length);
-    return { response: sanitizedContent, success: true };
+    return { 
+      response: sanitizedContent, 
+      success: true,
+      hasRealtimeAccess: false,
+      disclaimer: "Resposta gerada sem acesso a dados em tempo real. Verifique fontes oficiais para informações atualizadas."
+    };
 
   } catch (error) {
     console.error(`[ChatGPT-Fallback-${moduleSlug}] Exceção:`, error);
-    return { response: "", success: false };
+    return { response: "", success: false, hasRealtimeAccess: false, disclaimer: null };
   }
 }
 
@@ -912,8 +937,12 @@ function detectIndicators(query: string): string[] {
   return codes;
 }
 
+// Constante para definir quando dados são considerados desatualizados
+const MAX_INDICATOR_DAYS_OLD = 60;
+
 async function fetchLatestIndicators(supabase: any, codes: string[]): Promise<Record<string, any>> {
   const results: Record<string, any> = {};
+  const today = new Date();
 
   for (const code of codes) {
     try {
@@ -925,7 +954,17 @@ async function fetchLatestIndicators(supabase: any, codes: string[]): Promise<Re
         .limit(1)
         .single();
 
-      if (data) results[code] = data;
+      if (data) {
+        const refDate = new Date(data.reference_date);
+        const daysSinceUpdate = Math.floor((today.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        results[code] = {
+          ...data,
+          daysSinceUpdate,
+          isStale: daysSinceUpdate > MAX_INDICATOR_DAYS_OLD,
+          referenceFormatted: refDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+        };
+      }
     } catch (err) {
       console.warn(`[Indicators] Failed ${code}`);
     }
@@ -936,17 +975,34 @@ async function fetchLatestIndicators(supabase: any, codes: string[]): Promise<Re
 function formatIndicatorsContext(indicators: Record<string, any>): string {
   if (Object.keys(indicators).length === 0) return "";
 
-  const lines = ["## DADOS ECONÔMICOS ATUAIS:"];
+  const lines = ["## DADOS ECONÔMICOS OFICIAIS:"];
+  const staleWarnings: string[] = [];
+
   for (const [code, data] of Object.entries(indicators)) {
     const value = data.value;
     const variation = data.monthly_change_pct;
-    let line = `- ${code}: ${value}`;
+    const refDate = data.referenceFormatted || "data desconhecida";
+    
+    let line = `- ${code}: ${value} (referência: ${refDate})`;
     if (variation !== null && variation !== undefined) {
       const arrow = variation >= 0 ? "↑" : "↓";
-      line += ` (${arrow} ${Math.abs(variation).toFixed(2)}% m/m)`;
+      line += ` | Variação: ${arrow} ${Math.abs(variation).toFixed(2)}% m/m`;
     }
+    
+    // Marcar dados potencialmente desatualizados
+    if (data.isStale) {
+      line += " ⚠️ DADO PODE ESTAR DESATUALIZADO";
+      staleWarnings.push(code);
+    }
+    
     lines.push(line);
   }
+
+  // Adicionar aviso consolidado se houver dados antigos
+  if (staleWarnings.length > 0) {
+    lines.push(`\n⚠️ ATENÇÃO: Os indicadores ${staleWarnings.join(', ')} podem não refletir valores atuais. Recomende ao usuário verificar fontes oficiais.`);
+  }
+
   return lines.join("\n");
 }
 
@@ -1320,6 +1376,11 @@ serve(async (req: Request) => {
             sessionId: pwaSessionId,
             contextCode: moduleSlug,
             source: "chatgpt",
+            dataReliability: {
+              hasRealtimeAccess: true,
+              staleIndicators: [],
+              disclaimer: null
+            }
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
@@ -1476,8 +1537,25 @@ serve(async (req: Request) => {
         }
       }
 
+      // Identificar indicadores desatualizados para metadata
+      const staleIndicatorCodes = Object.entries(
+        detectedIndicators.length > 0 ? await fetchLatestIndicators(supabase, detectedIndicators) : {}
+      ).filter(([_, data]) => data.isStale).map(([code]) => code);
+
       return new Response(
-        JSON.stringify({ response, sessionId: pwaSessionId, contextCode, source: "gemini-fallback" }),
+        JSON.stringify({ 
+          response, 
+          sessionId: pwaSessionId, 
+          contextCode, 
+          source: "gemini-fallback",
+          dataReliability: {
+            hasRealtimeAccess: true,
+            staleIndicators: staleIndicatorCodes,
+            disclaimer: staleIndicatorCodes.length > 0 
+              ? "Alguns dados econômicos podem não refletir valores atuais. Verifique fontes oficiais." 
+              : null
+          }
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
