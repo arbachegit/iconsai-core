@@ -6,8 +6,8 @@
  * ============================================================
  */
 
-export { default as HomeContainer } from "./HomeContainer";
-export { default as HealthModuleContainer } from "./HealthModuleContainer";
-export { default as IdeasModuleContainer } from "./IdeasModuleContainer";
-export { default as WorldModuleContainer } from "./WorldModuleContainer";
-export { default as HelpModuleContainer } from "./HelpModuleContainer";
+export { HomeContainer } from "./HomeContainer";
+export { HealthModuleContainer } from "./HealthModuleContainer";
+export { IdeasModuleContainer } from "./IdeasModuleContainer";
+export { WorldModuleContainer } from "./WorldModuleContainer";
+export { HelpModuleContainer } from "./HelpModuleContainer";
