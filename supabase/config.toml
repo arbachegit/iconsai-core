@@ -138,6 +138,9 @@ verify_jwt = false
 [functions.unban-device]
 verify_jwt = false
 
+[functions.add-to-whitelist]
+verify_jwt = false
+
 # ============================================
 # ADMIN FUNCTIONS - REQUIRES AUTHENTICATION
 # ============================================
